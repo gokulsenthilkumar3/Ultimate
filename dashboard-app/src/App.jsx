@@ -11,6 +11,11 @@ import {
 } from "./data/userData";
 import { Ring, CountUp, Badge, PartCard, ProgressBar, StatCard, ChartTip, SectionHead, Alert } from "./components/UIComponents";
 import Body3D from "./components/Body3D";
+import Overview from "./components/Overview";
+import Medical from "./components/Medical";
+import Physique from "./components/Physique";
+import Lifestyle from "./components/Lifestyle";
+import { useUserStore } from "./context/UserStore";
 import { COLOR_ACCENTS, DARK_THEME, LIGHT_THEME, applyTheme } from "./themes";
 import "./index.css";
 
@@ -39,40 +44,15 @@ const TABS = [
   { id:"mental",     emoji:"🧠", label:"Mental"      },
 ];
 
-// ─── LOCAL STORAGE HOOK ───────────────────────────────────────────
-function useLocalStorage(key, initialValue) {
-  const [storedValue, setStoredValue] = useState(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.log(error);
-      return initialValue;
-    }
-  });
-  const setValue = value => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  return [storedValue, setValue];
-}
+// ─── LOCAL STORAGE HOOK REMOVED ───────────────────────────────────
 
 export default function App() {
+  const { mode, setMode, accent, setAccent, done, setDone, toggleDone, measurements, addMeasurement } = useUserStore();
   const [tab,          setTab]          = useState("overview");
-  const [mode,         setMode]         = useLocalStorage("growthtrack_mode", "dark");
-  const [accent,       setAccent]       = useLocalStorage("growthtrack_accent", "gold");
   const [settings,     setSettings]     = useState(false);
-  const [done,         setDone]         = useLocalStorage("growthtrack_done", {});
+  const [mobileNav,    setMobileNav]    = useState(false);
   const [expanded,     setExpanded]     = useState(null);
   const [qaExpanded,   setQaExpanded]   = useState(null);
-  const [measurements, setMeasurements] = useLocalStorage("growthtrack_measurements", [
-    { week: "Week 1", length: USER.currentLength, girth: USER.currentGirth },
-  ]);
   const [form, setForm] = useState({ week: "Week 2", length: "", girth: "" });
   const [timerActive, setTimerActive] = useState(false);
   const [timerSec,    setTimerSec]    = useState(0);
@@ -104,13 +84,14 @@ export default function App() {
 
   function addMeasure() {
     if (!form.length || !form.girth) return;
-    setMeasurements(p => [...p, { week: form.week, length: parseFloat(form.length), girth: parseFloat(form.girth) }]);
+    addMeasurement(form.week, form.length, form.girth);
     setForm({ week: `Week ${measurements.length + 2}`, length: "", girth: "" });
   }
 
   function switchTab(id) {
     setTab(id);
     setSettings(false);
+    setMobileNav(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -193,11 +174,16 @@ export default function App() {
             }}
             title="Settings & Themes"
           >⚙️</button>
+
+          {/* Hamburger (Mobile) */}
+          <button className="hamburger-btn mobile-show" onClick={() => setMobileNav(true)}>
+            ☰
+          </button>
         </div>
       </header>
 
       {/* ═══════════════ TABS ══════════════════════════════════ */}
-      <nav className="tab-scroll" style={{
+      <nav className="tab-scroll mobile-hide" style={{
         position: "sticky", top: 56, zIndex: 400,
         background: "var(--bg-glass)", backdropFilter: "blur(20px)",
         borderBottom: "1px solid var(--border)",
@@ -214,6 +200,34 @@ export default function App() {
           ))}
         </div>
       </nav>
+
+      {/* ═══════════════ MOBILE NAV DRAWER ════════════════════════ */}
+      {mobileNav && (
+        <>
+          <div className="mobile-drawer-overlay mobile-show" onClick={() => setMobileNav(false)} />
+          <aside className="mobile-drawer mobile-show">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>Menu</div>
+              <button onClick={() => setMobileNav(false)} style={{
+                background: "none", border: "1px solid var(--border)", borderRadius: 8,
+                color: "var(--text-2)", cursor: "pointer", padding: "4px 10px", fontSize: 13,
+              }}>✕ Close</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  className={`tab-btn ${tab === t.id ? "active" : ""}`}
+                  onClick={() => switchTab(t.id)}
+                  style={{ justifyContent: "flex-start", padding: "12px 14px", fontSize: 14 }}
+                >
+                  <span style={{ fontSize: 18 }}>{t.emoji}</span> {t.label}
+                </button>
+              ))}
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* ═══════════════ SETTINGS PANEL ════════════════════════ */}
       {settings && (
@@ -298,208 +312,21 @@ export default function App() {
 
         {/* ══════════ OVERVIEW ══════════════════════════════════ */}
         {tab === "overview" && (
-          <div className="flex-col">
-            <SectionHead title="Your Health Overview"
-              sub={`Comprehensive assessment · Age ${USER.age} · ${USER.height}cm · ${USER.weight}kg · BMI ${USER.bmi}`} />
-
-            {/* Score + Radar */}
-            <div className="grid-2">
-              {/* Score Ring */}
-              <div className="glass-card" style={{ padding: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                <div className="label-caps">Overall Health Score</div>
-                <div style={{ position: "relative", display: "inline-block" }} className="float-anim">
-                  <Ring pct={HEALTH_SCORE} size={120} sw={11}
-                    color={HEALTH_SCORE < 45 ? "#ef4444" : HEALTH_SCORE < 60 ? "#f97316" : "#22c55e"} />
-                  <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-                    <div style={{ fontFamily:"var(--font-display)", fontSize:30, fontWeight:900, color: HEALTH_SCORE < 45 ? "#ef4444" : "#f97316", lineHeight:1 }}>
-                      <CountUp to={HEALTH_SCORE} />
-                    </div>
-                    <div style={{ fontSize:9, color:"var(--text-3)" }}>/100</div>
-                  </div>
-                </div>
-                <div style={{ fontSize:11, color:"var(--text-3)", textAlign:"center", marginTop:2 }}>
-                  Needs significant work
-                </div>
-              </div>
-
-              {/* Radar */}
-              <div className="glass-card" style={{ padding:"14px 6px 8px" }}>
-                <div className="label-caps" style={{ paddingLeft:12, marginBottom:4 }}>System Radar</div>
-                <ResponsiveContainer width="100%" height={165}>
-                  <RadarChart data={radarData} margin={{ top:0, right:20, left:20, bottom:0 }}>
-                    <PolarGrid stroke="rgba(255,255,255,0.06)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill:"var(--text-3)", fontSize:9, fontFamily:"var(--font-body)" }} />
-                    <Radar dataKey="score" stroke={accentColor} fill={accentColor} fillOpacity={0.2} strokeWidth={2} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* System cards */}
-            <div className="grid-2">
-              {[
-                { label:"Muscles",    parts:sysParts("muscles"),    icon:"💪", tid:"muscles",    col:"#f59e0b" },
-                { label:"Organs",     parts:sysParts("organs"),     icon:"🫀", tid:"organs",     col:"#ef4444" },
-                { label:"Joints",     parts:sysParts("joints"),     icon:"🦴", tid:"joints",     col:"#8b5cf6" },
-                { label:"Appearance", parts:sysParts("appearance"), icon:"✨", tid:"appearance", col:"#f97316" },
-              ].map(sys => {
-                const sc = avgScore(sys.parts);
-                const worst = sys.parts.find(p=>p.status==="critical")?"critical":sys.parts.find(p=>p.status==="poor")?"poor":sys.parts.find(p=>p.status==="fair")?"fair":"good";
-                const col = STATUS[worst].color;
-                return (
-                  <div key={sys.label} className="glass-card card-stagger" style={{ padding:16, cursor:"pointer", borderColor: STATUS[worst].border }}
-                    onClick={() => switchTab(sys.tid)}>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-                      <span style={{ fontSize:22 }}>{sys.icon}</span>
-                      <span style={{ fontFamily:"var(--font-display)", fontSize:20, fontWeight:700, color:col }}>{sc}</span>
-                    </div>
-                    <div style={{ fontSize:13, fontWeight:600, marginBottom:8 }}>{sys.label}</div>
-                    <ProgressBar pct={sc} color={col} />
-                    <div style={{ fontSize:10, color:col, marginTop:5 }}>{sys.parts.length} areas tracked</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Profile strip */}
-            <div className="glass-card no-hover" style={{ padding:16 }}>
-              <div className="label-caps" style={{ marginBottom:12 }}>Your Profile</div>
-              <div className="grid-4" style={{ marginBottom:14 }}>
-                {[["23","Age"],["182cm","Height"],["63kg","Weight"],["19.0","BMI"]].map(([v,l]) => (
-                  <div key={l} style={{ textAlign:"center", background:"var(--bg-elevated)", borderRadius:10, padding:"10px 4px", border:"1px solid var(--border)" }}>
-                    <div style={{ fontFamily:"var(--font-display)", fontSize:18, fontWeight:700, color:"var(--accent)" }}>{v}</div>
-                    <div className="label-caps" style={{ marginTop:3 }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-                {[
-                  ["😴 Sleep",    USER.sleepHours,    "#ef4444"],
-                  ["💧 Water",    USER.waterIntake,   "#ef4444"],
-                  ["☕ Caffeine", USER.caffeine,      "#f97316"],
-                  ["🏃 Activity", "Sedentary",        "#f97316"],
-                  ["🩸 Bloodwork",USER.bloodwork,     "#ef4444"],
-                  ["💊 BP",       USER.bloodPressure, "#ef4444"],
-                ].map(([lb,val,col]) => (
-                  <div key={lb} style={{ display:"flex", justifyContent:"space-between", fontSize:11, padding:"5px 0", borderBottom:"1px solid var(--border)" }}>
-                    <span style={{ color:"var(--text-3)" }}>{lb}</span>
-                    <span style={{ color:col, fontWeight:600 }}>{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* PE Goal rings */}
-            <div className="glass-card no-hover" style={{ padding:20 }}>
-              <div className="label-caps" style={{ marginBottom:16 }}>PE Goal Progress</div>
-              <div className="grid-2">
-                {[
-                  { label:"Length Goal", current:latest.length, target:USER.targetLength, pct:lengthPct, gained:lengthG, color:"#06b6d4" },
-                  { label:"Girth Goal",  current:latest.girth,  target:USER.targetGirth,  pct:girthPct,  gained:girthG,  color:"#8b5cf6" },
-                ].map(g => (
-                  <div key={g.label} style={{ textAlign:"center", background:"var(--bg-elevated)", borderRadius:14, padding:16, border:"1px solid var(--border)" }}>
-                    <div style={{ position:"relative", display:"inline-block", marginBottom:8 }}>
-                      <Ring pct={g.pct} size={90} sw={8} color={g.color} />
-                      <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                        <div style={{ fontFamily:"var(--font-display)", fontSize:16, fontWeight:700, color:g.color }}>{g.pct}%</div>
-                      </div>
-                    </div>
-                    <div style={{ fontSize:11, color:"var(--text-3)", marginBottom:3 }}>{g.label}</div>
-                    <div style={{ fontSize:12, color:g.color, fontWeight:600 }}>{g.current}" → {g.target}"</div>
-                    <div style={{ fontSize:10, color:"var(--text-3)", marginTop:2 }}>+{g.gained}" gained</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Alerts */}
-            <Alert type="red">
-              🚨 <strong>Top 5 Urgent Actions (This Week):</strong><br/>
-              1. Testosterone bloodwork — possible low T at 23 is a medical concern<br/>
-              2. Start drinking 3L water/day (you drink 1–2L — dark urine warning)<br/>
-              3. Buy a BP monitor — blood pressure never measured<br/>
-              4. Sleep 8 hours — 5–6 hrs is causing mood swings, brain fog & acne<br/>
-              5. Book dermatologist for moles, acne bumps & receding hairline
-            </Alert>
-
-            {/* Now vs Goal */}
-            <div className="glass-card no-hover" style={{ padding:16 }}>
-              <div className="label-caps" style={{ marginBottom:10 }}>Transformation Journey</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr auto 1fr", gap:8, alignItems:"center" }}>
-                <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.2)", borderRadius:12, padding:14 }}>
-                  <div style={{ fontSize:10, color:"#ef4444", fontWeight:700, textTransform:"uppercase", marginBottom:8 }}>You Now</div>
-                  {["Skinny-fat build","Sedentary desk life","5–6 hrs poor sleep","Possible low T","Daily fatigue + fog","5.9\" PE length"].map((v,i) => (
-                    <div key={i} style={{ fontSize:11, color:"var(--text-2)", marginBottom:4, display:"flex", gap:5 }}>
-                      <span style={{ color:"#ef4444" }}>•</span>{v}
-                    </div>
-                  ))}
-                </div>
-                <div style={{ fontSize:24, color:"var(--accent)", textAlign:"center" }}>→</div>
-                <div style={{ background:"rgba(34,197,94,0.08)", border:"1px solid rgba(34,197,94,0.2)", borderRadius:12, padding:14 }}>
-                  <div style={{ fontSize:10, color:"#22c55e", fontWeight:700, textTransform:"uppercase", marginBottom:8 }}>Your Goal</div>
-                  {["Greek God physique","Athletic & active","8 hrs quality sleep","Strong testosterone","High energy daily","7.9\" × 5.25\" PE"].map((v,i) => (
-                    <div key={i} style={{ fontSize:11, color:"var(--text-2)", marginBottom:4, display:"flex", gap:5 }}>
-                      <span style={{ color:"#22c55e" }}>•</span>{v}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <Overview 
+            switchTab={switchTab} 
+            radarData={radarData} 
+            measurements={measurements} 
+            latest={latest} 
+            lengthPct={lengthPct} 
+            girthPct={girthPct} 
+            lengthG={lengthG} 
+            girthG={girthG} 
+          />
         )}
 
         {/* ══════════ MEDICAL ═══════════════════════════════════ */}
         {tab === "medical" && (
-          <div className="flex-col">
-            <SectionHead title="🩸 Medical & Bloodwork" 
-              sub="High-priority testing & clinical consultations identified from evaluation" />
-            
-            <Alert type="red">
-              🚨 At 23 with unmeasured BP and symptoms of low testosterone/fatigue, getting clinical baseline data is critical before starting any supplement protocol.
-            </Alert>
-
-            <div className="grid-2">
-              <div className="glass-card no-hover" style={{ padding: 16 }}>
-                <div className="label-caps" style={{ marginBottom: 12, color: "var(--accent)" }}>Required Blood Panels</div>
-                {MEDICAL_DATA.testsRequired.map((test, i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"8px 0", borderBottom: i<MEDICAL_DATA.testsRequired.length-1 ? "1px solid var(--border)" : "none" }}>
-                    <div style={{ padding:"2px 6px", borderRadius:4, fontSize:9, fontWeight:"bold", 
-                      background: test.priority === "URGENT" ? "rgba(239, 68, 68, 0.1)" : "rgba(245, 158, 11, 0.1)",
-                      color: test.priority === "URGENT" ? "#ef4444" : "#f59e0b"
-                    }}>{test.priority}</div>
-                    <div>
-                      <div style={{ fontSize:12, fontWeight:600 }}>{test.name}</div>
-                      <div style={{ fontSize:10, color:"var(--text-3)", marginTop:2 }}>{test.reason}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex-col" style={{ gap: 16 }}>
-                <div className="glass-card no-hover" style={{ padding: 16 }}>
-                  <div className="label-caps" style={{ marginBottom: 12, color: "#10b981" }}>Consultations</div>
-                  {MEDICAL_DATA.consultations.map((c, i) => (
-                    <div key={i} style={{ marginBottom: i===0?12:0 }}>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                        <div style={{ fontSize:13, fontWeight:600 }}>{c.type}</div>
-                        <div style={{ fontSize:9, color:"var(--text-3)", padding:"2px 6px", border:"1px solid var(--border)", borderRadius:4 }}>{c.status}</div>
-                      </div>
-                      <div style={{ fontSize:11, color:"var(--text-2)", marginTop:4 }}>{c.issue}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="glass-card" style={{ padding: 16 }}>
-                  <div className="label-caps" style={{ marginBottom: 12, color: "#8b5cf6" }}>Blood Pressure Logger</div>
-                  <div style={{ textAlign:"center", padding:"16px 0", background:"var(--bg-elevated)", borderRadius:8, border:"1px solid var(--border)", marginBottom:10 }}>
-                    <div style={{ fontSize:11, color:"var(--text-3)" }}>Current Status</div>
-                    <div style={{ fontSize:14, fontWeight:700, color:"#ef4444", marginTop:2 }}>{MEDICAL_DATA.bloodPressure.status}</div>
-                  </div>
-                  <Alert type="amber">⚠️ Purchase a home BP cuff immediately. High risk indicated by poor cardio and chronic stress.</Alert>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Medical />
         )}
 
         {/* ══════════ ASSESSMENT ════════════════════════════════ */}
@@ -744,76 +571,7 @@ export default function App() {
 
         {/* ══════════ PHYSIQUE ══════════════════════════════════ */}
         {tab === "physique" && (
-          <div className="flex-col">
-            <SectionHead title="🏛️ Greek God Physique Plan" sub="Golden Ratio analysis from DeepSeek — exact current vs target measurements" />
-            <Alert type="amber">📐 Source: DeepSeek body composition analysis · Height 182cm · Weight 63kg · BMI 19.0</Alert>
-            {/* Table */}
-            <div className="glass-card no-hover" style={{ overflow:"hidden", padding:0 }}>
-              <div style={{ padding:"12px 16px 10px", borderBottom:"1px solid var(--border)" }}>
-                <div className="label-caps">Golden Ratio Measurement Table</div>
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 0.8fr 0.8fr 0.9fr 1fr", padding:"8px 16px", background:"var(--bg-elevated)", fontSize:9, color:"var(--text-3)", textTransform:"uppercase", letterSpacing:"1px" }}>
-                <span>Body Part</span><span>Now (cm)</span><span>Now (in)</span><span>Target</span><span>Priority</span>
-              </div>
-              {GOLDEN_RATIO.table.map((row,i) => (
-                <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr 0.8fr 0.8fr 0.9fr 1fr", padding:"11px 16px", borderTop:"1px solid var(--border)", alignItems:"center" }}>
-                  <span style={{ fontSize:13, fontWeight:600, color:row.color }}>{row.part}</span>
-                  <span style={{ fontSize:12, color:"var(--text-2)" }}>{row.current_cm}</span>
-                  <span style={{ fontSize:12, color:"var(--text-2)" }}>{row.current_in}</span>
-                  <span style={{ fontSize:12, color:"#22c55e", fontWeight:500 }}>{row.target_in}</span>
-                  <span style={{ fontSize:10, color:row.color, fontWeight:700 }}>{row.priority}</span>
-                </div>
-              ))}
-            </div>
-            {/* Gaps */}
-            <div className="glass-card no-hover" style={{ padding:16 }}>
-              <div className="label-caps" style={{ marginBottom:14 }}>Measurement Gaps to Fill</div>
-              {GOLDEN_RATIO.table.map((row,i) => (
-                <div key={i} style={{ marginBottom:i<GOLDEN_RATIO.table.length-1?14:0 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, marginBottom:5 }}>
-                    <span style={{ color:"var(--text-2)" }}>{row.part}</span>
-                    <span style={{ color:row.color, fontWeight:500 }}>{row.current_in} → {row.target_in} <span style={{ color:"var(--text-3)" }}>({row.gap})</span></span>
-                  </div>
-                  <ProgressBar pct={30} color={row.color} />
-                </div>
-              ))}
-            </div>
-            {/* Phase plan */}
-            <div className="grid-2">
-              <div style={{ background:"rgba(245,158,11,0.07)", border:"1px solid rgba(245,158,11,0.2)", borderRadius:"var(--radius-md)", padding:14 }}>
-                <div style={{ fontSize:12, fontWeight:700, color:"var(--accent)", marginBottom:6 }}>Phase 1: Lean Bulk</div>
-                <div style={{ fontSize:10, color:"var(--text-3)", marginBottom:8 }}>8–12 months</div>
-                {[`Gain ${USER.phase1.weeklyGain}`,`Target: ${USER.phase1.weightTarget}`,"Protein: 125–140g/day","Progressive overload"].map((v,i) => (
-                  <div key={i} style={{ fontSize:11, color:"var(--text-2)", marginBottom:4 }}>• {v}</div>
-                ))}
-              </div>
-              <div style={{ background:"rgba(6,182,212,0.07)", border:"1px solid rgba(6,182,212,0.2)", borderRadius:"var(--radius-md)", padding:14 }}>
-                <div style={{ fontSize:12, fontWeight:700, color:"#06b6d4", marginBottom:6 }}>Phase 2: Cut</div>
-                <div style={{ fontSize:10, color:"var(--text-3)", marginBottom:8 }}>After muscle is built</div>
-                {[USER.phase2.goal, USER.phase2.focus].map((v,i) => (
-                  <div key={i} style={{ fontSize:11, color:"var(--text-2)", marginBottom:4 }}>• {v}</div>
-                ))}
-              </div>
-            </div>
-            {/* Insights */}
-            <div className="glass-card no-hover" style={{ padding:16 }}>
-              <div className="label-caps" style={{ marginBottom:12 }}>Key Insights from DeepSeek</div>
-              {[
-                ["Your 182cm height is ideal for an aesthetic physique","#22c55e"],
-                ["BMI 19.0 — room to add 7–10kg of muscle before looking bulky","#22c55e"],
-                ["Shoulders need most work (+6\") — your #1 visual priority","var(--accent)"],
-                ["Chest gap is largest (+8–10\") — bench press = your main compound","var(--accent)"],
-                ["Waist at 32.3\" is decent — just grow everything above it","var(--accent)"],
-                ["NEVER do heavy side bends — thickens waist, ruins V-taper","#ef4444"],
-                ["Triceps = 2/3 of arm size — train them as much as biceps","#f97316"],
-                ["300–500 cal surplus ideal — don't over-eat or you'll add fat","var(--text-2)"],
-              ].map(([text,col],i) => (
-                <div key={i} style={{ fontSize:12, color:col, marginBottom:7, display:"flex", gap:8, lineHeight:1.5 }}>
-                  <span style={{ flexShrink:0 }}>›</span>{text}
-                </div>
-              ))}
-            </div>
-          </div>
+          <Physique />
         )}
 
         {/* ══════════ NUTRITION ═════════════════════════════════ */}
@@ -1056,6 +814,35 @@ export default function App() {
               </>
             )}
 
+            {/* Health Correlation Engine */}
+            <div className="glass-card hover-lift" style={{ padding:"16px 8px 12px" }}>
+              <div className="label-caps" style={{ paddingLeft:10, marginBottom:10, color: "var(--accent)" }}>
+                Health Correlation Engine: Sleep vs Weight
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={[
+                  { day: "Mon", sleep: 5.5, weight: 63.1 },
+                  { day: "Tue", sleep: 6.0, weight: 63.2 },
+                  { day: "Wed", sleep: 7.5, weight: 63.4 },
+                  { day: "Thu", sleep: 5.0, weight: 63.0 },
+                  { day: "Fri", sleep: 8.0, weight: 63.6 },
+                  { day: "Sat", sleep: 8.5, weight: 63.8 },
+                  { day: "Sun", sleep: 6.5, weight: 63.5 },
+                ]} margin={{ top:5, right:10, left:-20, bottom:5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="day" tick={{ fill:"var(--text-3)", fontSize:9 }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tick={{ fill:"var(--text-3)", fontSize:9 }} axisLine={false} tickLine={false} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fill:"var(--text-3)", fontSize:9 }} axisLine={false} tickLine={false} domain={[4, 10]} />
+                  <Tooltip contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }} />
+                  <Line yAxisId="left" type="monotone" dataKey="weight" name="Weight (kg)" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: "#10b981", strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="sleep" name="Sleep (Hrs)" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+              <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 8, padding: "0 10px" }}>
+                💡 Insight: Days following 7+ hours of sleep correlate with better weight retention and muscle growth signals.
+              </div>
+            </div>
+
             <div className="glass-card no-hover" style={{ padding:16 }}>
               <div className="label-caps" style={{ marginBottom:12 }}>Realistic Month-by-Month Timeline</div>
               {[
@@ -1078,51 +865,7 @@ export default function App() {
 
         {/* ══════════ LIFESTYLE ═════════════════════════════════ */}
         {tab === "lifestyle" && (
-          <div className="flex-col">
-            <SectionHead title="Lifestyle Optimizer" sub="Personalised for your high stress, 5–6 hrs sleep, and sedentary routine" />
-            <Alert type="red">🚨 <strong>5–6 hrs sleep + high stress</strong> = suppressed T, weak immune, slow PE progress, mood instability. Fixing these 2 upgrades your score by 15+ points.</Alert>
-            {LIFESTYLE_TIPS.map((tip,i) => (
-              <div key={i} className="glass-card card-stagger" style={{ padding:18 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-                  <span style={{ fontSize:22 }}>{tip.icon}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:14, fontWeight:600 }}>{tip.title}</div>
-                  </div>
-                  <span style={{ display:"inline-flex", alignItems:"center", padding:"3px 10px",
-                    borderRadius:999, fontSize:9, fontWeight:700, textTransform:"uppercase", letterSpacing:"1px",
-                    background:`${tip.color}15`, color:tip.color, border:`1px solid ${tip.color}33` }}>
-                    {tip.urgency}
-                  </span>
-                </div>
-                {tip.points.map((pt, pi) => (
-                  <div key={pi} style={{ fontSize:12, color:"var(--text-2)", marginBottom:6, display:"flex", gap:8 }}>
-                    <span style={{ color:tip.color }}>•</span>{pt}
-                  </div>
-                ))}
-              </div>
-            ))}
-            <div className="glass-card no-hover" style={{ padding:18 }}>
-              <div className="label-caps" style={{ marginBottom:12 }}>Daily Habit Checklist</div>
-              {[
-                ["💧","Drink 3L water (not 1–2L like now)"],
-                ["🚶","Walk 20+ minutes"],
-                ["🥩","Eat 125–140g protein"],
-                ["😴","Sleep 7–9 hrs (currently 5–6)"],
-                ["☕","Max 2 coffees before noon only"],
-                ["🧘","5-min box breathing exercise"],
-                ["🍽️","Last meal 3+ hrs before bed"],
-                ["🦴","10-min posture routine"],
-                ["💊","Antihistamine if allergens are high"],
-                ["📵","No screens 1 hr before sleep"],
-              ].map(([icon,label],i) => (
-                <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderBottom:i<9?"1px solid var(--border)":"none" }}>
-                  <span style={{ fontSize:16 }}>{icon}</span>
-                  <span style={{ fontSize:13, color:"var(--text-2)", flex:1 }}>{label}</span>
-                  <div style={{ width:18, height:18, borderRadius:5, border:"1px solid var(--border-strong)", flexShrink:0 }} />
-                </div>
-              ))}
-            </div>
-          </div>
+          <Lifestyle />
         )}
 
         {/* ══════════ MENTAL HEALTH ══════════════════════════════════ */}

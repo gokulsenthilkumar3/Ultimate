@@ -1,27 +1,89 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react";
 import * as THREE from "three";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { STATUS, BODY_PARTS } from "../data/userData";
 import Sprite3DViewer from "./Sprite3DViewer";
 
-/* ─────────────────────────────────────────────────────────────────
-   SCALE: 182 cm ↔ 1.82 world units  →  1cm = 0.01 units
-   User measurements (from DeepSeek):
-     Shoulders: 107.5cm circ → span ~42cm wide = 0.42 units (each side 0.21)
-     Chest:     86.5cm circ  → ~27.5cm radius  → width ~32cm, depth ~21cm
-     Waist:     82cm circ    → ~26cm radius    → width ~29cm, depth ~18cm
-     Arms:      30cm circ    → radius 4.77cm   → 0.048 units radius
-     Forearms:  27cm circ    → radius 4.30cm   → 0.043 units radius
-     Thighs:    53cm circ    → radius 8.44cm   → 0.084 units radius
-     Calves:    35cm circ    → radius 5.57cm   → 0.056 units radius
-   Skinny-fat traits: slight belly, narrow chest/shoulders, thin arms
-──────────────────────────────────────────────────────────────────*/
+const S = 0.01;
 
-const S = 0.01; // cm → world units
+// ── CUSTOM PEEL SHADER (Zygote Anatomical Transition) ──
+const peelShader = {
+  uniforms: {
+    uDepth: { value: 1.0 }, // 1.0 = skin, 0.0 = organs
+    uColor: { value: new THREE.Color(0xeab308) },
+    uEmissive: { value: new THREE.Color(0x3d3000) },
+    uIntensity: { value: 0.35 },
+    uIsOrgan: { value: 0.0 }
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    void main() {
+      vUv = uv;
+      vNormal = normalize(normalMatrix * normal);
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      vPosition = mvPosition.xyz;
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: `
+    uniform float uDepth;
+    uniform vec3 uColor;
+    uniform vec3 uEmissive;
+    uniform float uIntensity;
+    uniform float uIsOrgan;
+    
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    
+    void main() {
+      // Basic lighting model
+      vec3 lightDir = normalize(vec3(1.0, 2.0, 3.0));
+      float diff = max(dot(vNormal, lightDir), 0.2);
+      vec3 finalColor = uColor * diff + (uEmissive * uIntensity);
+      
+      float alpha = 1.0;
+      
+      if (uIsOrgan > 0.5) {
+        // Organs fade IN when depth < 0.7
+        alpha = smoothstep(0.7, 0.3, uDepth) * 0.9;
+      } else {
+        // Skin/Muscle fades OUT when depth decreases
+        // Use a y-gradient peel effect for transition
+        float peelEdge = uDepth * 2.0 - 0.5; // range
+        // vPosition.y is in view space normally, but let's just use simple opacity for the whole part depending on depth
+        // To make it a true shader peel, we combine depth and screen Y
+        float peel = smoothstep(peelEdge - 0.2, peelEdge + 0.2, vUv.y);
+        alpha = max(0.12, uDepth); // Fallback base opacity
+      }
+      
+      if (alpha < 0.05) discard;
+      
+      gl_FragColor = vec4(finalColor, alpha);
+    }
+  `
+};
 
-// ─── USER BODY GEOMETRY (current, realistic skinny-fat) ─────────
+function createPeelMaterial(colorHex, emissiveHex, intensity = 0.35, isOrgan = false) {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.clone(peelShader.uniforms),
+    vertexShader: peelShader.vertexShader,
+    fragmentShader: peelShader.fragmentShader,
+    transparent: true,
+    side: THREE.DoubleSide
+  });
+  mat.uniforms.uColor.value.setHex(colorHex);
+  mat.uniforms.uEmissive.value.setHex(emissiveHex);
+  mat.uniforms.uIntensity.value = intensity;
+  mat.uniforms.uIsOrgan.value = isOrgan ? 1.0 : 0.0;
+  return mat;
+}
+
+// ── BUILD BODIES ──
 function buildCurrentBody() {
   const group = new THREE.Group();
-
   const STATUS_COLORS = {
     critical: { hex: 0xef4444, em: 0x440000 },
     poor:     { hex: 0xf97316, em: 0x3d1500 },
@@ -29,190 +91,111 @@ function buildCurrentBody() {
     good:     { hex: 0x22c55e, em: 0x063318 },
   };
 
-  function mesh(geo, status, pos, rot = [0,0,0]) {
+  function mkMesh(geo, status, pos, rot = [0,0,0], keepStandard = false) {
     const c = STATUS_COLORS[status] || STATUS_COLORS.fair;
-    const mat = new THREE.MeshPhongMaterial({
-      color: c.hex, emissive: c.em, emissiveIntensity: 0.35,
-      shininess: 40, specular: 0x222222,
-    });
+    let mat;
+    if (keepStandard) {
+        mat = new THREE.MeshPhongMaterial({
+            color: c.hex, emissive: c.em, emissiveIntensity: 0.35,
+            shininess: 40, specular: 0x222222,
+        });
+    } else {
+        mat = createPeelMaterial(c.hex, c.em, 0.35, false);
+    }
     const m = new THREE.Mesh(geo, mat);
     m.position.set(...pos);
     m.rotation.set(...rot);
     return m;
   }
 
-  // ── HEAD (slightly forward = tech neck) ──────────────────────
   const headGeo = new THREE.SphereGeometry(0.1, 24, 24);
-  const head = mesh(headGeo, "poor", [0, 1.68, 0.03]); // 0.03 = slight FHP
+  const head = mkMesh(headGeo, "poor", [0, 1.68, 0.03]);
   head.scale.set(1, 1.05, 0.98);
   head.userData = { ...BODY_PARTS.head, key: "head" };
   group.add(head);
 
-  // ── NECK (forward tilt) ───────────────────────────────────────
   const neckGeo = new THREE.CylinderGeometry(0.038, 0.042, 0.12, 12);
-  const neck = mesh(neckGeo, "poor", [0, 1.555, 0.015]);
-  neck.rotation.x = 0.12; // forward tilt
+  const neck = mkMesh(neckGeo, "poor", [0, 1.555, 0.015]);
+  neck.rotation.x = 0.12;
   neck.userData = { ...BODY_PARTS.neck, key: "neck" };
   group.add(neck);
 
-  // ── TORSO ─────────────────────────────────────────────────────
-  // Upper chest — narrow (86.5cm circ → ~27cm wide × 18cm deep)
-  const chestGeo = new THREE.BoxGeometry(0.30 * S * 100, 0.22 * S * 100, 0.19 * S * 100);
-  // actually 30cm wide, 22cm tall, 19cm deep
-  const chestMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.30, 0.22, 0.19),
-    new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.35, shininess: 40 })
-  );
-  chestMesh.position.set(0, 1.32, 0);
+  const chestGeo = new THREE.BoxGeometry(0.30, 0.22, 0.19);
+  const chestMesh = mkMesh(chestGeo, "fair", [0, 1.32, 0]);
   chestMesh.userData = { ...BODY_PARTS.chest, key: "chest" };
   group.add(chestMesh);
 
-  // Belly (skinny-fat = slight gut, wider than chest) ← key feature
   const bellyGeo = new THREE.SphereGeometry(1, 16, 12);
-  const belly = new THREE.Mesh(
-    bellyGeo,
-    new THREE.MeshPhongMaterial({ color: 0xf97316, emissive: 0x3d1500, emissiveIntensity: 0.35, shininess: 30 })
-  );
-  belly.position.set(0, 1.09, 0.04);
-  belly.scale.set(0.165, 0.13, 0.115); // slight gut protrusion
+  const belly = mkMesh(bellyGeo, "poor", [0, 1.09, 0.04]);
+  belly.scale.set(0.165, 0.13, 0.115);
   belly.userData = { ...BODY_PARTS.core, key: "core" };
   group.add(belly);
 
-  // Lower torso (hips/pelvis)
-  const pelvis = new THREE.Mesh(
-    new THREE.BoxGeometry(0.29, 0.15, 0.17),
-    new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-  );
-  pelvis.position.set(0, 0.92, 0);
+  const pelvis = mkMesh(new THREE.BoxGeometry(0.29, 0.15, 0.17), "fair", [0, 0.92, 0]);
   pelvis.userData = { ...BODY_PARTS.legs, key: "legs" };
   group.add(pelvis);
 
-  // ── SHOULDERS ─────────────────────────────────────────────────
-  // 107.5cm shoulder circumference means span ~42cm total width
   [-1, 1].forEach(side => {
     const delta = side * 0.21;
-    // Shoulder cap
-    const sc = new THREE.Mesh(
-      new THREE.SphereGeometry(0.072, 14, 14),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.35, shininess: 40 })
-    );
-    sc.position.set(delta, 1.38, 0);
+    const sc = mkMesh(new THREE.SphereGeometry(0.072, 14, 14), "fair", [delta, 1.38, 0]);
     sc.userData = { ...BODY_PARTS.shoulders, key: "shoulders" };
     group.add(sc);
 
-    // ── UPPER ARM (30cm circ → r ≈ 4.8cm = 0.048 units) ────────
-    const uaLen = 0.30; // 30cm upper arm length
-    const ua = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.042, 0.048, uaLen, 12),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-    );
-    ua.position.set(delta + side * 0.05, 1.21, 0);
-    ua.rotation.z = side * 0.28; // arms hang with slight outward angle
+    const ua = mkMesh(new THREE.CylinderGeometry(0.042, 0.048, 0.30, 12), "fair", [delta + side * 0.05, 1.21, 0]);
+    ua.rotation.z = side * 0.28;
     ua.userData = { ...BODY_PARTS.arms, key: "arms" };
     group.add(ua);
 
-    // Elbow sphere
-    const elbow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.040, 10, 10),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-    );
-    elbow.position.set(delta + side * 0.095, 1.055, 0);
+    const elbow = mkMesh(new THREE.SphereGeometry(0.040, 10, 10), "fair", [delta + side * 0.095, 1.055, 0]);
     group.add(elbow);
 
-    // ── FOREARM (27cm circ → r ≈ 4.3cm) ────────────────────────
-    const fa = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.034, 0.040, 0.27, 12),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-    );
-    fa.position.set(delta + side * 0.13, 0.90, 0);
+    const fa = mkMesh(new THREE.CylinderGeometry(0.034, 0.040, 0.27, 12), "fair", [delta + side * 0.13, 0.90, 0]);
     fa.rotation.z = side * 0.18;
     fa.userData = { ...BODY_PARTS.arms, key: "arms" };
     group.add(fa);
 
-    // Hand
-    const hand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.030, 10, 10),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-    );
-    hand.position.set(delta + side * 0.155, 0.755, 0);
+    const hand = mkMesh(new THREE.SphereGeometry(0.030, 10, 10), "fair", [delta + side * 0.155, 0.755, 0]);
     group.add(hand);
   });
 
-  // ── GLUTES (well developed — good) ───────────────────────────
-  const gluteGeo = new THREE.BoxGeometry(0.30, 0.16, 0.17);
-  const glute = new THREE.Mesh(
-    gluteGeo,
-    new THREE.MeshPhongMaterial({ color: 0x22c55e, emissive: 0x063318, emissiveIntensity: 0.4, shininess: 50 })
-  );
-  glute.position.set(0, 0.865, -0.10);
+  const glute = mkMesh(new THREE.BoxGeometry(0.30, 0.16, 0.17), "good", [0, 0.865, -0.10]);
   glute.userData = { ...BODY_PARTS.glutes, key: "glutes" };
   group.add(glute);
 
-  // ── APPAREL (Shorts) ───────────────────────────
   const curShorts = new THREE.Mesh(
     new THREE.BoxGeometry(0.31, 0.12, 0.19),
-    new THREE.MeshPhongMaterial({ color: 0x1e293b })
+    new THREE.MeshPhongMaterial({ color: 0x1e293b, transparent: true })
   );
   curShorts.position.set(0, 0.90, 0);
   curShorts.userData = { isApparel: true };
   group.add(curShorts);
 
-  // ── LEGS ──────────────────────────────────────────────────────
   [-1, 1].forEach(side => {
     const x = side * 0.095;
-
-    // Thigh (53cm circ → r ≈ 8.4cm = 0.084)
-    const thigh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.072, 0.084, 0.43, 14),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-    );
-    thigh.position.set(x, 0.635, 0);
+    const thigh = mkMesh(new THREE.CylinderGeometry(0.072, 0.084, 0.43, 14), "fair", [x, 0.635, 0]);
     thigh.userData = { ...BODY_PARTS.legs, key: "legs" };
     group.add(thigh);
 
-    // Knee
-    const knee = new THREE.Mesh(
-      new THREE.SphereGeometry(0.065, 12, 12),
-      new THREE.MeshPhongMaterial({ color: 0xf97316, emissive: 0x3d1500, emissiveIntensity: 0.35 })
-    );
-    knee.position.set(x, 0.40, 0.01);
+    const knee = mkMesh(new THREE.SphereGeometry(0.065, 12, 12), "poor", [x, 0.40, 0.01]);
     knee.userData = { ...BODY_PARTS.knees, key: "knees" };
     group.add(knee);
 
-    // Shin / Calf (35cm circ → r ≈ 5.6cm = 0.056)
-    const calf = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.044, 0.058, 0.38, 14),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-    );
-    calf.position.set(x, 0.195, 0);
+    const calf = mkMesh(new THREE.CylinderGeometry(0.044, 0.058, 0.38, 14), "fair", [x, 0.195, 0]);
     group.add(calf);
 
-    // Ankle + Foot
-    const ankle = new THREE.Mesh(
-      new THREE.SphereGeometry(0.038, 10, 10),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-    );
-    ankle.position.set(x, -0.005, 0);
+    const ankle = mkMesh(new THREE.SphereGeometry(0.038, 10, 10), "fair", [x, -0.005, 0]);
     group.add(ankle);
 
-    const foot = new THREE.Mesh(
-      new THREE.BoxGeometry(0.065, 0.03, 0.14),
-      new THREE.MeshPhongMaterial({ color: 0xeab308, emissive: 0x3d3000, emissiveIntensity: 0.3 })
-    );
-    foot.position.set(x, -0.023, 0.04);
+    const foot = mkMesh(new THREE.BoxGeometry(0.065, 0.03, 0.14), "fair", [x, -0.023, 0.04]);
     group.add(foot);
   });
 
-  // ── SPINE (for posture reference) ────────────────────────────
-  // Subtle spinal curve to represent forward head / slight kyphosis
   for (let i = 0; i < 6; i++) {
     const y = 0.92 + i * 0.075;
-    const z = i * 0.008; // slight forward tilt accumulates
-    const vert = new THREE.Mesh(
-      new THREE.SphereGeometry(0.018, 8, 8),
-      new THREE.MeshPhongMaterial({ color: 0xf97316, emissive: 0x3d1500, emissiveIntensity: 0.4, transparent: true, opacity: 0.7 })
-    );
-    vert.position.set(0, y, -0.085 + z);
+    const z = i * 0.008;
+    const vert = mkMesh(new THREE.SphereGeometry(0.018, 8, 8), "poor", [0, y, -0.085 + z], [0,0,0], true);
+    vert.material.transparent = true;
+    vert.material.opacity = 0.7;
     vert.userData = { ...BODY_PARTS.spine, key: "spine" };
     group.add(vert);
   }
@@ -220,7 +203,6 @@ function buildCurrentBody() {
   return group;
 }
 
-// ─── GOAL BODY (desired — all teal, ideal proportions) ──────────
 function buildGoalBody() {
   const group = new THREE.Group();
   const mat = () => new THREE.MeshPhongMaterial({
@@ -228,72 +210,31 @@ function buildGoalBody() {
     transparent: true, opacity: 0.88, shininess: 70,
   });
 
-  // Head
-  const h = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 20), mat());
-  h.scale.set(1, 1.05, 0.98);
-  h.position.set(0, 1.68, 0); // upright posture
-  group.add(h);
-  // Neck
-  const n = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.042, 0.12, 12), mat());
-  n.position.set(0, 1.555, 0);
-  group.add(n);
-  // Chest — wider target (42–44" goal → ~35cm wide)
-  const ch = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.24, 0.22), mat());
-  ch.position.set(0, 1.32, 0);
-  group.add(ch);
-  // Core — tight waist (30–31" → ~25cm wide)
-  const co = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 0.17), mat());
-  co.position.set(0, 1.09, 0);
-  group.add(co);
-  // Pelvis
-  const pe = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.14, 0.17), mat());
-  pe.position.set(0, 0.92, 0);
-  group.add(pe);
-  // Glutes
-  const gl = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.16, 0.17), mat());
-  gl.position.set(0, 0.865, -0.10);
-  group.add(gl);
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 20), mat()); h.scale.set(1, 1.05, 0.98); h.position.set(0, 1.68, 0); group.add(h);
+  const n = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.042, 0.12, 12), mat()); n.position.set(0, 1.555, 0); group.add(n);
+  const ch = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.24, 0.22), mat()); ch.position.set(0, 1.32, 0); group.add(ch);
+  const co = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 0.17), mat()); co.position.set(0, 1.09, 0); group.add(co);
+  const pe = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.14, 0.17), mat()); pe.position.set(0, 0.92, 0); group.add(pe);
+  const gl = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.16, 0.17), mat()); gl.position.set(0, 0.865, -0.10); group.add(gl);
   
-  // Apparel (Goal Shorts)
-  const goalShorts = new THREE.Mesh(
-    new THREE.BoxGeometry(0.31, 0.12, 0.19),
-    new THREE.MeshPhongMaterial({ color: 0x22d3ee, emissive: 0x004466 })
-  );
-  goalShorts.position.set(0, 0.90, 0);
-  goalShorts.userData = { isApparel: true };
-  group.add(goalShorts);
-  // Shoulders — wider (48–49" → ~40cm span each side 0.20)
+  const goalShorts = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.12, 0.19), new THREE.MeshPhongMaterial({ color: 0x22d3ee, emissive: 0x004466, transparent: true }));
+  goalShorts.position.set(0, 0.90, 0); goalShorts.userData = { isApparel: true }; group.add(goalShorts);
+
   [-1, 1].forEach(s => {
     const dx = s * 0.255;
-    const sc = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 12), mat());
-    sc.position.set(dx, 1.38, 0);
-    group.add(sc);
-    const ua = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.060, 0.30, 12), mat());
-    ua.position.set(dx + s * 0.06, 1.21, 0);
-    ua.rotation.z = s * 0.28;
-    group.add(ua);
-    const fa = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.27, 12), mat());
-    fa.position.set(dx + s * 0.115, 0.90, 0);
-    fa.rotation.z = s * 0.18;
-    group.add(fa);
+    const sc = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 12), mat()); sc.position.set(dx, 1.38, 0); group.add(sc);
+    const ua = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.060, 0.30, 12), mat()); ua.position.set(dx + s * 0.06, 1.21, 0); ua.rotation.z = s * 0.28; group.add(ua);
+    const fa = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.27, 12), mat()); fa.position.set(dx + s * 0.115, 0.90, 0); fa.rotation.z = s * 0.18; group.add(fa);
   });
-  // Legs — more defined
   [-1, 1].forEach(s => {
     const x = s * 0.095;
-    const th = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.090, 0.43, 14), mat());
-    th.position.set(x, 0.635, 0);
-    group.add(th);
-    const ca = new THREE.Mesh(new THREE.CylinderGeometry(0.053, 0.062, 0.38, 14), mat());
-    ca.position.set(x, 0.195, 0);
-    group.add(ca);
-    const fo = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.03, 0.14), mat());
-    fo.position.set(x, -0.023, 0.04);
-    group.add(fo);
+    const th = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.090, 0.43, 14), mat()); th.position.set(x, 0.635, 0); group.add(th);
+    const ca = new THREE.Mesh(new THREE.CylinderGeometry(0.053, 0.062, 0.38, 14), mat()); ca.position.set(x, 0.195, 0); group.add(ca);
+    const fo = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.03, 0.14), mat()); fo.position.set(x, -0.023, 0.04); group.add(fo);
   });
   return group;
 }
 
-// ─── ORGANS (for X-ray mode) ────────────────────────────────────
 const ORGANS = [
   { color: 0xdd2233, pos: [-0.06, 1.27, 0.07], r: 0.052, key: "heart" },
   { color: 0xcc7755, pos: [-0.11, 1.21, 0.05], r: 0.072, key: "lungs" },
@@ -306,292 +247,164 @@ const ORGANS = [
   { color: 0x4488ff, pos: [ 0.00, 1.30, 0.04], r: 0.042, key: "immune" },
 ];
 
-// ─── COMPONENT ──────────────────────────────────────────────────
+function buildOrgans() {
+  const group = new THREE.Group();
+  ORGANS.forEach(o => {
+    const mat = createPeelMaterial(o.color, o.color, 0.7, true);
+    const m = new THREE.Mesh(new THREE.SphereGeometry(o.r, 12, 12), mat);
+    m.position.set(o.pos[0], o.pos[1], o.pos[2]);
+    m.userData = BODY_PARTS[o.key] ? { ...BODY_PARTS[o.key], key: o.key } : {};
+    group.add(m);
+  });
+  return group;
+}
+
+// ── R3F SCENE COMPONENT ──
+const SystemScene = memo(({ anatomyDepth, morphs, autoRotate, currentView, onSelectPart, setAutoRotate, setCurrentView }) => {
+  const curRef = useRef();
+  const goalRef = useRef();
+  const organsRef = useRef();
+  const { camera, gl, raycaster, pointer } = useThree();
+
+  const [curGroup, goalGroup, organGroup] = useMemo(() => {
+    const cg = buildCurrentBody();
+    const gg = buildGoalBody();
+    const og = buildOrgans();
+    [cg, gg].forEach(g => g.traverse(m => {
+      if(m.isMesh) { m.userData.baseScale = m.scale.clone(); m.userData.basePos = m.position.clone(); }
+    }));
+    return [cg, gg, og];
+  }, []);
+
+  const internalRot = useRef(0);
+  const isDrag = useRef(false);
+
+  // Apply Parametric Morphs & Peel shader depths
+  useFrame((state, delta) => {
+    // Rotation & floating
+    if (autoRotate && !isDrag.current) {
+      internalRot.current += delta * 0.2;
+    } else if (currentView === "Front") internalRot.current = 0;
+    else if (currentView === "Side") internalRot.current = Math.PI / 2;
+    else if (currentView === "Back") internalRot.current = Math.PI;
+
+    if (curRef.current) curRef.current.rotation.y = internalRot.current;
+    if (goalRef.current) goalRef.current.rotation.y = internalRot.current;
+    if (organsRef.current) organsRef.current.rotation.y = internalRot.current;
+
+    const t = state.clock.elapsedTime;
+    if (curRef.current) curRef.current.position.y = Math.sin(t) * 0.008;
+    if (goalRef.current) goalRef.current.position.y = Math.sin(t + 1) * 0.008;
+    if (organsRef.current) organsRef.current.position.y = Math.sin(t) * 0.008;
+
+    // Apply Morphs
+    [curGroup, goalGroup].forEach(g => {
+      g.traverse(mesh => {
+        if(!mesh.isMesh) return;
+        const k = mesh.userData.key;
+        if(k && mesh.userData.baseScale) {
+          const bS = mesh.userData.baseScale;
+          const bP = mesh.userData.basePos;
+          if(k === "chest") mesh.scale.set(bS.x * morphs.chest, bS.y * morphs.chest, bS.z * morphs.chest);
+          if(k === "core") mesh.scale.set(bS.x * morphs.waist, bS.y, bS.z * morphs.waist);
+          if(k === "shoulders") {
+            mesh.position.x = bP.x * morphs.shoulders;
+            mesh.scale.set(bS.x * morphs.shoulders, bS.y * morphs.shoulders, bS.z * morphs.shoulders);
+          }
+          if(k === "arms") {
+            mesh.position.x = bP.x * morphs.shoulders; 
+            mesh.scale.set(bS.x * morphs.arms, bS.y, bS.z * morphs.arms);
+          }
+        }
+      });
+    });
+
+    // Apply Shader Zygote Peel Depth
+    const depthNorm = anatomyDepth / 100.0;
+    [curGroup, organGroup].forEach(g => {
+      g.traverse(m => {
+        if (m.isMesh) {
+          if (m.material.uniforms?.uDepth) {
+            m.material.uniforms.uDepth.value = depthNorm;
+          }
+          if (m.userData.isApparel) {
+            m.material.opacity = morphs.apparel ? 1.0 : 0.0;
+          }
+        }
+      });
+    });
+  });
+
+  const pointerDown = () => { isDrag.current = true; setAutoRotate(false); setCurrentView("Custom"); };
+  const pointerUp = () => { isDrag.current = false; };
+  const pointerMove = (e) => {
+    if (isDrag.current) {
+      if (document.pointerLockElement) return;
+      internalRot.current += e.movementX * 0.01;
+    }
+  };
+
+  const selRef = useRef(null);
+  const clickPart = (e) => {
+    e.stopPropagation();
+    let hit = e.object;
+    if (hit.userData?.name || hit.userData?.key) {
+      if (selRef.current && selRef.current.material.uniforms) {
+        selRef.current.material.uniforms.uIntensity.value = 0.35;
+      }
+      selRef.current = hit;
+      if (selRef.current.material.uniforms) {
+        selRef.current.material.uniforms.uIntensity.value = 1.0;
+      }
+      onSelectPart({ ...hit.userData });
+    }
+  };
+
+  return (
+    <group onPointerDown={pointerDown} onPointerUp={pointerUp} onPointerMove={pointerMove} onPointerLeave={pointerUp}>
+      <ambientLight intensity={0.42} />
+      <directionalLight position={[3, 6, 4]} intensity={1.1} castShadow />
+      <directionalLight position={[-4, 2, -3]} intensity={0.3} color={0x3366ff} />
+      <directionalLight position={[0, 8, 0]} intensity={0.4} color={0xffeedd} />
+      <directionalLight position={[0, 1, -5]} intensity={0.18} color={0x00eeff} />
+      <pointLight position={[0, 2.5, 1.5]} intensity={0.6} color={0xf59e0b} distance={3} />
+      
+      <gridHelper args={[5, 20, 0x1d2d44, 0x101a2e]} position={[0, -0.038, 0]} />
+
+      {[-1.1, 1.1].map((x, i) => (
+        <mesh key={i} position={[x, -0.032, 0]} rotation={[Math.PI/2, 0, 0]}>
+          <torusGeometry args={[0.22, 0.012, 8, 40]} />
+          <meshPhongMaterial color={i===0?0xf59e0b:0x22d3ee} emissive={i===0?0xf59e0b:0x22d3ee} emissiveIntensity={0.9} />
+        </mesh>
+      ))}
+
+      <group position={[-1.1, 0, 0]} ref={curRef} onClick={clickPart}>
+        <primitive object={curGroup} />
+      </group>
+      <group position={[-1.1, 0, 0]} ref={organsRef} onClick={clickPart}>
+        <primitive object={organGroup} />
+      </group>
+
+      <group position={[1.1, 0, 0]} ref={goalRef}>
+        <primitive object={goalGroup} />
+      </group>
+    </group>
+  );
+});
+
+// ── MAIN EXPORTED COMPONENT ──
 export default function Body3D({ onSelectPart }) {
-  const canvasRef  = useRef(null);
-  const threeRef   = useRef({});
   const [anatomyDepth, setAnatomyDepth] = useState(100);
   const [selected, setSelected] = useState(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [currentView, setCurrentView] = useState("Rotating");
-  const [viewMode, setViewMode] = useState("3d"); // "3d" or "blueprint"
+  const [viewMode, setViewMode] = useState("3d");
   const [showEditor, setShowEditor] = useState(false);
   const [morphs, setMorphs] = useState({ shoulders: 1, chest: 1, waist: 1, arms: 1, apparel: true });
 
-  const initScene = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const W = canvas.clientWidth  || 620;
-    const H = canvas.clientHeight || 460;
-
-    // ── Scene ──
-    const scene = new THREE.Scene();
-    scene.background = null;
-    scene.fog = new THREE.FogExp2(0x070b14, 0.14);
-
-    // ── Camera ──
-    const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
-    camera.position.set(0, 0.82, 4.2);
-    camera.lookAt(0, 0.82, 0);
-
-    // ── Renderer ──
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-
-    // ── Ground grid ──
-    const grid = new THREE.GridHelper(5, 20, 0x1d2d44, 0x101a2e);
-    grid.position.y = -0.038;
-    scene.add(grid);
-
-    // ── Lighting ──
-    scene.add(new THREE.AmbientLight(0xffffff, 0.42));
-    const dir = new THREE.DirectionalLight(0xffffff, 1.1);
-    dir.position.set(3, 6, 4);
-    dir.castShadow = true;
-    scene.add(dir);
-    const fillL = new THREE.DirectionalLight(0x3366ff, 0.3);
-    fillL.position.set(-4, 2, -3);
-    scene.add(fillL);
-    const topL = new THREE.DirectionalLight(0xffeedd, 0.4);
-    topL.position.set(0, 8, 0);
-    scene.add(topL);
-    const rimL = new THREE.DirectionalLight(0x00eeff, 0.18);
-    rimL.position.set(0, 1, -5);
-    scene.add(rimL);
-    // Point light for glow effect
-    const pointAcc = new THREE.PointLight(0xf59e0b, 0.6, 3);
-    pointAcc.position.set(0, 2.5, 1.5);
-    scene.add(pointAcc);
-
-    // ── Bodies ──
-    const curGroup  = buildCurrentBody();
-    const goalGroup = buildGoalBody();
-    curGroup.position.set(-1.1, 0, 0);
-    goalGroup.position.set( 1.1, 0, 0);
-    
-    // Store original transforms for parametric sliding
-    [curGroup, goalGroup].forEach(g => {
-      g.traverse(m => {
-        if(m.isMesh) {
-          m.userData.baseScale = m.scale.clone();
-          m.userData.basePos = m.position.clone();
-        }
-      });
-    });
-
-    scene.add(curGroup);
-    scene.add(goalGroup);
-
-    // ── Organs (hidden by default) ──
-    const organMeshes = ORGANS.map(o => {
-      const m = new THREE.Mesh(
-        new THREE.SphereGeometry(o.r, 12, 12),
-        new THREE.MeshPhongMaterial({
-          color: o.color, emissive: o.color, emissiveIntensity: 0.7,
-          transparent: true, opacity: 0,
-        })
-      );
-      m.position.set(o.pos[0] - 1.1, o.pos[1], o.pos[2]);
-      m.userData = BODY_PARTS[o.key] ? { ...BODY_PARTS[o.key], key: o.key } : {};
-      scene.add(m);
-      return m;
-    });
-
-    // ── Platform rings ──
-    [-1.1, 1.1].forEach((x, i) => {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.22, 0.012, 8, 40),
-        new THREE.MeshPhongMaterial({
-          color: i === 0 ? 0xf59e0b : 0x22d3ee,
-          emissive: i === 0 ? 0xf59e0b : 0x22d3ee,
-          emissiveIntensity: 0.9,
-        })
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.set(x, -0.032, 0);
-      scene.add(ring);
-    });
-
-    // ── Labels plane ──
-    // (handled in DOM overlay)
-
-    // ── Mouse state ──
-    let isDrag = false, lastX = 0, downX = 0, rotY = 0, autoRot = 0;
-    const selRef = { mesh: null };
-
-    const onDown = (e) => {
-      isDrag = true;
-      downX = lastX = e.touches ? e.touches[0].clientX : e.clientX;
-      if (threeRef.current.setAutoRotate) threeRef.current.setAutoRotate(false);
-    };
-    const onMove = (e) => {
-      if (!isDrag) return;
-      const x = e.touches ? e.touches[0].clientX : e.clientX;
-      rotY += (x - lastX) * 0.011;
-      curGroup.rotation.y = goalGroup.rotation.y = rotY;
-      lastX = x;
-      if (threeRef.current.notifyRot) threeRef.current.notifyRot();
-    };
-    const onUp = () => { isDrag = false; };
-
-    const rc = new THREE.Raycaster();
-    const mp = new THREE.Vector2();
-
-    const onClick = (e) => {
-      const cx = e.touches ? e.changedTouches[0].clientX : e.clientX;
-      const cy = e.touches ? e.changedTouches[0].clientY : e.clientY;
-      if (Math.abs(cx - downX) > 10) return;
-      const rect = canvas.getBoundingClientRect();
-      mp.x =  ((cx - rect.left) / rect.width)  * 2 - 1;
-      mp.y = -((cy - rect.top)  / rect.height)  * 2 + 1;
-      rc.setFromCamera(mp, camera);
-      const all = [];
-      curGroup.traverse(c  => { if (c.isMesh) all.push(c); });
-      organMeshes.forEach(m => all.push(m));
-      const hits = rc.intersectObjects(all);
-      if (hits.length && hits[0].object.userData?.name) {
-        if (selRef.mesh) {
-          selRef.mesh.material.emissiveIntensity = 0.35;
-        }
-        selRef.mesh = hits[0].object;
-        selRef.mesh.material.emissiveIntensity = 1.6;
-        const part = { ...hits[0].object.userData };
-        setSelected(part);
-        if (onSelectPart) onSelectPart(part);
-      }
-    };
-
-    canvas.addEventListener("mousedown",  onDown);
-    window.addEventListener("mousemove",  onMove);
-    window.addEventListener("mouseup",    onUp);
-    canvas.addEventListener("touchstart", onDown, { passive: true });
-    window.addEventListener("touchmove",  onMove, { passive: true });
-    window.addEventListener("touchend",   onUp);
-    canvas.addEventListener("click",      onClick);
-    canvas.addEventListener("touchend",   onClick, { passive: true });
-
-    // ── Zygote Layer Peeling ──
-    threeRef.current.setDepth = (depth, appStatus) => {
-      // 100 = Skin, 0 = Internal Organs
-      const surfaceOp = Math.max(0.12, depth / 100);
-      curGroup.traverse(c => {
-        if (c.isMesh && c.userData.layer !== "deep") {
-          c.material.transparent = true;
-          // Hide completely if apparel is off and part is apparel
-          if (c.userData.isApparel && !appStatus) {
-            c.material.opacity = 0;
-          } else {
-            c.material.opacity = surfaceOp;
-          }
-        }
-      });
-      const orgOp = depth < 70 ? (70 - depth) / 70 : 0;
-      organMeshes.forEach(m => { m.material.opacity = orgOp * 0.9; });
-    };
-
-    // ── parametric morphing ──
-    threeRef.current.updateMorphs = (mStates) => {
-      if(!curGroup || !goalGroup) return;
-      [curGroup, goalGroup].forEach(g => {
-        g.traverse(mesh => {
-          if(!mesh.isMesh || !mesh.userData.key) return;
-          const k = mesh.userData.key;
-          const bS = mesh.userData.baseScale;
-          const bP = mesh.userData.basePos;
-          
-          if(k === "chest") {
-            mesh.scale.set(bS.x * mStates.chest, bS.y * mStates.chest, bS.z * mStates.chest);
-          }
-          if(k === "core") {
-            mesh.scale.set(bS.x * mStates.waist, bS.y, bS.z * mStates.waist);
-          }
-          if(k === "shoulders") {
-            mesh.position.x = bP.x * mStates.shoulders;
-            mesh.scale.set(bS.x * mStates.shoulders, bS.y * mStates.shoulders, bS.z * mStates.shoulders);
-          }
-          if(k === "arms") {
-            mesh.position.x = bP.x * mStates.shoulders; // follow shoulders outward
-            mesh.scale.set(bS.x * mStates.arms, bS.y, bS.z * mStates.arms);
-          }
-        });
-      });
-    };
-
-    // ── view toggle ──
-    threeRef.current.setAngle = (angle) => {
-      rotY = angle;
-      autoRot = 0;
-      curGroup.rotation.y = goalGroup.rotation.y = rotY;
-    };
-
-    threeRef.current.autoRotateLocal = true;
-    threeRef.current.setAutoRotate = (val) => {
-      threeRef.current.autoRotateLocal = val;
-    };
-
-    // ── Animate ──
-    const animate = () => {
-      threeRef.current.animId = requestAnimationFrame(animate);
-      if (!isDrag && threeRef.current.autoRotateLocal) {
-        rotY += 0.0032;
-        curGroup.rotation.y = goalGroup.rotation.y = rotY;
-      }
-      // subtle floating
-      const t = Date.now() * 0.001;
-      curGroup.position.y  = Math.sin(t) * 0.008;
-      goalGroup.position.y = Math.sin(t + 1) * 0.008;
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    threeRef.current.renderer   = renderer;
-    threeRef.current.cleanListeners = () => {
-      canvas.removeEventListener("mousedown",  onDown);
-      window.removeEventListener("mousemove",  onMove);
-      window.removeEventListener("mouseup",    onUp);
-      canvas.removeEventListener("touchstart", onDown);
-      window.removeEventListener("touchmove",  onMove);
-      window.removeEventListener("touchend",   onUp);
-      canvas.removeEventListener("click",      onClick);
-      canvas.removeEventListener("touchend",   onClick);
-    };
-  }, []);
-
-  useEffect(() => {
-    initScene();
-    return () => {
-      cancelAnimationFrame(threeRef.current.animId);
-      threeRef.current.renderer?.dispose();
-      threeRef.current.cleanListeners?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    threeRef.current.setDepth?.(anatomyDepth, morphs.apparel);
-  }, [anatomyDepth, morphs.apparel]);
-
-  useEffect(() => {
-    threeRef.current.updateMorphs?.(morphs);
-  }, [morphs]);
-
-  useEffect(() => {
-    if (threeRef.current.setAutoRotate) {
-      threeRef.current.setAutoRotate(autoRotate);
-    }
-  }, [autoRotate]);
-
-  threeRef.current.notifyRot = () => {
-    if (autoRotate) setAutoRotate(false);
-    setCurrentView("Custom");
-  };
-
-  const handleAngle = (label, rad) => {
-    setAutoRotate(false);
-    if (threeRef.current.setAngle) threeRef.current.setAngle(rad);
-    setCurrentView(label);
+  const handleSelect = (part) => {
+    setSelected(part);
+    if (onSelectPart) onSelectPart(part);
   };
 
   const statusC = selected?.status ? STATUS[selected.status] : null;
@@ -600,7 +413,6 @@ export default function Body3D({ onSelectPart }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Controls */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        {/* View Mode Toggle */}
         <div style={{ display: "flex", background: "var(--bg)", borderRadius: "var(--radius-sm)", padding: 2, marginRight: 8 }}>
           <button 
             style={{ padding: "4px 12px", fontSize: 11, fontWeight: 600, border: "none", borderRadius: "var(--radius-sm)", background: viewMode === "3d" ? "var(--surface)" : "transparent", color: viewMode === "3d" ? "var(--text-1)" : "var(--text-3)" }}
@@ -629,16 +441,14 @@ export default function Body3D({ onSelectPart }) {
           </>
         )}
         
-        {/* 360 Degree Views */}
         {viewMode === "3d" && [
           { label: "Front", rad: 0 },
           { label: "Side", rad: Math.PI / 2 },
           { label: "Back", rad: Math.PI },
         ].map(v => (
           <button key={v.label} className="btn-ghost" 
-            style={{ padding:"4px 10px", borderColor: currentView === v.label ? "var(--accent)" : "var(--border)", 
-                     color: currentView === v.label ? "var(--accent)" : "var(--text-2)" }}
-            onClick={() => handleAngle(v.label, v.rad)}>
+            style={{ padding:"4px 10px", borderColor: currentView === v.label ? "var(--accent)" : "var(--border)", color: currentView === v.label ? "var(--accent)" : "var(--text-2)" }}
+            onClick={() => { setAutoRotate(false); setCurrentView(v.label); }}>
             {v.label}
           </button>
         ))}
@@ -652,24 +462,33 @@ export default function Body3D({ onSelectPart }) {
         )}
 
         {selected && (
-          <button className="btn-ghost" onClick={() => { setSelected(null); if (onSelectPart) onSelectPart(null); }}>
+          <button className="btn-ghost" onClick={() => handleSelect(null)}>
             ✕ Clear
           </button>
         )}
       </div>
 
-      {/* Canvas / Image Display */}
+      {/* R3F Canvas / Image Display */}
       <div style={{
         position: "relative", borderRadius: "var(--radius-lg)", overflow: "hidden",
         border: "1px solid var(--border)",
         background: "linear-gradient(180deg, #070b14 0%, #0d1a2e 100%)",
         boxShadow: "inset 0 0 60px rgba(6,182,212,0.04)",
       }}>
-        <div style={{ display: viewMode === "3d" ? "block" : "none" }}>
-          <canvas
-            ref={canvasRef}
-            style={{ width: "100%", height: 450, display: "block" }}
-          />
+        <div style={{ display: viewMode === "3d" ? "block" : "none", height: 450 }}>
+          <Canvas camera={{ position: [0, 0.82, 4.2], fov: 42 }}>
+            <fog attach="fog" args={[0x070b14, 0.05, 10]} />
+            <SystemScene 
+                anatomyDepth={anatomyDepth} 
+                morphs={morphs} 
+                autoRotate={autoRotate} 
+                currentView={currentView}
+                onSelectPart={handleSelect}
+                setAutoRotate={setAutoRotate}
+                setCurrentView={setCurrentView}
+            />
+          </Canvas>
+
           {/* Labels */}
           <div style={{
             position: "absolute", bottom: 14, left: 0, right: 0,
@@ -696,7 +515,6 @@ export default function Body3D({ onSelectPart }) {
             }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", letterSpacing: 1, marginBottom: 12 }}>PARAMETRIC MORPH TARGETS</div>
               
-              {/* Zygote Depth Slider */}
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#22d3ee", marginBottom: 4 }}>
                   <span>Anatomical Depth</span><span>{anatomyDepth}%</span>
