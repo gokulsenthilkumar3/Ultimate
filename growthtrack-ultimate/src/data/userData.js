@@ -139,6 +139,8 @@ export const TABS = [
   { id: 'progress',   label: 'Progress'   },
 ];
 
+export const HEALTH_SCORE = 42;
+
 // ── Body Parts Map (used by Body3D.jsx raycaster)
 export const BODY_PARTS = {
   head: {
@@ -212,7 +214,7 @@ export const BODY_PARTS = {
     status: 'moderate',
     issues: ['Asthma + multiple allergies indicate immune dysregulation', 'Low Vit D suspected'],
     fixes:  ['Vit D3 5000 IU/day + K2 100mcg', 'Quercetin 500mg for allergy management', 'Eliminate processed food 30-day trial'],
-      },
+  },
 
   // ── Body Metrics (used by HumanoidViewer)
   metrics: {
@@ -226,6 +228,5 @@ export const BODY_PARTS = {
     neck: 38,         // cm
     calves: 37,       // cm
     hips: 95,         // cm
-  },
   },
 };
