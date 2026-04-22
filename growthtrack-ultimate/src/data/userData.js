@@ -230,3 +230,185 @@ export const BODY_PARTS = {
     hips: 95,         // cm
   },
 };
+
+// ── Comparative Analysis (used by Physique.jsx)
+export const GOLDEN_RATIO = {
+  table: [
+    { part: 'Chest Girth', current_in: '36.0"', target_in: '43.0"', gap: '+7.0"', priority: 'high',     color: '#ff4444' },
+    { part: 'Waist (Gut)', current_in: '32.0"', target_in: '29.5"', gap: '-2.5"', priority: 'critical', color: '#ff0000' },
+    { part: 'Arm Size',    current_in: '12.0"', target_in: '16.5"', gap: '+4.5"', priority: 'medium',   color: '#ffa500' },
+    { part: 'Shoulders',   current_in: 'Narrow', target_in: 'Broad', gap: 'Massive', priority: 'high',     color: '#ff4444' },
+    { part: 'PE Length',   current_in: '5.90"', target_in: '7.90"', gap: '+2.0"',  priority: 'high',     color: '#ff4444' },
+    { part: 'PE Girth',    current_in: '4.00"', target_in: '5.25"', gap: '+1.25"', priority: 'medium',   color: '#ffa500' },
+    { part: 'Body Fat %',  current_in: '18.5%', target_in: '11.0%', gap: '-7.5%', priority: 'critical', color: '#ff0000' },
+  ]
+};
+
+// ── Strategic Diagnostic Assessment (used by Assessment.jsx)
+export const HEALTH_QA = [
+  {
+    round: "Bio-Marker Baseline", color: "#06b6d4",
+    items: [
+      { q: "Current Weight & Height", a: "63kg / 182cm" },
+      { q: "Calculated BMI", a: "19.0 (Low-Normal)" }
+    ]
+  },
+  {
+    round: "Sleep Architecture", color: "#8b5cf6",
+    items: [
+      { q: "Average Nightly Sleep", a: "5.5 Hours" },
+      { q: "Weekly Sleep Debt", a: "14 Hours (Critical)" }
+    ]
+  },
+  {
+    round: "Metabolic Status", color: "#f59e0b",
+    items: [
+      { q: "Hydration Marker (Urine)", a: "Dark/Yellow (Dehydrated)" },
+      { q: "Daily Water Intake", a: "1–2 Litres" }
+    ]
+  },
+  {
+    round: "Hormonal Assessment", color: "#ef4444",
+    items: [
+      { q: "Energy Levels", a: "Fatigued most of the day" },
+      { q: "Cortisol Triggers", a: "3+ Coffees, High Stress, Low Sleep" }
+    ]
+  },
+  {
+    round: "Cardiovascular Check", color: "#ec4899",
+    items: [
+      { q: "Resting Heart Rate", a: "Never Checked" },
+      { q: "Blood Pressure Status", a: "Never Checked" }
+    ]
+  },
+  {
+    round: "Respiratory & Allergy", color: "#10b981",
+    items: [
+      { q: "Primary Conditions", a: "Asthma + Dust/Smoke Allergy" },
+      { q: "Trigger Management", a: "Salbutamol Inhaler (PRN)" }
+    ]
+  },
+  {
+    round: "Digestive & Gut Health", color: "#f97316",
+    items: [
+      { q: "Dietary Pattern", a: "Non-veg/Veg mix + Occasional Junk" },
+      { q: "Caffeine Impact", a: "High (Gut lining stress suspected)" }
+    ]
+  },
+  {
+    round: "Postural Alignment", color: "#6366f1",
+    items: [
+      { q: "Primary Deficits", a: "Anterior Pelvic Tilt, Forward Head" },
+      { q: "Flexibility (Toes)", a: "Cannot touch toes (Very Stiff)" }
+    ]
+  },
+  {
+    round: "Strength Baselines", color: "#3b82f6",
+    items: [
+      { q: "Bench Press", a: "60 kg" },
+      { q: "Deadlift", a: "100 kg" }
+    ]
+  },
+  {
+    round: "Nutritional Targets", color: "#84cc16",
+    items: [
+      { q: "Daily Protein Goal", a: "170g" },
+      { q: "Caloric Target", a: "2950 (Lean Bulk)" }
+    ]
+  },
+  {
+    round: "Cognitive & Brain", color: "#a855f7",
+    items: [
+      { q: "Memory & Focus", a: "Suboptimal (65/100)" },
+      { q: "Caffeine Dependency", a: "High (3+ cups/day)" }
+    ]
+  }
+];
+
+// ── Training Plan (used by Training.jsx)
+export const TRAINING_PLAN = {
+  split: 'Push / Pull / Legs + Aesthetic',
+  scheduleNote: '5-Day Hypertrophy Split optimized for V-Taper and shoulder-to-waist ratio.',
+  priority_exercises: [
+    {
+      area: 'Shoulder Width (Lateral Delts)',
+      exercises: [
+        { name: 'Lateral Raises (Cable/DB)', sets: '4 x 15-20', type: 'Hypertrophy' },
+        { name: 'Overhead Press (Heavy)', sets: '3 x 6-8', type: 'Strength' }
+      ]
+    },
+    {
+      area: 'Chest Depth (Upper Pecs)',
+      exercises: [
+        { name: 'Incline DB Press', sets: '3 x 10-12', type: 'Hypertrophy' },
+        { name: 'Low-to-High Cable Flyes', sets: '3 x 15', type: 'Isolation' }
+      ]
+    },
+    {
+      area: 'Back Width (Lats)',
+      exercises: [
+        { name: 'Weighted Pullups', sets: '3 x Max', type: 'Strength' },
+        { name: 'Lat Pulldowns (Wide)', sets: '3 x 12', type: 'Hypertrophy' }
+      ]
+    }
+  ]
+};
+
+// ── Nutrition Strategy (used by Nutrition.jsx)
+export const NUTRITION = {
+  calories: 2950,
+  protein: '170g',
+  carbs:   '320g',
+  fat:     '85g',
+  meals: [
+    { icon: '🍳', name: 'Protective Breakfast', time: '08:00 AM', items: ['4 Eggs', 'Oatmeal with Blueberries', '1 Scoop Whey'] },
+    { icon: '🍲', name: 'Performance Lunch', time: '01:00 PM', items: ['200g Chicken Breast', '150g Rice', 'Steam Broccoli'] },
+    { icon: '🥤', name: 'Post-Workout Fuel', time: '05:00 PM', items: ['1 Banana', '5g Creatine', '40g Whey Protein'] },
+    { icon: '🥩', name: 'Recovery Dinner', time: '08:30 PM', items: ['200g Lean Beef/Fish', 'Sweet Potato', 'Mixed Greens'] },
+  ]
+};
+
+// ── Lifestyle Tips (used by Lifestyle.jsx)
+export const LIFESTYLE_TIPS = [
+  {
+    icon: '☕', title: 'Caffeine Management', urgency: 'CRITICAL',
+    points: ['Stop all caffeine intake by 12:00 PM', 'Switch to herbal tea in afternoon', 'Limit to 2 cups max per day']
+  },
+  {
+    icon: '📱', title: 'Circadian Anchoring', urgency: 'URGENT',
+    points: ['10 mins sunlight exposure upon waking', 'No blue light 1 hour before sleep', 'Use red light mode on devices']
+  },
+  {
+    icon: '🌬️', title: 'Asthma/Allergy Control', urgency: 'HIGH',
+    points: ['Keep inhaler accessible at all times', 'Dust-proof bedroom (air purifier)', 'Deep breathing exercises (Wim Hof)']
+  }
+];
+
+// ── Universal Logger Configuration (used by MetricLogger.jsx)
+export const BODY_METRICS_LIST = [
+  { id: 'weight',    label: 'Weight',    unit: 'kg', icon: '⚖️' },
+  { id: 'chest',     label: 'Chest',     unit: 'in', icon: '👕' },
+  { id: 'shoulders', label: 'Shoulders', unit: 'in', icon: '📐' },
+  { id: 'waist',     label: 'Waist',     unit: 'in', icon: '👖' },
+  { id: 'arms',      label: 'Arms',      unit: 'in', icon: '💪' },
+  { id: 'hips',      label: 'Hips',      unit: 'in', icon: '🍑' },
+  { id: 'thighs',    label: 'Thighs',    unit: 'in', icon: '🦵' },
+  { id: 'd_size',    label: 'D-Size',    unit: 'in', icon: '🍆' },
+];
+
+export const VITALS_METRICS_LIST = [
+  { id: 'sleep',    label: 'Sleep',    unit: 'hr', icon: '😴' },
+  { id: 'water',    label: 'Water',    unit: 'L',  icon: '💧' },
+  { id: 'caffeine', label: 'Caffeine', unit: 'cup',icon: '☕' },
+  { id: 'stress',   label: 'Stress',   unit: '1-10',icon: '🧠' },
+  { id: 'hr',       label: 'Heart Rate',unit: 'bpm',icon: '❤️' },
+];
+
+export const HOLISTIC_METRICS_LIST = [
+  { id: 'eyePower',    label: 'Eye Power',    unit: 'dp', icon: '👓' },
+  { id: 'memoryPower', label: 'Memory',       unit: '%',  icon: '🧠' },
+  { id: 'stamina',     label: 'Stamina',      unit: 'min',icon: '🏃' },
+  { id: 'flexibility', label: 'Flexibility',  unit: '%',  icon: '🧘' },
+  { id: 'hairHealth',  label: 'Hair Health',  unit: '%',  icon: '💇' },
+  { id: 'skinGlow',    label: 'Skin Glow',    unit: '%',  icon: '✨' },
+];
