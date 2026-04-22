@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { USER } from './data/userData';
 import Header from './components/Header';
-import Sidebar from './components/Sidebar';
+import Navigation from './components/Navigation';
 import useLocalStorage from './hooks/useLocalStorage';
 import './index.css';
 
@@ -23,23 +23,18 @@ const HydrationTracker = lazy(() => import('./components/HydrationTracker'));
 const StrengthMetrics  = lazy(() => import('./components/StrengthMetrics'));
 const SettingsPanel   = lazy(() => import('./components/SettingsPanel'));
 
+// Simplified Nav Items for Floating Pill
 const NAV_ITEMS = [
-  { id: 'overview',     icon: '⚡', label: 'Overview',        badge: null },
-  { id: 'humanoid',     icon: '🧍', label: '3D Model',         badge: 'NEW' },
-  { id: 'physique',     icon: '📐', label: 'Body Metrics',     badge: null },
-  { id: 'assessment',   icon: '📋', label: 'Assessment',       badge: null },
-  { id: 'training',     icon: '🏋️', label: 'Training',         badge: null },
-  { id: 'strength',     icon: '💪', label: 'Strength',         badge: null },
-  { id: 'nutrition',    icon: '🥗', label: 'Nutrition',        badge: null },
-  { id: 'hydration',    icon: '💧', label: 'Hydration',        badge: null },
-  { id: 'sleep',        icon: '😴', label: 'Sleep',            badge: null },
-  { id: 'lifestyle',    icon: '🌿', label: 'Lifestyle',        badge: null },
-  { id: 'mind',         icon: '🧠', label: 'Mind & Wellness',  badge: null },
-  { id: 'medical',      icon: '🩺', label: 'Medical',          badge: null },
-  { id: 'progress',     icon: '📈', label: 'Progress',         badge: null },
-  { id: 'goals',        icon: '🎯', label: 'Goals',            badge: null },
-  { id: 'analytics',    icon: '📊', label: 'Analytics',        badge: null },
-  { id: 'settings',     icon: '⚙️', label: 'Settings',         badge: null },
+  { id: 'overview',     label: 'Overview' },
+  { id: 'humanoid',     label: '3D Model', badge: 'LIVE' },
+  { id: 'physique',     label: 'Blueprint' },
+  { id: 'assessment',   label: 'Assessment' },
+  { id: 'training',     label: 'Training' },
+  { id: 'nutrition',    label: 'Nutrition' },
+  { id: 'sleep',        label: 'Sleep' },
+  { id: 'lifestyle',    label: 'Lifestyle' },
+  { id: 'progress',     label: 'Progress' },
+  { id: 'goals',        label: 'Goals' },
 ];
 
 function TabSpinner() {
@@ -82,8 +77,8 @@ function renderTab(tab, user, setUser, theme, setTheme) {
 export default function App() {
   const [user, setUser]       = useLocalStorage('ultimate_user', USER);
   const [theme, setTheme]     = useLocalStorage('ultimate_theme', 'dark');
+  const [palette, setPalette] = useLocalStorage('ultimate_palette', 'gold');
   const [activeTab, setActiveTab] = useLocalStorage('ultimate_tab', 'overview');
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -96,30 +91,30 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app-shell" data-theme={theme}>
-      <Sidebar
-        navItems={NAV_ITEMS}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        isOpen={sidebarOpen}
-        setIsOpen={setSidebarOpen}
-        user={user}
-      />
-      <div className={`main-area ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+    <div className="app-shell" data-theme={theme} data-palette={palette}>
+      <div className="mesh-bg" />
+      
+      <div className="main-area">
         <Header
           user={user}
           theme={theme}
           setTheme={setTheme}
-          activeTab={activeTab}
-          navItems={NAV_ITEMS}
-          onMenuToggle={() => setSidebarOpen(o => !o)}
+          palette={palette}
+          setPalette={setPalette}
         />
+        
         <main className="content-area">
           <Suspense fallback={<TabSpinner />}>
             {renderTab(activeTab, user, setUser, theme, setTheme)}
           </Suspense>
         </main>
       </div>
+
+      <Navigation 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        navItems={NAV_ITEMS}
+      />
     </div>
   );
 }

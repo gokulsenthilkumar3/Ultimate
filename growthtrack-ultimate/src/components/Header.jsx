@@ -1,6 +1,5 @@
 import React from 'react';
-import { USER } from '../data/userData';
-import { Zap, Moon, Sun, Palette } from 'lucide-react';
+import { Zap, Moon, Sun } from 'lucide-react';
 
 const PALETTES = [
   { id: 'gold',   color: '#f59e0b', name: 'Gold' },
@@ -10,7 +9,7 @@ const PALETTES = [
   { id: 'rose',   color: '#f43f5e', name: 'Rose' },
 ];
 
-export default function Header({ theme, setTheme, palette, setPalette, onOpenSettings }) {
+export default function Header({ user, theme, setTheme, palette, setPalette }) {
   return (
     <header className="glass-card" style={{ 
       margin: '20px auto', 
@@ -21,11 +20,12 @@ export default function Header({ theme, setTheme, palette, setPalette, onOpenSet
       justifyContent: 'space-between', 
       alignItems: 'center',
       position: 'relative',
-      zIndex: 1000
+      zIndex: 1000,
+      border: '1px solid var(--border-strong)'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
         <div style={{ 
-          background: 'linear-gradient(135deg, var(--accent), var(--accent-secondary))', 
+          background: 'var(--accent)', 
           padding: '10px', 
           borderRadius: '16px',
           display: 'flex',
@@ -36,21 +36,25 @@ export default function Header({ theme, setTheme, palette, setPalette, onOpenSet
           <Zap color="var(--bg-base)" size={24} strokeWidth={2.5} />
         </div>
         <div>
-          <h1 className="text-display gradient-text" style={{ fontSize: '1.5rem', lineHeight: 1.1 }}>GrowthTrack</h1>
-          <p className="label-caps" style={{ fontSize: '0.65rem', marginTop: '4px', letterSpacing: '0.2em' }}>Ultimate Digital Twin</p>
+          <h1 className="text-display gradient-text" style={{ fontSize: '1.5rem', lineHeight: 1.1 }}>Ultimate</h1>
+          <p className="label-caps" style={{ fontSize: '0.65rem', marginTop: '4px', letterSpacing: '0.2em' }}>Digital Twin v2.0</p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
         {/* Palette Selection */}
-        <div style={{ display: 'flex', gap: '8px', padding: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: '999px', border: '1px solid var(--border)' }}>
+        <div style={{ 
+          display: 'flex', gap: '8px', padding: '6px', 
+          background: 'rgba(255,255,255,0.03)', borderRadius: '999px', 
+          border: '1px solid var(--border)' 
+        }}>
           {PALETTES.map(p => (
             <button 
               key={p.id}
               onClick={() => setPalette(p.id)}
               style={{
-                width: '20px', height: '20px', borderRadius: '50%', background: p.color,
-                border: palette === p.id ? '2px solid var(--text-1)' : 'none',
+                width: '18px', height: '18px', borderRadius: '50%', background: p.color,
+                border: palette === p.id ? '2px solid #fff' : 'none',
                 boxShadow: palette === p.id ? `0 0 10px ${p.color}` : 'none',
                 cursor: 'pointer', padding: 0, transition: 'var(--transition)'
               }}
@@ -63,20 +67,24 @@ export default function Header({ theme, setTheme, palette, setPalette, onOpenSet
         <button 
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className="btn-ghost"
-          style={{ width: '44px', height: '44px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ width: '40px', height: '40px', padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-           <button onClick={onOpenSettings} style={{ 
-              background: 'var(--accent)', color: 'var(--bg-base)', 
-              borderRadius: '50%', width: '44px', height: '44px', 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '1rem', borderLeft: '1px solid var(--border)' }}>
+           <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-1)' }}>{user?.name || 'Athlete'}</p>
+              <p className="label-caps" style={{ fontSize: '0.55rem', color: 'var(--accent)' }}>Ultimate Plan</p>
+           </div>
+           <div style={{ 
+              width: '40px', height: '40px', borderRadius: '12px', 
+              background: 'var(--accent)', color: 'var(--bg-base)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 14px var(--accent-glow)', border: 'none', cursor: 'pointer', transition: 'var(--transition)'
+              fontWeight: 900, fontSize: '0.9rem', boxShadow: '0 4px 12px var(--accent-glow)'
            }}>
-             <span style={{ fontSize: '14px', fontWeight: 800, fontFamily: 'var(--font-display)' }}>GT</span>
-           </button>
+             {user?.name?.[0] || 'G'}
+           </div>
         </div>
       </div>
     </header>
