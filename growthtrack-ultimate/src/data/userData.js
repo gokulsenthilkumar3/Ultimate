@@ -23,6 +23,8 @@ export const USER = {
   trainingDays: 5,
   sessionDuration: "10–15 min",
   restDays: "Sat & Sun",
+  d_size: 0, // D-Size Metric (Placeholder for user input)
+
 
   // Lifestyle (claude.txt)
   lifestyle: "Sedentary (desk job/little movement)",
@@ -94,7 +96,27 @@ export const USER = {
       gap_in: "+1.2–2.2\"", priority: "Lower",
       note: "Calves should roughly match your flexed arms for proportion"
     },
+    neck: {
+      current_cm: 37, current_in: "14.5\"", target_in: "16\"",
+      gap_in: "+1.5\"", priority: "Low",
+      note: "Thicker neck improves facial aesthetics and posture"
+    },
+    biceps: {
+      current_cm: 30, current_in: "11.8\"", target_in: "16\"",
+      gap_in: "+4.2\"", priority: "High",
+      note: "Measured flexed at the peak"
+    },
+    hips: {
+      current_cm: 88, current_in: "34.6\"", target_in: "34\"",
+      gap_in: "-0.6\"", priority: "Medium",
+      note: "Hips should be narrower than shoulders for V-taper"
+    },
+    d_size: {
+      current: 5.9, target: 8.0, unit: "in", priority: "High",
+      note: "Specific growth target"
+    }
   },
+
 
   // Phases from DeepSeek
   phase1: {
@@ -828,6 +850,28 @@ export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const ACTIVE_DAYS = [true, true, true, true, true, false, false];
 export const WEEK_LABELS = Array.from({ length: 24 }, (_, i) => `Week ${i + 1}`);
 
+export const BODY_METRICS_LIST = [
+  { id: 'weight', label: 'Weight', unit: 'kg', icon: '⚖️' },
+  { id: 'chest', label: 'Chest', unit: 'in', icon: '👕' },
+  { id: 'shoulders', label: 'Shoulders', unit: 'in', icon: '📐' },
+  { id: 'waist', label: 'Waist', unit: 'in', icon: '📏' },
+  { id: 'arms', label: 'Arms', unit: 'in', icon: '💪' },
+  { id: 'neck', label: 'Neck', unit: 'in', icon: '🧣' },
+  { id: 'biceps', label: 'Biceps', unit: 'in', icon: '💪' },
+  { id: 'hips', label: 'Hips', unit: 'in', icon: '👖' },
+  { id: 'thighs', label: 'Thighs', unit: 'in', icon: '🦵' },
+  { id: 'calves', label: 'Calves', unit: 'in', icon: '🚶' },
+  { id: 'd_size', label: 'D Size', unit: 'in', icon: '⚡' }
+];
+
+export const VITALS_METRICS_LIST = [
+  { id: 'sleep', label: 'Sleep', unit: 'hrs', icon: '😴', min: 0, max: 12 },
+  { id: 'water', label: 'Water', unit: 'L', icon: '💧', min: 0, max: 5 },
+  { id: 'caffeine', label: 'Caffeine', unit: 'cups', icon: '☕', min: 0, max: 10 },
+  { id: 'stress', label: 'Stress', unit: '/10', icon: '🧘', min: 1, max: 10 },
+  { id: 'hr', label: 'Heart Rate', unit: 'bpm', icon: '🫀', min: 40, max: 200 }
+];
+
 // ═══════════════════════════════════════════════════════════════════
 // MEDICAL & BLOODWORK DATA
 // ═══════════════════════════════════════════════════════════════════
@@ -871,3 +915,5 @@ export const MENTAL_DATA = {
     { skill: "Focus / Deep Work", target: "No brain fog, 2+ hours deep work", timeline: "60 Days" }
   ]
 };
+
+export const TABS = [{id:'overview', label:'Overview'}, {id:'assessment', label:'Assessment'}, {id:'medical', label:'Medical'}, {id:'body3d', label:'3D Engine'}, {id:'physique', label:'Physique'}, {id:'training', label:'Training'}, {id:'nutrition', label:'Nutrition'}, {id:'lifestyle', label:'Lifestyle'}, {id:'progress', label:'Progress'}];

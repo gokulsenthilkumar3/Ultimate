@@ -1,5 +1,5 @@
 import React from 'react';
-import { USER, BODY_PARTS, HEALTH_SCORE, STATUS_DEFINITIONS } from '../data/userData';
+import { USER, BODY_PARTS, HEALTH_SCORE, STATUS } from '../data/userData';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, 
   ResponsiveContainer 
@@ -32,6 +32,11 @@ export default function Overview() {
       <div className="dashboard-grid">
         <div className="glass-card stagger-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
           <p className="label-caps" style={{ marginBottom: '1.5rem' }}>Overall Health Score</p>
+          <div style={{ position: 'relative', width: '120px', height: '120px' }}>
+            <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border)" strokeWidth="8" />
+              <circle 
+                cx="50" cy="50" r="45" fill="none" 
                 stroke="var(--accent)" 
                 strokeWidth="8" 
                 strokeDasharray={`${HEALTH_SCORE * 2.83} 283`}
