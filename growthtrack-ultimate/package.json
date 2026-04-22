@@ -1,9 +1,9 @@
 {
-  "name": "growthtrack-ultimate",
+  "name": "ultimate",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
-  "scripts": {
+  "description": "Ultimate - Advanced Fitness & Body Transformation Dashboard with Photorealistic 3D Humanoid Model",  "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -17,7 +17,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^3.8.1",
-    "three": "^0.184.0"
+    "three": "^0.184.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
