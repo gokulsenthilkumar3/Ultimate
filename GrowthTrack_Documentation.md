@@ -13,7 +13,7 @@ The current architecture was formed by consolidating the following deprecated le
 **Note:** The above files have been successfully integrated into a unified state within the new application structure and subsequently removed from the disk to enforce a single source of truth.
 
 ## Current Software Dashboard UI & Architecture
-The modern application resides entirely within the `dashboard-app` directory (a Vite + React architecture) using the following features and technical standards:
+The modern application resides entirely within the `growthtrack-ultimate` directory (a Vite + React architecture) using the following features and technical standards:
 
 ### 1. Technology Stack
 *   **Framework:** React 18 (Vite build system)
@@ -37,3 +37,28 @@ The interface operates on a premium, highly responsive design matrix:
 *   **Theming Engine:** Supports dynamic toggling between Dark/Light modes alongside 5 customized color palettes (Gold, Ocean, Violet, Rose, Mint).
 *   **Micro-Animations:** Employs stagger-entrance animations on cards, pulse-glows on actionable alerts, and seamless layout transitions.
 *   **Data Presentation:** Complex medical data is distilled into "Goal/Current/Action" sub-arrays alongside colored `CRITICAL` or `WARNING` priority badges. Navigation bars seamlessly wrap into centered arrays to eliminate vertical or horizontal scrolling strain.
+
+---
+
+# GrowthTrack Ultimate: Phases 4 & 5 Roadmap
+
+## Phase 4: Personal Digital Twin & Bio-Feedback
+**Goal**: Transition from a generic model to a personalized avatar with real-time biological feedback visualization.
+
+### 4.1 Bio-Feedback Face Shader
+- **Logic**: Add a `uStress` uniform to the skin material.
+- **Visual**: Higher stress values shift the face/neck vertex colors toward a flushed red with subtle pulse animation.
+- **Mapping**: Bind this to the "Stress Level" or "Heart Rate" metric in `userData.js`.
+
+### 4.2 Bitmoji / Facial Likeness
+- **Architecture**: Create a `FaceTextureLoader` that overlays the user's face texture onto the `head` bone of the GLB.
+
+## Phase 5: Wardrobe Manager (V-Taper Apparel)
+**Goal**: High-fidelity clothing simulation that respects parametric body morphs.
+
+### 5.1 Bone-Bound Clothing
+- **System**: Toggle `visible` state on specific GLB meshes (Gym, Formal, Casual).
+- **Morph Sync**: Ensure clothing meshes share the same `morphTargetInfluences` as the body mesh to prevent clipping.
+
+### 5.2 Dynamic Delta Visualization
+- **Logic**: Implement a "Growth Delta" shader (Green for gain, Red for loss) comparing Current vs Goal volumes.

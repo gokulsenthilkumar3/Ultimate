@@ -1,259 +1,526 @@
-Now I have everything I need to craft detailed, comprehensive AI prompts for your 3D model system. Let me write them out:
+You are a senior full-stack 3D web engineer working on a React + Three.js / React-Three-Fiber
+fitness dashboard called "GrowthTrack Ultimate". Your task is to build the complete
+"Photorealistic 360° Parametric Human Engine" — a web-based Digital Twin system that lets
+the user either:
 
-***
+  (A) Input their exact body measurements → and the 3D model automatically morphs to become
+      a precise clone of their real body.
+  (B) Manually customize the model using Blender-style sliders and toggles.
 
-Based on your [Photoreal_360_Mega_Feature.md](https://github.com/gokulsenthilkumar3/Ultimate/blob/main/Photoreal_360_Mega_Feature.md) and the existing dashboard architecture, here are comprehensive AI prompts for each major feature domain:
+The full system has 5 phases described below. Build them in order.
+All code goes inside the existing `growthtrack-ultimate` React project.
+The main 3D component lives at `src/components/Body3D.jsx`.
+User health data is imported from `src/data/userData.js`.
 
-***
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 1 — HEMISPHERICAL SPRITE VIEWER (Immediate)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## Prompt 1 — Body Metrics Input & Real Person Clone Generation
+Build a `Sprite3DViewer.jsx` React component that simulates photorealistic 360° rotation
+using a pre-rendered image sequence array — no heavy WebGL needed for Phase 1.
 
-```
-You are building a "Digital Twin Creation Wizard" for a React + Three.js fitness dashboard.
+Image array structure (109 WebP files per model):
 
-GOAL: When a user inputs their exact body metrics, a 3D human model morphs in real-time to become an accurate clone of their real body.
+- Row 0  (eye-level,   0°): current_0_frame_001.webp  → current_0_frame_036.webp
+- Row 1  (high-angle, 45°): current_45_frame_001.webp → current_45_frame_036.webp
+- Row 2  (low-angle, -45°): current_n45_frame_001.webp→ current_n45_frame_036.webp
+- Row 3  (top-down,  90°):  current_top_frame_001.webp (single loop frame)
+- Same naming with "desired_" prefix for Goal Body frames.
 
-INPUT FIELDS TO SUPPORT:
-- Height (cm), Weight (kg), Body Fat % (via DEXA or manual estimate)
-- Shoulder width (cm), chest circumference, waist circumference, hip circumference
-- Arm length, leg length, neck circumference, wrist circumference
-- Optional: shoe size, head circumference (for facial scaling reference)
+Interaction requirements:
 
-TECHNICAL REQUIREMENTS:
-1. Build a `MetricsInputPanel` React component with a two-column form layout — left side has sliders with live numeric inputs, right side shows the 3D viewport updating in real-time as values change.
-2. Use Three.js `morphTargetInfluences[]` on the GLB human mesh to drive body shape. Map each metric to a specific morph target weight using a linear interpolation formula: `morphValue = clamp((userValue - minValue) / (maxValue - minValue), 0, 1)`.
-3. For measurements that don't directly correspond to a single morph (e.g., body fat %), compute a composite: low BF% → increase chest/ab definition morph, decrease waist morph.
-4. Store metric profiles as named snapshots in localStorage so users can save and load different body states ("Current - April 2026", "Goal - December 2026").
-5. Implement a "Calculate from photos" shortcut button — show a visual guide overlay that explains how to self-measure using a measuring tape, with animated SVG diagrams highlighting each measurement zone on a silhouette.
+- Horizontal mouse/touch drag → scrubs through 36 horizontal frames (left = counter-clockwise)
+- Vertical mouse drag → switches rows (up = high-angle, down = low-angle)
+- Mouse scroll → zoom in/out with CSS transform scale + smooth cubic-bezier easing
+- Double-click → activates "8K Magnifying Glass" loupe overlay using the high-res version of the same frame
+- Full touch support via pointermove events
 
-OUTPUT: The 3D model must update its proportions within 50ms of any slider change, using `requestAnimationFrame` debouncing to batch updates.
-```
+Performance requirements:
 
-***
+- Use a Web Worker (sprite-preloader.worker.js) to silently preload all 109 images after
+    the page reaches interactive state
+- Priority load order: eye-level row first, then high-angle, then low-angle
+- Cache all loaded Image objects in Map<string, HTMLImageElement> keyed by filename
+- Render via canvas.getContext('2d').drawImage() — no DOM image elements, zero reflow
+- Show skeleton shimmer placeholder during load, fade it out when first row is ready
 
-## Prompt 2 — Interactive Character Customizer (Blender-Style UI)
+Dual model feature:
 
-```
-Build a character customization panel for a Three.js/React-Three-Fiber web app that mimics Blender's "Shape Keys" editor in UX style.
+- A toggle button switches between "Current Body" and "Goal Body" image sequences
+- A split-screen comparison mode renders both models side-by-side in synced canvases
+    (dragging one rotates both simultaneously)
 
-PANEL LAYOUT:
-- Left sidebar: collapsible category groups — "Body Proportions", "Upper Body", "Core", "Lower Body", "Face & Head", "Skin & Appearance"
-- Each category expands to reveal 4–8 sliders with labels, current value display, min/max, and a reset-to-default button per slider
-- Right: full 3D viewport with orbit controls (mouse drag to rotate, scroll to zoom)
-- Bottom toolbar: Undo (Ctrl+Z), Redo (Ctrl+Y), Save Preset, Load Preset, Reset All
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 2 — BLENDER-STYLE PARAMETRIC ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-SLIDERS TO IMPLEMENT:
-Upper Body: Shoulder Width, Shoulder Cap Roundness, Chest Width, Chest Depth (Pec thickness), Arm Muscle Mass, Bicep Peak, Forearm Thickness, Trap Height
-Core: Waist Width, Abdominal Definition (0=smooth, 100=shredded), Love Handle Volume, Lower Back Arch
-Lower Body: Hip Width, Glute Projection, Quad Mass, Hamstring Fullness, Calf Thickness, Ankle Width
-Face & Head: Face Width, Jaw Sharpness, Cheekbone Prominence, Eye Socket Depth, Nose Bridge Width
-Skin & Appearance: Skin Tone (warm/cool/neutral hue slider), Vascular Definition (vein surface map opacity), Body Hair Density
+Replace the sprite viewer with a live Three.js/React-Three-Fiber parametric engine
+once the GLB assets are ready (Task 2.1).
 
-TECHNICAL:
-- Each slider directly maps to `mesh.morphTargetInfluences[morphIndex]` via a lookup dictionary
-- Sliders use a custom `<MorphSlider>` component with a satisfying drag feel — use `spring()` from Motion library for animated value snapping
-- Hovering over a slider highlights the corresponding body region on the 3D model with a subtle yellow rim light shader
-- Double-clicking any slider label locks it (padlock icon appears) so it's excluded from "Randomize" operations
-- Add a "Randomize Body" button with a dice icon that applies smooth animated randomization to all unlocked morphs simultaneously using staggered tweens
-```
+A) BODY METRICS AUTO-CLONE (Input measurements → model morphs to real body):
 
-***
+Build a `MetricsInputPanel.jsx` component:
 
-## Prompt 3 — Photorealistic 360° Sprite Viewer (Phase 1)
+- Two-column layout: left = sliders with live number inputs, right = live 3D viewport
+- Input fields: Height (cm), Weight (kg), Body Fat %, Shoulder Width, Chest Circumference,
+    Waist Circumference, Hip Circumference, Arm Length, Leg Length, Neck, Wrist diameter
+- Each metric maps to specific morphTargetInfluences[] via a lookup dictionary:
+      morphValue = clamp((userValue - minValue) / (maxValue - minValue), 0, 1)
+- Composite mapping for complex metrics: e.g., Body Fat % affects waist morph + ab definition
+    morph inversely — low BF% → waist shrinks AND ab definition morph increases simultaneously
+- 3D model must update within 50ms of any slider change using requestAnimationFrame debouncing
+- "Save Snapshot" button stores the current metric set with a date label (in-memory array)
+- "Load Snapshot" dropdown lets user switch between saved body states instantly
+- A "Measurement Guide" button shows a side panel with animated SVG diagrams showing
+    HOW to self-measure each body part with a tape measure
 
-```
-Implement a `Sprite3DViewer` React component that loads a hemispherical array of 109 WebP images and simulates photorealistic 360° rotation without GPU-heavy WebGL rendering.
+B) MANUAL BLENDER-STYLE CUSTOMIZER:
 
-IMAGE ARRAY ARCHITECTURE:
-- Row 0 (eye-level, 0°): frames current_0_001.webp → current_0_036.webp (every 10°)
-- Row 1 (high-angle, 45°): frames current_45_001.webp → current_45_036.webp
-- Row 2 (low-angle, -45°): frames current_n45_001.webp → current_n45_036.webp  
-- Row 3 (top-down): current_top_001.webp (single frame, loop)
-- Follow same naming for "desired_" prefix for goal body frames
+Build a `CharacterCustomizer.jsx` panel:
 
-INTERACTION:
-- Horizontal mouse drag → scrubs through the 36 horizontal frames (left drag = counter-clockwise)
-- Vertical mouse drag → switches rows (drag up = go to high-angle row, drag down = low-angle)
-- Mouse wheel → zoom in/out using CSS transform scale with smooth cubic-bezier easing
-- Double-click → activates "8K Magnifying Glass" mode: renders a circular loupe overlay at 8K resolution for that exact frame using a high-res version of the image
-- Touch support: `pointermove` events with pressure sensitivity
+  Left sidebar with collapsible category groups. Each group has sliders:
 
-PERFORMANCE:
-- Use a Web Worker (`sprite-preloader.worker.js`) to sequentially preload all 109 images after the page reaches `interactive` state
-- Implement priority loading: load the eye-level row first (most used), then high-angle, then low-angle
-- Display a skeleton shimmer placeholder during loading; fade it out when the first row is ready
-- Cache all loaded Image objects in a `Map<string, HTMLImageElement>` keyed by filename
-- Draw frames using `canvas.getContext('2d').drawImage()` for zero-DOM-reflow rendering
+  UPPER BODY:
+    Shoulder Width, Shoulder Cap Roundness, Chest Width, Chest Depth (pec thickness),
+    Arm Muscle Mass, Bicep Peak, Forearm Thickness, Trap Height
 
-DUAL MODEL DISPLAY:
-- Add a toggle to show "Current" vs "Desired" model, or a split-screen comparison mode where both models render side-by-side in separate canvases
-- In split-screen, sync the rotation angle of both viewers — dragging one rotates both simultaneously
-```
+  CORE:
+    Waist Width, Abdominal Definition (0=smooth → 100=shredded six-pack),
+    Love Handle Volume, Lower Back Arch
 
-***
+  LOWER BODY:
+    Hip Width, Glute Projection, Quad Mass, Hamstring Fullness,
+    Calf Thickness, Ankle Width
 
-## Prompt 4 — Anatomical Peel & Depth Layering System
+  FACE & HEAD:
+    Face Width, Jaw Sharpness, Cheekbone Prominence, Eye Socket Depth, Nose Bridge Width
 
-```
-Implement a ZygoteBody-inspired "Anatomical Peel" system in Three.js/React-Three-Fiber that progressively reveals internal body layers through an opacity slider.
+  SKIN & APPEARANCE:
+    Skin Tone (warm/cool hue slider on the material albedo),
+    Vascular Definition (vein normal-map opacity 0→1),
+    Body Hair Density (hair particle system density uniform)
 
-LAYER ARCHITECTURE (4 separate GLB meshes in one Three.js Group):
-1. Skin mesh (outermost) — photorealistic PBR skin shader
-2. Muscle mesh — red-toned, semi-translucent, showing major muscle groups with individual naming
-3. Skeleton mesh — off-white bone material with metalness=0, roughness=0.8
-4. Organ mesh — color-coded organs: heart=red, liver=brown, kidneys=purple, lungs=pink
+  Slider UX rules:
+    - Hovering a slider highlights the corresponding body region with a subtle yellow rim light
+    - Double-clicking a slider label locks it (padlock icon) — excluded from Randomize
+    - Each slider has a per-slider reset button (↺ icon) to snap back to default value
+    - "Randomize Body" button (dice icon) applies smooth animated randomization to all
+      unlocked morphs using staggered tweens (Motion library spring())
+    - "Sync to Metrics" button reads userData.js measurements and auto-sets all sliders
 
-DEPTH SLIDER (0 to 100):
-- 0-30: Only skin visible (opacity 1.0). Muscle opacity = 0
-- 30-60: Skin fades out (1.0 → 0.0), Muscle fades in (0.0 → 1.0)
-- 60-80: Muscle fades out, Skeleton fades in
-- 80-100: Skeleton fades out, Organs become fully visible
-- Use `THREE.MeshStandardMaterial.opacity` with `transparent: true` and smooth linear interpolation via `useFrame()` hook
+  Bottom toolbar:
+    Undo (Ctrl+Z), Redo (Ctrl+Y), Save Preset, Load Preset, Reset All
 
-CLICKABLE ORGAN HOTSPOTS:
-- Enable `THREE.Raycaster` for all organ mesh children
-- When a specific organ mesh is clicked (e.g., the liver object), check `userData.healthMetrics` for relevant biomarkers
-- If liver stress is flagged (e.g., ALT > threshold), apply a `THREE.PointLight` with red color parented to the liver mesh to make it "glow red"
-- Clicking a glowing organ opens a side panel (slides in from the right) with the specific health action plan from userData.js
-- Hovering over any muscle group shows a tooltip with: muscle name, current training status, and % progress toward hypertrophy goal
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 3 — ZYGOTE-GRADE ANATOMICAL PEEL SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-BODY COMPOSITION OVERLAY:
-- Add a toggle button "Show Body Composition" that applies a shader-based heatmap onto the skin mesh
-- Use vertex colors to paint fat-dominant zones in orange and muscle-dominant zones in blue, based on DEXA scan zone data from userData.js
-- Animate the heatmap fade-in using a custom GLSL uniform `uRevealProgress`
-```
+Build an anatomical layering system inspired by ZygoteBody — progressive reveal of
+body layers from skin to organs via a single depth slider.
 
-***
+4 separate GLB meshes loaded into one Three.js Group:
 
-## Prompt 5 — Face Clone via Photo Upload (High-End Bitmoji)
+  1. Skin mesh    — photorealistic PBR skin shader (outermost)
+  2. Muscle mesh  — red-toned semi-translucent, named muscle groups
+  3. Skeleton mesh — off-white bone material (metalness=0, roughness=0.8)
+  4. Organ mesh   — color-coded: heart=red, liver=brown, kidneys=purple, lungs=pink
 
-```
-Build the facial personalization pipeline that lets a user upload a selfie and receive a 3D face mesh that matches their likeness.
+BiomarkerDepthSlider (0–100 range) controls layer opacity cross-fades:
+  0–30:  Only skin visible (opacity 1.0), muscle opacity = 0
+  30–60: Skin fades 1.0→0.0, Muscle fades 0.0→1.0
+  60–80: Muscle fades out, Skeleton fades in
+  80–100: Skeleton fades out, Organs become fully visible at 1.0
+Use THREE.MeshStandardMaterial.opacity with transparent:true and smooth
+linear interpolation inside useFrame() hook.
 
-PIPELINE:
-1. Photo upload UI — a drag-and-drop zone with a circular crop guide and instructions: "Face centered, neutral expression, even lighting, no glasses"
-2. On upload, send the photo to Ready Player Me REST API (or MediaPipe FaceMesh as a free alternative) to generate a `.glb` face mesh
-3. Replace the generic head mesh in the Three.js scene with the personalized face GLB, matched to the same neck attachment bone of the body skeleton (Mixamo rig standard)
-4. Implement a "Face Edit" mode with sliders specifically for manual fine-tuning: Jaw Width, Forehead Height, Eye Spacing, Nose Length, Lip Fullness, Ear Protrusion
+Clickable organ Raycaster system:
 
-BIO-FEEDBACK SHADER SYSTEM:
-Build a custom `FaceHealthShader` as a THREE.ShaderMaterial with these uniforms:
-- `uSleepDebt` (float 0-1): When sleep < 5h for 3+ days, blends in a dark ambient occlusion texture under the eye sockets
-- `uHydration` (float 0-1): Low hydration tightens skin shader (increase roughness, reduce subsurface scattering)
-- `uStressLevel` (float 0-1): High cortisol → slight redness on forehead/cheek zones via emissive color tinting
-- `uFatigue` (float 0-1): Reduces contrast on the face texture (washes out colors slightly)
-All uniforms animate smoothly over 2 seconds using `gsap.to(material.uniforms.uSleepDebt, { value: newValue, duration: 2 })` when userData.js updates
+- Enable THREE.Raycaster on all organ mesh children
+- When organ is clicked, check userData.healthMetrics for relevant biomarkers
+- If the organ has a flagged health issue (e.g., liver: ALT > threshold, or caffeine abuse flag),
+    attach a THREE.PointLight with red color to that organ mesh — it glows red in the scene
+- Clicking a glowing organ slides in a right-side panel with the specific health action plan
+    from userData.js for that organ
+- Hovering any named muscle group shows a tooltip: muscle name, current training volume,
+    % progress toward hypertrophy goal from userData.js workout data
 
-HAIR SYSTEM:
-- Provide 6 hair style options as separate `.glb` meshes (Short Buzz, Medium Fade, Long Textured, Bald, Curly Top, Slicked Back)
-- Each hair mesh contains rigged hair bones for physics simulation using Three.js `SkeletonHelper`
-- Hair color picker: a swatch palette of 12 colors that modifies the hair material's `color` uniform in real-time
-- Beard toggle with density slider (0=clean shaven, 100=full beard) using morph targets on a separate beard mesh
-```
+Body Composition Heatmap overlay toggle:
 
-***
+- "Show Body Composition" button applies a vertex-color heatmap to the skin mesh
+- Fat-dominant zones painted orange, muscle-dominant zones painted blue
+- Based on body zone data from userData.js (DEXA scan or manual BF% estimates)
+- Fade-in animation via a custom GLSL uniform `uRevealProgress` (0→1 over 1.2 seconds)
 
-## Prompt 6 — Dynamic Wardrobe & Outfit System
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 4 — HIGH-END BITMOJI / PERSONAL DIGITAL TWIN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-```
-Build a `WardrobeManager` class and accompanying UI for dynamically dressing/undressing the 3D character with modular outfit pieces.
+A) FACE CLONE VIA PHOTO UPLOAD:
 
-WARDROBE ARCHITECTURE:
-class WardrobeManager {
-  constructor(scene, skeleton) — takes the Three.js scene and the loaded SkeletonHelper rig
-  
-  loadGarment(garmentId) — fetches a .glb file, attaches it to the skeleton using SkeletonUtils.clone(), binds bones by name matching
-  
-  removeGarment(garmentId) — disposes the mesh geometry/materials and removes from scene
-  
-  setOutfitPreset(presetName) — loads a curated combination (e.g., "Gym Outfit", "Formal Suit", "Streetwear")
-  
-  scaleToMorphs(morphInfluences) — called whenever body morphs change; re-applies mesh skinning weights so clothing stretches correctly with the body
-}
+- Drag-and-drop photo upload zone with circular crop guide
+- Instructions overlay: "Face centered, neutral expression, even lighting, no glasses"
+- On upload, call Ready Player Me REST API (or MediaPipe FaceMesh as free fallback)
+    to generate a personalized .glb head mesh
+- Replace the generic head mesh in scene using SkeletonUtils — match to neck attachment
+    bone of the Mixamo rig
+- "Face Edit" mode with fine-tuning sliders: Jaw Width, Forehead Height, Eye Spacing,
+    Nose Length, Lip Fullness, Ear Protrusion
 
-OUTFIT CATEGORIES:
-- Tops: Tank Top, Compression Shirt, Formal Dress Shirt, Hoodie
-- Bottoms: Athletic Shorts, Joggers, Dress Pants, Swim Trunks
-- Shoes: Sneakers, Dress Shoes, Barefoot (default)
-- Accessories: Watch (binds to LeftWristBone), Cap (binds to HeadBone), Sunglasses (binds to FaceBone)
-- Mode Presets: 
-  * "Anatomy Mode" → removes all clothing except compression shorts for full muscle visibility
-  * "Gym Mode" → tank top + shorts + sneakers
-  * "Goal Physique Mode" → formal suit that auto-scales to "Desired" body morph target values (showing how a tailored suit would fit the goal body)
+B) BIO-FEEDBACK FACE SHADER:
 
-UI PANEL:
-- A horizontal scrolling "closet rail" component with outfit card thumbnails
-- Clicking an outfit card applies it with a smooth `0.3s ease-out` dissolve transition (opacity fade of old mesh + fade-in of new)
-- Color variants for each garment shown as small circles below the card — clicking changes the material albedo color
-- A "Try on Desired Body" toggle that temporarily loads Goal Body morphs so the user can see how clothes fit their target physique
-```
+Build `FaceHealthShader` as a THREE.ShaderMaterial with these uniforms:
+  uSleepDebt   (float 0–1): sleep < 5h for 3+ consecutive days → blend in dark circle
+                             ambient occlusion map under eye sockets
+  uHydration   (float 0–1): low hydration → increase roughness, reduce subsurface scattering
+  uStressLevel (float 0–1): high cortisol → red tint emissive on forehead and cheek zones
+  uFatigue     (float 0–1): reduces texture contrast (washes out face colors slightly)
 
-***
+All uniforms animate smoothly over 2s:
+  gsap.to(material.uniforms.uSleepDebt, { value: newVal, duration: 2 })
+Triggered automatically whenever userData.js health data updates.
 
-## Prompt 7 — Dual Viewport Ghost Comparison
+Also: if bodyFat drops from 18% → 12%, a shader uniform on the BODY mesh
+(uAbDefinition float 0–1) actively increases normal-map intensity on the abdominal
+mesh vertices, making six-pack definition appear without needing a new asset.
 
-```
-Implement a "Ghost Comparison" mode that overlays the Desired physique mesh over the Current physique mesh to show the exact volumetric delta.
+C) HAIR SYSTEM:
 
-GHOST RENDERING:
+- 6 hair style GLB options: Short Buzz, Medium Fade, Long Textured, Bald, Curly Top, Slick Back
+- Each hair mesh has rigged hair bones for physics using Three.js SkeletonHelper
+- Hair color palette: 12 color swatches that modify material color uniform in real-time
+- Beard density slider (0=clean → 100=full beard) using morph targets on a separate beard mesh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 5 — WARDROBE SYSTEM + GHOST COMPARISON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A) WARDROBE MANAGER:
+
+Build a WardrobeManager class:
+
+  class WardrobeManager {
+    constructor(scene, skeleton)
+    loadGarment(garmentId)     // fetch .glb, attach to skeleton via SkeletonUtils.clone(),
+                               // bind bones by name matching
+    removeGarment(garmentId)   // dispose mesh geometry/materials, remove from scene
+    setOutfitPreset(name)      // load a curated outfit combination
+    scaleToMorphs(morphInfluences) // re-apply skinning weights when body morphs change
+                               // so clothing stretches correctly with body shape
+  }
+
+Outfit categories and presets:
+  Tops:        Tank Top, Compression Shirt, Formal Dress Shirt, Hoodie
+  Bottoms:     Athletic Shorts, Joggers, Dress Pants, Swim Trunks
+  Shoes:       Sneakers, Dress Shoes, Barefoot
+  Accessories: Watch (→ LeftWristBone), Cap (→ HeadBone), Sunglasses (→ FaceBone)
+
+Mode presets:
+  "Anatomy Mode"    → removes all clothing, compression shorts only — full muscle visibility
+  "Gym Mode"        → tank top + shorts + sneakers
+  "Goal Body Mode"  → formal suit that auto-scales to Desired morph target values,
+                      showing how a tailored suit fits the goal physique
+  "Lifestyle Mode"  → high-end streetwear on current body
+
+Outfit switching:
+
+- Horizontal scrolling "closet rail" with outfit card thumbnails
+- Clicking a card applies outfit with 0.3s opacity fade transition
+- Color variants shown as small circles below each card — clicking changes material albedo
+- "Try on Goal Body" toggle temporarily loads Desired morphs to show how clothes fit the target
+
+B) DUAL VIEWPORT GHOST COMPARISON:
+
 - Current body: rendered normally with full PBR shading
-- Desired body: rendered as a translucent ghost mesh using a custom wireframe + fill shader
-  * Material: THREE.MeshStandardMaterial with opacity=0.25, transparent=true, depthWrite=false
-  * Add a subtle blue-tinted emissive glow (emissive: new THREE.Color(0.1, 0.2, 0.8), emissiveIntensity: 0.3) so it's clearly distinguishable
-  * Render the ghost in a separate Three.js rendering pass so it always appears on top of the current body without z-fighting
+- Desired body: rendered as translucent ghost using:
+      opacity: 0.25, transparent: true, depthWrite: false
+      emissive: new THREE.Color(0.1, 0.2, 0.8), emissiveIntensity: 0.3
+    Rendered in a separate Three.js pass to avoid z-fighting
 
-DELTA VISUALIZATION:
-- Where Desired body extends beyond Current body (muscle gain zones), render a green volumetric glow on those vertices
-- Where Current body extends beyond Desired (fat loss zones), render an orange glow
-- Implement this using a custom GLSL vertex shader that computes per-vertex delta by subtracting morph target positions:
-  `vec3 delta = desiredMorphPosition - currentPosition; float gain = max(0.0, dot(delta, normal)); float loss = max(0.0, dot(-delta, normal));`
-- Mix `vec3(0.2, 0.8, 0.3)` (green) and `vec3(0.9, 0.4, 0.1)` (orange) based on gain/loss values
+Delta visualization using custom GLSL vertex shader:
+  vec3 delta = desiredMorphPosition - currentPosition;
+  float gain = max(0.0, dot(delta, normal));  // where desired > current → green glow
+  float loss = max(0.0, dot(-delta, normal)); // where current > desired → orange glow
+  Mix vec3(0.2, 0.8, 0.3) and vec3(0.9, 0.4, 0.1) per vertex based on gain/loss.
 
-COMPARISON UI:
-- A slider at the top of the viewport that transitions between "Current Only" → "Ghost Overlay" → "Desired Only" modes
-- An "X-Ray Split" mode: a vertical dividing line (draggable by the user) shows Current body on the left half and Desired body on the right half within the same camera view
-- A stats panel that auto-calculates from morph differences: "+4.2cm shoulder width", "+8kg lean mass projected", "-12cm waist" with animated number counters
-- Screenshot button that captures the current viewport state (canvas.toDataURL) and adds a branded overlay with the user's name and date
-```
+Comparison UI controls:
 
-***
+- Top slider: "Current Only" ↔ "Ghost Overlay" ↔ "Desired Only" transitions
+- "X-Ray Split" mode: draggable vertical divider — Current on left, Desired on right,
+    same camera, same rotation
+- Auto-calculated delta stats panel: "+4.2cm shoulder width", "-12cm waist",
+    "+8kg lean mass" with animated number counters (NumberFlow library)
+- Screenshot button: canvas.toDataURL() capture with branded overlay (user name + date)
 
-## Prompt 8 — Performance, Loading & Mobile UX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERFORMANCE & MOBILE (Apply across all phases)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-```
-Optimize the entire 3D human model system for mobile and low-end devices with progressive enhancement.
+LOD system — detect GPU and serve appropriate quality:
+  High   (desktop GPU: Apple M, RTX, RX series): Full morph mesh + PBR + real-time shadows
+  Medium (mid mobile: Adreno 6xx, Mali-G7x):     Baked AO textures, 50% polygon reduction
+  Low    (weak GPU: Adreno 5xx, Intel HD):        Static 3-view sprites only, no WebGL
 
-LOD (Level of Detail) SYSTEM:
-- High LOD (desktop, GPU detected): Full morphable mesh + PBR textures + real-time shadows
-- Medium LOD (mid-range mobile): Baked ambient occlusion texture instead of real-time shadows, 50% polygon reduction using THREE.SimplifyModifier
-- Low LOD (weak GPU): Static pose with 3 sprite images only (front, side, back), no WebGL at all
+GPU detection:
+  const gl = renderer.getContext();
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  const gpu = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+  // classify by string keywords → assign LOD level
 
-GPU DETECTION:
-const renderer = new THREE.WebGLRenderer();
-const gl = renderer.getContext();
-const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-const gpuName = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-// Use string matching to classify: keywords like "Apple M", "RTX", "RX 6" → High LOD
-// Keywords like "Mali", "Adreno 5", "Intel HD" → Low/Medium LOD
+Mobile gesture controls:
 
-MOBILE GESTURE CONTROLS:
-- Single finger drag: rotate model
-- Two-finger pinch: zoom in/out
-- Two-finger twist: tilt camera angle (vertical rotation)  
-- Double-tap: reset camera to default front view
-- Long press on body part: open contextual menu for that body zone
+- 1 finger drag     → rotate model
+- 2 finger pinch    → zoom
+- 2 finger twist    → tilt camera vertically
+- Double-tap        → reset camera to front view
+- Long press body part → open contextual menu for that zone
 
-PROGRESSIVE ASSET LOADING:
-- Load assets in priority order: body mesh → skin texture → normal map → specular map → clothing → hair → accessories
-- Each loaded layer triggers a visual "reveal" — a bottom-to-top wipe animation using a custom GLSL clip plane
-- Show a circular progress indicator with loading stage labels ("Loading body mesh... 34%", "Applying skin texture... 67%")
-- If the user interacts before loading completes, prioritize loading the viewport-visible assets immediately using a "focus area" interrupt system
+Progressive asset loading order:
+  body mesh → skin texture → normal map → specular map → clothing → hair → accessories
+Each layer fades in with a bottom-to-top clip plane wipe animation using a GLSL uniform.
+Show circular progress indicator: "Loading skin texture... 67%"
 
-QUALITY SETTINGS PANEL:
-- A gear icon opens a settings sheet with: Shadow Quality (Off/Low/High), Texture Resolution (512/1024/2K/4K), Anti-aliasing (Off/FXAA/MSAA 4x), Particle Effects (Off/On), Animation Quality (Reduced/Full)
-- Settings are saved in a JS object and restore on revisit within the session
-```
+Quality settings panel (gear icon):
+  Shadow Quality (Off / Low / High)
+  Texture Resolution (512 / 1K / 2K / 4K)
+  Anti-aliasing (Off / FXAA / MSAA 4x)
+  Particle Effects (Off / On)
+  Animation Quality (Reduced / Full)
+Settings persist in a JS object for the session duration.
 
-***
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TECH STACK CONSTRAINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-These 8 prompts map directly to your existing roadmap phases in [Photoreal_360_Mega_Feature.md](https://github.com/gokulsenthilkumar3/Ultimate/blob/main/Photoreal_360_Mega_Feature.md), covering Phase 1 through Phase 5 plus optimization. Each prompt is self-contained — you can feed any one directly to Claude/GPT-4 as a standalone coding task within your `dashboard-app` React project. Prompts 3, 4, 7, and 8 correspond to your currently open tasks (Tasks 1.3, 4.1–4.3, and performance), while Prompts 2, 5, and 6 address the wardrobe/bitmoji/blender-style features from Stage 5.
+  Framework:     React (existing project)
+  3D Engine:     Three.js + React-Three-Fiber (@react-three/fiber) + @react-three/drei
+  Animation:     GSAP for shader uniform tweens, Motion (framer-motion) for UI
+  State:         React useState / useReducer for morph state, zustand for global 3D state
+  Assets:        All meshes as .glb files, textures as .webp (4K max)
+  No localStorage — use in-memory JS objects for all saved states (sandbox constraint)
+  All 3D logic isolated in hooks: useMorphTargets(), useWardrobeManager(), useSpriteViewer()
+  Deliver each Phase as a self-contained PR-ready set of components.
+  Start with Phase 1 (Sprite3DViewer) immediately — it gives photorealism
+  with zero GLB dependency. Then build Phase 2 concurrently with asset preparation.
+
+  You are upgrading an existing React + Three.js / React-Three-Fiber fitness dashboard
+called "GrowthTrack Ultimate". The file to replace is:
+
+  dashboard-app/src/components/Body3D.jsx
+
+I will give you the current implementation. Your job is to surgically upgrade it
+from using primitive THREE.js geometry (BoxGeometry, SphereGeometry, CylinderGeometry)
+to a PHOTOREALISTIC "mirror-like" 3D human model — meaning the model should look
+like the user is literally looking at themselves in a mirror: real skin, real
+proportions, real light response, no cartoon or geometric look.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT ALREADY EXISTS (DO NOT BREAK THESE):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Keep all of these working exactly as they are:
+
+  1. The peelShader (Zygote anatomical depth system, uDepth uniform, organ fade-in)
+  2. The ORGANS array + buildOrgans() + Raycaster click → action plan panel
+  3. The morph sliders: chest, shoulders, waist, arms (they just need to map to a real GLB)
+  4. The Parametric Editor panel UI (right sidebar overlay, all 4 sliders + anatomyDepth)
+  5. The "YOU NOW" / "YOUR GOAL" dual model layout with left/right positioning
+  6. The autoRotate / Front / Side / Back view controls
+  7. The Sprite3DViewer tab ("High-End Render" mode) — keep it untouched
+  8. The onSelectPart callback and selected part action plan panel below the viewer
+  9. The Apparel simulation ON/OFF toggle
+  10. The data imports: STATUS, BODY_PARTS from userData.js — all userData references preserved
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIMARY GOAL: REPLACE GEOMETRY WITH A REAL GLB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1 — GLB Asset Strategy (Mirror-Realistic)
+
+Use @react-three/drei's useGLTF() hook to load two .glb files:
+  /models/human_current.glb   (current body — lean, 182cm, 63kg build)
+  /models/human_goal.glb      (goal body — athletic, 182cm, 82kg build)
+
+These must be sourced from MakeHuman (free) or the Mixamo base mesh or
+ReadyPlayerMe API. The mesh must:
+
+- Be a full-body humanoid (head, torso, arms, legs, hands, feet)
+- Use a standard Mixamo/Humanoid skeleton rig (named bones: Hips, Spine,
+    Chest, UpperArm_L/R, ForeArm_L/R, Thigh_L/R, Leg_L/R, etc.)
+- Have morph targets (blend shapes) exported, minimum set:
+    "chest_wide", "shoulders_wide", "waist_wide", "arms_thick",
+    "belly_out", "glutes_wide", "quads_thick", "calves_thick"
+- Have UV-mapped skin texture coordinates
+
+Until the real .glb files are available, use a fallback: load the free
+"Soldier" model from Three.js examples as a placeholder:
+  <https://threejs.org/examples/models/gltf/Soldier.glb>
+(This keeps the code running. Replace the path when real assets are ready.)
+
+STEP 2 — Photorealistic Skin Shader (The "Mirror" Effect)
+
+Replace the existing createPeelMaterial() with a new function
+createSkinMaterial() that uses THREE.MeshPhysicalMaterial (not ShaderMaterial
+for the base skin) with these settings to simulate real skin:
+
+  const skinMat = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(userData.skinTone || '#C68642'), // from userData
+    roughness: 0.72,          // skin is not perfectly smooth
+    metalness: 0.0,           // skin is not metallic
+    transmission: 0.0,
+    thickness: 0.8,           // subsurface scattering thickness
+    attenuationColor: new THREE.Color('#ff9966'),  // warm subsurface tone
+    attenuationDistance: 0.3,
+    clearcoat: 0.05,          // slight sheen (sweat/oil on skin)
+    clearcoatRoughness: 0.9,
+    sheen: 0.15,              // skin has soft sheen at glancing angles
+    sheenColor: new THREE.Color('#ffddcc'),
+    envMapIntensity: 0.8,     // reflects environment subtly
+    side: THREE.FrontSide,
+  });
+
+The anatomical peel system (uDepth) must STILL work. Implement it like this:
+
+- When anatomyDepth = 100 (full skin): render the GLB mesh with skinMat
+- As anatomyDepth decreases: lerp the skinMat.opacity from 1 → 0 over 0–50 range
+    AND lerp a separate muscleMat opacity from 0 → 1 (a red, semi-transparent variant)
+- At anatomyDepth < 20: swap to the organs group (existing ORGANS array is fine)
+- Implement the opacity lerp inside useFrame() using THREE.MathUtils.lerp()
+
+STEP 3 — Photorealistic Lighting Rig (Mirror-Like Illumination)
+
+Replace the existing lights in SystemScene with a studio-quality rig:
+
+  {/*Key light — simulates window/soft-box from upper left*/}
+  <directionalLight
+    position={[-3, 4, 3]}
+    intensity={1.8}
+    color="#fff5e8"
+    castShadow
+    shadow-mapSize={[2048, 2048]}
+    shadow-camera-far={20}
+  />
+
+  {/*Fill light — soft from right, slightly cool*/}
+  <directionalLight position={[4, 2, 2]} intensity={0.6} color="#d6e8ff" />
+
+  {/*Rim/back light — creates separation from background, gives depth*/}
+  <directionalLight position={[0, 3, -5]} intensity={0.9} color="#88aaff" />
+
+  {/*Ground bounce — warm upward fill simulating floor reflection*/}
+  <pointLight position={[0, -0.5, 0.5]} intensity={0.4} color="#ffcc88" distance={4} />
+
+  {/*Ambient — very low, prevents full black shadows*/}
+  <ambientLight intensity={0.15} color="#1a1a2e" />
+
+  {/*Environment for PBR reflections (critical for MeshPhysicalMaterial)*/}
+  import { Environment } from '@react-three/drei';
+  <Environment preset="studio" background={false} />
+
+STEP 4 — Body Metrics → Real Morph Targets
+
+In the Parametric Editor panel, add a "BODY METRICS" section ABOVE the existing
+morph sliders with these inputs:
+
+  Height (cm) — range 150–210, default 182
+  Weight (kg) — range 45–130, default 63
+  Body Fat %  — range 5–40, default 22
+
+When these change, auto-compute and set all morph slider values:
+  chest      = lerp(0.85, 1.3, (weight - 45) / 85)
+  shoulders  = lerp(0.9, 1.4, (height - 150) / 60)
+  waist      = lerp(0.7, 1.5, (bodyFat - 5) / 35)
+  arms       = lerp(0.85, 1.3, (weight - 45) / 85)
+
+Update the existing setMorphs() call with these computed values.
+Show a "📐 Sync from Metrics" button that triggers this calculation.
+The user can ALSO still manually drag the morph sliders to override.
+
+STEP 5 — GLB Morph Target Binding
+
+When the GLB loads via useGLTF(), bind the React morph state to the mesh:
+
+  useEffect(() => {
+    if (!gltfRef.current) return;
+    gltfRef.current.traverse((node) => {
+      if (node.isMesh && node.morphTargetDictionary) {
+        const dict = node.morphTargetDictionary;
+        const inf = node.morphTargetInfluences;
+        if (dict['chest_wide'] !== undefined)     inf[dict['chest_wide']]     = morphs.chest - 1;
+        if (dict['shoulders_wide'] !== undefined) inf[dict['shoulders_wide']] = morphs.shoulders - 1;
+        if (dict['waist_wide'] !== undefined)     inf[dict['waist_wide']]     = morphs.waist - 1;
+        if (dict['arms_thick'] !== undefined)     inf[dict['arms_thick']]     = morphs.arms - 1;
+      }
+    });
+  }, [morphs]);
+
+The mapping morphValue = sliderValue - 1 converts from range 0.7–1.5 to -0.3–+0.5
+morph influence range.
+
+STEP 6 — Background: Dark Mirror Environment
+
+Update the Canvas background to feel like a premium mirror/studio:
+
+  <Canvas
+    camera={{ position: [0, 0.9, 3.8], fov: 40 }}
+    shadows
+    gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1 }}
+  >
+    <color attach="background" args={['#050810']} />
+    <fog attach="fog" args={['#050810', 6, 14]} />
+
+Add a subtle reflective floor plane directly under the model:
+  <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, -0.04, 0]} receiveShadow>
+    <planeGeometry args={[6, 6]} />
+    <MeshReflectorMaterial   {/*from @react-three/drei*/}
+      blur={[200, 100]}
+      resolution={512}
+      mixBlur={0.9}
+      mixStrength={0.4}
+      roughness={1}
+      depthScale={1.2}
+      minDepthThreshold={0.4}
+      maxDepthThreshold={1.4}
+      color="#050810"
+      metalness={0.5}
+    />
+  </mesh>
+
+STEP 7 — Hair System (New Feature, Additive)
+
+Add a simple hair mesh toggle to the Parametric Editor panel below the Apparel
+toggle. The hair is a separate .glb loaded from /models/hair_short.glb.
+Toggle it on/off using the same pattern as the apparel toggle — set mesh.visible.
+Provide 3 presets: Short, Medium, Bald (just swap mesh.visible of 3 hair group nodes).
+Add to the morphs state: { ...existing, hair: 'short' }
+
+STEP 8 — Preserve All Existing Functionality
+
+After the upgrade, verify:
+  ✅ Clicking any body region still calls onSelectPart(userData) and shows the
+     action plan panel below — hook this to the GLB mesh userData by traversing
+     the GLB scene and matching bone/mesh names to BODY_PARTS keys
+  ✅ The ORGANS array still renders as spheres using createPeelMaterial()
+     with isOrgan=true, positioned correctly relative to the torso
+  ✅ Zygote peel depth slider (0–100) still cross-fades layers
+  ✅ 360° auto-rotate, Front/Side/Back buttons still snap rotation
+  ✅ "High-End Render" tab still renders <Sprite3DViewer />
+  ✅ The colour legend and status badges at the bottom are unchanged
+  ✅ All userData.js imports (STATUS, BODY_PARTS) are unchanged
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PACKAGES TO INSTALL (run in dashboard-app/):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+npm install @react-three/drei@latest
+(Environment, MeshReflectorMaterial, useGLTF, OrbitControls, useProgress
+ are all from @react-three/drei — no other new packages needed)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DELIVERABLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Produce the full, complete updated Body3D.jsx file.
+Do not omit or abbreviate any section.
+The file must be a drop-in replacement — same export name, same props interface.
+Include a comment block at the top listing which GLB files need to be added
+to dashboard-app/public/models/ and where to source them for free.
