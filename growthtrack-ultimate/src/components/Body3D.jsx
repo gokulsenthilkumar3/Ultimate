@@ -3,6 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, ContactShadows } from '@react-three/drei';
 import { Activity, Zap } from 'lucide-react';
 import * as THREE from 'three';
+import Sprite3DViewer from './Sprite3DViewer';
+import { USER } from '../data/userData';
 
 // Procedural Parametric Human Component
 function ParametricHuman({ morphs, depth, bioFeedback }) {
@@ -138,10 +140,8 @@ export default function Body3D() {
                 <OrbitControls enableZoom={false} enablePan={false} />
              </Canvas>
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-               <img src="/target_blueprint.png" style={{ width: '280px', opacity: 0.15, filter: 'grayscale(1)' }} alt="Reference" />
-               <p style={{ marginTop: '1rem', color: 'var(--accent)', fontWeight: 800, fontSize: '0.8rem' }}>SPRITE ENGINE ACTIVE</p>
-               <p style={{ color: 'var(--text-3)', fontSize: '0.7rem' }}>Caching 109-frame turnaround...</p>
+            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a' }}>
+               <Sprite3DViewer modelPrefix="current" />
             </div>
           )}
         </div>
