@@ -3,8 +3,7 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "Ultimate — GrowthTrack Digital Twin Engine with Photorealistic 3D Humanoid Model",
-  "scripts": {
+  "description": "Ultimate - Advanced Fitness & Body Transformation Dashboard with Photorealistic 3D Humanoid Model",  "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
