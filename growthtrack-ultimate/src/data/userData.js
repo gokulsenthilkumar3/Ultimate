@@ -23,7 +23,18 @@ export const USER = {
   trainingDays: 5,
   sessionDuration: "10–15 min",
   restDays: "Sat & Sun",
-  d_size: 0, // D-Size Metric (Placeholder for user input)
+  d_size: 0, 
+
+  // Holistic Metrics (Remaining Improvement Targets)
+  eyePower: -2.5,        // Diopters or subjective scale
+  memoryPower: 65,       // Subjective % or test score
+  stamina: 40,           // Minutes of Zone 2 cardio
+  flexibility: 15,       // 0-100 scale (15 = very stiff)
+  hairHealth: 50,        // 0-100 scale
+  skinGlow: 40,          // 0-100 scale
+  senses: {
+    sight: 60, hearing: 85, smell: 80, taste: 90, touch: 85
+  },
 
 
   // Lifestyle (claude.txt)
@@ -562,6 +573,31 @@ export const BODY_PARTS = {
       "Pillowcase change every 2–3 days",
     ],
   },
+  // ── HOLISTIC IMPROVEMENTS ───────────────────────────────────────
+  cognition: {
+    name: "Brain & Memory", status: "poor", sys: "holistic", icon: "🧠",
+    inputs: ["Brain fog every day", "Difficulty focusing on tasks", "Memory lapses"],
+    issues: ["Chronic brain fog linked to sleep deprivation", "Poor short-term recall", "Low dopamine drive"],
+    fixes: ["Sleep 8 hours (non-negotiable)", "Lion's Mane supplement", "Daily 10-min meditation", "Reduce cheap dopamine (infinite scrolling)"],
+  },
+  stamina: {
+    name: "Stamina & Cardio", status: "poor", sys: "holistic", icon: "🫀",
+    inputs: ["Breathless after 1 flight of stairs", "Tired by mid-afternoon"],
+    issues: ["Severely low VO2 max", "Poor metabolic flexibility"],
+    fixes: ["Daily 20-min brisk walk", "Progress to 1 day/week HIIT", "Hydration 3L/day"],
+  },
+  flexibility: {
+    name: "Flexibility & Flow", status: "poor", sys: "holistic", icon: "🧘",
+    inputs: ["Cannot touch toes", "Back stiffness"],
+    issues: ["Posterior chain tightness", "Lower back compression"],
+    fixes: ["Daily 5-min stretching flow", "Yoga once per week", "Foam rolling"],
+  },
+  senses: {
+    name: "Five Senses", status: "fair", sys: "holistic", icon: "👃",
+    inputs: ["Daily screen strain on eyes", "Frequent nasal congestion affecting smell/taste"],
+    issues: ["Sight strain", "Congestion dulling taste/smell"],
+    fixes: ["20-20-20 rule for eyes", "Nasal rinse for smell/taste acuity", "Mindful eating to improve taste"],
+  },
 };
 
 // Compute health score
@@ -915,5 +951,19 @@ export const MENTAL_DATA = {
     { skill: "Focus / Deep Work", target: "No brain fog, 2+ hours deep work", timeline: "60 Days" }
   ]
 };
+
+export const HOLISTIC_METRICS_LIST = [
+  { id: 'eyePower', label: 'Eye Power', unit: 'dp', icon: '👁️' },
+  { id: 'memoryPower', label: 'Memory', unit: '%', icon: '🧠' },
+  { id: 'stamina', label: 'Stamina', unit: 'min', icon: '🫀' },
+  { id: 'flexibility', label: 'Flexibility', unit: '%', icon: '🧘' },
+  { id: 'hairHealth', label: 'Hair Health', unit: '%', icon: '💇' },
+  { id: 'skinGlow', label: 'Skin Glow', unit: '%', icon: '✨' },
+  { id: 'sight', label: 'Sense: Sight', unit: '%', icon: '👁️' },
+  { id: 'hearing', label: 'Sense: Hear', unit: '%', icon: '👂' },
+  { id: 'smell', label: 'Sense: Smell', unit: '%', icon: '👃' },
+  { id: 'taste', label: 'Sense: Taste', unit: '%', icon: '👅' },
+  { id: 'touch', label: 'Sense: Touch', unit: '%', icon: '🖐️' },
+];
 
 export const TABS = [{id:'overview', label:'Overview'}, {id:'assessment', label:'Assessment'}, {id:'medical', label:'Medical'}, {id:'body3d', label:'3D Engine'}, {id:'physique', label:'Physique'}, {id:'training', label:'Training'}, {id:'nutrition', label:'Nutrition'}, {id:'lifestyle', label:'Lifestyle'}, {id:'progress', label:'Progress'}];
