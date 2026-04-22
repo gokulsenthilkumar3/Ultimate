@@ -1,24 +1,46 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { USER } from './data/userData';
 import Header from './components/Header';
-import Navigation from './components/Navigation';
-import SettingsPanel from './components/SettingsPanel';
+import Sidebar from './components/Sidebar';
 import useLocalStorage from './hooks/useLocalStorage';
 import './index.css';
 
-// Lazy-load all tab components for faster initial load
-const Overview       = lazy(() => import('./components/Overview'));
-const Assessment     = lazy(() => import('./components/Assessment'));
-const Medical        = lazy(() => import('./components/Medical'));
-const Body3D         = lazy(() => import('./components/Body3D'));
-const Physique       = lazy(() => import('./components/Physique'));
-const Training       = lazy(() => import('./components/Training'));
-const Lifestyle      = lazy(() => import('./components/Lifestyle'));
-const Nutrition      = lazy(() => import('./components/Nutrition'));
-const Progress       = lazy(() => import('./components/Progress'));
-const SleepDashboard = lazy(() => import('./components/SleepDashboard'));
-const GoalsDashboard = lazy(() => import('./components/GoalsDashboard'));
-const Analytics      = lazy(() => import('./components/Analytics'));
+// Lazy-load all dashboard components
+const Overview        = lazy(() => import('./components/Overview'));
+const Assessment      = lazy(() => import('./components/Assessment'));
+const Medical         = lazy(() => import('./components/Medical'));
+const HumanoidViewer  = lazy(() => import('./components/HumanoidViewer'));
+const Physique        = lazy(() => import('./components/Physique'));
+const Training        = lazy(() => import('./components/Training'));
+const Lifestyle       = lazy(() => import('./components/Lifestyle'));
+const Nutrition       = lazy(() => import('./components/Nutrition'));
+const Progress        = lazy(() => import('./components/Progress'));
+const SleepDashboard  = lazy(() => import('./components/SleepDashboard'));
+const GoalsDashboard  = lazy(() => import('./components/GoalsDashboard'));
+const Analytics       = lazy(() => import('./components/Analytics'));
+const MindWellness    = lazy(() => import('./components/MindWellness'));
+const HydrationTracker = lazy(() => import('./components/HydrationTracker'));
+const StrengthMetrics  = lazy(() => import('./components/StrengthMetrics'));
+const SettingsPanel   = lazy(() => import('./components/SettingsPanel'));
+
+const NAV_ITEMS = [
+  { id: 'overview',     icon: '⚡', label: 'Overview',        badge: null },
+  { id: 'humanoid',     icon: '🧍', label: '3D Model',         badge: 'NEW' },
+  { id: 'physique',     icon: '📐', label: 'Body Metrics',     badge: null },
+  { id: 'assessment',   icon: '📋', label: 'Assessment',       badge: null },
+  { id: 'training',     icon: '🏋️', label: 'Training',         badge: null },
+  { id: 'strength',     icon: '💪', label: 'Strength',         badge: null },
+  { id: 'nutrition',    icon: '🥗', label: 'Nutrition',        badge: null },
+  { id: 'hydration',    icon: '💧', label: 'Hydration',        badge: null },
+  { id: 'sleep',        icon: '😴', label: 'Sleep',            badge: null },
+  { id: 'lifestyle',    icon: '🌿', label: 'Lifestyle',        badge: null },
+  { id: 'mind',         icon: '🧠', label: 'Mind & Wellness',  badge: null },
+  { id: 'medical',      icon: '🩺', label: 'Medical',          badge: null },
+  { id: 'progress',     icon: '📈', label: 'Progress',         badge: null },
+  { id: 'goals',        icon: '🎯', label: 'Goals',            badge: null },
+  { id: 'analytics',    icon: '📊', label: 'Analytics',        badge: null },
+  { id: 'settings',     icon: '⚙️', label: 'Settings',         badge: null },
+];
 
 function TabSpinner() {
   return (
@@ -34,84 +56,70 @@ function TabSpinner() {
   );
 }
 
+function renderTab(tab, user, setUser, theme, setTheme) {
+  const props = { user, setUser, theme, setTheme };
+  switch (tab) {
+    case 'overview':   return <Overview {...props} />;
+    case 'humanoid':   return <HumanoidViewer {...props} />;
+    case 'physique':   return <Physique {...props} />;
+    case 'assessment': return <Assessment {...props} />;
+    case 'training':   return <Training {...props} />;
+    case 'strength':   return <StrengthMetrics {...props} />;
+    case 'nutrition':  return <Nutrition {...props} />;
+    case 'hydration':  return <HydrationTracker {...props} />;
+    case 'sleep':      return <SleepDashboard {...props} />;
+    case 'lifestyle':  return <Lifestyle {...props} />;
+    case 'mind':       return <MindWellness {...props} />;
+    case 'medical':    return <Medical {...props} />;
+    case 'progress':   return <Progress {...props} />;
+    case 'goals':      return <GoalsDashboard {...props} />;
+    case 'analytics':  return <Analytics {...props} />;
+    case 'settings':   return <SettingsPanel {...props} />;
+    default:           return <Overview {...props} />;
+  }
+}
+
 export default function App() {
-  const [activeTab, setActiveTab]           = useLocalStorage('gt-active-tab', 'overview');
-  const [theme, setTheme]                   = useLocalStorage('gt-theme', 'dark');
-  const [palette, setPalette]               = useLocalStorage('gt-palette', 'gold');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [selectedPart, setSelectedPart]     = useState(null);
+  const [user, setUser]       = useLocalStorage('ultimate_user', USER);
+  const [theme, setTheme]     = useLocalStorage('ultimate_theme', 'dark');
+  const [activeTab, setActiveTab] = useLocalStorage('ultimate_tab', 'overview');
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
 
   useEffect(() => {
-    document.body.setAttribute('data-theme', theme);
-    document.body.setAttribute('data-palette', palette);
-  }, [theme, palette]);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [activeTab]);
-
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setSelectedPart(null);
-  };
-
-  const renderTab = () => {
-    const cls = 'fade-in stagger-container';
-    switch (activeTab) {
-      case 'overview':    return <div className={cls}><Overview /></div>;
-      case 'assessment':  return <div className={cls}><Assessment /></div>;
-      case 'medical':     return <div className={cls}><Medical /></div>;
-      case 'body3d':      return <div className={cls}><Body3D onSelectPart={setSelectedPart} /></div>;
-      case 'physique':    return <div className={cls}><Physique /></div>;
-      case 'training':    return <div className={cls}><Training /></div>;
-      case 'nutrition':   return <div className={cls}><Nutrition /></div>;
-      case 'lifestyle':   return <div className={cls}><Lifestyle /></div>;
-      case 'progress':    return <div className={cls}><Progress /></div>;
-      case 'sleep':       return <div className={cls}><SleepDashboard /></div>;
-      case 'goals':       return <div className={cls}><GoalsDashboard /></div>;
-      case 'analytics':   return <div className={cls}><Analytics /></div>;
-      default:            return <div className={cls}><Overview /></div>;
-    }
-  };
+    const handler = () => setSidebarOpen(window.innerWidth > 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   return (
-    <div className="app-container">
-      <div className="mesh-bg" />
-
-      <Header
-        theme={theme}
-        setTheme={setTheme}
-        palette={palette}
-        setPalette={setPalette}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        user={USER}
-      />
-
-      <Navigation
+    <div className="app-shell" data-theme={theme}>
+      <Sidebar
+        navItems={NAV_ITEMS}
         activeTab={activeTab}
-        setActiveTab={handleTabChange}
+        setActiveTab={setActiveTab}
+        isOpen={sidebarOpen}
+        setIsOpen={setSidebarOpen}
+        user={user}
       />
-
-      <main className="main-content">
-        <Suspense fallback={<TabSpinner />}>
-          {renderTab()}
-        </Suspense>
-      </main>
-
-      <SettingsPanel
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        theme={theme}
-        setTheme={setTheme}
-        palette={palette}
-        setPalette={setPalette}
-      />
-
-      <footer className="app-footer">
-        <span>Ultimate — Digital Twin Engine v2.0</span>
-        <span style={{ color: 'var(--text-muted)' }}>●</span>
-        <span style={{ color: 'var(--text-muted)' }}>{USER.name || 'Gokul'}</span>
-      </footer>
+      <div className={`main-area ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+        <Header
+          user={user}
+          theme={theme}
+          setTheme={setTheme}
+          activeTab={activeTab}
+          navItems={NAV_ITEMS}
+          onMenuToggle={() => setSidebarOpen(o => !o)}
+        />
+        <main className="content-area">
+          <Suspense fallback={<TabSpinner />}>
+            {renderTab(activeTab, user, setUser, theme, setTheme)}
+          </Suspense>
+        </main>
+      </div>
     </div>
   );
 }
