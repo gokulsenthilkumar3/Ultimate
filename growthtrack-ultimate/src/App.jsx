@@ -11,6 +11,7 @@ import Training from './components/Training';
 import Lifestyle from './components/Lifestyle';
 import Nutrition from './components/Nutrition';
 import Progress from './components/Progress';
+import SettingsPanel from './components/SettingsPanel';
 import useLocalStorage from './hooks/useLocalStorage';
 import './index.css';
 
@@ -18,6 +19,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useLocalStorage('gt-active-tab', 'overview');
   const [theme, setTheme] = useLocalStorage('gt-theme', 'dark');
   const [palette, setPalette] = useLocalStorage('gt-palette', 'gold');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Apply theme and palette attributes to body
   useEffect(() => {
@@ -53,6 +55,7 @@ export default function App() {
       <Header 
         theme={theme} setTheme={setTheme} 
         palette={palette} setPalette={setPalette} 
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
       <Navigation 
@@ -63,6 +66,8 @@ export default function App() {
       <main style={{ padding: '0 1rem' }}>
         {renderContent()}
       </main>
+
+      <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       <footer style={{ padding: '4rem 2rem', textAlign: 'center', opacity: 0.4, fontSize: '0.8rem' }}>
         GrowthTrack Ultimate • Digital Twin Engine v2.0
