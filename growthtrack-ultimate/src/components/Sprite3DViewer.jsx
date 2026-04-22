@@ -30,54 +30,33 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
   };
 
   useEffect(() => {
-    // Priority loading sequence
-    const loadImages = async () => {
-      const newImages = new Map();
-      let loaded = 0;
-      
-      const loadImg = (row, frame) => {
-        return new Promise((resolve) => {
-          const url = generateSpriteUrl(row, frame);
-          const img = new Image();
-          img.src = url;
-          img.onload = () => {
-            newImages.set(url, img);
-            loaded++;
-            setLoadedCount(loaded);
-            resolve();
-          };
-          img.onerror = () => {
-            // Provide a graceful fallback or empty image map entry if it fails
-            newImages.set(url, null);
-            loaded++;
-            setLoadedCount(loaded);
-            resolve();
-          };
+    // Generate all URLs
+    const allUrls = [];
+    // Priority: 0, 1, -1, 2
+    [0, 1, -1].forEach(row => {
+      for (let frame = 1; frame <= 36; frame++) {
+        allUrls.push(generateSpriteUrl(row, frame));
+      }
+    });
+    allUrls.push(generateSpriteUrl(2, 1));
+
+    const worker = new Worker(new URL('../workers/sprite-preloader.worker.js', import.meta.url));
+    
+    worker.onmessage = (e) => {
+      if (e.data.type === 'PROGRESS') {
+        const { url, bitmap } = e.data;
+        setImages(prev => {
+          const next = new Map(prev);
+          next.set(url, bitmap);
+          return next;
         });
-      };
-
-      // Priority 1: eye-level (row 0)
-      const tasksEyeLevel = Array.from({ length: 36 }, (_, i) => loadImg(0, i + 1));
-      await Promise.allSettled(tasksEyeLevel);
-      setImages(new Map(newImages));
-
-      // Priority 2: high-angle (row 1)
-      const tasksHigh = Array.from({ length: 36 }, (_, i) => loadImg(1, i + 1));
-      await Promise.allSettled(tasksHigh);
-      setImages(new Map(newImages));
-
-      // Priority 3: low-angle (row -1)
-      const tasksLow = Array.from({ length: 36 }, (_, i) => loadImg(-1, i + 1));
-      await Promise.allSettled(tasksLow);
-      
-      // Priority 4: top (row 2)
-      await loadImg(2, 1);
-      
-      setImages(new Map(newImages));
+        setLoadedCount(prev => prev + 1);
+      }
     };
 
-    // To simulate background worker, we just run the async promise
-    loadImages();
+    worker.postMessage({ urls: allUrls });
+
+    return () => worker.terminate();
   }, [modelPrefix]);
 
   // Render loop
@@ -92,17 +71,59 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
     const img = images.get(url);
     
     if (img) {
-      // Draw actual loaded image
       const cx = width / 2;
       const cy = height / 2;
       const w = img.width;
       const h = img.height;
-      
-      // fit drawing inside canvas depending on aspect ratio
       const scale = Math.min(width / w, height / h);
       const drawW = w * scale;
       const drawH = h * scale;
-      ctx.drawImage(img, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
+      const dx = cx - drawW / 2;
+      const dy = cy - drawH / 2;
+      
+      ctx.save();
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+      
+      // Magnifier Logic
+      if (isMagnifier) {
+        const lensRadius = 100;
+        const zoomFactor = 3;
+        
+        // Use normalized relative coordinates from startPos (which is updated during move)
+        const rect = canvasRef.current.getBoundingClientRect();
+        const mouseX = (startPos.x - rect.left) * (width / rect.width);
+        const mouseY = (startPos.y - rect.top) * (height / rect.height);
+
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, lensRadius, 0, Math.PI * 2);
+        ctx.clip();
+        
+        // Draw zoomed portion
+        // Source rect around mouse
+        const sw = (lensRadius * 2) / zoomFactor / scale;
+        const sh = (lensRadius * 2) / zoomFactor / scale;
+        const sx = (mouseX - dx) / scale - sw / 2;
+        const sy = (mouseY - dy) / scale - sh / 2;
+        
+        ctx.drawImage(img, sx, sy, sw, sh, mouseX - lensRadius, mouseY - lensRadius, lensRadius * 2, lensRadius * 2);
+        
+        // Lens border
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, lensRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'var(--accent)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Lens reflection highlight
+        const grad = ctx.createRadialGradient(mouseX - 30, mouseY - 30, 0, mouseX, mouseY, lensRadius);
+        grad.addColorStop(0, 'rgba(255,255,255,0.2)');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.fill();
+      } else {
+        ctx.restore();
+      }
     } else {
       // Draw placeholder
       ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
@@ -136,6 +157,9 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
   };
 
   const handlePointerMove = (e) => {
+    if (isMagnifier) {
+      setStartPos({ x: e.clientX, y: e.clientY });
+    }
     if (!isDragging) return;
     
     const dx = e.clientX - startPos.x;
