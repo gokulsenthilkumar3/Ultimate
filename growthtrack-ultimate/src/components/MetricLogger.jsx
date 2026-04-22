@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { X, Save, Ruler, Activity, Heart, Zap } from 'lucide-react';
-import { BODY_METRICS_LIST, VITALS_METRICS_LIST } from '../data/userData';
+import { BODY_METRICS_LIST, VITALS_METRICS_LIST, HOLISTIC_METRICS_LIST } from '../data/userData';
 
 export default function MetricLogger({ onClose, onSave }) {
-  const [activeTab, setActiveTab] = useState('body'); // 'body' or 'vitals'
+  const [activeTab, setActiveTab] = useState('body'); // 'body', 'vitals', or 'holistic'
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -22,7 +22,18 @@ export default function MetricLogger({ onClose, onSave }) {
     water: 2,
     caffeine: 3,
     stress: 7,
-    hr: 75
+    hr: 75,
+    eyePower: -2.5,
+    memoryPower: 65,
+    stamina: 40,
+    flexibility: 15,
+    hairHealth: 50,
+    skinGlow: 40,
+    sight: 60,
+    hearing: 85,
+    smell: 80,
+    taste: 90,
+    touch: 85
   });
 
   const handleChange = (e) => {
@@ -91,6 +102,18 @@ export default function MetricLogger({ onClose, onSave }) {
           >
             <Activity size={16} /> Bio-Vitals
           </button>
+          <button 
+            onClick={() => setActiveTab('holistic')}
+            style={{ 
+              flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+              background: activeTab === 'holistic' ? 'var(--accent)' : 'transparent',
+              color: activeTab === 'holistic' ? 'var(--bg-base)' : 'var(--text-2)',
+              fontWeight: 700, cursor: 'pointer', transition: 'var(--transition)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+            }}
+          >
+            <Zap size={16} /> Holistic
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
@@ -129,8 +152,29 @@ export default function MetricLogger({ onClose, onSave }) {
                   </div>
                 </div>
               ))
-            ) : (
+            ) : activeTab === 'vitals' ? (
               VITALS_METRICS_LIST.map(field => (
+                <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>{field.icon}</span> {field.label}
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input type="number" step="1" name={field.id} value={formData[field.id]} onChange={handleChange} required
+                      style={{
+                        width: '100%', padding: '12px', background: 'rgba(255,255,255,0.03)', 
+                        border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-1)',
+                        textAlign: 'center', fontWeight: '600'
+                      }}
+                    />
+                    <span style={{ 
+                      position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                      fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 800
+                    }}>{field.unit.toUpperCase()}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              HOLISTIC_METRICS_LIST.map(field => (
                 <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span>{field.icon}</span> {field.label}

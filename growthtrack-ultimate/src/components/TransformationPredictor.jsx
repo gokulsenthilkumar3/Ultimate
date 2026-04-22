@@ -27,7 +27,10 @@ export default function TransformationPredictor({ logs }) {
       { id: 'chest', label: 'Chest Girth', target: 43, unit: 'in' },
       { id: 'waist', label: 'Waist Size', target: 30.5, unit: 'in', shrink: true },
       { id: 'arms', label: 'Arm Size', target: 16.25, unit: 'in' },
-      { id: 'd_size', label: 'D-Growth', target: 8.0, unit: 'in' }
+      { id: 'd_size', label: 'D-Growth', target: 8.0, unit: 'in' },
+      { id: 'memoryPower', label: 'Cognitive Drive', target: 95, unit: '%' },
+      { id: 'stamina', label: 'Cardio Stamina', target: 90, unit: 'min' },
+      { id: 'eyePower', label: 'Eye Power', target: 0, unit: 'dp', shrink: true }
     ];
 
     const predictedMetrics = metricsToPredict.map(metric => {
@@ -152,8 +155,9 @@ export default function TransformationPredictor({ logs }) {
           <h3 className="text-display" style={{ fontSize: '1.8rem' }}>Evolutionary "Peak State"</h3>
           <p className="text-secondary" style={{ marginTop: '0.5rem' }}>
             Based on current lifestyle markers (Sleep: {latestLog?.sleep}h, Stress: {latestLog?.stress}/10) 
-            and growth velocity, your digital twin is projected to hit 92% of the V-Taper goal by 
-            <span style={{ color: 'var(--accent)', fontWeight: 800 }}> September 2026.</span>
+            and growth velocity, your digital twin is projected to hit 92% of the V-Taper goal and 
+            <span style={{ color: 'var(--accent)', fontWeight: 800 }}> {latestLog?.memoryPower > 80 ? 'Peak Cognition' : 'Optimized Focus'} </span> 
+            by <span style={{ color: 'var(--accent)', fontWeight: 800 }}> September 2026.</span>
           </p>
         </div>
         <div style={{ textAlign: 'center', padding: '1.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '20px', border: '1px solid var(--border)' }}>

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { USER } from '../data/userData';
 import { 
   XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area
+  Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area, LineChart, Line
 } from 'recharts';
-import { TrendingUp, Plus, Calendar, Database, Heart } from 'lucide-react';
+import { TrendingUp, Plus, Calendar, Database, Heart, Zap } from 'lucide-react';
 import MetricLogger from './MetricLogger';
 import TransformationPredictor from './TransformationPredictor';
 import useLocalStorage from '../hooks/useLocalStorage';
@@ -67,7 +67,7 @@ export default function Progress() {
       <div className="section-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 className="text-display" style={{ fontSize: '2.4rem' }}>Progress Intelligence</h2>
-          <p className="text-secondary" style={{ fontSize: '1.1rem' }}>Tracking the evolution of your digital twin across 24 body & lifestyle data points.</p>
+          <p className="text-secondary" style={{ fontSize: '1.1rem' }}>Tracking the evolution of your digital twin across body, lifestyle, and holistic sensory data.</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <div className="glass-card" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px', height: 'fit-content' }}>
@@ -177,6 +177,57 @@ export default function Progress() {
          </div>
       </div>
 
+       {/* HOLISTIC EVOLUTION MATRIX */}
+       <div style={{ marginTop: '2.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
+             <Zap color="var(--accent)" size={20} />
+             <p className="label-caps" style={{ fontSize: '1rem', letterSpacing: '0.15em' }}>Holistic Evolution Matrix</p>
+          </div>
+          <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+              {[
+                { label: 'Cognitive Drive', key: 'memoryPower', val: latestLog.memoryPower || 65, unit: '%', icon: '🧠', color: '#8b5cf6' },
+                { label: 'Eye Power', key: 'eyePower', val: latestLog.eyePower || -2.5, unit: 'dp', icon: '👁️', color: '#06b6d4' },
+                { label: 'Cardio Stamina', key: 'stamina', val: latestLog.stamina || 40, unit: 'min', icon: '🫀', color: '#f43f5e' },
+                { label: 'Flexibility', key: 'flexibility', val: latestLog.flexibility || 15, unit: '%', icon: '🧘', color: '#f59e0b' },
+                { label: 'Sense Index', key: 'sight', val: ((latestLog.sight || 60) + (latestLog.hearing || 85) + (latestLog.smell || 80)) / 3, unit: '%', icon: '👂', color: '#10b981' },
+                { label: 'Skin Glow', key: 'skinGlow', val: latestLog.skinGlow || 40, unit: '%', icon: '✨', color: '#fbcfe8' }
+              ].map((m, i) => {
+                const sparkData = logs.slice().reverse().map(l => ({ val: l[m.key] || m.val }));
+                const firstVal = sparkData[0]?.val || m.val;
+                const trend = m.val - firstVal;
+                
+                return (
+                  <div key={i} className="glass-card stagger-item" style={{ padding: '1.2rem', borderLeft: `3px solid ${m.color}`, display: 'flex', flexDirection: 'column', minHeight: '160px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>{m.icon}</span>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: trend >= 0 ? 'var(--accent)' : '#f43f5e' }}>
+                           {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}{m.unit}
+                        </span>
+                    </div>
+                    <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px' }}>{m.label}</p>
+                    <h4 className="text-display" style={{ fontSize: '1.4rem' }}>
+                       {m.val.toFixed(1)}<span style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginLeft: '4px' }}>{m.unit}</span>
+                    </h4>
+                    
+                    <div style={{ flex: 1, marginTop: '10px', height: '40px', width: '100%', opacity: 0.8 }}>
+                       <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={sparkData}>
+                             <defs>
+                                <linearGradient id={`grad-${m.key}`} x1="0" y1="0" x2="0" y2="1">
+                                   <stop offset="5%" stopColor={m.color} stopOpacity={0.4}/>
+                                   <stop offset="95%" stopColor={m.color} stopOpacity={0}/>
+                                </linearGradient>
+                             </defs>
+                             <Area type="monotone" dataKey="val" stroke={m.color} strokeWidth={2} fill={`url(#grad-${m.key})`} dot={false} />
+                          </AreaChart>
+                       </ResponsiveContainer>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+       </div>
+
       {/* COMPREHENSIVE DATA HISTORY */}
       <div className="dashboard-grid">
          <div className="glass-card stagger-item" style={{ gridColumn: '1 / -1', padding: '0' }}>
@@ -199,6 +250,7 @@ export default function Progress() {
                         <th style={{ padding: '12px', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.1em' }}>D Size</th>
                         <th style={{ padding: '12px', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.1em' }}>Wait/Hip</th>
                         <th style={{ padding: '12px', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.1em' }}>Vitals (S/W/C)</th>
+                        <th style={{ padding: '12px', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.1em' }}>Holistic</th>
                         <th style={{ padding: '12px', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.1em' }}>Pulse</th>
                      </tr>
                   </thead>
@@ -221,6 +273,13 @@ export default function Progress() {
                               <span style={{ background: log.sleep < 6 ? 'rgba(244,63,92,0.1)' : 'rgba(255,255,255,0.05)', color: log.sleep < 6 ? '#f43f5e' : 'var(--text-2)', padding: '4px 8px', borderRadius: '6px', marginRight: '6px', fontWeight: 700 }}>{log.sleep}h</span>
                               <span style={{ background: 'rgba(14,165,233,0.1)', color: '#0ea5e9', padding: '4px 8px', borderRadius: '6px', marginRight: '6px', fontWeight: 700 }}>{log.water}L</span>
                               <span style={{ background: log.caffeine > 3 ? 'rgba(249,115,22,0.1)' : 'rgba(255,255,255,0.05)', color: log.caffeine > 3 ? '#f97316' : 'var(--text-2)', padding: '4px 8px', borderRadius: '6px', fontWeight: 700 }}>{log.caffeine}c</span>
+                           </td>
+                           <td style={{ padding: '18px 12px' }}>
+                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                 <span style={{ fontSize: '0.65rem', background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', padding: '2px 6px', borderRadius: '4px' }}>🧠 {log.memoryPower || 65}%</span>
+                                 <span style={{ fontSize: '0.65rem', background: 'rgba(6,182,212,0.1)', color: '#06b6d4', padding: '2px 6px', borderRadius: '4px' }}>👁️ {log.eyePower || -2.5}</span>
+                                 <span style={{ fontSize: '0.65rem', background: 'rgba(244,63,92,0.1)', color: '#f43f5e', padding: '2px 6px', borderRadius: '4px' }}>🏃 {log.stamina || 40}m</span>
+                              </div>
                            </td>
                            <td style={{ padding: '18px 20px', borderRadius: '0 12px 12px 0' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
