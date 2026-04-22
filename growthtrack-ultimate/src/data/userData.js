@@ -212,5 +212,20 @@ export const BODY_PARTS = {
     status: 'moderate',
     issues: ['Asthma + multiple allergies indicate immune dysregulation', 'Low Vit D suspected'],
     fixes:  ['Vit D3 5000 IU/day + K2 100mcg', 'Quercetin 500mg for allergy management', 'Eliminate processed food 30-day trial'],
+      },
+
+  // ── Body Metrics (used by HumanoidViewer)
+  metrics: {
+    height: 182,      // cm
+    weight: 63,       // kg
+    chest: 95,        // cm
+    waist: 80,        // cm  
+    shoulders: 110,   // cm
+    arms: 35,         // cm (bicep circumference)
+    thighs: 55,       // cm
+    neck: 38,         // cm
+    calves: 37,       // cm
+    hips: 95,         // cm
+  },
   },
 };
