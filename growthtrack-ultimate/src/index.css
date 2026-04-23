@@ -1,4 +1,3 @@
-
 /* ═══════════ PREMIUM THEME ENGINE ═══════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -611,11 +610,20 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 
-/* === UI VISIBILITY FIXES === */
+/* === UI VISIBILITY FIXES (Improvement9) === */
+
+/* Active pill — works in both themes */
 .nav-item.active { color: #fff !important; background: var(--accent) !important; border-radius: 12px; }
 .nav-item.active .nav-label { color: #fff !important; }
+
+/* ── Light mode nav fixes ── */
+/* Fix: was targeting .nav-bar (wrong class). Correct class is .nav-track */
+[data-theme='light'] .nav-track {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255,255,255,0.8) !important;
+}
 [data-theme='light'] .nav-item { color: #52525b; }
-[data-theme='light'] .nav-item.active { color: #fff !important; background: var(--accent) !important; }
 [data-theme='light'] .nav-item:hover:not(.active) { color: var(--accent); background: rgba(0,0,0,0.05); border-radius: 10px; }
-[data-theme='light'] .nav-bar { background: rgba(255,255,255,0.97) !important; border-top: 1px solid rgba(0,0,0,0.1); box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
+[data-theme='light'] .nav-item.active { color: #fff !important; background: var(--accent) !important; }
 [data-theme='light'] .gradient-text { -webkit-text-fill-color: var(--accent) !important; background: none !important; }
