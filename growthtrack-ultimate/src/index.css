@@ -1,3 +1,4 @@
+
 /* ═══════════ PREMIUM THEME ENGINE ═══════════════════════════════════ */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -26,7 +27,15 @@
   --radius-sm: 8px;
 }
 
-/* Light Mode Overrides */
+/* === Improvement9: Palette Theme CSS Variables === */
+[data-palette='gold']   { --accent: #f59e0b; --accent-secondary: #fbbf24; --accent-glow: rgba(245,158,11,0.20); }
+[data-palette='ocean']  { --accent: #0ea5e9; --accent-secondary: #38bdf8; --accent-glow: rgba(14,165,233,0.20); }
+[data-palette='mint']   { --accent: #10b981; --accent-secondary: #34d399; --accent-glow: rgba(16,185,129,0.20); }
+[data-palette='violet'] { --accent: #8b5cf6; --accent-secondary: #a78bfa; --accent-glow: rgba(139,92,246,0.20); }
+[data-palette='rose']   { --accent: #f43f5e; --accent-secondary: #fb7185; --accent-glow: rgba(244,63,94,0.20); }
+
+
+
 [data-theme='light'] {
   --bg-base: #f8fafc;
   --bg-surface: #ffffff;
@@ -163,6 +172,7 @@ body {
   justify-content: center;
   width: auto;
   pointer-events: none;
+    overflow: visible;
 }
 
 .nav-track {
@@ -172,7 +182,7 @@ body {
   backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  padding: 8px;
+    padding: 6px 8px 10px;
   gap: 4px;
   pointer-events: auto;
   box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
