@@ -1,11 +1,10 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { USER } from './data/userData';
+import React, { useEffect, lazy, Suspense } from 'react';
+import { useUserStore } from './store/userStore';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import useLocalStorage from './hooks/useLocalStorage';
-import './index.css';
+import './index.css'; import './overrides.css';
 
-// Lazy-load all dashboard components
 const Overview = lazy(() => import('./components/Overview'));
 const Assessment = lazy(() => import('./components/Assessment'));
 const Medical = lazy(() => import('./components/Medical'));
@@ -28,8 +27,8 @@ const Shopping = lazy(() => import('./components/Shopping'));
 const Tasks = lazy(() => import('./components/Tasks'));
 const Finance = lazy(() => import('./components/Finance'));
 const Entertainment = lazy(() => import('./components/Entertainment'));
+const Info = lazy(() => import('./components/Info'));
 
-// Simplified Nav Items for Floating Pill
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview' },
   { id: 'humanoid', label: '3D Model', badge: 'LIVE' },
@@ -47,24 +46,20 @@ const NAV_ITEMS = [
   { id: 'tasks', label: 'Tasks' },
   { id: 'finance', label: 'Finance' },
   { id: 'entertainment', label: 'Entertainment' },
+  { id: 'info', label: 'About', badge: 'NEW' },
 ];
 
 function TabSpinner() {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '60vh', flexDirection: 'column', gap: '1rem'
-    }}>
-      <div className=\"spin-ring\" />
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', letterSpacing: '0.1em' }}>
-        LOADING MODULE
-      </span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: '1rem' }}>
+      <div className='spin-ring' />
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', letterSpacing: '0.1em' }}>LOADING MODULE</span>
     </div>
   );
 }
 
-function renderTab(tab, user, setUser, theme, setTheme) {
-  const props = { user, setUser, theme, setTheme };
+function renderTab(tab, user, updateField, updateSection, theme, setTheme) {
+  const props = { user, updateField, updateSection, theme, setTheme };
   switch (tab) {
     case 'overview': return <Overview {...props} />;
     case 'humanoid': return <HumanoidViewer {...props} />;
@@ -88,46 +83,33 @@ function renderTab(tab, user, setUser, theme, setTheme) {
     case 'tasks': return <Tasks {...props} />;
     case 'finance': return <Finance {...props} />;
     case 'entertainment': return <Entertainment {...props} />;
+    case 'info': return <Info />;
     default: return <Overview {...props} />;
   }
 }
 
 export default function App() {
-  const [user, setUser] = useLocalStorage('ultimate_user', USER);
+  const { user, updateField, updateSection, fetchUser } = useUserStore();
   const [theme, setTheme] = useLocalStorage('ultimate_theme', 'dark');
-  const [palette, setPalette] = useLocalStorage('ultimate_palette', 'gold');
-  const [activeTab, setActiveTab] = useLocalStorage('ultimate_tab', 'overview');
+  const [palette, setPalette] = useLocalStorage('ultimate_palette', 'gold');   const [activeTab, setActiveTab] = useLocalStorage('ultimate_tab', 'overview');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-        document.documentElement.setAttribute('data-palette', palette);
-    }, [theme, palette]);
+  }, [theme]);
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
   return (
-    <div className=\"app-shell\" data-theme={theme} data-palette={palette}>
-      <div className=\"mesh-bg\" />
-      
-      <div className=\"main-area\">
-        <Header 
-          user={user} 
-          theme={theme} 
-          setTheme={setTheme} 
-          palette={palette} 
-          setPalette={setPalette} 
-        />
-        
-        <main className=\"content-area\">
-          <Suspense fallback={<TabSpinner />}>
-            {renderTab(activeTab, user, setUser, theme, setTheme)}
-          </Suspense>
-        </main>
-      </div>
-
-      <Navigation 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        navItems={NAV_ITEMS}
-      />
+    <div className='app-shell'>
+      <Header user={user} theme={theme} setTheme={setTheme} palette={palette} setPalette={setPalette} />
+      <Navigation navItems={NAV_ITEMS} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <main className='tab-content'>
+        <Suspense fallback={<TabSpinner />}>
+          {renderTab(activeTab, user, updateField, updateSection, theme, setTheme)}
+        </Suspense>
+      </main>
     </div>
   );
 }
