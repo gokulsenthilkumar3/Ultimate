@@ -6,7 +6,7 @@ import useLocalStorage from '../hooks/useLocalStorage';
 export default function Skills() {
   const [skillLogs, setSkillLogs] = useLocalStorage('gt-skill-logs', {});
 
-  const categories = ['Languages', 'Communication', 'Programming', 'Finance'];
+  const categories = ['Languages', 'Communication', 'Programming', 'Finance', 'Mental', 'Social', 'Fitness & Health', 'Life Finance'];
 
   const groupedSkills = categories.reduce((acc, category) => {
     acc[category] = SKILLS_METRICS_LIST.filter(s => s.category === category);
