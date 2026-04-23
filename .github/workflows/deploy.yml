@@ -28,6 +28,17 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Merge growthtrack-ultimate source into ultimate
+        run: |
+          # Copy all source files from growthtrack-ultimate into ultimate/
+          # ultimate/ overrides take precedence (App.jsx, store/userStore.js, Info.jsx etc)
+          rsync -av --ignore-existing growthtrack-ultimate/src/ ultimate/src/
+          rsync -av --ignore-existing growthtrack-ultimate/public/ ultimate/public/
+          rsync -av --ignore-existing dashboard-app/src/components/ ultimate/src/components/
+          rsync -av --ignore-existing dashboard-app/src/data/ ultimate/src/data/
+          rsync -av --ignore-existing dashboard-app/src/store/ ultimate/src/store/
+          rsync -av --ignore-existing dashboard-app/src/workers/ ultimate/src/workers/
+
       - name: Install dependencies
         working-directory: ./ultimate
         run: npm install
