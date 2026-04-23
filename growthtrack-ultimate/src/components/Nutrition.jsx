@@ -46,6 +46,49 @@ export default function Nutrition() {
            </div>
          ))}
       </div>
+      
+        <div className="glass-card" style={{ marginTop: '2rem' }}>
+          <h3 style={{ color: 'var(--accent-green)', marginBottom: '1rem', fontSize: '1.2rem' }}>🦴 Bone Health & Calcium Guide</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.85rem' }}>Tamil Nadu foods rich in calcium for strong bones and joints.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div className="glass-card">
+              <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>Dairy Sources</h4>
+              <ul style={{ listStyle: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                <li>• Milk (1 glass = 300mg Ca)</li>
+                <li>• Curd / Yogurt (150mg/cup)</li>
+                <li>• Paneer (200mg/100g)</li>
+                <li>• Buttermilk (Moru) - daily</li>
+              </ul>
+            </div>
+            <div className="glass-card">
+              <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>TN Leafy Greens</h4>
+              <ul style={{ listStyle: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                <li>• Drumstick leaves (Murungai keerai)</li>
+                <li>• Agathi keerai (high calcium)</li>
+                <li>• Manathakkali keerai</li>
+                <li>• Arugula / Keerai varieties</li>
+              </ul>
+            </div>
+            <div className="glass-card">
+              <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>Seeds & Legumes</h4>
+              <ul style={{ listStyle: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                <li>• Sesame seeds (Ellu) 975mg/100g</li>
+                <li>• Ragi (Finger millet) 344mg/100g</li>
+                <li>• Rajma / Channa (150mg/cup)</li>
+                <li>• Almonds (264mg/100g)</li>
+              </ul>
+            </div>
+            <div className="glass-card">
+              <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>Daily Bone Protocol</h4>
+              <ul style={{ listStyle: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                <li>• Sunlight 15-20 min (Vitamin D)</li>
+                <li>• Ragi kanji or porridge AM</li>
+                <li>• Sesame chutney with meals</li>
+                <li>• Avoid excess salt & soda</li>
+              </ul>
+            </div>
+          </div>
+        </div>
     </div>
   );
 }
