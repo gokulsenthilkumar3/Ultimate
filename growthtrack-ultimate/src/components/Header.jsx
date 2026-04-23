@@ -33,7 +33,7 @@ export default function Header({ user, theme, setTheme, palette, setPalette }) {
           justifyContent: 'center',
           boxShadow: '0 0 24px var(--accent-glow)'
         }}>
-          <Zap color="var(--bg-base)" size={24} strokeWidth={2.5} />
+          <Zap color="#ffffff" size={24} strokeWidth={2.5} />
         </div>
         <div>
           <h1 className="text-display gradient-text" style={{ fontSize: '1.5rem', lineHeight: 1.1 }}>Ultimate</h1>
@@ -79,7 +79,7 @@ export default function Header({ user, theme, setTheme, palette, setPalette }) {
            </div>
            <div style={{ 
               width: '40px', height: '40px', borderRadius: '12px', 
-              background: 'var(--accent)', color: 'var(--bg-base)',
+              background: 'var(--accent)', color: '#ffffff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 900, fontSize: '0.9rem', boxShadow: '0 4px 12px var(--accent-glow)'
            }}>
