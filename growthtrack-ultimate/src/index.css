@@ -608,3 +608,4 @@ input[type=range]::-webkit-slider-runnable-track {
 [data-theme='light'] .nav-item.active { color: #fff !important; background: var(--accent) !important; }
 [data-theme='light'] .nav-item:hover:not(.active) { color: var(--accent); background: rgba(0,0,0,0.05); border-radius: 10px; }
 [data-theme='light'] .nav-bar { background: rgba(255,255,255,0.97) !important; border-top: 1px solid rgba(0,0,0,0.1); box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
+[data-theme='light'] .gradient-text { -webkit-text-fill-color: var(--accent) !important; background: none !important; }
