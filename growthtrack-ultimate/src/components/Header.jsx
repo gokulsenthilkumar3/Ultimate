@@ -1,4 +1,5 @@
 import React from 'react';
+import { Zap, Moon, Sun } from 'lucide-react';
 
 const PALETTES = [
   { id: 'gold',   color: '#f59e0b', name: 'Gold' },
