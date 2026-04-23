@@ -3,7 +3,7 @@ import { useUserStore } from './store/userStore';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import useLocalStorage from './hooks/useLocalStorage';
-import './index.css';
+import './index.css'; import './overrides.css';
 
 const Overview = lazy(() => import('./components/Overview'));
 const Assessment = lazy(() => import('./components/Assessment'));
@@ -91,7 +91,7 @@ function renderTab(tab, user, updateField, updateSection, theme, setTheme) {
 export default function App() {
   const { user, updateField, updateSection, fetchUser } = useUserStore();
   const [theme, setTheme] = useLocalStorage('ultimate_theme', 'dark');
-  const [activeTab, setActiveTab] = useLocalStorage('ultimate_tab', 'overview');
+  const [palette, setPalette] = useLocalStorage('ultimate_palette', 'gold');   const [activeTab, setActiveTab] = useLocalStorage('ultimate_tab', 'overview');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -103,7 +103,7 @@ export default function App() {
 
   return (
     <div className='app-shell'>
-      <Header user={user} theme={theme} setTheme={setTheme} />
+      <Header user={user} theme={theme} setTheme={setTheme} palette={palette} setPalette={setPalette} />
       <Navigation navItems={NAV_ITEMS} activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className='tab-content'>
         <Suspense fallback={<TabSpinner />}>
