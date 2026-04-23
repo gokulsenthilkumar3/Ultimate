@@ -1,0 +1,119 @@
+/* ======= ULTIMATE OVERRIDES — fixes applied on top of index.css ======= */
+
+/* ── 1. Active nav tab: always white text on accent background ─────────── */
+.nav-item.active {
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+.nav-item.active svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* ── 2. Nav container: full-width + scrollable pill on all screens ──────── */
+.nav-container {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  width: calc(100vw - 24px);
+  max-width: 960px;
+  pointer-events: none;
+}
+
+.nav-track {
+  display: flex;
+  align-items: center;
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 8px 12px;
+  gap: 2px;
+  pointer-events: auto;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.nav-track::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-item {
+  flex-shrink: 0;
+  min-width: max-content;
+}
+
+/* ── 3. Logo icon: always vivid, never grey ─────────────────────────────── */
+.logo-icon {
+  background: var(--accent) !important;
+  box-shadow: 0 0 24px var(--accent-glow) !important;
+}
+
+.logo-icon svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* ── 4. Profile avatar: accent background + white text ─────────────────── */
+.profile-avatar {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+/* ── 5. Tab content: enough bottom padding so nav never hides content ───── */
+.tab-content {
+  padding-bottom: 110px !important;
+}
+
+.app-shell {
+  padding-bottom: 0;
+}
+
+/* ── 6. gradient-text: always vivid (not grey in light mode) ────────────── */
+[data-theme='light'] .gradient-text {
+  background: linear-gradient(135deg, #1a1a2e 0%, var(--accent) 60%, var(--accent-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── 7. Nav scroll arrows: always visible ───────────────────────────────── */
+.nav-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  pointer-events: auto;
+  transition: var(--transition);
+  opacity: 0.9;
+}
+
+.nav-arrow:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.nav-arrow.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
