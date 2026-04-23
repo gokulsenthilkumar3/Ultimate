@@ -104,7 +104,7 @@ export default function App() {
   return (
     <div className='app-shell'>
       <Header user={user} theme={theme} setTheme={setTheme} />
-      <Navigation items={NAV_ITEMS} active={activeTab} onNavigate={setActiveTab} />
+      <Navigation navItems={NAV_ITEMS} activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className='tab-content'>
         <Suspense fallback={<TabSpinner />}>
           {renderTab(activeTab, user, updateField, updateSection, theme, setTheme)}
