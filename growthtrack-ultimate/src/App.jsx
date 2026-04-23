@@ -22,6 +22,7 @@ const MindWellness    = lazy(() => import('./components/MindWellness'));
 const HydrationTracker = lazy(() => import('./components/HydrationTracker'));
 const StrengthMetrics  = lazy(() => import('./components/StrengthMetrics'));
 const SettingsPanel   = lazy(() => import('./components/SettingsPanel'));
+const Skills            = lazy(() => import('./components/Skills'));
 
 // Simplified Nav Items for Floating Pill
 const NAV_ITEMS = [
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { id: 'lifestyle',    label: 'Lifestyle' },
   { id: 'progress',     label: 'Progress' },
   { id: 'goals',        label: 'Goals' },
+    { id: 'skills',      label: 'Skills' },
 ];
 
 function TabSpinner() {
@@ -70,6 +72,7 @@ function renderTab(tab, user, setUser, theme, setTheme) {
     case 'goals':      return <GoalsDashboard {...props} />;
     case 'analytics':  return <Analytics {...props} />;
     case 'settings':   return <SettingsPanel {...props} />;
+          case 'skills':      return <Skills {...props} />;
     default:           return <Overview {...props} />;
   }
 }
