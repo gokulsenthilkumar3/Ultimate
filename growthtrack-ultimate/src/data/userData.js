@@ -428,3 +428,18 @@ export const SKILLS_METRICS_LIST = [
   { id: 'finance_investing', label: 'Investing', unit: '%', icon: '📉', category: 'Finance' },
   { id: 'finance_crypto', label: 'Cryptocurrency', unit: '%', icon: '₿', category: 'Finance' },
 ];
+
+
+// ── Medical Data (used by Medical.jsx)
+export const MEDICAL_DATA = {
+  testsRequired: [
+    { name: 'Complete Blood Count (CBC)', priority: 'High', frequency: 'Yearly' },
+    { name: 'Lipid Panel (Cholesterol)', priority: 'High', frequency: 'Yearly' },
+    { name: 'Liver Function (ALT, AST, GGT)', priority: 'Critical', frequency: '6 Months' },
+    { name: 'Kidney Function (Creatinine, BUN)', priority: 'High', frequency: 'Yearly' },
+    { name: 'Thyroid Panel (TSH, T3, T4)', priority: 'Medium', frequency: 'Yearly' },
+    { name: 'Testosterone (Total & Free)', priority: 'High', frequency: '6 Months' },
+    { name: 'Vitamin D3', priority: 'High', frequency: '6 Months' },
+    { name: 'HbA1c (Blood Sugar)', priority: 'Medium', frequency: 'Yearly' },
+  ],
+};
