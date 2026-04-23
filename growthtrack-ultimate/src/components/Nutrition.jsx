@@ -5,7 +5,8 @@ import { Utensils, Clock } from 'lucide-react';
 export default function Nutrition() {
   return (
     <div className="fade-in">
-<h2 className="text-display" style={{ fontSize: '2rem' }}>Fueling Strategy</h2>
+    <div className="section-head">
+  <h2 className="text-display" style={{ fontSize: '2rem' }}>Fueling Strategy</h2>
         <p className="text-secondary">Hypertrophy-focused nutrition for Phase 1 Lean Bulk.</p>
       </div>
 
