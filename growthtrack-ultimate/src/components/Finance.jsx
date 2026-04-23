@@ -189,7 +189,7 @@ const Finance = () => {
                   {tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '-' : ''}${tx.amount.toLocaleString()}
                 </span>
                 <button
-                  onClick={() =>Duplicate Finance.jsx from dashboard-app to growthtrack-ultimate deleteTransaction(tx.id)}
+                  onClick={() => deleteTransaction(tx.id)}
                   style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '5px' }}
                 >
                   <Trash2 size={16} />
