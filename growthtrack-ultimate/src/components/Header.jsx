@@ -1,5 +1,4 @@
 import React from 'react';
-import { Zap, Moon, Sun } from 'lucide-react';
 
 const PALETTES = [
   { id: 'gold',   color: '#f59e0b', name: 'Gold' },
@@ -63,10 +62,9 @@ export default function Header({ user, theme, setTheme, palette, setPalette }) {
               onClick={() => setPalette(p.id)}
               style={{
                 width: '20px', height: '20px', borderRadius: '50%', background: p.color,
-                border: palette === p.id
-                  ? `3px solid ${theme === 'dark' ? '#fff' : '#111'}`
-                  : '2px solid transparent',
-                boxShadow: palette === p.id ? `0 0 10px ${p.color}` : 'none',
+                              border: 'none',
+              outline: palette === p.id ? `2px solid ${p.color}` : '2px solid transparent',
+              outlineOffset: '3px',boxShadow: palette === p.id ? `0 0 10px ${p.color}` : 'none',
                 cursor: 'pointer', padding: 0, transition: 'var(--transition)',
               }}
               title={p.name}
