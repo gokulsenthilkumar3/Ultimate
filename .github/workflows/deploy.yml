@@ -30,19 +30,17 @@ jobs:
 
       - name: Merge source into ultimate
         run: |
-          # Step 1: Copy ALL of growthtrack-ultimate/src into ultimate/src
-          # growthtrack-ultimate has the full tested component set
-          rsync -av growthtrack-ultimate/src/ ultimate/src/
+          # Copy growthtrack-ultimate components/hooks/data/workers/css into ultimate/src
+          # EXCLUDE files that already exist in ultimate/ (App.jsx, store/, Info.jsx)
+          rsync -av --exclude='App.jsx' --exclude='main.jsx' --exclude='store/' growthtrack-ultimate/src/ ultimate/src/
           rsync -av growthtrack-ultimate/public/ ultimate/public/
-          # Step 2: Add ONLY new unique files from dashboard-app
-          # EditableMetric and BodyPartOverlay are new, don't exist in growthtrack-ultimate
-          cp dashboard-app/src/components/EditableMetric.jsx ultimate/src/components/ 2>/dev/null || true
-          cp dashboard-app/src/components/BodyPartOverlay.jsx ultimate/src/components/ 2>/dev/null || true
-          cp dashboard-app/src/components/BodyPartOverlay.css ultimate/src/components/ 2>/dev/null || true
-          # Add metricsWorker if it doesn't exist
-          cp dashboard-app/src/workers/metricsWorker.js ultimate/src/workers/ 2>/dev/null || true
-          echo "Merge done. Components:"
-          ls ultimate/src/components/
+          # Add unique new files from dashboard-app
+          cp -n dashboard-app/src/components/EditableMetric.jsx ultimate/src/components/ 2>/dev/null || true
+          cp -n dashboard-app/src/components/BodyPartOverlay.jsx ultimate/src/components/ 2>/dev/null || true
+          cp -n dashboard-app/src/components/BodyPartOverlay.css ultimate/src/components/ 2>/dev/null || true
+          cp -n dashboard-app/src/workers/metricsWorker.js ultimate/src/workers/ 2>/dev/null || true
+          echo 'Merge done'
+          ls ultimate/src/components/ | head -30
 
       - name: Install dependencies
         working-directory: ./ultimate
