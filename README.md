@@ -1,236 +1,153 @@
-# ⚡ ULTIMATE - Advanced Fitness & Body Transformation Dashboard
+# ⚡ ULTIMATE — GrowthTrack Digital Twin Engine v2.0
 
-> **Ultimate - GrowthTrack Digital Twin Engine v2.0**  
-> A comprehensive fitness tracking platform with realistic 3D humanoid visualization, 16+ specialized dashboards, and advanced body transformation analytics.
+> **Branch:** `restructure` — [Live Demo](https://gokulsenthilkumar3.github.io/Ultimate/) | [Release Notes](./RELEASE_NOTES.md) | [Features](./feature.md)
 
----
-
-## 🎯 Overview
-
-**Ultimate** is a next-generation fitness and body transformation dashboard that brings together health tracking, goal setting, 3D body visualization, and comprehensive analytics in one unified platform. Built with React + Vite for blazing-fast performance.
-
-### ✨ Key Features
-
-- **🧍 Realistic 3D Humanoid Model**: Interactive canvas-based 3D body visualization with drag-to-rotate, current vs expected comparison
-- **📊 16 Specialized Dashboards**: Overview, Assessment, Medical, Training, Nutrition, Progress, Sleep, Goals, Analytics, and more
-- **🎨 Modern UI/UX**: Glassmorphism design, dark theme, responsive layout, smooth animations
-- **💾 LocalStorage Persistence**: Your data stays on your device, loads instantly
-- **⚡ Lazy Loading**: Code-split dashboards for optimal performance
-- **📱 Fully Responsive**: Works seamlessly on desktop, tablet, and mobile
+A next-generation personal dashboard combining fitness tracking, body visualization, finance, entertainment, tasks, and wellness — all in one React + Vite application with a fully dynamic data layer.
 
 ---
 
-## 📚 Project Structure
+## 🚀 What's New in v2.0 (Restructure)
+
+| Change | Details |
+|--------|---------|
+| **Folder Consolidation** | `growthtrack-ultimate/` renamed to `ultimate/`; `dashboard-app/` fully merged in |
+| **Dynamic Data** | Replaced hardcoded `userData.js` with Zustand `userStore.js` — editable via UI, saved to localStorage, API-sync ready |
+| **Info/About Page** | New `Info.jsx` tab showing current branch, version, deploy env, API health, version history |
+| **New Components** | `EditableMetric.jsx`, `BodyPartOverlay.jsx`, upgraded `Body3D.jsx`, `metricsWorker.js` |
+| **Deploy Workflow** | CI now builds from `ultimate/`, triggers on `main` + `restructure` branches |
+| **Documentation** | All MD files consolidated in `feature.md`; `RELEASE_NOTES.md` added |
+
+---
+
+## 📁 Project Structure
 
 ```
 Ultimate/
-├── growthtrack-ultimate/       # Main application
+├── ultimate/                    # 🎯 Main application (v2.0)
 │   ├── src/
-│   │   ├── components/         # React components
-│   │   │   ├── Sidebar.jsx         # Navigation sidebar with user info
-│   │   │   ├── Header.jsx          # Top header with theme toggle
-│   │   │   ├── HumanoidViewer.jsx  # 3D body model (current vs expected)
-│   │   │   ├── Overview.jsx        # Main dashboard
-│   │   │   ├── Assessment.jsx      # Body assessment & measurements
-│   │   │   ├── Medical.jsx         # Health & medical tracking
-│   │   │   ├── Physique.jsx        # Body metrics dashboard
-│   │   │   ├── Training.jsx        # Workout tracking
-│   │   │   ├── StrengthMetrics.jsx # Strength progress tracker
-│   │   │   ├── Nutrition.jsx       # Nutrition & macros
-│   │   │   ├── HydrationTracker.jsx# Water intake tracking
-│   │   │   ├── SleepDashboard.jsx  # Sleep quality analytics
-│   │   │   ├── Lifestyle.jsx       # Lifestyle & habits
-│   │   │   ├── MindWellness.jsx    # Mental health & mood tracking
-│   │   │   ├── Progress.jsx        # Transformation progress
-│   │   │   ├── GoalsDashboard.jsx  # Goal setting & tracking
-│   │   │   ├── Analytics.jsx       # Advanced analytics & charts
-│   │   │   └── SettingsPanel.jsx   # App settings
-│   │   │
+│   │   ├── components/          # 24+ React components
+│   │   │   ├── Info.jsx         # 🆕 About/Info page
+│   │   │   ├── Body3D.jsx       # 3D body viewer (upgraded)
+│   │   │   ├── EditableMetric.jsx
+│   │   │   ├── BodyPartOverlay.jsx
+│   │   │   └── [18 more tabs...]
+│   │   ├── store/
+│   │   │   ├── userStore.js     # 🔄 Dynamic Zustand store (replaces userData.js)
+│   │   │   └── useStore.js      # Dashboard-app store
+│   │   ├── workers/
+│   │   │   ├── metricsWorker.js
+│   │   │   └── sprite-preloader.worker.js
 │   │   ├── data/
-│   │   │   └── userData.js         # User profile & metrics data
-│   │   │
-│   │   ├── hooks/
-│   │   │   └── useLocalStorage.js  # LocalStorage hook
-│   │   │
-│   │   ├── App.jsx              # Main app component with routing
-│   │   ├── main.jsx             # Entry point
-│   │   └── index.css            # Global styles
-│   │
-│   ├── package.json
-│   └── vite.config.js
-│
-└── README.md
+│   │   │   └── userData.js      # Legacy seed reference (deprecated)
+│   │   ├── hooks/useLocalStorage.js
+│   │   ├── App.jsx          # Root app with all tabs
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── public/
+│   ├── package.json       # v2.0.0
+│   └── vite.config.js     # base: '/Ultimate/'
+├── .github/workflows/
+│   └── deploy.yml         # Builds from ultimate/, triggers on main+restructure
+├── README.md
+├── RELEASE_NOTES.md
+└── feature.md             # All feature docs consolidated
 ```
 
 ---
 
-## 🚀 Tech Stack
+## 📊 Dashboard Tabs
 
-- **React 19.2.4** - UI library
-- **Vite 6.0.4** - Build tool & dev server
-- **React Three Fiber 9.6.0** - 3D rendering
-- **Three.js 0.184.0** - 3D graphics library
-- **Recharts 3.8.1** - Data visualization
-- **GSAP 3.15.0** - Animations
-- **Lucide React 1.8.0** - Icons
+| Tab | Status | Description |
+|-----|--------|-------------|
+| Overview | ✅ Live | BMI, body fat%, muscle mass, health score |
+| 3D Model (LIVE) | ✅ Live | Canvas-based 3D humanoid viewer |
+| Blueprint | ✅ Live | Body measurements & physique map |
+| Assessment | ✅ Live | Body composition assessment |
+| Training | ✅ Live | Workout program & schedule |
+| Nutrition | ✅ Live | Macro tracker & meal plan |
+| Sleep | ✅ Live | Sleep debt, bedtime patterns |
+| Lifestyle | ✅ Live | Daily habits tracker |
+| Progress | ✅ Live | Weight, BF%, muscle over time |
+| Goals | ✅ Live | Goal milestone & habit streaks |
+| Skills | ✅ Live | Skill matrix & learning roadmap |
+| Health+ | ✅ Live | Supplements, vitals, doctor visits |
+| Shopping | ✅ Live | Wishlist, budget, purchase history |
+| Tasks | ✅ Live | Daily tasks with priorities & due dates |
+| Finance | ✅ Live | Portfolio, SIP, Zerodha, expenses |
+| Entertainment | ✅ Live | Watchlist, OTT tracker, series log |
+| About | ✅ Live | Branch, version, API health, release info |
 
 ---
 
-## 💻 Installation & Setup
+## 🔄 Dynamic Data Architecture
 
-### Prerequisites
-- Node.js 16+ and npm/yarn
+```
+UI Components
+     ↓ useUserStore() hook
+Zustand Store (userStore.js)
+     ↓ persist middleware
+localStorage   ↔   REST API (VITE_API_BASE)
+                        ↓
+               Database (PostgreSQL / Supabase)
+```
 
-### Quick Start
+- **No hardcoded data** — all fields editable via UI
+- **localStorage persistence** — works offline, zero setup
+- **API-ready** — set `VITE_API_BASE` to sync with a backend
+- **Full CRUD** — `updateField()`, `updateSection()`, `addToArray()`, `removeFromArray()`
+
+---
+
+## 🛠️ Tech Stack
+
+| Tool | Version | Role |
+|------|---------|------|
+| React | 19 | UI framework |
+| Vite | 5 | Build tool + dev server |
+| Zustand | 5 | Global state + persistence |
+| Recharts | 2.12 | Charts & analytics |
+| CSS Variables | — | Theming (dark/light + palettes) |
+
+---
+
+## ⚙️ Environment Variables
+
+```env
+# .env (optional)
+VITE_API_BASE=https://your-api.com/api   # Backend REST API base URL
+VITE_BRANCH=restructure                   # Injected automatically by CI
+```
+
+---
+
+## 📦 Getting Started
 
 ```bash
-# Clone the repository
+# Clone
 git clone https://github.com/gokulsenthilkumar3/Ultimate.git
+cd Ultimate/ultimate
 
-# Navigate to project
-cd Ultimate/growthtrack-ultimate
-
-# Install dependencies
+# Install
 npm install
 
-# Start development server
+# Dev server
 npm run dev
 
 # Build for production
 npm run build
-
-# Preview production build
-npm run preview
 ```
 
-The app will be available at `http://localhost:5173`
+---
+
+## 📍 Roadmap
+
+| Version | Target | Description |
+|---------|--------|-------------|
+| v2.1 | Q2 2026 | REST API backend (Node/Express + PostgreSQL/Supabase) |
+| v2.2 | Q3 2026 | AI coach (Claude API) — personalized workout & diet |
+| v2.3 | Q3 2026 | Photoreal 360° Parametric Engine (Three.js / R3F) |
+| v3.0 | Q4 2026 | Mobile app (React Native / Expo) |
 
 ---
 
-## 🎮 Features Breakdown
-
-### 1. 🧍 3D Humanoid Model Viewer
-- **Interactive Canvas**: Drag to rotate the 3D model
-- **Dual Visualization**: Toggle between current and expected physique
-- **Overlay Mode**: Compare current vs goal side-by-side
-- **Customizable Metrics**: Adjust height, weight, chest, waist, shoulders, arms, thighs
-- **Real-time Updates**: Model updates instantly as you change metrics
-- **Metrics Comparison Table**: See exact differences between current and goal
-
-### 2. 📊 16 Comprehensive Dashboards
-
-#### Core Dashboards
-- **Overview**: KPI summary, quick stats, recent activity
-- **Assessment**: Body composition analysis, measurements
-- **Medical**: Health vitals, conditions, recommendations
-
-#### Training & Performance
-- **Training**: Workout logs, exercise library
-- **Strength Metrics**: PR tracking, volume analysis, weekly charts
-- **Physique**: Body metrics, progress photos
-
-#### Nutrition & Wellness
-- **Nutrition**: Macro tracking, meal planning
-- **Hydration Tracker**: Water intake monitoring with quick-add buttons
-- **Sleep**: Sleep quality, duration, patterns
-- **Mind & Wellness**: Mood tracking, stress levels, meditation
-
-#### Progress & Goals
-- **Progress**: Transformation timeline, before/after
-- **Goals**: SMART goal setting, milestone tracking
-- **Analytics**: Advanced charts, radar plots, trend analysis
-
-#### Utilities
-- **Lifestyle**: Daily habits, routines
-- **Settings**: Theme, preferences, data management
-
-### 3. 🎨 Modern UI Design
-- **Glassmorphism Cards**: Frosted glass effect with subtle shadows
-- **Dark Theme**: Easy on the eyes, battery-efficient
-- **Responsive Grid System**: Adapts to any screen size
-- **Smooth Animations**: CSS transitions and GSAP-powered effects
-- **Accessible**: ARIA labels, keyboard navigation
-
-### 4. 💾 Data Management
-- **LocalStorage Persistence**: All data saved locally
-- **No Backend Required**: 100% client-side
-- **Privacy First**: Your data never leaves your device
-- **Import/Export**: (Planned) JSON data backup/restore
-
----
-
-## 🔧 Architecture & Design Patterns
-
-### Component Architecture
-- **Lazy Loading**: All dashboards are code-split for optimal performance
-- **Custom Hooks**: `useLocalStorage` for persistent state
-- **Prop Drilling Prevention**: Minimal prop passing with smart state management
-- **Composition Over Inheritance**: Reusable UI components
-
-### State Management
-- **React useState**: For local component state
-- **LocalStorage Sync**: Custom hook for persistent data
-- **Theme Context**: Global theme state
-
-### Styling Approach
-- **CSS Variables**: Dynamic theming with CSS custom properties
-- **BEM-inspired Classes**: Modular, maintainable CSS
-- **Utility Classes**: Reusable helper classes
-
----
-
-## 📈 Roadmap
-
-### v2.1 (Upcoming)
-- [ ] Enhanced 3D Model with WebGL shaders
-- [ ] Photo-based body scanning (camera integration)
-- [ ] AI-powered meal planning
-- [ ] Workout video library
-- [ ] Social sharing & challenges
-
-### v3.0 (Future)
-- [ ] Backend integration (optional)
-- [ ] Multi-user support
-- [ ] Wearable device sync (Fitbit, Apple Watch)
-- [ ] Advanced AI transformation prediction
-- [ ] Mobile app (React Native)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-This project is open source and available under the MIT License.
-
----
-
-## 👤 Author
-
-**Gokul Senthilkumar**  
-GitHub: [@gokulsenthilkumar3](https://github.com/gokulsenthilkumar3)
-
----
-
-## 🚀 Deployment
-
-To deploy on GitHub Pages, Vercel, or Netlify:
-
-```bash
-npm run build
-```
-
-The `dist/` folder contains your production-ready static files.
-
----
-
-**Built with ❤️ by Gokul | Powered by React + Vite**
+*Built with ❤️ by [gokulsenthilkumar3](https://github.com/gokulsenthilkumar3) — April 2026*
