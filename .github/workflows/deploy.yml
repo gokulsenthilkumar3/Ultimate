@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - restructure
   workflow_dispatch:
 
 permissions:
@@ -27,20 +28,22 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: growthtrack-ultimate/package-lock.json
+          cache-dependency-path: ultimate/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./growthtrack-ultimate
+        working-directory: ./ultimate
         run: npm ci
 
       - name: Build
-        working-directory: ./growthtrack-ultimate
+        working-directory: ./ultimate
         run: npm run build
+        env:
+          VITE_BRANCH: ${{ github.ref_name }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./growthtrack-ultimate/dist
+          path: ./ultimate/dist
 
   deploy:
     environment:
