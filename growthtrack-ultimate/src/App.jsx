@@ -100,7 +100,8 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+        document.documentElement.setAttribute('data-palette', palette);
+    }, [theme, palette]);
 
   return (
     <div className=\"app-shell\" data-theme={theme} data-palette={palette}>
