@@ -599,3 +599,12 @@ input[type=range]::-webkit-slider-runnable-track {
   .nav-label { display: none; }
   .nav-item.active .nav-label { display: block; }
 }
+
+
+/* === UI VISIBILITY FIXES === */
+.nav-item.active { color: #fff !important; background: var(--accent) !important; border-radius: 12px; }
+.nav-item.active .nav-label { color: #fff !important; }
+[data-theme='light'] .nav-item { color: #52525b; }
+[data-theme='light'] .nav-item.active { color: #fff !important; background: var(--accent) !important; }
+[data-theme='light'] .nav-item:hover:not(.active) { color: var(--accent); background: rgba(0,0,0,0.05); border-radius: 10px; }
+[data-theme='light'] .nav-bar { background: rgba(255,255,255,0.97) !important; border-top: 1px solid rgba(0,0,0,0.1); box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
