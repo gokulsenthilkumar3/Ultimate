@@ -1,7 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { USER } from './data/userData';
 import Header from './components/Header';
-import Navigation from './components/Navigation';
 import useLocalStorage from './hooks/useLocalStorage';
 import './index.css';
 
@@ -28,8 +27,9 @@ const Shopping = lazy(() => import('./components/Shopping'));
 const Tasks = lazy(() => import('./components/Tasks'));
 const Finance = lazy(() => import('./components/Finance'));
 const Entertainment = lazy(() => import('./components/Entertainment'));
+const About = lazy(() => import('./components/About'));
 
-// Simplified Nav Items for Floating Pill
+// Floating Pill Navigation Items
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview' },
   { id: 'humanoid', label: '3D Model', badge: 'LIVE' },
@@ -47,16 +47,17 @@ const NAV_ITEMS = [
   { id: 'tasks', label: 'Tasks' },
   { id: 'finance', label: 'Finance' },
   { id: 'entertainment', label: 'Entertainment' },
+  { id: 'about', label: 'About' },
 ];
 
 function TabSpinner() {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '60vh', flexDirection: 'column', gap: '1rem'
+      height: '60vh', flexDirection: 'column', gap: '1rem',
     }}>
-      <div className=\"spin-ring\" />
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', letterSpacing: '0.1em' }}>
+      <div className="spin-ring" />
+      <span style={{ color: 'var(--text-3)', fontSize: '0.78rem', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', fontWeight: 600 }}>
         LOADING MODULE
       </span>
     </div>
@@ -88,8 +89,32 @@ function renderTab(tab, user, setUser, theme, setTheme) {
     case 'tasks': return <Tasks {...props} />;
     case 'finance': return <Finance {...props} />;
     case 'entertainment': return <Entertainment {...props} />;
+    case 'about': return <About {...props} />;
     default: return <Overview {...props} />;
   }
+}
+
+/* ── Floating Pill Navigation ── */
+function FloatingNav({ activeTab, setActiveTab, navItems }) {
+  return (
+    <nav className="nav-container" role="navigation" aria-label="Main navigation">
+      <div className="nav-track">
+        {navItems.map(item => (
+          <button
+            key={item.id}
+            className={`nav-item${activeTab === item.id ? ' active' : ''}`}
+            onClick={() => setActiveTab(item.id)}
+            aria-current={activeTab === item.id ? 'page' : undefined}
+          >
+            <span className="nav-icon-wrap">
+              {item.badge && <span className="nav-badge">{item.badge}</span>}
+            </span>
+            <span className="nav-label">{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
+  );
 }
 
 export default function App() {
@@ -100,32 +125,32 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-        document.documentElement.setAttribute('data-palette', palette);
-    }, [theme, palette]);
+    document.documentElement.setAttribute('data-palette', palette);
+  }, [theme, palette]);
 
   return (
-    <div className=\"app-shell\" data-theme={theme} data-palette={palette}>
-      <div className=\"mesh-bg\" />
-      
-      <div className=\"main-area\">
-        <Header 
-          user={user} 
-          theme={theme} 
-          setTheme={setTheme} 
-          palette={palette} 
-          setPalette={setPalette} 
+    <div className="app-shell" data-theme={theme} data-palette={palette}>
+      <div className="mesh-bg" />
+
+      <div className="main-area">
+        <Header
+          user={user}
+          theme={theme}
+          setTheme={setTheme}
+          palette={palette}
+          setPalette={setPalette}
         />
-        
-        <main className=\"content-area\">
+
+        <main className="content-area">
           <Suspense fallback={<TabSpinner />}>
             {renderTab(activeTab, user, setUser, theme, setTheme)}
           </Suspense>
         </main>
       </div>
 
-      <Navigation 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+      <FloatingNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         navItems={NAV_ITEMS}
       />
     </div>
