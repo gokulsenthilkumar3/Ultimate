@@ -1,196 +1,214 @@
 import React from 'react';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area
-} from 'recharts';
-import { 
-  Zap, Target, Flame, Droplets, Moon, 
-  TrendingUp, Calendar, CheckCircle2, Clock,
-  ChevronRight, AlertCircle, Plus
+import {
+  Zap, Target, Flame, Droplets, Moon,
+  TrendingUp, Heart, Activity, ArrowUpRight, Shield
 } from 'lucide-react';
-import { useUserStore } from '../store/userStore';
-import { useComputedMetrics } from '../hooks/useComputedMetrics';
 
-export default function Overview() {
-  const { metrics, tasks } = useUserStore();
-  const computed = useComputedMetrics();
+export default function Overview({ user }) {
+  const healthScore = 42;
+  const weightGain = user?.goal ? (user.goal.weight - user.weight) : 19;
+  const sleepDebt = user?.sleep?.weeklyDebt || 14;
 
-  const todayTasks = tasks.filter(t => !t.completed);
-  const completedToday = tasks.filter(t => t.completed).length;
+  const vitals = [
+    { label: 'Health Score', value: healthScore, unit: '/100', icon: Zap, color: '#e5a50a', trend: '+3' },
+    { label: 'Weight', value: `${user?.weight || 63}`, unit: 'kg', icon: Activity, color: '#0ea5e9', trend: '+0.5' },
+    { label: 'Sleep Avg', value: user?.sleep?.avgHours || 5.5, unit: 'hr', icon: Moon, color: '#8b5cf6', trend: '-0.3' },
+    { label: 'Body Fat', value: `${user?.bodyFat || 22}`, unit: '%', icon: Flame, color: '#f43f5e', trend: '-1.2' },
+  ];
 
-  const summaryCards = [
-    { label: 'Activity', value: `${metrics.training.weeklyVolume} kg`, sub: 'Weekly Volume', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50' },
-    { label: 'Hydration', value: `${metrics.hydration.current} ml`, sub: `Goal: ${metrics.hydration.goal}ml`, icon: Droplets, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { label: 'Sleep', value: `${metrics.lifestyle.sleepHours}h`, sub: 'Last Night', icon: Moon, color: 'text-purple-500', bg: 'bg-purple-50' },
-    { label: 'Health Score', value: computed.healthScore, sub: 'Out of 100', icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+  const priorities = [
+    { label: 'Gain Weight', desc: `${user?.weight || 63}kg → ${user?.goal?.weight || 82}kg`, progress: Math.round(((user?.weight || 63) / (user?.goal?.weight || 82)) * 100), color: '#0ea5e9' },
+    { label: 'Fix Sleep', desc: `${user?.sleep?.avgHours || 5.5}h → 7.5h target`, progress: Math.round(((user?.sleep?.avgHours || 5.5) / 7.5) * 100), color: '#8b5cf6' },
+    { label: 'Reduce Body Fat', desc: `${user?.bodyFat || 22}% → ${user?.goal?.bodyFat || 10}%`, progress: Math.round((1 - ((user?.bodyFat || 22) - (user?.goal?.bodyFat || 10)) / (user?.bodyFat || 22)) * 100), color: '#f43f5e' },
+    { label: 'Build Muscle', desc: `${user?.muscleMass || 49}kg → ${user?.goal?.muscleMass || 70}kg`, progress: Math.round(((user?.muscleMass || 49) / (user?.goal?.muscleMass || 70)) * 100), color: '#10b981' },
+  ];
+
+  const alerts = [
+    { icon: '⚠️', text: 'Sleep debt is critical — 14 hours behind this week', severity: 'critical' },
+    { icon: '💧', text: 'Hydration below target — averaging 1.5L/day', severity: 'warning' },
+    { icon: '🩺', text: 'Blood work never done — schedule CBC + hormones', severity: 'critical' },
   ];
 
   return (
-    <div className=\"dashboard-container\">
-      <header className=\"dashboard-header flex flex-col md:flex-row md:items-center justify-between gap-4\">
-        <div>
-          <h1 className=\"dashboard-title\">Welcome back, User!</h1>
-          <p className=\"dashboard-subtitle\">Here's what's happening with your growth today.</p>
-        </div>
-        <div className=\"flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100\">
-          <div className=\"flex -space-x-2\">
-            {[1, 2, 3].map(i => (
-              <div key={i} className=\"w-8 h-8 rounded-full border-2 border-white bg-gray-200\" />
-            ))}
-          </div>
-          <span className=\"text-sm font-medium text-gray-600\">12 friends active</span>
-          <button className=\"p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors\">
-            <Plus size={18} />
-          </button>
-        </div>
-      </header>
+    <div className="fade-in" style={{ padding: '0.5rem 0' }}>
+      {/* Welcome Section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <p className="label-caps" style={{ marginBottom: '0.4rem', color: 'var(--accent)' }}>
+          Dashboard Overview
+        </p>
+        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.4rem' }}>
+          Welcome back, {user?.name || 'Athlete'}
+        </h2>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.88rem' }}>
+          Your digital twin status at a glance. Keep pushing.
+        </p>
+      </div>
 
-      {/* Summary Grid */}
-      <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8\">
-        {summaryCards.map((card, idx) => {
-          const Icon = card.icon;
+      {/* Vital Stats Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '1rem',
+        marginBottom: '1.75rem',
+      }}>
+        {vitals.map((v, i) => {
+          const Icon = v.icon;
+          const isPositive = v.trend.startsWith('+');
           return (
-            <div key={idx} className=\"card group hover:shadow-xl transition-all duration-300 border-b-4 border-transparent hover:border-blue-500\">
-              <div className=\"flex items-start justify-between mb-4\">
-                <div className={`p-3 rounded-2xl ${card.bg} ${card.color} group-hover:scale-110 transition-transform`}>
-                  <Icon size={24} />
+            <div key={i} className="glass-card" style={{
+              padding: '1.25rem 1.35rem',
+              display: 'flex', flexDirection: 'column', gap: '0.85rem',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: 'var(--radius-sm)',
+                  background: `${v.color}18`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={20} color={v.color} />
                 </div>
-                <span className=\"text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg\">+12%</span>
+                <span style={{
+                  fontSize: '0.68rem', fontWeight: 700,
+                  color: isPositive ? 'var(--success)' : 'var(--danger)',
+                  background: isPositive ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)',
+                  padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+                  display: 'flex', alignItems: 'center', gap: '2px',
+                }}>
+                  <ArrowUpRight size={12} style={{ transform: isPositive ? 'none' : 'rotate(90deg)' }} />
+                  {v.trend}
+                </span>
               </div>
-              <h3 className=\"text-gray-500 text-sm font-medium mb-1\">{card.label}</h3>
-              <p className=\"text-2xl font-black text-gray-900\">{card.value}</p>
-              <p className=\"text-xs text-gray-400 mt-1\">{card.sub}</p>
+              <div>
+                <p className="label-caps" style={{ marginBottom: '0.2rem' }}>{v.label}</p>
+                <p style={{
+                  fontSize: '1.65rem', fontWeight: 800,
+                  fontFamily: 'var(--font-display)',
+                  color: 'var(--text-1)', lineHeight: 1.1,
+                }}>
+                  {v.value}<span style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontWeight: 500, marginLeft: '4px' }}>{v.unit}</span>
+                </p>
+              </div>
             </div>
           );
         })}
       </div>
 
-      <div className=\"grid grid-cols-1 lg:grid-cols-3 gap-8\">
-        {/* Main Chart Section */}
-        <div className=\"lg:col-span-2 space-y-8\">
-          <div className=\"card\">
-            <div className=\"flex items-center justify-between mb-6\">
-              <div>
-                <h2 className=\"card-title\">Performance Trend</h2>
-                <p className=\"text-sm text-gray-400\">Recovery vs Stress levels</p>
-              </div>
-              <select className=\"bg-gray-50 border-none rounded-lg text-sm font-medium px-3 py-2 outline-none\">
-                <option>Last 7 Days</option>
-                <option>Last 30 Days</option>
-              </select>
-            </div>
-            <div className=\"h-72\">
-              <ResponsiveContainer width=\"100%\" height=\"100%\">
-                <AreaChart data={metrics.hydration.logs.slice(-7)}>
-                  <defs>
-                    <linearGradient id=\"colorHyd\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">
-                      <stop offset=\"5%\" stopColor=\"#3b82f6\" stopOpacity={0.1}/>
-                      <stop offset=\"95%\" stopColor=\"#3b82f6\" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray=\"3 3\" vertical={false} stroke=\"#f3f4f6\" />
-                  <XAxis dataKey=\"date\" hide />
-                  <YAxis hide />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Area type=\"monotone\" dataKey=\"amount\" stroke=\"#3b82f6\" strokeWidth={3} fillOpacity={1} fill=\"url(#colorHyd)\" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+        gap: '1.25rem',
+        marginBottom: '1.75rem',
+      }}>
+        {/* Goals Progress */}
+        <div className="glass-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <Target size={18} color="var(--accent)" />
+            <span className="card-title" style={{ margin: 0 }}>Active Goals</span>
           </div>
-
-          <div className=\"grid grid-cols-1 md:grid-cols-2 gap-6\">
-            <div className=\"card bg-gray-900 text-white border-none overflow-hidden relative\">
-              <div className=\"relative z-10\">
-                <p className=\"text-blue-400 text-xs font-bold uppercase tracking-widest mb-2\">Next Milestone</p>
-                <h3 className=\"text-xl font-bold mb-4\">10k Steps Daily Streak</h3>
-                <div className=\"flex items-center gap-2 mb-6\">
-                  <div className=\"flex-1 h-2 bg-gray-800 rounded-full overflow-hidden\">
-                    <div className=\"w-2/3 h-full bg-blue-500 rounded-full\" />
-                  </div>
-                  <span className=\"text-xs font-bold\">4/7 Days</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {priorities.map((g, i) => (
+              <div key={i}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-1)' }}>{g.label}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{g.progress}%</span>
                 </div>
-                <button className=\"flex items-center text-sm font-bold text-white hover:text-blue-400 transition-colors\">
-                  View Details <ChevronRight size={16} className=\"ml-1\" />
-                </button>
+                <div style={{
+                  height: '6px', borderRadius: '3px',
+                  background: 'var(--bg-elevated)', overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${Math.min(g.progress, 100)}%`,
+                    height: '100%', borderRadius: '3px',
+                    background: `linear-gradient(90deg, ${g.color}, ${g.color}bb)`,
+                    transition: 'width 1s var(--ease)',
+                  }} />
+                </div>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '0.2rem' }}>{g.desc}</p>
               </div>
-              <Zap className=\"absolute -right-4 -bottom-4 text-gray-800 opacity-20\" size={120} />
-            </div>
-            <div className=\"card border-dashed border-2 border-gray-200 bg-transparent flex flex-col items-center justify-center text-center p-6\">
-              <div className=\"w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4\">
-                <Plus size={24} className=\"text-gray-400\" />
-              </div>
-              <h3 className=\"font-bold text-gray-900\">Add New Widget</h3>
-              <p className=\"text-xs text-gray-500 mt-1\">Customise your dashboard with more tracking modules.</p>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Sidebar Section */}
-        <div className=\"space-y-8\">
-          {/* Today's Tasks */}
-          <div className=\"card\">
-            <div className=\"flex items-center justify-between mb-6\">
-              <h2 className=\"card-title\">Today's Plan</h2>
-              <span className=\"text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg\">{completedToday}/{tasks.length}</span>
-            </div>
-            <div className=\"space-y-4\">
-              {todayTasks.slice(0, 4).map(task => (
-                <div key={task.id} className=\"flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group\">
-                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors
-                    ${task.priority === 'high' ? 'border-red-200 bg-red-50' : 'border-gray-200'}
-                  `}>
-                    <div className=\"w-2 h-2 rounded-sm bg-transparent group-hover:bg-blue-400 transition-colors\" />
-                  </div>
-                  <div className=\"flex-1 min-w-0\">
-                    <p className=\"text-sm font-semibold text-gray-800 truncate\">{task.text}</p>
-                    <div className=\"flex items-center gap-2 mt-1\">
-                      <Clock size={12} className=\"text-gray-400\" />
-                      <span className=\"text-[10px] text-gray-400 font-medium\">{task.time || 'All day'}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {todayTasks.length === 0 && (
-                <div className=\"text-center py-8\">
-                  <CheckCircle2 size={40} className=\"text-green-200 mx-auto mb-3\" />
-                  <p className=\"text-sm text-gray-500\">All caught up!</p>
-                </div>
-              )}
-            </div>
-            <button className=\"w-full mt-6 py-3 text-sm font-bold text-gray-500 hover:text-blue-600 border-t border-gray-50 transition-colors\">
-              View All Tasks
-            </button>
+        {/* Alerts & Action Items */}
+        <div className="glass-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <Shield size={18} color="var(--danger)" />
+            <span className="card-title" style={{ margin: 0 }}>Priority Alerts</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {alerts.map((a, i) => (
+              <div key={i} style={{
+                padding: '0.85rem 1rem',
+                borderRadius: 'var(--radius-sm)',
+                background: a.severity === 'critical' ? 'rgba(248,113,113,0.08)' : 'rgba(251,191,36,0.08)',
+                border: `1px solid ${a.severity === 'critical' ? 'rgba(248,113,113,0.2)' : 'rgba(251,191,36,0.2)'}`,
+                display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
+              }}>
+                <span style={{ fontSize: '1.1rem', flexShrink: 0, lineHeight: 1.3 }}>{a.icon}</span>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', lineHeight: 1.5 }}>{a.text}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Activity/Notifications */}
-          <div className=\"card\">
-            <h2 className=\"card-title mb-6\">Recent Activity</h2>
-            <div className=\"space-y-6\">
-              <div className=\"flex gap-4\">
-                <div className=\"w-2 h-2 rounded-full bg-blue-500 mt-2 shrink-0\" />
-                <div>
-                  <p className=\"text-sm text-gray-800 font-medium\">Workout completed: <span className=\"text-blue-600\">Push Day</span></p>
-                  <p className=\"text-xs text-gray-400 mt-1\">2 hours ago</p>
-                </div>
-              </div>
-              <div className=\"flex gap-4\">
-                <div className=\"w-2 h-2 rounded-full bg-orange-500 mt-2 shrink-0\" />
-                <div>
-                  <p className=\"text-sm text-gray-800 font-medium\">New personal record in <span className=\"text-orange-600\">Bench Press</span></p>
-                  <p className=\"text-xs text-gray-400 mt-1\">5 hours ago</p>
-                </div>
-              </div>
-              <div className=\"flex gap-4\">
-                <div className=\"w-2 h-2 rounded-full bg-purple-500 mt-2 shrink-0\" />
-                <div>
-                  <p className=\"text-sm text-gray-800 font-medium\">Goal reached: <span className=\"text-purple-600\">8h Sleep</span></p>
-                  <p className=\"text-xs text-gray-400 mt-1\">Yesterday</p>
-                </div>
-              </div>
+          {/* Quick Stats */}
+          <div style={{
+            marginTop: '1.25rem', padding: '1rem',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--bg-elevated)',
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
+          }}>
+            <div>
+              <p className="label-caps">Deadline</p>
+              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-1)', marginTop: '0.15rem' }}>
+                {user?.goal?.deadline || 'Dec 2026'}
+              </p>
+            </div>
+            <div>
+              <p className="label-caps">Months Left</p>
+              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent)', marginTop: '0.15rem' }}>
+                {user?.goal?.timelineMonths || 20}
+              </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Scores Radar Snapshot */}
+      <div className="glass-card" style={{ marginBottom: '1.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+          <Heart size={18} color="var(--accent)" />
+          <span className="card-title" style={{ margin: 0 }}>Performance Scores</span>
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '1rem',
+        }}>
+          {user?.scores && Object.entries(user.scores).map(([key, val]) => (
+            <div key={key} style={{
+              padding: '0.85rem',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--bg-elevated)',
+              textAlign: 'center',
+            }}>
+              <p className="label-caps" style={{ marginBottom: '0.35rem' }}>{key}</p>
+              <p style={{
+                fontSize: '1.5rem', fontWeight: 800,
+                fontFamily: 'var(--font-display)',
+                color: val >= 60 ? 'var(--success)' : val >= 40 ? 'var(--warning)' : 'var(--danger)',
+              }}>{val}</p>
+              <div style={{
+                height: '4px', borderRadius: '2px',
+                background: 'var(--border)', marginTop: '0.5rem', overflow: 'hidden',
+              }}>
+                <div style={{
+                  width: `${val}%`, height: '100%', borderRadius: '2px',
+                  background: val >= 60 ? 'var(--success)' : val >= 40 ? 'var(--warning)' : 'var(--danger)',
+                  transition: 'width 1.2s var(--ease)',
+                }} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

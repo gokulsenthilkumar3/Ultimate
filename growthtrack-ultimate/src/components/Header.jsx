@@ -2,7 +2,7 @@ import React from 'react';
 import { Zap, Moon, Sun } from 'lucide-react';
 
 const PALETTES = [
-  { id: 'gold',   color: '#f59e0b', name: 'Gold' },
+  { id: 'gold',   color: '#e5a50a', name: 'Gold' },
   { id: 'ocean',  color: '#0ea5e9', name: 'Ocean' },
   { id: 'mint',   color: '#10b981', name: 'Mint' },
   { id: 'violet', color: '#8b5cf6', name: 'Violet' },
@@ -10,63 +10,70 @@ const PALETTES = [
 ];
 
 export default function Header({ user, theme, setTheme, palette, setPalette }) {
-  // Resolve the actual color for the current palette so it works in both light and dark mode
-  const accentColor = PALETTES.find(p => p.id === palette)?.color || '#f59e0b';
-  const accentGlow = accentColor + '40'; // 25% opacity glow
+  const accentColor = PALETTES.find(p => p.id === palette)?.color || '#e5a50a';
+  const accentGlow = accentColor + '30';
 
   return (
     <header className="glass-card" style={{
-      margin: '20px auto',
-      maxWidth: '1200px',
-      padding: '16px 24px',
-      borderRadius: '24px',
+      margin: '16px 0',
+      padding: '14px 24px',
+      borderRadius: 'var(--radius-lg)',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
       position: 'relative',
       zIndex: 1000,
-      border: '1px solid var(--border-strong)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-        {/* Logo icon — always shows accent color directly, bypassing CSS var issues */}
+      {/* Brand */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <div style={{
-          background: accentColor,
+          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`,
           padding: '10px',
-          borderRadius: '16px',
+          borderRadius: 'var(--radius-md)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: `0 0 24px ${accentGlow}`,
-          minWidth: '44px',
-          minHeight: '44px',
+          boxShadow: `0 4px 20px ${accentGlow}`,
+          minWidth: '42px', minHeight: '42px',
           flexShrink: 0,
         }}>
-          <Zap color="#ffffff" size={24} strokeWidth={2.5} />
+          <Zap color="#fff" size={22} strokeWidth={2.5} />
         </div>
         <div>
-          <h1 className="text-display" style={{ fontSize: '1.5rem', lineHeight: 1.1, color: accentColor, fontWeight: 900 }}>Ultimate</h1>
-          <p className="label-caps" style={{ fontSize: '0.65rem', marginTop: '4px', letterSpacing: '0.2em', color: 'var(--text-2)' }}>Digital Twin v2.0</p>
+          <h1 className="text-display" style={{
+            fontSize: '1.35rem', lineHeight: 1.1,
+            color: accentColor,
+            fontWeight: 900,
+          }}>Ultimate</h1>
+          <p className="label-caps" style={{ fontSize: '0.6rem', marginTop: '3px' }}>
+            Digital Twin v2.0
+          </p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        {/* Palette Selection */}
+      {/* Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        {/* Palette Dots */}
         <div style={{
-          display: 'flex', gap: '8px', padding: '6px',
-          background: theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.03)',
-          borderRadius: '999px',
-          border: '1px solid var(--border)'
+          display: 'flex', gap: '7px', padding: '5px 8px',
+          background: 'var(--bg-elevated)',
+          borderRadius: 'var(--radius-pill)',
+          border: '1px solid var(--border)',
         }}>
           {PALETTES.map(p => (
             <button
               key={p.id}
               onClick={() => setPalette(p.id)}
+              aria-label={`${p.name} palette`}
               style={{
-                width: '20px', height: '20px', borderRadius: '50%', background: p.color,
-                              border: 'none',
-              outline: palette === p.id ? `2px solid ${p.color}` : '2px solid transparent',
-              outlineOffset: '3px',boxShadow: palette === p.id ? `0 0 10px ${p.color}` : 'none',
-                cursor: 'pointer', padding: 0, transition: 'var(--transition)',
+                width: '18px', height: '18px', borderRadius: '50%',
+                background: p.color, border: 'none',
+                outline: palette === p.id ? `2px solid ${p.color}` : '2px solid transparent',
+                outlineOffset: '2px',
+                boxShadow: palette === p.id ? `0 0 10px ${p.color}50` : 'none',
+                cursor: 'pointer', padding: 0,
+                transition: 'all 0.3s ease',
+                transform: palette === p.id ? 'scale(1.15)' : 'scale(1)',
               }}
               title={p.name}
             />
@@ -76,34 +83,44 @@ export default function Header({ user, theme, setTheme, palette, setPalette }) {
         {/* Theme Toggle */}
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-label="Toggle theme"
           style={{
-            width: '40px', height: '40px', padding: 0, borderRadius: '50%',
+            width: '38px', height: '38px', padding: 0,
+            borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: theme === 'light' ? '#1a1a1a' : '#ffffff',
-            background: theme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
-            border: `1px solid ${theme === 'light' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
+            color: 'var(--text-2)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
             cursor: 'pointer',
+            transition: 'all 0.3s ease',
           }}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 
-        {/* Profile Section */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingLeft: '1rem', borderLeft: '1px solid var(--border)' }}>
+        {/* Profile */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.65rem',
+          paddingLeft: '1rem',
+          borderLeft: '1px solid var(--border)',
+        }}>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-1)' }}>{user?.name || 'Athlete'}</p>
-            <p style={{ fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: accentColor }}>Ultimate Plan</p>
+            <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.2 }}>
+              {user?.name || 'Athlete'}
+            </p>
+            <p className="label-caps" style={{ fontSize: '0.5rem', color: accentColor }}>
+              Ultimate Plan
+            </p>
           </div>
-          {/* Profile avatar — always shows accent color directly */}
           <div style={{
-            width: '40px', height: '40px', borderRadius: '12px',
-            background: accentColor,
-            color: '#ffffff',
+            width: '38px', height: '38px',
+            borderRadius: 'var(--radius-sm)',
+            background: `linear-gradient(135deg, ${accentColor}, ${accentColor}bb)`,
+            color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 900, fontSize: '1rem',
-            boxShadow: `0 4px 12px ${accentGlow}`,
-            minWidth: '40px',
+            fontWeight: 900, fontSize: '0.95rem',
+            boxShadow: `0 3px 12px ${accentGlow}`,
             flexShrink: 0,
           }}>
             {user?.name?.[0] || 'G'}

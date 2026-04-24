@@ -1,174 +1,117 @@
 import React from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  Cell, PieChart, Pie 
-} from 'recharts';
-import { Droplets, Plus, Minus, Target, Calendar, Award } from 'lucide-react';
-import { useUserStore } from '../store/userStore';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Droplets, Plus, Minus, Award } from 'lucide-react';
 
-export default function HydrationTracker() {
-  const { metrics, updateMetrics } = useUserStore();
-  const { hydration } = metrics;
+export default function HydrationTracker({ user, setUser }) {
+  const hydration = user?.hydration || { current: 0, goal: 3000, logs: [] };
   const { current, goal, logs } = hydration;
+  const pct = Math.min(Math.round((current / goal) * 100), 100);
 
-  const percentage = Math.min((current / goal) * 100, 100);
-  
   const addWater = (amount) => {
-    updateMetrics('hydration', { 
-      ...hydration, 
-      current: Math.max(0, current + amount) 
-    });
+    const newCurrent = Math.max(0, current + amount);
+    setUser({ ...user, hydration: { ...hydration, current: newCurrent } });
   };
-
-  const weeklyData = logs.slice(-7).map(log => ({
-    name: new Date(log.date).toLocaleDateString('en-US', { weekday: 'short' }),
-    amount: log.amount,
-    goal: log.goal
-  }));
 
   const pieData = [
     { name: 'Completed', value: current },
-    { name: 'Remaining', value: Math.max(0, goal - current) }
+    { name: 'Remaining', value: Math.max(0, goal - current) },
   ];
-
-  const COLORS = ['#3b82f6', '#e2e8f0'];
+  const COLORS = ['var(--accent)', 'var(--bg-elevated)'];
 
   return (
-    <div className=\"dashboard-container\">
-      <header className=\"dashboard-header\">
-        <h1 className=\"dashboard-title\">
-          <Droplets className=\"inline-block mr-2 text-blue-500\" />
+    <div className="fade-in" style={{ padding: '0.5rem 0' }}>
+      <div style={{ marginBottom: '1.75rem' }}>
+        <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Hydration</p>
+        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
+          <Droplets size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
           Hydration Tracker
-        </h1>
-        <p className=\"dashboard-subtitle\">Monitor your daily water intake and stay healthy</p>
-      </header>
-
-      <div className=\"grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6\">
-        {/* Visual Water Bottle Card */}
-        <div className=\"card lg:col-span-1 flex flex-col items-center justify-center p-8\">
-          <div className=\"relative w-32 h-64 border-4 border-blue-200 rounded-b-3xl rounded-t-lg overflow-hidden bg-white shadow-inner mb-6\">
-            <div 
-              className=\"absolute bottom-0 left-0 w-full bg-blue-500 transition-all duration-1000 ease-in-out\"
-              style={{ height: `${percentage}%` }}
-            >
-              <div className=\"water-wave\"></div>
-            </div>
-            <div className=\"absolute inset-0 flex items-center justify-center font-bold text-2xl z-10 mix-blend-difference text-white\">
-              {Math.round(percentage)}%
-            </div>
-          </div>
-          
-          <div className=\"text-center\">
-            <p className=\"text-3xl font-bold text-gray-800\">{current} <span className=\"text-sm font-normal text-gray-500\">ml</span></p>
-            <p className=\"text-sm text-gray-500\">Goal: {goal} ml</p>
-          </div>
-        </div>
-
-        {/* Quick Add and Stats */}
-        <div className=\"lg:col-span-2 space-y-6\">
-          <div className=\"card\">
-            <h3 className=\"card-title flex items-center mb-4\">
-              <Plus className=\"mr-2\" size={18} /> Quick Add
-            </h3>
-            <div className=\"grid grid-cols-2 md:grid-cols-4 gap-4\">
-              {[250, 500, 750, 1000].map(amount => (
-                <button 
-                  key={amount}
-                  onClick={() => addWater(amount)}
-                  className=\"p-4 rounded-xl border-2 border-blue-100 hover:border-blue-500 hover:bg-blue-50 transition-all group\"
-                >
-                  <p className=\"text-lg font-bold group-hover:text-blue-600\">+{amount}</p>
-                  <p className=\"text-xs text-gray-500\">ml</p>
-                </button>
-              ))}
-            </div>
-            <div className=\"mt-6 flex items-center justify-between p-4 bg-gray-50 rounded-xl\">
-              <button 
-                onClick={() => addWater(-100)}
-                className=\"p-2 hover:bg-gray-200 rounded-full transition-colors\"
-              >
-                <Minus size={20} />
-              </button>
-              <span className=\"font-medium text-gray-600\">Adjust manually (-100ml)</span>
-              <button 
-                onClick={() => addWater(100)}
-                className=\"p-2 hover:bg-gray-200 rounded-full transition-colors\"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
-          </div>
-
-          <div className=\"grid grid-cols-1 md:grid-cols-2 gap-6\">
-            <div className=\"card\">
-              <h3 className=\"card-title text-sm flex items-center mb-4\">
-                <Target className=\"mr-2 text-orange-500\" size={16} /> Progress Summary
-              </h3>
-              <div className=\"h-40\">
-                <ResponsiveContainer width=\"100%\" height=\"100%\">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      innerRadius={45}
-                      outerRadius={60}
-                      paddingAngle={5}
-                      dataKey=\"value\"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            <div className=\"card flex flex-col justify-center items-center text-center\">
-              <Award className=\"text-yellow-500 mb-2\" size={40} />
-              <p className=\"text-sm text-gray-500 uppercase tracking-wider\">Hydration Streak</p>
-              <p className=\"text-4xl font-black text-gray-800\">5 Days</p>
-              <p className=\"text-xs text-green-500 font-bold mt-2\">Personal Record: 12 days</p>
-            </div>
-          </div>
-        </div>
+        </h2>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Monitor your daily water intake and stay healthy</p>
       </div>
 
-      <div className=\"card mb-6\">
-        <h3 className=\"card-title flex items-center mb-6\">
-          <Calendar className=\"mr-2 text-blue-500\" size={18} /> Weekly Consumption
-        </h3>
-        <div className=\"h-64\">
-          <ResponsiveContainer width=\"100%\" height=\"100%\">
-            <BarChart data={weeklyData}>
-              <CartesianGrid strokeDasharray=\"3 3\" vertical={false} stroke=\"#f3f4f6\" />
-              <XAxis dataKey=\"name\" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-              <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                cursor={{ fill: '#f3f4f6' }}
-              />
-              <Bar dataKey=\"amount\" fill=\"#3b82f6\" radius={[4, 4, 0, 0]} barSize={40} />
-            </BarChart>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+        {/* Water Bottle Visual */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div style={{
+            position: 'relative', width: '100px', height: '200px',
+            border: '3px solid var(--accent)', borderRadius: '0 0 24px 24px',
+            borderTopLeftRadius: '8px', borderTopRightRadius: '8px',
+            overflow: 'hidden', background: 'var(--bg-elevated)',
+            marginBottom: '1.5rem',
+          }}>
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, width: '100%',
+              height: `${pct}%`, background: 'var(--accent)', opacity: 0.3,
+              transition: 'height 0.8s var(--ease)',
+            }} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 900, fontSize: '1.5rem', color: 'var(--text-1)',
+              fontFamily: 'var(--font-display)',
+            }}>
+              {pct}%
+            </div>
+          </div>
+          <p style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-1)', fontFamily: 'var(--font-display)' }}>
+            {current}<span style={{ fontSize: '0.85rem', color: 'var(--text-3)', fontWeight: 500 }}> ml</span>
+          </p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>Goal: {goal} ml</p>
+        </div>
+
+        {/* Quick Add */}
+        <div className="glass-card">
+          <span className="card-title">Quick Add</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.85rem' }}>
+            {[250, 500, 750, 1000].map(amount => (
+              <button key={amount} onClick={() => addWater(amount)} className="btn-ghost" style={{
+                padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem',
+                border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-1)' }}>+{amount}</span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>ml</span>
+              </button>
+            ))}
+          </div>
+          <div style={{
+            marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0.75rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)',
+          }}>
+            <button onClick={() => addWater(-100)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)', padding: '4px', display: 'flex' }}>
+              <Minus size={20} />
+            </button>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>Adjust (-100ml)</span>
+            <button onClick={() => addWater(100)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)', padding: '4px', display: 'flex' }}>
+              <Plus size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Progress Donut */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <span className="card-title" style={{ alignSelf: 'flex-start' }}>Progress Summary</span>
+          <ResponsiveContainer width="100%" height={180}>
+            <PieChart>
+              <Pie data={pieData} innerRadius={55} outerRadius={72} paddingAngle={4} dataKey="value">
+                {pieData.map((_, i) => (
+                  <Cell key={`cell-${i}`} fill={i === 0 ? '#0ea5e9' : 'var(--bg-elevated)'} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }} />
+            </PieChart>
           </ResponsiveContainer>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <Award size={28} color="var(--warning)" />
+            <div>
+              <p className="label-caps">Hydration Streak</p>
+              <p style={{ fontSize: '1.3rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-1)' }}>
+                {user?.hydrationStreak || 0} Days
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .water-wave {
-          position: absolute;
-          top: -20px;
-          left: 0;
-          width: 200%;
-          height: 100%;
-          background: rgba(59, 130, 246, 0.5);
-          border-radius: 40%;
-          animation: wave 10s infinite linear;
-        }
-        @keyframes wave {
-          from { transform: translateX(0) rotate(0deg); }
-          to { transform: translateX(-50%) rotate(360deg); }
-        }
-      `}} />
     </div>
   );
 }
