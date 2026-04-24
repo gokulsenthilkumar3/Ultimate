@@ -1,33 +1,13 @@
 /**
- * userStore.js — Ultimate Dynamic Data Store v2.1
- * Replaces hardcoded userData.js
- *
- * Architecture:
- *   UI Components
- *        ↓ useUserStore() hook
- *   Zustand Store  (in-memory, reactive)
- *        ↓ persist middleware
- *   localStorage   ↔   REST API (VITE_API_BASE)
- *
- * API behaviour:
- *   - If VITE_API_BASE is set → fetchUser() loads from server on mount;
- *     updateField/updateSection fire a background PUT (non-blocking).
- *   - If VITE_API_BASE is NOT set → data lives in localStorage only.
- *     The app works fully offline — zero setup required.
- *
- * CRUD helpers:
- *   updateField(key, value)               — top-level scalar field
- *   updateSection(section, updates)       — nested object merge
- *   addToArray(section, arrayKey, item)   — push to nested array
- *   addToTopArray(key, item)              — push to top-level array
- *   removeFromArray(section, key, id)     — filter by .id
+ * userStore.js — Ultimate Dynamic Data Store v2.2
+ * Improvements2504.2 — training.PRs/streak, lifestyle.habits/mood,
+ *                       hydration.log, tasks priority/recurring
  */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 const API_BASE = import.meta.env.VITE_API_BASE || null;
 
-/** Fire-and-forget REST sync — never blocks the UI */
 async function apiSync(endpoint, data) {
   if (!API_BASE) return;
   try {
@@ -41,113 +21,61 @@ async function apiSync(endpoint, data) {
   }
 }
 
-/** Default empty user schema — no hardcoded personal data */
 const DEFAULT_USER = {
-  // Identity
-  name: '',
-  age: null,
-  born: '',
-  height: null,
-  heightFt: '',
-  weight: null,
-  bodyFat: null,
-  muscleMass: null,
-  skinTone: '#C68642',
+  name: '', age: null, born: '', height: null, heightFt: '',
+  weight: null, bodyFat: null, muscleMass: null, skinTone: '#C68642',
+  legHeight: null, shoulderHeight: null,
 
-  // Measurements
-  legHeight: null,
-  shoulderHeight: null,
+  sleep: { avgHours: null, weeklyDebt: null, bedtime: '', wakeTime: '' },
 
-  // Sleep
-  sleep: {
-    avgHours: null,
-    weeklyDebt: null,
-    bedtime: '',
-    wakeTime: '',
-  },
+  goal: { weight: null, bodyFat: null, muscleMass: null, bench: null, deadline: '', timelineMonths: null },
 
-  // Goals
-  goal: {
-    weight: null,
-    bodyFat: null,
-    muscleMass: null,
-    bench: null,
-    deadline: '',
-    timelineMonths: null,
-  },
+  scores: { strength: 0, endurance: 0, recovery: 0, nutrition: 0, sleep: 0, mobility: 0 },
 
-  // Performance scores (0–100)
-  scores: {
-    strength: 0,
-    endurance: 0,
-    recovery: 0,
-    nutrition: 0,
-    sleep: 0,
-    mobility: 0,
-  },
-
-  // Daily habits
   habits: [],
 
-  // Training
   training: {
     schedule: [],
     currentProgram: '',
     weeklyVolume: null,
+    PRs: {},
+    prHistory: [],
+    streak: 0,
+    longestStreak: 0,
   },
 
-  // Nutrition
-  nutrition: {
-    dailyCalories: null,
-    protein: null,
-    carbs: null,
-    fats: null,
-    mealPlan: [],
-  },
+  nutrition: { dailyCalories: null, protein: null, carbs: null, fats: null, mealPlan: [] },
 
-  // Finance
-  finance: {
-    monthlySavings: null,
-    investments: [],
-    expenses: [],
-    sipTargets: [],
-  },
+  finance: { monthlySavings: null, investments: [], expenses: [], sipTargets: [] },
 
-  // Entertainment
-  entertainment: {
-    watchlist: [],
-    currentlyWatching: [],
-    completed: [],
-  },
+  entertainment: { watchlist: [], currentlyWatching: [], completed: [] },
 
-  // Shopping
-  shopping: {
-    wishlist: [],
-    purchased: [],
-    budget: null,
-  },
+  shopping: { wishlist: [], purchased: [], budget: null },
 
-  // Tasks
   tasks: {
     pending: [],
     completed: [],
     recurring: [],
   },
 
-  // Medical
-  medical: {
-    conditions: [],
-    medications: [],
-    allergies: [],
-    lastCheckup: '',
+  lifestyle: {
+    habits: [],
+    mood: [],
+    screenTime: null,
+    outdoorMinutes: null,
   },
 
-  // Progress log
+  hydration: {
+    dailyGoalMl: 3000,
+    log: [],
+  },
+
+  medical: { conditions: [], medications: [], allergies: [], lastCheckup: '' },
+
   progressLog: [],
 
-  // App meta
   _lastUpdated: null,
-  _version: '2.1.0',
+  _version: '2.2.0',
 };
 
 export const useUserStore = create(
@@ -157,11 +85,6 @@ export const useUserStore = create(
       isLoading: false,
       error: null,
 
-      /**
-       * Update a single top-level scalar field.
-       * @param {string} key
-       * @param {*} value
-       */
       updateField: (key, value) => {
         set((state) => ({
           user: { ...state.user, [key]: value, _lastUpdated: new Date().toISOString() },
@@ -169,11 +92,6 @@ export const useUserStore = create(
         apiSync('/user', { [key]: value });
       },
 
-      /**
-       * Merge updates into a nested section object.
-       * @param {string} section  e.g. 'sleep', 'finance'
-       * @param {object} updates
-       */
       updateSection: (section, updates) => {
         set((state) => ({
           user: {
@@ -185,34 +103,20 @@ export const useUserStore = create(
         apiSync(`/user/${section}`, updates);
       },
 
-      /**
-       * Push an item into a nested array (auto-assigns id).
-       * @param {string} section   e.g. 'finance'
-       * @param {string} arrayKey  e.g. 'expenses'
-       * @param {object} item
-       */
       addToArray: (section, arrayKey, item) => {
         set((state) => {
-          const sectionData = state.user[section] || {};
-          const arr = sectionData[arrayKey] || [];
+          const sec = state.user[section] || {};
+          const arr = sec[arrayKey] || [];
           return {
             user: {
               ...state.user,
-              [section]: {
-                ...sectionData,
-                [arrayKey]: [...arr, { ...item, id: Date.now() }],
-              },
+              [section]: { ...sec, [arrayKey]: [...arr, { ...item, id: Date.now() }] },
               _lastUpdated: new Date().toISOString(),
             },
           };
         });
       },
 
-      /**
-       * Push an item into a top-level array (e.g. habits, progressLog).
-       * @param {string} key
-       * @param {string|object} item
-       */
       addToTopArray: (key, item) => {
         set((state) => ({
           user: {
@@ -226,37 +130,21 @@ export const useUserStore = create(
         }));
       },
 
-      /**
-       * Remove an item from a nested array by its .id.
-       * @param {string} section
-       * @param {string} arrayKey
-       * @param {number} id  — the item's .id property
-       */
       removeFromArray: (section, arrayKey, id) => {
         set((state) => {
-          const sectionData = state.user[section] || {};
-          const arr = sectionData[arrayKey] || [];
+          const sec = state.user[section] || {};
           return {
             user: {
               ...state.user,
-              [section]: {
-                ...sectionData,
-                [arrayKey]: arr.filter((item) => item.id !== id),
-              },
+              [section]: { ...sec, [arrayKey]: (sec[arrayKey] || []).filter((i) => i.id !== id) },
               _lastUpdated: new Date().toISOString(),
             },
           };
         });
       },
 
-      /** Reset all user data to defaults */
       resetUser: () => set({ user: { ...DEFAULT_USER } }),
 
-      /**
-       * Load user from REST API on mount.
-       * Only runs when VITE_API_BASE is configured.
-       * Falls back silently to localStorage if API unavailable.
-       */
       fetchUser: async () => {
         if (!API_BASE) return;
         set({ isLoading: true, error: null });
@@ -271,10 +159,6 @@ export const useUserStore = create(
         }
       },
 
-      /**
-       * Computed: Body Mass Index
-       * @returns {string|null} BMI to 1 decimal, or null if data missing
-       */
       getBMI: () => {
         const { weight, height } = get().user;
         if (!weight || !height) return null;
@@ -282,10 +166,6 @@ export const useUserStore = create(
         return (weight / (h * h)).toFixed(1);
       },
 
-      /**
-       * Computed: overall health score (average of all score dimensions, 0–100)
-       * @returns {number}
-       */
       getHealthScore: () => {
         const { scores } = get().user;
         const vals = Object.values(scores).filter((v) => typeof v === 'number');
@@ -293,14 +173,9 @@ export const useUserStore = create(
         return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
       },
 
-      /**
-       * Computed: TDEE estimate (Mifflin-St Jeor, moderate activity)
-       * @returns {number|null}
-       */
       getTDEE: () => {
         const { weight, height, age } = get().user;
         if (!weight || !height || !age) return null;
-        // BMR (male default) × activity factor 1.55
         const bmr = 10 * weight + 6.25 * height - 5 * age + 5;
         return Math.round(bmr * 1.55);
       },
