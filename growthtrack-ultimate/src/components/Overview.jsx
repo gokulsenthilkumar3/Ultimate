@@ -1,118 +1,197 @@
 import React from 'react';
-import { USER, BODY_PARTS, HEALTH_SCORE, STATUS } from '../data/userData';
 import { 
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, 
-  ResponsiveContainer 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area
 } from 'recharts';
-import { Activity, Target, Shield, Heart } from 'lucide-react';
-
-const avgScore = (sys) => {
-  const parts = Object.values(BODY_PARTS).filter(p => p.sys === sys);
-  if (!parts.length) return 0;
-  const scores = parts.map(p => ({ critical: 20, poor: 40, fair: 65, good: 90 }[p.status] || 50));
-  return Math.round(scores.reduce((a, b) => a + b, 0) / parts.length);
-};
+import { 
+  Zap, Target, Flame, Droplets, Moon, 
+  TrendingUp, Calendar, CheckCircle2, Clock,
+  ChevronRight, AlertCircle, Plus
+} from 'lucide-react';
+import { useUserStore } from '../store/userStore';
+import { useComputedMetrics } from '../hooks/useComputedMetrics';
 
 export default function Overview() {
-  const radarData = [
-    { subject: 'Muscles', score: avgScore('muscles') },
-    { subject: 'Organs', score: avgScore('organs') },
-    { subject: 'Joints', score: avgScore('joints') },
-    { subject: 'Visual', score: avgScore('appearance') },
-    { subject: 'Sexual', score: avgScore('sexual') },
+  const { metrics, tasks } = useUserStore();
+  const computed = useComputedMetrics();
+
+  const todayTasks = tasks.filter(t => !t.completed);
+  const completedToday = tasks.filter(t => t.completed).length;
+
+  const summaryCards = [
+    { label: 'Activity', value: `${metrics.training.weeklyVolume} kg`, sub: 'Weekly Volume', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50' },
+    { label: 'Hydration', value: `${metrics.hydration.current} ml`, sub: `Goal: ${metrics.hydration.goal}ml`, icon: Droplets, color: 'text-blue-500', bg: 'bg-blue-50' },
+    { label: 'Sleep', value: `${metrics.lifestyle.sleepHours}h`, sub: 'Last Night', icon: Moon, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { label: 'Health Score', value: computed.healthScore, sub: 'Out of 100', icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-50' },
   ];
 
   return (
-    <div className="fade-in">
-      <div className="section-head">
-        <h2 className="text-display" style={{ fontSize: '2rem' }}>Health Overview</h2>
-        <p className="text-secondary">Comprehensive digital twin status based on 11 assessment rounds.</p>
-      </div>
-
-      <div className="dashboard-grid">
-        <div className="glass-card stagger-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <p className="label-caps" style={{ marginBottom: '1.5rem' }}>Overall Health Score</p>
-          <div style={{ position: 'relative', width: '120px', height: '120px' }}>
-            <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
-              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border)" strokeWidth="8" />
-              <circle 
-                cx="50" cy="50" r="45" fill="none" 
-                stroke="var(--accent)" 
-                strokeWidth="8" 
-                strokeDasharray={`${HEALTH_SCORE * 2.83} 283`}
-                strokeLinecap="round"
-                style={{ transition: 'stroke-dasharray 1.5s ease-out', filter: 'drop-shadow(0 0 8px var(--accent))' }}
-              />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="text-display gradient-text" style={{ fontSize: '3rem' }}>{HEALTH_SCORE}</span>
-              <span className="label-caps" style={{ fontSize: '0.6rem' }}>/ 100</span>
-            </div>
-          </div>
-          <p style={{ marginTop: '1.5rem', color: 'var(--accent)', fontWeight: 600 }}>Needs Optimization</p>
+    <div className=\"dashboard-container\">
+      <header className=\"dashboard-header flex flex-col md:flex-row md:items-center justify-between gap-4\">
+        <div>
+          <h1 className=\"dashboard-title\">Welcome back, User!</h1>
+          <p className=\"dashboard-subtitle\">Here's what's happening with your growth today.</p>
         </div>
-
-        <div className="glass-card stagger-item">
-          <p className="label-caps" style={{ marginBottom: '1rem' }}>System Bio-Metrics</p>
-          <div style={{ width: '100%', height: '240px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                <PolarGrid stroke="var(--border)" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-2)', fontSize: 10, fontWeight: 600 }} />
-                <Radar
-                   name="Score"
-                   dataKey="score"
-                   stroke="var(--accent)"
-                   fill="var(--accent)"
-                   fillOpacity={0.4}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
+        <div className=\"flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100\">
+          <div className=\"flex -space-x-2\">
+            {[1, 2, 3].map(i => (
+              <div key={i} className=\"w-8 h-8 rounded-full border-2 border-white bg-gray-200\" />
+            ))}
           </div>
+          <span className=\"text-sm font-medium text-gray-600\">12 friends active</span>
+          <button className=\"p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors\">
+            <Plus size={18} />
+          </button>
         </div>
+      </header>
 
-        <div className="glass-card stagger-item" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <p className="label-caps">Priority Alerts</p>
-          {[
-            { label: 'Sleep Deprivation', value: 'CRITICAL', color: 'var(--accent-rose)', icon: <Activity size={16} /> },
-            { label: 'Hormonal Baseline', value: 'LOW-T SIGNS', color: 'var(--accent-rose)', icon: <Target size={16} /> },
-            { label: 'Metabolism', value: 'SLOW', color: 'var(--accent-primary)', icon: <Shield size={16} /> },
-            { label: 'Cardio Status', value: 'POOR', color: 'var(--accent-rose)', icon: <Heart size={16} /> },
-          ].map((item, idx) => (
-            <div key={idx} className="pulse-glow" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ color: item.color }}>{item.icon}</div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{item.label}</span>
+      {/* Summary Grid */}
+      <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8\">
+        {summaryCards.map((card, idx) => {
+          const Icon = card.icon;
+          return (
+            <div key={idx} className=\"card group hover:shadow-xl transition-all duration-300 border-b-4 border-transparent hover:border-blue-500\">
+              <div className=\"flex items-start justify-between mb-4\">
+                <div className={`p-3 rounded-2xl ${card.bg} ${card.color} group-hover:scale-110 transition-transform`}>
+                  <Icon size={24} />
+                </div>
+                <span className=\"text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg\">+12%</span>
               </div>
-              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: item.color }}>{item.value}</span>
+              <h3 className=\"text-gray-500 text-sm font-medium mb-1\">{card.label}</h3>
+              <p className=\"text-2xl font-black text-gray-900\">{card.value}</p>
+              <p className=\"text-xs text-gray-400 mt-1\">{card.sub}</p>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      <div className="dashboard-grid">
-         <div className="glass-card" style={{ gridColumn: 'span 2' }}>
-            <p className="label-caps" style={{ marginBottom: '1rem' }}>Transformation Road-Map</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '1rem', alignItems: 'center' }}>
-               <div style={{ padding: '1rem', background: 'rgba(244, 63, 94, 0.05)', borderRadius: '16px', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
-                  <h4 style={{ color: 'var(--accent-rose)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>CURRENT: SKINNY-FAT</h4>
-                  <ul style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', listStyle: 'none' }}>
-                    <li>• Low energy & brain fog</li>
-                    <li>• Minimal muscle mass (63kg)</li>
-                    <li>• Posture: Tech-neck forward tilt</li>
-                  </ul>
-               </div>
-               <div className="gradient-text text-display" style={{ fontSize: '1.5rem' }}>→</div>
-               <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                  <h4 style={{ color: 'var(--accent-green)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>GOAL: GREEK GOD BUILD</h4>
-                  <ul style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', listStyle: 'none' }}>
-                    <li>• High performance energy</li>
-                    <li>• Athletic bulk (73kg)</li>
-                    <li>• Posture: Upright spinal stack</li>
-                  </ul>
-               </div>
+      <div className=\"grid grid-cols-1 lg:grid-cols-3 gap-8\">
+        {/* Main Chart Section */}
+        <div className=\"lg:col-span-2 space-y-8\">
+          <div className=\"card\">
+            <div className=\"flex items-center justify-between mb-6\">
+              <div>
+                <h2 className=\"card-title\">Performance Trend</h2>
+                <p className=\"text-sm text-gray-400\">Recovery vs Stress levels</p>
+              </div>
+              <select className=\"bg-gray-50 border-none rounded-lg text-sm font-medium px-3 py-2 outline-none\">
+                <option>Last 7 Days</option>
+                <option>Last 30 Days</option>
+              </select>
             </div>
-         </div>
+            <div className=\"h-72\">
+              <ResponsiveContainer width=\"100%\" height=\"100%\">
+                <AreaChart data={metrics.hydration.logs.slice(-7)}>
+                  <defs>
+                    <linearGradient id=\"colorHyd\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">
+                      <stop offset=\"5%\" stopColor=\"#3b82f6\" stopOpacity={0.1}/>
+                      <stop offset=\"95%\" stopColor=\"#3b82f6\" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray=\"3 3\" vertical={false} stroke=\"#f3f4f6\" />
+                  <XAxis dataKey=\"date\" hide />
+                  <YAxis hide />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Area type=\"monotone\" dataKey=\"amount\" stroke=\"#3b82f6\" strokeWidth={3} fillOpacity={1} fill=\"url(#colorHyd)\" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className=\"grid grid-cols-1 md:grid-cols-2 gap-6\">
+            <div className=\"card bg-gray-900 text-white border-none overflow-hidden relative\">
+              <div className=\"relative z-10\">
+                <p className=\"text-blue-400 text-xs font-bold uppercase tracking-widest mb-2\">Next Milestone</p>
+                <h3 className=\"text-xl font-bold mb-4\">10k Steps Daily Streak</h3>
+                <div className=\"flex items-center gap-2 mb-6\">
+                  <div className=\"flex-1 h-2 bg-gray-800 rounded-full overflow-hidden\">
+                    <div className=\"w-2/3 h-full bg-blue-500 rounded-full\" />
+                  </div>
+                  <span className=\"text-xs font-bold\">4/7 Days</span>
+                </div>
+                <button className=\"flex items-center text-sm font-bold text-white hover:text-blue-400 transition-colors\">
+                  View Details <ChevronRight size={16} className=\"ml-1\" />
+                </button>
+              </div>
+              <Zap className=\"absolute -right-4 -bottom-4 text-gray-800 opacity-20\" size={120} />
+            </div>
+            <div className=\"card border-dashed border-2 border-gray-200 bg-transparent flex flex-col items-center justify-center text-center p-6\">
+              <div className=\"w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4\">
+                <Plus size={24} className=\"text-gray-400\" />
+              </div>
+              <h3 className=\"font-bold text-gray-900\">Add New Widget</h3>
+              <p className=\"text-xs text-gray-500 mt-1\">Customise your dashboard with more tracking modules.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar Section */}
+        <div className=\"space-y-8\">
+          {/* Today's Tasks */}
+          <div className=\"card\">
+            <div className=\"flex items-center justify-between mb-6\">
+              <h2 className=\"card-title\">Today's Plan</h2>
+              <span className=\"text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg\">{completedToday}/{tasks.length}</span>
+            </div>
+            <div className=\"space-y-4\">
+              {todayTasks.slice(0, 4).map(task => (
+                <div key={task.id} className=\"flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group\">
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors
+                    ${task.priority === 'high' ? 'border-red-200 bg-red-50' : 'border-gray-200'}
+                  `}>
+                    <div className=\"w-2 h-2 rounded-sm bg-transparent group-hover:bg-blue-400 transition-colors\" />
+                  </div>
+                  <div className=\"flex-1 min-w-0\">
+                    <p className=\"text-sm font-semibold text-gray-800 truncate\">{task.text}</p>
+                    <div className=\"flex items-center gap-2 mt-1\">
+                      <Clock size={12} className=\"text-gray-400\" />
+                      <span className=\"text-[10px] text-gray-400 font-medium\">{task.time || 'All day'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {todayTasks.length === 0 && (
+                <div className=\"text-center py-8\">
+                  <CheckCircle2 size={40} className=\"text-green-200 mx-auto mb-3\" />
+                  <p className=\"text-sm text-gray-500\">All caught up!</p>
+                </div>
+              )}
+            </div>
+            <button className=\"w-full mt-6 py-3 text-sm font-bold text-gray-500 hover:text-blue-600 border-t border-gray-50 transition-colors\">
+              View All Tasks
+            </button>
+          </div>
+
+          {/* Activity/Notifications */}
+          <div className=\"card\">
+            <h2 className=\"card-title mb-6\">Recent Activity</h2>
+            <div className=\"space-y-6\">
+              <div className=\"flex gap-4\">
+                <div className=\"w-2 h-2 rounded-full bg-blue-500 mt-2 shrink-0\" />
+                <div>
+                  <p className=\"text-sm text-gray-800 font-medium\">Workout completed: <span className=\"text-blue-600\">Push Day</span></p>
+                  <p className=\"text-xs text-gray-400 mt-1\">2 hours ago</p>
+                </div>
+              </div>
+              <div className=\"flex gap-4\">
+                <div className=\"w-2 h-2 rounded-full bg-orange-500 mt-2 shrink-0\" />
+                <div>
+                  <p className=\"text-sm text-gray-800 font-medium\">New personal record in <span className=\"text-orange-600\">Bench Press</span></p>
+                  <p className=\"text-xs text-gray-400 mt-1\">5 hours ago</p>
+                </div>
+              </div>
+              <div className=\"flex gap-4\">
+                <div className=\"w-2 h-2 rounded-full bg-purple-500 mt-2 shrink-0\" />
+                <div>
+                  <p className=\"text-sm text-gray-800 font-medium\">Goal reached: <span className=\"text-purple-600\">8h Sleep</span></p>
+                  <p className=\"text-xs text-gray-400 mt-1\">Yesterday</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
