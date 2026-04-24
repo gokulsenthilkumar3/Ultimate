@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Film, Tv, Play, Star, Plus, Trash2, Search } from 'lucide-react';
+import { Film, Tv, Star, Plus, Trash2, Search } from 'lucide-react';
 
 const Entertainment = () => {
   const [media, setMedia] = useState([
     { id: 1, title: 'Tokyo Revengers', type: 'Anime', season: 3, episode: 12, rating: 4.5, status: 'Watching' },
     { id: 2, title: 'Vinland Saga', type: 'Anime', season: 2, episode: 24, rating: 5.0, status: 'Completed' },
     { id: 3, title: 'The Boys', type: 'Series', season: 4, episode: 1, rating: 4.8, status: 'Watching' },
-    { id: 4, title: 'Interstellar', type: 'Movie', season: 1, episode: 1, rating: 5.0, status: 'Completed' }
+    { id: 4, title: 'Interstellar', type: 'Movie', season: 1, episode: 1, rating: 5.0, status: 'Completed' },
   ]);
 
   const [newItem, setNewItem] = useState({ title: '', type: 'Anime', season: 1, episode: 1, rating: 0, status: 'Watching' });
@@ -22,153 +22,135 @@ const Entertainment = () => {
     }
   };
 
-  const deleteItem = (id) => {
-    setMedia(media.filter(m => m.id !== id));
-  };
+  const deleteItem = (id) => setMedia(media.filter(m => m.id !== id));
+  const updateProgress = (id, field, value) => setMedia(media.map(m => m.id === id ? { ...m, [field]: value } : m));
 
-  const updateProgress = (id, field, value) => {
-    setMedia(media.map(m => m.id === id ? { ...m, [field]: value } : m));
-  };
-
-  const filteredMedia = media.filter(m => 
+  const filteredMedia = media.filter(m =>
     m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const getStatusColor = (s) => ({ Watching: 'var(--info)', Completed: 'var(--success)', Dropped: 'var(--danger)', 'Plan to Watch': 'var(--warning)' }[s] || 'var(--text-3)');
+  const getTypeColor = (t) => ({ Anime: '#ec4899', Series: '#0ea5e9', Movie: '#e5a50a', Documentary: '#10b981' }[t] || 'var(--text-3)');
+
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ marginBottom: '30px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '24px', marginBottom: '10px' }}>
-          <Film size={28} color="#ec4899" />
+    <div className="fade-in" style={{ padding: '0.5rem 0' }}>
+      <div style={{ marginBottom: '1.75rem' }}>
+        <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Entertainment</p>
+        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
+          <Film size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
           Entertainment Tracker
         </h2>
-        <p style={{ color: '#94a3b8' }}>Track your favorite Anime, Series, and Movies</p>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Track your favourite Anime, Series, and Movies</p>
       </div>
 
-      {/* Stats Summary */}
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '150px', background: 'rgba(236, 72, 153, 0.1)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(236, 72, 153, 0.2)' }}>
-          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 5px 0' }}>Total Titles</p>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{media.length}</p>
-        </div>
-        <div style={{ flex: 1, minWidth: '150px', background: 'rgba(59, 130, 246, 0.1)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 5px 0' }}>Watching</p>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{media.filter(m => m.status === 'Watching').length}</p>
-        </div>
-        <div style={{ flex: 1, minWidth: '150px', background: 'rgba(16, 185, 129, 0.1)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 5px 0' }}>Completed</p>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{media.filter(m => m.status === 'Completed').length}</p>
-        </div>
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        {[
+          { label: 'Total Titles', val: media.length, color: 'var(--accent)' },
+          { label: 'Watching', val: media.filter(m => m.status === 'Watching').length, color: 'var(--info)' },
+          { label: 'Completed', val: media.filter(m => m.status === 'Completed').length, color: 'var(--success)' },
+        ].map((s, i) => (
+          <div key={i} className="glass-card" style={{ padding: '1rem', textAlign: 'center' }}>
+            <p className="label-caps">{s.label}</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: s.color, marginTop: '0.2rem' }}>{s.val}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Add & Search Controls */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-        <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '20px', borderRadius: '15px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '15px' }}>Add New Title</h3>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            <input
-              type="text"
-              placeholder="Title name"
-              value={newItem.title}
-              onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
-              style={{ padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <select
-                value={newItem.type}
-                onChange={(e) => setNewItem({ ...newItem, type: e.target.value })}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
-              >
+      {/* Add & Search */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="glass-card">
+          <span className="card-title">Add New Title</span>
+          <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.75rem' }}>
+            <input type="text" placeholder="Title name" value={newItem.title}
+              onChange={(e) => setNewItem({ ...newItem, title: e.target.value })} className="form-input" />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <select value={newItem.type} onChange={(e) => setNewItem({ ...newItem, type: e.target.value })} className="form-input">
                 {types.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <select
-                value={newItem.status}
-                onChange={(e) => setNewItem({ ...newItem, status: e.target.value })}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
-              >
+              <select value={newItem.status} onChange={(e) => setNewItem({ ...newItem, status: e.target.value })} className="form-input">
                 {statuses.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <button
-              onClick={addItem}
-              style={{ padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)', color: 'white', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              <Plus size={18} /> Add to Library
+            <button onClick={addItem} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              <Plus size={16} /> Add to Library
             </button>
           </div>
         </div>
 
-        <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '20px', borderRadius: '15px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input
-              type="text"
-              placeholder="Search your library..."
-              value={searchTerm}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <span className="card-title">Search Library</span>
+          <div style={{ position: 'relative', marginTop: '0.5rem' }}>
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
+            <input type="text" placeholder="Search by title or type..." value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '12px 12px 12px 45px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
-            />
+              className="form-input" style={{ paddingLeft: '40px' }} />
           </div>
         </div>
       </div>
 
-      {/* Grid of Content */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+      {/* Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
         {filteredMedia.map(item => (
-          <div key={item.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '15px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
-            <div style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+          <div key={item.id} className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.85rem' }}>
                 <div>
-                  <span style={{ fontSize: '10px', textTransform: 'uppercase', tracking: '1px', color: '#ec4899', fontWeight: 'bold', background: 'rgba(236,72,153,0.1)', padding: '2px 8px', borderRadius: '10px' }}>{item.type}</span>
-                  <h4 style={{ margin: '5px 0 0 0', fontSize: '18px' }}>{item.title}</h4>
+                  <span style={{
+                    fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase',
+                    letterSpacing: '0.08em', color: getTypeColor(item.type),
+                    background: `${getTypeColor(item.type)}18`, padding: '2px 8px',
+                    borderRadius: 'var(--radius-sm)',
+                  }}>{item.type}</span>
+                  <h4 style={{ margin: '0.3rem 0 0', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-1)' }}>{item.title}</h4>
                 </div>
-                <button onClick={() => deleteItem(item.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                <button onClick={() => deleteItem(item.id)} style={{
+                  background: 'none', border: 'none', color: 'var(--danger)',
+                  cursor: 'pointer', padding: '4px', opacity: 0.6,
+                }}><Trash2 size={14} /></button>
               </div>
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.85rem' }}>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 5px 0' }}>Season</p>
-                  <input
-                    type="number"
-                    value={item.season}
+                  <p className="label-caps" style={{ marginBottom: '4px' }}>Season</p>
+                  <input type="number" value={item.season}
                     onChange={(e) => updateProgress(item.id, 'season', parseInt(e.target.value))}
-                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '5px', color: 'white', padding: '5px' }}
-                  />
+                    className="form-input" style={{ padding: '0.4rem', fontSize: '0.82rem' }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 5px 0' }}>Episode</p>
-                  <input
-                    type="number"
-                    value={item.episode}
+                  <p className="label-caps" style={{ marginBottom: '4px' }}>Episode</p>
+                  <input type="number" value={item.episode}
                     onChange={(e) => updateProgress(item.id, 'episode', parseInt(e.target.value))}
-                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '5px', color: 'white', padding: '5px' }}
-                  />
+                    className="form-input" style={{ padding: '0.4rem', fontSize: '0.82rem' }} />
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Star size={14} color="#f59e0b" fill="#f59e0b" />
-                  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{item.rating}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Star size={14} color="#e5a50a" fill="#e5a50a" />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>{item.rating}</span>
                 </div>
-                <select
-                  value={item.status}
-                  onChange={(e) => updateProgress(item.id, 'status', e.target.value)}
-                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '5px', color: 'white', fontSize: '12px', padding: '5px' }}
-                >
+                <select value={item.status} onChange={(e) => updateProgress(item.id, 'status', e.target.value)}
+                  className="form-input" style={{ width: 'auto', padding: '4px 8px', fontSize: '0.72rem' }}>
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             </div>
-
-            <div style={{ height: '3px', width: '100%', background: 'rgba(255,255,255,0.1)' }}>
-              <div style={{ height: '100%', width: item.status === 'Completed' ? '100%' : '40%', background: '#ec4899' }} />
+            <div style={{ height: '3px', background: 'var(--bg-elevated)' }}>
+              <div style={{
+                height: '100%',
+                width: item.status === 'Completed' ? '100%' : '40%',
+                background: `linear-gradient(90deg, ${getStatusColor(item.status)}, ${getTypeColor(item.type)})`,
+                transition: 'width 0.6s var(--ease)',
+              }} />
             </div>
           </div>
         ))}
       </div>
+
       {filteredMedia.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '100px 0', color: '#64748b' }}>
-          <Tv size={64} style={{ opacity: 0.2, marginBottom: '20px' }} />
-          <p>No titles found in your library</p>
+        <div style={{ textAlign: 'center', padding: '5rem 1rem' }}>
+          <Tv size={56} style={{ color: 'var(--text-3)', opacity: 0.2, marginBottom: '1rem' }} />
+          <p style={{ color: 'var(--text-3)', fontSize: '0.9rem' }}>No titles found in your library</p>
         </div>
       )}
     </div>
