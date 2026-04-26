@@ -1,154 +1,168 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { ShoppingCart, Plus, Trash2, IndianRupee, Check } from 'lucide-react';
+import useStore, {
+  selectShopping,
+  selectAddShoppingItem,
+  selectDeleteShoppingItem,
+  selectToggleShoppingPurchased,
+} from '../store/useStore';
+import { useToast } from '../hooks/useToast';
+import StatCard from './ui/StatCard';
+import PageHeader from './ui/PageHeader';
 
-const fmtINR = (n) => '₹' + n.toLocaleString('en-IN');
+const fmtINR = (n) => '₹' + Number(n).toLocaleString('en-IN');
+const CATEGORIES = ['Supplements', 'Equipment', 'Apparel', 'Food', 'Medical', 'Other'];
+const PRIORITIES = ['Urgent', 'High', 'Medium', 'Low'];
+const PRIORITY_COLOR = { Urgent: 'var(--danger)', High: '#e5a50a', Medium: 'var(--success)', Low: 'var(--text-3)' };
+const EMPTY_FORM = { name: '', category: '', priority: 'Medium', estimatedCost: '' };
 
-const Shopping = () => {
-  const [items, setItems] = useState([
-    { id: 1, name: 'Whey Protein (2kg)', category: 'Supplements', priority: 'High', estimatedCost: 3500, purchased: false },
-    { id: 2, name: 'Resistance Bands Set', category: 'Equipment', priority: 'Medium', estimatedCost: 850, purchased: false },
-    { id: 3, name: 'Running Shoes', category: 'Apparel', priority: 'High', estimatedCost: 6500, purchased: false },
-    { id: 4, name: 'Creatine Monohydrate', category: 'Supplements', priority: 'High', estimatedCost: 900, purchased: false },
-  ]);
-  const [newItem, setNewItem] = useState({ name: '', category: '', priority: 'Medium', estimatedCost: 0 });
+export default function Shopping() {
+  // ── Zustand (persisted — no more data loss on tab switch)
+  const { items }            = useStore(selectShopping);
+  const addItem              = useStore(selectAddShoppingItem);
+  const deleteItem           = useStore(selectDeleteShoppingItem);
+  const togglePurchased      = useStore(selectToggleShoppingPurchased);
+  const toast = useToast();
 
-  const categories = ['Supplements', 'Equipment', 'Apparel', 'Food', 'Medical', 'Other'];
-  const priorities = ['Urgent', 'High', 'Medium', 'Low'];
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  const addItem = () => {
-    if (newItem.name.trim()) {
-      setItems([...items, { ...newItem, id: Date.now(), purchased: false }]);
-      setNewItem({ name: '', category: '', priority: 'Medium', estimatedCost: 0 });
+  // ── #9 useMemo: summary stats
+  const { totalCost, purchasedCount, pendingCount } = useMemo(() => ({
+    totalCost:      items.reduce((s, i) => s + (i.purchased ? 0 : i.estimatedCost), 0),
+    purchasedCount: items.filter((i) => i.purchased).length,
+    pendingCount:   items.filter((i) => !i.purchased).length,
+  }), [items]);
+
+  // ── #2 Validated add with toast
+  const handleAdd = useCallback(() => {
+    if (!form.name.trim()) {
+      toast.error('Item name cannot be empty.');
+      return;
     }
-  };
+    const cost = parseFloat(form.estimatedCost);
+    addItem({ ...form, estimatedCost: isNaN(cost) ? 0 : cost });
+    setForm(EMPTY_FORM);
+    toast.success(`"${form.name}" added to shopping list.`);
+  }, [form, addItem, toast]);
 
-  const deleteItem = (id) => setItems(items.filter(item => item.id !== id));
-  const togglePurchased = (id) => setItems(items.map(item => item.id === id ? { ...item, purchased: !item.purchased } : item));
+  const handleDelete = useCallback((id, name) => {
+    deleteItem(id);
+    toast.info(`"${name}" removed.`);
+  }, [deleteItem, toast]);
 
-  const getPriorityColor = (p) => ({ Urgent: 'var(--danger)', High: '#e5a50a', Medium: 'var(--success)', Low: 'var(--text-3)' }[p] || 'var(--text-3)');
+  const handleToggle = useCallback((id) => {
+    togglePurchased(id);
+  }, [togglePurchased]);
 
-  const totalCost = items.reduce((sum, item) => sum + (item.purchased ? 0 : item.estimatedCost), 0);
-  const purchasedCount = items.filter(i => i.purchased).length;
-  const pendingCount = items.filter(i => !i.purchased).length;
+  const statCards = useMemo(() => [
+    { label: 'Total Items',  value: items.length,    icon: ShoppingCart, color: 'var(--accent)' },
+    { label: 'Pending',      value: pendingCount,    icon: ShoppingCart, color: 'var(--warning)' },
+    { label: 'Purchased',    value: purchasedCount,  icon: Check,        color: 'var(--success)' },
+    { label: 'Est. Cost',    value: fmtINR(totalCost), icon: IndianRupee, color: 'var(--info)' },
+  ], [items.length, pendingCount, purchasedCount, totalCost]);
 
   return (
-    <div className="fade-in" style={{ padding: '0.5rem 0' }}>
-      <div style={{ marginBottom: '1.75rem' }}>
-        <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Shopping</p>
-        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
-          <ShoppingCart size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
-          Shopping List
-        </h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Track items you need for your fitness journey</p>
+    <div className="fade-in module-page">
+      <PageHeader
+        accent="Shopping"
+        icon={<ShoppingCart size={24} />}
+        title="Shopping List"
+        subtitle="Track items you need for your fitness journey"
+      />
+
+      {/* Summary */}
+      <div className="stats-grid mb-lg">
+        {statCards.map((c) => (
+          <StatCard key={c.label} icon={c.icon} label={c.label} value={c.value} color={c.color} />
+        ))}
       </div>
 
       {/* Add New Item */}
-      <div className="glass-card" style={{ marginBottom: '1.25rem' }}>
+      <div className="glass-card mb-lg">
         <span className="card-title">Add New Item</span>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.65rem', marginTop: '0.75rem', marginBottom: '0.75rem' }}>
-          <input type="text" placeholder="Item name" value={newItem.name}
-            onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-            className="form-input" style={{ gridColumn: 'span 2' }} />
-          <select value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} className="form-input">
+        <div className="form-grid-4 mt-sm mb-sm">
+          <input
+            type="text"
+            placeholder="Item name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            className="form-input col-span-2"
+          />
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="form-input">
             <option value="">Category</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={newItem.priority} onChange={(e) => setNewItem({ ...newItem, priority: e.target.value })} className="form-input">
-            {priorities.map(p => <option key={p} value={p}>{p}</option>)}
+          <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="form-input">
+            {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
-          <input type="number" placeholder="Cost (₹)" value={newItem.estimatedCost || ''}
-            onChange={(e) => setNewItem({ ...newItem, estimatedCost: parseFloat(e.target.value) || 0 })}
-            className="form-input" />
+          <input
+            type="number"
+            placeholder="Cost (₹)"
+            value={form.estimatedCost}
+            onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })}
+            className="form-input"
+            min="0"
+          />
         </div>
-        <button onClick={addItem} className="btn-primary">
+        <button onClick={handleAdd} className="btn-primary">
           <Plus size={16} /> Add Item
         </button>
       </div>
 
-      {/* Summary */}
-      <div className="glass-card" style={{
-        marginBottom: '1.25rem',
-        background: 'var(--accent-soft)',
-        border: '1px solid var(--accent)',
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem', textAlign: 'center' }}>
-          <div>
-            <p className="label-caps">Total Items</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-1)', marginTop: '0.2rem' }}>{items.length}</p>
-          </div>
-          <div>
-            <p className="label-caps">Pending</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--warning)', marginTop: '0.2rem' }}>{pendingCount}</p>
-          </div>
-          <div>
-            <p className="label-caps">Purchased</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--success)', marginTop: '0.2rem' }}>{purchasedCount}</p>
-          </div>
-          <div>
-            <p className="label-caps" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-              <IndianRupee size={11} /> Est. Cost
-            </p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--info)', marginTop: '0.2rem' }}>{fmtINR(totalCost)}</p>
-          </div>
-        </div>
-      </div>
-
       {/* Items List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-        {items.map(item => (
-          <div key={item.id} className="glass-card" style={{
-            padding: '1rem 1.25rem',
-            opacity: item.purchased ? 0.6 : 1,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            borderColor: item.purchased ? 'rgba(52,211,153,0.3)' : 'var(--border)',
-            transition: 'all 0.3s ease',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1 }}>
-              <button onClick={() => togglePurchased(item.id)} style={{
-                width: '24px', height: '24px', borderRadius: '6px',
-                border: `2px solid ${item.purchased ? 'var(--success)' : 'var(--border-strong)'}`,
-                background: item.purchased ? 'var(--success)' : 'transparent',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s ease', flexShrink: 0,
-              }}>
+      <div className="item-list">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="glass-card list-card"
+            style={{
+              opacity: item.purchased ? 0.6 : 1,
+              borderColor: item.purchased ? 'rgba(52,211,153,0.3)' : 'var(--border)',
+            }}
+          >
+            <div className="list-card__left">
+              <button
+                onClick={() => handleToggle(item.id)}
+                className={`check-box${item.purchased ? ' check-box--checked' : ''}`}
+                aria-label={item.purchased ? 'Mark unpurchased' : 'Mark purchased'}
+              >
                 {item.purchased && <Check size={14} color="#fff" />}
               </button>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-1)', textDecoration: item.purchased ? 'line-through' : 'none' }}>{item.name}</p>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.62rem', fontWeight: 700, background: getPriorityColor(item.priority), color: '#fff',
-                  }}>{item.priority}</span>
+              <div>
+                <div className="tag-row">
+                  <p className="list-row__title" style={{ textDecoration: item.purchased ? 'line-through' : 'none' }}>
+                    {item.name}
+                  </p>
+                  <span className="priority-badge" style={{ background: PRIORITY_COLOR[item.priority] }}>
+                    {item.priority}
+                  </span>
                   {item.category && (
-                    <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-sm)', fontSize: '0.62rem', fontWeight: 600, background: 'var(--bg-elevated)', color: 'var(--text-3)' }}>
-                      {item.category}
-                    </span>
+                    <span className="category-badge">{item.category}</span>
                   )}
                 </div>
-                <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent)', marginTop: '0.25rem' }}>{fmtINR(item.estimatedCost)}</p>
+                <p className="list-row__amount" style={{ color: 'var(--accent)', marginTop: '0.25rem' }}>
+                  {fmtINR(item.estimatedCost)}
+                </p>
               </div>
             </div>
-            <button onClick={() => deleteItem(item.id)} style={{
-              background: 'rgba(248,113,113,0.1)', border: 'none',
-              color: 'var(--danger)', cursor: 'pointer', padding: '8px',
-              borderRadius: 'var(--radius-sm)', display: 'flex',
-              transition: 'all 0.2s ease',
-            }}>
+            <button
+              onClick={() => handleDelete(item.id, item.name)}
+              className="btn-icon btn-icon--danger"
+              aria-label="Delete item"
+            >
               <Trash2 size={16} />
             </button>
           </div>
         ))}
-      </div>
 
-      {items.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-          <ShoppingCart size={56} style={{ color: 'var(--text-3)', opacity: 0.25, marginBottom: '1rem' }} />
-          <p style={{ color: 'var(--text-3)', fontSize: '0.9rem' }}>No items in your shopping list</p>
-        </div>
-      )}
+        {items.length === 0 && (
+          <div className="empty-state">
+            <ShoppingCart size={56} className="empty-state__icon" />
+            <p className="empty-state__text">No items in your shopping list</p>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
-
-export default Shopping;
+}
