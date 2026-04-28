@@ -635,6 +635,7 @@ const use3DStore = create(
        * @param {keyof typeof GPU_TIERS} tier
        */
       setGpuTier: (tier) => {
+        if (get().gpuTier === tier) return;
         set({ gpuTier: tier }, false, `setGpuTier:${tier}`);
       },
 
