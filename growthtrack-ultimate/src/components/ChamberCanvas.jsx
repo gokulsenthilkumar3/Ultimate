@@ -87,7 +87,12 @@ function CanvasScene({ lodConfig }) {
 }
 
 function useGlCreated(setLodConfig) {
+  const initialized = React.useRef(false);
+
   return useCallback(({ gl, camera, scene }) => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     detectAndSetGpuTier(gl);
     const tier   = use3DStore.getState().gpuTier || GPU_TIERS.HIGH;
     const config = LOD_CONFIG[tier];
