@@ -26,9 +26,11 @@ import { useToast } from '../hooks/useToast';
 // Lazy load the heavy 3D canvas
 const ChamberCanvas = lazy(() => import('./ChamberCanvas'));
 
+const EMPTY_OBJECT = {};
+const EMPTY_ARRAY = [];
+
 // ── Metric labels
 const METRIC_LABELS = {
-  height: { label: 'Height', unit: 'cm', icon: Ruler },
   weight: { label: 'Weight', unit: 'kg', icon: Activity },
   bodyFat: { label: 'Body Fat', unit: '%', icon: Zap },
   chest: { label: 'Chest', unit: 'cm', icon: Dumbbell },
@@ -38,9 +40,9 @@ const METRIC_LABELS = {
   thighs: { label: 'Thighs', unit: 'cm', icon: Activity },
   neck: { label: 'Neck', unit: 'cm', icon: Activity },
   calves: { label: 'Calves', unit: 'cm', icon: Activity },
-  hips: { label: 'Hips', unit: 'cm', icon: Activity },
-  dLength: { label: 'D Length', unit: 'in', icon: Ruler },
-  dGirth: { label: 'D Girth', unit: 'in', icon: Ruler },
+  hips: { label: 'Hips', icon: Activity, unit: 'cm' },
+  d_size: { label: 'D Size', unit: 'in', icon: Ruler },
+  d_girth: { label: 'D Girth', unit: 'in', icon: Ruler },
 };
 
 const VIEW_MODES = [
@@ -78,43 +80,55 @@ export default function HumanoidViewer() {
   
   // ── Store
   const viewMode = use3DStore((s) => s.viewMode);
-  const renderMode = use3DStore((s) => s.renderMode);
+  const renderMode = 'WEBGL';
   const cameraPreset = use3DStore((s) => s.cameraPreset);
   const autoRotate = use3DStore((s) => s.autoRotate);
-  const isZoomed = use3DStore((s) => s.isZoomed);
-  const wardrobe = use3DStore((s) => s.wardrobe);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const wardrobe = use3DStore((s) => s.wardrobeState);
   const anatomyDepth = use3DStore((s) => s.anatomyDepth);
-  const selectedPart = use3DStore((s) => s.selectedPart);
-  const currentMetrics = use3DStore((s) => s.currentMetrics);
-  const goalMetrics = use3DStore((s) => s.goalMetrics);
-  const morphOverrides = use3DStore((s) => s.morphOverrides);
-  const quality = use3DStore((s) => s.quality);
-  const heatmapMode = use3DStore((s) => s.heatmapMode);
-  const splitPos = use3DStore((s) => s.splitPos);
-  const milestones = use3DStore((s) => s.milestones);
-  const snapshots = use3DStore((s) => s.snapshots);
-  const timelinePos = use3DStore((s) => s.timelinePos);
-  const stressLevel = use3DStore((s) => s.stressLevel);
+  const selectedPart = use3DStore((s) => s.focusedBodyPart);
+  const currentMetrics = use3DStore((s) => s.cloneA?.metrics || EMPTY_OBJECT);
+  const goalMetrics = use3DStore((s) => s.cloneB?.metrics || EMPTY_OBJECT);
+  const morphOverrides = use3DStore((s) => s.cloneA?.weights || EMPTY_OBJECT);
+  const quality = use3DStore((s) => s.gpuTier);
+  const heatmapMode = use3DStore((s) => s.vfxState?.heatmap);
+  const splitPos = use3DStore((s) => (s.splitDividerX || 0.5) * 100);
+  const milestones = use3DStore((s) => s.ambitionPath?.milestones || EMPTY_ARRAY);
+  const snapshots = use3DStore((s) => s.timelineSnaps || EMPTY_ARRAY);
+  const timelinePos = use3DStore((s) => s.timelineScrubIndex || 0);
+  const stressLevel = 0;
 
   // ── Actions
   const setViewMode = use3DStore((s) => s.setViewMode);
-  const setRenderMode = use3DStore((s) => s.setRenderMode);
+  const setRenderMode = () => {};
   const setCameraPreset = use3DStore((s) => s.setCameraPreset);
   const setAutoRotate = use3DStore((s) => s.setAutoRotate);
-  const setIsZoomed = use3DStore((s) => s.setIsZoomed);
+  
   const setWardrobe = use3DStore((s) => s.setWardrobe);
   const setAnatomyDepth = use3DStore((s) => s.setAnatomyDepth);
-  const setSelectedPart = use3DStore((s) => s.setSelectedPart);
-  const setHeatmapMode = use3DStore((s) => s.setHeatmapMode);
-  const setSplitPos = use3DStore((s) => s.setSplitPos);
-  const setQuality = use3DStore((s) => s.setQuality);
-  const setStressLevel = use3DStore((s) => s.setStressLevel);
-  const setTimelinePos = use3DStore((s) => s.setTimelinePos);
-  const updateCurrentMetric = use3DStore((s) => s.updateCurrentMetric);
-  const updateGoalMetric = use3DStore((s) => s.updateGoalMetric);
-  const setMorphOverride = use3DStore((s) => s.setMorphOverride);
-  const syncMorphsFromMetrics = use3DStore((s) => s.syncMorphsFromMetrics);
-  const saveSnapshot = use3DStore((s) => s.saveSnapshot);
+  const setSelectedPart = use3DStore((s) => s.setFocusedBodyPart);
+  const setVfx = use3DStore((s) => s.setVfx);
+  const setHeatmapMode = useCallback(() => setVfx('heatmap'), [setVfx]);
+  
+  const setSplitDividerX = use3DStore((s) => s.setSplitDividerX);
+  const setSplitPos = useCallback((v) => setSplitDividerX(v/100), [setSplitDividerX]);
+  
+  const setQuality = use3DStore((s) => s.setGpuTier);
+  const setStressLevel = () => {};
+  const setTimelinePos = use3DStore((s) => s.scrubTimeline);
+  const updateCurrentMetric = use3DStore((s) => s.setCurrentMetric);
+  const updateGoalMetric = use3DStore((s) => s.setGoalMetric);
+  const setMorphOverride = () => {};
+  const syncMorphsFromMetrics = () => {};
+
+  const addTimelineSnap = use3DStore((s) => s.addTimelineSnap);
+  const saveSnapshot = useCallback(() => {
+    addTimelineSnap({ 
+      id: Date.now().toString(), 
+      metrics: currentMetrics, 
+      date: new Date().toISOString() 
+    });
+  }, [addTimelineSnap, currentMetrics]);
 
   const [showEditor, setShowEditor] = useState(true);
   const [editorTab, setEditorTab] = useState('metrics'); // metrics | morphs | wardrobe | vfx
@@ -330,8 +344,8 @@ export default function HumanoidViewer() {
                           <span className="chamber-metric-row__value">
                             {currentMetrics[key]}{meta.unit}
                             <span className="chamber-metric-row__delta"
-                              style={{ color: deltas[key].delta > 0 ? 'var(--chamber-success)' : deltas[key].delta < 0 ? 'var(--chamber-glow)' : 'var(--text-3)' }}>
-                              {deltas[key].delta > 0 ? '+' : ''}{deltas[key].delta.toFixed(1)}
+                              style={{ color: (deltas[key]?.delta || 0) > 0 ? 'var(--chamber-success)' : (deltas[key]?.delta || 0) < 0 ? 'var(--chamber-glow)' : 'var(--text-3)' }}>
+                              {(deltas[key]?.delta || 0) > 0 ? '+' : ''}{(deltas[key]?.delta || 0).toFixed(1)}
                             </span>
                           </span>
                         </div>
@@ -511,7 +525,7 @@ export default function HumanoidViewer() {
         </div>
         <div className="chamber-comparison__grid">
           {Object.entries(METRIC_LABELS).map(([key, meta]) => {
-            const d = deltas[key];
+            const d = deltas[key] || { current: 0, goal: 0, delta: 0 };
             const isGrowth = d.delta > 0;
             const isLoss = d.delta < 0;
             const pctComplete = d.goal !== 0 ? Math.min(100, Math.max(0, (d.current / d.goal) * 100)) : 0;
@@ -520,8 +534,8 @@ export default function HumanoidViewer() {
                 <div className="chamber-delta-card__top">
                   <span className="chamber-delta-card__label">{meta.label}</span>
                   <span className="chamber-delta-card__delta"
-                    style={{ color: isGrowth ? 'var(--chamber-success)' : isLoss ? 'var(--chamber-glow)' : 'var(--text-3)' }}>
-                    {isGrowth ? '+' : ''}{d.delta.toFixed(1)}{meta.unit}
+                    style={{ color: (d?.delta || 0) > 0 ? 'var(--chamber-success)' : (d?.delta || 0) < 0 ? 'var(--chamber-glow)' : 'var(--text-3)' }}>
+                    {(d?.delta || 0) > 0 ? '+' : ''}{(d?.delta || 0).toFixed(1)}{meta.unit}
                   </span>
                 </div>
                 <div className="chamber-delta-card__bar">

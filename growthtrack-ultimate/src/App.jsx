@@ -9,6 +9,11 @@ import Header from './components/Header';
 import './index.css';
 import './styles/chamber.css';
 
+import { preloadHumanoidModel } from './components/morphEngine/useModelLoader';
+import { useVascularitySync } from './store/use3DStore.usage';
+
+preloadHumanoidModel();
+
 // ── Lazy-load all dashboard modules
 const Overview           = lazy(() => import('./components/Overview'));
 const Assessment         = lazy(() => import('./components/Assessment'));
@@ -137,6 +142,8 @@ export default function App() {
   const setPalette = useStore(selectSetPalette);
   const activeTab  = useStore(selectActiveTab);
   const setActiveTab = useStore(selectSetActiveTab);
+
+  // useEffect(() => useVascularitySync(), []);
 
   // Apply theme/palette as data attributes on <html>
   useEffect(() => {
