@@ -1,0 +1,7 @@
+# Placeholder — humanoid GLB model goes here
+# Place humanoid-base.glb in this directory
+# The model must have:
+#   1. A SkinnedMesh named "Body"
+#   2. 24 morph targets (see MORPH_TARGET_NAMES in useModelLoader.js)
+#   3. Mixamo/ReadyPlayerMe compatible skeleton
+#   4. Draco compression recommended
