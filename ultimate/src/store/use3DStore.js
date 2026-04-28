@@ -232,7 +232,6 @@ export const computeMorphWeights = (metrics) => ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CURRENT_METRICS = {
-  height:     182,
   weight:     63,
   bodyFat:    18,
   chest:      88,
@@ -635,7 +634,6 @@ const use3DStore = create(
        * @param {keyof typeof GPU_TIERS} tier
        */
       setGpuTier: (tier) => {
-        if (get().gpuTier === tier) return;
         set({ gpuTier: tier }, false, `setGpuTier:${tier}`);
       },
 
