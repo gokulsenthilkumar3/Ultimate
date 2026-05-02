@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import useStore, {
   selectUser, selectSetUser, selectTheme, selectPalette,
   selectSetTheme, selectSetPalette, selectActiveTab, selectSetActiveTab,
-  selectFetchInitialData,
+  selectFetchInitialData, selectCheckServerHealth, selectServerStatus, selectIsLoading,
 } from './store/useStore';
 import { ToastProvider } from './hooks/useToast';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -175,15 +175,20 @@ export default function App() {
   const setActiveTab = useStore(selectSetActiveTab);
   const pinnedTabs = useStore((state) => state.pinnedTabs);
   const fetchInitialData = useStore(selectFetchInitialData);
+  const checkServerHealth = useStore(selectCheckServerHealth);
+  const serverStatus = useStore(selectServerStatus);
+  const isLoading = useStore(selectIsLoading);
 
   // Generate the floating nav dynamically based on pinned tabs
   const navItems = pinnedTabs.map(id => ({ id, label: GLOBAL_MODULES[id] || id }));
   navItems.push({ id: 'apps', label: 'App Hub' }); // Always keep App Hub at the end
 
-  // useEffect(() => useVascularitySync(), []);
-
   useEffect(() => {
     fetchInitialData();
+    checkServerHealth();
+    // Recheck server health every 30 seconds
+    const interval = setInterval(checkServerHealth, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Apply theme/palette as data attributes on <html>
@@ -196,6 +201,23 @@ export default function App() {
     <ToastProvider>
       <div className="app-shell" data-theme={theme} data-palette={palette}>
         <div className="mesh-bg" />
+
+        {/* Server Status Indicator */}
+        {serverStatus !== 'unknown' && (
+          <div style={{
+            position: 'fixed', top: '12px', right: '16px', zIndex: 9999,
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '4px 12px', borderRadius: '20px',
+            background: serverStatus === 'online' ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
+            border: `1px solid ${serverStatus === 'online' ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}`,
+            fontSize: '0.65rem', fontWeight: 800,
+            color: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
+            backdropFilter: 'blur(8px)',
+          }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)', animation: serverStatus === 'online' ? 'pulse 2s infinite' : 'none', display: 'inline-block' }} />
+            API {serverStatus === 'online' ? 'ONLINE' : 'OFFLINE'}
+          </div>
+        )}
 
         <div className="main-area">
           <Header
