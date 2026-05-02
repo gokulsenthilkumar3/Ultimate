@@ -116,6 +116,6 @@ export function getIcon(emojiOrId) {
  * <IconFromEmoji emoji="🧠" size={20} color="var(--accent)" />
  */
 export function IconFromEmoji({ emoji, size = 16, color = 'currentColor', ...props }) {
-  const Icon = getIcon(emoji);
-  return <Icon size={size} color={color} {...props} />;
+  const IconComponent = ICON_MAP[emoji] || Activity;
+  return <IconComponent size={size} color={color} {...props} />;
 }

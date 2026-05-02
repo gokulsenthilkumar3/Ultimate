@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save, Ruler, Activity, Heart, Zap } from 'lucide-react';
 import { BODY_METRICS_LIST, VITALS_METRICS_LIST, HOLISTIC_METRICS_LIST } from '../data/userData';
+import useStore from '../store/useStore';
 
 export default function MetricLogger({ onClose, onSave }) {
   const [activeTab, setActiveTab] = useState('body'); // 'body', 'vitals', or 'holistic'
@@ -41,9 +42,18 @@ export default function MetricLogger({ onClose, onSave }) {
     setFormData(prev => ({ ...prev, [name]: parseFloat(value) || value }));
   };
 
+  const storeUser = useStore(state => state.user);
+  const storeSetUser = useStore(state => state.setUser);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(formData);
+    
+    // Also update main user profile if weight was changed
+    if (formData.weight && formData.weight !== storeUser.weight) {
+      storeSetUser({ ...storeUser, weight: formData.weight });
+    }
+    
     onClose();
   };
 

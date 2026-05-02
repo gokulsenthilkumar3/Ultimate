@@ -26,7 +26,8 @@ import {
 import { Activity, Zap, Ruler, Scissors, User, Settings, Info, Camera, Save, RefreshCw, ZoomIn } from "lucide-react";
 import Sprite3DViewer from "./Sprite3DViewer";
 import MeasurementGuide from "./MeasurementGuide";
-import { USER, STATUS, BODY_PARTS } from "../data/userData";
+import { STATUS, BODY_PARTS } from "../data/userData";
+import useStore from "../store/useStore";
 
 // ── CONFIG & FALLBACKS ──
 const GLB_CURRENT = ""; 
@@ -233,7 +234,8 @@ function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, s
   const { scene } = useGLTF(url.includes("models/") ? url : FALLBACK_GLB);
   const clonedScene = useMemo(() => scene.clone(), [scene]);
   
-  const skinMat = useMemo(() => createSkinMaterial(USER.skinTone), []);
+  const user = useStore(state => state.user);
+  const skinMat = useMemo(() => createSkinMaterial(user?.skinTones?.Face || '#C68642'), [user]);
   const muscleMat = useMemo(() => createPeelMaterial(0xf43f5e, 0x440000, 0.4, false), []);
 
   useEffect(() => {
@@ -259,7 +261,7 @@ function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, s
         }
 
         // Apply Vascularity (Phase 4)
-        const vascularity = Math.max(0, (20 - USER.bodyFat) / 15); // Veins pop more below 15% BF
+        const vascularity = Math.max(0, (20 - (user?.bodyFat || 18)) / 15); // Veins pop more below 15% BF
         if (node.isMesh) injectVascularity(node.material, vascularity);
 
         // Wardrobe management
@@ -356,7 +358,7 @@ const SystemScene = memo(({
     } else {
       goalRef.current.traverse(m => {
         if (m.isMesh && m.material === ghostMat) {
-           m.material = createSkinMaterial(USER.skinTone);
+           m.material = createSkinMaterial('#C68642'); // Fallback if user is null
         }
       });
     }
@@ -523,6 +525,7 @@ const SystemScene = memo(({
 
 // ── MAIN COMPONENT ──
 export default function Body3D({ onSelectPart }) {
+  const user = useStore(state => state.user);
   const [viewMode, setViewMode] = useState('WEBGL');
   const [anatomyDepth, setAnatomyDepth] = useState(100);
   const [selected, setSelected] = useState(null);
@@ -553,9 +556,9 @@ export default function Body3D({ onSelectPart }) {
   }, []);
   
   const [metrics, setMetrics] = useState({
-    height: USER.height || 182,
-    weight: USER.weight || 63,
-    bodyFat: 22
+    height: user?.height || 182,
+    weight: user?.weight || 63,
+    bodyFat: user?.bodyFat || 22
   });
 
   const [morphs, setMorphs] = useState({ 
