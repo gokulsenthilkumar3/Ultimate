@@ -1,16 +1,17 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { NUTRITION as DEFAULT_NUTRITION } from '../data/userData';
 import { Apple, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import ProgressRing from './ui/ProgressRing';
 import MacroBar from './ui/MacroBar';
 import PageHeader from './ui/PageHeader';
+import useStore, { selectNutritionStrategy } from '../store/useStore';
 
 const EMPTY_FORM = { name: '', calories: '', protein: '', time: '' };
 
 export default function Nutrition({ user, setUser }) {
-  const nutrition = user?.nutrition || DEFAULT_NUTRITION;
-  const meals     = user?.mealPlan  || DEFAULT_NUTRITION.meals;
+  const dbNutrition = useStore(selectNutritionStrategy);
+  const nutrition = user?.nutrition || dbNutrition || {};
+  const meals     = user?.mealPlan  || dbNutrition?.meals || [];
   const mealLog   = user?.mealLog   || [];
   const toast     = useToast();
 
