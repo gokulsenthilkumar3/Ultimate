@@ -1,36 +1,31 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { USER } from '../data/userData';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
-// ── Default finance data (moved from Finance.jsx local state)
-const DEFAULT_FINANCE = {
-  transactions: [
-    { id: 1, type: 'Expense', category: 'Gym', amount: 2500, date: '2026-04-20', note: 'Monthly membership' },
-    { id: 2, type: 'Expense', category: 'Supplements', amount: 4800, date: '2026-04-21', note: 'Protein & Creatine' },
-    { id: 3, type: 'Income', category: 'Salary', amount: 85000, date: '2026-04-01', note: 'Monthly pay' },
-    { id: 4, type: 'Investment', category: 'Stocks', amount: 15000, date: '2026-04-15', note: 'Nifty 50 Index' },
-  ],
-};
+const API_BASE = 'http://localhost:3001/api';
 
-// ── Default shopping data (moved from Shopping.jsx local state)
-const DEFAULT_SHOPPING = {
-  items: [
-    { id: 1, name: 'Whey Protein (2kg)', category: 'Supplements', priority: 'High', estimatedCost: 3500, purchased: false },
-    { id: 2, name: 'Resistance Bands Set', category: 'Equipment', priority: 'Medium', estimatedCost: 850, purchased: false },
-    { id: 3, name: 'Running Shoes', category: 'Apparel', priority: 'High', estimatedCost: 6500, purchased: false },
-    { id: 4, name: 'Creatine Monohydrate', category: 'Supplements', priority: 'High', estimatedCost: 900, purchased: false },
-  ],
-};
+async function apiSync(endpoint, method = 'POST', data = null) {
+  try {
+    const state = useStore.getState();
+    const options = {
+      method,
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-actor-name': state.user?.name || 'System',
+        'x-actor-email': state.user?.email || 'admin@growthtrack.ultimate'
+      },
+    };
+    if (data) options.body = JSON.stringify(data);
+    const res = await fetch(`${API_BASE}${endpoint}`, options);
+    return await res.json();
+  } catch (e) {
+    console.warn(`[useStore] API sync failed for ${endpoint}:`, e.message);
+    return null;
+  }
+}
 
-// ── Default entertainment data (moved from Entertainment.jsx local state)
-const DEFAULT_ENTERTAINMENT = {
-  media: [
-    { id: 1, title: 'Tokyo Revengers', type: 'Anime', season: 3, episode: 12, rating: 4.5, status: 'Watching' },
-    { id: 2, title: 'Vinland Saga', type: 'Anime', season: 2, episode: 24, rating: 5.0, status: 'Completed' },
-    { id: 3, title: 'The Boys', type: 'Series', season: 4, episode: 1, rating: 4.8, status: 'Watching' },
-    { id: 4, title: 'Interstellar', type: 'Movie', season: 1, episode: 1, rating: 5.0, status: 'Completed' },
-  ],
-};
+// Data is now fetched from the backend API. 
+// No hardcoded data is maintained in the application source code.
+
 
 /**
  * GrowthTrack Ultimate — Zustand Store
@@ -48,18 +43,33 @@ const useStore = create(
       theme: 'dark',
       palette: 'gold',
       activeTab: 'overview',
+      pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards'],
 
-      // ── Core user profile (hydrated from userData.js defaults)
-      user: USER,
+      // ── Core user profile (hydrated from database)
+      user: null,
+      skills: [],
+      calendar_events: [],
 
       // ── Finance slice
-      finance: DEFAULT_FINANCE,
+      finance: { transactions: [] },
 
       // ── Shopping slice
-      shopping: DEFAULT_SHOPPING,
+      shopping: { items: [] },
 
       // ── Entertainment slice
-      entertainment: DEFAULT_ENTERTAINMENT,
+      entertainment: { media: [] },
+
+      // ── Timesheet slice
+      timesheet: { sessions: [] },
+      metric_logs: [],
+
+      // ── Migrated DB Slices (hydrated from DB)
+      trainingPlan: null,
+      nutritionStrategy: null,
+      lifestyleTips: [],
+      medicalData: null,
+      physiqueTargets: null,
+      assessmentQA: [],
 
       // ──────────────────────────────────────────────────────────
       // UI Actions
@@ -67,27 +77,91 @@ const useStore = create(
       setTheme: (theme) => set({ theme }),
       setPalette: (palette) => set({ palette }),
       setActiveTab: (activeTab) => set({ activeTab }),
+      togglePinnedTab: (tabId) => set((state) => {
+        if (state.pinnedTabs.includes(tabId)) {
+          return { pinnedTabs: state.pinnedTabs.filter(id => id !== tabId) };
+        } else {
+          return { pinnedTabs: [...state.pinnedTabs, tabId] };
+        }
+      }),
 
       // ──────────────────────────────────────────────────────────
       // User Actions — granular updates
       // ──────────────────────────────────────────────────────────
       /** Replace the entire user object (used by legacy setUser callers) */
-      setUser: (userOrUpdater) =>
-        set((state) => ({
-          user:
-            typeof userOrUpdater === 'function'
-              ? userOrUpdater(state.user)
-              : userOrUpdater,
-        })),
+      setUser: (userOrUpdater) => {
+        set((state) => {
+          const newUser = typeof userOrUpdater === 'function'
+            ? userOrUpdater(state.user)
+            : userOrUpdater;
+          apiSync('/user', 'POST', newUser);
+          return { user: newUser };
+        });
+      },
 
       /** Merge a partial update into a user sub-key (e.g., 'lifestyle') */
-      updateUserSlice: (key, data) =>
-        set((state) => ({
-          user: {
+      updateUserSlice: (key, data) => {
+        set((state) => {
+          const newUser = {
             ...state.user,
             [key]: { ...(state.user?.[key] || {}), ...data },
-          },
-        })),
+          };
+          apiSync('/user', 'POST', newUser);
+          return { user: newUser };
+        });
+      },
+
+      // ──────────────────────────────────────────────────────────
+      // Sync Actions
+      // ──────────────────────────────────────────────────────────
+      fetchInitialData: async () => {
+        const fetchJSON = async (ep) => await apiSync(ep, 'GET');
+
+        const [
+          user, tasks, shopping, timesheet,
+          training, nutrition, lifestyle,
+          medical, physique, assessment, skills, events
+        ] = await Promise.all([
+          fetchJSON('/user_profile'),
+          fetchJSON('/tasks'),
+          fetchJSON('/shopping'),
+          fetchJSON('/timesheet'),
+          fetchJSON('/training_plan'),
+          fetchJSON('/nutrition_strategy'),
+          fetchJSON('/lifestyle_tips'),
+          fetchJSON('/medical_data'),
+          fetchJSON('/physique_targets'),
+          fetchJSON('/assessment_qa'),
+          fetchJSON('/metric_logs'),
+          fetchJSON('/skills'),
+          fetchJSON('/calendar_events')
+        ]);
+
+        set({ 
+          user: userRes,
+          skills: skillsRes || [],
+          calendar_events: eventsRes || [],
+          finance: { transactions: [] },
+          shopping: { items: shoppingRes || [] },
+          timesheet: { sessions: timesheetRes || [] },
+          metric_logs: metricLogsRes || [],
+          trainingPlan: trainingRes,
+          nutritionStrategy: nutritionRes,
+          lifestyleTips: lifestyleRes,
+          medicalData: medicalRes,
+          physiqueTargets: physiqueRes,
+          assessmentQA: assessmentRes || []
+        });
+
+        if (tasks) set((state) => ({ user: { ...state.user, tasks: { ...state.user.tasks, pending: tasks } } }));
+      },
+
+      saveMetricLog: async (log) => {
+        const res = await apiSync('/metric_logs', 'POST', log);
+        if (res && res.id) {
+          set(state => ({ metric_logs: [{ ...log, id: res.id }, ...state.metric_logs] }));
+        }
+      },
 
       // ──────────────────────────────────────────────────────────
       // Finance Actions
@@ -111,37 +185,121 @@ const useStore = create(
           },
         })),
 
-      // ──────────────────────────────────────────────────────────
       // Shopping Actions
       // ──────────────────────────────────────────────────────────
-      addShoppingItem: (item) =>
-        set((state) => ({
-          shopping: {
-            ...state.shopping,
-            items: [
-              ...state.shopping.items,
-              { ...item, id: Date.now(), purchased: false },
-            ],
-          },
-        })),
+      addShoppingItem: async (item) => {
+        const res = await apiSync('/shopping', 'POST', item);
+        if (res?.id) {
+          set((state) => ({
+            shopping: {
+              ...state.shopping,
+              items: [
+                { ...item, id: res.id, purchased: false },
+                ...state.shopping.items,
+              ],
+            },
+          }));
+        }
+      },
 
-      deleteShoppingItem: (id) =>
+      deleteShoppingItem: (id) => {
+        apiSync(`/shopping/${id}`, 'DELETE');
         set((state) => ({
           shopping: {
             ...state.shopping,
             items: state.shopping.items.filter((i) => i.id !== id),
           },
-        })),
+        }));
+      },
 
-      toggleShoppingPurchased: (id) =>
+      toggleShoppingPurchased: (id) => {
+        const item = get().shopping.items.find(i => i.id === id);
+        if (item) {
+          apiSync(`/shopping/${id}`, 'PUT', { purchased: !item.purchased });
+          set((state) => ({
+            shopping: {
+              ...state.shopping,
+              items: state.shopping.items.map((i) =>
+                i.id === id ? { ...i, purchased: !item.purchased } : i
+              ),
+            },
+          }));
+        }
+      },
+
+      // ──────────────────────────────────────────────────────────
+      // Task Actions
+      // ──────────────────────────────────────────────────────────
+      addTask: async (task) => {
+        const res = await apiSync('/tasks', 'POST', task);
+        if (res?.id) {
+          set((state) => ({
+            user: {
+              ...state.user,
+              tasks: {
+                ...state.user.tasks,
+                pending: [{ ...task, id: res.id, done: false }, ...state.user.tasks.pending],
+              },
+            },
+          }));
+        }
+      },
+
+      deleteTask: (id, list) => {
+        apiSync(`/tasks/${id}`, 'DELETE');
         set((state) => ({
-          shopping: {
-            ...state.shopping,
-            items: state.shopping.items.map((i) =>
-              i.id === id ? { ...i, purchased: !i.purchased } : i
-            ),
+          user: {
+            ...state.user,
+            tasks: {
+              ...state.user.tasks,
+              [list]: state.user.tasks[list].filter((t) => t.id !== id),
+            },
           },
-        })),
+        }));
+      },
+
+      completeTask: (id) => {
+        const task = get().user.tasks.pending.find((t) => t.id === id);
+        if (task) {
+          const completedAt = new Date().toISOString();
+          apiSync(`/tasks/${id}`, 'PUT', { done: true, completedAt });
+          set((state) => ({
+            user: {
+              ...state.user,
+              tasks: {
+                ...state.user.tasks,
+                pending: state.user.tasks.pending.filter((t) => t.id !== id),
+                completed: [{ ...task, done: true, completedAt }, ...state.user.tasks.completed],
+              },
+            },
+          }));
+        }
+      },
+
+      // ──────────────────────────────────────────────────────────
+      // Timesheet Actions
+      // ──────────────────────────────────────────────────────────
+      addTimesheetSession: async (session) => {
+        const res = await apiSync('/timesheet', 'POST', session);
+        if (res?.id) {
+          set((state) => ({
+            timesheet: {
+              ...state.timesheet,
+              sessions: [{ ...session, id: res.id }, ...state.timesheet.sessions],
+            },
+          }));
+        }
+      },
+
+      deleteTimesheetSession: (id) => {
+        apiSync(`/timesheet/${id}`, 'DELETE');
+        set((state) => ({
+          timesheet: {
+            ...state.timesheet,
+            sessions: state.timesheet.sessions.filter((s) => s.id !== id),
+          },
+        }));
+      },
 
       // ──────────────────────────────────────────────────────────
       // Entertainment Actions
@@ -209,9 +367,11 @@ export const selectUpdateUserSlice = (s) => s.updateUserSlice;
 export const selectTheme = (s) => s.theme;
 export const selectPalette = (s) => s.palette;
 export const selectActiveTab = (s) => s.activeTab;
+export const selectPinnedTabs = (s) => s.pinnedTabs;
 export const selectSetTheme = (s) => s.setTheme;
 export const selectSetPalette = (s) => s.setPalette;
 export const selectSetActiveTab = (s) => s.setActiveTab;
+export const selectTogglePinnedTab = (s) => s.togglePinnedTab;
 
 export const selectFinance = (s) => s.finance;
 export const selectAddTransaction = (s) => s.addTransaction;
@@ -226,5 +386,21 @@ export const selectEntertainment = (s) => s.entertainment;
 export const selectAddMediaItem = (s) => s.addMediaItem;
 export const selectDeleteMediaItem = (s) => s.deleteMediaItem;
 export const selectUpdateMediaProgress = (s) => s.updateMediaProgress;
+
+export const selectAddTask = (s) => s.addTask;
+export const selectDeleteTask = (s) => s.deleteTask;
+export const selectCompleteTask = (s) => s.completeTask;
+export const selectFetchInitialData = (s) => s.fetchInitialData;
+
+export const selectTimesheet = (s) => s.timesheet;
+export const selectAddTimesheetSession = (s) => s.addTimesheetSession;
+export const selectDeleteTimesheetSession = (s) => s.deleteTimesheetSession;
+
+export const selectTrainingPlan = (s) => s.trainingPlan;
+export const selectNutritionStrategy = (s) => s.nutritionStrategy;
+export const selectLifestyleTips = (s) => s.lifestyleTips;
+export const selectMedicalData = (s) => s.medicalData;
+export const selectPhysiqueTargets = (s) => s.physiqueTargets;
+export const selectAssessmentQA = (s) => s.assessmentQA;
 
 export default useStore;

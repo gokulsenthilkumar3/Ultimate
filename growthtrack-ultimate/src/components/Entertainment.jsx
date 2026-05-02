@@ -26,8 +26,7 @@ export default function Entertainment() {
 
   const [form, setForm]           = useState(EMPTY_FORM);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // ── #9 useMemo: filter + stats
+  const [activeTab, setActiveTab] = useState('Library'); // 'Library', 'Sync'
   const filteredMedia = useMemo(() =>
     media.filter((m) =>
       m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,8 +83,24 @@ export default function Entertainment() {
         ))}
       </div>
 
-      {/* Add & Search */}
-      <div className="dual-grid mb-lg">
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+        {['Library', 'Sync'].map(tab => (
+          <button 
+            key={tab} 
+            className={`btn-sm ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+            style={{ padding: '0.6rem 1.5rem', fontWeight: 800 }}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'Library' && (
+        <>
+          {/* Add & Search */}
+          <div className="dual-grid mb-lg">
         <div className="glass-card">
           <span className="card-title">Add New Title</span>
           <div className="form-stack mt-sm">
@@ -197,10 +212,39 @@ export default function Entertainment() {
         ))}
       </div>
 
-      {filteredMedia.length === 0 && (
-        <div className="empty-state">
-          <Tv size={56} className="empty-state__icon" />
-          <p className="empty-state__text">No titles found in your library</p>
+          {filteredMedia.length === 0 && (
+            <div className="empty-state">
+              <Tv size={56} className="empty-state__icon" />
+              <p className="empty-state__text">No titles found in your library</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'Sync' && (
+        <div className="glass-card" style={{ padding: '2rem' }}>
+           <h3 className="card-title" style={{ marginBottom: '1.5rem' }}>OTT Provider Synchronization</h3>
+           <p className="text-secondary" style={{ marginBottom: '2rem' }}>Connect your streaming accounts to automatically pull watch history into your library.</p>
+           
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+             {[
+               { name: 'Netflix', color: '#E50914', status: 'Connected' },
+               { name: 'Amazon Prime', color: '#00A8E1', status: 'Connect' },
+               { name: 'Disney+ Hotstar', color: '#032541', status: 'Connect' },
+               { name: 'Zee5', color: '#8230C6', status: 'Connect' }
+             ].map(provider => (
+               <div key={provider.name} style={{ border: `1px solid ${provider.color}55`, padding: '1.5rem', borderRadius: '12px', background: `linear-gradient(135deg, ${provider.color}11, transparent)`, display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                 <h4 style={{ fontWeight: 800, fontSize: '1.2rem', color: provider.color }}>{provider.name}</h4>
+                 <button 
+                   className="btn-ghost" 
+                   style={{ width: '100%', borderColor: provider.color, color: provider.status === 'Connected' ? 'var(--text-1)' : provider.color, background: provider.status === 'Connected' ? `${provider.color}44` : 'transparent' }}
+                   onClick={() => toast.success(`${provider.name} sync initiated.`)}
+                 >
+                   {provider.status}
+                 </button>
+               </div>
+             ))}
+           </div>
         </div>
       )}
     </div>
