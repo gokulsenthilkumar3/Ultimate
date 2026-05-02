@@ -1,9 +1,10 @@
 import React from 'react';
 import { Ruler, Info, Target, CheckCircle } from 'lucide-react';
-import { USER } from '../data/userData';
+import useStore, { selectUser } from '../store/useStore';
 
 export default function MeasurementGuide({ onClose }) {
-  const measurements = USER.bodyMeasurements;
+  const user = useStore(selectUser);
+  const measurements = user?.bodyMeasurements || {};
 
   return (
     <div style={{

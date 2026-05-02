@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { MEDICAL_DATA } from '../data/userData';
+import useStore, { selectMedicalData } from '../store/useStore';
 import { AlertCircle, Activity, Droplets, Stethoscope, Plus, Trash2 } from 'lucide-react';
 
 export default function Medical({ user, setUser }) {
+  const dbMedical = useStore(selectMedicalData);
+  const medicalData = dbMedical || { testsRequired: [] };
   const vitalsLog = user?.vitalsLog || [];
   const [logForm, setLogForm] = useState({ type: 'Blood Pressure', value: '', date: new Date().toISOString().slice(0, 10) });
 
@@ -52,7 +54,7 @@ export default function Medical({ user, setUser }) {
         <div className="glass-card">
           <span className="card-title">Required Blood Panels</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.85rem' }}>
-            {MEDICAL_DATA.testsRequired.map((test, i) => (
+            {medicalData.testsRequired.map((test, i) => (
               <div key={i} style={{
                 padding: '0.85rem 1rem', background: 'var(--bg-elevated)',
                 borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
