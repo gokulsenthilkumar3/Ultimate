@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { HEALTH_QA } from '../data/userData';
+import useStore, { selectAssessmentQA } from '../store/useStore';
 import { ChevronDown, ChevronUp, Search, ClipboardList } from 'lucide-react';
 
 export default function Assessment({ user }) {
+  const assessmentQA = useStore(selectAssessmentQA) || [];
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filtered = searchTerm
-    ? HEALTH_QA.filter(r => r.round.toLowerCase().includes(searchTerm.toLowerCase()) || r.items.some(i => i.q.toLowerCase().includes(searchTerm.toLowerCase()) || i.a.toLowerCase().includes(searchTerm.toLowerCase())))
-    : HEALTH_QA;
+    ? assessmentQA.filter(r => r.round.toLowerCase().includes(searchTerm.toLowerCase()) || r.items.some(i => i.q.toLowerCase().includes(searchTerm.toLowerCase()) || i.a.toLowerCase().includes(searchTerm.toLowerCase())))
+    : assessmentQA;
 
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
@@ -19,7 +20,7 @@ export default function Assessment({ user }) {
             <ClipboardList size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
             Health Assessment
           </h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Raw intake data from {HEALTH_QA.length} strategic diagnostic rounds.</p>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Raw intake data from {assessmentQA.length} strategic diagnostic rounds.</p>
         </div>
         <div style={{ position: 'relative' }}>
           <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />

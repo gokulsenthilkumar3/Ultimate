@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, Moon, Sun } from 'lucide-react';
+import { Zap, Moon, Sun, Bell } from 'lucide-react';
 
 const PALETTES = [
   { id: 'gold',   color: '#e5a50a', name: 'Gold' },
@@ -79,6 +79,24 @@ export default function Header({ user, theme, setTheme, palette, setPalette }) {
             />
           ))}
         </div>
+
+        {/* Notification Hub */}
+        <button style={{ 
+          position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '38px', height: '38px', padding: 0,
+          borderRadius: '50%', background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)', cursor: 'pointer',
+          color: 'var(--text-2)'
+        }} title="Unified Notifications">
+          <Bell size={18} />
+          <span style={{
+            position: 'absolute', top: '6px', right: '8px', 
+            width: '7px', height: '7px', 
+            background: 'var(--danger)', 
+            borderRadius: '50%',
+            border: '2px solid var(--bg-card)'
+          }} />
+        </button>
 
         {/* Theme Toggle */}
         <button

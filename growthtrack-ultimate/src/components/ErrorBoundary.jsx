@@ -21,6 +21,12 @@ class ErrorBoundary extends React.Component {
     console.error('[GrowthTrack] Component Error:', error, errorInfo);
   }
 
+  componentDidUpdate(prevProps) {
+    if (this.state.hasError && this.props.resetKey !== prevProps.resetKey) {
+      this.handleRetry();
+    }
+  }
+
   handleRetry = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
   };

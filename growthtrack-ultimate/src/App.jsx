@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import useStore, {
   selectUser, selectSetUser, selectTheme, selectPalette,
   selectSetTheme, selectSetPalette, selectActiveTab, selectSetActiveTab,
+  selectFetchInitialData,
 } from './store/useStore';
 import { ToastProvider } from './hooks/useToast';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -30,7 +31,7 @@ const Analytics          = lazy(() => import('./components/Analytics'));
 const MindWellness       = lazy(() => import('./components/MindWellness'));
 const HydrationTracker   = lazy(() => import('./components/HydrationTracker'));
 const StrengthMetrics    = lazy(() => import('./components/StrengthMetrics'));
-const SettingsPanel      = lazy(() => import('./components/SettingsPanel'));
+const ProfileEditor      = lazy(() => import('./components/ProfileEditor'));
 const Skills             = lazy(() => import('./components/Skills'));
 const HealthExtras       = lazy(() => import('./components/HealthExtras'));
 const Shopping           = lazy(() => import('./components/Shopping'));
@@ -38,27 +39,32 @@ const Tasks              = lazy(() => import('./components/Tasks'));
 const Finance            = lazy(() => import('./components/Finance'));
 const Entertainment      = lazy(() => import('./components/Entertainment'));
 const About              = lazy(() => import('./components/About'));
+const Calendar           = lazy(() => import('./components/Calendar'));
+const Timesheet          = lazy(() => import('./components/Timesheet'));
+const Logs               = lazy(() => import('./components/Logs'));
+const Portfolio          = lazy(() => import('./components/Portfolio'));
+const Projects           = lazy(() => import('./components/Projects'));
+const Databases          = lazy(() => import('./components/Databases'));
+const SocialMedia        = lazy(() => import('./components/SocialMedia'));
+const AiDashboard        = lazy(() => import('./components/AiDashboard'));
+const Maps               = lazy(() => import('./components/Maps'));
+const Documents          = lazy(() => import('./components/Documents'));
+const Current            = lazy(() => import('./components/Current'));
+const Notes              = lazy(() => import('./components/Notes'));
+const AppLauncher        = lazy(() => import('./components/AppLauncher'));
+const Dashboards         = lazy(() => import('./components/Dashboards'));
 
-// ── Navigation items
-const NAV_ITEMS = [
-  { id: 'overview',       label: 'Overview' },
-  { id: 'humanoid',       label: '3D Model', badge: 'LIVE' },
-  { id: 'physique',       label: 'Blueprint' },
-  { id: 'assessment',     label: 'Assessment' },
-  { id: 'training',       label: 'Training' },
-  { id: 'nutrition',      label: 'Nutrition' },
-  { id: 'sleep',          label: 'Sleep' },
-  { id: 'lifestyle',      label: 'Lifestyle' },
-  { id: 'progress',       label: 'Progress' },
-  { id: 'goals',          label: 'Goals' },
-  { id: 'skills',         label: 'Skills' },
-  { id: 'health',         label: 'Health+' },
-  { id: 'shopping',       label: 'Shopping' },
-  { id: 'tasks',          label: 'Tasks' },
-  { id: 'finance',        label: 'Finance' },
-  { id: 'entertainment',  label: 'Entertainment' },
-  { id: 'about',          label: 'About' },
-];
+// ── Master map of all modules to get their labels
+export const GLOBAL_MODULES = {
+  overview: 'Overview', humanoid: '3D Model', physique: 'Blueprint', assessment: 'Assessment',
+  training: 'Training', nutrition: 'Nutrition', sleep: 'Sleep', lifestyle: 'Lifestyle',
+  progress: 'Progress', goals: 'Goals', skills: 'Skills', health: 'Health+',
+  shopping: 'Shopping', tasks: 'Tasks', projects: 'Projects', portfolio: 'Portfolio',
+  calendar: 'Calendar', timesheet: 'Timesheet', finance: 'Finance', entertainment: 'Entertainment',
+  social: 'Social Media', ai: 'Agent', maps: 'Maps', documents: 'Documents', current: 'Current',
+  notes: 'Notes', databases: 'Databases', logs: 'Logs', settings: 'Settings', about: 'About',
+  dashboards: 'Dashboards'
+};
 
 // ── Module-level loading spinner
 function TabSpinner() {
@@ -97,26 +103,50 @@ function renderTab(tab, user, setUser, theme, setTheme) {
     case 'progress':       return <Progress {...props} />;
     case 'goals':          return <GoalsDashboard {...props} />;
     case 'analytics':      return <Analytics {...props} />;
-    case 'settings':       return <SettingsPanel {...props} />;
+    case 'settings':       return <ProfileEditor {...props} />;
     case 'skills':         return <Skills {...props} />;
     case 'health':         return <HealthExtras {...props} />;
     case 'shopping':       return <Shopping />;          // now reads from Zustand directly
     case 'tasks':          return <Tasks {...props} />;
+    case 'projects':       return <Projects />;
+    case 'portfolio':      return <Portfolio />;
+    case 'calendar':       return <Calendar />;
+    case 'timesheet':      return <Timesheet />;
+    case 'logs':           return <Logs />;
     case 'finance':        return <Finance />;           // now reads from Zustand directly
     case 'entertainment':  return <Entertainment />;     // now reads from Zustand directly
+    case 'social':         return <SocialMedia />;
+    case 'ai':             return <AiDashboard />;
+    case 'maps':           return <Maps />;
+    case 'documents':      return <Documents />;
+    case 'current':        return <Current />;
+    case 'notes':          return <Notes />;
+    case 'databases':      return <Databases />;
+    case 'dashboards':     return <Dashboards />;
     case 'about':          return <About {...props} />;
+    case 'apps':           return <AppLauncher setActiveTab={useStore.getState().setActiveTab} />;
     default:               return <Overview {...props} />;
   }
 }
 
 // ── Floating Pill Navigation
 function FloatingNav({ activeTab, setActiveTab, navItems }) {
+  const scrollRef = React.useRef(null);
+
+  useEffect(() => {
+    const activeEl = scrollRef.current?.querySelector('.active');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeTab]);
+
   return (
     <nav className="nav-container" role="navigation" aria-label="Main navigation">
-      <div className="nav-track">
+      <div className="nav-track" ref={scrollRef}>
         {navItems.map((item) => (
           <button
             key={item.id}
+            title={item.label}
             className={`nav-item${activeTab === item.id ? ' active' : ''}`}
             onClick={() => setActiveTab(item.id)}
             aria-current={activeTab === item.id ? 'page' : undefined}
@@ -142,8 +172,18 @@ export default function App() {
   const setPalette = useStore(selectSetPalette);
   const activeTab  = useStore(selectActiveTab);
   const setActiveTab = useStore(selectSetActiveTab);
+  const pinnedTabs = useStore((state) => state.pinnedTabs);
+  const fetchInitialData = useStore(selectFetchInitialData);
+
+  // Generate the floating nav dynamically based on pinned tabs
+  const navItems = pinnedTabs.map(id => ({ id, label: GLOBAL_MODULES[id] || id }));
+  navItems.push({ id: 'apps', label: 'App Hub' }); // Always keep App Hub at the end
 
   // useEffect(() => useVascularitySync(), []);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
   // Apply theme/palette as data attributes on <html>
   useEffect(() => {
@@ -166,7 +206,7 @@ export default function App() {
           />
 
           <main className="content-area">
-            <ErrorBoundary>
+            <ErrorBoundary resetKey={activeTab}>
               <Suspense fallback={<TabSpinner />}>
                 {renderTab(activeTab, user, setUser, theme, setTheme)}
               </Suspense>
@@ -177,7 +217,7 @@ export default function App() {
         <FloatingNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          navItems={NAV_ITEMS}
+          navItems={navItems}
         />
       </div>
     </ToastProvider>
