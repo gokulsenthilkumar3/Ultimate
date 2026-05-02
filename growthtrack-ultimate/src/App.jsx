@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Header from './components/Header';
 import './index.css';
 import './styles/chamber.css';
+import './styles/premium.css';
 
 import { preloadHumanoidModel } from './components/morphEngine/useModelLoader';
 import { useVascularitySync } from './store/use3DStore.usage';
