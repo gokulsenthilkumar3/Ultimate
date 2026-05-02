@@ -1,91 +1,164 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Zap, Target, Flame, Droplets, Moon,
-  TrendingUp, Heart, Activity, ArrowUpRight, Shield
+  TrendingUp, Activity, ArrowUpRight, Shield, Clock, 
+  Calendar as CalendarIcon, CloudRain, Wind, Sunrise, Sunset,
+  Quote, Plus, Minus, ArrowDownRight, Compass, Gauge
 } from 'lucide-react';
+import useStore from '../store/useStore';
 
 export default function Overview({ user }) {
-  const healthScore = 42;
-  const weightGain = user?.goal ? (user.goal.weight - user.weight) : 19;
-  const sleepDebt = user?.sleep?.weeklyDebt || 14;
+  const healthScore = 84;
+  const sleepDebt = user?.sleep?.weeklyDebt || 4.5;
+
+  const [time, setTime] = useState(new Date());
+  const [waterGlasses, setWaterGlasses] = useState(user?.hydration?.glasses || 0);
+  
+  const height = user?.height || 175;
+  const weight = user?.weight || 63;
+  const bmi = (weight / Math.pow(height / 100, 2)).toFixed(1);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const vitals = [
-    { label: 'Health Score', value: healthScore, unit: '/100', icon: Zap, color: '#e5a50a', trend: '+3' },
-    { label: 'Weight', value: `${user?.weight || 63}`, unit: 'kg', icon: Activity, color: '#0ea5e9', trend: '+0.5' },
-    { label: 'Sleep Avg', value: user?.sleep?.avgHours || 5.5, unit: 'hr', icon: Moon, color: '#8b5cf6', trend: '-0.3' },
-    { label: 'Body Fat', value: `${user?.bodyFat || 22}`, unit: '%', icon: Flame, color: '#f43f5e', trend: '-1.2' },
+    { label: 'Health Score', value: healthScore, unit: '/100', icon: Zap, color: 'var(--accent)', trend: '+3', state: 'optimal' },
+    { label: 'Weight', value: weight, unit: 'kg', icon: Activity, color: '#3b82f6', trend: '+0.5', state: 'bulking' },
+    { label: 'BMI', value: bmi, unit: '', icon: Gauge, color: '#10b981', trend: 'STABLE', state: 'normal' },
+    { label: 'Body Fat', value: `${user?.bodyFat || 22}`, unit: '%', icon: Flame, color: '#f43f5e', trend: '-1.2', state: 'cutting' },
   ];
 
+  const environmental = {
+    temp: '24°C',
+    condition: 'Scattered Clouds',
+    humidity: '62%',
+    aqi: '45 (Good)',
+    windSpeed: '12 km/h',
+    windDir: 'NW',
+    uv: '3 (Low)',
+    visibility: '10 km'
+  };
+
   const priorities = [
-    { label: 'Gain Weight', desc: `${user?.weight || 63}kg → ${user?.goal?.weight || 82}kg`, progress: Math.round(((user?.weight || 63) / (user?.goal?.weight || 82)) * 100), color: '#0ea5e9' },
-    { label: 'Fix Sleep', desc: `${user?.sleep?.avgHours || 5.5}h → 7.5h target`, progress: Math.round(((user?.sleep?.avgHours || 5.5) / 7.5) * 100), color: '#8b5cf6' },
-    { label: 'Reduce Body Fat', desc: `${user?.bodyFat || 22}% → ${user?.goal?.bodyFat || 10}%`, progress: Math.round((1 - ((user?.bodyFat || 22) - (user?.goal?.bodyFat || 10)) / (user?.bodyFat || 22)) * 100), color: '#f43f5e' },
-    { label: 'Build Muscle', desc: `${user?.muscleMass || 49}kg → ${user?.goal?.muscleMass || 70}kg`, progress: Math.round(((user?.muscleMass || 49) / (user?.goal?.muscleMass || 70)) * 100), color: '#10b981' },
+    { label: 'Gain Lean Mass', desc: `${weight}kg → ${user?.goal?.weight || 82}kg Target`, progress: Math.round((weight / (user?.goal?.weight || 82)) * 100), color: 'var(--accent)' },
+    { label: 'Circadian Rhythm', desc: `${user?.sleep?.avgHours || 5.5}h → 7.5h REM/Deep Target`, progress: Math.round(((user?.sleep?.avgHours || 5.5) / 7.5) * 100), color: '#8b5cf6' },
+    { label: 'Fat Oxidation', desc: `${user?.bodyFat || 22}% → ${user?.goal?.bodyFat || 10}% Core Reveal`, progress: Math.round((1 - ((user?.bodyFat || 22) - (user?.goal?.bodyFat || 10)) / (user?.bodyFat || 22)) * 100), color: '#f43f5e' },
   ];
 
   const alerts = [
-    { icon: '⚠️', text: 'Sleep debt is critical — 14 hours behind this week', severity: 'critical' },
-    { icon: '💧', text: 'Hydration below target — averaging 1.5L/day', severity: 'warning' },
-    { icon: '🩺', text: 'Blood work never done — schedule CBC + hormones', severity: 'critical' },
+    { icon: '⚠️', text: `Sleep debt detected (${sleepDebt} hours behind this week). Prioritize recovery tonight.`, severity: 'critical' },
+    { icon: '🧬', text: 'Quarterly blood work & hormone panel is due in 14 days.', severity: 'warning' },
   ];
 
   return (
-    <div className="fade-in" style={{ padding: '0.5rem 0' }}>
-      {/* Welcome Section */}
-      <div style={{ marginBottom: '2rem' }}>
-        <p className="label-caps" style={{ marginBottom: '0.4rem', color: 'var(--accent)' }}>
-          Dashboard Overview
-        </p>
-        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.4rem' }}>
-          Welcome back, {user?.name || 'Athlete'}
-        </h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.88rem' }}>
-          Your digital twin status at a glance. Keep pushing.
-        </p>
+    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+      
+      {/* Premium Hero Banner */}
+      <div className="glass-card" style={{
+        padding: '2.5rem', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem',
+        background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--accent-soft) 100%)',
+        borderLeft: '4px solid var(--accent)', position: 'relative', overflow: 'hidden',
+        boxShadow: '0 10px 40px -10px var(--accent-soft)'
+      }}>
+        <div style={{ position: 'absolute', top: '-50%', right: '-10%', width: '300px', height: '300px', background: 'var(--accent)', filter: 'blur(100px)', opacity: 0.15, pointerEvents: 'none' }} />
+        
+        <div style={{ zIndex: 1, position: 'relative' }}>
+          <p className="label-caps" style={{ marginBottom: '0.6rem', color: 'var(--accent)', letterSpacing: '0.25em' }}>
+            System Overview // Live Telemetry
+          </p>
+          <h2 className="text-display" style={{ fontSize: '3rem', margin: '0 0 0.75rem 0', letterSpacing: '-0.04em' }}>
+            {user?.name || 'Commander'}
+          </h2>
+          <p className="text-secondary" style={{ maxWidth: '500px', lineHeight: 1.6, fontSize: '1rem' }}>
+            Digital twin status: <span style={{ color: 'var(--success)', fontWeight: 700 }}>Optimal</span>. 
+            All environmental sensors reporting within target thresholds. BMI stable at <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{bmi}</span>.
+          </p>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '1rem', zIndex: 1, position: 'relative' }}>
+          <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-glass)', borderRadius: '20px', border: '1px solid var(--border-strong)', display: 'flex', alignItems: 'center', gap: '14px', backdropFilter: 'blur(12px)', boxShadow: 'var(--shadow-card)' }}>
+             <Clock size={28} color="var(--accent)" />
+             <div>
+               <p className="text-display" style={{ fontSize: '1.8rem', lineHeight: 1 }}>
+                 {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+               </p>
+               <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '4px' }}>Local Node Time</p>
+             </div>
+          </div>
+        </div>
       </div>
 
-      {/* Vital Stats Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem',
-        marginBottom: '1.75rem',
-      }}>
+      {/* Environmental Grid */}
+      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <CloudRain size={22} color="var(--accent)" />
+          <div>
+            <p style={{ fontSize: '1.2rem', fontWeight: 900 }}>{environmental.temp}</p>
+            <p className="label-caps" style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>{environmental.condition}</p>
+          </div>
+        </div>
+        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <Droplets size={22} color="var(--accent)" />
+          <div>
+            <p style={{ fontSize: '1.2rem', fontWeight: 900 }}>{environmental.humidity}</p>
+            <p className="label-caps" style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Humidity</p>
+          </div>
+        </div>
+        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <Wind size={22} color="var(--accent)" />
+          <div>
+            <p style={{ fontSize: '1.2rem', fontWeight: 900 }}>{environmental.windSpeed}</p>
+            <p className="label-caps" style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Wind: {environmental.windDir}</p>
+          </div>
+        </div>
+        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <Shield size={22} color="var(--accent)" />
+          <div>
+            <p style={{ fontSize: '1.2rem', fontWeight: 900 }}>{environmental.aqi}</p>
+            <p className="label-caps" style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Air Quality</p>
+          </div>
+        </div>
+        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <Sunrise size={22} color="var(--accent)" />
+          <div>
+            <p style={{ fontSize: '1.1rem', fontWeight: 900 }}>05:42 AM</p>
+            <p className="label-caps" style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Sunrise</p>
+          </div>
+        </div>
+        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <Sunset size={22} color="var(--accent)" />
+          <div>
+            <p style={{ fontSize: '1.1rem', fontWeight: 900 }}>06:38 PM</p>
+            <p className="label-caps" style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Sunset</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Vitals Grid */}
+      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         {vitals.map((v, i) => {
           const Icon = v.icon;
           const isPositive = v.trend.startsWith('+');
+          const displayColor = v.label === 'Health Score' ? 'var(--accent)' : v.color;
           return (
-            <div key={i} className="glass-card" style={{
-              padding: '1.25rem 1.35rem',
-              display: 'flex', flexDirection: 'column', gap: '0.85rem',
+            <div key={i} className="glass-card" style={{ 
+              padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
+              borderTop: v.label === 'Health Score' ? '2px solid var(--accent)' : 'none'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{
-                  width: '40px', height: '40px', borderRadius: 'var(--radius-sm)',
-                  background: `${v.color}18`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Icon size={20} color={v.color} />
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', background: `${displayColor}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon size={24} color={displayColor} />
                 </div>
-                <span style={{
-                  fontSize: '0.68rem', fontWeight: 700,
-                  color: isPositive ? 'var(--success)' : 'var(--danger)',
-                  background: isPositive ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)',
-                  padding: '3px 8px', borderRadius: 'var(--radius-sm)',
-                  display: 'flex', alignItems: 'center', gap: '2px',
-                }}>
-                  <ArrowUpRight size={12} style={{ transform: isPositive ? 'none' : 'rotate(90deg)' }} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: isPositive ? 'var(--success)' : (v.trend === 'STABLE' ? 'var(--text-3)' : 'var(--danger)'), background: isPositive ? 'rgba(52, 211, 153, 0.1)' : 'rgba(255,255,255,0.05)', padding: '5px 12px', borderRadius: '20px' }}>
                   {v.trend}
                 </span>
               </div>
               <div>
-                <p className="label-caps" style={{ marginBottom: '0.2rem' }}>{v.label}</p>
-                <p style={{
-                  fontSize: '1.65rem', fontWeight: 800,
-                  fontFamily: 'var(--font-display)',
-                  color: 'var(--text-1)', lineHeight: 1.1,
-                }}>
-                  {v.value}<span style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontWeight: 500, marginLeft: '4px' }}>{v.unit}</span>
+                <p className="label-caps" style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '6px' }}>{v.label}</p>
+                <p className="text-display" style={{ fontSize: '2.2rem', color: 'var(--text-1)', lineHeight: 1 }}>
+                  {v.value}<span style={{ fontSize: '1rem', color: 'var(--text-3)', fontWeight: 600, marginLeft: '6px' }}>{v.unit}</span>
                 </p>
               </div>
             </div>
@@ -93,122 +166,63 @@ export default function Overview({ user }) {
         })}
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-        gap: '1.25rem',
-        marginBottom: '1.75rem',
-      }}>
-        {/* Goals Progress */}
-        <div className="glass-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Target size={18} color="var(--accent)" />
-            <span className="card-title" style={{ margin: 0 }}>Active Goals</span>
+      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+        <div className="glass-card" style={{ padding: '2.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '2.5rem' }}>
+            <Target size={28} color="var(--accent)" />
+            <h3 className="text-display" style={{ fontSize: '1.8rem', margin: 0 }}>Strategic Priorities</h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             {priorities.map((g, i) => (
               <div key={i}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-1)' }}>{g.label}</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{g.progress}%</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-1)' }}>{g.label}</span>
+                  <span style={{ fontSize: '1rem', fontWeight: 900, color: g.color }}>{g.progress}%</span>
                 </div>
-                <div style={{
-                  height: '6px', borderRadius: '3px',
-                  background: 'var(--bg-elevated)', overflow: 'hidden',
+                <div style={{ height: '10px', borderRadius: '5px', background: 'var(--bg-dark)', overflow: 'hidden', padding: '1px' }}>
+                  <div style={{ width: `${Math.min(g.progress, 100)}%`, height: '100%', borderRadius: '4px', background: g.color, boxShadow: `0 0 15px ${g.color}44` }} />
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-3)', marginTop: '8px', fontWeight: 500 }}>{g.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="glass-card" style={{ padding: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
+              <Shield size={24} color="var(--danger)" />
+              <h3 className="text-display" style={{ fontSize: '1.4rem', margin: 0 }}>Anomalies & Alerts</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {alerts.map((a, i) => (
+                <div key={i} style={{ 
+                  padding: '1.25rem', borderRadius: '16px', 
+                  background: a.severity === 'critical' ? 'rgba(248, 113, 113, 0.08)' : 'rgba(251, 191, 36, 0.08)', 
+                  border: `1px solid ${a.severity === 'critical' ? 'rgba(248, 113, 113, 0.15)' : 'rgba(251, 191, 36, 0.15)'}`, 
+                  display: 'flex', alignItems: 'flex-start', gap: '14px' 
                 }}>
-                  <div style={{
-                    width: `${Math.min(g.progress, 100)}%`,
-                    height: '100%', borderRadius: '3px',
-                    background: `linear-gradient(90deg, ${g.color}, ${g.color}bb)`,
-                    transition: 'width 1s var(--ease)',
-                  }} />
+                  <span style={{ fontSize: '1.4rem' }}>{a.icon}</span>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-2)', lineHeight: 1.6, fontWeight: 500 }}>{a.text}</p>
                 </div>
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '0.2rem' }}>{g.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Alerts & Action Items */}
-        <div className="glass-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Shield size={18} color="var(--danger)" />
-            <span className="card-title" style={{ margin: 0 }}>Priority Alerts</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {alerts.map((a, i) => (
-              <div key={i} style={{
-                padding: '0.85rem 1rem',
-                borderRadius: 'var(--radius-sm)',
-                background: a.severity === 'critical' ? 'rgba(248,113,113,0.08)' : 'rgba(251,191,36,0.08)',
-                border: `1px solid ${a.severity === 'critical' ? 'rgba(248,113,113,0.2)' : 'rgba(251,191,36,0.2)'}`,
-                display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
-              }}>
-                <span style={{ fontSize: '1.1rem', flexShrink: 0, lineHeight: 1.3 }}>{a.icon}</span>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', lineHeight: 1.5 }}>{a.text}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          {/* Quick Stats */}
-          <div style={{
-            marginTop: '1.25rem', padding: '1rem',
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--bg-elevated)',
-            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
-          }}>
+          <div className="glass-card" style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(to right, var(--bg-card), var(--accent-soft))' }}>
             <div>
-              <p className="label-caps">Deadline</p>
-              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-1)', marginTop: '0.15rem' }}>
-                {user?.goal?.deadline || 'Dec 2026'}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                <Droplets size={22} color="var(--accent)" />
+                <span className="text-display" style={{ fontSize: '1.2rem' }}>Hydration Logic</span>
+              </div>
+              <p className="label-caps" style={{ fontSize: '0.65rem' }}>Target: 8 Units (Current: {Math.round((waterGlasses/8)*100)}%)</p>
             </div>
-            <div>
-              <p className="label-caps">Months Left</p>
-              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent)', marginTop: '0.15rem' }}>
-                {user?.goal?.timelineMonths || 20}
-              </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <button onClick={() => setWaterGlasses(Math.max(0, waterGlasses - 1))} className="btn-icon" style={{ background: 'var(--bg-elevated)', width: '36px', height: '36px' }}><Minus size={18}/></button>
+              <span className="text-display" style={{ fontSize: '2.4rem' }}>{waterGlasses}</span>
+              <button onClick={() => setWaterGlasses(waterGlasses + 1)} className="btn-icon" style={{ background: 'var(--accent)', color: '#fff', width: '36px', height: '36px', boxShadow: '0 4px 12px var(--accent-soft)' }}><Plus size={18}/></button>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Scores Radar Snapshot */}
-      <div className="glass-card" style={{ marginBottom: '1.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-          <Heart size={18} color="var(--accent)" />
-          <span className="card-title" style={{ margin: 0 }}>Performance Scores</span>
-        </div>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '1rem',
-        }}>
-          {user?.scores && Object.entries(user.scores).map(([key, val]) => (
-            <div key={key} style={{
-              padding: '0.85rem',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--bg-elevated)',
-              textAlign: 'center',
-            }}>
-              <p className="label-caps" style={{ marginBottom: '0.35rem' }}>{key}</p>
-              <p style={{
-                fontSize: '1.5rem', fontWeight: 800,
-                fontFamily: 'var(--font-display)',
-                color: val >= 60 ? 'var(--success)' : val >= 40 ? 'var(--warning)' : 'var(--danger)',
-              }}>{val}</p>
-              <div style={{
-                height: '4px', borderRadius: '2px',
-                background: 'var(--border)', marginTop: '0.5rem', overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${val}%`, height: '100%', borderRadius: '2px',
-                  background: val >= 60 ? 'var(--success)' : val >= 40 ? 'var(--warning)' : 'var(--danger)',
-                  transition: 'width 1.2s var(--ease)',
-                }} />
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
