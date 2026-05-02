@@ -44,6 +44,8 @@ const useStore = create(
       palette: 'gold',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards'],
+      isLoading: false,
+      serverStatus: 'unknown', // 'online' | 'offline' | 'unknown'
 
       // ── Core user profile (hydrated from database)
       user: null,
@@ -51,7 +53,7 @@ const useStore = create(
       calendar_events: [],
 
       // ── Finance slice
-      finance: { transactions: [] },
+      finance: { transactions: [], budgets: [] },
 
       // ── Shopping slice
       shopping: { items: [] },
@@ -115,45 +117,67 @@ const useStore = create(
       // Sync Actions
       // ──────────────────────────────────────────────────────────
       fetchInitialData: async () => {
+        set({ isLoading: true });
         const fetchJSON = async (ep) => await apiSync(ep, 'GET');
 
-        const [
-          user, tasks, shopping, timesheet,
-          training, nutrition, lifestyle,
-          medical, physique, assessment, skills, events
-        ] = await Promise.all([
-          fetchJSON('/user_profile'),
-          fetchJSON('/tasks'),
-          fetchJSON('/shopping'),
-          fetchJSON('/timesheet'),
-          fetchJSON('/training_plan'),
-          fetchJSON('/nutrition_strategy'),
-          fetchJSON('/lifestyle_tips'),
-          fetchJSON('/medical_data'),
-          fetchJSON('/physique_targets'),
-          fetchJSON('/assessment_qa'),
-          fetchJSON('/metric_logs'),
-          fetchJSON('/skills'),
-          fetchJSON('/calendar_events')
-        ]);
+        try {
+          const [
+            user, tasks, shopping, timesheet,
+            training, nutrition, lifestyle,
+            medical, physique, assessment, metricLogs, skills, events,
+            financeData
+          ] = await Promise.all([
+            fetchJSON('/user_profile'),
+            fetchJSON('/tasks'),
+            fetchJSON('/shopping'),
+            fetchJSON('/timesheet'),
+            fetchJSON('/training_plan'),
+            fetchJSON('/nutrition_strategy'),
+            fetchJSON('/lifestyle_tips'),
+            fetchJSON('/medical_data'),
+            fetchJSON('/physique_targets'),
+            fetchJSON('/assessment_qa'),
+            fetchJSON('/metric_logs'),
+            fetchJSON('/skills'),
+            fetchJSON('/calendar_events'),
+            fetchJSON('/finance'),
+          ]);
 
-        set({ 
-          user: userRes,
-          skills: skillsRes || [],
-          calendar_events: eventsRes || [],
-          finance: { transactions: [] },
-          shopping: { items: shoppingRes || [] },
-          timesheet: { sessions: timesheetRes || [] },
-          metric_logs: metricLogsRes || [],
-          trainingPlan: trainingRes,
-          nutritionStrategy: nutritionRes,
-          lifestyleTips: lifestyleRes,
-          medicalData: medicalRes,
-          physiqueTargets: physiqueRes,
-          assessmentQA: assessmentRes || []
-        });
+          const newState = {
+            isLoading: false,
+            skills: Array.isArray(skills) ? skills : [],
+            calendar_events: Array.isArray(events) ? events : [],
+            timesheet: { sessions: Array.isArray(timesheet) ? timesheet : [] },
+            shopping: { items: Array.isArray(shopping) ? shopping : [] },
+            metric_logs: Array.isArray(metricLogs) ? metricLogs : [],
+            trainingPlan: training,
+            nutritionStrategy: nutrition,
+            lifestyleTips: Array.isArray(lifestyle) ? lifestyle : [],
+            medicalData: medical,
+            physiqueTargets: physique,
+            assessmentQA: Array.isArray(assessment) ? assessment : [],
+          };
 
-        if (tasks) set((state) => ({ user: { ...state.user, tasks: { ...state.user.tasks, pending: tasks } } }));
+          if (user) newState.user = user;
+          if (financeData?.transactions) newState.finance = { transactions: financeData.transactions };
+
+          set(newState);
+
+          // Merge tasks into user object
+          if (Array.isArray(tasks) && tasks.length > 0) {
+            const pending = tasks.filter(t => !t.done);
+            const completed = tasks.filter(t => t.done);
+            set((state) => ({
+              user: {
+                ...state.user,
+                tasks: { pending, completed, recurring: state.user?.tasks?.recurring || [] }
+              }
+            }));
+          }
+        } catch (err) {
+          console.error('[useStore] fetchInitialData error:', err);
+          set({ isLoading: false });
+        }
       },
 
       saveMetricLog: async (log) => {
@@ -166,23 +190,31 @@ const useStore = create(
       // ──────────────────────────────────────────────────────────
       // Finance Actions
       // ──────────────────────────────────────────────────────────
-      addTransaction: (tx) =>
+      addTransaction: async (tx) => {
+        const payload = { ...tx, id: Date.now().toString(), date: tx.date || new Date().toISOString().split('T')[0] };
+        // Optimistic update
         set((state) => ({
-          finance: {
-            ...state.finance,
-            transactions: [
-              ...state.finance.transactions,
-              { ...tx, id: Date.now(), date: new Date().toISOString().split('T')[0] },
-            ],
-          },
+          finance: { ...state.finance, transactions: [payload, ...state.finance.transactions] },
+        }));
+        // Persist to DB
+        apiSync('/finance', 'POST', payload).catch(e => console.warn('[Finance] sync failed', e));
+      },
+
+      deleteTransaction: async (id) => {
+        set((state) => ({
+          finance: { ...state.finance, transactions: state.finance.transactions.filter((t) => t.id !== id) },
+        }));
+        apiSync(`/finance/${id}`, 'DELETE').catch(() => {});
+      },
+
+      addBudget: (budget) =>
+        set((state) => ({
+          finance: { ...state.finance, budgets: [...(state.finance.budgets || []), { ...budget, id: Date.now().toString() }] },
         })),
 
-      deleteTransaction: (id) =>
+      deleteBudget: (id) =>
         set((state) => ({
-          finance: {
-            ...state.finance,
-            transactions: state.finance.transactions.filter((t) => t.id !== id),
-          },
+          finance: { ...state.finance, budgets: (state.finance.budgets || []).filter(b => b.id !== id) },
         })),
 
       // Shopping Actions
@@ -259,7 +291,7 @@ const useStore = create(
       },
 
       completeTask: (id) => {
-        const task = get().user.tasks.pending.find((t) => t.id === id);
+        const task = get().user?.tasks?.pending?.find((t) => t.id === id);
         if (task) {
           const completedAt = new Date().toISOString();
           apiSync(`/tasks/${id}`, 'PUT', { done: true, completedAt });
@@ -268,11 +300,50 @@ const useStore = create(
               ...state.user,
               tasks: {
                 ...state.user.tasks,
-                pending: state.user.tasks.pending.filter((t) => t.id !== id),
-                completed: [{ ...task, done: true, completedAt }, ...state.user.tasks.completed],
+                pending: (state.user.tasks.pending || []).filter((t) => t.id !== id),
+                completed: [{ ...task, done: true, completedAt }, ...(state.user.tasks.completed || [])],
               },
             },
           }));
+        }
+      },
+
+      updateTask: (id, updates) => {
+        apiSync(`/tasks/${id}`, 'PUT', updates);
+        set((state) => ({
+          user: {
+            ...state.user,
+            tasks: {
+              ...state.user.tasks,
+              pending: (state.user.tasks?.pending || []).map(t => t.id === id ? { ...t, ...updates } : t),
+            },
+          },
+        }));
+      },
+
+      reopenTask: (id) => {
+        const task = get().user?.tasks?.completed?.find((t) => t.id === id);
+        if (task) {
+          apiSync(`/tasks/${id}`, 'PUT', { done: false, completedAt: null });
+          set((state) => ({
+            user: {
+              ...state.user,
+              tasks: {
+                ...state.user.tasks,
+                completed: (state.user.tasks.completed || []).filter(t => t.id !== id),
+                pending: [{ ...task, done: false, completedAt: null }, ...(state.user.tasks.pending || [])],
+              },
+            },
+          }));
+        }
+      },
+
+      checkServerHealth: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/logs`, { method: 'GET' });
+          set({ serverStatus: res.ok ? 'online' : 'offline' });
+        } catch {
+          set({ serverStatus: 'offline' });
         }
       },
 
@@ -390,7 +461,12 @@ export const selectUpdateMediaProgress = (s) => s.updateMediaProgress;
 export const selectAddTask = (s) => s.addTask;
 export const selectDeleteTask = (s) => s.deleteTask;
 export const selectCompleteTask = (s) => s.completeTask;
+export const selectUpdateTask = (s) => s.updateTask;
+export const selectReopenTask = (s) => s.reopenTask;
 export const selectFetchInitialData = (s) => s.fetchInitialData;
+export const selectCheckServerHealth = (s) => s.checkServerHealth;
+export const selectServerStatus = (s) => s.serverStatus;
+export const selectIsLoading = (s) => s.isLoading;
 
 export const selectTimesheet = (s) => s.timesheet;
 export const selectAddTimesheetSession = (s) => s.addTimesheetSession;
@@ -402,5 +478,8 @@ export const selectLifestyleTips = (s) => s.lifestyleTips;
 export const selectMedicalData = (s) => s.medicalData;
 export const selectPhysiqueTargets = (s) => s.physiqueTargets;
 export const selectAssessmentQA = (s) => s.assessmentQA;
+
+export const selectAddBudget = (s) => s.addBudget;
+export const selectDeleteBudget = (s) => s.deleteBudget;
 
 export default useStore;
