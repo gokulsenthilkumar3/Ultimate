@@ -21,3 +21,5 @@ server/tracker.db
 server/.env
 
 server/.env
+
+growthtrack-ultimate/.env.local

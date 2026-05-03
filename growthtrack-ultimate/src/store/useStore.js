@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://ultimate-8we7.onrender.com/api';
 
 async function apiSync(endpoint, method = 'POST', data = null) {
   try {
