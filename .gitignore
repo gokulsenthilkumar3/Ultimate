@@ -11,7 +11,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Project-specific large assets
-files/
 public/assets/models/
 public/assets/hdri/
 !public/assets/hdri/.gitkeep
