@@ -69,7 +69,7 @@ function FallbackEnvironment() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SceneEnvironment() {
-  const useCustomHdri = process.env.NODE_ENV === "production";
+  const useCustomHdri = false;
 
   if (useCustomHdri) {
     return (
