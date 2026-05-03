@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Legend
 } from 'recharts';
 import { Moon, Sun, Zap, Clock, TrendingUp, AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-
-const API = 'http://localhost:3001/api';
+import useStore, { selectSleepLogs, selectSaveSleepLog } from '../store/useStore';
 
 const SLEEP_TIPS = [
   { icon: Moon, tip: 'Aim for consistent bed/wake times within 30-min window', priority: 'HIGH' },
@@ -44,10 +43,12 @@ const calcDuration = (bed, wake) => {
   return (w - b).toFixed(1);
 };
 
-export default function SleepDashboard({ user }) {
+export default function SleepDashboard() {
+  const logs = useStore(selectSleepLogs);
+  const saveSleepLog = useStore(selectSaveSleepLog);
+  const isLoading = useStore(s => s.isLoading);
   const toast = useToast();
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+
   const [activeView, setActiveView] = useState('trend');
   const [logForm, setLogForm] = useState({
     date: new Date().toISOString().slice(0, 10),
@@ -56,46 +57,21 @@ export default function SleepDashboard({ user }) {
   });
   const [saving, setSaving] = useState(false);
 
-  const fetchLogs = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/sleep_logs`);
-      if (!res.ok) throw new Error();
-      setLogs(await res.json());
-    } catch {
-      toast.error('Could not load sleep data');
-    } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
-
-  const logSleep = async () => {
+  const handleLogSleep = async () => {
     if (!logForm.date) return toast.error('Date is required');
     if (!logForm.bed_time || !logForm.wake_time) return toast.error('Enter bed and wake times');
     const duration = parseFloat(calcDuration(logForm.bed_time, logForm.wake_time));
     if (duration <= 0 || duration > 14) return toast.error('Invalid sleep duration calculated');
     setSaving(true);
     try {
-      await fetch(`${API}/sleep_logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...logForm, duration })
-      });
-      await fetchLogs();
+      await saveSleepLog({ ...logForm, duration });
       setLogForm({ date: new Date().toISOString().slice(0, 10), bed_time: '23:00', wake_time: '06:30', quality: 7, notes: '' });
       toast.success('Sleep logged ✓');
     } catch { toast.error('Save failed'); }
     setSaving(false);
   };
 
-  const deleteLog = async (date) => {
-    try {
-      await fetch(`${API}/sleep_logs/${date}`, { method: 'DELETE' });
-      setLogs(prev => prev.filter(l => l.date !== date));
-      toast.success('Entry removed');
-    } catch { toast.error('Delete failed'); }
-  };
-
-  const chartData = logs.length > 0 ? buildChartData(logs) : [];
+  const chartData = (logs || []).length > 0 ? buildChartData(logs) : [];
   const avgHours = chartData.length ? (chartData.reduce((s, d) => s + d.hours, 0) / chartData.length).toFixed(1) : '—';
   const avgScore = chartData.length ? Math.round(chartData.reduce((s, d) => s + d.score, 0) / chartData.length) : 0;
   const latest = chartData[chartData.length - 1] || {};
@@ -108,7 +84,6 @@ export default function SleepDashboard({ user }) {
   ] : [];
 
   const tooltipStyle = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backdropFilter: 'blur(12px)' };
-
   const previewDuration = logForm.bed_time && logForm.wake_time ? calcDuration(logForm.bed_time, logForm.wake_time) : null;
 
   return (
@@ -120,7 +95,7 @@ export default function SleepDashboard({ user }) {
             <Moon size={24} /> Sleep Analytics
           </h2>
           <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>
-            {logs.length} logged sessions · DB-persisted
+            {logs.length} logged sessions · synced to cloud
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -254,7 +229,7 @@ export default function SleepDashboard({ user }) {
                 <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Notes</label>
                 <input type="text" placeholder="Dreams, disturbances, etc." value={logForm.notes} onChange={e => setLogForm({ ...logForm, notes: e.target.value })} className="form-input" />
               </div>
-              <button onClick={logSleep} className="btn-primary" disabled={saving}>
+              <button onClick={handleLogSleep} className="btn-primary" disabled={saving}>
                 <Plus size={16} /> {saving ? 'Saving…' : 'LOG'}
               </button>
             </div>
@@ -266,8 +241,8 @@ export default function SleepDashboard({ user }) {
               <span className="card-title" style={{ margin: 0 }}>Sleep History</span>
               <span className="badge">{logs.length} entries</span>
             </div>
-            {loading ? (
-              <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>Loading…</p>
+            {isLoading ? (
+              <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>Syncing history…</p>
             ) : logs.length === 0 ? (
               <p style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-3)' }}>No entries yet. Log your first sleep session above.</p>
             ) : (
@@ -281,11 +256,6 @@ export default function SleepDashboard({ user }) {
                       {entry.quality && <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 700 }}>Q:{entry.quality}/10</span>}
                       {entry.notes && <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontStyle: 'italic' }}>{entry.notes}</span>}
                     </div>
-                    <button onClick={() => deleteLog(entry.date)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '4px', display: 'flex', borderRadius: '6px', transition: 'color 0.2s' }}
-                      onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
-                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
-                      <Trash2 size={14} />
-                    </button>
                   </div>
                 ))}
               </div>

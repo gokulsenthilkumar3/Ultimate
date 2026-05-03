@@ -16,7 +16,7 @@ app.use(morgan('dev'));
 // Initialize Database
 db.exec(`
   CREATE TABLE IF NOT EXISTS user_profile (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
+    id INTEGER PRIMARY KEY,
     data TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_by TEXT DEFAULT 'system',
@@ -104,13 +104,12 @@ db.exec(`
   );
 
   -- Migration of remaining hardcoded constants
-  CREATE TABLE IF NOT EXISTS user_profile (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
-  CREATE TABLE IF NOT EXISTS training_plan (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
-  CREATE TABLE IF NOT EXISTS nutrition_strategy (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
-  CREATE TABLE IF NOT EXISTS lifestyle_tips (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
-  CREATE TABLE IF NOT EXISTS medical_data (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
-  CREATE TABLE IF NOT EXISTS physique_targets (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
-  CREATE TABLE IF NOT EXISTS assessment_qa (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS training_plan (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS nutrition_strategy (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS lifestyle_tips (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS medical_data (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS physique_targets (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS assessment_qa (id INTEGER PRIMARY KEY, data TEXT NOT NULL);
 
   CREATE TABLE IF NOT EXISTS notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,6 +175,19 @@ db.exec(`
     completed_dates TEXT DEFAULT '[]',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS entertainment (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    type TEXT,
+    category TEXT,
+    status TEXT,
+    rating INTEGER,
+    progress INTEGER,
+    poster TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    modified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // --- Helper for Audit Logging ---
@@ -223,15 +235,7 @@ app.delete('/api/habits/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// Health
-app.get('/api/health', (req, res) => {
-  try {
-    const stats = db.prepare('SELECT COUNT(*) as count FROM tasks').get();
-    res.json({ status: 'ok', uptime: process.uptime(), tasks: stats.count, db: 'connected' });
-  } catch (e) {
-    res.status(500).json({ status: 'error', message: e.message });
-  }
-});
+
 
 // Documents
 app.get('/api/documents', (req, res) => {
@@ -253,19 +257,21 @@ app.delete('/api/documents/:id', (req, res) => {
 
 // User Profile
 app.get('/api/user', (req, res) => {
-  const row = db.prepare('SELECT data FROM user_profile WHERE id = 1').get();
+  const userId = req.headers['x-user-id'] || 1;
+  const row = db.prepare('SELECT data FROM user_profile WHERE id = ?').get(userId);
   res.json(row ? JSON.parse(row.data) : {});
 });
 
 app.post('/api/user', (req, res) => {
+  const userId = req.headers['x-user-id'] || 1;
   const data = JSON.stringify(req.body);
   const now = new Date().toISOString();
   db.prepare(`
     INSERT INTO user_profile (id, data, modified_at, modified_by) 
-    VALUES (1, ?, ?, 'user')
+    VALUES (?, ?, ?, 'user')
     ON CONFLICT(id) DO UPDATE SET data=excluded.data, modified_at=excluded.modified_at, modified_by=excluded.modified_by
-  `).run(data, now);
-  logAction(req, 'UPDATE', 'user_profile', 1, req.body);
+  `).run(userId, data, now);
+  logAction(req, 'UPDATE', 'user_profile', userId, req.body);
   res.json({ success: true });
 });
 
@@ -371,6 +377,18 @@ app.delete('/api/timesheet/:id', (req, res) => {
   res.json({ success: true });
 });
 
+app.put('/api/timesheet/:id', (req, res) => {
+  const { task, duration, date } = req.body;
+  const now = new Date().toISOString();
+  db.prepare(`
+    UPDATE timesheet 
+    SET task = COALESCE(?, task), duration = COALESCE(?, duration), date = COALESCE(?, date), modified_at = ?, modified_by = 'user' 
+    WHERE id = ?
+  `).run(task, duration, date, now, req.params.id);
+  logAction(req, 'UPDATE', 'timesheet', req.params.id, req.body);
+  res.json({ success: true });
+});
+
 // Finance Transactions
 app.get('/api/finance', (req, res) => {
   const transactions = db.prepare('SELECT * FROM finance ORDER BY date DESC, created_at DESC').all();
@@ -441,14 +459,16 @@ const singletonTables = [
 
 singletonTables.forEach(table => {
   app.get(`/api/${table}`, (req, res) => {
-    const row = db.prepare(`SELECT data FROM ${table} WHERE id = 1`).get();
+    const userId = req.headers['x-user-id'] || 1;
+    const row = db.prepare(`SELECT data FROM ${table} WHERE id = ?`).get(userId);
     res.json(row ? JSON.parse(row.data) : null);
   });
 
   app.post(`/api/${table}`, (req, res) => {
+    const userId = req.headers['x-user-id'] || 1;
     const data = JSON.stringify(req.body);
-    db.prepare(`INSERT OR REPLACE INTO ${table} (id, data) VALUES (1, ?)`).run(data);
-    logAction(req, 'updated', table, 1, req.body);
+    db.prepare(`INSERT OR REPLACE INTO ${table} (id, data) VALUES (?, ?)`).run(userId, data);
+    logAction(req, 'updated', table, userId, req.body);
     res.json({ success: true });
   });
 });
@@ -473,6 +493,13 @@ app.get('/api/all', (req, res) => {
   result.tasks = db.prepare('SELECT * FROM tasks').all();
   result.shopping = db.prepare('SELECT * FROM shopping').all();
   result.timesheet = db.prepare('SELECT * FROM timesheet').all();
+  result.notes = db.prepare('SELECT * FROM notes').all();
+  result.goals = db.prepare('SELECT * FROM goals').all();
+  result.sleep_logs = db.prepare('SELECT * FROM sleep_logs').all();
+  result.documents = db.prepare('SELECT * FROM documents').all();
+  result.subscriptions = db.prepare('SELECT * FROM subscriptions').all();
+  result.habits = db.prepare('SELECT * FROM habits').all();
+  result.entertainment = db.prepare('SELECT * FROM entertainment').all();
   result.audit_log = db.prepare('SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 50').all();
   
   res.json(result);
@@ -590,6 +617,27 @@ app.post('/api/subscriptions', (req, res) => {
 });
 app.delete('/api/subscriptions/:id', (req, res) => {
   db.prepare('UPDATE subscriptions SET active=0 WHERE id=?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// Entertainment (Media)
+app.get('/api/entertainment', (req, res) => {
+  res.json(db.prepare('SELECT * FROM entertainment ORDER BY modified_at DESC').all());
+});
+app.post('/api/entertainment', (req, res) => {
+  const { id, title, type, category, status, rating, progress, poster } = req.body;
+  if (id) {
+    db.prepare('UPDATE entertainment SET title=?, type=?, category=?, status=?, rating=?, progress=?, poster=?, modified_at=CURRENT_TIMESTAMP WHERE id=?')
+      .run(title, type, category, status, rating, progress, poster, id);
+    res.json({ success: true, id });
+  } else {
+    const info = db.prepare('INSERT INTO entertainment (title, type, category, status, rating, progress, poster) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(title, type, category, status, rating, progress, poster);
+    res.json({ success: true, id: info.lastInsertRowid });
+  }
+});
+app.delete('/api/entertainment/:id', (req, res) => {
+  db.prepare('DELETE FROM entertainment WHERE id=?').run(req.params.id);
   res.json({ success: true });
 });
 

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, Moon, Sun, Bell, Search, Command } from 'lucide-react';
+import { Zap, Moon, Sun, Bell, Search, Command, Circle, Settings } from 'lucide-react';
+import HealthScoreRing from './HealthScoreRing';
 
 const PALETTES = [
   { id: 'gold',   color: '#e5a50a', name: 'Gold' },
@@ -9,7 +10,7 @@ const PALETTES = [
   { id: 'rose',   color: '#f43f5e', name: 'Rose' },
 ];
 
-export default function Header({ user, theme, setTheme, palette, setPalette }) {
+export default function Header({ user, theme, setTheme, palette, setPalette, onOpenSettings }) {
   const accentColor = PALETTES.find(p => p.id === palette)?.color || '#e5a50a';
 
   return (
@@ -101,10 +102,15 @@ export default function Header({ user, theme, setTheme, palette, setPalette }) {
           }} />
         </button>
 
-        {/* Theme Toggle */}
-        <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          aria-label="Toggle theme"
-          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        {/* Health Score Ring */}
+        <div style={{ display: 'flex', alignItems: 'center', paddingRight: '10px' }}>
+          <HealthScoreRing size={36} />
+        </div>
+
+        {/* Settings Toggle */}
+        <button onClick={onOpenSettings}
+          aria-label="Open settings"
+          title="Settings"
           style={{
             width: '36px', height: '36px', padding: 0,
             borderRadius: '12px',
@@ -117,7 +123,29 @@ export default function Header({ user, theme, setTheme, palette, setPalette }) {
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
-          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          <Settings size={16} />
+        </button>
+
+        {/* Theme Toggle */}
+        <button onClick={() => {
+            const nextTheme = theme === 'dark' ? 'amoled' : (theme === 'amoled' ? 'light' : 'dark');
+            setTheme(nextTheme);
+          }}
+          aria-label="Toggle theme"
+          title={`Switch to ${theme === 'dark' ? 'amoled' : (theme === 'amoled' ? 'light' : 'dark')} mode`}
+          style={{
+            width: '36px', height: '36px', padding: 0,
+            borderRadius: '12px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--text-2)',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid var(--border)',
+            cursor: 'pointer',
+            transition: 'all 0.25s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
+          {theme === 'dark' ? <Moon size={16} /> : (theme === 'amoled' ? <Circle size={16} fill="currentColor" /> : <Sun size={16} />)}
         </button>
 
         {/* Profile */}

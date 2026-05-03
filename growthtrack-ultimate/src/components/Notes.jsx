@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, Pin, PinOff, Save, Search, FileText } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-
-const API = 'http://localhost:3001/api';
+import useStore, { 
+  selectNotes, selectAddNote, selectDeleteNote, selectUpdateNote 
+} from '../store/useStore';
 
 const NOTE_COLORS = [
   { val: 'var(--accent)', label: 'Accent' },
@@ -14,30 +15,19 @@ const NOTE_COLORS = [
 ];
 
 export default function Notes() {
-  const [notes, setNotes] = useState([]);
+  const notes = useStore(selectNotes);
+  const addNote = useStore(selectAddNote);
+  const deleteNoteAction = useStore(selectDeleteNote);
+  const updateNote = useStore(selectUpdateNote);
+  const isLoading = useStore(s => s.isLoading);
+
   const [selected, setSelected] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editColor, setEditColor] = useState('var(--accent)');
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
   const toast = useToast();
-
-  const fetchNotes = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/notes`);
-      if (!res.ok) throw new Error('Server error');
-      const data = await res.json();
-      setNotes(Array.isArray(data) ? data : []);
-    } catch {
-      toast.error('Could not load notes. Is the server running?');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchNotes(); }, [fetchNotes]);
 
   const selectNote = (note) => {
     setSelected(note.id);
@@ -46,71 +36,41 @@ export default function Notes() {
     setEditColor(note.color || 'var(--accent)');
   };
 
-  const createNote = async () => {
-    try {
-      const res = await fetch(`${API}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'New Note', content: '', color: 'var(--accent)' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        await fetchNotes();
-        const newNote = { id: data.id, title: 'New Note', content: '', color: 'var(--accent)', pinned: false };
-        setSelected(data.id);
-        setEditTitle('New Note');
-        setEditContent('');
-        setEditColor('var(--accent)');
-        toast.success('Note created');
-      }
-    } catch { toast.error('Failed to create note'); }
+  const handleCreateNote = async () => {
+    const newNote = { title: 'New Note', content: '', color: 'var(--accent)', pinned: false };
+    await addNote(newNote);
+    toast.success('Note created');
   };
 
-  const saveNote = async () => {
+  const handleSaveNote = async () => {
     if (!selected) return;
     if (!editTitle.trim()) { toast.error('Note title cannot be empty'); return; }
     setSaving(true);
     try {
-      await fetch(`${API}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: selected, title: editTitle.trim(), content: editContent, color: editColor })
-      });
-      setNotes(prev => prev.map(n => n.id === selected ? { ...n, title: editTitle.trim(), content: editContent, color: editColor } : n));
+      await updateNote(selected, { title: editTitle.trim(), content: editContent, color: editColor });
       toast.success('Note saved');
     } catch { toast.error('Save failed'); }
     setSaving(false);
   };
 
-  const togglePin = async (note) => {
-    try {
-      await fetch(`${API}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: note.id, title: note.title, content: note.content, color: note.color, pinned: !note.pinned })
-      });
-      setNotes(prev => prev.map(n => n.id === note.id ? { ...n, pinned: !note.pinned } : n));
-    } catch { toast.error('Failed to update pin'); }
+  const handleTogglePin = async (note) => {
+    await updateNote(note.id, { pinned: !note.pinned });
   };
 
-  const deleteNote = async (id) => {
+  const handleDeleteNote = async (id) => {
     if (!window.confirm('Delete this note permanently?')) return;
-    try {
-      await fetch(`${API}/notes/${id}`, { method: 'DELETE' });
-      setNotes(prev => prev.filter(n => n.id !== id));
-      if (selected === id) { setSelected(null); setEditTitle(''); setEditContent(''); }
-      toast.success('Note deleted');
-    } catch { toast.error('Delete failed'); }
+    await deleteNoteAction(id);
+    if (selected === id) { setSelected(null); setEditTitle(''); setEditContent(''); }
+    toast.success('Note deleted');
   };
 
-  const filtered = notes.filter(n =>
+  const filtered = (notes || []).filter(n =>
     n.title?.toLowerCase().includes(search.toLowerCase()) ||
     n.content?.toLowerCase().includes(search.toLowerCase())
   );
   const pinned = filtered.filter(n => n.pinned);
   const unpinned = filtered.filter(n => !n.pinned);
   const ordered = [...pinned, ...unpinned];
-  const activeNote = notes.find(n => n.id === selected);
   const wordCount = editContent.trim() ? editContent.trim().split(/\s+/).length : 0;
 
   return (
@@ -121,9 +81,9 @@ export default function Notes() {
           <h2 className="text-display" style={{ fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <FileText size={28} color="var(--accent)" /> Notes
           </h2>
-          <p className="text-secondary" style={{ marginTop: '0.35rem' }}>{notes.length} notes · persisted to database</p>
+          <p className="text-secondary" style={{ marginTop: '0.35rem' }}>{notes.length} notes · synced to cloud</p>
         </div>
-        <button className="btn-primary" onClick={createNote}><Plus size={16} /> NEW NOTE</button>
+        <button className="btn-primary" onClick={handleCreateNote}><Plus size={16} /> NEW NOTE</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1.5rem', height: 'calc(100vh - 250px)' }}>
@@ -140,8 +100,8 @@ export default function Notes() {
             </div>
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            {loading ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>Loading…</div>
+            {isLoading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>Syncing…</div>
             ) : ordered.length === 0 ? (
               <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.85rem' }}>
                 No notes yet.<br />Create your first one!
@@ -163,10 +123,10 @@ export default function Notes() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <p style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-1)', lineHeight: 1.3, flex: 1, marginRight: '8px' }}>{note.title}</p>
                     <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-                      <button onClick={e => { e.stopPropagation(); togglePin(note); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: note.pinned ? 'var(--accent)' : 'var(--text-3)', padding: '2px', display: 'flex' }}>
+                      <button onClick={e => { e.stopPropagation(); handleTogglePin(note); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: note.pinned ? 'var(--accent)' : 'var(--text-3)', padding: '2px', display: 'flex' }}>
                         {note.pinned ? <Pin size={12} /> : <PinOff size={12} />}
                       </button>
-                      <button onClick={e => { e.stopPropagation(); deleteNote(note.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '2px', display: 'flex' }}
+                      <button onClick={e => { e.stopPropagation(); handleDeleteNote(note.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '2px', display: 'flex' }}
                         onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
                         onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
                         <Trash2 size={12} />
@@ -200,7 +160,7 @@ export default function Notes() {
                   />
                 ))}
               </div>
-              <button onClick={saveNote} className="btn-primary" disabled={saving} style={{ padding: '7px 16px' }}>
+              <button onClick={handleSaveNote} className="btn-primary" disabled={saving} style={{ padding: '7px 16px' }}>
                 <Save size={14} /> {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
@@ -213,7 +173,7 @@ export default function Notes() {
                 fontSize: '0.95rem', lineHeight: 1.8, padding: '1.5rem 2rem',
                 resize: 'none', outline: 'none', fontFamily: 'var(--font-body)'
               }}
-              onKeyDown={e => { if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveNote(); } }}
+              onKeyDown={e => { if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleSaveNote(); } }}
             />
             {/* Footer */}
             <div style={{ padding: '0.75rem 2rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '1.5rem' }}>
@@ -226,7 +186,7 @@ export default function Notes() {
           <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', color: 'var(--text-3)' }}>
             <FileText size={48} style={{ opacity: 0.25 }} />
             <p style={{ fontSize: '0.9rem' }}>Select a note to edit, or create a new one</p>
-            <button className="btn-primary" onClick={createNote}><Plus size={16} /> Create Note</button>
+            <button className="btn-primary" onClick={handleCreateNote}><Plus size={16} /> Create Note</button>
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ import useStore, {
   selectUpdateTask, selectReopenTask 
 } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import EmptyState from './ui/EmptyState';
 
 const PRIORITIES = [
   { key: 'High', label: 'High', color: '#ef4444' },
@@ -163,6 +164,8 @@ export default function Tasks({ user }) {
     { id: 'done', label: 'Resolved', emoji: '✅', items: completed, color: 'var(--success)' },
   ];
 
+  const totalTasks = (tasks.pending || []).length + (tasks.completed || []).length;
+
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
@@ -253,8 +256,20 @@ export default function Tasks({ user }) {
         </div>
       )}
 
-      {/* Kanban Board */}
-      <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '1rem', minHeight: '50vh' }}>
+      {/* Empty State */}
+      {totalTasks === 0 && !showAdd ? (
+        <div style={{ marginTop: '2rem' }}>
+          <EmptyState 
+            icon={CheckSquare}
+            title="Your task list is clear"
+            description="You don't have any pending or completed tasks. Time to set your next goal."
+            ctaLabel="Create your first task"
+            onAction={() => setShowAdd(true)}
+          />
+        </div>
+      ) : (
+        /* Kanban Board */
+        <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '1rem', minHeight: '50vh' }}>
         {kanbanColumns.map(col => (
           <div key={col.id} style={{
             flex: '1 0 320px',
@@ -295,6 +310,7 @@ export default function Tasks({ user }) {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }
