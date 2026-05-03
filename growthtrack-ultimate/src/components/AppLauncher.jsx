@@ -48,6 +48,7 @@ const GROUPS = [
       { id: 'health', label: 'Health+', icon: Zap, color: '#ef4444' },
       { id: 'skills', label: 'Skills', icon: Brain, color: '#8b5cf6' },
       { id: 'analytics', label: 'Analytics', icon: Activity, color: '#10b981' },
+      { id: 'forecast', label: 'Forecast', icon: TrendingUp, color: '#f59e0b' },
     ]
   },
   {
@@ -62,6 +63,7 @@ const GROUPS = [
       { id: 'calendar', label: 'Calendar', icon: Calendar, color: '#f59e0b' },
       { id: 'shopping', label: 'Shopping', icon: ShoppingCart, color: '#ef4444' },
       { id: 'current', label: 'Current', icon: Rss, color: '#8b5cf6' },
+      { id: 'sip', label: 'SIP Calc', icon: DollarSign, color: '#10b981' },
     ]
   },
   {
