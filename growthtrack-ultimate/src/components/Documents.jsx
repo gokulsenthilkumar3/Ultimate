@@ -1,28 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2, Shield, Search, File, MoreVertical } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2, Shield, Search, File } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-
-const API = 'http://localhost:3001/api';
+import useStore, { selectDocuments, selectAddDocument, selectDeleteDocument } from '../store/useStore';
 
 export default function Documents() {
+  const documents = useStore(selectDocuments);
+  const addDocument = useStore(selectAddDocument);
+  const deleteDocument = useStore(selectDeleteDocument);
+  const isLoading = useStore(s => s.isLoading);
   const toast = useToast();
-  const [files, setFiles] = useState([]);
-  const [loading, setLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState('');
-
-  const fetchFiles = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/documents`);
-      if (!res.ok) throw new Error();
-      setFiles(await res.json());
-    } catch {
-      toast.error('Could not load documents');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchFiles(); }, [fetchFiles]);
 
   const handleUpload = async () => {
     const filename = prompt("Enter filename to upload:");
@@ -33,16 +21,8 @@ export default function Documents() {
     const date = new Date().toLocaleDateString();
 
     try {
-      const res = await fetch(`${API}/documents`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: filename, size, type, date })
-      });
-      const data = await res.json();
-      if (data.success) {
-        await fetchFiles();
-        toast.success(`${filename} uploaded successfully.`);
-      }
+      await addDocument({ name: filename, size, type, date });
+      toast.success(`${filename} uploaded successfully.`);
     } catch {
       toast.error('Upload failed');
     }
@@ -51,17 +31,16 @@ export default function Documents() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this file permanently?")) return;
     try {
-      await fetch(`${API}/documents/${id}`, { method: 'DELETE' });
-      setFiles(files.filter(f => f.id !== id));
+      await deleteDocument(id);
       toast.success("File deleted.");
     } catch {
       toast.error('Delete failed');
     }
   };
 
-  const filtered = files.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  const privateCount = files.filter(f => f.type === 'Private').length;
-  const publicCount = files.filter(f => f.type === 'Public').length;
+  const filtered = (documents || []).filter(f => f.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const privateCount = documents.filter(f => f.type === 'Private').length;
+  const publicCount = documents.filter(f => f.type === 'Public').length;
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
@@ -71,7 +50,7 @@ export default function Documents() {
           <h2 className="text-display" style={{ fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Folder size={30} color="var(--accent)" /> Documents
           </h2>
-          <p className="text-secondary">{files.length} items managed in secure DB vault.</p>
+          <p className="text-secondary">{documents.length} items synced to cloud vault.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button className="btn-ghost" onClick={() => toast.success('Connecting to Google Drive...')}>
@@ -86,7 +65,7 @@ export default function Documents() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
          <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
            <h3 className="card-title"><HardDrive size={18} color="#10b981" /> Local Vault</h3>
-           <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginBottom: '1rem' }}>Encrypted local storage for highly sensitive documents.</p>
+           <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginBottom: '1rem' }}>Encrypted storage for highly sensitive documents.</p>
            <div style={{ background: 'var(--bg-dark)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
              <div style={{ width: '45%', height: '100%', background: '#10b981' }} />
            </div>
@@ -135,8 +114,8 @@ export default function Documents() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan="5" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>Loading vault...</td></tr>
+              {isLoading ? (
+                <tr><td colSpan="5" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>Syncing vault...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan="5" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>No documents found.</td></tr>
               ) : (

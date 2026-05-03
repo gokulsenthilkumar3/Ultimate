@@ -3,7 +3,7 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "Ultimate - Advanced Fitness & Body Transformation Dashboard with Photorealistic 3D Humanoid Model",
+  "description": "Ultimate - Advanced Digital Twin Engine for hyper-personal physiological, cognitive, and environmental tracking.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

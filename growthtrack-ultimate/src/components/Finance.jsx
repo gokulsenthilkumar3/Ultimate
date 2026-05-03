@@ -4,6 +4,7 @@ import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarCha
 import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import StatCard from './ui/StatCard';
+import SIPCalculator from './SIPCalculator';
 
 const CURRENCY = '₹';
 const fmtINR = (n) => CURRENCY + Number(n).toLocaleString('en-IN');
@@ -26,43 +27,15 @@ export default function Finance() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [budgetForm, setBudgetForm] = useState({ category: '', limit_amount: '' });
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
-  const [activeTab, setActiveTab] = useState('Overview'); // Overview, Analytics, Budgeting, Sync, Subscriptions
+  const [activeTab, setActiveTab] = useState('Overview'); // Overview, Analytics, Budgeting, Subscriptions, Planning, Sync
 
-  // Subscriptions — DB-backed (C3 fix: was hardcoded useState)
-  const [subs, setSubs] = useState([]);
-  const [subsLoading, setSubsLoading] = useState(false);
+  // Subscriptions — Centralized via Zustand
+  const subs = useStore(s => s.subscriptions);
+  const addSubscription = useStore(s => s.addSubscription);
+  const deleteSubscription = useStore(s => s.deleteSubscription);
+  const isLoading = useStore(s => s.isLoading);
   const [showAddSub, setShowAddSub] = useState(false);
   const [subForm, setSubForm] = useState({ name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1 });
-
-  useEffect(() => {
-    if (activeTab === 'Subscriptions') {
-      setSubsLoading(true);
-      fetch('http://localhost:3001/api/subscriptions')
-        .then(r => r.json())
-        .then(data => setSubs(Array.isArray(data) ? data : []))
-        .catch(() => {})
-        .finally(() => setSubsLoading(false));
-    }
-  }, [activeTab]);
-
-  const addSub = async (sub) => {
-    try {
-      const res = await fetch('http://localhost:3001/api/subscriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sub),
-      });
-      const data = await res.json();
-      if (data.success) setSubs(prev => [...prev, { ...sub, id: data.id }]);
-    } catch (e) { console.warn('sub add failed', e); }
-  };
-
-  const deleteSub = async (id) => {
-    try {
-      await fetch(`http://localhost:3001/api/subscriptions/${id}`, { method: 'DELETE' });
-      setSubs(prev => prev.filter(s => s.id !== id));
-    } catch (e) { console.warn('sub delete failed', e); }
-  };
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => t.date && t.date.startsWith(selectedMonth));
@@ -128,7 +101,7 @@ export default function Finance() {
       </div>
 
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '4px' }}>
-        {['Overview', 'Analytics', 'Budgeting', 'Subscriptions', 'Sync'].map(tab => (
+        {['Overview', 'Analytics', 'Budgeting', 'Subscriptions', 'Planning', 'Sync'].map(tab => (
           <button 
             key={tab} 
             className={`btn-sm ${activeTab === tab ? 'active' : ''}`}
@@ -139,6 +112,7 @@ export default function Finance() {
             {tab === 'Analytics' && <BarChart2 size={14} style={{ marginRight: '6px' }} />}
             {tab === 'Budgeting' && <Activity size={14} style={{ marginRight: '6px' }} />}
             {tab === 'Subscriptions' && <Calendar size={14} style={{ marginRight: '6px' }} />}
+            {tab === 'Planning' && <TrendingUp size={14} style={{ marginRight: '6px' }} />}
             {tab === 'Sync' && <CreditCard size={14} style={{ marginRight: '6px' }} />}
             {tab}
           </button>
@@ -364,7 +338,7 @@ export default function Finance() {
               </div>
               <button className="btn-primary" onClick={async () => {
                 if (!subForm.name || !subForm.cost) return toast.error('Name and cost are required');
-                await addSub({ ...subForm, cost: parseFloat(subForm.cost) });
+                await addSubscription({ ...subForm, cost: parseFloat(subForm.cost) });
                 setShowAddSub(false);
                 setSubForm({ name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1 });
                 toast.success('Subscription added');
@@ -385,7 +359,7 @@ export default function Finance() {
                    </div>
                    <div style={{ textAlign: 'right' }}>
                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--danger)', marginBottom: '4px' }}>{fmtINR(sub.cost)}</div>
-                     <button onClick={() => deleteSub(sub.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.7rem' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>[Delete]</button>
+                     <button onClick={() => deleteSubscription(sub.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.7rem' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>[Delete]</button>
                    </div>
                  </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -403,6 +377,12 @@ export default function Finance() {
                </div>
              ))}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'Planning' && (
+        <div className="fade-in">
+          <SIPCalculator />
         </div>
       )}
 
