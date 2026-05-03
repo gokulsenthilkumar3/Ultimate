@@ -14,15 +14,12 @@ const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'tracker.db');
 const db = new Database(DB_PATH);
 
 // --- Security: HTTP Headers ---
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // --- Security: CORS (restrict to known origins) ---
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000')
   .split(',')
   .map(o => o.trim());
-
-console.log(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
-
 app.use(cors({
   origin: (origin, cb) => {
     // Allow non-browser requests (curl, Postman) and whitelisted origins
@@ -30,7 +27,7 @@ app.use(cors({
     cb(new Error('CORS: origin not allowed'));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-actor-name', 'x-actor-email'],
   credentials: true
 }));
 
@@ -58,10 +55,6 @@ const queryLimiter = rateLimit({
 
 // --- Security: Protected-route middleware (bearer token) ---
 const API_SECRET = process.env.API_SECRET || '';
-if (!API_SECRET) {
-  console.warn('WARNING: API_SECRET not set — /api/all, /api/logs, /api/query are unprotected (dev mode)');
-}
-
 function requireSecret(req, res, next) {
   if (!API_SECRET) return next(); // skip if not configured (dev mode)
   const auth = req.headers['authorization'] || '';
@@ -800,12 +793,8 @@ if (require.main === module) {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
-    if (!API_SECRET) {
-      console.warn('WARNING: API_SECRET not set — /api/all, /api/logs, /api/query are unprotected (dev mode)');
-    } else {
-      console.log('API_SECRET: configured ✓');
-    }
+    if (!API_SECRET) console.warn('WARNING: API_SECRET not set — /api/all, /api/logs, /api/query are unprotected (dev mode)');
   });
 }
 
-module.exports = { app, db };
+module.exports = app;
