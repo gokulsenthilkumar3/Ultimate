@@ -17,6 +17,7 @@ const GROUPS = [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard, color: '#3b82f6' },
       { id: 'dashboards', label: 'Hubs', icon: Menu, color: '#ef4444' },
       { id: 'logs', label: 'Logs', icon: AlignLeft, color: '#f59e0b' },
+      { id: 'about', label: 'About', icon: Info, color: '#8b5cf6' },
     ]
   },
   {
