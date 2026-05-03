@@ -1,5 +1,5 @@
-import React from 'react';
-import { Zap, Moon, Sun, Bell } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Zap, Moon, Sun, Bell, Search, Command } from 'lucide-react';
 
 const PALETTES = [
   { id: 'gold',   color: '#e5a50a', name: 'Gold' },
@@ -11,137 +11,142 @@ const PALETTES = [
 
 export default function Header({ user, theme, setTheme, palette, setPalette }) {
   const accentColor = PALETTES.find(p => p.id === palette)?.color || '#e5a50a';
-  const accentGlow = accentColor + '30';
 
   return (
-    <header className="glass-card" style={{
-      margin: '16px 0',
-      padding: '14px 24px',
-      borderRadius: 'var(--radius-lg)',
+    <header style={{
+      margin: '14px 0',
+      padding: '10px 20px',
+      borderRadius: '24px',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
       position: 'relative',
       zIndex: 1000,
+      background: 'var(--bg-glass)',
+      border: '1px solid var(--border-strong)',
+      backdropFilter: 'blur(32px) saturate(200%)',
+      WebkitBackdropFilter: 'blur(32px) saturate(200%)',
+      boxShadow: `0 4px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 0 60px -20px ${accentColor}40`,
+      transition: 'box-shadow 0.5s ease',
     }}>
+
       {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
         <div style={{
-          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`,
-          padding: '10px',
-          borderRadius: 'var(--radius-md)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: `0 4px 20px ${accentGlow}`,
-          minWidth: '42px', minHeight: '42px',
-          flexShrink: 0,
+          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}aa)`,
+          padding: '9px',
+          borderRadius: '14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: `0 4px 20px ${accentColor}50, 0 0 0 1px rgba(255,255,255,0.1) inset`,
+          minWidth: '40px', minHeight: '40px', flexShrink: 0,
+          transition: 'box-shadow 0.4s ease, background 0.4s ease',
         }}>
-          <Zap color="#fff" size={22} strokeWidth={2.5} />
+          <Zap color="#fff" size={20} strokeWidth={2.5} />
         </div>
         <div>
-          <h1 className="text-display" style={{
-            fontSize: '1.35rem', lineHeight: 1.1,
-            color: accentColor,
-            fontWeight: 900,
+          <h1 style={{
+            fontFamily: 'var(--font-display)', fontSize: '1.25rem', lineHeight: 1.1,
+            color: accentColor, fontWeight: 900,
+            transition: 'color 0.4s ease',
           }}>Ultimate</h1>
-          <p className="label-caps" style={{ fontSize: '0.6rem', marginTop: '3px' }}>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.55rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: '2px' }}>
             Digital Twin v2.0
           </p>
         </div>
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+
         {/* Palette Dots */}
         <div style={{
-          display: 'flex', gap: '7px', padding: '5px 8px',
-          background: 'var(--bg-elevated)',
-          borderRadius: 'var(--radius-pill)',
+          display: 'flex', gap: '6px', padding: '6px 10px',
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: '999px',
           border: '1px solid var(--border)',
         }}>
           {PALETTES.map(p => (
-            <button
-              key={p.id}
-              onClick={() => setPalette(p.id)}
-              aria-label={`${p.name} palette`}
+            <button key={p.id} onClick={() => setPalette(p.id)} aria-label={`${p.name} theme`}
+              title={p.name}
               style={{
                 width: '18px', height: '18px', borderRadius: '50%',
                 background: p.color, border: 'none',
-                outline: palette === p.id ? `2px solid ${p.color}` : '2px solid transparent',
-                outlineOffset: '2px',
-                boxShadow: palette === p.id ? `0 0 10px ${p.color}50` : 'none',
+                outline: palette === p.id ? `2.5px solid ${p.color}` : '2px solid transparent',
+                outlineOffset: '2.5px',
+                boxShadow: palette === p.id ? `0 0 12px ${p.color}70` : 'none',
                 cursor: 'pointer', padding: 0,
+                transform: palette === p.id ? 'scale(1.2)' : 'scale(1)',
                 transition: 'all 0.3s ease',
-                transform: palette === p.id ? 'scale(1.15)' : 'scale(1)',
               }}
-              title={p.name}
             />
           ))}
         </div>
 
-        {/* Notification Hub */}
-        <button style={{ 
+        {/* Notification */}
+        <button title="Notifications" style={{
           position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: '38px', height: '38px', padding: 0,
-          borderRadius: '50%', background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)', cursor: 'pointer',
-          color: 'var(--text-2)'
-        }} title="Unified Notifications">
-          <Bell size={18} />
+          width: '36px', height: '36px', padding: 0,
+          borderRadius: '12px', background: 'rgba(255,255,255,0.04)',
+          border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-2)',
+          transition: 'all 0.25s ease',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
+          <Bell size={16} />
           <span style={{
-            position: 'absolute', top: '6px', right: '8px', 
-            width: '7px', height: '7px', 
-            background: 'var(--danger)', 
-            borderRadius: '50%',
-            border: '2px solid var(--bg-card)'
+            position: 'absolute', top: '7px', right: '8px',
+            width: '6px', height: '6px',
+            background: 'var(--danger)', borderRadius: '50%',
+            border: '1.5px solid var(--bg-card)',
           }} />
         </button>
 
         {/* Theme Toggle */}
-        <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           aria-label="Toggle theme"
+          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
           style={{
-            width: '38px', height: '38px', padding: 0,
-            borderRadius: '50%',
+            width: '36px', height: '36px', padding: 0,
+            borderRadius: '12px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'var(--text-2)',
-            background: 'var(--bg-elevated)',
+            background: 'rgba(255,255,255,0.04)',
             border: '1px solid var(--border)',
             cursor: 'pointer',
-            transition: 'all 0.3s ease',
+            transition: 'all 0.25s ease',
           }}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         {/* Profile */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.65rem',
-          paddingLeft: '1rem',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          paddingLeft: '14px',
           borderLeft: '1px solid var(--border)',
         }}>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.2 }}>
+            <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.2 }}>
               {user?.name || 'Athlete'}
             </p>
-            <p className="label-caps" style={{ fontSize: '0.5rem', color: accentColor }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: accentColor, marginTop: '2px', transition: 'color 0.4s ease' }}>
               Ultimate Plan
             </p>
           </div>
           <div style={{
-            width: '38px', height: '38px',
-            borderRadius: 'var(--radius-sm)',
+            width: '36px', height: '36px',
+            borderRadius: '12px',
             background: `linear-gradient(135deg, ${accentColor}, ${accentColor}bb)`,
             color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 900, fontSize: '0.95rem',
-            boxShadow: `0 3px 12px ${accentGlow}`,
+            fontWeight: 900, fontSize: '0.9rem',
+            boxShadow: `0 3px 14px ${accentColor}50`,
             flexShrink: 0,
+            transition: 'all 0.4s ease',
+            cursor: 'pointer',
           }}>
-            {user?.name?.[0] || 'G'}
+            {user?.name?.[0]?.toUpperCase() || 'G'}
           </div>
         </div>
       </div>
