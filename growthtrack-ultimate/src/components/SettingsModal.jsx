@@ -21,6 +21,39 @@ export default function SettingsModal({ onClose }) {
   const [networkInfo, setNetworkInfo] = useState({ ip: 'Detecting...', location: '' });
   const [confirmReset, setConfirmReset] = useState(false);
 
+  const fetchNetworkInfo = async () => {
+    try {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+            const geoData = await geoRes.json();
+            const loc = geoData.address.city || geoData.address.town || geoData.address.village || 'Unknown';
+            const country = geoData.address.country || '';
+            const ipRes = await fetch('https://ipapi.co/json/');
+            const ipData = await ipRes.json();
+            setNetworkInfo({ ip: ipData.ip, location: `${loc}, ${country} (GPS)` });
+          } catch (e) {
+            const ipRes = await fetch('https://ipapi.co/json/');
+            const ipData = await ipRes.json();
+            setNetworkInfo({ ip: ipData.ip, location: `${ipData.city}, ${ipData.country_name} (IP)` });
+          }
+        }, async () => {
+          const res = await fetch('https://ipapi.co/json/');
+          const data = await res.json();
+          setNetworkInfo({ ip: data.ip, location: `${data.city}, ${data.country_name} (IP)` });
+        });
+      } else {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        setNetworkInfo({ ip: data.ip, location: `${data.city}, ${data.country_name}` });
+      }
+    } catch (err) {
+      setNetworkInfo({ ip: 'Unavailable', location: 'Offline' });
+    }
+  };
+
   useEffect(() => {
     const checkServer = async () => {
       try {
@@ -45,16 +78,6 @@ export default function SettingsModal({ onClose }) {
         console.error('Failed to fetch logs');
       }
       setLoadingLogs(false);
-    };
-
-    const fetchNetworkInfo = async () => {
-      try {
-        const res = await fetch('https://ipapi.co/json/');
-        const data = await res.json();
-        setNetworkInfo({ ip: data.ip, location: `${data.city}, ${data.country_name}` });
-      } catch (err) {
-        setNetworkInfo({ ip: 'Unavailable', location: 'Offline' });
-      }
     };
 
     checkServer();

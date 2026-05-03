@@ -59,6 +59,7 @@ const Current            = lazy(() => import('./components/Current'));
 const Notes              = lazy(() => import('./components/Notes'));
 const AppLauncher        = lazy(() => import('./components/AppLauncher'));
 const Dashboards         = lazy(() => import('./components/Dashboards'));
+const About              = lazy(() => import('./components/About'));
 
 // ── Master map of all modules to get their labels
 export const GLOBAL_MODULES = {
@@ -71,7 +72,7 @@ export const GLOBAL_MODULES = {
   notes: 'Notes', databases: 'Databases', logs: 'Logs', settings: 'Settings',
   dashboards: 'Dashboards', mind: 'Mind & Wellness', medical: 'Medical',
   hydration: 'Hydration', strength: 'Strength', analytics: 'Analytics',
-  apps: 'App Hub',
+  apps: 'App Hub', about: 'About',
 };
 
 // ── Module-level loading spinner
@@ -131,6 +132,7 @@ function renderTab(tab, user, setUser, theme, setTheme) {
     case 'notes':          return <Notes />;
     case 'databases':      return <Databases />;
     case 'dashboards':     return <Dashboards />;
+    case 'about':          return <About />;
     case 'apps':           return <AppLauncher setActiveTab={useStore.getState().setActiveTab} />;
     default:               return <Overview {...props} />;
   }

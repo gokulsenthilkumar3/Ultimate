@@ -15,7 +15,47 @@ export default function About() {
   const [serverStatus, setServerStatus] = useState('Checking...');
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
-  const [networkInfo, setNetworkInfo] = useState({ ip: 'Detecting...', location: '' });
+  const [networkInfo, setNetworkInfo] = useState({ ip: 'Detecting...', location: 'Synchronizing...' });
+
+  const fetchNetworkInfo = async () => {
+    try {
+      // Try high-precision Geolocation first if user allows
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            // Reverse geocode via open API
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+            const geoData = await geoRes.json();
+            const loc = geoData.address.city || geoData.address.town || geoData.address.village || 'Unknown';
+            const country = geoData.address.country || '';
+            
+            // Still fetch IP for the network stats
+            const ipRes = await fetch('https://ipapi.co/json/');
+            const ipData = await ipRes.json();
+            
+            setNetworkInfo({ ip: ipData.ip, location: `${loc}, ${country} (GPS)` });
+          } catch (e) {
+            // Fallback to IP only if reverse geocode fails
+            const ipRes = await fetch('https://ipapi.co/json/');
+            const ipData = await ipRes.json();
+            setNetworkInfo({ ip: ipData.ip, location: `${ipData.city}, ${ipData.country_name} (IP)` });
+          }
+        }, async () => {
+          // Fallback to IP if geolocation denied/unavailable
+          const res = await fetch('https://ipapi.co/json/');
+          const data = await res.json();
+          setNetworkInfo({ ip: data.ip, location: `${data.city}, ${data.country_name} (IP)` });
+        });
+      } else {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        setNetworkInfo({ ip: data.ip, location: `${data.city}, ${data.country_name}` });
+      }
+    } catch (err) {
+      setNetworkInfo({ ip: 'Unavailable', location: 'Offline' });
+    }
+  };
 
   useEffect(() => {
     const checkServer = async () => {
@@ -37,16 +77,6 @@ export default function About() {
         console.error('Failed to fetch logs');
       }
       setLoadingLogs(false);
-    };
-
-    const fetchNetworkInfo = async () => {
-      try {
-        const res = await fetch('https://ipapi.co/json/');
-        const data = await res.json();
-        setNetworkInfo({ ip: data.ip, location: `${data.city}, ${data.country_name}` });
-      } catch (err) {
-        setNetworkInfo({ ip: 'Unavailable', location: 'Offline' });
-      }
     };
 
     checkServer();
@@ -166,9 +196,10 @@ export default function About() {
       </div>
 
       <div style={{ marginTop: '3rem', textAlign: 'center', padding: '2rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-        <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.75rem', color: 'var(--text-2)', background: 'var(--bg-elevated)', padding: '8px 16px', borderRadius: '20px', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-2)', background: 'var(--bg-elevated)', padding: '8px 16px', borderRadius: '20px', border: '1px solid var(--border)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Globe size={12} /> IP: {networkInfo.ip}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>📍 {networkInfo.location}</span>
+          <button onClick={fetchNetworkInfo} className="btn-ghost" style={{ padding: '2px 8px', fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 800 }}>SYNC NOW</button>
         </div>
         <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', letterSpacing: '0.1em' }}>
           © {new Date().getFullYear()} ULTIMATE DIGITAL TWIN · DETERMINISTIC SYSTEM · LOCALLY HOSTED
