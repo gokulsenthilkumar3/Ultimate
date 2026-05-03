@@ -340,7 +340,7 @@ const useStore = create(
 
       checkServerHealth: async () => {
         try {
-          const res = await fetch(`${API_BASE}/logs`, { method: 'GET' });
+          const res = await fetch(`${API_BASE}/health`, { method: 'GET', signal: AbortSignal.timeout(4000) });
           set({ serverStatus: res.ok ? 'online' : 'offline' });
         } catch {
           set({ serverStatus: 'offline' });
@@ -402,27 +402,32 @@ const useStore = create(
         })),
     }),
     {
-      name: 'growthtrack-ultimate-v3',
+      name: 'growthtrack-ultimate-v4',
       storage: createJSONStorage(() => localStorage),
-      // Migrate from old key structure if needed
-      version: 3,
+      version: 4,
+      // Only persist UI preferences and local data — never transient server state
+      partialize: (state) => ({
+        theme: state.theme,
+        palette: state.palette,
+        activeTab: state.activeTab,
+        pinnedTabs: state.pinnedTabs,
+        // Persist finance locally as fallback if server is offline
+        finance: state.finance,
+        entertainment: state.entertainment,
+        timesheet: state.timesheet,
+        shopping: state.shopping,
+      }),
       migrate: (persistedState, version) => {
-        if (version < 3) {
-          // Merge old 'ultimate_user' localStorage data if present
-          try {
-            const oldUser = localStorage.getItem('ultimate_user');
-            if (oldUser) {
-              persistedState.user = { ...USER, ...JSON.parse(oldUser) };
-            }
+        // Clean migration — no dependency on deleted USER constant
+        try {
+          if (version < 4) {
             const oldTheme = localStorage.getItem('ultimate_theme');
             if (oldTheme) persistedState.theme = JSON.parse(oldTheme);
             const oldPalette = localStorage.getItem('ultimate_palette');
             if (oldPalette) persistedState.palette = JSON.parse(oldPalette);
-            const oldTab = localStorage.getItem('ultimate_tab');
-            if (oldTab) persistedState.activeTab = JSON.parse(oldTab);
-          } catch {
-            // silent — start fresh
           }
+        } catch {
+          // silent — start fresh
         }
         return persistedState;
       },

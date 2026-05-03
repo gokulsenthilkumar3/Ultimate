@@ -525,6 +525,25 @@ select.form-input { cursor: pointer; }
 }
 .pulse-glow { animation: pulseGlow 3.5s ease-in-out infinite; }
 
+/* Status dot pulse */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.4); }
+}
+
+/* Light mode — fix invisible semi-transparent backgrounds */
+[data-theme='light'] [style*="rgba(255,255,255,0.02)"],
+[data-theme='light'] [style*="rgba(255,255,255,0.04)"] {
+  background: rgba(0,0,0,0.03) !important;
+}
+[data-theme='light'] [style*="rgba(0,0,0,0.15)"],
+[data-theme='light'] [style*="rgba(0,0,0,0.3)"] {
+  background: rgba(0,0,0,0.04) !important;
+}
+[data-theme='light'] .kanban-column {
+  background: rgba(0,0,0,0.03) !important;
+}
+
 /* ═══════════ SCROLLBAR ═══════════════════════ */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

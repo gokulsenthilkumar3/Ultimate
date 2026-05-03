@@ -24,14 +24,40 @@ export default function Finance() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [activeTab, setActiveTab] = useState('Overview'); // Overview, Analytics, Budgeting, Sync, Subscriptions
-  
-  const [subs] = useState([
-    { id: 1, name: 'Netflix', cost: 649, category: 'OTT', nextDate: '2026-05-15', autoRenew: true, icon: '🍿' },
-    { id: 2, name: 'Jio Fiber (WiFi)', cost: 1178, category: 'Utilities', nextDate: '2026-05-12', autoRenew: true, icon: '🌐' },
-    { id: 3, name: 'Electricity Bill (EB)', cost: 850, category: 'Utilities', nextDate: '2026-05-20', autoRenew: false, icon: '⚡' },
-    { id: 4, name: 'Spotify Premium', cost: 119, category: 'OTT', nextDate: '2026-05-25', autoRenew: true, icon: '🎵' },
-    { id: 5, name: 'HDFC Credit Card EMI', cost: 4500, category: 'Credit', nextDate: '2026-05-05', autoRenew: false, icon: '💳' }
-  ]);
+
+  // Subscriptions — DB-backed (C3 fix: was hardcoded useState)
+  const [subs, setSubs] = useState([]);
+  const [subsLoading, setSubsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'Subscriptions') {
+      setSubsLoading(true);
+      fetch('http://localhost:3001/api/subscriptions')
+        .then(r => r.json())
+        .then(data => setSubs(Array.isArray(data) ? data : []))
+        .catch(() => {})
+        .finally(() => setSubsLoading(false));
+    }
+  }, [activeTab]);
+
+  const addSub = async (sub) => {
+    try {
+      const res = await fetch('http://localhost:3001/api/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub),
+      });
+      const data = await res.json();
+      if (data.success) setSubs(prev => [...prev, { ...sub, id: data.id }]);
+    } catch (e) { console.warn('sub add failed', e); }
+  };
+
+  const deleteSub = async (id) => {
+    try {
+      await fetch(`http://localhost:3001/api/subscriptions/${id}`, { method: 'DELETE' });
+      setSubs(prev => prev.filter(s => s.id !== id));
+    } catch (e) { console.warn('sub delete failed', e); }
+  };
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => t.date && t.date.startsWith(selectedMonth));
