@@ -10,11 +10,11 @@ A next-generation personal dashboard combining fitness tracking, body visualizat
 
 | Change | Details |
 |--------|---------|
-| **Folder Consolidation** | `growthtrack-ultimate/` renamed to `ultimate/`; `dashboard-app/` fully merged in |
+| **Folder Consolidation** | `dashboard-app/` fully merged into `growthtrack-ultimate/` |
 | **Dynamic Data** | Replaced hardcoded `userData.js` with Zustand `userStore.js` — editable via UI, saved to localStorage, API-sync ready |
 | **Info/About Page** | New `Info.jsx` tab showing current branch, version, deploy env, API health, version history |
 | **New Components** | `EditableMetric.jsx`, `BodyPartOverlay.jsx`, upgraded `Body3D.jsx`, `metricsWorker.js` |
-| **Deploy Workflow** | CI now builds from `ultimate/`, triggers on `main` + `restructure` branches |
+| **Deploy Workflow** | CI now builds from `growthtrack-ultimate/`, triggers on `main` + `restructure` branches |
 | **Documentation** | All MD files consolidated in `feature.md`; `RELEASE_NOTES.md` added |
 
 ---
@@ -23,7 +23,7 @@ A next-generation personal dashboard combining fitness tracking, body visualizat
 
 ```
 Ultimate/
-├── ultimate/                    # 🎯 Main application (v2.0)
+├── growthtrack-ultimate/        # 🎯 Main application (v2.0)
 │   ├── src/
 │   │   ├── components/          # 24+ React components
 │   │   │   ├── Info.jsx         # 🆕 About/Info page
@@ -47,7 +47,7 @@ Ultimate/
 │   ├── package.json       # v2.0.0
 │   └── vite.config.js     # base: '/Ultimate/'
 ├── .github/workflows/
-│   └── deploy.yml         # Builds from ultimate/, triggers on main+restructure
+│   └── deploy.yml         # Builds from growthtrack-ultimate/, triggers on main+restructure
 ├── README.md
 ├── RELEASE_NOTES.md
 └── feature.md             # All feature docs consolidated
@@ -125,7 +125,7 @@ VITE_BRANCH=restructure                   # Injected automatically by CI
 ```bash
 # Clone
 git clone https://github.com/gokulsenthilkumar3/Ultimate.git
-cd Ultimate/ultimate
+cd Ultimate/growthtrack-ultimate
 
 # Install
 npm install
