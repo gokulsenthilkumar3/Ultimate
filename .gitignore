@@ -14,3 +14,6 @@ yarn-error.log*
 public/assets/models/
 public/assets/hdri/
 !public/assets/hdri/.gitkeep
+
+# Database file — contains sensitive personal data, never commit
+server/tracker.db
