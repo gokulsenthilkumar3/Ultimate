@@ -133,7 +133,7 @@ const useStore = create(
             medical, physique, assessment, metricLogs, skills, events,
             financeData, notes, goals, sleep, docs, subs, habits, media
           ] = await Promise.all([
-            fetchJSON('/user_profile'),
+            fetchJSON('/user'),
             fetchJSON('/tasks'),
             fetchJSON('/shopping'),
             fetchJSON('/timesheet'),
@@ -518,7 +518,7 @@ const useStore = create(
       },
       updateHabit: (id, updates) => {
         apiSync(`/habits/${id}`, 'PUT', updates);
-        set((state) => ({ habits: state.habits.map(h => h.id === id ? { ...h, ...updates } : n) }));
+        set((state) => ({ habits: state.habits.map(h => h.id === id ? { ...h, ...updates } : h) }));
       },
 
       // ──────────────────────────────────────────────────────────
