@@ -108,7 +108,7 @@ function buildFallbackMesh() {
  * }}
  */
 export function useModelLoader() {
-  const isDev = process.env.NODE_ENV === "development";
+  const isDev = !window.__HUMANOID_GLB_LOADED__;
 
   // ── Try loading the real GLB ─────────────────────────────────────────────
   let gltf = null;
@@ -145,7 +145,7 @@ export function useModelLoader() {
     }
 
     // ── DEV FALLBACK ─────────────────────────────────────────────────────────
-    if (isDev) {
+    if (!gltf?.scene) {
       console.info("[useModelLoader] Using fallback capsule mesh (no GLB found)");
       const mesh        = buildFallbackMesh();
       const morphIndexMap = buildMorphIndexMap(mesh);
@@ -158,3 +158,4 @@ export function useModelLoader() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gltf]);
 }
+

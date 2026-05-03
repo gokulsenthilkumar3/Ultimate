@@ -32,7 +32,6 @@ import {
   Vignette,
   ChromaticAberration,
   ToneMapping,
-  SSAO,
   Glitch,
 } from "@react-three/postprocessing";
 import {
@@ -177,3 +176,4 @@ export default function PostProcessingStack({ mode }) {
   if (mode === "PARTIAL") return <PartialPostProcessing />;
   return null;
 }
+
