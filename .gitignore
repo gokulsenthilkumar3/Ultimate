@@ -19,3 +19,5 @@ public/assets/hdri/
 server/tracker.db
 
 server/.env
+
+server/.env
