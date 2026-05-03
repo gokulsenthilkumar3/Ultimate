@@ -1,147 +1,226 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Scatter, ZAxis,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+  ComposedChart, Bar, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
-import { BarChart3, TrendingUp, Activity, Cpu } from 'lucide-react';
-
-const buildAnalyticsData = (userData) => {
-  const weeks = 12;
-  const baseWeight = userData?.weight || 63;
-  const baseCaloric = userData?.nutrition?.tdee || 2400;
-  const baseVolume = userData?.training?.weeklyVolume || 12;
-  return Array.from({ length: weeks }, (_, i) => {
-    const rate = (i / (weeks - 1));
-    const jitter = Math.sin(i * 1.7) * 0.3;
-    return {
-      week: `W${i + 1}`,
-      weight: +(baseWeight + rate * 4 + jitter).toFixed(1),
-      caloricIntake: Math.round(baseCaloric + rate * 200 + Math.sin(i) * 80),
-      trainingLoad: Math.round(baseVolume + rate * 6 + Math.cos(i * 0.8) * 2),
-      recovery: Math.round(60 + rate * 20 + Math.sin(i * 2) * 8),
-      hrv: Math.round(45 + Math.sin(i * 0.9) * 12),
-    };
-  });
-};
-
-const buildRadarData = (userData) => [
-  { metric: 'Strength', value: userData?.scores?.strength || 42 },
-  { metric: 'Endurance', value: userData?.scores?.endurance || 38 },
-  { metric: 'Recovery', value: userData?.scores?.recovery || 55 },
-  { metric: 'Nutrition', value: userData?.scores?.nutrition || 60 },
-  { metric: 'Sleep', value: userData?.scores?.sleep || 35 },
-  { metric: 'Mobility', value: userData?.scores?.mobility || 48 },
-];
+import { BarChart3, TrendingUp, Activity, Cpu, RefreshCw, Gauge, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import useStore from '../store/useStore';
+import StatCard from './ui/StatCard';
 
 const TABS = [
   { id: 'overview', label: 'Weekly Overview' },
   { id: 'radar', label: 'Performance Radar' },
-  { id: 'scatter', label: 'Load vs Recovery' },
+  { id: 'weight', label: 'Weight Trend' },
 ];
 
+const tooltipStyle = {
+  background: 'var(--bg-glass)', border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)', backdropFilter: 'blur(12px)',
+  color: 'var(--text-1)', fontSize: '0.8rem'
+};
+
 export default function Analytics({ user }) {
-  const data = buildAnalyticsData(user);
-  const radarData = buildRadarData(user);
+  const metric_logs = useStore(s => s.metric_logs);
   const [tab, setTab] = useState('overview');
+  const [loading, setLoading] = useState(false);
+  const [liveData, setLiveData] = useState(null);
 
-  const avgHRV = Math.round(data.reduce((s, d) => s + d.hrv, 0) / data.length);
-  const avgRecovery = Math.round(data.reduce((s, d) => s + d.recovery, 0) / data.length);
-  const totalLoad = data.reduce((s, d) => s + d.trainingLoad, 0);
-  const weightGain = (data[data.length - 1].weight - data[0].weight).toFixed(1);
+  useEffect(() => {
+    setLoading(true);
+    fetch('http://localhost:3001/api/metric_logs')
+      .then(r => r.json())
+      .then(rows => {
+        const parsed = Array.isArray(rows)
+          ? rows.map(r => {
+              try { return { ...JSON.parse(r.data || '{}'), date: r.date, id: r.id }; }
+              catch { return { date: r.date, id: r.id }; }
+            })
+          : [];
+        setLiveData(parsed);
+      })
+      .catch(() => setLiveData([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const tooltipStyle = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backdropFilter: 'blur(12px)' };
+  const logs = liveData !== null ? liveData : (metric_logs || []);
+
+  // Velocity Calculation (M16)
+  const velocity = useMemo(() => {
+    if (logs.length < 2) return { val: 0, status: 'STABLE' };
+    const sorted = [...logs].filter(l => l.weight).sort((a, b) => b.date.localeCompare(a.date));
+    if (sorted.length < 2) return { val: 0, status: 'STABLE' };
+    
+    const latest = sorted[0];
+    const prev = sorted.find(l => {
+       const diff = (new Date(latest.date) - new Date(l.date)) / (1000 * 60 * 60 * 24);
+       return diff >= 5 && diff <= 10; // look for 5-10 days ago
+    }) || sorted[sorted.length - 1];
+
+    const days = (new Date(latest.date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
+    if (days === 0) return { val: 0, status: 'STABLE' };
+    
+    const diff = latest.weight - prev.weight;
+    const weeklyRate = (diff / days) * 7;
+    
+    return {
+      val: weeklyRate.toFixed(2),
+      status: weeklyRate > 0.1 ? 'BULKING' : weeklyRate < -0.1 ? 'CUTTING' : 'MAINTENANCE',
+      color: weeklyRate > 0 ? 'var(--accent)' : weeklyRate < 0 ? 'var(--success)' : 'var(--text-3)'
+    };
+  }, [logs]);
+
+  const weeklyData = useMemo(() => {
+    if (!logs.length) return [];
+    const byWeek = {};
+    logs.forEach(l => {
+      if (!l.date) return;
+      const d = new Date(l.date);
+      const week = `W${Math.ceil((d.getDate()) / 7)} ${d.toLocaleString('default', { month: 'short' })}`;
+      if (!byWeek[week]) byWeek[week] = { week, weight: [], sleep: [], hrv: [], count: 0 };
+      if (l.weight) byWeek[week].weight.push(+l.weight);
+      if (l.sleep)  byWeek[week].sleep.push(+l.sleep);
+      if (l.hrv)    byWeek[week].hrv.push(+l.hrv);
+      byWeek[week].count++;
+    });
+    return Object.values(byWeek).slice(-8).map(w => ({
+      week: w.week,
+      weight: w.weight.length ? +(w.weight.reduce((a, b) => a + b, 0) / w.weight.length).toFixed(1) : null,
+      sleep: w.sleep.length ? +(w.sleep.reduce((a, b) => a + b, 0) / w.sleep.length).toFixed(1) : null,
+      hrv: w.hrv.length ? Math.round(w.hrv.reduce((a, b) => a + b, 0) / w.hrv.length) : null,
+      count: w.count,
+    }));
+  }, [logs]);
+
+  const weightData = useMemo(() =>
+    logs.filter(l => l.weight && l.date).sort((a, b) => a.date.localeCompare(b.date)).slice(-30).map(l => ({
+      date: l.date.slice(5),
+      weight: +l.weight,
+    })),
+  [logs]);
+
+  const radarData = useMemo(() => {
+    const recent = logs.slice(0, 30);
+    const avg = (arr, key) => { const v = arr.filter(l => l[key]).map(l => +l[key]); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+    const avgSleep = avg(recent, 'sleep');
+    const avgHrv = avg(recent, 'hrv');
+    return [
+      { metric: 'Strength', value: user?.scores?.strength || 65 },
+      { metric: 'Endurance', value: user?.scores?.endurance || 58 },
+      { metric: 'Recovery', value: avgHrv ? Math.min(100, Math.round(avgHrv * 1.3)) : 75 },
+      { metric: 'Nutrition', value: user?.scores?.nutrition || 82 },
+      { metric: 'Sleep', value: avgSleep ? Math.min(100, Math.round((avgSleep / 9) * 100)) : 70 },
+      { metric: 'Consistency', value: 85 },
+    ];
+  }, [logs, user]);
 
   return (
-    <div className="fade-in" style={{ padding: '0.5rem 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.75rem' }}>
+    <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
         <div>
-          <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Analytics</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
-            <BarChart3 size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
-            Analytics Engine
-          </h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Multi-metric training, nutrition & recovery correlation</p>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Intelligence & Trends</p>
+          <h2 className="text-display" style={{ fontSize: '2.5rem' }}>Growth Analytics</h2>
+          <p className="text-secondary">Derived velocity and predictive biometric modeling.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.35rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`btn-sm${tab === t.id ? ' active' : ''}`}>
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`btn-sm ${tab === t.id ? 'active' : ''}`}
+              style={{ padding: '0.75rem 1.5rem', borderRadius: '12px' }}
+            >
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        {[
-          { label: 'Avg HRV', value: `${avgHRV}ms`, color: '#22d3ee', icon: Activity },
-          { label: 'Avg Recovery', value: `${avgRecovery}%`, color: '#22c55e', icon: TrendingUp },
-          { label: '12-Wk Load', value: totalLoad, color: '#f59e0b', icon: Cpu },
-          { label: 'Weight Gain', value: `+${weightGain}kg`, color: '#a78bfa', icon: BarChart3 },
-        ].map(({ label, value, color, icon: Icon }) => (
-          <div key={label} className="glass-card" style={{ padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className="label-caps">{label}</span>
-              <Icon size={15} color={color} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+         <div className="glass-card" style={{ padding: '1.5rem', borderLeft: `4px solid ${velocity.color}` }}>
+            <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>Weight Velocity</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+               <Gauge size={20} color={velocity.color} />
+               <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>{velocity.val > 0 ? '+' : ''}{velocity.val}</span>
+               <span style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>kg/wk</span>
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color, marginTop: '0.3rem' }}>{value}</div>
-          </div>
-        ))}
+            <p style={{ fontSize: '0.75rem', fontWeight: 800, color: velocity.color, marginTop: '8px' }}>{velocity.status}</p>
+         </div>
+         <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6' }}>
+            <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>Avg Recovery (HRV)</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+               <Activity size={20} color="#8b5cf6" />
+               <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>{radarData.find(d => d.metric === 'Recovery').value}</span>
+               <span style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>ms</span>
+            </div>
+            <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#8b5cf6', marginTop: '8px' }}>STABLE</p>
+         </div>
+         <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
+            <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>Sleep Consistency</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+               <TrendingUp size={20} color="#10b981" />
+               <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>{radarData.find(d => d.metric === 'Sleep').value}%</span>
+            </div>
+            <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>IMPROVING</p>
+         </div>
       </div>
 
-      {tab === 'overview' && (
-        <div className="glass-card">
-          <span className="card-title">Weight + Training Load + Caloric Intake (12 Weeks)</span>
-          <ResponsiveContainer width="100%" height={320}>
-            <ComposedChart data={data} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="week" stroke="var(--text-3)" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="weight" orientation="left" domain={['auto', 'auto']} stroke="#22d3ee" tick={{ fontSize: 11 }} unit="kg" />
-              <YAxis yAxisId="cal" orientation="right" domain={['auto', 'auto']} stroke="#f59e0b" tick={{ fontSize: 11 }} />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Bar yAxisId="cal" dataKey="caloricIntake" fill="#f59e0b" opacity={0.4} radius={[3, 3, 0, 0]} name="Calories" />
-              <Bar yAxisId="cal" dataKey="trainingLoad" fill="#a78bfa" opacity={0.5} radius={[3, 3, 0, 0]} name="Train Load" />
-              <Line yAxisId="weight" type="monotone" dataKey="weight" stroke="#22d3ee" strokeWidth={2.5} dot={{ r: 3 }} name="Weight" />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      <div className="glass-card" style={{ padding: '2rem', minHeight: '450px' }}>
+        {tab === 'overview' && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>Biometric Synchronization</h3>
+              <p className="text-secondary" style={{ fontSize: '0.8rem' }}>Aggregated weekly averages vs baseline.</p>
+            </div>
+            <div style={{ height: '350px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="week" stroke="var(--text-3)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="left" stroke="var(--text-3)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="right" orientation="right" stroke="var(--text-3)" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar yAxisId="left" dataKey="sleep" name="Sleep (hrs)" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Line yAxisId="right" type="monotone" dataKey="weight" name="Weight (kg)" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 4 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        )}
 
-      {tab === 'radar' && (
-        <div className="glass-card">
-          <span className="card-title">Physical Performance Radar</span>
-          <ResponsiveContainer width="100%" height={340}>
-            <RadarChart data={radarData} cx="50%" cy="50%" outerRadius={120}>
-              <PolarGrid stroke="var(--border)" />
-              <PolarAngleAxis dataKey="metric" tick={{ fill: 'var(--text-3)', fontSize: 12 }} />
-              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: 'var(--text-3)', fontSize: 10 }} />
-              <Radar name="Current" dataKey="value" stroke="#22d3ee" fill="#22d3ee" fillOpacity={0.25} strokeWidth={2} />
-            </RadarChart>
-          </ResponsiveContainer>
-          <p style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '0.78rem', marginTop: '0.5rem' }}>
-            Scores computed from training, sleep, nutrition, and biometric data
-          </p>
-        </div>
-      )}
+        {tab === 'radar' && (
+          <div style={{ height: '400px', display: 'flex', justifyContent: 'center' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                <PolarAngleAxis dataKey="metric" tick={{ fill: 'var(--text-2)', fontSize: 12, fontWeight: 700 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                <Radar name="Current" dataKey="value" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.4} />
+                <Tooltip contentStyle={tooltipStyle} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
-      {tab === 'scatter' && (
-        <div className="glass-card">
-          <span className="card-title">Training Load vs Recovery Score Correlation</span>
-          <ResponsiveContainer width="100%" height={340}>
-            <ComposedChart data={data} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="trainingLoad" name="Load" stroke="var(--text-3)" tick={{ fontSize: 11 }} />
-              <YAxis dataKey="recovery" name="Recovery" domain={[40, 100]} stroke="var(--text-3)" tick={{ fontSize: 11 }} />
-              <ZAxis range={[40, 120]} />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ strokeDasharray: '3 3' }} />
-              <Scatter dataKey="recovery" fill="#22c55e" opacity={0.8} name="Recovery" />
-              <Line type="monotone" dataKey="hrv" stroke="#f43f5e" strokeWidth={1.5} dot={false} name="HRV" />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+        {tab === 'weight' && (
+          <div style={{ height: '400px' }}>
+             <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={weightData}>
+                  <defs>
+                    <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="date" stroke="var(--text-3)" fontSize={10} tickLine={false} />
+                  <YAxis domain={['dataMin - 1', 'dataMax + 1']} stroke="var(--text-3)" fontSize={12} tickLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Area type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#weightGrad)" />
+                </AreaChart>
+             </ResponsiveContainer>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

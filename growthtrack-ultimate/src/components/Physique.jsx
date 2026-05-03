@@ -6,7 +6,7 @@ import {
 import useStore from '../store/useStore';
 
 export default function Physique({ user }) {
-  const [activeZone, setActiveZone] = useState('Core');
+  const [activeZone, setActiveZone] = useState('Core Anterior');
 
   const zones = [
     { name: 'Core Anterior', status: 'Cutting', progress: 68, color: 'var(--accent)', icon: '⚡' },
@@ -43,7 +43,7 @@ export default function Physique({ user }) {
             padding: '1.5rem', borderLeft: `4px solid ${zone.color}`,
             cursor: 'pointer', transition: 'all 0.3s ease',
             background: activeZone === zone.name ? 'var(--bg-elevated)' : 'var(--bg-card)'
-          }} onClick={() => setActiveTab(zone.name)}>
+          }} onClick={() => setActiveZone(zone.name)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <span style={{ fontSize: '1.5rem' }}>{zone.icon}</span>
               <span className="badge" style={{ background: `${zone.color}22`, color: zone.color }}>{zone.status}</span>
