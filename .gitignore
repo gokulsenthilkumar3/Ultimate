@@ -17,3 +17,13 @@ public/assets/hdri/
 
 # Database file — contains sensitive personal data, never commit
 server/tracker.db
+
+server/.env
+
+<<<<<<< HEAD
+server/tracker.db
+=======
+server/.env
+
+growthtrack-ultimate/.env.local
+>>>>>>> b52d80b955de094f02ffa47b47b20927ed884933

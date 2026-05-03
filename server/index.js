@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
@@ -13,7 +14,7 @@ const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'tracker.db');
 const db = new Database(DB_PATH);
 
 // --- Security: HTTP Headers ---
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // --- Security: CORS (restrict to known origins) ---
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000')
@@ -26,7 +27,7 @@ app.use(cors({
     cb(new Error('CORS: origin not allowed'));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-actor-name', 'x-actor-email'],
   credentials: true
 }));
 
