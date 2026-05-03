@@ -4,7 +4,7 @@ import {
   Dumbbell, Moon, Droplets, Target, Star, Code, Sparkles,
   Database, Server, Cpu, Globe, Lock, Terminal, CheckCircle2, XCircle
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import useStore, { apiSync } from '../store/useStore';
 import { useState, useEffect } from 'react';
 
 export default function About() {
@@ -21,13 +21,9 @@ export default function About() {
     const checkServer = async () => {
       try {
         const start = Date.now();
-        const res = await fetch('http://localhost:3001/api/user_profile');
-        if (res.ok) {
-          const latency = Date.now() - start;
-          setServerStatus(`Online (${latency}ms)`);
-        } else {
-          setServerStatus('Error');
-        }
+        await apiSync('/user_profile', 'GET');
+        const latency = Date.now() - start;
+        setServerStatus(`Online (${latency}ms)`);
       } catch (err) {
         setServerStatus('Offline');
       }
@@ -35,8 +31,7 @@ export default function About() {
 
     const fetchLogs = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/logs');
-        const data = await res.json();
+        const data = await apiSync('/logs', 'GET');
         setLogs(data);
       } catch (err) {
         console.error('Failed to fetch logs');

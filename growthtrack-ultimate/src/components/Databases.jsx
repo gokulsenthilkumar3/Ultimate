@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Database, Download, RefreshCw, Box, Table, Power, Code, LayoutGrid } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-import useStore, { selectFetchInitialData } from '../store/useStore';
+import useStore, { selectFetchInitialData, apiSync } from '../store/useStore';
 
 export default function Databases() {
   const [data, setData] = useState({});
@@ -19,8 +19,7 @@ export default function Databases() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3001/api/all');
-      const json = await res.json();
+      const json = await apiSync('/all', 'GET');
       setData(json);
       if (!Object.keys(json).includes(activeTable) && Object.keys(json).length > 0) {
          setActiveTable(Object.keys(json)[0]);
@@ -53,12 +52,7 @@ export default function Databases() {
     setSqlError(null);
     setSqlResult(null);
     try {
-      const res = await fetch('http://localhost:3001/api/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: sqlQuery })
-      });
-      const result = await res.json();
+      const result = await apiSync('/query', 'POST', { query: sqlQuery });
       if (result.success) {
         setSqlResult(result.data);
       } else {

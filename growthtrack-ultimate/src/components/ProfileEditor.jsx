@@ -4,7 +4,7 @@ import {
   Code, FileJson, Table as TableIcon, Plus, Trash2, 
   ChevronDown, ChevronRight, Calendar as CalendarIcon, Palette, Award
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 
 const EDITOR_SECTIONS = [
@@ -54,8 +54,7 @@ export default function ProfileEditor() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api${activeSection.endpoint}`);
-      let data = await res.json();
+      let data = await apiSync(activeSection.endpoint, 'GET');
       
       if (!data) data = {};
       
@@ -104,20 +103,10 @@ export default function ProfileEditor() {
         }
       }
 
-      const res = await fetch(`http://localhost:3001/api${activeSection.endpoint}`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-actor-name': 'Admin User',
-          'x-actor-email': 'admin@growthtrack.ultimate'
-        },
-        body: JSON.stringify(dataToSave)
-      });
+      await apiSync(activeSection.endpoint, 'POST', dataToSave);
       
-      if (res.ok) {
-        toast.success(`${activeSection.label} saved and audited!`);
-        fetchInitialData();
-      }
+      toast.success(`${activeSection.label} saved and audited!`);
+      fetchInitialData();
     } catch (err) {
       toast.error('Validation error or invalid JSON.');
     }

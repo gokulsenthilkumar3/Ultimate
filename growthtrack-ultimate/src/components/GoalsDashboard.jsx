@@ -1,25 +1,54 @@
-import React, { useState } from 'react';
-import { Target, Plus, Trash2, TrendingUp, CheckCircle2, Edit3, Save, X, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Target, Plus, Trash2, TrendingUp, CheckCircle2, Edit3, Save, X, AlertCircle, Zap, Clock, TrendingDown, Minus } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import ConfirmDialog from './ui/ConfirmDialog';
 import useStore, { 
   selectGoals, selectAddGoal, selectDeleteGoal, selectUpdateGoal 
 } from '../store/useStore';
+import { projectGoal } from '../utils/projectGoal';
+
 
 const CATEGORIES = ['Health', 'Fitness', 'Finance', 'Career', 'Learning', 'Personal', 'Relationships', 'Lifestyle'];
 const EMPTY_FORM = { title: '', category: 'Health', target_value: '', current_value: 0, unit: '', deadline: '' };
 
-function GoalCard({ goal, onUpdate, onDelete, onToggleDone }) {
+const TREND_CONFIG = {
+  accelerating: { icon: Zap, color: 'var(--success)', label: 'Accelerating' },
+  steady:        { icon: TrendingUp, color: 'var(--info)', label: 'Steady pace' },
+  slowing:       { icon: TrendingDown, color: 'var(--warning)', label: 'Slowing down' },
+  stalled:       { icon: Minus, color: 'var(--text-3)', label: 'No movement' },
+  insufficient_data: { icon: Clock, color: 'var(--text-3)', label: 'Need more data' },
+};
+
+function GoalCard({ goal, onUpdate, onDelete, onToggleDone, metricLogs }) {
   const [editing, setEditing] = useState(false);
   const [current, setCurrent] = useState(goal.current_value || 0);
   const progress = goal.target_value > 0 ? Math.min(100, Math.round((current / goal.target_value) * 100)) : 0;
   const daysLeft = goal.deadline ? Math.ceil((new Date(goal.deadline) - new Date()) / 86400000) : null;
   const isOverdue = daysLeft !== null && daysLeft < 0 && !goal.done;
 
+  // Build data points from metric_logs for this goal's unit/category
+  const dataPoints = useMemo(() => {
+    if (!metricLogs || metricLogs.length < 2) return [];
+    // Try to map goal unit to a metric_log field
+    const fieldMap = { kg: 'weight', lbs: 'weight', hrs: 'sleep', h: 'sleep', '%': 'stamina', bpm: 'hr', L: 'water' };
+    const field = fieldMap[goal.unit] || null;
+    if (!field) return [];
+    return metricLogs
+      .filter(l => l.date && l[field] !== undefined)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(l => ({ date: l.date, value: Number(l[field]) }));
+  }, [metricLogs, goal.unit]);
+
+  const projection = useMemo(() => projectGoal(dataPoints, goal.target_value), [dataPoints, goal.target_value]);
+  const trendCfg = TREND_CONFIG[projection.trend] || TREND_CONFIG.insufficient_data;
+  const TrendIcon = trendCfg.icon;
+
   const handleUpdateProgress = async () => {
     await onUpdate(goal.id, { current_value: parseFloat(current) || 0 });
     setEditing(false);
   };
+
 
   return (
     <div className="glass-card" style={{
@@ -81,17 +110,49 @@ function GoalCard({ goal, onUpdate, onDelete, onToggleDone }) {
       </div>
 
       {/* Footer meta */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {goal.deadline ? (
-          <span style={{ fontSize: '0.7rem', color: isOverdue ? 'var(--danger)' : (daysLeft <= 7 ? 'var(--warning)' : 'var(--text-3)'), display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-            {isOverdue && <AlertCircle size={11} />}
-            {goal.done ? `Completed` : isOverdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
-          </span>
-        ) : <span />}
-        {progress === 100 && !goal.done && (
-          <button onClick={() => onToggleDone(goal)} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.68rem', background: 'var(--success)', color: '#000' }}>
-            Mark Done ✓
-          </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {goal.deadline ? (
+            <span style={{ fontSize: '0.7rem', color: isOverdue ? 'var(--danger)' : (daysLeft <= 7 ? 'var(--warning)' : 'var(--text-3)'), display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+              {isOverdue && <AlertCircle size={11} />}
+              {goal.done ? `Completed` : isOverdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
+            </span>
+          ) : <span />}
+          {progress === 100 && !goal.done && (
+            <button onClick={() => onToggleDone(goal)} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.68rem', background: 'var(--success)', color: '#000' }}>
+              Mark Done ✓
+            </button>
+          )}
+        </div>
+
+        {/* AI Projection Pill */}
+        {!goal.done && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '6px 10px', borderRadius: '8px',
+            background: `${trendCfg.color}11`,
+            border: `1px solid ${trendCfg.color}33`,
+          }}>
+            <TrendIcon size={12} color={trendCfg.color} />
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: trendCfg.color }}>
+              {trendCfg.label}
+            </span>
+            {projection.weeklyRate !== 0 && (
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginLeft: 'auto' }}>
+                {projection.weeklyRate > 0 ? '+' : ''}{projection.weeklyRate} {goal.unit}/wk
+              </span>
+            )}
+            {projection.weeksToTarget && (
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-2)', fontWeight: 800 }}>
+                · ~{projection.weeksToTarget}w
+              </span>
+            )}
+            {projection.confidence && projection.confidence !== 'low' && (
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>
+                ({projection.confidence})
+              </span>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -104,10 +165,12 @@ export default function GoalsDashboard() {
   const deleteGoalAction = useStore(selectDeleteGoal);
   const updateGoalAction = useStore(selectUpdateGoal);
   const isLoading = useStore(s => s.isLoading);
+  const metricLogs = useStore(s => s.metric_logs) || [];
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [showAdd, setShowAdd] = useState(false);
   const [filter, setFilter] = useState('active');
+  const [confirmDelete, setConfirmDelete] = useState(null); // holds goal id to delete
   const toast = useToast();
 
   const handleAddGoal = async () => {
@@ -137,11 +200,15 @@ export default function GoalsDashboard() {
   };
 
   const handleDeleteGoal = async (id) => {
-    if (!window.confirm('Delete this goal?')) return;
+    setConfirmDelete(id);
+  };
+
+  const doDelete = async () => {
     try {
-      await deleteGoalAction(id);
+      await deleteGoalAction(confirmDelete);
       toast.success('Goal removed');
     } catch { toast.error('Delete failed'); }
+    setConfirmDelete(null);
   };
 
   const displayed = (goals || []).filter(g => filter === 'active' ? !g.done : filter === 'done' ? g.done : true);
@@ -152,6 +219,14 @@ export default function GoalsDashboard() {
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete this goal?"
+        description="This goal and all its progress will be permanently removed."
+        confirmLabel="Delete Goal"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Strategic OKRs</p>
@@ -160,6 +235,7 @@ export default function GoalsDashboard() {
           </h2>
           <p className="text-secondary" style={{ marginTop: '0.35rem' }}>
             {totalGoals} goals · {doneCount} achieved · {avgProgress}% avg progress
+            {metricLogs.length > 0 && <span style={{ color: 'var(--text-3)', marginLeft: '8px' }}>· AI projections active ({metricLogs.length} logs)</span>}
           </p>
         </div>
         <button className="btn-primary" onClick={() => setShowAdd(!showAdd)}>
@@ -243,7 +319,7 @@ export default function GoalsDashboard() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {displayed.map(goal => (
-            <GoalCard key={goal.id} goal={goal} onUpdate={handleUpdateGoal} onDelete={handleDeleteGoal} onToggleDone={handleToggleDone} />
+            <GoalCard key={goal.id} goal={goal} onUpdate={handleUpdateGoal} onDelete={handleDeleteGoal} onToggleDone={handleToggleDone} metricLogs={metricLogs} />
           ))}
         </div>
       )}

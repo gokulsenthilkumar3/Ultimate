@@ -84,7 +84,7 @@ export default function Overview({ user }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ flex: 1 }}>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Systems Check: {time.toLocaleTimeString()}</p>
-          <h2 className="text-display" style={{ fontSize: '2.8rem', letterSpacing: '-0.02em', lineHeight: 1 }}>
+          <h2 className="text-display" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.8rem)', letterSpacing: '-0.02em', lineHeight: 1 }}>
             {greeting}, <span style={{ color: 'var(--accent)' }}>{user?.name?.split(' ')[0] || 'Operator'}</span>
           </h2>
           <p className="text-secondary" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>

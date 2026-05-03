@@ -69,7 +69,9 @@ export const GLOBAL_MODULES = {
   calendar: 'Calendar', timesheet: 'Timesheet', finance: 'Finance', entertainment: 'Entertainment',
   social: 'Social Media', ai: 'Agent', maps: 'Maps', documents: 'Documents', current: 'Current',
   notes: 'Notes', databases: 'Databases', logs: 'Logs', settings: 'Settings',
-  dashboards: 'Dashboards'
+  dashboards: 'Dashboards', mind: 'Mind & Wellness', medical: 'Medical',
+  hydration: 'Hydration', strength: 'Strength', analytics: 'Analytics',
+  apps: 'App Hub',
 };
 
 // ── Module-level loading spinner

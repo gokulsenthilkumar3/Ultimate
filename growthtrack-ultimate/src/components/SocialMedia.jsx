@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, Link2, ExternalLink, Save, Share2 } from 'lucide-react';
-import useStore from '../store/useStore';
+import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 
 export default function SocialMedia() {
@@ -24,15 +24,9 @@ export default function SocialMedia() {
     setIsSaving(true);
     try {
       const updatedUser = { ...user, socialMedia: socialData };
-      const res = await fetch('http://localhost:3001/api/user_profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedUser)
-      });
-      if (res.ok) {
-        toast.success('Social graph synchronized.');
-        fetchInitialData();
-      }
+      await apiSync('/user_profile', 'POST', updatedUser);
+      toast.success('Social graph synchronized.');
+      fetchInitialData();
     } catch (err) {
       toast.error('Failed to sync social media data.');
     }

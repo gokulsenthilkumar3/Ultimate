@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2, Shield, Search, File } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import ConfirmDialog from './ui/ConfirmDialog';
 import useStore, { selectDocuments, selectAddDocument, selectDeleteDocument } from '../store/useStore';
 
 export default function Documents() {
@@ -11,6 +12,7 @@ export default function Documents() {
   const toast = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const handleUpload = async () => {
     const filename = prompt("Enter filename to upload:");
@@ -28,13 +30,19 @@ export default function Documents() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this file permanently?")) return;
+  const handleDelete = (id) => {
+    setConfirmDelete(id);
+  };
+
+  const doDelete = async () => {
+    if (!confirmDelete) return;
     try {
-      await deleteDocument(id);
+      await deleteDocument(confirmDelete);
       toast.success("File deleted.");
     } catch {
       toast.error('Delete failed');
+    } finally {
+      setConfirmDelete(null);
     }
   };
 
@@ -44,6 +52,14 @@ export default function Documents() {
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Purge document?"
+        description="This file will be permanently removed from the digital vault. This action is irreversible."
+        confirmLabel="Purge File"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Digital Vault</p>

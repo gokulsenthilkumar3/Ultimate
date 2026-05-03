@@ -29,6 +29,9 @@ const GROUPS = [
       { id: 'training', label: 'Training', icon: Dumbbell, color: '#ef4444' },
       { id: 'nutrition', label: 'Nutrition', icon: Heart, color: '#10b981' },
       { id: 'assessment', label: 'Assessment', icon: Stethoscope, color: '#f59e0b' },
+      { id: 'medical', label: 'Medical', icon: Stethoscope, color: '#8b5cf6' },
+      { id: 'strength', label: 'Strength', icon: Dumbbell, color: '#f59e0b' },
+      { id: 'hydration', label: 'Hydration', icon: Droplets, color: '#3b82f6' },
     ]
   },
   {
@@ -38,10 +41,12 @@ const GROUPS = [
     modules: [
       { id: 'sleep', label: 'Sleep', icon: Moon, color: '#8b5cf6' },
       { id: 'lifestyle', label: 'Lifestyle', icon: Activity, color: '#3b82f6' },
+      { id: 'mind', label: 'Mind & Wellness', icon: Brain, color: '#8b5cf6' },
       { id: 'goals', label: 'Goals', icon: Target, color: '#f59e0b' },
       { id: 'progress', label: 'Progress', icon: Target, color: '#f59e0b' },
       { id: 'health', label: 'Health+', icon: Zap, color: '#ef4444' },
       { id: 'skills', label: 'Skills', icon: Brain, color: '#8b5cf6' },
+      { id: 'analytics', label: 'Analytics', icon: Activity, color: '#10b981' },
     ]
   },
   {
@@ -55,6 +60,7 @@ const GROUPS = [
       { id: 'timesheet', label: 'Timesheet', icon: Clock, color: '#3b82f6' },
       { id: 'calendar', label: 'Calendar', icon: Calendar, color: '#f59e0b' },
       { id: 'shopping', label: 'Shopping', icon: ShoppingCart, color: '#ef4444' },
+      { id: 'current', label: 'Current', icon: Rss, color: '#8b5cf6' },
     ]
   },
   {
@@ -69,6 +75,8 @@ const GROUPS = [
       { id: 'portfolio', label: 'Portfolio', icon: Folder, color: '#10b981' },
       { id: 'social', label: 'Social', icon: Share2, color: '#8b5cf6' },
       { id: 'ai', label: 'AI Agent', icon: Bot, color: '#3b82f6' },
+      { id: 'maps', label: 'Maps', icon: Map, color: '#10b981' },
+      { id: 'settings', label: 'Settings', icon: Settings, color: '#64748b' },
     ]
   }
 ];
