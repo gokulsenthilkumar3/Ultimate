@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Dumbbell, Plus, Trash2, Trophy, Flame, ChevronDown, ChevronUp } from 'lucide-react';
+import EmptyState from './ui/EmptyState';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LIFTS = ['benchPress', 'squat', 'deadlift', 'ohp'];
@@ -124,7 +125,13 @@ export default function Training({ user, setUser }) {
           {/* Day cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
             {schedule.length === 0 && (
-              <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', gridColumn: '1/-1' }}>No days scheduled yet. Add your first day above.</p>
+              <div style={{ gridColumn: '1/-1' }}>
+                <EmptyState
+                  icon={Dumbbell}
+                  title="No Training Days Scheduled"
+                  description="Select a day and muscle group above to start building your workout split."
+                />
+              </div>
             )}
             {schedule.map(day => (
               <div key={day.id} style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: '0.85rem', border: '1px solid var(--border)' }}>

@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Plus, Trash2, Smile, Heart, Zap, Calendar, Trophy, Search } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, Smile, Zap, Trophy } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-import PageHeader from './ui/PageHeader';
+import ContributionGrid from './ContributionGrid';
+import useStore, { 
+  selectHabits, selectAddHabit, selectDeleteHabit, selectUpdateHabit 
+} from '../store/useStore';
 
 const EMOJIS = ['🏃','💤','🧘','📚','🌳','💧','🍎','🧠','🏋️','☀️','🎵','🚴','🚿','🥑','🚶','🏊'];
-const API = 'http://localhost:3001/api';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const last7Days = () =>
@@ -15,55 +16,31 @@ const last7Days = () =>
     return d.toISOString().slice(0, 10);
   });
 
-const TOOLTIP_STYLE = {
-  background: 'var(--bg-glass)', border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-sm)', backdropFilter: 'blur(12px)',
-  color: 'var(--text-1)', fontSize: '0.8rem'
-};
-
 export default function Lifestyle() {
+  const habits = useStore(selectHabits);
+  const addHabitAction = useStore(selectAddHabit);
+  const deleteHabitAction = useStore(selectDeleteHabit);
+  const updateHabitAction = useStore(selectUpdateHabit);
+  const isLoading = useStore(s => s.isLoading);
   const toast = useToast();
-  const [habits, setHabits] = useState([]);
-  const [loading, setLoading] = useState(true);
+
   const [hf, setHf] = useState({ name: '', icon: '🏃' });
 
-  const fetchHabits = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/habits`);
-      const data = await res.json();
-      setHabits(data);
-    } catch {
-      toast.error('Failed to load habits');
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => { fetchHabits(); }, [fetchHabits]);
-
-  const addHabit = async () => {
+  const handleAddHabit = async () => {
     if (!hf.name.trim()) return toast.error('Habit name required');
     try {
-      const res = await fetch(`${API}/habits`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: hf.name, icon: hf.icon })
-      });
-      if (res.ok) {
-        await fetchHabits();
-        setHf({ name: '', icon: '🏃' });
-        toast.success(`Habit "${hf.name}" tracked!`);
-      }
+      await addHabitAction({ name: hf.name, icon: hf.icon });
+      setHf({ name: '', icon: '🏃' });
+      toast.success(`Habit "${hf.name}" tracked!`);
     } catch {
       toast.error('Failed to add habit');
     }
   };
 
-  const deleteHabit = async (id) => {
+  const handleDeleteHabit = async (id) => {
     if (!window.confirm("Delete habit?")) return;
     try {
-      await fetch(`${API}/habits/${id}`, { method: 'DELETE' });
-      setHabits(prev => prev.filter(h => h.id !== id));
+      await deleteHabitAction(id);
       toast.success('Habit deleted');
     } catch {
       toast.error('Delete failed');
@@ -92,12 +69,7 @@ export default function Lifestyle() {
     }
 
     try {
-      await fetch(`${API}/habits/${habit.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completed_dates: nd, streak })
-      });
-      setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, completed_dates: nd, streak } : h));
+      await updateHabitAction(habit.id, { completed_dates: nd, streak });
     } catch {
       toast.error('Failed to update habit');
     }
@@ -117,10 +89,12 @@ export default function Lifestyle() {
            <Trophy size={20} color="var(--accent)" />
            <div>
              <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>Highest Streak</p>
-             <p style={{ fontSize: '1.1rem', fontWeight: 900 }}>{Math.max(0, ...habits.map(h => h.streak || 0))} Days</p>
+             <p style={{ fontSize: '1.1rem', fontWeight: 900 }}>{habits.length > 0 ? Math.max(0, ...habits.map(h => h.streak || 0)) : 0} Days</p>
            </div>
         </div>
       </div>
+
+      <ContributionGrid habits={habits} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
         {/* Habit List */}
@@ -130,9 +104,9 @@ export default function Lifestyle() {
               <span className="label-caps" style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>Last 7 Days</span>
            </div>
 
-           {loading ? (
+           {isLoading ? (
              <div style={{ padding: '4rem', textAlign: 'center' }}><div className="spin-ring" /></div>
-           ) : habits.length === 0 ? (
+           ) : (habits || []).length === 0 ? (
              <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>No habits defined. Add one to begin tracking.</div>
            ) : (
              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -163,13 +137,13 @@ export default function Lifestyle() {
                              key={d} 
                              onClick={() => toggleDay(h, d)}
                              style={{ 
-                               width: '32px', height: '32px', 
-                               borderRadius: '8px', 
-                               background: isDone ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
-                               border: isToday ? '1px solid var(--accent)' : '1px solid transparent',
-                               cursor: 'pointer',
-                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                               transition: 'all 0.2s'
+                                width: '32px', height: '32px', 
+                                borderRadius: '8px', 
+                                background: isDone ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
+                                border: isToday ? '1px solid var(--accent)' : '1px solid transparent',
+                                cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.2s'
                              }}
                              title={d}
                            >
@@ -180,7 +154,7 @@ export default function Lifestyle() {
                     </div>
 
                     <div style={{ textAlign: 'right' }}>
-                       <button className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => deleteHabit(h.id)}><Trash2 size={16}/></button>
+                       <button className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteHabit(h.id)}><Trash2 size={16}/></button>
                     </div>
                   </div>
                 ))}
@@ -220,14 +194,14 @@ export default function Lifestyle() {
                     ))}
                  </div>
               </div>
-              <button className="btn-primary" style={{ width: '100%', marginTop: '1.5rem' }} onClick={addHabit}>INITIALIZE HABIT</button>
+              <button className="btn-primary" style={{ width: '100%', marginTop: '1.5rem' }} onClick={handleAddHabit}>INITIALIZE HABIT</button>
            </div>
 
            <div className="glass-card" style={{ padding: '1.75rem', background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)' }}>
               <h3 className="card-title" style={{ color: '#10b981' }}><Smile size={18} /> Neuro-Insights</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', lineHeight: 1.6, marginTop: '1rem' }}>
                 Consistency is the only variable that compounds. Your current average atomic consistency is 
-                <span style={{ fontWeight: 800, color: 'var(--text-1)' }}> {habits.length > 0 ? (habits.reduce((acc, h) => acc + h.streak, 0) / habits.length).toFixed(1) : 0} days</span>.
+                <span style={{ fontWeight: 800, color: 'var(--text-1)' }}> {habits.length > 0 ? (habits.reduce((acc, h) => acc + (h.streak || 0), 0) / habits.length).toFixed(1) : 0} days</span>.
               </p>
            </div>
         </div>
