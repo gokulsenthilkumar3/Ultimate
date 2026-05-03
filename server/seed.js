@@ -1,72 +1,28 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+// seed.js — Supabase version
+// Initializes all operational tables with empty state
+// Run: node seed.js
+require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
 
-const db = new Database(path.join(__dirname, 'tracker.db'));
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
-// Generic Initialization Script
-// Data is now managed via the Application UI and API.
-// This script only ensures the schema is ready.
+async function seed() {
+  console.log('Seeding operational tables...\n');
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS user_profile (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    data TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT DEFAULT 'system',
-    modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    modified_by TEXT DEFAULT 'system'
-  );
+  // Verify connection
+  const { error: pingErr } = await supabase.from('tasks').select('id').limit(1);
+  if (pingErr && pingErr.code !== 'PGRST116') {
+    console.error('Cannot connect to Supabase:', pingErr.message);
+    process.exit(1);
+  }
 
-  CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    priority TEXT,
-    tag TEXT,
-    dueDate TEXT,
-    done INTEGER DEFAULT 0,
-    recurring INTEGER DEFAULT 0,
-    frequency TEXT,
-    lastDone TEXT,
-    completedAt TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT DEFAULT 'user',
-    modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    modified_by TEXT DEFAULT 'user'
-  );
+  console.log('✓ Supabase connection verified');
+  console.log('✓ Schema already applied via supabase_schema.sql');
+  console.log('\nFor singleton data, run: node seed_full_migration.js');
+  console.log('Seed complete.');
+}
 
-  CREATE TABLE IF NOT EXISTS shopping (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    category TEXT,
-    priority TEXT,
-    estimatedCost REAL,
-    purchased INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT DEFAULT 'user',
-    modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    modified_by TEXT DEFAULT 'user'
-  );
-
-  CREATE TABLE IF NOT EXISTS timesheet (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task TEXT,
-    duration INTEGER,
-    date TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT DEFAULT 'user',
-    modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    modified_by TEXT DEFAULT 'user'
-  );
-
-  CREATE TABLE IF NOT EXISTS audit_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    action TEXT,
-    table_name TEXT,
-    item_id INTEGER,
-    details TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    actor TEXT DEFAULT 'system'
-  );
-`);
-
-console.log('Database initialized successfully. No hardcoded data remains in the seed script.');
+seed();

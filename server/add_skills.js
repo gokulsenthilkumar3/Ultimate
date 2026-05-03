@@ -1,25 +1,45 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+// add_skills.js — Supabase version
+// Run: node add_skills.js
+require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
 
-const db = new Database(path.join(__dirname, 'tracker.db'));
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 const NEW_SKILLS = [
-  { id: 'language_english', label: 'English', proficiency: 50, unit: '%', icon: '🇬🇧', category: 'Languages' },
-  { id: 'language_spanish', label: 'Spanish', proficiency: 50, unit: '%', icon: '🇪🇸', category: 'Languages' },
-  { id: 'language_french', label: 'French', proficiency: 50, unit: '%', icon: '🇫🇷', category: 'Languages' },
-  { id: 'language_german', label: 'German', proficiency: 50, unit: '%', icon: '🇩🇪', category: 'Languages' },
-  { id: 'sign_language', label: 'Sign Language', proficiency: 50, unit: '%', icon: '🤟', category: 'Communication' },
-  { id: 'morse_code', label: 'Morse Code', proficiency: 50, unit: '%', icon: '📡', category: 'Communication' },
-  { id: 'programming_python', label: 'Python', proficiency: 50, unit: '%', icon: '🐍', category: 'Programming' },
-  { id: 'programming_javascript', label: 'JavaScript', proficiency: 50, unit: '%', icon: '🟡', category: 'Programming' },
-  { id: 'programming_java', label: 'Java', proficiency: 50, unit: '%', icon: '☕', category: 'Programming' },
-  { id: 'programming_cpp', label: 'C++', proficiency: 50, unit: '%', icon: '🔵', category: 'Programming' },
-  { id: 'stocks_trading', label: 'Stock Trading', proficiency: 50, unit: '%', icon: '📈', category: 'Finance' },
-  { id: 'finance_budgeting', label: 'Budgeting', proficiency: 50, unit: '%', icon: '💰', category: 'Finance' },
-  { id: 'finance_investing', label: 'Investing', proficiency: 50, unit: '%', icon: '📉', category: 'Finance' },
-  { id: 'finance_crypto', label: 'Cryptocurrency', proficiency: 50, unit: '%', icon: '₿', category: 'Finance' },
+  { id: '9',  label: 'PostgreSQL',    proficiency: 70, icon: '🐘', category: 'Programming' },
+  { id: '10', label: 'React',         proficiency: 85, icon: '⚛️', category: 'Programming' },
+  { id: '11', label: 'Node.js',       proficiency: 80, icon: '🟢', category: 'Programming' },
+  { id: '12', label: 'Load Testing',  proficiency: 75, icon: '⚡', category: 'Programming' },
 ];
 
-db.prepare(`INSERT OR REPLACE INTO skills (id, data) VALUES (1, ?)`).run(JSON.stringify(NEW_SKILLS));
+async function addSkills() {
+  // Fetch current skills
+  const { data, error: fetchErr } = await supabase
+    .from('skills')
+    .select('data')
+    .eq('id', 1)
+    .single();
 
-console.log('Skills inserted successfully.');
+  if (fetchErr) {
+    console.error('Failed to fetch skills:', fetchErr.message);
+    process.exit(1);
+  }
+
+  const existing = JSON.parse(data.data);
+  const merged = [...existing, ...NEW_SKILLS];
+
+  const { error: upsertErr } = await supabase
+    .from('skills')
+    .upsert({ id: 1, data: JSON.stringify(merged) }, { onConflict: 'id' });
+
+  if (upsertErr) {
+    console.error('Failed to update skills:', upsertErr.message);
+  } else {
+    console.log(`✓ Added ${NEW_SKILLS.length} skills. Total: ${merged.length}`);
+  }
+}
+
+addSkills();
