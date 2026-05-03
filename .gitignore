@@ -17,3 +17,7 @@ public/assets/hdri/
 
 # Database file — contains sensitive personal data, never commit
 server/tracker.db
+
+server/.env
+
+server/tracker.db
