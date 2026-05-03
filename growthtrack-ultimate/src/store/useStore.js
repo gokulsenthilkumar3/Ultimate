@@ -159,7 +159,12 @@ const useStore = create(
           };
 
           if (user) newState.user = user;
-          if (financeData?.transactions) newState.finance = { transactions: financeData.transactions };
+          if (financeData) {
+            newState.finance = {
+              transactions: financeData.transactions || [],
+              budgets: financeData.budgets || []
+            };
+          }
 
           set(newState);
 
@@ -207,15 +212,20 @@ const useStore = create(
         apiSync(`/finance/${id}`, 'DELETE').catch(() => {});
       },
 
-      addBudget: (budget) =>
+      addBudget: async (budget) => {
+        const payload = { ...budget, id: Date.now().toString() };
         set((state) => ({
-          finance: { ...state.finance, budgets: [...(state.finance.budgets || []), { ...budget, id: Date.now().toString() }] },
-        })),
+          finance: { ...state.finance, budgets: [...(state.finance.budgets || []), payload] },
+        }));
+        apiSync('/budgets', 'POST', payload).catch(() => {});
+      },
 
-      deleteBudget: (id) =>
+      deleteBudget: async (id) => {
         set((state) => ({
           finance: { ...state.finance, budgets: (state.finance.budgets || []).filter(b => b.id !== id) },
-        })),
+        }));
+        apiSync(`/budgets/${id}`, 'DELETE').catch(() => {});
+      },
 
       // Shopping Actions
       // ──────────────────────────────────────────────────────────

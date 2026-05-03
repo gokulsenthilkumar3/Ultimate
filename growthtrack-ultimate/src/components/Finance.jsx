@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2 } from 'lucide-react';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction } from '../store/useStore';
+import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import StatCard from './ui/StatCard';
 
@@ -16,18 +16,23 @@ const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--
 const EMPTY_FORM = { type: 'Expense', category: '', amount: '', note: '', method: 'UPI (GPay/PhonePe)', date: new Date().toISOString().split('T')[0] };
 
 export default function Finance() {
-  const { transactions } = useStore(selectFinance);
+  const { transactions, budgets = [] } = useStore(selectFinance);
   const addTransaction = useStore(selectAddTransaction);
   const deleteTransaction = useStore(selectDeleteTransaction);
+  const addBudget = useStore(selectAddBudget);
+  const deleteBudget = useStore(selectDeleteBudget);
   const toast = useToast();
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [budgetForm, setBudgetForm] = useState({ category: '', limit_amount: '' });
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [activeTab, setActiveTab] = useState('Overview'); // Overview, Analytics, Budgeting, Sync, Subscriptions
 
   // Subscriptions — DB-backed (C3 fix: was hardcoded useState)
   const [subs, setSubs] = useState([]);
   const [subsLoading, setSubsLoading] = useState(false);
+  const [showAddSub, setShowAddSub] = useState(false);
+  const [subForm, setSubForm] = useState({ name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1 });
 
   useEffect(() => {
     if (activeTab === 'Subscriptions') {
@@ -274,23 +279,51 @@ export default function Finance() {
            <h3 className="card-title"><Activity size={18}/> Zero-Based Budgeting Matrix</h3>
            <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginBottom: '2rem' }}>Allocate every rupee. Green means you are under budget, Red means you have breached the threshold.</p>
            
-           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+           <div style={{ display: 'flex', gap: '1rem', marginBottom: '2.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+             <div style={{ flex: '1 1 200px' }}>
+               <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Category</label>
+               <select className="form-input" value={budgetForm.category} onChange={e => setBudgetForm({...budgetForm, category: e.target.value})}>
+                 <option value="">Select Category</option>
+                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+               </select>
+             </div>
+             <div style={{ flex: '1 1 200px' }}>
+               <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Limit Amount (₹)</label>
+               <input type="number" className="form-input" placeholder="e.g. 5000" value={budgetForm.limit_amount} onChange={e => setBudgetForm({...budgetForm, limit_amount: e.target.value})} />
+             </div>
+             <button className="btn-primary" onClick={() => {
+                if (budgetForm.category && budgetForm.limit_amount) {
+                   addBudget({ category: budgetForm.category, limit_amount: parseFloat(budgetForm.limit_amount) });
+                   setBudgetForm({ category: '', limit_amount: '' });
+                   toast.success('Budget added');
+                } else {
+                   toast.error('Category and limit required');
+                }
+             }}><Plus size={16}/> ADD BUDGET</button>
+           </div>
+
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
               <div>
-                <h4 style={{ fontSize: '0.9rem', color: 'var(--accent)', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>NEEDS (50%)</h4>
-                {[
-                  { name: 'Rent & Utilities', actual: pieData.find(d => d.name === 'Rent')?.value || 0 + (pieData.find(d => d.name === 'Utilities')?.value || 0), limit: 25000 },
-                  { name: 'Food & Groceries', actual: pieData.find(d => d.name === 'Food')?.value || 0, limit: 12000 },
-                  { name: 'Transport', actual: pieData.find(d => d.name === 'Transport')?.value || 0, limit: 4000 }
-                ].map(b => renderBudgetRow(b))}
+                <h4 style={{ fontSize: '0.9rem', color: 'var(--accent)', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>ACTIVE BUDGETS</h4>
+                {budgets.length === 0 ? <p className="empty-msg" style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>No budgets defined. Add one above.</p> : budgets.map(b => {
+                  const actual = pieData.find(d => d.name === b.category)?.value || 0;
+                  return renderBudgetRow({ id: b.id, name: b.category, actual, limit: b.limit_amount, onDelete: () => deleteBudget(b.id) });
+                })}
               </div>
               
               <div>
-                <h4 style={{ fontSize: '0.9rem', color: '#22d3ee', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>WANTS & LIFESTYLE (30%)</h4>
-                {[
-                  { name: 'Gym & Supplements', actual: (pieData.find(d => d.name === 'Gym')?.value || 0) + (pieData.find(d => d.name === 'Supplements')?.value || 0), limit: 8000 },
-                  { name: 'Entertainment', actual: pieData.find(d => d.name === 'Entertainment')?.value || 0, limit: 5000 },
-                  { name: 'Apparel', actual: pieData.find(d => d.name === 'Apparel')?.value || 0, limit: 3000 }
-                ].map(b => renderBudgetRow(b))}
+                <h4 style={{ fontSize: '0.9rem', color: '#22d3ee', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>BUDGET INSIGHTS</h4>
+                <div style={{ padding: '1.5rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                   <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginBottom: '1rem', lineHeight: 1.5 }}>
+                     Total budget limits: <strong style={{ color: 'var(--text-1)' }}>{fmtINR(budgets.reduce((a, b) => a + b.limit_amount, 0))}</strong><br/>
+                     Total monthly expenses: <strong style={{ color: 'var(--text-1)' }}>{fmtINR(expenses)}</strong>
+                   </p>
+                   {expenses > budgets.reduce((a, b) => a + b.limit_amount, 0) && budgets.length > 0 ? (
+                     <p style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 700 }}>⚠️ You have exceeded your total defined budgets!</p>
+                   ) : (
+                     <p style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 700 }}>✅ You are within your total defined budgets.</p>
+                   )}
+                </div>
               </div>
            </div>
         </div>
@@ -298,10 +331,47 @@ export default function Finance() {
 
       {activeTab === 'Subscriptions' && (
         <div className="glass-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h3 className="card-title"><Calendar size={18}/> Recurring Subscriptions & Bills</h3>
-            <button className="btn-primary btn-sm" onClick={() => toast.success('Add subscription dialog opening...')}>+ Add Bill</button>
+            <button className="btn-primary btn-sm" onClick={() => setShowAddSub(!showAddSub)}>
+              {showAddSub ? 'CANCEL' : '+ Add Bill'}
+            </button>
           </div>
+
+          {showAddSub && (
+            <div style={{ padding: '1.5rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--accent)', marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
+              <div style={{ flex: '1 1 180px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Name</label>
+                <input value={subForm.name} onChange={e => setSubForm({ ...subForm, name: e.target.value })} className="form-input" placeholder="Netflix, Gym, etc." />
+              </div>
+              <div style={{ flex: '1 1 100px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Cost (₹)</label>
+                <input type="number" value={subForm.cost} onChange={e => setSubForm({ ...subForm, cost: e.target.value })} className="form-input" placeholder="499" />
+              </div>
+              <div style={{ flex: '1 1 120px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Category</label>
+                <select value={subForm.category} onChange={e => setSubForm({ ...subForm, category: e.target.value })} className="form-input">
+                  {['OTT', 'Utilities', 'Fitness', 'Learning', 'Insurance', 'Rent', 'Credit'].map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: '1 1 140px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Next Bill Date</label>
+                <input type="date" value={subForm.next_date} onChange={e => setSubForm({ ...subForm, next_date: e.target.value })} className="form-input" />
+              </div>
+              <div style={{ flex: '1 1 60px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Icon</label>
+                <input value={subForm.icon} onChange={e => setSubForm({ ...subForm, icon: e.target.value })} className="form-input" placeholder="🍿" />
+              </div>
+              <button className="btn-primary" onClick={async () => {
+                if (!subForm.name || !subForm.cost) return toast.error('Name and cost are required');
+                await addSub({ ...subForm, cost: parseFloat(subForm.cost) });
+                setShowAddSub(false);
+                setSubForm({ name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1 });
+                toast.success('Subscription added');
+              }}>SAVE BILL</button>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
              {subs.map(sub => (
                <div key={sub.id} style={{ padding: '1.5rem', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative' }}>
@@ -313,12 +383,15 @@ export default function Finance() {
                        <span className="label-caps" style={{ color: 'var(--text-3)', fontSize: '0.65rem' }}>{sub.category}</span>
                      </div>
                    </div>
-                   <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--danger)' }}>{fmtINR(sub.cost)}</span>
+                   <div style={{ textAlign: 'right' }}>
+                     <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--danger)', marginBottom: '4px' }}>{fmtINR(sub.cost)}</div>
+                     <button onClick={() => deleteSub(sub.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.7rem' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>[Delete]</button>
+                   </div>
                  </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                    <div>
                      <p style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>Next Billing Date</p>
-                     <p style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>{sub.nextDate}</p>
+                     <p style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>{sub.next_date || sub.nextDate || 'Not set'}</p>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                      <span style={{ fontSize: '0.75rem', color: sub.autoRenew ? 'var(--success)' : 'var(--text-3)' }}>Auto-Renew</span>
@@ -398,14 +471,17 @@ export default function Finance() {
   );
 }
 
-function renderBudgetRow({ name, actual, limit }) {
+function renderBudgetRow({ id, name, actual, limit, onDelete }) {
   const percent = Math.min((actual / limit) * 100, 100);
   const isOver = actual > limit;
   return (
-    <div key={name} style={{ marginBottom: '1.25rem' }}>
-       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.8rem' }}>
+    <div key={id || name} style={{ marginBottom: '1.25rem' }}>
+       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.8rem', alignItems: 'center' }}>
          <span style={{ fontWeight: 700 }}>{name}</span>
-         <span><span style={{ color: isOver ? 'var(--danger)' : 'var(--text-1)', fontWeight: 800 }}>{actual}</span> / {limit}</span>
+         <div style={{ display: 'flex', alignItems: 'center' }}>
+           <span style={{ color: isOver ? 'var(--danger)' : 'var(--text-1)', fontWeight: 800 }}>{actual}</span> / {limit}
+           {onDelete && <button onClick={onDelete} className="btn-icon" style={{ marginLeft: '8px', color: 'var(--text-3)', padding: '2px' }} onMouseEnter={e => e.currentTarget.style.color='var(--danger)'} onMouseLeave={e => e.currentTarget.style.color='var(--text-3)'}><Trash2 size={12}/></button>}
+         </div>
        </div>
        <div style={{ width: '100%', height: '8px', background: 'var(--bg-elevated)', borderRadius: '4px', overflow: 'hidden' }}>
           <div style={{ width: `${percent}%`, height: '100%', background: isOver ? 'var(--danger)' : 'var(--success)' }} />
