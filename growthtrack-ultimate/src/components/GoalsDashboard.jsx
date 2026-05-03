@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Target, Plus, Trash2, TrendingUp, CheckCircle2, Edit3, Save, X, AlertCircle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-
-const API = 'http://localhost:3001/api';
+import EmptyState from './ui/EmptyState';
+import useStore, { 
+  selectGoals, selectAddGoal, selectDeleteGoal, selectUpdateGoal 
+} from '../store/useStore';
 
 const CATEGORIES = ['Health', 'Fitness', 'Finance', 'Career', 'Learning', 'Personal', 'Relationships', 'Lifestyle'];
 const EMPTY_FORM = { title: '', category: 'Health', target_value: '', current_value: 0, unit: '', deadline: '' };
@@ -15,7 +17,7 @@ function GoalCard({ goal, onUpdate, onDelete, onToggleDone }) {
   const isOverdue = daysLeft !== null && daysLeft < 0 && !goal.done;
 
   const handleUpdateProgress = async () => {
-    await onUpdate({ ...goal, current_value: parseFloat(current) || 0 });
+    await onUpdate(goal.id, { current_value: parseFloat(current) || 0 });
     setEditing(false);
   };
 
@@ -97,69 +99,56 @@ function GoalCard({ goal, onUpdate, onDelete, onToggleDone }) {
 }
 
 export default function GoalsDashboard() {
-  const [goals, setGoals] = useState([]);
+  const goals = useStore(selectGoals);
+  const addGoalAction = useStore(selectAddGoal);
+  const deleteGoalAction = useStore(selectDeleteGoal);
+  const updateGoalAction = useStore(selectUpdateGoal);
+  const isLoading = useStore(s => s.isLoading);
+
   const [form, setForm] = useState(EMPTY_FORM);
   const [showAdd, setShowAdd] = useState(false);
   const [filter, setFilter] = useState('active');
-  const [loading, setLoading] = useState(true);
   const toast = useToast();
 
-  const fetchGoals = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/goals`);
-      if (!res.ok) throw new Error();
-      setGoals(await res.json());
-    } catch { toast.error('Could not load goals'); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchGoals(); }, [fetchGoals]);
-
-  const addGoal = async () => {
+  const handleAddGoal = async () => {
     if (!form.title.trim()) return toast.error('Goal title is required');
     if (!form.target_value || isNaN(parseFloat(form.target_value))) return toast.error('Enter a valid target value');
     try {
-      const res = await fetch(`${API}/goals`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, target_value: parseFloat(form.target_value), current_value: parseFloat(form.current_value) || 0 })
+      await addGoalAction({ 
+        ...form, 
+        target_value: parseFloat(form.target_value), 
+        current_value: parseFloat(form.current_value) || 0 
       });
-      const data = await res.json();
-      if (data.success) {
-        await fetchGoals();
-        setForm(EMPTY_FORM);
-        setShowAdd(false);
-        toast.success('Goal created!');
-      }
+      setForm(EMPTY_FORM);
+      setShowAdd(false);
+      toast.success('Goal created!');
     } catch { toast.error('Failed to create goal'); }
   };
 
-  const updateGoal = async (goal) => {
+  const handleUpdateGoal = async (id, updates) => {
     try {
-      await fetch(`${API}/goals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(goal) });
-      setGoals(prev => prev.map(g => g.id === goal.id ? goal : g));
-      toast.success('Progress updated');
+      await updateGoalAction(id, updates);
+      toast.success('Goal updated');
     } catch { toast.error('Update failed'); }
   };
 
-  const toggleDone = async (goal) => {
-    const updated = { ...goal, done: !goal.done };
-    await updateGoal(updated);
+  const handleToggleDone = async (goal) => {
+    await handleUpdateGoal(goal.id, { done: !goal.done });
   };
 
-  const deleteGoal = async (id) => {
+  const handleDeleteGoal = async (id) => {
     if (!window.confirm('Delete this goal?')) return;
     try {
-      await fetch(`${API}/goals/${id}`, { method: 'DELETE' });
-      setGoals(prev => prev.filter(g => g.id !== id));
+      await deleteGoalAction(id);
       toast.success('Goal removed');
     } catch { toast.error('Delete failed'); }
   };
 
-  const displayed = goals.filter(g => filter === 'active' ? !g.done : filter === 'done' ? g.done : true);
+  const displayed = (goals || []).filter(g => filter === 'active' ? !g.done : filter === 'done' ? g.done : true);
   const totalGoals = goals.length;
   const doneCount = goals.filter(g => g.done).length;
-  const avgProgress = goals.length ? Math.round(goals.filter(g => !g.done).reduce((a, g) => a + (g.target_value > 0 ? Math.min(100, (g.current_value / g.target_value) * 100) : 0), 0) / Math.max(1, goals.filter(g => !g.done).length)) : 0;
+  const activeCount = totalGoals - doneCount;
+  const avgProgress = totalGoals ? Math.round(goals.filter(g => !g.done).reduce((a, g) => a + (g.target_value > 0 ? Math.min(100, (g.current_value / g.target_value) * 100) : 0), 0) / Math.max(1, activeCount)) : 0;
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
@@ -183,7 +172,7 @@ export default function GoalsDashboard() {
         {[
           { label: 'Total Goals', value: totalGoals, color: 'var(--accent)' },
           { label: 'Achieved', value: doneCount, color: 'var(--success)' },
-          { label: 'In Progress', value: totalGoals - doneCount, color: 'var(--info)' },
+          { label: 'In Progress', value: activeCount, color: 'var(--info)' },
           { label: 'Avg Progress', value: `${avgProgress}%`, color: avgProgress >= 70 ? 'var(--success)' : 'var(--warning)' },
         ].map((s, i) => (
           <div key={i} className="glass-card" style={{ padding: '1.25rem', textAlign: 'center' }}>
@@ -225,7 +214,7 @@ export default function GoalsDashboard() {
               <input type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} className="form-input" min={new Date().toISOString().slice(0, 10)} />
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-              <button onClick={addGoal} className="btn-primary"><TrendingUp size={16} /> CREATE</button>
+              <button onClick={handleAddGoal} className="btn-primary"><TrendingUp size={16} /> CREATE</button>
             </div>
           </div>
         </div>
@@ -241,17 +230,20 @@ export default function GoalsDashboard() {
         ))}
       </div>
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-3)' }}>Loading goals…</div>
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-3)' }}>Syncing goals…</div>
       ) : displayed.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-3)' }}>
-          <Target size={40} style={{ margin: '0 auto 1rem', opacity: 0.25 }} />
-          <p>{filter === 'done' ? 'No achieved goals yet. Keep going!' : 'No active goals. Create your first one!'}</p>
-        </div>
+        <EmptyState
+          icon={Target}
+          title={filter === 'done' ? 'No achieved goals yet' : 'No active goals'}
+          description={filter === 'done' ? 'Keep pushing, you will get there!' : 'Define what you want to achieve to get started.'}
+          ctaLabel={filter !== 'done' ? 'Create a goal' : undefined}
+          onAction={filter !== 'done' ? () => setShowAdd(true) : undefined}
+        />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {displayed.map(goal => (
-            <GoalCard key={goal.id} goal={goal} onUpdate={updateGoal} onDelete={deleteGoal} onToggleDone={toggleDone} />
+            <GoalCard key={goal.id} goal={goal} onUpdate={handleUpdateGoal} onDelete={handleDeleteGoal} onToggleDone={handleToggleDone} />
           ))}
         </div>
       )}
