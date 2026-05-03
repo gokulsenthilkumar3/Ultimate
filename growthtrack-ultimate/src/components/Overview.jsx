@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Zap, Target, Flame, Droplets, Moon,
-  TrendingUp, Activity, ArrowUpRight, Shield, Clock, 
+  TrendingUp, Activity, ArrowUpRight, Shield, Clock,
   Calendar as CalendarIcon, CloudRain, Wind, Sunrise, Sunset,
   Quote, Plus, Minus, ArrowDownRight, Compass, Gauge,
   Thermometer, Droplet, Wind as WindIcon, Sun, Cloud
 } from 'lucide-react';
 import useStore from '../store/useStore';
+import AnimatedNumber from './ui/AnimatedNumber';
 
 export default function Overview({ user }) {
   const metric_logs = useStore(s => s.metric_logs);
@@ -110,7 +111,9 @@ export default function Overview({ user }) {
             </div>
             <p className="label-caps" style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px' }}>{v.label}</p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              <span className="text-display" style={{ fontSize: '2.2rem' }}>{v.value}</span>
+              <span className="text-display" style={{ fontSize: '2.2rem' }}>
+                {typeof v.value === 'number' ? <AnimatedNumber value={v.value} decimals={v.label === 'Health Score' ? 0 : 1} /> : v.value}
+              </span>
               <span style={{ fontSize: '0.9rem', color: 'var(--text-3)', fontWeight: 600 }}>{v.unit}</span>
             </div>
             <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
