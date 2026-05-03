@@ -1,42 +1,77 @@
-import React, { useState } from 'react';
-import { FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2, Shield, Search, File, MoreVertical } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+
+const API = 'http://localhost:3001/api';
 
 export default function Documents() {
   const toast = useToast();
-  const [files, setFiles] = useState([
-    { id: 1, name: 'Tax_Returns_2025.pdf', size: '2.4 MB', date: 'Yesterday', type: 'Private' },
-    { id: 2, name: 'Portfolio_Assets.zip', size: '45.1 MB', date: '3 days ago', type: 'Public' }
-  ]);
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleUpload = () => {
-    const filename = prompt("Enter simulated filename to upload:");
+  const fetchFiles = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/documents`);
+      if (!res.ok) throw new Error();
+      setFiles(await res.json());
+    } catch {
+      toast.error('Could not load documents');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchFiles(); }, [fetchFiles]);
+
+  const handleUpload = async () => {
+    const filename = prompt("Enter filename to upload:");
     if (!filename) return;
-    const newFile = {
-      id: Date.now(),
-      name: filename,
-      size: `${(Math.random() * 10).toFixed(1)} MB`,
-      date: 'Just now',
-      type: Math.random() > 0.5 ? 'Private' : 'Public'
-    };
-    setFiles([newFile, ...files]);
-    toast.success(`${filename} uploaded successfully.`);
-  };
+    
+    const size = `${(Math.random() * 10).toFixed(1)} MB`;
+    const type = Math.random() > 0.5 ? 'Private' : 'Public';
+    const date = new Date().toLocaleDateString();
 
-  const handleDelete = (id) => {
-    if (window.confirm("Delete this file?")) {
-      setFiles(files.filter(f => f.id !== id));
-      toast.success("File deleted.");
+    try {
+      const res = await fetch(`${API}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: filename, size, type, date })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchFiles();
+        toast.success(`${filename} uploaded successfully.`);
+      }
+    } catch {
+      toast.error('Upload failed');
     }
   };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this file permanently?")) return;
+    try {
+      await fetch(`${API}/documents/${id}`, { method: 'DELETE' });
+      setFiles(files.filter(f => f.id !== id));
+      toast.success("File deleted.");
+    } catch {
+      toast.error('Delete failed');
+    }
+  };
+
+  const filtered = files.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const privateCount = files.filter(f => f.type === 'Private').length;
+  const publicCount = files.filter(f => f.type === 'Public').length;
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Digital Vault</p>
-          <h2 className="text-display" style={{ fontSize: '2.2rem' }}>Documents & Cloud Sync</h2>
-          <p className="text-secondary">Securely manage public and private data across your connected drives.</p>
+          <h2 className="text-display" style={{ fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Folder size={30} color="var(--accent)" /> Documents
+          </h2>
+          <p className="text-secondary">{files.length} items managed in secure DB vault.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button className="btn-ghost" onClick={() => toast.success('Connecting to Google Drive...')}>
@@ -58,46 +93,80 @@ export default function Documents() {
            <p style={{ fontSize: '0.75rem', marginTop: '8px', textAlign: 'right' }}>45% Used (45GB / 100GB)</p>
          </div>
          
-         <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
-           <h3 className="card-title"><Cloud size={18} color="#3b82f6" /> Cloud Sync (Public)</h3>
-           <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginBottom: '1rem' }}>Synchronized with your personal cloud provider.</p>
-           <div style={{ background: 'var(--bg-dark)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-             <div style={{ width: '82%', height: '100%', background: '#3b82f6' }} />
+         <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--accent)' }}>
+           <h3 className="card-title"><Shield size={18} color="var(--accent)" /> Security Profile</h3>
+           <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+             <div>
+               <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-1)' }}>{privateCount}</p>
+               <p className="label-caps" style={{ fontSize: '0.6rem' }}>Private</p>
+             </div>
+             <div>
+               <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-3)' }}>{publicCount}</p>
+               <p className="label-caps" style={{ fontSize: '0.6rem' }}>Public</p>
+             </div>
            </div>
-           <p style={{ fontSize: '0.75rem', marginTop: '8px', textAlign: 'right' }}>82% Used (1.6TB / 2.0TB)</p>
          </div>
       </div>
 
-      <div className="glass-card">
-         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-           <Folder size={20} color="var(--accent)" />
-           <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Recent Files</h3>
-         </div>
-         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-           {files.length === 0 ? (
-             <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No documents uploaded yet.</p>
-           ) : (
-             files.map((file) => (
-               <div key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--bg-dark)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <FileText size={20} color="var(--text-3)" />
-                    <div>
-                      <p style={{ fontWeight: 700, fontSize: '0.95rem' }}>{file.name}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{file.size} • Uploaded {file.date}</p>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '0.7rem', padding: '4px 10px', background: file.type === 'Private' ? 'rgba(244, 63, 94, 0.2)' : 'var(--bg-elevated)', color: file.type === 'Private' ? '#f43f5e' : 'var(--text-2)', borderRadius: '12px', fontWeight: 800 }}>
-                      {file.type}
-                    </span>
-                    <button onClick={() => handleDelete(file.id)} className="btn-icon" style={{ color: 'var(--text-3)' }} title="Delete File">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-               </div>
-             ))
-           )}
-         </div>
+      <div className="glass-card" style={{ padding: 0 }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-dark)', padding: '6px 12px', borderRadius: '10px', width: '300px' }}>
+            <Search size={14} color="var(--text-3)" />
+            <input 
+              type="text" placeholder="Search vault..." value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-1)', fontSize: '0.85rem', outline: 'none', width: '100%' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{filtered.length} files found</span>
+          </div>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-3)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <th style={{ padding: '1rem 1.5rem' }}>Name</th>
+                <th style={{ padding: '1rem' }}>Size</th>
+                <th style={{ padding: '1rem' }}>Date Added</th>
+                <th style={{ padding: '1rem' }}>Type</th>
+                <th style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="5" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>Loading vault...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan="5" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>No documents found.</td></tr>
+              ) : (
+                filtered.map((file) => (
+                  <tr key={file.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '1rem 1.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <FileText size={18} color={file.type === 'Private' ? 'var(--accent)' : 'var(--text-3)'} />
+                        <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{file.name}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-3)' }}>{file.size}</td>
+                    <td style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-3)' }}>{file.date}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{ fontSize: '0.65rem', padding: '3px 8px', borderRadius: '6px', background: file.type === 'Private' ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.05)', color: file.type === 'Private' ? 'var(--warning)' : 'var(--text-3)', fontWeight: 800 }}>
+                        {file.type.toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <button className="btn-icon" onClick={() => toast.info('Preview not available in simulation.')}><File size={14}/></button>
+                        <button className="btn-icon" onClick={() => handleDelete(file.id)} style={{ color: 'var(--danger)' }}><Trash2 size={14}/></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
