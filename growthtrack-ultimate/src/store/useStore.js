@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = (import.meta.env.VITE_API_URL || 'https://ultimate-8we7.onrender.com') + '/api';
 
 async function apiSync(endpoint, method = 'POST', data = null) {
   try {
@@ -518,7 +518,7 @@ const useStore = create(
       },
       updateHabit: (id, updates) => {
         apiSync(`/habits/${id}`, 'PUT', updates);
-        set((state) => ({ habits: state.habits.map(h => h.id === id ? { ...h, ...updates } : n) }));
+        set((state) => ({ habits: state.habits.map(h => h.id === id ? { ...h, ...updates } : h) }));
       },
 
       // ──────────────────────────────────────────────────────────
