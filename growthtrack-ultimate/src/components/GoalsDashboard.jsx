@@ -1,173 +1,260 @@
-import React, { useState } from 'react';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceLine
-} from 'recharts';
-import { Target, CheckCircle, Clock, TrendingUp, Flame, Award, Plus, Trash2, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Target, Plus, Trash2, TrendingUp, CheckCircle2, Edit3, Save, X, AlertCircle } from 'lucide-react';
+import { useToast } from '../hooks/useToast';
 
-const buildGoalTimeline = (userData) => {
-  const current = { weight: userData?.weight || 63, bodyFat: userData?.bodyFat || 22, muscleMass: userData?.muscleMass || 49 };
-  const goal = { weight: userData?.goal?.weight || 82, bodyFat: userData?.goal?.bodyFat || 10, muscleMass: userData?.goal?.muscleMass || 70 };
-  const months = userData?.goal?.timelineMonths || 18;
-  return Array.from({ length: months + 1 }, (_, i) => {
-    const t = i / months;
-    const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    return {
-      month: i === 0 ? 'Now' : `M${i}`,
-      weight: +(current.weight + (goal.weight - current.weight) * ease).toFixed(1),
-      bodyFat: +(current.bodyFat + (goal.bodyFat - current.bodyFat) * ease).toFixed(1),
-      muscleMass: +(current.muscleMass + (goal.muscleMass - current.muscleMass) * ease).toFixed(1),
-    };
-  });
-};
+const API = 'http://localhost:3001/api';
 
-const buildGoalCards = (userData) => [
-  { id: 'weight', label: 'Body Weight', current: userData?.weight || 63, target: userData?.goal?.weight || 82, unit: 'kg', color: '#22d3ee', icon: TrendingUp, deadline: userData?.goal?.deadline || 'Dec 2026' },
-  { id: 'bodyfat', label: 'Body Fat %', current: userData?.bodyFat || 22, target: userData?.goal?.bodyFat || 10, unit: '%', color: '#f59e0b', icon: Flame, deadline: userData?.goal?.deadline || 'Dec 2026' },
-  { id: 'muscle', label: 'Lean Mass', current: userData?.muscleMass || 49, target: userData?.goal?.muscleMass || 70, unit: 'kg', color: '#22c55e', icon: Award, deadline: userData?.goal?.deadline || 'Dec 2026' },
-  { id: 'bench', label: 'Bench Press', current: userData?.strength?.bench || 60, target: userData?.goal?.bench || 120, unit: 'kg', color: '#a78bfa', icon: Target, deadline: userData?.goal?.deadline || 'Dec 2026' },
-];
+const CATEGORIES = ['Health', 'Fitness', 'Finance', 'Career', 'Learning', 'Personal', 'Relationships', 'Lifestyle'];
+const EMPTY_FORM = { title: '', category: 'Health', target_value: '', current_value: 0, unit: '', deadline: '' };
 
-function GoalProgressBar({ current, target, color, unit }) {
-  const startVal = target > current ? current * 0.85 : current * 1.15;
-  const pctDone = Math.round(Math.min(100, Math.max(0, Math.abs(current - startVal) / Math.abs(target - startVal) * 100)));
+function GoalCard({ goal, onUpdate, onDelete, onToggleDone }) {
+  const [editing, setEditing] = useState(false);
+  const [current, setCurrent] = useState(goal.current_value || 0);
+  const progress = goal.target_value > 0 ? Math.min(100, Math.round((current / goal.target_value) * 100)) : 0;
+  const daysLeft = goal.deadline ? Math.ceil((new Date(goal.deadline) - new Date()) / 86400000) : null;
+  const isOverdue = daysLeft !== null && daysLeft < 0 && !goal.done;
+
+  const handleUpdateProgress = async () => {
+    await onUpdate({ ...goal, current_value: parseFloat(current) || 0 });
+    setEditing(false);
+  };
+
   return (
-    <div style={{ marginTop: '0.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-        <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{current}{unit} → {target}{unit}</span>
-        <span style={{ fontSize: '0.72rem', fontWeight: 700, color }}>{pctDone}%</span>
+    <div className="glass-card" style={{
+      padding: '1.5rem',
+      borderTop: `3px solid ${goal.done ? 'var(--success)' : (isOverdue ? 'var(--danger)' : 'var(--accent)')}`,
+      opacity: goal.done ? 0.7 : 1,
+      transition: 'all 0.3s ease',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 8px', borderRadius: '6px' }}>
+            {goal.category}
+          </span>
+          <p style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-1)', marginTop: '8px', textDecoration: goal.done ? 'line-through' : 'none' }}>{goal.title}</p>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button onClick={() => onToggleDone(goal)} title={goal.done ? 'Reopen goal' : 'Mark as achieved'}
+            style={{ background: goal.done ? 'rgba(52,211,153,0.1)' : 'none', border: 'none', cursor: 'pointer', color: goal.done ? 'var(--success)' : 'var(--text-3)', padding: '4px', borderRadius: '6px', display: 'flex', transition: 'all 0.2s' }}
+            onMouseEnter={e => !goal.done && (e.currentTarget.style.color = 'var(--success)')}
+            onMouseLeave={e => !goal.done && (e.currentTarget.style.color = 'var(--text-3)')}>
+            <CheckCircle2 size={16} />
+          </button>
+          <button onClick={() => onDelete(goal.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '4px', borderRadius: '6px', display: 'flex', transition: 'color 0.2s' }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
-      <div style={{ height: 5, background: 'var(--bg-elevated)', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pctDone}%`, background: color, borderRadius: 3, transition: 'width 0.8s var(--ease)' }} />
+
+      {/* Progress bar */}
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', fontWeight: 600 }}>
+            {editing ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input type="number" value={current} onChange={e => setCurrent(e.target.value)}
+                  style={{ width: '70px', background: 'var(--bg-dark)', border: '1px solid var(--accent)', borderRadius: '6px', color: 'var(--text-1)', padding: '2px 6px', fontSize: '0.8rem' }}
+                  min="0" max={goal.target_value}
+                />
+                <span style={{ color: 'var(--text-3)' }}>/ {goal.target_value} {goal.unit}</span>
+                <button onClick={handleUpdateProgress} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--success)', display: 'flex', padding: '2px' }}><Save size={14} /></button>
+                <button onClick={() => { setCurrent(goal.current_value); setEditing(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', display: 'flex', padding: '2px' }}><X size={14} /></button>
+              </div>
+            ) : (
+              <span style={{ cursor: 'pointer' }} onClick={() => setEditing(true)}>
+                {goal.current_value || 0} / {goal.target_value} {goal.unit}
+                <Edit3 size={11} style={{ marginLeft: '6px', opacity: 0.5 }} />
+              </span>
+            )}
+          </span>
+          <span style={{ fontSize: '0.85rem', fontWeight: 900, color: goal.done ? 'var(--success)' : (progress >= 80 ? 'var(--success)' : 'var(--accent)') }}>
+            {goal.done ? '✓ Done' : `${progress}%`}
+          </span>
+        </div>
+        <div style={{ height: '8px', background: 'var(--bg-elevated)', borderRadius: '4px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progress}%`, background: goal.done ? 'var(--success)' : (progress >= 80 ? 'var(--success)' : 'var(--accent)'), borderRadius: '4px', transition: 'width 0.6s var(--ease)' }} />
+        </div>
+      </div>
+
+      {/* Footer meta */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {goal.deadline ? (
+          <span style={{ fontSize: '0.7rem', color: isOverdue ? 'var(--danger)' : (daysLeft <= 7 ? 'var(--warning)' : 'var(--text-3)'), display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+            {isOverdue && <AlertCircle size={11} />}
+            {goal.done ? `Completed` : isOverdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
+          </span>
+        ) : <span />}
+        {progress === 100 && !goal.done && (
+          <button onClick={() => onToggleDone(goal)} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.68rem', background: 'var(--success)', color: '#000' }}>
+            Mark Done ✓
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-export default function GoalsDashboard({ user, setUser }) {
-  const timeline = buildGoalTimeline(user);
-  const goalCards = buildGoalCards(user);
-  const [metric, setMetric] = useState('weight');
-  const habits = user?.habits || ['Hit protein target (170g)', 'Resistance training completed', 'Sleep 7h+ achieved', 'Caloric surplus maintained', 'Morning sunlight (10 min)', 'Creatine 5g taken', 'No alcohol or smoking', 'Steps > 8000', 'Hydration: 3L+ water', 'No late-night eating after 10 PM'];
-  const checkedHabits = user?.checkedHabits || {};
-  const today = new Date().toISOString().slice(0, 10);
-  const todayChecked = checkedHabits[today] || [];
+export default function GoalsDashboard() {
+  const [goals, setGoals] = useState([]);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [showAdd, setShowAdd] = useState(false);
+  const [filter, setFilter] = useState('active');
+  const [loading, setLoading] = useState(true);
+  const toast = useToast();
 
-  const toggleHabit = (idx) => {
-    const updated = todayChecked.includes(idx) ? todayChecked.filter(i => i !== idx) : [...todayChecked, idx];
-    setUser({ ...user, checkedHabits: { ...checkedHabits, [today]: updated } });
+  const fetchGoals = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/goals`);
+      if (!res.ok) throw new Error();
+      setGoals(await res.json());
+    } catch { toast.error('Could not load goals'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchGoals(); }, [fetchGoals]);
+
+  const addGoal = async () => {
+    if (!form.title.trim()) return toast.error('Goal title is required');
+    if (!form.target_value || isNaN(parseFloat(form.target_value))) return toast.error('Enter a valid target value');
+    try {
+      const res = await fetch(`${API}/goals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, target_value: parseFloat(form.target_value), current_value: parseFloat(form.current_value) || 0 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchGoals();
+        setForm(EMPTY_FORM);
+        setShowAdd(false);
+        toast.success('Goal created!');
+      }
+    } catch { toast.error('Failed to create goal'); }
   };
 
-  const habitPct = Math.round((todayChecked.length / habits.length) * 100);
-
-  const metricConfig = {
-    weight: { label: 'Body Weight (kg)', color: '#22d3ee' },
-    bodyFat: { label: 'Body Fat %', color: '#f59e0b' },
-    muscleMass: { label: 'Lean Mass (kg)', color: '#22c55e' },
+  const updateGoal = async (goal) => {
+    try {
+      await fetch(`${API}/goals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(goal) });
+      setGoals(prev => prev.map(g => g.id === goal.id ? goal : g));
+      toast.success('Progress updated');
+    } catch { toast.error('Update failed'); }
   };
+
+  const toggleDone = async (goal) => {
+    const updated = { ...goal, done: !goal.done };
+    await updateGoal(updated);
+  };
+
+  const deleteGoal = async (id) => {
+    if (!window.confirm('Delete this goal?')) return;
+    try {
+      await fetch(`${API}/goals/${id}`, { method: 'DELETE' });
+      setGoals(prev => prev.filter(g => g.id !== id));
+      toast.success('Goal removed');
+    } catch { toast.error('Delete failed'); }
+  };
+
+  const displayed = goals.filter(g => filter === 'active' ? !g.done : filter === 'done' ? g.done : true);
+  const totalGoals = goals.length;
+  const doneCount = goals.filter(g => g.done).length;
+  const avgProgress = goals.length ? Math.round(goals.filter(g => !g.done).reduce((a, g) => a + (g.target_value > 0 ? Math.min(100, (g.current_value / g.target_value) * 100) : 0), 0) / Math.max(1, goals.filter(g => !g.done).length)) : 0;
 
   return (
-    <div className="fade-in" style={{ padding: '0.5rem 0' }}>
-      <div style={{ marginBottom: '1.75rem' }}>
-        <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Goals</p>
-        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
-          <Target size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
-          Goals & Transformation
-        </h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Projected timeline to {user?.goal?.deadline || 'Dec 2026'} physique target</p>
+    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Strategic OKRs</p>
+          <h2 className="text-display" style={{ fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Target size={28} color="var(--accent)" /> Goals Dashboard
+          </h2>
+          <p className="text-secondary" style={{ marginTop: '0.35rem' }}>
+            {totalGoals} goals · {doneCount} achieved · {avgProgress}% avg progress
+          </p>
+        </div>
+        <button className="btn-primary" onClick={() => setShowAdd(!showAdd)}>
+          {showAdd ? <X size={16} /> : <Plus size={16} />} {showAdd ? 'CANCEL' : 'NEW GOAL'}
+        </button>
       </div>
 
-      {/* Goal Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        {goalCards.map(({ id, label, current, target, unit, color, icon: Icon, deadline }) => (
-          <div key={id} className="glass-card" style={{ padding: '1.15rem', borderLeft: `3px solid ${color}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span className="label-caps">{label}</span>
-              <Icon size={16} color={color} />
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color }}>
-              {current}<span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 500 }}>{unit}</span>
-            </div>
-            <GoalProgressBar current={current} target={target} color={color} unit={unit} />
-            <div style={{ marginTop: '0.4rem', fontSize: '0.68rem', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <Clock size={10} /> Target: {target}{unit} by {deadline}
-            </div>
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        {[
+          { label: 'Total Goals', value: totalGoals, color: 'var(--accent)' },
+          { label: 'Achieved', value: doneCount, color: 'var(--success)' },
+          { label: 'In Progress', value: totalGoals - doneCount, color: 'var(--info)' },
+          { label: 'Avg Progress', value: `${avgProgress}%`, color: avgProgress >= 70 ? 'var(--success)' : 'var(--warning)' },
+        ].map((s, i) => (
+          <div key={i} className="glass-card" style={{ padding: '1.25rem', textAlign: 'center' }}>
+            <p className="label-caps" style={{ marginBottom: '0.5rem' }}>{s.label}</p>
+            <p className="text-display" style={{ fontSize: '1.8rem', color: s.color }}>{s.value}</p>
           </div>
         ))}
       </div>
 
-      {/* Transformation Trajectory */}
-      <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <span className="card-title" style={{ margin: 0 }}>Transformation Trajectory</span>
-          <div style={{ display: 'flex', gap: '0.35rem' }}>
-            {Object.entries(metricConfig).map(([key, { label }]) => (
-              <button key={key} onClick={() => setMetric(key)}
-                className={`btn-sm${metric === key ? ' active' : ''}`}>
-                {label.split(' ')[0].toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={timeline} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="month" stroke="var(--text-3)" tick={{ fontSize: 10 }} interval={1} />
-            <YAxis stroke="var(--text-3)" tick={{ fontSize: 11 }} />
-            <Tooltip
-              contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backdropFilter: 'blur(12px)' }}
-              formatter={(v) => [v, metricConfig[metric].label]}
-            />
-            <ReferenceLine y={timeline[timeline.length - 1][metric]} stroke={metricConfig[metric].color} strokeDasharray="4 4"
-              label={{ value: 'Goal', fill: metricConfig[metric].color, fontSize: 11 }} />
-            <Line type="monotone" dataKey={metric} stroke={metricConfig[metric].color} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Daily Habits Checklist — Interactive */}
-      <div className="glass-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <span className="card-title" style={{ margin: 0 }}>Daily Habits Checklist</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: habitPct >= 80 ? 'var(--success)' : habitPct >= 50 ? 'var(--warning)' : 'var(--danger)' }}>
-              {todayChecked.length}/{habits.length} done
-            </span>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '50%',
-              background: `conic-gradient(${habitPct >= 80 ? 'var(--success)' : habitPct >= 50 ? 'var(--warning)' : 'var(--danger)'} ${habitPct * 3.6}deg, var(--bg-elevated) 0deg)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-card)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.55rem', fontWeight: 800, color: 'var(--text-2)',
-              }}>{habitPct}%</div>
+      {/* Add Form */}
+      {showAdd && (
+        <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1.75rem', borderTop: '2px solid var(--accent)' }}>
+          <p className="label-caps" style={{ marginBottom: '1rem', color: 'var(--accent)' }}>Define New Goal</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ flex: '1 1 250px' }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Goal Title *</label>
+              <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g., Reach 75kg body weight" className="form-input" />
+            </div>
+            <div style={{ flex: '1 1 140px' }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Category</label>
+              <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="form-input">
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: '1 1 120px' }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Target Value *</label>
+              <input type="number" value={form.target_value} onChange={e => setForm({ ...form, target_value: e.target.value })} placeholder="100" className="form-input" min="0" />
+            </div>
+            <div style={{ flex: '1 1 100px' }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Current</label>
+              <input type="number" value={form.current_value} onChange={e => setForm({ ...form, current_value: e.target.value })} placeholder="0" className="form-input" min="0" />
+            </div>
+            <div style={{ flex: '1 1 80px' }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Unit</label>
+              <input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="kg, %, hrs" className="form-input" />
+            </div>
+            <div style={{ flex: '1 1 150px' }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Deadline</label>
+              <input type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} className="form-input" min={new Date().toISOString().slice(0, 10)} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button onClick={addGoal} className="btn-primary"><TrendingUp size={16} /> CREATE</button>
             </div>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.5rem' }}>
-          {habits.map((habit, i) => {
-            const checked = todayChecked.includes(i);
-            return (
-              <button key={i} onClick={() => toggleHabit(i)} style={{
-                display: 'flex', alignItems: 'center', gap: '0.6rem',
-                padding: '0.65rem 0.85rem', background: checked ? 'rgba(34,197,94,0.08)' : 'var(--bg-elevated)',
-                borderRadius: 'var(--radius-sm)',
-                border: checked ? '1px solid rgba(34,197,94,0.25)' : '1px solid var(--border)',
-                cursor: 'pointer', textAlign: 'left',
-                transition: 'all 0.25s ease',
-              }}>
-                <CheckCircle size={16} color={checked ? '#22c55e' : 'var(--text-3)'} fill={checked ? '#22c55e' : 'none'} />
-                <span style={{
-                  fontSize: '0.82rem', color: checked ? 'var(--success)' : 'var(--text-2)',
-                  textDecoration: checked ? 'line-through' : 'none',
-                }}>{habit}</span>
-              </button>
-            );
-          })}
-        </div>
+      )}
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        {[{ key: 'active', label: '🎯 Active' }, { key: 'done', label: '✅ Achieved' }, { key: 'all', label: 'All' }].map(f => (
+          <button key={f.key} onClick={() => setFilter(f.key)}
+            style={{ padding: '6px 16px', borderRadius: '20px', border: `1px solid ${filter === f.key ? 'var(--accent)' : 'var(--border)'}`, background: filter === f.key ? 'var(--accent-soft)' : 'transparent', color: filter === f.key ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem', transition: 'all 0.2s' }}>
+            {f.label}
+          </button>
+        ))}
       </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-3)' }}>Loading goals…</div>
+      ) : displayed.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-3)' }}>
+          <Target size={40} style={{ margin: '0 auto 1rem', opacity: 0.25 }} />
+          <p>{filter === 'done' ? 'No achieved goals yet. Keep going!' : 'No active goals. Create your first one!'}</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+          {displayed.map(goal => (
+            <GoalCard key={goal.id} goal={goal} onUpdate={updateGoal} onDelete={deleteGoal} onToggleDone={toggleDone} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
