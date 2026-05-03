@@ -11,6 +11,12 @@ import './index.css';
 import './styles/chamber.css';
 import './styles/premium.css';
 
+import OnboardingWizard from './components/OnboardingWizard';
+import CommandPalette from './components/CommandPalette';
+import DailyCheckIn from './components/DailyCheckIn';
+import BottomNavBar from './components/BottomNavBar';
+import SettingsModal from './components/SettingsModal';
+
 import { preloadHumanoidModel } from './components/morphEngine/useModelLoader';
 import { useVascularitySync } from './store/use3DStore.usage';
 
@@ -39,7 +45,6 @@ const Shopping           = lazy(() => import('./components/Shopping'));
 const Tasks              = lazy(() => import('./components/Tasks'));
 const Finance            = lazy(() => import('./components/Finance'));
 const Entertainment      = lazy(() => import('./components/Entertainment'));
-const About              = lazy(() => import('./components/About'));
 const Calendar           = lazy(() => import('./components/Calendar'));
 const Timesheet          = lazy(() => import('./components/Timesheet'));
 const Logs               = lazy(() => import('./components/Logs'));
@@ -63,7 +68,7 @@ export const GLOBAL_MODULES = {
   shopping: 'Shopping', tasks: 'Tasks', projects: 'Projects', portfolio: 'Portfolio',
   calendar: 'Calendar', timesheet: 'Timesheet', finance: 'Finance', entertainment: 'Entertainment',
   social: 'Social Media', ai: 'Agent', maps: 'Maps', documents: 'Documents', current: 'Current',
-  notes: 'Notes', databases: 'Databases', logs: 'Logs', settings: 'Settings', about: 'About',
+  notes: 'Notes', databases: 'Databases', logs: 'Logs', settings: 'Settings',
   dashboards: 'Dashboards'
 };
 
@@ -124,7 +129,6 @@ function renderTab(tab, user, setUser, theme, setTheme) {
     case 'notes':          return <Notes />;
     case 'databases':      return <Databases />;
     case 'dashboards':     return <Dashboards />;
-    case 'about':          return <About {...props} />;
     case 'apps':           return <AppLauncher setActiveTab={useStore.getState().setActiveTab} />;
     default:               return <Overview {...props} />;
   }
@@ -178,6 +182,12 @@ export default function App() {
   const checkServerHealth = useStore(selectCheckServerHealth);
   const serverStatus = useStore(selectServerStatus);
   const isLoading = useStore(selectIsLoading);
+  const onboardingComplete = useStore((state) => state.onboardingComplete);
+  const lastCheckIn = useStore((state) => state.lastCheckIn);
+  const [showCheckIn, setShowCheckIn] = React.useState(false);
+  const [showSettings, setShowSettings] = React.useState(false);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   // Generate the floating nav dynamically based on pinned tabs
   const navItems = pinnedTabs.map(id => ({ id, label: GLOBAL_MODULES[id] || id }));
@@ -186,10 +196,18 @@ export default function App() {
   useEffect(() => {
     fetchInitialData();
     checkServerHealth();
-    // Recheck server health every 30 seconds
     const interval = setInterval(checkServerHealth, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Show Daily Check-In if onboarded and not yet done today
+  useEffect(() => {
+    if (onboardingComplete && lastCheckIn !== todayStr) {
+      // Small delay so the app finishes loading first
+      const t = setTimeout(() => setShowCheckIn(true), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [onboardingComplete, lastCheckIn, todayStr]);
 
   // Apply theme/palette as data attributes on <html>
   useEffect(() => {
@@ -199,6 +217,14 @@ export default function App() {
 
   return (
     <ToastProvider>
+      <CommandPalette />
+      {!onboardingComplete && <OnboardingWizard />}
+      {showCheckIn && onboardingComplete && (
+        <DailyCheckIn onClose={() => setShowCheckIn(false)} />
+      )}
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
       <div className="app-shell" data-theme={theme} data-palette={palette}>
         <div className="mesh-bg" />
 
@@ -226,6 +252,7 @@ export default function App() {
             setTheme={setTheme}
             palette={palette}
             setPalette={setPalette}
+            onOpenSettings={() => setShowSettings(true)}
           />
 
           <main className="content-area">
@@ -241,6 +268,10 @@ export default function App() {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           navItems={navItems}
+        />
+        <BottomNavBar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
         />
       </div>
     </ToastProvider>
