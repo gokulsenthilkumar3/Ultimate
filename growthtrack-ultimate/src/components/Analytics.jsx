@@ -4,7 +4,7 @@ import {
   Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
 import { BarChart3, TrendingUp, Activity, Cpu, RefreshCw, Gauge, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import useStore from '../store/useStore';
+import useStore, { apiSync } from '../store/useStore';
 import StatCard from './ui/StatCard';
 
 const TABS = [
@@ -27,8 +27,7 @@ export default function Analytics({ user }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch('http://localhost:3001/api/metric_logs')
-      .then(r => r.json())
+    apiSync('/metric_logs', 'GET')
       .then(rows => {
         const parsed = Array.isArray(rows)
           ? rows.map(r => {

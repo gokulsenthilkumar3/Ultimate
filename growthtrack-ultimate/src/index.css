@@ -589,6 +589,35 @@ input[type=range]::-webkit-slider-runnable-track {
   background: var(--border-strong);
   border-radius: 2px;
 }
+/* Firefox range slider support */
+input[type=range]::-moz-range-thumb {
+  height: 16px; width: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-soft);
+  cursor: pointer;
+  border: none;
+  transition: transform 0.2s ease;
+}
+input[type=range]::-moz-range-thumb:hover { transform: scale(1.25); }
+input[type=range]::-moz-range-track {
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+/* ═══════════ ACCESSIBILITY — Focus visible ring ═══════════ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
 
 /* ═══════════ SPINNER ═══════════════════════ */
 @keyframes spin-ring { to { transform: rotate(360deg); } }
@@ -638,6 +667,10 @@ input[type=range]::-webkit-slider-runnable-track {
 .text-muted { color: var(--text-3); }
 .text-dimmed { color: var(--text-3); opacity: 0.7; }
 .text-accent { color: var(--accent); }
+.text-sm { font-size: 0.85rem; color: var(--text-2); line-height: 1.6; }
+.text-danger { color: var(--danger); }
+.text-success { color: var(--success); }
+.text-info { color: var(--info); }
 
 /* ═══════════ RESPONSIVE ═══════════════════════ */
 @media (max-width: 768px) {
@@ -671,12 +704,26 @@ input[type=range]::-webkit-slider-runnable-track {
 .mt-sm  { margin-top: 0.75rem; }
 .mt-lg  { margin-top: 1.5rem; }
 
+/* ═══════════ UTILITY — Grid ═══════════════════════ */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+@media (max-width: 768px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
 /* ═══════════ UTILITY — Flex ═══════════════════════ */
 .flex-row         { display: flex; }
 .flex-center-col  { display: flex; flex-direction: column; justify-content: center; }
+.flex-column      { display: flex; flex-direction: column; }
+.flex-between     { display: flex; justify-content: space-between; align-items: center; }
+.flex-center-y    { display: flex; align-items: center; }
 .align-center     { align-items: center; }
 .gap-sm           { gap: 0.5rem; }
 .gap-md           { gap: 0.75rem; }
+.w-full           { width: 100%; }
+.m-0              { margin: 0; }
+.mb-md            { margin-bottom: 1rem; }
 .btn-full         { width: 100%; justify-content: center; }
 .btn-group        { display: flex; gap: 0.5rem; }
 
@@ -689,7 +736,8 @@ input[type=range]::-webkit-slider-runnable-track {
   min-height: 500px;
 }
 .kanban-column {
-  flex: 0 0 320px;
+  flex: 1 1 320px;
+  min-width: 280px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

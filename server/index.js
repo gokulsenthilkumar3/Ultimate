@@ -17,7 +17,7 @@ const db = new Database(DB_PATH);
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // --- Security: CORS (restrict to known origins) ---
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000')
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:3000')
   .split(',')
   .map(o => o.trim());
 app.use(cors({
@@ -64,6 +64,35 @@ function requireSecret(req, res, next) {
   next();
 }
 
+// --- Security: Production error sanitizer ---
+// Prevents stack traces and internal messages from leaking to clients
+function safeError(res, err, statusCode = 500) {
+  const isProd = process.env.NODE_ENV === 'production';
+  console.error('[SERVER ERROR]', err?.message || err);
+  res.status(statusCode).json({
+    error: isProd ? 'Internal server error' : (err?.message || String(err))
+  });
+}
+
+// --- Startup Security Audit ---
+function runStartupChecks() {
+  const warnings = [];
+  if (!API_SECRET) {
+    warnings.push('⚠️  API_SECRET is not set — all protected endpoints are open. Set API_SECRET in .env for production.');
+  }
+  if (!process.env.ALLOWED_ORIGINS) {
+    warnings.push('ℹ️  ALLOWED_ORIGINS not set — defaulting to localhost:5173,localhost:3000');
+  }
+  if (warnings.length > 0) {
+    console.warn('\n╔══════════════════════════════════════════════════════╗');
+    console.warn('║           GROWTHTRACK SECURITY NOTICES              ║');
+    console.warn('╚══════════════════════════════════════════════════════╝');
+    warnings.forEach(w => console.warn(w));
+    console.warn('');
+  }
+}
+
+
 // Initialize Database
 db.exec(`
   CREATE TABLE IF NOT EXISTS user_profile (
@@ -98,12 +127,17 @@ db.exec(`
     category TEXT,
     priority TEXT,
     estimatedCost REAL,
+    quantity INTEGER DEFAULT 1,
     purchased INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_by TEXT DEFAULT 'user',
     modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     modified_by TEXT DEFAULT 'user'
   );
+
+  -- Migration: Add quantity to shopping if missing
+  -- Using a try-catch pattern in SQL is hard in SQLite, so we'll do it via JS below if needed.
+  -- But we can update the string for new installs.
 
   CREATE TABLE IF NOT EXISTS timesheet (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -161,6 +195,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS medical_data (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS physique_targets (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS assessment_qa (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS wellness_data (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS skills (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS calendar_events (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
 
@@ -243,6 +278,18 @@ db.exec(`
   );
 `);
 
+// --- Migrations: Add columns if they don't exist ---
+try {
+  const tableInfo = db.prepare("PRAGMA table_info(shopping)").all();
+  const hasQuantity = tableInfo.some(col => col.name === 'quantity');
+  if (!hasQuantity) {
+    db.prepare("ALTER TABLE shopping ADD COLUMN quantity INTEGER DEFAULT 1").run();
+    console.log('✅ Migration: Added quantity column to shopping table');
+  }
+} catch (e) {
+  console.error('❌ Migration failed:', e.message);
+}
+
 // --- Input Validation Schemas (Zod) ---
 const taskSchema = z.object({
   title: z.string().min(1).max(500),
@@ -257,7 +304,8 @@ const shoppingSchema = z.object({
   name: z.string().min(1).max(300),
   category: z.string().max(100).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
-  estimatedCost: z.number().nonnegative().optional()
+  estimatedCost: z.number().nonnegative().optional(),
+  quantity: z.number().int().positive().default(1)
 });
 
 const financeSchema = z.object({
@@ -348,6 +396,29 @@ function logAction(req, action, table, id, details = null) {
 }
 
 // --- ROUTES ---
+
+// Health check (used by SettingsModal latency display)
+app.get('/api/health', (req, res) => {
+  try {
+    db.prepare('SELECT 1').get(); // quick DB ping
+    res.json({ status: 'online', db: 'connected', ts: new Date().toISOString() });
+  } catch (e) {
+    res.status(503).json({ status: 'offline', error: e.message });
+  }
+});
+
+// Audit log viewer (last 100 entries)
+app.get('/api/logs', (req, res) => {
+  try {
+    const rows = db.prepare(
+      `SELECT action, table_name, item_id, details, actor_name, timestamp 
+       FROM audit_log ORDER BY timestamp DESC LIMIT 100`
+    ).all();
+    res.json(rows);
+  } catch (e) {
+    res.json([]); // audit_log table may not exist yet — return empty
+  }
+});
 
 // Habits
 app.get('/api/habits', (req, res) => {
@@ -469,11 +540,11 @@ app.get('/api/shopping', (req, res) => {
 });
 
 app.post('/api/shopping', validate(shoppingSchema), (req, res) => {
-  const { name, category, priority, estimatedCost } = req.validated;
+  const { name, category, priority, estimatedCost, quantity } = req.validated;
   const info = db.prepare(`
-    INSERT INTO shopping (name, category, priority, estimatedCost, created_by, modified_by)
-    VALUES (?, ?, ?, ?, 'user', 'user')
-  `).run(name, category, priority, estimatedCost);
+    INSERT INTO shopping (name, category, priority, estimatedCost, quantity, created_by, modified_by)
+    VALUES (?, ?, ?, ?, ?, 'user', 'user')
+  `).run(name, category, priority, estimatedCost, quantity);
   logAction(req, 'INSERT', 'shopping', info.lastInsertRowid, { name });
   res.json({ id: info.lastInsertRowid });
 });
@@ -597,6 +668,7 @@ const SINGLETON_TABLES = Object.freeze(new Set([
   'medical_data',
   'physique_targets',
   'assessment_qa',
+  'wellness_data',
   'skills',
   'calendar_events'
 ]));
@@ -790,10 +862,12 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
-    if (!API_SECRET) console.warn('WARNING: API_SECRET not set — /api/all, /api/logs, /api/query are unprotected (dev mode)');
+    console.log(`\n🚀 GrowthTrack Ultimate API`);
+    console.log(`   Port      : http://localhost:${PORT}`);
+    console.log(`   Env       : ${process.env.NODE_ENV || 'development'}`);
+    console.log(`   Database  : ${DB_PATH}`);
+    console.log(`   CORS      : ${ALLOWED_ORIGINS.join(', ')}`);
+    runStartupChecks();
   });
 }
 

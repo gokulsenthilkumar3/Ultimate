@@ -5,6 +5,8 @@ import {
   Trash2, RefreshCw
 } from 'lucide-react';
 import useStore from '../store/useStore';
+import { apiSync } from '../store/useStore';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 export default function SettingsModal({ onClose }) {
   const [activeTab, setActiveTab] = useState('Profile');
@@ -17,13 +19,14 @@ export default function SettingsModal({ onClose }) {
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [networkInfo, setNetworkInfo] = useState({ ip: 'Detecting...', location: '' });
+  const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
     const checkServer = async () => {
       try {
         const start = Date.now();
-        const res = await fetch('http://localhost:3001/api/user_profile');
-        if (res.ok) {
+        const res = await apiSync('/health', 'GET');
+        if (res && res.status === 'online') {
           const latency = Date.now() - start;
           setServerStatus(`Online (${latency}ms)`);
         } else {
@@ -36,9 +39,8 @@ export default function SettingsModal({ onClose }) {
 
     const fetchLogs = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/logs');
-        const data = await res.json();
-        setLogs(data);
+        const data = await apiSync('/logs', 'GET');
+        if (Array.isArray(data)) setLogs(data);
       } catch (err) {
         console.error('Failed to fetch logs');
       }
@@ -73,10 +75,14 @@ export default function SettingsModal({ onClose }) {
   ];
 
   const handleResetOnboarding = () => {
-    if (window.confirm('Reset onboarding process? You will see the wizard again on next refresh.')) {
-      setOnboardingComplete(false);
-      onClose();
-    }
+    setConfirmReset(true);
+  };
+
+  const doReset = () => {
+    setOnboardingComplete(false);
+    onClose();
+    setConfirmReset(false);
+    window.location.reload(); // Force refresh to trigger wizard
   };
 
   const tabs = [
@@ -91,6 +97,14 @@ export default function SettingsModal({ onClose }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '1.5rem', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)'
     }}>
+      <ConfirmDialog
+        open={confirmReset}
+        title="Reset Onboarding?"
+        description="This will restart the setup process. You will see the wizard again on next refresh. Your existing data will be preserved."
+        confirmLabel="Restart Setup"
+        onConfirm={doReset}
+        onCancel={() => setConfirmReset(false)}
+      />
       <div className="glass-card fade-in" style={{
         width: '100%', maxWidth: '800px', height: '600px',
         display: 'flex', flexDirection: 'row', overflow: 'hidden',

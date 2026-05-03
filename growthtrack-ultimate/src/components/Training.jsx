@@ -2,17 +2,20 @@ import React, { useState } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Dumbbell, Plus, Trash2, Trophy, Flame, ChevronDown, ChevronUp } from 'lucide-react';
 import EmptyState from './ui/EmptyState';
+import useStore, { selectTrainingPlan, selectUpdateTrainingPlan } from '../store/useStore';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LIFTS = ['benchPress', 'squat', 'deadlift', 'ohp'];
 const LIFT_LABELS = { benchPress: 'Bench Press', squat: 'Squat', deadlift: 'Deadlift', ohp: 'OHP' };
 
-export default function Training({ user, setUser }) {
-  const updateSection = (section, data) => {
-    setUser({ ...user, [section]: { ...(user?.[section] || {}), ...data } });
+export default function Training() {
+  const training = useStore(selectTrainingPlan) || {};
+  const setTraining = useStore(selectUpdateTrainingPlan);
+
+  const updateSection = (data) => {
+    setTraining({ ...training, ...data });
   };
 
-  const training = user?.training || {};
   const schedule = training.schedule || [];
   const PRs = training.PRs || {};
   const prHistory = training.prHistory || [];
@@ -32,7 +35,7 @@ export default function Training({ user, setUser }) {
   const addDay = () => {
     if (!newDay.muscleGroup) return;
     if (schedule.find(d => d.day === newDay.day)) return;
-    updateSection('training', { schedule: [...schedule, { ...newDay, exercises: [], id: Date.now() }] });
+    updateSection({ schedule: [...schedule, { ...newDay, exercises: [], id: Date.now() }] });
   };
 
   const addExercise = (dayId) => {
@@ -40,7 +43,7 @@ export default function Training({ user, setUser }) {
     const updated = schedule.map(d =>
       d.id === dayId ? { ...d, exercises: [...(d.exercises || []), { ...newEx, id: Date.now() }] } : d
     );
-    updateSection('training', { schedule: updated });
+    updateSection({ schedule: updated });
     setNewEx({ name: '', sets: '', reps: '', weight: '' });
   };
 
@@ -48,11 +51,11 @@ export default function Training({ user, setUser }) {
     const updated = schedule.map(d =>
       d.id === dayId ? { ...d, exercises: (d.exercises || []).filter(e => e.id !== exId) } : d
     );
-    updateSection('training', { schedule: updated });
+    updateSection({ schedule: updated });
   };
 
   const removeDay = (dayId) => {
-    updateSection('training', { schedule: schedule.filter(d => d.id !== dayId) });
+    updateSection({ schedule: schedule.filter(d => d.id !== dayId) });
   };
 
   const logPR = () => {
@@ -60,13 +63,13 @@ export default function Training({ user, setUser }) {
     const w = Number(prForm.weight);
     const newPRs = { ...PRs, [prForm.lift]: Math.max(PRs[prForm.lift] || 0, w) };
     const newHistory = [...prHistory, { date: new Date().toISOString().slice(0, 10), lift: prForm.lift, weight: w }];
-    updateSection('training', { PRs: newPRs, prHistory: newHistory });
+    updateSection({ PRs: newPRs, prHistory: newHistory });
     setPrForm({ lift: prForm.lift, weight: '' });
   };
 
   const incrementStreak = () => {
     const newStreak = streak + 1;
-    updateSection('training', { streak: newStreak, longestStreak: Math.max(longestStreak, newStreak) });
+    updateSection({ streak: newStreak, longestStreak: Math.max(longestStreak, newStreak) });
   };
 
   const prChartData = prHistory.filter(h => h.lift === activePRLift).slice(-10)

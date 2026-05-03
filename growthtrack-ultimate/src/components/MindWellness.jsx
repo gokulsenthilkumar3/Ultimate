@@ -1,95 +1,134 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Brain, Smile, Zap, Heart, Moon, Sun, MessageCircle, Sparkles } from 'lucide-react';
+import useStore, { selectWellnessData, selectUpdateWellnessData } from '../store/useStore';
+import PageHeader from './ui/PageHeader';
+import StatCard from './ui/StatCard';
 
 export default function MindWellness() {
-  const [moodScore, setMoodScore] = useState(7);
-  const [stressLevel, setStressLevel] = useState(4);
+  const data = useStore(selectWellnessData) || {
+    moodScore: 7,
+    stressLevel: 4,
+    sleepHours: 7.5,
+    meditationMinutes: 15,
+    moodHistory: [
+      { day: 'Mon', score: 6 }, { day: 'Tue', score: 7 }, { day: 'Wed', score: 5 },
+      { day: 'Thu', score: 8 }, { day: 'Fri', score: 7 }, { day: 'Sat', score: 9 }, { day: 'Sun', score: 8 },
+    ]
+  };
+  const updateWellness = useStore(selectUpdateWellnessData);
 
-  const moodData = [
-    { day: 'Mon', score: 6 },
-    { day: 'Tue', score: 7 },
-    { day: 'Wed', score: 5 },
-    { day: 'Thu', score: 8 },
-    { day: 'Fri', score: 7 },
-    { day: 'Sat', score: 9 },
-    { day: 'Sun', score: 8 },
-  ];
+  const handleUpdate = (field, value) => {
+    updateWellness({ ...data, [field]: value });
+  };
+
+  const statCards = useMemo(() => [
+    { label: 'Mood Score', value: `${data.moodScore}/10`, icon: Smile, color: 'var(--accent)' },
+    { label: 'Stress Level', value: `${data.stressLevel}/10`, icon: Zap, color: 'var(--danger)' },
+    { label: 'Sleep', value: `${data.sleepHours}h`, icon: Moon, color: 'var(--info)' },
+    { label: 'Meditation', value: `${data.meditationMinutes}m`, icon: Sparkles, color: 'var(--success)' },
+  ], [data]);
 
   return (
-    <div className="dashboard-container">
-      <header className="dashboard-header">
-        <h1 className="dashboard-title">🧠 Mind & Wellness</h1>
-        <p className="dashboard-subtitle">Track your mental health, stress, and mood.</p>
-      </header>
+    <div className="fade-in module-page">
+      <PageHeader
+        accent="Wellness"
+        icon={<Brain size={24} />}
+        title="Mind & Wellness"
+        subtitle="Holistic mental health and cognitive performance tracking."
+      />
+
+      <div className="stats-grid mb-lg">
+        {statCards.map((c) => (
+          <StatCard key={c.label} icon={c.icon} label={c.label} value={c.value} color={c.color} />
+        ))}
+      </div>
+
+      <div className="grid-2 mb-lg">
+        <div className="glass-card">
+          <div className="flex-between mb-md">
+            <span className="card-title m-0">Mood Optimizer</span>
+            <Smile size={20} color="var(--accent)" />
+          </div>
+          
+          <div className="mb-lg">
+            <div className="flex-between mb-xs">
+              <span className="text-secondary text-sm">Daily Mood Score</span>
+              <span className="text-display text-accent">{data.moodScore}/10</span>
+            </div>
+            <input 
+              type="range" min="1" max="10" 
+              value={data.moodScore} 
+              onChange={e => handleUpdate('moodScore', +e.target.value)} 
+              className="form-input w-full" 
+            />
+          </div>
+
+          <div>
+            <div className="flex-between mb-xs">
+              <span className="text-secondary text-sm">Stress Intensity</span>
+              <span className="text-display text-danger">{data.stressLevel}/10</span>
+            </div>
+            <input 
+              type="range" min="1" max="10" 
+              value={data.stressLevel} 
+              onChange={e => handleUpdate('stressLevel', +e.target.value)} 
+              className="form-input w-full" 
+            />
+          </div>
+        </div>
+
+        <div className="glass-card">
+          <div className="flex-between mb-md">
+            <span className="card-title m-0">Weekly Resonance</span>
+            <Heart size={20} color="var(--danger)" />
+          </div>
+          <div style={{ height: '180px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.moodHistory}>
+                <defs>
+                  <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-3)' }} />
+                <YAxis hide domain={[0, 10]} />
+                <Tooltip 
+                  contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
+                  itemStyle={{ color: 'var(--accent)', fontWeight: 800 }}
+                />
+                <Area type="monotone" dataKey="score" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorMood)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
 
       <div className="grid-3">
-        <div className="card">
-          <div className="card__header">
-            <h3 className="card__title">Mood Score</h3>
+        <div className="glass-card flex-column gap-sm">
+          <div className="flex-center-y gap-sm text-accent">
+            <Sun size={18} />
+            <span className="label-caps">Morning Ritual</span>
           </div>
-          <div className="card__body">
-            <div className="metric-big">{moodScore}/10</div>
-            <input type="range" min="1" max="10" value={moodScore} onChange={e => setMoodScore(+e.target.value)} className="slider" />
-          </div>
+          <p className="text-sm">Practice 5-min sunlight exposure and boxed breathing to reset cortisol.</p>
         </div>
-        <div className="card">
-          <div className="card__header">
-            <h3 className="card__title">Stress Level</h3>
-          </div>
-          <div className="card__body">
-            <div className="metric-big">{stressLevel}/10</div>
-            <input type="range" min="1" max="10" value={stressLevel} onChange={e => setStressLevel(+e.target.value)} className="slider" />
-          </div>
-        </div>
-        <div className="card">
-          <div className="card__header">
-            <h3 className="card__title">Meditation</h3>
-          </div>
-          <div className="card__body">
-            <div className="metric-big">12 min</div>
-            <p>Today's session</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="card">
-        <div className="card__header">
-          <h3 className="card__title">Weekly Mood Trend</h3>
-        </div>
-        <div className="card__body">
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', height: '200px' }}>
-            {moodData.map(d => (
-              <div key={d.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ height: `${d.score * 20}px`, width: '100%', background: 'var(--accent)', borderRadius: '4px' }} />
-                <span>{d.day}</span>
-              </div>
-            ))}
+        <div className="glass-card flex-column gap-sm">
+          <div className="flex-center-y gap-sm text-success">
+            <Sparkles size={18} />
+            <span className="label-caps">Cognitive Edge</span>
           </div>
+          <p className="text-sm">Deep work session completed: 90 mins. Focus stability at 85%.</p>
         </div>
-      </div>
 
-      <div className="grid-2">
-        <div className="card">
-          <div className="card__header">
-            <h3 className="card__title">Mindfulness Tips</h3>
+        <div className="glass-card flex-column gap-sm">
+          <div className="flex-center-y gap-sm text-info">
+            <MessageCircle size={18} />
+            <span className="label-caps">Daily Reflection</span>
           </div>
-          <div className="card__body">
-            <ul>
-              <li>Practice deep breathing for 5 minutes daily</li>
-              <li>Journal your thoughts before bed</li>
-              <li>Take regular breaks during work</li>
-              <li>Stay connected with friends and family</li>
-            </ul>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card__header">
-            <h3 className="card__title">Quick Actions</h3>
-          </div>
-          <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button className="btn btn--primary">Start Meditation</button>
-            <button className="btn btn--outline">Breathing Exercise</button>
-            <button className="btn btn--outline">Gratitude Journal</button>
-          </div>
+          <p className="text-sm">Log your thoughts to clear mental bandwidth for the next cycle.</p>
         </div>
       </div>
     </div>

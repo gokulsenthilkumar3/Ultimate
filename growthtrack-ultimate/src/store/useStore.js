@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://ultimate-8we7.onrender.com/api';
 
-async function apiSync(endpoint, method = 'POST', data = null) {
+export async function apiSync(endpoint, method = 'POST', data = null) {
   try {
     const state = useStore.getState();
       const options = {
@@ -75,6 +75,7 @@ const useStore = create(
       medicalData: null,
       physiqueTargets: null,
       assessmentQA: [],
+      wellnessData: null,
 
       // UI Actions
       // ──────────────────────────────────────────────────────────
@@ -83,8 +84,11 @@ const useStore = create(
       setOnboardingComplete: (val) => set({ onboardingComplete: val }),
       setTheme: (theme) => set({ theme }),
       setPalette: (palette) => set({ palette }),
-      setActiveTab: (activeTab) => set({ activeTab }),
-      setOnboardingComplete: (val) => set({ onboardingComplete: val }),
+      setActiveTab: (activeTab) => {
+        set({ activeTab });
+        // Scroll to top on tab change
+        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'instant' });
+      },
       togglePinnedTab: (tabId) => set((state) => {
         if (state.pinnedTabs.includes(tabId)) {
           return { pinnedTabs: state.pinnedTabs.filter(id => id !== tabId) };
@@ -130,7 +134,7 @@ const useStore = create(
           const [
             user, tasks, shopping, timesheet,
             training, nutrition, lifestyle,
-            medical, physique, assessment, metricLogs, skills, events,
+            medical, physique, assessment, wellness, metricLogs, skills, events,
             financeData, notes, goals, sleep, docs, subs, habits, media
           ] = await Promise.all([
             fetchJSON('/user'),
@@ -143,6 +147,7 @@ const useStore = create(
             fetchJSON('/medical_data'),
             fetchJSON('/physique_targets'),
             fetchJSON('/assessment_qa'),
+            fetchJSON('/wellness_data'),
             fetchJSON('/metric_logs'),
             fetchJSON('/skills'),
             fetchJSON('/calendar_events'),
@@ -169,6 +174,7 @@ const useStore = create(
             medicalData: medical,
             physiqueTargets: physique,
             assessmentQA: Array.isArray(assessment) ? assessment : [],
+            wellnessData: wellness,
             notes: Array.isArray(notes) ? notes : [],
             goals: Array.isArray(goals) ? goals : [],
             sleep_logs: Array.isArray(sleep) ? sleep : [],
@@ -534,24 +540,66 @@ const useStore = create(
         apiSync(`/subscriptions/${id}`, 'DELETE');
         set((state) => ({ subscriptions: state.subscriptions.filter(s => s.id !== id) }));
       },
+
+      // ──────────────────────────────────────────────────────────
+      // Singleton Persisted Actions
+      // ──────────────────────────────────────────────────────────
+      updateTrainingPlan: async (data) => {
+        set({ trainingPlan: data });
+        apiSync('/training_plan', 'POST', data);
+      },
+      updateNutritionStrategy: async (data) => {
+        set({ nutritionStrategy: data });
+        apiSync('/nutrition_strategy', 'POST', data);
+      },
+      updateLifestyleTips: async (data) => {
+        set({ lifestyleTips: data });
+        apiSync('/lifestyle_tips', 'POST', data);
+      },
+      updateMedicalData: async (data) => {
+        set({ medicalData: data });
+        apiSync('/medical_data', 'POST', data);
+      },
+      updatePhysiqueTargets: async (data) => {
+        set({ physiqueTargets: data });
+        apiSync('/physique_targets', 'POST', data);
+      },
+      updateAssessmentQA: async (data) => {
+        set({ assessmentQA: data });
+        apiSync('/assessment_qa', 'POST', data);
+      },
+      updateSkills: async (data) => {
+        set({ skills: data });
+        apiSync('/skills', 'POST', data);
+      },
+      updateCalendarEvents: async (data) => {
+        set({ calendar_events: data });
+        apiSync('/calendar_events', 'POST', data);
+      },
+      updateWellnessData: async (data) => {
+        set({ wellnessData: data });
+        apiSync('/wellness_data', 'POST', data);
+      },
     }),
     {
       name: 'growthtrack-ultimate-v4',
       storage: createJSONStorage(() => localStorage),
       version: 4,
-      // Only persist UI preferences and local data — never transient server state
+      // Only persist UI preferences and local fallback data
+      // NEVER persist isLoading or serverStatus — they are transient runtime state
       partialize: (state) => ({
         theme: state.theme,
         palette: state.palette,
         activeTab: state.activeTab,
         pinnedTabs: state.pinnedTabs,
-        // Persist finance locally as fallback if server is offline
+        // Persist finance/shopping/entertainment locally as fallback if server is offline
         finance: state.finance,
         entertainment: state.entertainment,
         timesheet: state.timesheet,
         shopping: state.shopping,
         onboardingComplete: state.onboardingComplete,
         lastCheckIn: state.lastCheckIn,
+        // Note: isLoading and serverStatus are intentionally NOT persisted
       }),
       migrate: (persistedState, version) => {
         // Clean migration — no dependency on deleted USER constant
@@ -616,11 +664,23 @@ export const selectAddTimesheetSession = (s) => s.addTimesheetSession;
 export const selectDeleteTimesheetSession = (s) => s.deleteTimesheetSession;
 
 export const selectTrainingPlan = (s) => s.trainingPlan;
+export const selectUpdateTrainingPlan = (s) => s.updateTrainingPlan;
 export const selectNutritionStrategy = (s) => s.nutritionStrategy;
+export const selectUpdateNutritionStrategy = (s) => s.updateNutritionStrategy;
 export const selectLifestyleTips = (s) => s.lifestyleTips;
+export const selectUpdateLifestyleTips = (s) => s.updateLifestyleTips;
 export const selectMedicalData = (s) => s.medicalData;
+export const selectUpdateMedicalData = (s) => s.updateMedicalData;
 export const selectPhysiqueTargets = (s) => s.physiqueTargets;
+export const selectUpdatePhysiqueTargets = (s) => s.updatePhysiqueTargets;
 export const selectAssessmentQA = (s) => s.assessmentQA;
+export const selectUpdateAssessmentQA = (s) => s.updateAssessmentQA;
+export const selectSkills = (s) => s.skills;
+export const selectUpdateSkills = (s) => s.updateSkills;
+export const selectCalendarEvents = (s) => s.calendar_events;
+export const selectUpdateCalendarEvents = (s) => s.updateCalendarEvents;
+export const selectWellnessData = (s) => s.wellnessData;
+export const selectUpdateWellnessData = (s) => s.updateWellnessData;
 
 export const selectAddBudget = (s) => s.addBudget;
 export const selectDeleteBudget = (s) => s.deleteBudget;

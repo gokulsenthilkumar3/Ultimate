@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Pin, PinOff, Save, Search, FileText } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import ConfirmDialog from './ui/ConfirmDialog';
 import useStore, { 
   selectNotes, selectAddNote, selectDeleteNote, selectUpdateNote 
 } from '../store/useStore';
@@ -27,6 +28,7 @@ export default function Notes() {
   const [editColor, setEditColor] = useState('var(--accent)');
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const toast = useToast();
 
   const selectNote = (note) => {
@@ -57,11 +59,16 @@ export default function Notes() {
     await updateNote(note.id, { pinned: !note.pinned });
   };
 
-  const handleDeleteNote = async (id) => {
-    if (!window.confirm('Delete this note permanently?')) return;
-    await deleteNoteAction(id);
-    if (selected === id) { setSelected(null); setEditTitle(''); setEditContent(''); }
+  const handleDeleteNote = (id) => {
+    setConfirmDelete(id);
+  };
+
+  const doDelete = async () => {
+    if (!confirmDelete) return;
+    await deleteNoteAction(confirmDelete);
+    if (selected === confirmDelete) { setSelected(null); setEditTitle(''); setEditContent(''); }
     toast.success('Note deleted');
+    setConfirmDelete(null);
   };
 
   const filtered = (notes || []).filter(n =>
@@ -75,6 +82,14 @@ export default function Notes() {
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0', height: '100%' }}>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete this note?"
+        description="This action cannot be undone. The note content will be permanently purged."
+        confirmLabel="Delete Note"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Personal Knowledge Base</p>

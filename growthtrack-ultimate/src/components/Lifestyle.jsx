@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2, Smile, Zap, Trophy } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import ContributionGrid from './ContributionGrid';
+import ConfirmDialog from './ui/ConfirmDialog';
 import useStore, { 
   selectHabits, selectAddHabit, selectDeleteHabit, selectUpdateHabit 
 } from '../store/useStore';
@@ -25,6 +26,7 @@ export default function Lifestyle() {
   const toast = useToast();
 
   const [hf, setHf] = useState({ name: '', icon: '🏃' });
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const handleAddHabit = async () => {
     if (!hf.name.trim()) return toast.error('Habit name required');
@@ -37,13 +39,19 @@ export default function Lifestyle() {
     }
   };
 
-  const handleDeleteHabit = async (id) => {
-    if (!window.confirm("Delete habit?")) return;
+  const handleDeleteHabit = (id) => {
+    setConfirmDelete(id);
+  };
+
+  const doDelete = async () => {
+    if (!confirmDelete) return;
     try {
-      await deleteHabitAction(id);
+      await deleteHabitAction(confirmDelete);
       toast.success('Habit deleted');
     } catch {
       toast.error('Delete failed');
+    } finally {
+      setConfirmDelete(null);
     }
   };
 
@@ -79,6 +87,14 @@ export default function Lifestyle() {
 
   return (
     <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete this habit?"
+        description="All tracking history for this habit will be lost forever."
+        confirmLabel="Delete Habit"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Behavioral Telemetry</p>

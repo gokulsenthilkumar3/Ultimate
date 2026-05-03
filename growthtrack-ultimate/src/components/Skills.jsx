@@ -1,19 +1,24 @@
-import React, { useState, useMemo } from 'react';
-import useStore from '../store/useStore';
-import { BookOpen, Award, Target, Plus, Search, Filter, TrendingUp, Save, Edit3, Trash2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import useStore, { selectSkills, selectUpdateSkills } from '../store/useStore';
+import { BookOpen, Award, Target, Plus, Search, Filter, TrendingUp, Save, Edit3, Trash2, X } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 export default function Skills() {
-  const skills = useStore(state => state.skills) || [];
-  const fetchInitialData = useStore(state => state.fetchInitialData);
+  const skills = useStore(selectSkills) || [];
+  const updateSkillsAction = useStore(selectUpdateSkills);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [localSkills, setLocalSkills] = useState(skills);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
   const toast = useToast();
 
   // Sync local state when store changes
-  React.useEffect(() => {
+  useEffect(() => {
     setLocalSkills(skills);
   }, [skills]);
 
@@ -37,15 +42,8 @@ export default function Skills() {
   const saveToDatabase = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch('http://localhost:3001/api/skills', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(localSkills)
-      });
-      if (res.ok) {
-        toast.success('Skill Matrix updated and saved to database!');
-        fetchInitialData();
-      }
+      await updateSkillsAction(localSkills);
+      toast.success('Skill Matrix updated and saved to database!');
     } catch (err) {
       toast.error('Failed to save skills');
     }
@@ -64,14 +62,42 @@ export default function Skills() {
     setLocalSkills([newSkill, ...localSkills]);
   };
 
-  const deleteSkill = (id) => {
-    if(window.confirm('Remove this skill?')) {
-      setLocalSkills(prev => prev.filter(s => s.id !== id));
-    }
+  const handleDeleteSkill = (id) => {
+    setConfirmDelete(id);
+  };
+
+  const doDelete = () => {
+    setLocalSkills(prev => prev.filter(s => s.id !== confirmDelete));
+    setConfirmDelete(null);
+    toast.info('Skill removed from local matrix. Save to persist.');
+  };
+
+  const handleAddCategory = () => {
+    if (!newCatName.trim()) return;
+    const newSkill = {
+      id: Date.now().toString(),
+      label: 'Initial Skill',
+      description: '',
+      proficiency: 0,
+      icon: '🆕',
+      category: newCatName.trim()
+    };
+    setLocalSkills([newSkill, ...localSkills]);
+    setActiveCategory(newCatName.trim());
+    setNewCatName('');
+    setShowAddCategory(false);
   };
 
   return (
     <div className="fade-in" style={{ padding: '1rem 0' }}>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Remove skill?"
+        description="This will remove the skill from your matrix. Changes must be saved to persist."
+        confirmLabel="Remove"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Skill Matrix Intelligence</p>
@@ -100,7 +126,7 @@ export default function Skills() {
             style={{ background: 'transparent', border: 'none', color: 'var(--text-1)', padding: '12px 0', outline: 'none', flex: 1, fontSize: '0.9rem' }}
           />
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', alignItems: 'center' }}>
           {categories.map(cat => (
             <button
               key={cat}
@@ -111,24 +137,24 @@ export default function Skills() {
               {cat}
             </button>
           ))}
-          {/* Quick Add Specific Category Button */}
-          {activeCategory === 'All' && (
+          
+          {showAddCategory ? (
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <input 
+                className="form-input" 
+                autoFocus
+                placeholder="Category Name" 
+                value={newCatName} 
+                onChange={e => setNewCatName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: '120px' }}
+              />
+              <button className="btn-primary" onClick={handleAddCategory} style={{ padding: '0.4rem' }}><Plus size={14}/></button>
+              <button className="btn-ghost" onClick={() => setShowAddCategory(false)} style={{ padding: '0.4rem' }}><X size={14}/></button>
+            </div>
+          ) : (
              <button
-               onClick={() => {
-                 const cat = window.prompt('Enter new category name (e.g., Finance, Language):');
-                 if (cat) {
-                   const newSkill = {
-                     id: Date.now().toString(),
-                     label: 'New Skill',
-                     description: '',
-                     proficiency: 0,
-                     icon: '🆕',
-                     category: cat
-                   };
-                   setLocalSkills([newSkill, ...localSkills]);
-                   setActiveCategory(cat);
-                 }
-               }}
+               onClick={() => setShowAddCategory(true)}
                className="btn-sm"
                style={{ whiteSpace: 'nowrap', padding: '0.6rem 1.25rem', border: '1px dashed var(--accent)', color: 'var(--accent)', background: 'transparent' }}
              >
@@ -171,7 +197,7 @@ export default function Skills() {
                  <div key={skill.id} className="glass-card stagger-item" style={{ padding: '1.5rem', position: 'relative', display: 'flex', flexDirection: 'column' }}>
                    
                    <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '4px' }}>
-                     <button onClick={() => deleteSkill(skill.id)} style={{ background: 'var(--bg-dark)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Delete Skill">
+                     <button onClick={() => handleDeleteSkill(skill.id)} style={{ background: 'var(--bg-dark)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Delete Skill">
                        <Trash2 size={14} />
                      </button>
                    </div>

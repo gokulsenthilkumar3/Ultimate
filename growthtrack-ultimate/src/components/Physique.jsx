@@ -3,9 +3,10 @@ import {
   Zap, Target, Layers, Activity, 
   ChevronRight, ArrowUpRight, Shield, Flame 
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import useStore, { selectSetActiveTab } from '../store/useStore';
 
 export default function Physique({ user }) {
+  const setActiveTab = useStore(selectSetActiveTab);
   const [activeZone, setActiveZone] = useState('Core Anterior');
 
   const zones = [

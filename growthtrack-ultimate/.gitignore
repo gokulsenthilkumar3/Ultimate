@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ─── Security: Never commit database or secrets ───
+*.db
+*.sqlite
+*.sqlite3
+tracker.db
+.env
+.env.local
+.env.production

@@ -13,11 +13,11 @@ export default function BottomNavBar({ activeTab, onTabChange }) {
   // Determine which group is active based on the activeTab
   // This is a bit simplified, ideally we'd map all tabs to groups
   const getActiveGroup = () => {
-    if (['overview', 'dashboards', 'logs'].includes(activeTab)) return 'command';
-    if (['humanoid', 'physique', 'training', 'nutrition', 'assessment'].includes(activeTab)) return 'physiology';
-    if (['sleep', 'lifestyle', 'goals', 'progress', 'health'].includes(activeTab)) return 'lifestyle';
-    if (['tasks', 'finance', 'timesheet', 'projects', 'shopping'].includes(activeTab)) return 'operations';
-    if (['entertainment', 'notes', 'documents', 'databases'].includes(activeTab)) return 'library';
+    if (['overview', 'dashboards', 'logs', 'settings', 'apps', 'current'].includes(activeTab)) return 'command';
+    if (['humanoid', 'physique', 'training', 'nutrition', 'assessment', 'medical', 'strength', 'hydration'].includes(activeTab)) return 'physiology';
+    if (['sleep', 'lifestyle', 'goals', 'progress', 'health', 'mind', 'skills', 'analytics'].includes(activeTab)) return 'lifestyle';
+    if (['tasks', 'finance', 'timesheet', 'projects', 'shopping', 'calendar'].includes(activeTab)) return 'operations';
+    if (['entertainment', 'notes', 'documents', 'databases', 'portfolio', 'social', 'ai', 'maps'].includes(activeTab)) return 'library';
     return 'command';
   };
 

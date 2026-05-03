@@ -14,7 +14,7 @@ const fmtINR = (n) => '₹' + Number(n).toLocaleString('en-IN');
 const CATEGORIES = ['Supplements', 'Equipment', 'Apparel', 'Food', 'Medical', 'Other'];
 const PRIORITIES = ['Urgent', 'High', 'Medium', 'Low'];
 const PRIORITY_COLOR = { Urgent: 'var(--danger)', High: '#e5a50a', Medium: 'var(--success)', Low: 'var(--text-3)' };
-const EMPTY_FORM = { name: '', category: '', priority: 'Medium', estimatedCost: '' };
+const EMPTY_FORM = { name: '', category: '', priority: 'Medium', estimatedCost: '', quantity: 1 };
 
 export default function Shopping() {
   // ── Zustand (persisted — no more data loss on tab switch)
@@ -28,7 +28,7 @@ export default function Shopping() {
 
   // ── #9 useMemo: summary stats
   const { totalCost, purchasedCount, pendingCount } = useMemo(() => ({
-    totalCost:      items.reduce((s, i) => s + (i.purchased ? 0 : i.estimatedCost), 0),
+    totalCost:      items.reduce((s, i) => s + (i.purchased ? 0 : (i.estimatedCost || 0) * (i.quantity || 1)), 0),
     purchasedCount: items.filter((i) => i.purchased).length,
     pendingCount:   items.filter((i) => !i.purchased).length,
   }), [items]);
@@ -40,7 +40,8 @@ export default function Shopping() {
       return;
     }
     const cost = parseFloat(form.estimatedCost);
-    addItem({ ...form, estimatedCost: isNaN(cost) ? 0 : cost });
+    const qty = parseInt(form.quantity) || 1;
+    addItem({ ...form, estimatedCost: isNaN(cost) ? 0 : cost, quantity: qty });
     setForm(EMPTY_FORM);
     toast.success(`"${form.name}" added to shopping list.`);
   }, [form, addItem, toast]);
@@ -104,6 +105,14 @@ export default function Shopping() {
             className="form-input"
             min="0"
           />
+          <input
+            type="number"
+            placeholder="Qty"
+            value={form.quantity}
+            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+            className="form-input"
+            min="1"
+          />
         </div>
         <button onClick={handleAdd} className="btn-primary">
           <Plus size={16} /> Add Item
@@ -141,8 +150,13 @@ export default function Shopping() {
                     <span className="category-badge">{item.category}</span>
                   )}
                 </div>
-                <p className="list-row__amount" style={{ color: 'var(--accent)', marginTop: '0.25rem' }}>
+                <p className="list-row__amount" style={{ color: 'var(--accent)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {fmtINR(item.estimatedCost)}
+                  {item.quantity > 1 && (
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 400 }}>
+                      × {item.quantity} = {fmtINR(item.estimatedCost * item.quantity)}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>

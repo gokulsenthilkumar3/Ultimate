@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Shield, Search, Filter, ArrowUpDown, Clock, Globe, User, Info, Terminal } from 'lucide-react';
+import useStore, { apiSync } from '../store/useStore';
 import PageHeader from './ui/PageHeader';
 
 export default function Logs() {
@@ -10,8 +11,7 @@ export default function Logs() {
   const [filterTable, setFilterTable] = useState('All');
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/logs')
-      .then(res => res.json())
+    apiSync('/logs', 'GET')
       .then(data => {
         setLogs(data);
         setLoading(false);

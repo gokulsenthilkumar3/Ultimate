@@ -3,7 +3,7 @@ import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight, 
   Plus, CheckCircle2, Circle, Clock, Tag, X, Save
 } from 'lucide-react';
-import useStore from '../store/useStore';
+import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 
 export default function Calendar() {
@@ -50,18 +50,11 @@ export default function Calendar() {
     }];
 
     try {
-      const res = await fetch('http://localhost:3001/api/calendar_events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedEvents)
-      });
-      
-      if (res.ok) {
-        toast.success('Event added to calendar');
-        fetchInitialData();
-        setIsModalOpen(false);
-        setNewEvent({ title: '', type: 'task', time: '09:00' });
-      }
+      await apiSync('/calendar_events', 'POST', updatedEvents);
+      toast.success('Event added to calendar');
+      fetchInitialData();
+      setIsModalOpen(false);
+      setNewEvent({ title: '', type: 'task', time: '09:00' });
     } catch (err) {
       toast.error('Failed to save event');
     }
@@ -70,11 +63,7 @@ export default function Calendar() {
   const toggleComplete = async (eventId) => {
     const updatedEvents = events.map(e => e.id === eventId ? { ...e, completed: !e.completed } : e);
     try {
-      await fetch('http://localhost:3001/api/calendar_events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedEvents)
-      });
+      await apiSync('/calendar_events', 'POST', updatedEvents);
       fetchInitialData();
     } catch (err) {}
   };
