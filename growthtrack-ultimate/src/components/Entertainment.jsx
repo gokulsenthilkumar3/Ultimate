@@ -9,6 +9,7 @@ import useStore, {
 import { useToast } from '../hooks/useToast';
 import StatCard from './ui/StatCard';
 import PageHeader from './ui/PageHeader';
+import EmptyState from './ui/EmptyState';
 
 const TYPES    = ['Anime', 'Series', 'Movie', 'Documentary'];
 const STATUSES = ['Watching', 'Plan to Watch', 'Completed', 'Dropped'];
@@ -213,10 +214,11 @@ export default function Entertainment() {
       </div>
 
           {filteredMedia.length === 0 && (
-            <div className="empty-state">
-              <Tv size={56} className="empty-state__icon" />
-              <p className="empty-state__text">No titles found in your library</p>
-            </div>
+            <EmptyState 
+              icon={Tv} 
+              title="No titles found" 
+              description="Your library is empty or your search didn't match anything." 
+            />
           )}
         </>
       )}
