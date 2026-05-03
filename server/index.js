@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
@@ -19,6 +20,9 @@ app.use(helmet());
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000')
   .split(',')
   .map(o => o.trim());
+
+console.log(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
+
 app.use(cors({
   origin: (origin, cb) => {
     // Allow non-browser requests (curl, Postman) and whitelisted origins
@@ -54,6 +58,10 @@ const queryLimiter = rateLimit({
 
 // --- Security: Protected-route middleware (bearer token) ---
 const API_SECRET = process.env.API_SECRET || '';
+if (!API_SECRET) {
+  console.warn('WARNING: API_SECRET not set — /api/all, /api/logs, /api/query are unprotected (dev mode)');
+}
+
 function requireSecret(req, res, next) {
   if (!API_SECRET) return next(); // skip if not configured (dev mode)
   const auth = req.headers['authorization'] || '';
@@ -792,8 +800,12 @@ if (require.main === module) {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
-    if (!API_SECRET) console.warn('WARNING: API_SECRET not set — /api/all, /api/logs, /api/query are unprotected (dev mode)');
+    if (!API_SECRET) {
+      console.warn('WARNING: API_SECRET not set — /api/all, /api/logs, /api/query are unprotected (dev mode)');
+    } else {
+      console.log('API_SECRET: configured ✓');
+    }
   });
 }
 
-module.exports = app;
+module.exports = { app, db };
