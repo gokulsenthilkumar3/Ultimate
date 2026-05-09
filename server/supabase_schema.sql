@@ -1,13 +1,12 @@
--- GrowthTrack Ultimate — Supabase Schema (Phase 1 DB Foundation)
+-- GrowthTrack Ultimate — Supabase Schema (Phase 1 DB Foundation + Phase 2 metrics)
 -- Run this in: Supabase Dashboard → SQL Editor → New Query
 
--- Enable UUID generation for primary keys
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Core tables
 CREATE TABLE IF NOT EXISTS tasks (
   id BIGSERIAL PRIMARY KEY,
   title TEXT NOT NULL,
+  description TEXT,
   priority TEXT CHECK (priority IN ('low','medium','high')),
   tag TEXT,
   "dueDate" DATE,
@@ -40,7 +39,7 @@ CREATE TABLE IF NOT EXISTS timesheet (
   id BIGSERIAL PRIMARY KEY,
   task TEXT,
   duration INTEGER,
-  date DATE,
+  date TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT DEFAULT 'user',
   modified_at TIMESTAMPTZ DEFAULT NOW(),
@@ -85,7 +84,6 @@ CREATE TABLE IF NOT EXISTS audit_log (
   actor_ip TEXT
 );
 
--- Singleton tables (one row each, enforced by PK = 1)
 CREATE TABLE IF NOT EXISTS user_profile (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   data TEXT NOT NULL,
@@ -103,7 +101,6 @@ CREATE TABLE IF NOT EXISTS assessment_qa (id INTEGER PRIMARY KEY CHECK (id = 1),
 CREATE TABLE IF NOT EXISTS skills (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS calendar_events (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
 
--- Feature tables
 CREATE TABLE IF NOT EXISTS notes (
   id BIGSERIAL PRIMARY KEY,
   title TEXT NOT NULL DEFAULT 'Untitled',
@@ -182,7 +179,6 @@ CREATE TABLE IF NOT EXISTS entertainment (
   modified_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Health+ extras (sensory scores, posture, diets, hobbies)
 CREATE TABLE IF NOT EXISTS health_extras (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   vision_score INTEGER CHECK (vision_score BETWEEN 0 AND 100),
@@ -197,10 +193,12 @@ CREATE TABLE IF NOT EXISTS health_extras (
   posture_status TEXT,
   active_diets TEXT DEFAULT '[]',
   hobbies TEXT DEFAULT '[]',
+  hrv_score INTEGER,
+  stress_load_score INTEGER,
+  recovery_index_score INTEGER,
   modified_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Mood logs (Mind & Wellness)
 CREATE TABLE IF NOT EXISTS mood_logs (
   id BIGSERIAL PRIMARY KEY,
   date DATE NOT NULL,
@@ -210,7 +208,6 @@ CREATE TABLE IF NOT EXISTS mood_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Habit completion logs (normalize completed_dates)
 CREATE TABLE IF NOT EXISTS habit_logs (
   id BIGSERIAL PRIMARY KEY,
   habit_id BIGINT REFERENCES habits(id) ON DELETE CASCADE,
@@ -219,7 +216,6 @@ CREATE TABLE IF NOT EXISTS habit_logs (
   UNIQUE (habit_id, date)
 );
 
--- Goal progress logs
 CREATE TABLE IF NOT EXISTS goal_progress_logs (
   id BIGSERIAL PRIMARY KEY,
   goal_id BIGINT REFERENCES goals(id) ON DELETE CASCADE,
@@ -229,7 +225,6 @@ CREATE TABLE IF NOT EXISTS goal_progress_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Nutrition logs (per-meal)
 CREATE TABLE IF NOT EXISTS nutrition_logs (
   id BIGSERIAL PRIMARY KEY,
   date DATE NOT NULL,
@@ -242,7 +237,6 @@ CREATE TABLE IF NOT EXISTS nutrition_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Training sessions and exercises
 CREATE TABLE IF NOT EXISTS workout_sessions (
   id BIGSERIAL PRIMARY KEY,
   date DATE NOT NULL,
@@ -262,7 +256,6 @@ CREATE TABLE IF NOT EXISTS workout_exercises (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Progress photos
 CREATE TABLE IF NOT EXISTS progress_photos (
   id BIGSERIAL PRIMARY KEY,
   date DATE NOT NULL,
@@ -271,7 +264,6 @@ CREATE TABLE IF NOT EXISTS progress_photos (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Medical vitals and medications
 CREATE TABLE IF NOT EXISTS vitals_logs (
   id BIGSERIAL PRIMARY KEY,
   date DATE NOT NULL,
@@ -291,7 +283,6 @@ CREATE TABLE IF NOT EXISTS medications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Saved articles (Current/News)
 CREATE TABLE IF NOT EXISTS saved_articles (
   id BIGSERIAL PRIMARY KEY,
   url TEXT NOT NULL,
@@ -300,7 +291,6 @@ CREATE TABLE IF NOT EXISTS saved_articles (
   date_saved TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Disable Row Level Security (personal single-user app — access controlled via service key)
 ALTER TABLE tasks DISABLE ROW LEVEL SECURITY;
 ALTER TABLE shopping DISABLE ROW LEVEL SECURITY;
 ALTER TABLE timesheet DISABLE ROW LEVEL SECURITY;

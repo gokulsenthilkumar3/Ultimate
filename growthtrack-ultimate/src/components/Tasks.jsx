@@ -24,14 +24,16 @@ const daysUntil = (date) => {
 function TaskCard({ task, onDelete, onComplete, onReopen, onUpdate }) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
+  const [editDescription, setEditDescription] = useState(task.description || '');
   const overdue = isOverdue(task);
   const days = daysUntil(task.dueDate);
   const priorityColor = PRIORITIES.find(p => p.key === task.priority)?.color || 'var(--border)';
 
   const handleSave = () => {
-    if (editTitle.trim() && editTitle !== task.title) {
-      onUpdate(task.id, { title: editTitle.trim() });
-    }
+    const payload = {};
+    if (editTitle.trim() && editTitle !== task.title) payload.title = editTitle.trim();
+    if (editDescription !== (task.description || '')) payload.description = editDescription.trim();
+    if (Object.keys(payload).length > 0) onUpdate(task.id, payload);
     setEditing(false);
   };
 
@@ -43,23 +45,31 @@ function TaskCard({ task, onDelete, onComplete, onReopen, onUpdate }) {
       transition: 'all 0.25s ease',
       position: 'relative',
     }}>
-      {/* Overdue warning badge */}
       {overdue && (
         <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.6rem', fontWeight: 800 }}>
           <AlertTriangle size={10} /> OVERDUE
         </div>
       )}
 
-      {/* Title Row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.85rem', paddingRight: overdue ? '70px' : '0' }}>
         {editing ? (
-          <input
-            autoFocus value={editTitle}
-            onChange={e => setEditTitle(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
-            className="form-input"
-            style={{ flex: 1, marginRight: '8px', padding: '4px 8px', fontSize: '0.9rem', height: '32px' }}
-          />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem', marginRight: '8px' }}>
+            <input
+              autoFocus value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
+              className="form-input"
+              style={{ padding: '4px 8px', fontSize: '0.9rem', height: '32px' }}
+            />
+            <input
+              value={editDescription}
+              onChange={e => setEditDescription(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
+              placeholder="Optional description"
+              className="form-input"
+              style={{ padding: '4px 8px', fontSize: '0.8rem', height: '30px' }}
+            />
+          </div>
         ) : (
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: '0.92rem', fontWeight: 700, color: task.done ? 'var(--text-3)' : 'var(--text-1)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.5 }}>
@@ -87,7 +97,6 @@ function TaskCard({ task, onDelete, onComplete, onReopen, onUpdate }) {
         </div>
       </div>
 
-      {/* Meta tags */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', marginBottom: '1rem' }}>
         <span style={{ fontSize: '0.62rem', padding: '2px 8px', borderRadius: '6px', background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           {task.tag || 'general'}
@@ -108,7 +117,6 @@ function TaskCard({ task, onDelete, onComplete, onReopen, onUpdate }) {
         )}
       </div>
 
-      {/* Action Button */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         {!task.done ? (
           <button onClick={() => onComplete(task.id)} className="btn-primary" style={{ padding: '6px 14px', fontSize: '0.7rem', borderRadius: '8px', background: 'var(--success)', color: '#000', fontWeight: 900 }}>
@@ -137,7 +145,7 @@ export default function Tasks({ user }) {
   const tasks = user?.tasks || { pending: [], completed: [], recurring: [] };
   const [form, setForm] = useState(EMPTY_FORM);
   const [showAdd, setShowAdd] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, today, overdue, high
+  const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleAddTask = async () => {
@@ -151,7 +159,11 @@ export default function Tasks({ user }) {
 
   const getFilteredPending = () => {
     let items = tasks.pending || [];
-    if (searchTerm) items = items.filter(t => t.title?.toLowerCase().includes(searchTerm.toLowerCase()) || t.tag?.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (searchTerm) items = items.filter(t =>
+      t.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.tag?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
     if (filter === 'today') items = items.filter(t => t.dueDate === today());
     if (filter === 'overdue') items = items.filter(t => isOverdue(t));
     if (filter === 'high') items = items.filter(t => t.priority === 'high');
@@ -175,7 +187,6 @@ export default function Tasks({ user }) {
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Mission Control</p>
@@ -188,7 +199,6 @@ export default function Tasks({ user }) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Search */}
           <input
             type="text" placeholder="Search tasks…" value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
@@ -200,7 +210,6 @@ export default function Tasks({ user }) {
         </div>
       </div>
 
-      {/* Filter chips */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         {[
           { key: 'all', label: 'All Tasks' },
@@ -215,7 +224,6 @@ export default function Tasks({ user }) {
         ))}
       </div>
 
-      {/* Add Task Panel */}
       {showAdd && (
         <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1.75rem', borderTop: '2px solid var(--accent)' }}>
           <p className="label-caps" style={{ marginBottom: '1rem', color: 'var(--accent)' }}>Create New Task</p>
@@ -272,7 +280,6 @@ export default function Tasks({ user }) {
         </div>
       )}
 
-      {/* Empty State */}
       {totalTasks === 0 && !showAdd ? (
         <div style={{ marginTop: '2rem' }}>
           <EmptyState 
@@ -284,7 +291,6 @@ export default function Tasks({ user }) {
           />
         </div>
       ) : (
-        /* Kanban Board */
         <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '1rem', minHeight: '50vh' }}>
         {kanbanColumns.map(col => (
           <div key={col.id} style={{
@@ -295,7 +301,6 @@ export default function Tasks({ user }) {
             display: 'flex', flexDirection: 'column',
             maxHeight: 'calc(100vh - 260px)',
           }}>
-            {/* Column Header */}
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: col.id === 'priority' ? 'rgba(239,68,68,0.05)' : 'rgba(255,255,255,0.02)', borderRadius: '20px 20px 0 0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '1.1rem' }}>{col.emoji}</span>
@@ -304,7 +309,6 @@ export default function Tasks({ user }) {
               <span style={{ fontSize: '0.7rem', background: 'var(--bg-elevated)', padding: '3px 10px', borderRadius: '10px', color: 'var(--text-3)', fontWeight: 800 }}>{col.items.length}</span>
             </div>
 
-            {/* Cards */}
             <div style={{ padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {col.items.length === 0 ? (
                 <div style={{ padding: '2.5rem 1rem', textAlign: 'center', opacity: 0.3, fontSize: '0.8rem' }}>

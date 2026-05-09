@@ -1,22 +1,42 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Droplets, Plus, Minus, Award } from 'lucide-react';
+import { Droplets, Plus, Minus, Award, Clock } from 'lucide-react';
+import useStore, { apiSync } from '../store/useStore';
+import { useToast } from '../hooks/useToast';
 
-export default function HydrationTracker({ user, setUser }) {
+const COLORS = ['var(--accent)', 'var(--bg-elevated)'];
+
+export default function HydrationTracker() {
+  const user = useStore(s => s.user);
+  const updateUser = useStore(s => s.setUser);
+  const toast = useToast();
+
   const hydration = user?.hydration || { current: 0, goal: 3000, logs: [] };
-  const { current, goal, logs } = hydration;
+  const { current, goal } = hydration;
   const pct = Math.min(Math.round((current / goal) * 100), 100);
 
-  const addWater = (amount) => {
-    const newCurrent = Math.max(0, current + amount);
-    setUser({ ...user, hydration: { ...hydration, current: newCurrent } });
+  // Add a water event: writes a timestamped log row via metric_logs-backed endpoint
+  const addWater = async (amount) => {
+    const now = new Date().toISOString();
+    try {
+      const res = await apiSync('/hydration/log', 'POST', { amount, at: now });
+      if (res?.current != null) {
+        updateUser({ ...user, hydration: { ...hydration, current: res.current } });
+      } else {
+        updateUser({ ...user, hydration: { ...hydration, current: Math.max(0, current + amount) } });
+      }
+      toast.success(`${amount > 0 ? '+' : ''}${amount} ml logged`);
+    } catch {
+      // Fallback local update if API fails
+      updateUser({ ...user, hydration: { ...hydration, current: Math.max(0, current + amount) } });
+      toast.error('Hydration sync failed, updated locally');
+    }
   };
 
   const pieData = [
     { name: 'Completed', value: current },
     { name: 'Remaining', value: Math.max(0, goal - current) },
   ];
-  const COLORS = ['var(--accent)', 'var(--bg-elevated)'];
 
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
@@ -26,7 +46,7 @@ export default function HydrationTracker({ user, setUser }) {
           <Droplets size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
           Hydration Tracker
         </h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Monitor your daily water intake and stay healthy</p>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Monitor your last 24 hours of water intake and stay healthy.</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
@@ -54,9 +74,12 @@ export default function HydrationTracker({ user, setUser }) {
             </div>
           </div>
           <p style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-1)', fontFamily: 'var(--font-display)' }}>
-            {current}<span style={{ fontSize: '0.85rem', color: 'var(--text-3)', fontWeight: 500 }}> ml</span>
+            {current}<span style={{ fontSize: '0.85rem', color: 'var(--text-3)', fontWeight: 500 }}> ml (24h)</span>
           </p>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>Goal: {goal} ml</p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>Target: {goal} ml</p>
+          <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Clock size={12} /> Rolling last 24 hours
+          </p>
         </div>
 
         {/* Quick Add */}
@@ -95,7 +118,7 @@ export default function HydrationTracker({ user, setUser }) {
             <PieChart>
               <Pie data={pieData} innerRadius={55} outerRadius={72} paddingAngle={4} dataKey="value">
                 {pieData.map((_, i) => (
-                  <Cell key={`cell-${i}`} fill={i === 0 ? '#0ea5e9' : 'var(--bg-elevated)'} />
+                  <Cell key={`cell-${i}`} fill={COLORS[i]} />
                 ))}
               </Pie>
               <Tooltip contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }} />
