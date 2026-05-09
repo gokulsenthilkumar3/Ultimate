@@ -35,7 +35,12 @@ describe('useStore API Integration', () => {
       callCount++;
       const bodies = [mockUser, mockTasks, mockShopping, mockTimesheet];
       const body = callCount <= 4 ? bodies[callCount - 1] : [];
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+      const bodyStr = JSON.stringify(body);
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve(bodyStr),
+        json: () => Promise.resolve(body),
+      });
     });
 
     await useStore.getState().fetchInitialData();
@@ -48,8 +53,12 @@ describe('useStore API Integration', () => {
   });
 
   it('addTask sends POST request and updates store', async () => {
-    global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: 99 }) });
-
+    const responseBody = { id: 99 };
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      text: () => Promise.resolve(JSON.stringify(responseBody)),
+      json: () => Promise.resolve(responseBody),
+    });
     const newTask = { title: 'New API Task', priority: 'High' };
     await useStore.getState().addTask(newTask);
 
@@ -64,8 +73,12 @@ describe('useStore API Integration', () => {
   });
 
   it('addShoppingItem sends POST request and updates store', async () => {
-    global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: 42 }) });
-
+    const responseBody2 = { id: 42 };
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      text: () => Promise.resolve(JSON.stringify(responseBody2)),
+      json: () => Promise.resolve(responseBody2),
+    });
     const newItem = { name: 'Whey Protein', estimatedCost: 3500 };
     await useStore.getState().addShoppingItem(newItem);
 
