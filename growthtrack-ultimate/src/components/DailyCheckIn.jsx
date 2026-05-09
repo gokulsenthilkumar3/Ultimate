@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sun, Moon, Zap, Scale, X, CheckCircle2 } from 'lucide-react';
-import useStore, { selectSaveSleepLog } from '../store/useStore';
+import useStore, { selectSaveSleepLog, selectAddMoodLog } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 
 const MOODS = ['😢', '😕', '😐', '😊', '😁'];
@@ -14,13 +14,15 @@ export default function DailyCheckIn({ onClose }) {
   const user = useStore(s => s.user);
   const setUser = useStore(s => s.setUser);
   const saveSleepLog = useStore(selectSaveSleepLog);
+  const addMoodLog = useStore(selectAddMoodLog);
 
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
     sleep: 7,
-    energy: 2,   // index into ENERGY
-    mood: 2,     // index into MOODS
+    energy: 2,
+    mood: 2,
     weight: user?.weight || '',
+    note: '',
   });
   const [done, setDone] = useState(false);
 
@@ -105,23 +107,39 @@ export default function DailyCheckIn({ onClose }) {
           <p style={{ marginTop: '0.75rem', color: 'var(--text-3)', fontSize: '0.8rem' }}>kg — Leave blank to skip</p>
         </div>
       )
-    }
+    },
+    {
+      key: 'note',
+      title: 'Any quick note about today? (optional)',
+      icon: <Sun size={24} color="var(--accent)" />,
+      content: (
+        <div style={{ marginTop: '1.5rem' }}>
+          <textarea
+            value={data.note}
+            onChange={e => setData(d => ({ ...d, note: e.target.value }))}
+            className="form-input"
+            rows={3}
+            placeholder="e.g. Slept late, but mood is good after gym."
+            style={{ resize: 'vertical' }}
+          />
+        </div>
+      )
+    },
   ];
 
-  const handleSubmit = () => {
-    // Persist check-in data into the user object
+  const handleSubmit = async () => {
+    const checkInDate = today();
+
     const updatedUser = { ...user };
 
-    // Weight
     if (data.weight) {
-      const weightLogs = [...(user?.weightLog || []), { date: today(), weight: parseFloat(data.weight) }];
+      const weightLogs = [...(user?.weightLog || []), { date: checkInDate, weight: parseFloat(data.weight) }];
       updatedUser.weightLog = weightLogs;
       updatedUser.weight = parseFloat(data.weight);
     }
 
-    // Mood / Energy stored in a check-ins array
     const checkIns = [...(user?.checkIns || []), {
-      date: today(),
+      date: checkInDate,
       sleep: data.sleep,
       energy: data.energy,
       mood: data.mood,
@@ -129,18 +147,26 @@ export default function DailyCheckIn({ onClose }) {
     }];
     updatedUser.checkIns = checkIns;
 
-    // ALSO write to top-level sleep_logs so SleepDashboard reads it correctly
     if (saveSleepLog) {
-      saveSleepLog({
-        date: today(),
+      await saveSleepLog({
+        date: checkInDate,
         hours: data.sleep,
         quality: Math.round((data.energy / 4) * 100),
         mood: data.mood,
       });
     }
 
+    if (addMoodLog) {
+      await addMoodLog({
+        date: checkInDate,
+        mood: Math.round((data.mood / 4) * 10),
+        energy: Math.round((data.energy / 4) * 10),
+        note: data.note?.trim() || null,
+      });
+    }
+
     if (setUser) setUser(updatedUser);
-    if (setLastCheckIn) setLastCheckIn(today());
+    if (setLastCheckIn) setLastCheckIn(checkInDate);
     setDone(true);
     setTimeout(() => {
       toast.success(`Check-in complete! ${data.sleep}h sleep, feeling ${MOODS[data.mood]}`);
@@ -161,7 +187,6 @@ export default function DailyCheckIn({ onClose }) {
         border: '1px solid var(--border-strong)',
         boxShadow: '0 30px 80px rgba(0,0,0,0.5)'
       }}>
-        {/* Close */}
         <button onClick={onClose} style={{
           position: 'absolute', top: '1rem', right: '1rem',
           background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)',
@@ -181,7 +206,6 @@ export default function DailyCheckIn({ onClose }) {
           </div>
         ) : (
           <>
-            {/* Header */}
             <div style={{ marginBottom: '0.5rem' }}>
               <p className="label-caps" style={{ color: 'var(--accent)', fontSize: '0.65rem' }}>
                 DAILY CHECK-IN · {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -194,14 +218,12 @@ export default function DailyCheckIn({ onClose }) {
               </div>
             </div>
 
-            {/* Step Content */}
             <div style={{ minHeight: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: '100%' }}>
                 {steps[step].content}
               </div>
             </div>
 
-            {/* Progress dots */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '2rem' }}>
               {steps.map((_, i) => (
                 <div key={i} style={{
@@ -213,7 +235,6 @@ export default function DailyCheckIn({ onClose }) {
               ))}
             </div>
 
-            {/* Navigation */}
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               {step > 0 && (
                 <button
