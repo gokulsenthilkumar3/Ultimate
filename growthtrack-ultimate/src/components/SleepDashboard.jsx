@@ -20,7 +20,6 @@ const QUALITY_LABELS = { 1: 'Terrible', 2: 'Very Bad', 3: 'Bad', 4: 'Below Avg',
 const buildChartData = (logs) =>
   [...logs].reverse().slice(-14).map((entry, i) => {
     const hrs = parseFloat(entry.duration) || 0;
-    // Corrected: 8h = 100 score (0h = 0, linear — old formula gave 30 even for 0h sleep)
     const score = Math.min(100, Math.round((hrs / 8) * 100));
     return {
       day: entry.date ? entry.date.slice(5) : `D${i + 1}`,
@@ -63,10 +62,11 @@ export default function SleepDashboard() {
     try {
       await apiSync(`/sleep_logs/${date}`, 'DELETE');
       toast.success('Entry deleted');
-      // Refresh store
       const fetchData = useStore.getState().fetchInitialData;
       if (fetchData) fetchData();
-    } catch { toast.error('Delete failed'); }
+    } catch {
+      toast.error('Delete failed');
+    }
   }, [toast]);
 
   const handleLogSleep = async () => {
@@ -79,7 +79,9 @@ export default function SleepDashboard() {
       await saveSleepLog({ ...logForm, duration });
       setLogForm({ date: new Date().toISOString().slice(0, 10), bed_time: '23:00', wake_time: '06:30', quality: 7, notes: '' });
       toast.success('Sleep logged ✓');
-    } catch { toast.error('Save failed'); }
+    } catch {
+      toast.error('Save failed');
+    }
     setSaving(false);
   };
 
