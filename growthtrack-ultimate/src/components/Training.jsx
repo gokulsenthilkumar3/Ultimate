@@ -21,6 +21,7 @@ export default function Training() {
   const prHistory = training.prHistory || [];
   const streak = training.streak || 0;
   const longestStreak = training.longestStreak || 0;
+  const sessionLog = training.sessionLog || [];
 
   const [expandedDay, setExpandedDay] = useState(null);
   const [newEx, setNewEx] = useState({ name: '', sets: '', reps: '', weight: '' });
@@ -31,6 +32,16 @@ export default function Training() {
   const totalVolume = schedule.reduce((total, day) =>
     total + (day.exercises || []).reduce((s, e) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0), 0), 0
   );
+
+  const last7Volume = sessionLog
+    .filter((s) => {
+      if (!s.date) return false;
+      const d = new Date(s.date);
+      const now = new Date();
+      const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+      return diffDays <= 7 && diffDays >= 0;
+    })
+    .reduce((sum, s) => sum + (Number(s.volume) || 0), 0);
 
   const addDay = () => {
     if (!newDay.muscleGroup) return;
@@ -72,8 +83,29 @@ export default function Training() {
     updateSection({ streak: newStreak, longestStreak: Math.max(longestStreak, newStreak) });
   };
 
+  const logWorkout = (day) => {
+    const volume = (day.exercises || []).reduce(
+      (s, e) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0),
+      0
+    );
+    const entry = {
+      id: Date.now(),
+      date: new Date().toISOString().slice(0, 10),
+      day: day.day,
+      muscleGroup: day.muscleGroup,
+      volume,
+    };
+    updateSection({ sessionLog: [entry, ...sessionLog] });
+  };
+
+  const deleteSession = (id) => {
+    updateSection({ sessionLog: sessionLog.filter((s) => s.id !== id) });
+  };
+
   const prChartData = prHistory.filter(h => h.lift === activePRLift).slice(-10)
     .map(h => ({ date: h.date.slice(5), weight: h.weight }));
+
+  const recentSessions = sessionLog.slice(0, 10);
 
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
@@ -83,16 +115,16 @@ export default function Training() {
           <Dumbbell size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
           Training Matrix
         </h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Workout tracker — schedule, volume, and personal records.</p>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Workout tracker — schedule, volume, PRs, and logged sessions.</p>
       </div>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Weekly Volume', value: `${(totalVolume / 1000).toFixed(1)}k kg`, icon: <Dumbbell size={18} color="var(--accent)" />, color: 'var(--accent)' },
+          { label: 'Weekly Volume (Plan)', value: `${(totalVolume / 1000).toFixed(1)}k kg`, icon: <Dumbbell size={18} color="var(--accent)" />, color: 'var(--accent)' },
           { label: 'Current Streak', value: `${streak} days`, icon: <Flame size={18} color="var(--warning)" />, color: 'var(--warning)' },
           { label: 'Best Streak', value: `${longestStreak} days`, icon: <Trophy size={18} color="var(--warning)" />, color: 'var(--warning)' },
-          { label: 'Days Planned', value: `${schedule.length} / 7`, icon: <Dumbbell size={18} color="var(--info)" />, color: 'var(--info)' },
+          { label: '7-Day Logged Volume', value: `${(last7Volume / 1000).toFixed(1)}k kg`, icon: <Dumbbell size={18} color="var(--info)" />, color: 'var(--info)' },
         ].map(s => (
           <div key={s.label} className="glass-card" style={{ padding: '1.15rem', textAlign: 'center' }}>
             <div style={{ marginBottom: '0.4rem' }}>{s.icon}</div>
@@ -157,6 +189,13 @@ export default function Training() {
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>
                   {(day.exercises || []).length} exercises
                 </p>
+                <button
+                  onClick={() => logWorkout(day)}
+                  className="btn-ghost"
+                  style={{ marginTop: '0.4rem', fontSize: '0.72rem', padding: '0.25rem 0.6rem' }}
+                >
+                  Log session for today
+                </button>
                 {expandedDay === day.id && (
                   <div style={{ marginTop: '0.75rem' }}>
                     {(day.exercises || []).map(ex => (
@@ -235,6 +274,45 @@ export default function Training() {
           </ResponsiveContainer>
         ) : (
           <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', textAlign: 'center', padding: '2.5rem 0' }}>Log PRs to see progression</p>
+        )}
+      </div>
+
+      {/* Session Log */}
+      <div className="glass-card" style={{ marginTop: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <span className="card-title" style={{ margin: 0 }}>Session Log</span>
+          <span className="label-caps" style={{ color: 'var(--text-3)' }}>
+            {sessionLog.length} sessions tracked
+          </span>
+        </div>
+        {sessionLog.length === 0 ? (
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', padding: '1.5rem 0', textAlign: 'center' }}>
+            Log a day from your schedule to start building a history of workouts.
+          </p>
+        ) : (
+          <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+            {recentSessions.map((s) => (
+              <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0', borderTop: '1px solid var(--border)' }}>
+                <div>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+                    {s.day}  b7 {s.muscleGroup || 'Session'}
+                  </p>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{s.date}</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent)' }}>
+                    {(s.volume / 1000).toFixed(1)}k kg
+                  </span>
+                  <button
+                    onClick={() => deleteSession(s.id)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
