@@ -5,32 +5,33 @@ import { useToast } from '../hooks/useToast';
 
 export default function HealthExtras() {
   const user = useStore(s => s.user);
-  const updateUserSlice = useStore(s => s.updateUserSlice);
+  const healthExtras = useStore(s => s.health_extras || {});
+  const updateHealthExtras = useStore(s => s.updateHealthExtras);
   const toast = useToast();
 
-  const [senses, setSenses] = useState({
-    vision:  { level: 85, note: 'Slight strain after long work', exercises: ['Palming', 'Focus Shifting'], color: '#3b82f6', icon: Eye,         currentPower: '-2.5 D',        targetPower: '0.0 D (20/20)',   path: 'Laser correction, extended outdoor focus, and targeted ocular exercises.' },
-    hearing: { level: 90, note: 'Normal acoustic range',        exercises: ['Sound Localization'],         color: '#8b5cf6', icon: Ear,         currentPower: '15 dB HL',      targetPower: '0 dB HL',         path: 'Acoustic therapy & strictly avoiding high-decibel environments.' },
-    smell:   { level: 95, note: 'Highly sensitive olfactory',   exercises: ['Scent Identification'],       color: '#10b981', icon: Wind,        currentPower: 'Tier 2 (High)', targetPower: 'Tier 1 (Sommelier)', path: 'Daily essential oil scent discrimination training.' },
-    taste:   { level: 90, note: 'Clear palate',                 exercises: ['Mindful Eating'],             color: '#f59e0b', icon: Activity,    currentPower: 'High Sensitivity', targetPower: 'Peak Sensitivity', path: 'Zinc supplementation, regular fasting, & daily tongue scraping.' },
-    touch:   { level: 88, note: 'Responsive tactile feedback',  exercises: ['Texture Discrimination'],     color: '#ef4444', icon: Fingerprint, currentPower: '88% Acuity',    targetPower: '95% Acuity',      path: 'Tactile discrimination exercises & improved hydration.' }
-  });
+  const senses = {
+    vision:  { level: healthExtras.vision_score ?? 85, note: 'Slight strain after long work', exercises: ['Palming', 'Focus Shifting'], color: '#3b82f6', icon: Eye,         currentPower: '-2.5 D',        targetPower: '0.0 D (20/20)',   path: 'Laser correction, extended outdoor focus, and targeted ocular exercises.' },
+    hearing: { level: healthExtras.hearing_score ?? 90, note: 'Normal acoustic range',        exercises: ['Sound Localization'],         color: '#8b5cf6', icon: Ear,         currentPower: '15 dB HL',      targetPower: '0 dB HL',         path: 'Acoustic therapy & strictly avoiding high-decibel environments.' },
+    smell:   { level: healthExtras.smell_score ?? 95, note: 'Highly sensitive olfactory',   exercises: ['Scent Identification'],       color: '#10b981', icon: Wind,        currentPower: 'Tier 2 (High)', targetPower: 'Tier 1 (Sommelier)', path: 'Daily essential oil scent discrimination training.' },
+    taste:   { level: healthExtras.taste_score ?? 90, note: 'Clear palate',                 exercises: ['Mindful Eating'],             color: '#f59e0b', icon: Activity,    currentPower: 'High Sensitivity', targetPower: 'Peak Sensitivity', path: 'Zinc supplementation, regular fasting, & daily tongue scraping.' },
+    touch:   { level: healthExtras.touch_score ?? 88, note: 'Responsive tactile feedback',  exercises: ['Texture Discrimination'],     color: '#ef4444', icon: Fingerprint, currentPower: '88% Acuity',    targetPower: '95% Acuity',      path: 'Tactile discrimination exercises & improved hydration.' }
+  };
 
   const [editSense, setEditSense] = useState(null); // key being edited
   const [editLevel, setEditLevel] = useState(50);
   const [activeSense, setActiveSense] = useState(null);
 
-  // Read from user store — fall back to defaults
-  const diets = useMemo(() => user?.data?.activeDiets || user?.activeDiets || ['—'], [user]);
-  const hobbies = useMemo(() => user?.data?.hobbies || user?.hobbies || ['—'], [user]);
-  const posture = user?.data?.posture || user?.posture || 'Not set';
-  const broncoTest = user?.data?.broncoTest || user?.broncoTest || '—';
+  // Read from store — fall back to user defaults if empty
+  const diets = useMemo(() => Array.isArray(healthExtras.active_diets) && healthExtras.active_diets.length > 0 ? healthExtras.active_diets : (user?.data?.activeDiets || user?.activeDiets || ['—']), [healthExtras, user]);
+  const hobbies = useMemo(() => Array.isArray(healthExtras.hobbies) && healthExtras.hobbies.length > 0 ? healthExtras.hobbies : (user?.data?.hobbies || user?.hobbies || ['—']), [healthExtras, user]);
+  const posture = healthExtras.posture_status || user?.data?.posture || user?.posture || 'Not set';
+  const broncoTest = healthExtras.bronco_level || user?.data?.broncoTest || user?.broncoTest || '—';
 
-  const [specialized, setSpecialized] = useState([
-    { name: 'Gut Biome',    score: 78, note: 'Balanced',    icon: Target,   color: '#10b981' },
-    { name: 'Dermatology',  score: 82, note: 'Hydrated',    icon: Droplets, color: '#3b82f6' },
-    { name: 'Hair Vitality',score: 85, note: 'Voluminous',  icon: Sparkles, color: '#8b5cf6' }
-  ]);
+  const specialized = [
+    { name: 'Gut Biome',    score: healthExtras.gut_biome_score ?? 78, note: 'Balanced',    icon: Target,   color: '#10b981', dbKey: 'gut_biome_score' },
+    { name: 'Dermatology',  score: healthExtras.dermatology_score ?? 82, note: 'Hydrated',    icon: Droplets, color: '#3b82f6', dbKey: 'dermatology_score' },
+    { name: 'Hair Vitality',score: healthExtras.hair_vitality_score ?? 85, note: 'Voluminous',  icon: Sparkles, color: '#8b5cf6', dbKey: 'hair_vitality_score' }
+  ];
   const [editSpecIdx, setEditSpecIdx] = useState(null);
   const [editSpecScore, setEditSpecScore] = useState(80);
 
@@ -81,7 +82,12 @@ export default function HealthExtras() {
                             onChange={e => setEditLevel(+e.target.value)}
                             style={{ width: '70px', accentColor: data.color }}
                           />
-                          <button onClick={e => { e.stopPropagation(); setSenses(s => ({ ...s, [key]: { ...s[key], level: editLevel } })); setEditSense(null); toast.success(`${key} score updated`); }}
+                          <button onClick={async (e) => { 
+                              e.stopPropagation(); 
+                              await updateHealthExtras({ [`${key}_score`]: editLevel });
+                              setEditSense(null); 
+                              toast.success(`${key} score updated`); 
+                            }}
                             style={{ background: data.color, border: 'none', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer', color: '#fff' }}>
                             <Check size={12} />
                           </button>
@@ -145,7 +151,11 @@ export default function HealthExtras() {
                               onChange={e => setEditSpecScore(+e.target.value)}
                               style={{ width: '70px', accentColor: item.color }}
                             />
-                            <button onClick={() => { setSpecialized(s => s.map((it, idx) => idx === i ? { ...it, score: editSpecScore } : it)); setEditSpecIdx(null); toast.success(`${item.name} updated`); }}
+                            <button onClick={async () => { 
+                                await updateHealthExtras({ [item.dbKey]: editSpecScore });
+                                setEditSpecIdx(null); 
+                                toast.success(`${item.name} updated`); 
+                              }}
                               style={{ background: item.color, border: 'none', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer', color: '#fff' }}>
                               <Check size={12} />
                             </button>

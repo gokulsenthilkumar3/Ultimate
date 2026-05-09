@@ -118,11 +118,15 @@ function GoalCard({ goal, onUpdate, onDelete, onToggleDone, metricLogs }) {
               {goal.done ? `Completed` : isOverdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
             </span>
           ) : <span />}
-          {progress === 100 && !goal.done && (
+          {progress === 100 && !goal.done ? (
             <button onClick={() => onToggleDone(goal)} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.68rem', background: 'var(--success)', color: '#000' }}>
               Mark Done ✓
             </button>
-          )}
+          ) : !goal.done ? (
+            <button onClick={() => setEditing(true)} className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.68rem', border: '1px solid var(--accent-soft)', color: 'var(--accent)' }}>
+              Log Progress
+            </button>
+          ) : null}
         </div>
 
         {/* AI Projection Pill */}

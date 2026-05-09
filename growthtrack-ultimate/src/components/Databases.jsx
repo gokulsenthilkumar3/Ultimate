@@ -225,11 +225,9 @@ export default function Databases() {
             <div className="glass-card" style={{ padding: '1.5rem', flexShrink: 0 }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                  <h3 className="label-caps" style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   SQL QUERY CONSOLE
+                   SQL QUERY CONSOLE (SELECT ONLY)
                  </h3>
                  <div style={{ display: 'flex', gap: '8px' }}>
-                   <button onClick={insertTemplate} className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.7rem' }}>+ INSERT</button>
-                   <button onClick={updateTemplate} className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.7rem' }}>~ UPDATE</button>
                  </div>
                </div>
                <textarea 
