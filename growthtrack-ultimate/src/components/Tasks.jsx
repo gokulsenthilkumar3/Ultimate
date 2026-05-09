@@ -8,9 +8,9 @@ import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 
 const PRIORITIES = [
-  { key: 'High', label: 'High', color: '#ef4444' },
-  { key: 'Medium', label: 'Med', color: '#f59e0b' },
-  { key: 'Low', label: 'Low', color: '#10b981' },
+  { key: 'High',   label: 'High', color: '#ef4444' },
+  { key: 'Medium', label: 'Med',  color: '#f59e0b' },
+  { key: 'Low',    label: 'Low',  color: '#10b981' },
 ];
 const TAGS = ['fitness', 'finance', 'work', 'personal', 'health', 'learning', 'creative', 'admin'];
 const today = () => new Date().toISOString().slice(0, 10);
