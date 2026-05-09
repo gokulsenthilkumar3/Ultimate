@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sun, Moon, Zap, Scale, X, CheckCircle2 } from 'lucide-react';
-import useStore from '../store/useStore';
+import useStore, { selectSaveSleepLog } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 
 const MOODS = ['😢', '😕', '😐', '😊', '😁'];
@@ -13,6 +13,7 @@ export default function DailyCheckIn({ onClose }) {
   const setLastCheckIn = useStore(s => s.setLastCheckIn);
   const user = useStore(s => s.user);
   const setUser = useStore(s => s.setUser);
+  const saveSleepLog = useStore(selectSaveSleepLog);
 
   const [step, setStep] = useState(0);
   const [data, setData] = useState({
@@ -108,14 +109,8 @@ export default function DailyCheckIn({ onClose }) {
   ];
 
   const handleSubmit = () => {
-    // Persist daily check-in data into the store
+    // Persist check-in data into the user object
     const updatedUser = { ...user };
-
-    // Sleep
-    const sleepLogs = [...(user?.sleep?.logs || []), {
-      date: today(), hours: data.sleep, quality: Math.round((data.energy / 4) * 100)
-    }];
-    updatedUser.sleep = { ...(user?.sleep || {}), logs: sleepLogs };
 
     // Weight
     if (data.weight) {
@@ -133,6 +128,16 @@ export default function DailyCheckIn({ onClose }) {
       weight: data.weight || null,
     }];
     updatedUser.checkIns = checkIns;
+
+    // ALSO write to top-level sleep_logs so SleepDashboard reads it correctly
+    if (saveSleepLog) {
+      saveSleepLog({
+        date: today(),
+        hours: data.sleep,
+        quality: Math.round((data.energy / 4) * 100),
+        mood: data.mood,
+      });
+    }
 
     if (setUser) setUser(updatedUser);
     if (setLastCheckIn) setLastCheckIn(today());

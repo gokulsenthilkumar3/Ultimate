@@ -108,16 +108,19 @@ function buildFallbackMesh() {
  * }}
  */
 export function useModelLoader() {
-  const isDev = !window.__HUMANOID_GLB_LOADED__;
-
-  // ── Try loading the real GLB ─────────────────────────────────────────────
+  // Must be called unconditionally (Rules of Hooks).
+  // useGLTF throws a Promise while loading — ChamberCanvas's Suspense handles that.
+  // On actual error (404 etc.) we fall back to the procedural mesh below.
   let gltf = null;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     gltf = useGLTF(MODEL_PATH);
+    window.__HUMANOID_GLB_LOADED__ = true;
   } catch (err) {
+    // Re-throw Suspense promises so the Suspense boundary can handle loading state
     if (err instanceof Promise) throw err;
-    console.error("[useModelLoader] GLTF Load Error:", err);
+    // Actual errors (404, parse failure) — fall through to dev fallback below
+    console.warn('[useModelLoader] GLB load failed, using fallback mesh:', err.message);
   }
 
   return useMemo(() => {
