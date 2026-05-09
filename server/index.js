@@ -193,6 +193,13 @@ const workoutExercisesSchema = z.object({
   })).min(1),
 });
 
+const moodLogSchema = z.object({
+  date: z.string(),
+  mood: z.number().int().min(1).max(10),
+  energy: z.number().int().min(1).max(10),
+  note: z.string().max(500).optional(),
+});
+
 function validate(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
@@ -466,6 +473,25 @@ app.post('/api/workout_sessions/:id/exercises', (req, res) => withDB(res, async 
   res.json({ success: true });
 }));
 
+// Mood logs (Mind & Wellness)
+app.get('/api/mood_logs', (req, res) => withDB(res, async () => {
+  const { from, to, limit = 60 } = req.query;
+  let query = supabase.from('mood_logs').select('*').order('date', { ascending: false });
+  if (from) query = query.gte('date', from);
+  if (to) query = query.lte('date', to);
+  const { data, error } = await query.limit(Number(limit));
+  if (error) throw error;
+  res.json(data);
+}));
+
+app.post('/api/mood_logs', validate(moodLogSchema), (req, res) => withDB(res, async () => {
+  const { date, mood, energy, note } = req.validated;
+  const payload = { date, mood, energy, note: note || null };
+  const { error } = await supabase.from('mood_logs').upsert(payload, { onConflict: 'date' });
+  if (error) throw error;
+  res.json({ success: true });
+}));
+
 // Generic singleton tables
 const SINGLETON_TABLES = Object.freeze([
   'training_plan',
@@ -475,7 +501,8 @@ const SINGLETON_TABLES = Object.freeze([
   'physique_targets',
   'assessment_qa',
   'skills',
-  'calendar_events'
+  'calendar_events',
+  'wellness_data'
 ]);
 
 SINGLETON_TABLES.forEach(table => {
