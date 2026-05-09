@@ -35,6 +35,18 @@ export default function HealthExtras() {
   const [editSpecIdx, setEditSpecIdx] = useState(null);
   const [editSpecScore, setEditSpecScore] = useState(80);
 
+  // NEW: Recovery & Stress section (third pillar in Health+)
+  const recovery = {
+    hrv: healthExtras.hrv_score ?? 70,
+    stress: healthExtras.stress_load_score ?? 60,
+    recoveryIndex: healthExtras.recovery_index_score ?? 65,
+  };
+
+  const updateScalar = async (key, value, label) => {
+    await updateHealthExtras({ [key]: value });
+    toast.success(`${label} updated`);
+  };
+
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -84,9 +96,8 @@ export default function HealthExtras() {
                           />
                           <button onClick={async (e) => { 
                               e.stopPropagation(); 
-                              await updateHealthExtras({ [`${key}_score`]: editLevel });
+                              await updateScalar(`${key}_score`, editLevel, `${key} score`);
                               setEditSense(null); 
-                              toast.success(`${key} score updated`); 
                             }}
                             style={{ background: data.color, border: 'none', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer', color: '#fff' }}>
                             <Check size={12} />
@@ -118,7 +129,7 @@ export default function HealthExtras() {
                     <Info size={10} /> Self-assessed estimate
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -152,9 +163,8 @@ export default function HealthExtras() {
                               style={{ width: '70px', accentColor: item.color }}
                             />
                             <button onClick={async () => { 
-                                await updateHealthExtras({ [item.dbKey]: editSpecScore });
+                                await updateScalar(item.dbKey, editSpecScore, item.name);
                                 setEditSpecIdx(null); 
-                                toast.success(`${item.name} updated`); 
                               }}
                               style={{ background: item.color, border: 'none', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer', color: '#fff' }}>
                               <Check size={12} />
@@ -179,18 +189,18 @@ export default function HealthExtras() {
                     </p>
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
 
-        {/* Performance & Lifestyle */}
+        {/* Lifestyle, Performance & Recovery */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2rem' }}>
             <Activity size={24} color="var(--info)" />
             <div>
-              <h3 className="text-display" style={{ fontSize: '1.3rem', margin: 0 }}>Lifestyle & Performance</h3>
-              <p className="label-caps" style={{ fontSize: '0.65rem' }}>Habits & Output</p>
+              <h3 className="text-display" style={{ fontSize: '1.3rem', margin: 0 }}>Lifestyle, Performance & Recovery</h3>
+              <p className="label-caps" style={{ fontSize: '0.65rem' }}>Habits, Output & Recovery</p>
             </div>
           </div>
 
@@ -205,6 +215,21 @@ export default function HealthExtras() {
                <p style={{ fontSize: '1.5rem', fontWeight: 900 }}>{posture}</p>
                <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Info size={9} /> Self-assessed</p>
             </div>
+          </div>
+
+          {/* NEW Recovery row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            {[{ key: 'hrv_score', label: 'HRV Quality', value: recovery.hrv, color: '#22c55e' }, { key: 'stress_load_score', label: 'Stress Load', value: recovery.stress, color: '#f97316' }, { key: 'recovery_index_score', label: 'Recovery Index', value: recovery.recoveryIndex, color: '#6366f1' }].map(metric => (
+              <div key={metric.key} style={{ padding: '0.9rem', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)', fontWeight: 700 }}>{metric.label}</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: metric.color }}>{metric.value ?? '—'}<span style={{ fontSize: '0.7rem', opacity: 0.7 }}>%</span></span>
+                </div>
+                <div style={{ height: '4px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${metric.value || 0}%`, height: '100%', background: metric.color }} />
+                </div>
+              </div>
+            ))}
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
