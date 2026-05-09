@@ -592,7 +592,8 @@ const useStore = create(
       partialize: (state) => ({
         theme: state.theme,
         palette: state.palette,
-        activeTab: state.activeTab,
+        // activeTab intentionally NOT persisted — app always boots on Overview
+        // to prevent landing on a crashed/empty tab after a failed session.
         pinnedTabs: state.pinnedTabs,
         // Persist finance/shopping/entertainment locally as fallback if server is offline
         finance: state.finance,
