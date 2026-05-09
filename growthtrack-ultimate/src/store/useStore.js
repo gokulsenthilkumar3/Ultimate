@@ -79,6 +79,12 @@ const useStore = create(
       assessmentQA: [],
       wellnessData: null,
 
+      // ── Workout slice (DB-backed)
+      workouts: {
+        sessions: [],
+        exercisesBySession: {}, // { [sessionId]: Exercise[] }
+      },
+
       // UI Actions
       // ──────────────────────────────────────────────────────────
       setLastCheckIn: (date) => set({ lastCheckIn: date }),
@@ -137,7 +143,8 @@ const useStore = create(
             user, tasks, shopping, timesheet,
             training, nutrition, lifestyle,
             medical, physique, assessment, wellness, metricLogs, skills, events,
-            financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras
+            financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras,
+            workoutSessions
           ] = await Promise.all([
             fetchJSON('/user'),
             fetchJSON('/tasks'),
@@ -162,6 +169,7 @@ const useStore = create(
             fetchJSON('/habits'),
             fetchJSON('/entertainment'),
             fetchJSON('/health_extras'),
+            fetchJSON('/workout_sessions'),
           ]);
 
           const newState = {
@@ -196,6 +204,13 @@ const useStore = create(
             };
           }
 
+          if (Array.isArray(workoutSessions)) {
+            newState.workouts = {
+              sessions: workoutSessions,
+              exercisesBySession: {},
+            };
+          }
+
           set(newState);
 
           // Merge tasks into user object
@@ -225,6 +240,79 @@ const useStore = create(
       updateHealthExtras: async (data) => {
         set((state) => ({ health_extras: { ...(state.health_extras || {}), ...data } }));
         await apiSync('/health_extras', 'PUT', data);
+      },
+
+      // ──────────────────────────────────────────────────────────
+      // Workout Actions
+      // ──────────────────────────────────────────────────────────
+      fetchWorkoutExercisesForSession: async (sessionId) => {
+        const exercises = await apiSync(`/workout_sessions/${sessionId}/exercises`, 'GET');
+        if (Array.isArray(exercises)) {
+          set((state) => ({
+            workouts: {
+              ...state.workouts,
+              exercisesBySession: {
+                ...state.workouts.exercisesBySession,
+                [sessionId]: exercises,
+              },
+            },
+          }));
+        }
+      },
+
+      addWorkoutFromTrainingDay: async (day) => {
+        if (!day) return;
+        const volume = (day.exercises || []).reduce(
+          (s, e) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0),
+          0
+        );
+        const today = new Date().toISOString().slice(0, 10);
+        const sessionRes = await apiSync('/workout_sessions', 'POST', {
+          date: today,
+          notes: day.muscleGroup || day.day,
+          duration_minutes: null,
+        });
+        if (!sessionRes?.id) return;
+
+        const exercisesPayload = {
+          exercises: (day.exercises || []).map((ex) => ({
+            exercise_name: ex.name,
+            sets: Number(ex.sets) || null,
+            reps: Number(ex.reps) || null,
+            weight_kg: Number(ex.weight) || null,
+            notes: null,
+          })),
+        };
+        await apiSync(`/workout_sessions/${sessionRes.id}/exercises`, 'POST', exercisesPayload);
+
+        // Optimistically add to local state
+        set((state) => ({
+          workouts: {
+            sessions: [
+              {
+                id: sessionRes.id,
+                date: today,
+                notes: day.muscleGroup || day.day,
+                duration_minutes: null,
+                volume,
+              },
+              ...state.workouts.sessions,
+            ],
+            exercisesBySession: state.workouts.exercisesBySession,
+          },
+        }));
+      },
+
+      deleteWorkoutSession: async (id) => {
+        await apiSync(`/workout_sessions/${id}`, 'DELETE');
+        set((state) => ({
+          workouts: {
+            sessions: state.workouts.sessions.filter((s) => s.id !== id),
+            exercisesBySession: Object.fromEntries(
+              Object.entries(state.workouts.exercisesBySession).filter(([key]) => Number(key) !== Number(id))
+            ),
+          },
+        }));
       },
 
       // ──────────────────────────────────────────────────────────
@@ -720,5 +808,9 @@ export const selectUpdateHabit = (s) => s.updateHabit;
 export const selectSubscriptions = (s) => s.subscriptions;
 export const selectAddSubscription = (s) => s.addSubscription;
 export const selectDeleteSubscription = (s) => s.deleteSubscription;
+
+export const selectWorkouts = (s) => s.workouts;
+export const selectAddWorkoutFromTrainingDay = (s) => s.addWorkoutFromTrainingDay;
+export const selectDeleteWorkoutSession = (s) => s.deleteWorkoutSession;
 
 export default useStore;

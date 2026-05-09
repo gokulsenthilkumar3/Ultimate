@@ -1,16 +1,49 @@
-import React, { useState } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import React, { useMemo, useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Dumbbell, Plus, Trash2, Trophy, Flame, ChevronDown, ChevronUp } from 'lucide-react';
 import EmptyState from './ui/EmptyState';
-import useStore, { selectTrainingPlan, selectUpdateTrainingPlan } from '../store/useStore';
+import useStore, {
+  selectTrainingPlan,
+  selectUpdateTrainingPlan,
+  selectWorkouts,
+  selectAddWorkoutFromTrainingDay,
+  selectDeleteWorkoutSession,
+} from '../store/useStore';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LIFTS = ['benchPress', 'squat', 'deadlift', 'ohp'];
 const LIFT_LABELS = { benchPress: 'Bench Press', squat: 'Squat', deadlift: 'Deadlift', ohp: 'OHP' };
 
+function computePlannedVolume(schedule) {
+  return schedule.reduce(
+    (total, day) =>
+      total +
+      (day.exercises || []).reduce(
+        (s, e) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0),
+        0
+      ),
+    0
+  );
+}
+
+function compute7DayVolume(sessions) {
+  const now = new Date();
+  return sessions
+    .filter((s) => {
+      if (!s.date) return false;
+      const d = new Date(s.date);
+      const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+      return diffDays <= 7 && diffDays >= 0;
+    })
+    .reduce((sum, s) => sum + (Number(s.volume) || 0), 0);
+}
+
 export default function Training() {
   const training = useStore(selectTrainingPlan) || {};
   const setTraining = useStore(selectUpdateTrainingPlan);
+  const { sessions: workoutSessions } = useStore(selectWorkouts);
+  const addWorkoutFromDay = useStore(selectAddWorkoutFromTrainingDay);
+  const deleteWorkoutSession = useStore(selectDeleteWorkoutSession);
 
   const updateSection = (data) => {
     setTraining({ ...training, ...data });
@@ -21,7 +54,6 @@ export default function Training() {
   const prHistory = training.prHistory || [];
   const streak = training.streak || 0;
   const longestStreak = training.longestStreak || 0;
-  const sessionLog = training.sessionLog || [];
 
   const [expandedDay, setExpandedDay] = useState(null);
   const [newEx, setNewEx] = useState({ name: '', sets: '', reps: '', weight: '' });
@@ -29,51 +61,47 @@ export default function Training() {
   const [prForm, setPrForm] = useState({ lift: 'benchPress', weight: '' });
   const [activePRLift, setActivePRLift] = useState('benchPress');
 
-  const totalVolume = schedule.reduce((total, day) =>
-    total + (day.exercises || []).reduce((s, e) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0), 0), 0
-  );
-
-  const last7Volume = sessionLog
-    .filter((s) => {
-      if (!s.date) return false;
-      const d = new Date(s.date);
-      const now = new Date();
-      const diffDays = (now - d) / (1000 * 60 * 60 * 24);
-      return diffDays <= 7 && diffDays >= 0;
-    })
-    .reduce((sum, s) => sum + (Number(s.volume) || 0), 0);
+  const totalPlannedVolume = useMemo(() => computePlannedVolume(schedule), [schedule]);
+  const last7LoggedVolume = useMemo(() => compute7DayVolume(workoutSessions), [workoutSessions]);
 
   const addDay = () => {
     if (!newDay.muscleGroup) return;
-    if (schedule.find(d => d.day === newDay.day)) return;
+    if (schedule.find((d) => d.day === newDay.day)) return;
     updateSection({ schedule: [...schedule, { ...newDay, exercises: [], id: Date.now() }] });
   };
 
   const addExercise = (dayId) => {
     if (!newEx.name) return;
-    const updated = schedule.map(d =>
-      d.id === dayId ? { ...d, exercises: [...(d.exercises || []), { ...newEx, id: Date.now() }] } : d
+    const updated = schedule.map((d) =>
+      d.id === dayId
+        ? { ...d, exercises: [...(d.exercises || []), { ...newEx, id: Date.now() }] }
+        : d
     );
     updateSection({ schedule: updated });
     setNewEx({ name: '', sets: '', reps: '', weight: '' });
   };
 
   const removeExercise = (dayId, exId) => {
-    const updated = schedule.map(d =>
-      d.id === dayId ? { ...d, exercises: (d.exercises || []).filter(e => e.id !== exId) } : d
+    const updated = schedule.map((d) =>
+      d.id === dayId
+        ? { ...d, exercises: (d.exercises || []).filter((e) => e.id !== exId) }
+        : d
     );
     updateSection({ schedule: updated });
   };
 
   const removeDay = (dayId) => {
-    updateSection({ schedule: schedule.filter(d => d.id !== dayId) });
+    updateSection({ schedule: schedule.filter((d) => d.id !== dayId) });
   };
 
   const logPR = () => {
     if (!prForm.weight) return;
     const w = Number(prForm.weight);
     const newPRs = { ...PRs, [prForm.lift]: Math.max(PRs[prForm.lift] || 0, w) };
-    const newHistory = [...prHistory, { date: new Date().toISOString().slice(0, 10), lift: prForm.lift, weight: w }];
+    const newHistory = [
+      ...prHistory,
+      { date: new Date().toISOString().slice(0, 10), lift: prForm.lift, weight: w },
+    ];
     updateSection({ PRs: newPRs, prHistory: newHistory });
     setPrForm({ lift: prForm.lift, weight: '' });
   };
@@ -83,82 +111,176 @@ export default function Training() {
     updateSection({ streak: newStreak, longestStreak: Math.max(longestStreak, newStreak) });
   };
 
-  const logWorkout = (day) => {
-    const volume = (day.exercises || []).reduce(
-      (s, e) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0),
-      0
-    );
-    const entry = {
-      id: Date.now(),
-      date: new Date().toISOString().slice(0, 10),
-      day: day.day,
-      muscleGroup: day.muscleGroup,
-      volume,
-    };
-    updateSection({ sessionLog: [entry, ...sessionLog] });
+  const handleLogWorkout = async (day) => {
+    await addWorkoutFromDay(day);
   };
 
-  const deleteSession = (id) => {
-    updateSection({ sessionLog: sessionLog.filter((s) => s.id !== id) });
+  const handleDeleteSession = async (id) => {
+    await deleteWorkoutSession(id);
   };
 
-  const prChartData = prHistory.filter(h => h.lift === activePRLift).slice(-10)
-    .map(h => ({ date: h.date.slice(5), weight: h.weight }));
+  const prChartData = prHistory
+    .filter((h) => h.lift === activePRLift)
+    .slice(-10)
+    .map((h) => ({ date: h.date.slice(5), weight: h.weight }));
 
-  const recentSessions = sessionLog.slice(0, 10);
+  const recentSessions = workoutSessions
+    .map((s) => ({
+      ...s,
+      volume: s.volume ?? 0,
+    }))
+    .slice(0, 10);
 
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
       <div style={{ marginBottom: '1.75rem' }}>
-        <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Training</p>
+        <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>
+          Training
+        </p>
         <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
-          <Dumbbell size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
+          <Dumbbell
+            size={24}
+            style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }}
+          />
           Training Matrix
         </h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Workout tracker — schedule, volume, PRs, and logged sessions.</p>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>
+          Workout tracker — schedule, volume, PRs, and logged sessions (now backed by Supabase).
+        </p>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1.5rem',
+        }}
+      >
         {[
-          { label: 'Weekly Volume (Plan)', value: `${(totalVolume / 1000).toFixed(1)}k kg`, icon: <Dumbbell size={18} color="var(--accent)" />, color: 'var(--accent)' },
-          { label: 'Current Streak', value: `${streak} days`, icon: <Flame size={18} color="var(--warning)" />, color: 'var(--warning)' },
-          { label: 'Best Streak', value: `${longestStreak} days`, icon: <Trophy size={18} color="var(--warning)" />, color: 'var(--warning)' },
-          { label: '7-Day Logged Volume', value: `${(last7Volume / 1000).toFixed(1)}k kg`, icon: <Dumbbell size={18} color="var(--info)" />, color: 'var(--info)' },
-        ].map(s => (
+          {
+            label: 'Weekly Volume (Plan)',
+            value: `${(totalPlannedVolume / 1000).toFixed(1)}k kg`,
+            icon: <Dumbbell size={18} color="var(--accent)" />,
+            color: 'var(--accent)',
+          },
+          {
+            label: 'Current Streak',
+            value: `${streak} days`,
+            icon: <Flame size={18} color="var(--warning)" />,
+            color: 'var(--warning)',
+          },
+          {
+            label: 'Best Streak',
+            value: `${longestStreak} days`,
+            icon: <Trophy size={18} color="var(--warning)" />,
+            color: 'var(--warning)',
+          },
+          {
+            label: '7-Day Logged Volume',
+            value: `${(last7LoggedVolume / 1000).toFixed(1)}k kg`,
+            icon: <Dumbbell size={18} color="var(--info)" />,
+            color: 'var(--info)',
+          },
+        ].map((s) => (
           <div key={s.label} className="glass-card" style={{ padding: '1.15rem', textAlign: 'center' }}>
             <div style={{ marginBottom: '0.4rem' }}>{s.icon}</div>
-            <p style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: s.color }}>{s.value}</p>
-            <p className="label-caps" style={{ marginTop: '0.2rem' }}>{s.label}</p>
+            <p
+              style={{
+                fontSize: '1.4rem',
+                fontWeight: 800,
+                fontFamily: 'var(--font-display)',
+                color: s.color,
+              }}
+            >
+              {s.value}
+            </p>
+            <p className="label-caps" style={{ marginTop: '0.2rem' }}>
+              {s.label}
+            </p>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '1.25rem',
+          marginBottom: '1.5rem',
+        }}
+      >
         {/* Weekly Schedule */}
-        <div className="glass-card" style={{ gridColumn: schedule.length > 0 ? 'span 2' : 'span 1' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <span className="card-title" style={{ margin: 0 }}>Weekly Schedule</span>
-            <button onClick={incrementStreak} className="btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.78rem' }}>
+        <div
+          className="glass-card"
+          style={{ gridColumn: schedule.length > 0 ? 'span 2' : 'span 1' }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem',
+            }}
+          >
+            <span className="card-title" style={{ margin: 0 }}>
+              Weekly Schedule
+            </span>
+            <button
+              onClick={incrementStreak}
+              className="btn-primary"
+              style={{ padding: '0.4rem 0.9rem', fontSize: '0.78rem' }}
+            >
               + Log Today
             </button>
           </div>
 
           {/* Add day */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <select value={newDay.day} onChange={e => setNewDay({ ...newDay, day: e.target.value })} className="form-input" style={{ width: 'auto' }}>
-              {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <select
+              value={newDay.day}
+              onChange={(e) => setNewDay({ ...newDay, day: e.target.value })}
+              className="form-input"
+              style={{ width: 'auto' }}
+            >
+              {DAYS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
             </select>
-            <input placeholder="Muscle group (e.g. Push / Chest)" value={newDay.muscleGroup}
-              onChange={e => setNewDay({ ...newDay, muscleGroup: e.target.value })}
-              className="form-input" style={{ flex: 1 }} />
-            <button onClick={addDay} className="btn-primary" style={{ padding: '0.5rem 1rem' }}>
+            <input
+              placeholder="Muscle group (e.g. Push / Chest)"
+              value={newDay.muscleGroup}
+              onChange={(e) => setNewDay({ ...newDay, muscleGroup: e.target.value })}
+              className="form-input"
+              style={{ flex: 1 }}
+            />
+            <button
+              onClick={addDay}
+              className="btn-primary"
+              style={{ padding: '0.5rem 1rem' }}
+            >
               <Plus size={14} />
             </button>
           </div>
 
           {/* Day cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: '0.75rem',
+            }}
+          >
             {schedule.length === 0 && (
               <div style={{ gridColumn: '1/-1' }}>
                 <EmptyState
@@ -168,55 +290,167 @@ export default function Training() {
                 />
               </div>
             )}
-            {schedule.map(day => (
-              <div key={day.id} style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: '0.85rem', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {schedule.map((day) => (
+              <div
+                key={day.id}
+                style={{
+                  background: 'var(--bg-elevated)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.85rem',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
                   <div>
-                    <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-1)' }}>{day.day}</span>
-                    <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--accent)' }}>{day.muscleGroup}</span>
+                    <span
+                      style={{
+                        fontWeight: 800,
+                        fontSize: '0.95rem',
+                        color: 'var(--text-1)',
+                      }}
+                    >
+                      {day.day}
+                    </span>
+                    <span
+                      style={{
+                        marginLeft: '0.5rem',
+                        fontSize: '0.75rem',
+                        color: 'var(--accent)',
+                      }}
+                    >
+                      {day.muscleGroup}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', gap: '0.3rem' }}>
-                    <button onClick={() => setExpandedDay(expandedDay === day.id ? null : day.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px' }}>
-                      {expandedDay === day.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    <button
+                      onClick={() =>
+                        setExpandedDay(expandedDay === day.id ? null : day.id)
+                      }
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-3)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                      }}
+                    >
+                      {expandedDay === day.id ? (
+                        <ChevronUp size={16} />
+                      ) : (
+                        <ChevronDown size={16} />
+                      )}
                     </button>
-                    <button onClick={() => removeDay(day.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>
+                    <button
+                      onClick={() => removeDay(day.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--danger)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                      }}
+                    >
                       <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>
+                <p
+                  style={{
+                    fontSize: '0.7rem',
+                    color: 'var(--text-3)',
+                    marginTop: '0.25rem',
+                  }}
+                >
                   {(day.exercises || []).length} exercises
                 </p>
                 <button
-                  onClick={() => logWorkout(day)}
+                  onClick={() => handleLogWorkout(day)}
                   className="btn-ghost"
-                  style={{ marginTop: '0.4rem', fontSize: '0.72rem', padding: '0.25rem 0.6rem' }}
+                  style={{
+                    marginTop: '0.4rem',
+                    fontSize: '0.72rem',
+                    padding: '0.25rem 0.6rem',
+                  }}
                 >
                   Log session for today
                 </button>
                 {expandedDay === day.id && (
                   <div style={{ marginTop: '0.75rem' }}>
-                    {(day.exercises || []).map(ex => (
-                      <div key={ex.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderTop: '1px solid var(--border)' }}>
+                    {(day.exercises || []).map((ex) => (
+                      <div
+                        key={ex.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.4rem 0',
+                          borderTop: '1px solid var(--border)',
+                        }}
+                      >
                         <div>
-                          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-1)' }}>{ex.name}</p>
-                          <p style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{ex.sets}×{ex.reps} @ {ex.weight}kg</p>
+                          <p
+                            style={{
+                              fontSize: '0.82rem',
+                              fontWeight: 600,
+                              color: 'var(--text-1)',
+                            }}
+                          >
+                            {ex.name}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: '0.7rem',
+                              color: 'var(--text-3)',
+                            }}
+                          >
+                            {ex.sets}×{ex.reps} @ {ex.weight}kg
+                          </p>
                         </div>
-                        <button onClick={() => removeExercise(day.id, ex.id)}
-                          style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}>
+                        <button
+                          onClick={() => removeExercise(day.id, ex.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--danger)',
+                            cursor: 'pointer',
+                            padding: '4px',
+                          }}
+                        >
                           <Trash2 size={12} />
                         </button>
                       </div>
                     ))}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 48px 60px 36px', gap: '4px', marginTop: '0.5rem' }}>
-                      {['name', 'sets', 'reps', 'weight'].map(f => (
-                        <input key={f} placeholder={f === 'weight' ? 'kg' : f}
-                          value={newEx[f]} onChange={e => setNewEx({ ...newEx, [f]: e.target.value })}
-                          className="form-input" style={{ padding: '0.35rem', fontSize: '0.72rem' }} />
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 48px 48px 60px 36px',
+                        gap: '4px',
+                        marginTop: '0.5rem',
+                      }}
+                    >
+                      {['name', 'sets', 'reps', 'weight'].map((f) => (
+                        <input
+                          key={f}
+                          placeholder={f === 'weight' ? 'kg' : f}
+                          value={newEx[f]}
+                          onChange={(e) =>
+                            setNewEx({ ...newEx, [f]: e.target.value })
+                          }
+                          className="form-input"
+                          style={{ padding: '0.35rem', fontSize: '0.72rem' }}
+                        />
                       ))}
-                      <button onClick={() => addExercise(day.id)} className="btn-primary" style={{ padding: '0.35rem', fontSize: '0.7rem' }}>
+                      <button
+                        onClick={() => addExercise(day.id)}
+                        className="btn-primary"
+                        style={{ padding: '0.35rem', fontSize: '0.7rem' }}
+                      >
                         <Plus size={12} />
                       </button>
                     </div>
@@ -230,33 +464,92 @@ export default function Training() {
         {/* PRs */}
         <div className="glass-card">
           <span className="card-title">Personal Records</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.75rem', marginBottom: '1rem' }}>
-            {LIFTS.map(lift => (
-              <div key={lift} style={{ background: 'var(--bg-elevated)', padding: '0.7rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.5rem',
+              marginTop: '0.75rem',
+              marginBottom: '1rem',
+            }}
+          >
+            {LIFTS.map((lift) => (
+              <div
+                key={lift}
+                style={{
+                  background: 'var(--bg-elevated)',
+                  padding: '0.7rem',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)',
+                }}
+              >
                 <p className="label-caps">{LIFT_LABELS[lift]}</p>
-                <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--font-display)', marginTop: '0.15rem' }}>{PRs[lift] ? `${PRs[lift]}kg` : '—'}</p>
+                <p
+                  style={{
+                    fontSize: '1.3rem',
+                    fontWeight: 800,
+                    color: 'var(--accent)',
+                    fontFamily: 'var(--font-display)',
+                    marginTop: '0.15rem',
+                  }}
+                >
+                  {PRs[lift] ? `${PRs[lift]}kg` : '—'}
+                </p>
               </div>
             ))}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <select value={prForm.lift} onChange={e => setPrForm({ ...prForm, lift: e.target.value })} className="form-input" style={{ flex: 1 }}>
-              {LIFTS.map(l => <option key={l} value={l}>{LIFT_LABELS[l]}</option>)}
+            <select
+              value={prForm.lift}
+              onChange={(e) => setPrForm({ ...prForm, lift: e.target.value })}
+              className="form-input"
+              style={{ flex: 1 }}
+            >
+              {LIFTS.map((l) => (
+                <option key={l} value={l}>
+                  {LIFT_LABELS[l]}
+                </option>
+              ))}
             </select>
-            <input type="number" placeholder="kg" value={prForm.weight} onChange={e => setPrForm({ ...prForm, weight: e.target.value })}
-              className="form-input" style={{ width: '70px' }} />
-            <button onClick={logPR} className="btn-primary" style={{ padding: '0.5rem 0.75rem' }}>Log</button>
+            <input
+              type="number"
+              placeholder="kg"
+              value={prForm.weight}
+              onChange={(e) => setPrForm({ ...prForm, weight: e.target.value })}
+              className="form-input"
+              style={{ width: '70px' }}
+            />
+            <button
+              onClick={logPR}
+              className="btn-primary"
+              style={{ padding: '0.5rem 0.75rem' }}
+            >
+              Log
+            </button>
           </div>
         </div>
       </div>
 
       {/* PR Progression Chart */}
       <div className="glass-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <span className="card-title" style={{ margin: 0 }}>PR Progression</span>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '0.75rem',
+          }}
+        >
+          <span className="card-title" style={{ margin: 0 }}>
+            PR Progression
+          </span>
           <div style={{ display: 'flex', gap: '0.3rem' }}>
-            {LIFTS.map(l => (
-              <button key={l} onClick={() => setActivePRLift(l)}
-                className={`btn-sm${activePRLift === l ? ' active' : ''}`}>
+            {LIFTS.map((l) => (
+              <button
+                key={l}
+                onClick={() => setActivePRLift(l)}
+                className={`btn-sm${activePRLift === l ? ' active' : ''}`}
+              >
                 {l === 'benchPress' ? 'BP' : l === 'ohp' ? 'OHP' : l.slice(0, 3).toUpperCase()}
               </button>
             ))}
@@ -266,46 +559,119 @@ export default function Training() {
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={prChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-3)' }} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 10, fill: 'var(--text-3)' }}
+              />
               <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} unit="kg" />
-              <Tooltip contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', backdropFilter: 'blur(12px)' }} />
-              <Line type="monotone" dataKey="weight" stroke="var(--accent)" strokeWidth={2} dot={{ r: 4, fill: 'var(--accent)' }} />
+              <Tooltip
+                contentStyle={{
+                  background: 'var(--bg-glass)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  backdropFilter: 'blur(12px)',
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="weight"
+                stroke="var(--accent)"
+                strokeWidth={2}
+                dot={{ r: 4, fill: 'var(--accent)' }}
+              />
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', textAlign: 'center', padding: '2.5rem 0' }}>Log PRs to see progression</p>
+          <p
+            style={{
+              fontSize: '0.82rem',
+              color: 'var(--text-3)',
+              textAlign: 'center',
+              padding: '2.5rem 0',
+            }}
+          >
+            Log PRs to see progression
+          </p>
         )}
       </div>
 
-      {/* Session Log */}
+      {/* Session Log (DB-backed) */}
       <div className="glass-card" style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <span className="card-title" style={{ margin: 0 }}>Session Log</span>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '0.75rem',
+          }}
+        >
+          <span className="card-title" style={{ margin: 0 }}>
+            Session Log
+          </span>
           <span className="label-caps" style={{ color: 'var(--text-3)' }}>
-            {sessionLog.length} sessions tracked
+            {workoutSessions.length} sessions tracked
           </span>
         </div>
-        {sessionLog.length === 0 ? (
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', padding: '1.5rem 0', textAlign: 'center' }}>
+        {workoutSessions.length === 0 ? (
+          <p
+            style={{
+              fontSize: '0.82rem',
+              color: 'var(--text-3)',
+              padding: '1.5rem 0',
+              textAlign: 'center',
+            }}
+          >
             Log a day from your schedule to start building a history of workouts.
           </p>
         ) : (
           <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
             {recentSessions.map((s) => (
-              <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0', borderTop: '1px solid var(--border)' }}>
+              <div
+                key={s.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.6rem 0',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
                 <div>
                   <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>
-                    {s.day}  b7 {s.muscleGroup || 'Session'}
+                    {s.date} 
                   </p>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{s.date}</p>
+                  <p
+                    style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}
+                  >
+                    {s.notes || 'Session'}
+                  </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent)' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      color: 'var(--accent)',
+                    }}
+                  >
                     {(s.volume / 1000).toFixed(1)}k kg
                   </span>
                   <button
-                    onClick={() => deleteSession(s.id)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px' }}
+                    onClick={() => handleDeleteSession(s.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-3)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                    }}
                   >
                     <Trash2 size={14} />
                   </button>
