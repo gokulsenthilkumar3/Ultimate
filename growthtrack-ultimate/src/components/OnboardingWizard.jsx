@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { ArrowRight, Check, Activity, Target, User as UserIcon } from 'lucide-react';
+import { ArrowRight, Check, Activity, Target, User as UserIcon, AlertCircle } from 'lucide-react';
 import useStore, { selectSetUser, selectSetOnboardingComplete } from '../store/useStore';
+import { apiSync } from '../store/useStore';
 
 export default function OnboardingWizard() {
   const setUser = useStore(selectSetUser);
   const setOnboardingComplete = useStore(selectSetOnboardingComplete);
 
   const [step, setStep] = useState(1);
+  const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     name: '',
     gender: 'male',
@@ -16,30 +18,57 @@ export default function OnboardingWizard() {
     goal: 'general_health'
   });
 
-  const handleNext = () => setStep(s => s + 1);
-  
-  const handleComplete = () => {
-    // Save to user store
-    setUser(prev => ({
-      ...prev,
-      name: formData.name || 'Athlete',
+  const validate = (currentStep) => {
+    const errs = {};
+    if (currentStep === 1) {
+      if (!formData.name.trim()) errs.name = 'Name is required.';
+    }
+    if (currentStep === 2) {
+      if (!formData.age || formData.age < 13 || formData.age > 120) errs.age = 'Enter a valid age (13–120).';
+      if (!formData.height || formData.height < 100 || formData.height > 250) errs.height = 'Enter a valid height in cm (100–250).';
+      if (!formData.weight || formData.weight < 30 || formData.weight > 300) errs.weight = 'Enter a valid weight in kg (30–300).';
+    }
+    return errs;
+  };
+
+  const handleNext = () => {
+    const errs = validate(step);
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
+    setStep(s => s + 1);
+  };
+
+  const handleBack = () => {
+    setErrors({});
+    setStep(s => s - 1);
+  };
+
+  const handleComplete = async () => {
+    const newUser = {
+      name: formData.name.trim() || 'Athlete',
       gender: formData.gender,
       age: formData.age,
-      metrics: {
-        ...(prev?.metrics || {}),
-        height: formData.height,
-        weight: formData.weight
-      },
-      goals: {
-        ...(prev?.goals || {}),
-        primary: formData.goal
-      }
-    }));
-    // Finish onboarding
+      height: formData.height,
+      weight: formData.weight,
+      metrics: { height: formData.height, weight: formData.weight },
+      goals: { primary: formData.goal },
+    };
+    // Persist to store and API backend
+    setUser(newUser);
+    apiSync('/user', 'POST', newUser);
     setOnboardingComplete(true);
   };
 
-  const updateForm = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
+  const updateForm = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors(prev => { const e = { ...prev }; delete e[key]; return e; });
+  };
+
+  const FieldError = ({ field }) => errors[field] ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f87171', fontSize: '0.78rem', marginTop: '4px' }}>
+      <AlertCircle size={12} /> {errors[field]}
+    </div>
+  ) : null;
 
   return (
     <div style={{
@@ -49,14 +78,14 @@ export default function OnboardingWizard() {
       padding: '20px'
     }}>
       <div className="mesh-bg" />
-      
+
       <div className="glass-card fade-in" style={{
         maxWidth: '500px', width: '100%',
         display: 'flex', flexDirection: 'column', gap: '2rem'
       }}>
-        
+
         {/* Progress Bar */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px' }} role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={3} aria-label={`Step ${step} of 3`}>
           {[1, 2, 3].map(i => (
             <div key={i} style={{
               flex: 1, height: '4px', borderRadius: '2px',
@@ -78,23 +107,28 @@ export default function OnboardingWizard() {
               </div>
               <p className="text-secondary">Let's set up your digital twin profile.</p>
             </div>
-            
+
             <div className="form-stack">
               <label>
                 <span className="card-title">What should we call you?</span>
-                <input 
-                  type="text" className="form-input" 
+                <input
+                  type="text" className="form-input"
                   placeholder="Your Name"
-                  value={formData.name} onChange={e => updateForm('name', e.target.value)} 
+                  value={formData.name} onChange={e => updateForm('name', e.target.value)}
                   autoFocus
+                  aria-required="true"
+                  aria-invalid={!!errors.name}
                 />
+                <FieldError field="name" />
               </label>
-              
+
               <label>
                 <span className="card-title">Biological Sex</span>
                 <select className="form-input" value={formData.gender} onChange={e => updateForm('gender', e.target.value)}>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
+                  <option value="non_binary">Non-binary</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
                 </select>
               </label>
             </div>
@@ -117,26 +151,41 @@ export default function OnboardingWizard() {
               </div>
               <p className="text-secondary">These form the baseline of your avatar.</p>
             </div>
-            
+
             <div className="form-stack">
               <label>
                 <span className="card-title">Age (years)</span>
-                <input type="number" className="form-input" value={formData.age} onChange={e => updateForm('age', Number(e.target.value))} />
+                <input type="number" className="form-input" value={formData.age}
+                  min={13} max={120}
+                  onChange={e => updateForm('age', Number(e.target.value))}
+                  aria-invalid={!!errors.age}
+                />
+                <FieldError field="age" />
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <label>
                   <span className="card-title">Height (cm)</span>
-                  <input type="number" className="form-input" value={formData.height} onChange={e => updateForm('height', Number(e.target.value))} />
+                  <input type="number" className="form-input" value={formData.height}
+                    min={100} max={250}
+                    onChange={e => updateForm('height', Number(e.target.value))}
+                    aria-invalid={!!errors.height}
+                  />
+                  <FieldError field="height" />
                 </label>
                 <label>
                   <span className="card-title">Weight (kg)</span>
-                  <input type="number" className="form-input" value={formData.weight} onChange={e => updateForm('weight', Number(e.target.value))} />
+                  <input type="number" className="form-input" value={formData.weight}
+                    min={30} max={300}
+                    onChange={e => updateForm('weight', Number(e.target.value))}
+                    aria-invalid={!!errors.weight}
+                  />
+                  <FieldError field="weight" />
                 </label>
               </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
-              <button className="btn-ghost" onClick={() => setStep(1)}>Back</button>
+              <button className="btn-ghost" onClick={handleBack}>Back</button>
               <button className="btn-primary" onClick={handleNext}>Next Step <ArrowRight size={16} /></button>
             </div>
           </div>
@@ -154,17 +203,21 @@ export default function OnboardingWizard() {
               </div>
               <p className="text-secondary">What are you focusing on right now?</p>
             </div>
-            
-            <div className="form-stack">
+
+            <div className="form-stack" role="radiogroup" aria-label="Primary goal selection">
               {[
                 { id: 'build_muscle', label: 'Build Muscle', desc: 'Focus on hypertrophy and strength' },
                 { id: 'lose_fat', label: 'Lose Fat', desc: 'Caloric deficit and conditioning' },
                 { id: 'improve_fitness', label: 'Improve Fitness', desc: 'Cardio, endurance, and agility' },
                 { id: 'general_health', label: 'General Health', desc: 'Balanced lifestyle and longevity' }
               ].map(g => (
-                <div 
-                  key={g.id} 
+                <div
+                  key={g.id}
+                  role="radio"
+                  aria-checked={formData.goal === g.id}
+                  tabIndex={0}
                   onClick={() => updateForm('goal', g.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') updateForm('goal', g.id); }}
                   style={{
                     padding: '16px', borderRadius: '12px',
                     border: `1px solid ${formData.goal === g.id ? 'var(--accent)' : 'var(--border)'}`,
@@ -176,7 +229,8 @@ export default function OnboardingWizard() {
                   <div style={{
                     width: '20px', height: '20px', borderRadius: '50%',
                     border: `2px solid ${formData.goal === g.id ? 'var(--accent)' : 'var(--text-3)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
                   }}>
                     {formData.goal === g.id && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent)' }} />}
                   </div>
@@ -189,7 +243,7 @@ export default function OnboardingWizard() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
-              <button className="btn-ghost" onClick={() => setStep(2)}>Back</button>
+              <button className="btn-ghost" onClick={handleBack}>Back</button>
               <button className="btn-primary" onClick={handleComplete}>Finish Setup <Check size={16} /></button>
             </div>
           </div>

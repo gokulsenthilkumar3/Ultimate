@@ -1,23 +1,25 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://ultimate-8we7.onrender.com/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export async function apiSync(endpoint, method = 'POST', data = null) {
   try {
     const state = useStore.getState();
-      const options = {
-        method,
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-user-id': state.user?.id || 1,
-          'x-actor-name': state.user?.name || 'System',
-          'x-actor-email': state.user?.email || 'admin@growthtrack.ultimate'
-        },
-      };
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': state.user?.id || 1,
+        'x-actor-name': state.user?.name || 'System',
+      },
+    };
     if (data) options.body = JSON.stringify(data);
     const res = await fetch(`${API_BASE}${endpoint}`, options);
-    return await res.json();
+    if (!res.ok) throw new Error(`HTTP ${res.status} on ${endpoint}`);
+    // Guard: 204 No Content and other empty bodies have no JSON to parse
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
   } catch (e) {
     console.warn(`[useStore] API sync failed for ${endpoint}:`, e.message);
     return null;

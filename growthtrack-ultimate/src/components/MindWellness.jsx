@@ -5,18 +5,29 @@ import useStore, { selectWellnessData, selectUpdateWellnessData } from '../store
 import PageHeader from './ui/PageHeader';
 import StatCard from './ui/StatCard';
 
-export default function MindWellness() {
-  const data = useStore(selectWellnessData) || {
-    moodScore: 7,
-    stressLevel: 4,
-    sleepHours: 7.5,
-    meditationMinutes: 15,
-    moodHistory: [
-      { day: 'Mon', score: 6 }, { day: 'Tue', score: 7 }, { day: 'Wed', score: 5 },
-      { day: 'Thu', score: 8 }, { day: 'Fri', score: 7 }, { day: 'Sat', score: 9 }, { day: 'Sun', score: 8 },
-    ]
-  };
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export default function MindWellness({ user }) {
+  const storedData = useStore(selectWellnessData);
   const updateWellness = useStore(selectUpdateWellnessData);
+
+  const data = storedData || {
+    moodScore: 7, stressLevel: 4, sleepHours: 7.5, meditationMinutes: 15,
+  };
+
+  // Derive mood history from actual check-in logs, not hardcoded fallback
+  const moodHistory = useMemo(() => {
+    const checkIns = user?.checkIns || [];
+    if (!checkIns.length) return [];
+    return [...checkIns]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-14)
+      .map(ci => ({
+        day: DAY_LABELS[new Date(ci.date).getDay()],
+        score: Math.round((ci.mood / 4) * 10), // mood 0-4 index → 0-10 scale
+        date: ci.date,
+      }));
+  }, [user?.checkIns]);
 
   const handleUpdate = (field, value) => {
     updateWellness({ ...data, [field]: value });
@@ -83,26 +94,33 @@ export default function MindWellness() {
             <span className="card-title m-0">Weekly Resonance</span>
             <Heart size={20} color="var(--danger)" />
           </div>
-          <div style={{ height: '180px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.moodHistory}>
-                <defs>
-                  <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-3)' }} />
-                <YAxis hide domain={[0, 10]} />
-                <Tooltip 
-                  contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
-                  itemStyle={{ color: 'var(--accent)', fontWeight: 800 }}
-                />
-                <Area type="monotone" dataKey="score" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorMood)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {moodHistory.length === 0 ? (
+            <div style={{ height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-3)' }}>
+              <Smile size={28} style={{ opacity: 0.3 }} />
+              <p style={{ fontSize: '0.8rem', textAlign: 'center' }}>Complete daily check-ins to build your mood history chart.</p>
+            </div>
+          ) : (
+            <div style={{ height: '180px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={moodHistory}>
+                  <defs>
+                    <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-3)' }} />
+                  <YAxis hide domain={[0, 10]} />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
+                    itemStyle={{ color: 'var(--accent)', fontWeight: 800 }}
+                  />
+                  <Area type="monotone" dataKey="score" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorMood)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 

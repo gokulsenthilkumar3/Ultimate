@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Command as CmdIcon, ArrowRight, Home } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, Command as CmdIcon, ArrowRight } from 'lucide-react';
 import useStore, { selectSetActiveTab } from '../store/useStore';
 import { GLOBAL_MODULES } from '../App';
 
 export default function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef(null);
+  const listRef = useRef(null);
   const setActiveTab = useStore(selectSetActiveTab);
 
   // Toggle with Cmd+K or Ctrl+K
@@ -16,9 +18,7 @@ export default function CommandPalette() {
         e.preventDefault();
         setIsOpen((prev) => !prev);
       }
-      if (e.key === 'Escape' && isOpen) {
-        setIsOpen(false);
-      }
+      if (e.key === 'Escape' && isOpen) setIsOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -27,6 +27,7 @@ export default function CommandPalette() {
   useEffect(() => {
     if (isOpen) {
       setQuery('');
+      setSelectedIdx(0);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen]);
@@ -36,9 +37,24 @@ export default function CommandPalette() {
     m.label.toLowerCase().includes(query.toLowerCase()) || m.id.toLowerCase().includes(query.toLowerCase())
   );
 
-  const handleSelect = (id) => {
+  // Reset selection index when query changes
+  useEffect(() => { setSelectedIdx(0); }, [query]);
+
+  const handleSelect = useCallback((id) => {
     setActiveTab(id);
     setIsOpen(false);
+  }, [setActiveTab]);
+
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIdx(i => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIdx(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && filtered[selectedIdx]) {
+      handleSelect(filtered[selectedIdx].id);
+    }
   };
 
   if (!isOpen) return null;
@@ -58,7 +74,7 @@ export default function CommandPalette() {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ 
+        <div style={{
           display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
           borderBottom: '1px solid var(--border)'
         }}>
@@ -66,9 +82,10 @@ export default function CommandPalette() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Jump to a module..."
+            placeholder="Jump to a module… (↑↓ to navigate)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               color: 'var(--text-1)', fontSize: '1.1rem', fontFamily: 'var(--font-body)'
@@ -93,20 +110,14 @@ export default function CommandPalette() {
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '12px 16px', borderRadius: '8px', border: 'none',
-                  background: 'transparent', color: 'var(--text-1)',
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'background 0.2s ease'
+                  background: idx === selectedIdx ? 'var(--bg-elevated)' : 'transparent',
+                  color: idx === selectedIdx ? 'var(--accent)' : 'var(--text-1)',
+                  cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSelect(m.id);
-                  if (e.key === 'ArrowDown') e.currentTarget.nextSibling?.focus();
-                  if (e.key === 'ArrowUp') e.currentTarget.previousSibling?.focus();
-                }}
+                onMouseEnter={() => setSelectedIdx(idx)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <CmdIcon size={16} color="var(--accent)" />
+                  <CmdIcon size={16} color={idx === selectedIdx ? 'var(--accent)' : 'var(--text-3)'} />
                   <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{m.label}</span>
                 </div>
                 <ArrowRight size={14} color="var(--text-3)" />
