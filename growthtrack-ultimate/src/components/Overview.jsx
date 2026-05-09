@@ -4,10 +4,15 @@ import {
   TrendingUp, Activity, ArrowUpRight, Shield, Clock,
   Calendar as CalendarIcon, CloudRain, Wind, Sunrise, Sunset,
   Quote, Plus, Minus, ArrowDownRight, Compass, Gauge,
-  Thermometer, Droplet, Wind as WindIcon, Sun, Cloud
+  Thermometer, Droplet, Wind as WindIcon, Sun, Cloud, Eye
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import AnimatedNumber from './ui/AnimatedNumber';
+
+// Sivanmalai, Tamil Nadu coordinates
+const LAT = 11.0168;
+const LON = 77.4059;
+const LOCATION_NAME = 'Sivanmalai, TN';
 
 export default function Overview({ user }) {
   const metric_logs = useStore(s => s.metric_logs);
@@ -17,7 +22,7 @@ export default function Overview({ user }) {
 
   // Compute health score dynamically from available data (0–100)
   const healthScore = useMemo(() => {
-    let score = 60; // baseline
+    let score = 60;
     if (user?.weight && user?.height) {
       const bmiVal = user.weight / Math.pow(user.height / 100, 2);
       if (bmiVal >= 18.5 && bmiVal <= 24.9) score += 10;
@@ -36,16 +41,13 @@ export default function Overview({ user }) {
     return Math.min(100, score);
   }, [user, metric_logs, sleep_logs, goals]);
 
-  const sleepDebt = user?.sleep?.weeklyDebt ?? null;
   const [time, setTime] = useState(new Date());
-  // Persist waterGlasses to store so it survives tab switches
   const [waterGlasses, setWaterGlassesLocal] = useState(user?.hydration?.glasses || 0);
   const setWaterGlasses = useCallback((val) => {
     setWaterGlassesLocal(val);
     updateUserSlice('hydration', { glasses: val });
   }, [updateUserSlice]);
 
-  // BMI Logic: use latest log weight if available, else fallback to profile
   const latestLog = useMemo(() => {
     if (!metric_logs || metric_logs.length === 0) return null;
     return [...metric_logs].sort((a, b) => b.date.localeCompare(a.date))[0];
@@ -55,9 +57,9 @@ export default function Overview({ user }) {
   const currentWeight = latestLog?.weight || user?.weight || 63;
   const bmi = (currentWeight / Math.pow(height / 100, 2)).toFixed(1);
 
-  // Weather Logic: Dynamic from Open-Meteo API (No API key required)
+  // Weather from Open-Meteo — Sivanmalai, Tamil Nadu
   const [weather, setWeather] = useState({
-    temp: '--°C', condition: '--', humidity: '--%', aqi: '42 (Good)',
+    temp: '--°C', condition: '--', humidity: '--%', aqi: 'Loading…',
     windSpeed: '-- km/h', windDir: '--', uv: '--', precip: '--', pressure: '-- hPa', visibility: '-- km'
   });
 
@@ -65,22 +67,35 @@ export default function Overview({ user }) {
   useEffect(() => {
     if (weatherFetched.current) return;
     weatherFetched.current = true;
+
     const fetchWeather = async () => {
       try {
-        // Defaulting to Bangalore, India.
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=12.9716&longitude=77.5946&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=uv_index&timezone=auto');
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,visibility,weather_code&hourly=uv_index&timezone=Asia%2FKolkata`
+        );
         const data = await res.json();
         if (data && data.current) {
           const wDir = (deg) => {
             const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
             return dirs[Math.round(deg / 22.5) % 16];
           };
+          const wCode = data.current.weather_code || 0;
+          const getCondition = (code) => {
+            if (code === 0) return 'Clear';
+            if (code <= 2) return 'Partly Cloudy';
+            if (code <= 3) return 'Overcast';
+            if (code <= 67) return 'Rainy';
+            if (code <= 77) return 'Snow';
+            if (code <= 82) return 'Showers';
+            if (code <= 99) return 'Thunderstorm';
+            return 'Clear';
+          };
           const uv = Math.round(data.hourly?.uv_index?.[new Date().getHours()] || 4);
           setWeather({
             temp: `${Math.round(data.current.temperature_2m)}°C`,
-            condition: data.current.precipitation > 0 ? 'Rainy' : data.current.temperature_2m > 30 ? 'Sunny' : 'Clear',
+            condition: getCondition(wCode),
             humidity: `${Math.round(data.current.relative_humidity_2m)}%`,
-            aqi: '42 (Good)',
+            aqi: '—',
             windSpeed: `${Math.round(data.current.wind_speed_10m)} km/h`,
             windDir: wDir(data.current.wind_direction_10m),
             uv: `${uv} ${uv > 7 ? '(High)' : uv > 3 ? '(Mod)' : '(Low)'}`,
@@ -93,12 +108,11 @@ export default function Overview({ user }) {
         console.warn('Weather fetch failed', err);
       }
     };
-    fetchWeather();
 
+    fetchWeather();
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
 
   const vitals = [
     { label: 'Health Score', value: healthScore, unit: '/100', icon: Zap, color: 'var(--accent)', trend: '+3', state: 'optimal' },
@@ -127,8 +141,13 @@ export default function Overview({ user }) {
           </p>
         </div>
         <div className="glass-card" style={{ padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', border: '1px solid var(--accent-soft)' }}>
-          <p className="label-caps" style={{ color: 'var(--text-3)', fontSize: '0.65rem' }}>{time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: 'var(--text-1)' }}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+          <p className="label-caps" style={{ color: 'var(--text-3)', fontSize: '0.65rem' }}>
+            {time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+          <p style={{ fontSize: '1.5rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: 'var(--text-1)' }}>
+            {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+          <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>{LOCATION_NAME}</p>
         </div>
       </div>
 
@@ -141,7 +160,9 @@ export default function Overview({ user }) {
                 <v.icon size={22} color={v.color} />
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: v.trend.includes('-') ? '#f43f5e' : '#10b981', background: v.trend.includes('-') ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '6px' }}>{v.trend}</span>
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: v.trend.includes('-') ? '#f43f5e' : '#10b981', background: v.trend.includes('-') ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '6px' }}>
+                  {v.trend}
+                </span>
               </div>
             </div>
             <p className="label-caps" style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px' }}>{v.label}</p>
@@ -159,97 +180,98 @@ export default function Overview({ user }) {
         ))}
       </div>
 
-      {/* Main Grid: Telemetry + Sensors */}
+      {/* Main Grid: Telemetry + Targets */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-        {/* Environment & Sensors */}
+        {/* Environmental Sensors */}
         <div className="glass-card" style={{ padding: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h3 className="card-title" style={{ margin: 0 }}><Compass size={20} /> Environmental Sensors</h3>
+            <h3 className="card-title" style={{ margin: 0 }}>
+              <Compass size={20} /> Environmental Sensors
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 500, marginLeft: '8px' }}>{LOCATION_NAME}</span>
+            </h3>
             <span className="badge" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>NOMINAL</span>
           </div>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem' }}>
-             {[
-               { label: 'Outside Temp', value: weather.temp, icon: Thermometer, color: '#f59e0b' },
-               { label: 'Humidity', value: weather.humidity, icon: Droplet, color: '#0ea5e9' },
-               { label: 'Wind Speed', value: weather.windSpeed, icon: WindIcon, color: '#94a3b8' },
-               { label: 'Air Quality', value: weather.aqi, icon: Wind, color: '#10b981' },
-               { label: 'UV Index', value: weather.uv, icon: Sun, color: '#f59e0b' },
-               { label: 'Wind Dir', value: weather.windDir, icon: Compass, color: '#8b5cf6' },
-               { label: 'Pressure', value: weather.pressure, icon: Gauge, color: '#6366f1' },
-               { label: 'Visibility', value: weather.visibility, icon: Eye, color: '#ec4899' }
-             ].map((s, i) => (
-               <div key={i}>
-                 <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>{s.label}</p>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                   <s.icon size={18} color={s.color} style={{ opacity: 0.8 }} />
-                   <span style={{ fontWeight: 800, color: 'var(--text-1)', fontSize: '1.1rem' }}>{s.value}</span>
-                 </div>
-               </div>
-             ))}
+            {[
+              { label: 'Outside Temp', value: weather.temp, icon: Thermometer, color: '#f59e0b' },
+              { label: 'Humidity', value: weather.humidity, icon: Droplet, color: '#0ea5e9' },
+              { label: 'Wind Speed', value: weather.windSpeed, icon: WindIcon, color: '#94a3b8' },
+              { label: 'Condition', value: weather.condition, icon: Cloud, color: '#10b981' },
+              { label: 'UV Index', value: weather.uv, icon: Sun, color: '#f59e0b' },
+              { label: 'Wind Dir', value: weather.windDir, icon: Compass, color: '#8b5cf6' },
+              { label: 'Pressure', value: weather.pressure, icon: Gauge, color: '#6366f1' },
+              { label: 'Visibility', value: weather.visibility, icon: Eye, color: '#ec4899' }
+            ].map((s, i) => (
+              <div key={i}>
+                <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>{s.label}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <s.icon size={18} color={s.color} style={{ opacity: 0.8 }} />
+                  <span style={{ fontWeight: 800, color: 'var(--text-1)', fontSize: '1.1rem' }}>{s.value}</span>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div style={{ marginTop: '2.5rem', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--border)' }}>
-             <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', lineHeight: 1.6 }}>
-               <Shield size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} color="var(--accent)" />
-               All environmental sensors reporting within target thresholds. BMI stable at <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{bmi}</span>. 
-               Last weigh-in: <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>{latestLog ? latestLog.date : 'Initial Profile'}</span>.
-             </p>
+            <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', lineHeight: 1.6 }}>
+              <Shield size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} color="var(--accent)" />
+              All environmental sensors reporting within target thresholds. BMI stable at{' '}
+              <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{bmi}</span>.{' '}
+              Last weigh-in: <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>{latestLog ? latestLog.date : 'Initial Profile'}</span>.
+            </p>
           </div>
         </div>
 
-        {/* Daily Progress / Targets */}
+        {/* Right Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-           <div className="glass-card" style={{ flex: 1, padding: '1.75rem' }}>
-              <h3 className="card-title"><Target size={18} /> Strategic Priorities</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                {/* Pull from store goals — top 3 active goals */}
-                {(() => {
-                  const active = goals
-                    .filter(g => !g.done && g.target_value > 0)
-                    .map((g, i) => ({
-                      label: g.title,
-                      target: `${g.target_value} ${g.unit || ''}`.trim(),
-                      progress: Math.min(100, Math.max(0, Math.round((g.current_value / g.target_value) * 100))),
-                      color: ['var(--accent)', '#8b5cf6', '#10b981'][i % 3]
-                    }))
-                    .slice(0, 3);
+          <div className="glass-card" style={{ flex: 1, padding: '1.75rem' }}>
+            <h3 className="card-title"><Target size={18} /> Strategic Priorities</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+              {(() => {
+                const active = goals
+                  .filter(g => !g.done && g.target_value > 0)
+                  .map((g, i) => ({
+                    label: g.title,
+                    target: `${g.target_value} ${g.unit || ''}`.trim(),
+                    progress: Math.min(100, Math.max(0, Math.round((g.current_value / g.target_value) * 100))),
+                    color: ['var(--accent)', '#8b5cf6', '#10b981'][i % 3]
+                  }))
+                  .slice(0, 3);
 
-                  const items = active.length > 0 ? active : [
-                    { label: 'No active goals yet', target: 'Add goals to track progress', progress: 0, color: 'var(--text-3)' }
-                  ];
+                const items = active.length > 0 ? active : [
+                  { label: 'No active goals yet', target: 'Add goals to track progress', progress: 0, color: 'var(--text-3)' }
+                ];
 
-                  return items.map((g, i) => (
-                    <div key={i}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)' }}>{g.label}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{active.length > 0 ? `${g.progress}%` : ''}</span>
-                      </div>
-                      <div style={{ width: '100%', height: '6px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ width: `${g.progress}%`, height: '100%', background: g.color }} />
-                      </div>
-                      {g.target && active.length > 0 && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '3px' }}>Target: {g.target}</p>}
+                return items.map((g, i) => (
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)' }}>{g.label}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{active.length > 0 ? `${g.progress}%` : ''}</span>
                     </div>
-                  ));
-                })()}
-              </div>
-           </div>
+                    <div style={{ width: '100%', height: '6px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${g.progress}%`, height: '100%', background: g.color }} />
+                    </div>
+                    {g.target && active.length > 0 && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '3px' }}>Target: {g.target}</p>}
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
 
-           <div className="glass-card" style={{ padding: '1.75rem', background: 'linear-gradient(135deg, var(--accent)22, transparent)', border: '1px solid var(--accent)33' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-                 <div style={{ background: 'var(--accent)', color: '#000', padding: '8px', borderRadius: '10px' }}>
-                    <Quote size={18} />
-                 </div>
-                 <h4 className="label-caps" style={{ color: 'var(--accent)', margin: 0 }}>Ambition Directive</h4>
+          <div className="glass-card" style={{ padding: '1.75rem', background: 'linear-gradient(135deg, var(--accent)22, transparent)', border: '1px solid var(--accent)33' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+              <div style={{ background: 'var(--accent)', color: '#000', padding: '8px', borderRadius: '10px' }}>
+                <Quote size={18} />
               </div>
-              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, fontStyle: 'italic' }}>
-                "The resistance you fight physically in the gym and the resistance you fight in life can only build a strong character."
-              </p>
-           </div>
+              <h4 className="label-caps" style={{ color: 'var(--accent)', margin: 0 }}>Ambition Directive</h4>
+            </div>
+            <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, fontStyle: 'italic' }}>
+              "The resistance you fight physically in the gym and the resistance you fight in life can only build a strong character."
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
-function Eye({ size, color, style }) { return <Compass size={size} color={color} style={style} />; }
