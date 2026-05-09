@@ -62,6 +62,8 @@ const useStore = create(
         exercisesBySession: {},
       },
 
+      habitLogsByHabit: {},
+
       setLastCheckIn: (date) => set({ lastCheckIn: date }),
 
       setUser: (userOrUpdater) => {
@@ -147,6 +149,7 @@ const useStore = create(
             entertainment: { media: Array.isArray(media) ? media : [] },
             health_extras: healthExtras || {},
             moodLogs: Array.isArray(moodLogs) ? moodLogs : [],
+            habitLogsByHabit: {},
           };
 
           if (user) newState.user = user;
@@ -541,6 +544,35 @@ const useStore = create(
         set((state) => ({ habits: state.habits.map(h => h.id === id ? { ...h, ...updates } : h) }));
       },
 
+      fetchHabitLogsForHabit: async (habitId) => {
+        const logs = await apiSync(`/habit_logs/${habitId}`, 'GET');
+        if (Array.isArray(logs)) {
+          set((state) => ({
+            habitLogsByHabit: {
+              ...state.habitLogsByHabit,
+              [habitId]: logs,
+            },
+          }));
+        }
+      },
+
+      toggleHabitForDate: async (habitId, date) => {
+        await apiSync('/habit_logs', 'POST', { habit_id: habitId, date });
+        set((state) => {
+          const existing = state.habitLogsByHabit[habitId] || [];
+          const exists = existing.some((l) => l.date === date);
+          const nextLogs = exists
+            ? existing.filter((l) => l.date !== date)
+            : [{ habit_id: habitId, date }, ...existing];
+          return {
+            habitLogsByHabit: {
+              ...state.habitLogsByHabit,
+              [habitId]: nextLogs,
+            },
+          };
+        });
+      },
+
       addSubscription: async (sub) => {
         const res = await apiSync('/subscriptions', 'POST', sub);
         if (res?.id) {
@@ -691,6 +723,10 @@ export const selectUpdateWellnessData = (s) => s.updateWellnessData;
 
 export const selectMoodLogs = (s) => s.moodLogs;
 export const selectAddMoodLog = (s) => s.addMoodLog;
+
+export const selectHabitLogsByHabit = (s) => s.habitLogsByHabit;
+export const selectFetchHabitLogsForHabit = (s) => s.fetchHabitLogsForHabit;
+export const selectToggleHabitForDate = (s) => s.toggleHabitForDate;
 
 export const selectAddBudget = (s) => s.addBudget;
 export const selectDeleteBudget = (s) => s.deleteBudget;
