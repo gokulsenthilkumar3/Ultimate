@@ -3,7 +3,9 @@
 > **The definitive sovereign tracking ecosystem.**
 > GrowthTrack Ultimate is a hyper-premium, glassmorphic digital twin platform designed for deep biological, cognitive, and environmental tracking.
 
-![Ultimate Dashboard](./docs/dashboard.png)
+![Ultimate Dashboard Demo](./docs/dashboard.png)
+
+*Watch the live demo GIF on the [Live Site](https://gokulsenthilkumar3.github.io/Ultimate/) or see the preview above.*
 
 ## 🌌 Overview
 
@@ -34,6 +36,15 @@ Ultimate isn't just a dashboard; it's a **tactical command center** for your bio
 | **App Hub Matrix** | **Settings & System Audit** |
 | :---: | :---: |
 | ![App Hub](./docs/app_hub.png) | ![Settings](./docs/settings.png) |
+
+## 🗺️ Roadmap
+
+We are tracking our development phases using [GitHub Milestones](https://github.com/gokulsenthilkumar3/Ultimate/milestones) and [Issues](https://github.com/gokulsenthilkumar3/Ultimate/issues).
+
+- **Phase 1**: Persistence Stabilization & Core Architecture (Completed)
+- **Phase 2**: E2E Testing & Component Decoupling (In Progress)
+- **Phase 3**: Node/Express + Supabase REST API Migration (Upcoming)
+- **Phase 4**: Advanced Predictive Triage & Mobile App (Future)
 
 ## 🚀 Tech Stack
 
