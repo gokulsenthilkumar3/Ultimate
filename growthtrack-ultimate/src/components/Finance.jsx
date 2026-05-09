@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2 } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload } from 'lucide-react';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget } from '../store/useStore';
+import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget, apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import StatCard from './ui/StatCard';
 import SIPCalculator from './SIPCalculator';
@@ -26,16 +26,17 @@ export default function Finance() {
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [budgetForm, setBudgetForm] = useState({ category: '', limit_amount: '' });
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
-  const [activeTab, setActiveTab] = useState('Overview'); // Overview, Analytics, Budgeting, Subscriptions, Planning, Sync
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [activeTab, setActiveTab] = useState('Overview');
 
-  // Subscriptions — Centralized via Zustand
   const subs = useStore(s => s.subscriptions);
   const addSubscription = useStore(s => s.addSubscription);
   const deleteSubscription = useStore(s => s.deleteSubscription);
   const isLoading = useStore(s => s.isLoading);
   const [showAddSub, setShowAddSub] = useState(false);
   const [subForm, setSubForm] = useState({ name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1 });
+
+  const [csvUploading, setCsvUploading] = useState(false);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => t.date && t.date.startsWith(selectedMonth));
@@ -74,15 +75,33 @@ export default function Finance() {
     if (!form.method) return toast.error('Please select a payment method.');
     const amt = parseFloat(form.amount);
     if (!form.amount || isNaN(amt) || amt <= 0) return toast.error('Amount must be greater than ₹0.');
-    
     addTransaction({ ...form, amount: amt, id: Date.now().toString() });
     setForm(EMPTY_FORM);
     toast.success(`${form.type} added successfully.`);
   }, [form, addTransaction, toast]);
 
+  const handleCsvImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please upload a .csv file');
+      return;
+    }
+    setCsvUploading(true);
+    try {
+      const text = await file.text();
+      const res = await apiSync('/finance/import/csv', 'POST', { content: text });
+      const imported = res?.imported || 0;
+      toast.success(`Imported ${imported} transactions from CSV`);
+    } catch {
+      toast.error('CSV import failed');
+    }
+    setCsvUploading(false);
+    event.target.value = '';
+  };
+
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      {/* Dynamic Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Wealth Engine</p>
@@ -134,7 +153,6 @@ export default function Finance() {
           </div>
 
           <div className="dual-grid mb-lg">
-            {/* Payment Method Breakdown */}
             <div className="glass-card">
               <div className="card-header-row" style={{ marginBottom: '1.5rem' }}>
                 <CreditCard size={18} color="var(--accent)" />
@@ -157,7 +175,6 @@ export default function Finance() {
               </div>
             </div>
 
-            {/* Add Transaction Form */}
             <div className="glass-card">
               <span className="card-title">New Log</span>
               <div className="form-stack mt-sm">
@@ -457,8 +474,11 @@ export default function Finance() {
            </div>
 
            <div className="glass-card" style={{ marginTop: '3rem', background: 'rgba(0,0,0,0.2)', border: '1px dashed var(--border-strong)', textAlign: 'center', padding: '2rem' }}>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-2)', marginBottom: '1rem' }}>Missing an app? We support 200+ Indian financial institutions via CSV import.</p>
-              <button className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)' }}>UPLOAD BANK STATEMENT (.CSV)</button>
+              <p style={{ font-size: '0.9rem', color: 'var(--text-2)', marginBottom: '1rem' }}>Missing an app? We support 200+ Indian financial institutions via CSV import.</p>
+              <label className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Upload size={16} /> {csvUploading ? 'IMPORTING…' : 'UPLOAD BANK STATEMENT (.CSV)'}
+                <input type="file" accept=".csv" onChange={handleCsvImport} style={{ display: 'none' }} />
+              </label>
            </div>
         </div>
       )}
