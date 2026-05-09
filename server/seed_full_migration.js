@@ -16,38 +16,38 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
+// NOTE: All personal data is stored in the live database and Render env vars.
+//       This seed file uses GENERIC placeholder values only.
+//       Replace these placeholders with your actual data ONLY in your local .env
+//       or directly in the Supabase dashboard — NEVER commit real PII here.
 
 const USER_PROFILE = {
-  name: 'Gokul Senthil Kumar',
-  email: 'gokulsenthilkumar3@gmail.com',
-  age: 23,
-  height: 182,
-  weight: 63,
-  dob: '2001-05-15',
-  bmi: '19.0',
-  bodyFat: 18.5,
-  muscleMass: 52,
+  name: process.env.USER_NAME || 'GrowthTrack User',
+  email: process.env.USER_EMAIL || 'user@example.com',
+  age: parseInt(process.env.USER_AGE) || 25,
+  height: parseInt(process.env.USER_HEIGHT_CM) || 175,
+  weight: parseInt(process.env.USER_WEIGHT_KG) || 70,
+  dob: process.env.USER_DOB || '2000-01-01',
+  bmi: '22.9',
+  bodyFat: 18,
+  muscleMass: 55,
   skinTones: {
     Face: '#C68642', Neck: '#C68642', Torso: '#C68642',
     Hands: '#B57531', Arms: '#C68642', Legs: '#C68642',
     Butt: '#D2A172', D_Zone: '#B57531'
   },
   bodyMeasurements: {
-    Shoulder_Width: { current_in: '18.5"', target_in: '24.0"', priority: 'HIGH—CRITICAL', note: 'Measure from acromion to acromion.' },
-    Chest_Girth:    { current_in: '36.0"', target_in: '44.0"', priority: 'HIGH',          note: 'Measure around the fullest part of chest.' },
-    Waist_Line:     { current_in: '32.0"', target_in: '29.5"', priority: 'CRITICAL',      note: 'Measure at the narrowest point.' },
-    Arm_Biceps:     { current_in: '12.0"', target_in: '17.0"', priority: 'MEDIUM',        note: 'Measure flexed at peak.' },
-    D_Size_Length:  { current_in: '5.9"',  target_in: '8.0"',  priority: 'HIGH',          note: 'Non-bone pressed measurement.' },
-    D_Size_Girth:   { current_in: '4.5"',  target_in: '5.5"',  priority: 'HIGH',          note: 'Measured around the thickest part.' },
-    Hair_Density:   { current_in: 'Medium', target_in: 'Thick', priority: 'HIGH',         note: 'Visual assessment of scalp coverage.' },
-    Tooth_Shade:    { current_in: 'A2',    target_in: 'B1 (Bleach)', priority: 'MEDIUM',  note: 'Using standard dental shade guide.' },
+    Shoulder_Width: { current_in: '18.0"', target_in: '22.0"', priority: 'HIGH', note: 'Measure from acromion to acromion.' },
+    Chest_Girth:    { current_in: '38.0"', target_in: '44.0"', priority: 'HIGH', note: 'Measure around the fullest part of chest.' },
+    Waist_Line:     { current_in: '32.0"', target_in: '30.0"', priority: 'HIGH', note: 'Measure at the narrowest point.' },
+    Arm_Biceps:     { current_in: '13.0"', target_in: '16.0"', priority: 'MEDIUM', note: 'Measure flexed at peak.' },
+    Hair_Density:   { current_in: 'Medium', target_in: 'Thick', priority: 'MEDIUM', note: 'Visual assessment of scalp coverage.' },
+    Tooth_Shade:    { current_in: 'A2', target_in: 'B1 (Bleach)', priority: 'LOW', note: 'Using standard dental shade guide.' },
   },
   socialMedia: {
-    LinkedIn: 'https://linkedin.com/in/gokulsenthilkumar3',
-    Instagram: '@gokul_s',
-    Twitter: '@gokul_dev',
-    Threads: '@gokul_s',
-    WhatsApp: '+91 9876543210'
+    LinkedIn: process.env.USER_LINKEDIN || '',
+    GitHub: process.env.USER_GITHUB || '',
+    Instagram: process.env.USER_INSTAGRAM || '',
   }
 };
 

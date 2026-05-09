@@ -11,6 +11,8 @@ import AnimatedNumber from './ui/AnimatedNumber';
 
 export default function Overview({ user }) {
   const metric_logs = useStore(s => s.metric_logs);
+  const goals = useStore(s => s.goals || []);
+  const sleep_logs = useStore(s => s.sleep_logs || []);
   const updateUserSlice = useStore(s => s.updateUserSlice);
 
   // Compute health score dynamically from available data (0–100)
@@ -21,15 +23,18 @@ export default function Overview({ user }) {
       if (bmiVal >= 18.5 && bmiVal <= 24.9) score += 10;
     }
     if (metric_logs && metric_logs.length > 0) score += 5;
-    if (user?.sleep?.logs?.length > 0) {
+    if (sleep_logs && sleep_logs.length > 0) {
+      const avgSleep = sleep_logs.slice(-7).reduce((a, l) => a + (l.duration || 0), 0) / Math.min(7, sleep_logs.length);
+      if (avgSleep >= 7) score += 10;
+    } else if (user?.sleep?.logs?.length > 0) {
       const avgSleep = user.sleep.logs.slice(-7).reduce((a, l) => a + l.hours, 0) / Math.min(7, user.sleep.logs.length);
       if (avgSleep >= 7) score += 10;
     }
     if (user?.checkIns?.length > 0) score += 5;
-    if (user?.goals?.primary) score += 5;
+    if (goals.some(g => !g.done)) score += 5;
     if (user?.hydration?.glasses >= 8) score += 5;
     return Math.min(100, score);
-  }, [user, metric_logs]);
+  }, [user, metric_logs, sleep_logs, goals]);
 
   const sleepDebt = user?.sleep?.weeklyDebt ?? null;
   const [time, setTime] = useState(new Date());
@@ -195,21 +200,35 @@ export default function Overview({ user }) {
            <div className="glass-card" style={{ flex: 1, padding: '1.75rem' }}>
               <h3 className="card-title"><Target size={18} /> Strategic Priorities</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                {[
-                  { label: 'Hypertrophy Goal', target: 'Gain 0.5kg/wk', progress: 65, color: 'var(--accent)' },
-                  { label: 'Sleep Recovery', target: 'Avg 7.5h', progress: 42, color: '#8b5cf6' },
-                  { label: 'Lean Mass Retention', target: '2.2g Protein/kg', progress: 88, color: '#10b981' }
-                ].map((g, i) => (
-                  <div key={i}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)' }}>{g.label}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{g.progress}%</span>
+                {/* Pull from store goals — top 3 active goals */}
+                {(() => {
+                  const active = goals
+                    .filter(g => !g.done && g.target_value > 0)
+                    .map((g, i) => ({
+                      label: g.title,
+                      target: `${g.target_value} ${g.unit || ''}`.trim(),
+                      progress: Math.min(100, Math.max(0, Math.round((g.current_value / g.target_value) * 100))),
+                      color: ['var(--accent)', '#8b5cf6', '#10b981'][i % 3]
+                    }))
+                    .slice(0, 3);
+
+                  const items = active.length > 0 ? active : [
+                    { label: 'No active goals yet', target: 'Add goals to track progress', progress: 0, color: 'var(--text-3)' }
+                  ];
+
+                  return items.map((g, i) => (
+                    <div key={i}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)' }}>{g.label}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{active.length > 0 ? `${g.progress}%` : ''}</span>
+                      </div>
+                      <div style={{ width: '100%', height: '6px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ width: `${g.progress}%`, height: '100%', background: g.color }} />
+                      </div>
+                      {g.target && active.length > 0 && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '3px' }}>Target: {g.target}</p>}
                     </div>
-                    <div style={{ width: '100%', height: '6px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ width: `${g.progress}%`, height: '100%', background: g.color }} />
-                    </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
            </div>
 
