@@ -4,7 +4,7 @@ import {
   Moon, Dumbbell, Stethoscope, ShoppingCart, CheckSquare,
   Briefcase, Folder, Calendar, Clock, DollarSign, Film, 
   Share2, Bot, Map, FileText, Rss, Database, AlignLeft, Settings, Info, Grid, Pin, PinOff,
-  Shield, Zap, Wallet, Menu
+  Shield, Zap, Wallet, Menu, TrendingUp
 } from 'lucide-react';
 import useStore, { selectPinnedTabs, selectTogglePinnedTab } from '../store/useStore';
 

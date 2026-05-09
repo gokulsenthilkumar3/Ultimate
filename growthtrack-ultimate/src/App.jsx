@@ -212,10 +212,39 @@ export default function App() {
   useEffect(() => {
     if (onboardingComplete && lastCheckIn !== todayStr) {
       // Small delay so the app finishes loading first
-      const t = setTimeout(() => setShowCheckIn(true), 2000);
+      const t = setTimeout(() => {
+        setShowCheckIn(true);
+        // Prompt for notification and show reminder
+        if ('Notification' in window && Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              new Notification('Daily Check-In Reminder', {
+                body: 'Time to log your daily workouts, weight, and water intake!',
+                icon: '/Ultimate/favicon.ico'
+              });
+            }
+          });
+        }
+      }, 2000);
       return () => clearTimeout(t);
     }
   }, [onboardingComplete, lastCheckIn, todayStr]);
+
+  // Keyboard navigation for pinned tabs
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Allow Ctrl+1 to Ctrl+9
+      if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
+        const index = parseInt(e.key, 10) - 1;
+        if (index < navItems.length) {
+          e.preventDefault();
+          setActiveTab(navItems[index].id);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navItems, setActiveTab]);
 
   // Apply theme/palette as data attributes on <html>
   useEffect(() => {
