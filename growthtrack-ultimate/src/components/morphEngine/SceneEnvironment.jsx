@@ -18,41 +18,17 @@
  * Deps: @react-three/drei
  */
 
-import React        from "react";
-import { Environment, useEnvironment } from "@react-three/drei";
+import React from "react";
+import { Environment } from "@react-three/drei";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CUSTOM HDRI LOADER (production path)
+// SCENE ENVIRONMENT
+// Uses @react-three/drei's built-in "studio" preset for reliable IBL lighting.
+// The custom HDRI (studio-softbox.hdr) can be added to /public/assets/hdri/
+// and swapped back in once the asset is committed to the repository.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Loads the custom baked studio softbox HDRI.
- * Swap HDRI_PATH to your actual asset once baked.
- * The file should live at: /public/assets/hdri/studio-softbox.hdr
- */
-const HDRI_PATH = "/assets/hdri/studio-softbox.hdr";
-
-function CustomHdriEnvironment() {
-  // useEnvironment handles caching + suspension
-  const envMap = useEnvironment({ files: HDRI_PATH });
-
-  return (
-    <Environment
-      map={envMap}
-      background={false}          // keep background pure #020307
-      backgroundBlurriness={0}
-      environmentIntensity={0.35} // subtle IBL — studio lights do the heavy lifting
-      environmentRotation={[0, Math.PI * 0.25, 0]} // slight rotation for interesting specular hits
-    />
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FALLBACK ENVIRONMENT (dev / no-asset mode)
-// Uses drei preset which is a decent studio approximation
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FallbackEnvironment() {
+export default function SceneEnvironment() {
   return (
     <Environment
       preset="studio"
@@ -61,23 +37,4 @@ function FallbackEnvironment() {
       environmentRotation={[0, Math.PI * 0.25, 0]}
     />
   );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SCENE ENVIRONMENT — exported component
-// Tries custom HDRI first; falls back to preset on error.
-// ─────────────────────────────────────────────────────────────────────────────
-
-export default function SceneEnvironment() {
-  const useCustomHdri = process.env.NODE_ENV === "production";
-
-  if (useCustomHdri) {
-    return (
-      <React.Suspense fallback={<FallbackEnvironment />}>
-        <CustomHdriEnvironment />
-      </React.Suspense>
-    );
-  }
-
-  return <FallbackEnvironment />;
 }
