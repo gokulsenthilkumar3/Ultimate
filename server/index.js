@@ -276,6 +276,23 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     modified_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS health_extras (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    vision_score INTEGER DEFAULT 85,
+    hearing_score INTEGER DEFAULT 90,
+    smell_score INTEGER DEFAULT 95,
+    taste_score INTEGER DEFAULT 90,
+    touch_score INTEGER DEFAULT 88,
+    gut_biome_score INTEGER DEFAULT 78,
+    dermatology_score INTEGER DEFAULT 82,
+    hair_vitality_score INTEGER DEFAULT 85,
+    bronco_level TEXT DEFAULT '—',
+    posture_status TEXT DEFAULT 'Not set',
+    active_diets TEXT DEFAULT '[]',
+    hobbies TEXT DEFAULT '[]',
+    modified_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // --- Migrations: Add columns if they don't exist ---
@@ -310,7 +327,7 @@ const shoppingSchema = z.object({
 
 const financeSchema = z.object({
   id: z.string().optional(),
-  type: z.enum(['income', 'expense']),
+  type: z.enum(['income', 'expense', 'investment', 'Income', 'Expense', 'Investment']),
   category: z.string().max(100).optional(),
   amount: z.number().positive(),
   note: z.string().max(500).optional(),
@@ -714,22 +731,20 @@ app.get('/api/all', requireSecret, (req, res) => {
   res.json(result);
 });
 
-// SQL Compiler — protected + rate-limited
-const SQL_BLACKLIST = /\b(DROP|TRUNCATE|ALTER|ATTACH|DETACH|PRAGMA|CREATE\s+TABLE|DELETE\s+FROM\s+user_profile)\b/i;
+// SQL Compiler — protected + rate-limited — SELECT ONLY for safety
+const SQL_BLACKLIST = /\b(DROP|TRUNCATE|ALTER|ATTACH|DETACH|PRAGMA|CREATE\s+TABLE)\b/i;
 app.post('/api/query', requireSecret, queryLimiter, (req, res) => {
   const { query } = req.body;
   if (!query || typeof query !== 'string') return res.status(400).json({ success: false, error: 'No query provided' });
   if (query.trim().length > 2000) return res.status(400).json({ success: false, error: 'Query too long' });
-  if (SQL_BLACKLIST.test(query)) return res.status(403).json({ success: false, error: 'Destructive query blocked for safety.' });
+  // Only SELECT queries allowed via the UI console — use the REST API endpoints for mutations
+  if (!query.trim().toUpperCase().startsWith('SELECT')) {
+    return res.status(403).json({ success: false, error: 'Only SELECT queries are allowed in the SQL console. Use the REST API endpoints for data mutations.' });
+  }
+  if (SQL_BLACKLIST.test(query)) return res.status(403).json({ success: false, error: 'Blocked query detected.' });
   try {
-    const isSelect = query.trim().toUpperCase().startsWith('SELECT');
-    if (isSelect) {
-      const rows = db.prepare(query).all();
-      res.json({ success: true, data: rows, rowCount: rows.length });
-    } else {
-      const info = db.prepare(query).run();
-      res.json({ success: true, data: info, rowCount: info.changes });
-    }
+    const rows = db.prepare(query).all();
+    res.json({ success: true, data: rows, rowCount: rows.length });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
@@ -846,6 +861,131 @@ app.post('/api/entertainment', validate(entertainmentSchema), (req, res) => {
 app.delete('/api/entertainment/:id', (req, res) => {
   db.prepare('DELETE FROM entertainment WHERE id=?').run(req.params.id);
   res.json({ success: true });
+});
+app.put('/api/entertainment/:id', (req, res) => {
+  const { title, type, category, status, rating, progress, poster } = req.body;
+  const now = new Date().toISOString();
+  db.prepare(`UPDATE entertainment SET
+    title=COALESCE(?,title), type=COALESCE(?,type), category=COALESCE(?,category),
+    status=COALESCE(?,status), rating=COALESCE(?,rating), progress=COALESCE(?,progress),
+    poster=COALESCE(?,poster), modified_at=? WHERE id=?`)
+    .run(title, type, category, status, rating, progress, poster, now, req.params.id);
+  res.json({ success: true });
+});
+
+// PUT /api/notes/:id — dedicated REST update (separate from POST upsert)
+app.put('/api/notes/:id', validate(noteSchema), (req, res) => {
+  const { title, content, color, pinned } = req.validated;
+  const now = new Date().toISOString();
+  const updates = ['modified_at = ?'];
+  const params = [now];
+  if (title !== undefined)   { updates.unshift('title = ?');   params.unshift(String(title).slice(0, 300)); }
+  if (content !== undefined) { updates.unshift('content = ?'); params.unshift(content); }
+  if (color !== undefined)   { updates.unshift('color = ?');   params.unshift(color); }
+  if (pinned !== undefined)  { updates.unshift('pinned = ?');  params.unshift(pinned ? 1 : 0); }
+  params.push(req.params.id);
+  db.prepare(`UPDATE notes SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  res.json({ success: true });
+});
+
+// PUT /api/goals/:id — update goal progress
+app.put('/api/goals/:id', (req, res) => {
+  const { title, category, target_value, current_value, unit, deadline, done } = req.body;
+  const now = new Date().toISOString();
+  const updates = ['modified_at = ?'];
+  const params = [now];
+  if (done !== undefined)          { updates.unshift('done = ?');          params.unshift(done ? 1 : 0); }
+  if (deadline !== undefined)      { updates.unshift('deadline = ?');      params.unshift(deadline); }
+  if (unit !== undefined)          { updates.unshift('unit = ?');          params.unshift(unit); }
+  if (current_value !== undefined) { updates.unshift('current_value = ?'); params.unshift(current_value); }
+  if (target_value !== undefined)  { updates.unshift('target_value = ?');  params.unshift(target_value); }
+  if (category !== undefined)      { updates.unshift('category = ?');      params.unshift(category); }
+  if (title !== undefined)         { updates.unshift('title = ?');         params.unshift(String(title).slice(0,300)); }
+  params.push(req.params.id);
+  db.prepare(`UPDATE goals SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  logAction(req, 'UPDATE', 'goals', req.params.id, null);
+  res.json({ success: true });
+});
+
+// PUT /api/subscriptions/:id — full subscription update
+app.put('/api/subscriptions/:id', (req, res) => {
+  const { name, cost, category, next_date, auto_renew, icon } = req.body;
+  db.prepare(`UPDATE subscriptions SET
+    name=COALESCE(?,name), cost=COALESCE(?,cost), category=COALESCE(?,category),
+    next_date=COALESCE(?,next_date), auto_renew=COALESCE(?,auto_renew), icon=COALESCE(?,icon)
+    WHERE id=?`).run(name, cost != null ? cost : null, category, next_date,
+    auto_renew != null ? (auto_renew ? 1 : 0) : null, icon, req.params.id);
+  res.json({ success: true });
+});
+
+// PUT /api/shopping/:id — full shopping item update (not just purchased toggle)
+app.put('/api/shopping/:id', (req, res) => {
+  const { purchased, name, category, priority, estimatedCost, quantity } = req.body;
+  const now = new Date().toISOString();
+  const updates = ['modified_at = ?'];
+  const params = [now];
+  if (quantity !== undefined)      { updates.unshift('quantity = ?');      params.unshift(quantity); }
+  if (estimatedCost !== undefined) { updates.unshift('estimatedCost = ?'); params.unshift(estimatedCost); }
+  if (priority !== undefined)      { updates.unshift('priority = ?');      params.unshift(priority); }
+  if (category !== undefined)      { updates.unshift('category = ?');      params.unshift(category); }
+  if (name !== undefined)          { updates.unshift('name = ?');          params.unshift(String(name).slice(0,300)); }
+  if (purchased !== undefined)     { updates.unshift('purchased = ?');     params.unshift(purchased ? 1 : 0); }
+  params.push(req.params.id);
+  db.prepare(`UPDATE shopping SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  res.json({ success: true });
+});
+
+// Health Extras — individual column store (not a JSON blob)
+app.get('/api/health_extras', (req, res) => {
+  const row = db.prepare('SELECT * FROM health_extras WHERE id = 1').get();
+  if (!row) return res.json(null);
+  res.json({ ...row, active_diets: JSON.parse(row.active_diets || '[]'), hobbies: JSON.parse(row.hobbies || '[]') });
+});
+app.put('/api/health_extras', (req, res) => {
+  const {
+    vision_score, hearing_score, smell_score, taste_score, touch_score,
+    gut_biome_score, dermatology_score, hair_vitality_score,
+    bronco_level, posture_status, active_diets, hobbies
+  } = req.body;
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO health_extras (id, vision_score, hearing_score, smell_score, taste_score, touch_score,
+      gut_biome_score, dermatology_score, hair_vitality_score, bronco_level, posture_status,
+      active_diets, hobbies, modified_at)
+    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      vision_score = COALESCE(excluded.vision_score, vision_score),
+      hearing_score = COALESCE(excluded.hearing_score, hearing_score),
+      smell_score = COALESCE(excluded.smell_score, smell_score),
+      taste_score = COALESCE(excluded.taste_score, taste_score),
+      touch_score = COALESCE(excluded.touch_score, touch_score),
+      gut_biome_score = COALESCE(excluded.gut_biome_score, gut_biome_score),
+      dermatology_score = COALESCE(excluded.dermatology_score, dermatology_score),
+      hair_vitality_score = COALESCE(excluded.hair_vitality_score, hair_vitality_score),
+      bronco_level = COALESCE(excluded.bronco_level, bronco_level),
+      posture_status = COALESCE(excluded.posture_status, posture_status),
+      active_diets = COALESCE(excluded.active_diets, active_diets),
+      hobbies = COALESCE(excluded.hobbies, hobbies),
+      modified_at = excluded.modified_at
+  `).run(vision_score, hearing_score, smell_score, taste_score, touch_score,
+    gut_biome_score, dermatology_score, hair_vitality_score,
+    bronco_level, posture_status,
+    JSON.stringify(active_diets || []), JSON.stringify(hobbies || []), now);
+  res.json({ success: true });
+});
+
+// Finance CSV Export
+app.get('/api/finance/export', (req, res) => {
+  const rows = db.prepare('SELECT * FROM finance ORDER BY date DESC').all();
+  const headers = ['id', 'date', 'type', 'category', 'amount', 'note', 'method'];
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))
+  ].join('\n');
+  const dateStr = new Date().toISOString().split('T')[0];
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="growthtrack-finance-${dateStr}.csv"`);
+  res.send(csv);
 });
 
 // 404 handler

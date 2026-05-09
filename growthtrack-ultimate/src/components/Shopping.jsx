@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { ShoppingCart, Plus, Trash2, IndianRupee, Check } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, IndianRupee, Check, XCircle } from 'lucide-react';
 import useStore, {
   selectShopping,
   selectAddShoppingItem,
@@ -14,6 +14,7 @@ const fmtINR = (n) => '₹' + Number(n).toLocaleString('en-IN');
 const CATEGORIES = ['Supplements', 'Equipment', 'Apparel', 'Food', 'Medical', 'Other'];
 const PRIORITIES = ['Urgent', 'High', 'Medium', 'Low'];
 const PRIORITY_COLOR = { Urgent: 'var(--danger)', High: '#e5a50a', Medium: 'var(--success)', Low: 'var(--text-3)' };
+const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
 const EMPTY_FORM = { name: '', category: '', priority: 'Medium', estimatedCost: '', quantity: 1 };
 
 export default function Shopping() {
@@ -26,14 +27,21 @@ export default function Shopping() {
 
   const [form, setForm] = useState(EMPTY_FORM);
 
-  // ── #9 useMemo: summary stats
+  // ── Sorted: Urgent → High → Medium → Low, purchased items last
+  const sortedItems = useMemo(() => [...items].sort((a, b) => {
+    if (a.purchased !== b.purchased) return a.purchased ? 1 : -1;
+    const pa = PRIORITY_ORDER[a.priority] ?? 99;
+    const pb = PRIORITY_ORDER[b.priority] ?? 99;
+    return pa - pb;
+  }), [items]);
+
+  // ── Summary stats
   const { totalCost, purchasedCount, pendingCount } = useMemo(() => ({
     totalCost:      items.reduce((s, i) => s + (i.purchased ? 0 : (i.estimatedCost || 0) * (i.quantity || 1)), 0),
     purchasedCount: items.filter((i) => i.purchased).length,
     pendingCount:   items.filter((i) => !i.purchased).length,
   }), [items]);
 
-  // ── #2 Validated add with toast
   const handleAdd = useCallback(() => {
     if (!form.name.trim()) {
       toast.error('Item name cannot be empty.');
@@ -55,11 +63,18 @@ export default function Shopping() {
     togglePurchased(id);
   }, [togglePurchased]);
 
+  // Clear all purchased items
+  const clearPurchased = useCallback(() => {
+    const purchased = items.filter(i => i.purchased);
+    purchased.forEach(i => deleteItem(i.id));
+    toast.success(`${purchased.length} purchased item${purchased.length !== 1 ? 's' : ''} cleared.`);
+  }, [items, deleteItem, toast]);
+
   const statCards = useMemo(() => [
     { label: 'Total Items',  value: items.length,    icon: ShoppingCart, color: 'var(--accent)' },
     { label: 'Pending',      value: pendingCount,    icon: ShoppingCart, color: 'var(--warning)' },
     { label: 'Purchased',    value: purchasedCount,  icon: Check,        color: 'var(--success)' },
-    { label: 'Est. Cost',    value: fmtINR(totalCost), icon: IndianRupee, color: 'var(--info)' },
+    { label: 'Pending Cost', value: fmtINR(totalCost), icon: IndianRupee, color: 'var(--info)' },
   ], [items.length, pendingCount, purchasedCount, totalCost]);
 
   return (
@@ -114,14 +129,21 @@ export default function Shopping() {
             min="1"
           />
         </div>
-        <button onClick={handleAdd} className="btn-primary">
-          <Plus size={16} /> Add Item
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button onClick={handleAdd} className="btn-primary">
+            <Plus size={16} /> Add Item
+          </button>
+          {purchasedCount > 0 && (
+            <button onClick={clearPurchased} className="btn-ghost" style={{ color: 'var(--danger)', borderColor: 'var(--danger)', fontSize: '0.8rem' }}>
+              <XCircle size={14} /> Clear {purchasedCount} Purchased
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Items List */}
+      {/* Items List — sorted by priority */}
       <div className="item-list">
-        {items.map((item) => (
+        {sortedItems.map((item) => (
           <div
             key={item.id}
             className="glass-card list-card"
@@ -180,3 +202,4 @@ export default function Shopping() {
     </div>
   );
 }
+
