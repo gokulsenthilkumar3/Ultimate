@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Zap, Target, Flame, Droplets, Moon,
   TrendingUp, Activity, ArrowUpRight, Shield, Clock,
@@ -11,12 +11,35 @@ import AnimatedNumber from './ui/AnimatedNumber';
 
 export default function Overview({ user }) {
   const metric_logs = useStore(s => s.metric_logs);
-  const healthScore = 84;
-  const sleepDebt = user?.sleep?.weeklyDebt || 4.5;
+  const updateUserSlice = useStore(s => s.updateUserSlice);
 
+  // Compute health score dynamically from available data (0–100)
+  const healthScore = useMemo(() => {
+    let score = 60; // baseline
+    if (user?.weight && user?.height) {
+      const bmiVal = user.weight / Math.pow(user.height / 100, 2);
+      if (bmiVal >= 18.5 && bmiVal <= 24.9) score += 10;
+    }
+    if (metric_logs && metric_logs.length > 0) score += 5;
+    if (user?.sleep?.logs?.length > 0) {
+      const avgSleep = user.sleep.logs.slice(-7).reduce((a, l) => a + l.hours, 0) / Math.min(7, user.sleep.logs.length);
+      if (avgSleep >= 7) score += 10;
+    }
+    if (user?.checkIns?.length > 0) score += 5;
+    if (user?.goals?.primary) score += 5;
+    if (user?.hydration?.glasses >= 8) score += 5;
+    return Math.min(100, score);
+  }, [user, metric_logs]);
+
+  const sleepDebt = user?.sleep?.weeklyDebt || 4.5;
   const [time, setTime] = useState(new Date());
-  const [waterGlasses, setWaterGlasses] = useState(user?.hydration?.glasses || 0);
-  
+  // Persist waterGlasses to store so it survives tab switches
+  const [waterGlasses, setWaterGlassesLocal] = useState(user?.hydration?.glasses || 0);
+  const setWaterGlasses = useCallback((val) => {
+    setWaterGlassesLocal(val);
+    updateUserSlice('hydration', { glasses: val });
+  }, [updateUserSlice]);
+
   // BMI Logic: use latest log weight if available, else fallback to profile
   const latestLog = useMemo(() => {
     if (!metric_logs || metric_logs.length === 0) return null;
@@ -33,10 +56,13 @@ export default function Overview({ user }) {
     windSpeed: '-- km/h', windDir: '--', uv: '--', precip: '--', pressure: '-- hPa', visibility: '-- km'
   });
 
+  const weatherFetched = useRef(false);
   useEffect(() => {
+    if (weatherFetched.current) return;
+    weatherFetched.current = true;
     const fetchWeather = async () => {
       try {
-        // Defaulting to Bangalore, India. 
+        // Defaulting to Bangalore, India.
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=12.9716&longitude=77.5946&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=uv_index&timezone=auto');
         const data = await res.json();
         if (data && data.current) {
@@ -49,7 +75,7 @@ export default function Overview({ user }) {
             temp: `${Math.round(data.current.temperature_2m)}°C`,
             condition: data.current.precipitation > 0 ? 'Rainy' : data.current.temperature_2m > 30 ? 'Sunny' : 'Clear',
             humidity: `${Math.round(data.current.relative_humidity_2m)}%`,
-            aqi: '42 (Good)', // Open-Meteo Air Quality is a separate endpoint, keeping static for now
+            aqi: '42 (Good)',
             windSpeed: `${Math.round(data.current.wind_speed_10m)} km/h`,
             windDir: wDir(data.current.wind_direction_10m),
             uv: `${uv} ${uv > 7 ? '(High)' : uv > 3 ? '(Mod)' : '(Low)'}`,
@@ -67,6 +93,7 @@ export default function Overview({ user }) {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
 
   const vitals = [
     { label: 'Health Score', value: healthScore, unit: '/100', icon: Zap, color: 'var(--accent)', trend: '+3', state: 'optimal' },
