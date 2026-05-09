@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Brain, Smile, Zap, Heart, Moon, Sun, MessageCircle, Sparkles } from 'lucide-react';
-import useStore, { selectWellnessData, selectUpdateWellnessData } from '../store/useStore';
+import useStore, { selectWellnessData, selectUpdateWellnessData, selectMoodLogs } from '../store/useStore';
 import PageHeader from './ui/PageHeader';
 import StatCard from './ui/StatCard';
 
@@ -10,24 +10,24 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export default function MindWellness({ user }) {
   const storedData = useStore(selectWellnessData);
   const updateWellness = useStore(selectUpdateWellnessData);
+  const moodLogs = useStore(selectMoodLogs);
 
   const data = storedData || {
     moodScore: 7, stressLevel: 4, sleepHours: 7.5, meditationMinutes: 15,
   };
 
-  // Derive mood history from actual check-in logs, not hardcoded fallback
   const moodHistory = useMemo(() => {
-    const checkIns = user?.checkIns || [];
-    if (!checkIns.length) return [];
-    return [...checkIns]
+    if (!Array.isArray(moodLogs) || moodLogs.length === 0) return [];
+    return [...moodLogs]
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-14)
-      .map(ci => ({
-        day: DAY_LABELS[new Date(ci.date).getDay()],
-        score: Math.round((ci.mood / 4) * 10), // mood 0-4 index → 0-10 scale
-        date: ci.date,
+      .map(entry => ({
+        day: DAY_LABELS[new Date(entry.date).getDay()],
+        score: entry.mood,
+        energy: entry.energy,
+        date: entry.date,
       }));
-  }, [user?.checkIns]);
+  }, [moodLogs]);
 
   const handleUpdate = (field, value) => {
     updateWellness({ ...data, [field]: value });
@@ -115,6 +115,11 @@ export default function MindWellness({ user }) {
                   <Tooltip
                     contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
                     itemStyle={{ color: 'var(--accent)', fontWeight: 800 }}
+                    formatter={(value, name, props) => {
+                      if (name === 'score') return [`${value}/10`, 'Mood'];
+                      if (name === 'energy') return [`${value}/10`, 'Energy'];
+                      return [value, name];
+                    }}
                   />
                   <Area type="monotone" dataKey="score" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorMood)" />
                 </AreaChart>
