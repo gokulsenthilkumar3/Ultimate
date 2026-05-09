@@ -56,6 +56,8 @@ const useStore = create(
       wellnessData: null,
 
       moodLogs: [],
+      vitalsLogs: [],
+      medications: [],
 
       workouts: {
         sessions: [],
@@ -97,7 +99,7 @@ const useStore = create(
             training, nutrition, lifestyle,
             medical, physique, assessment, wellness, metricLogs, skills, events,
             financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras,
-            workoutSessions, moodLogs
+            workoutSessions, moodLogs, vitalsLogs, medications
           ] = await Promise.all([
             fetchJSON('/user'),
             fetchJSON('/tasks'),
@@ -124,6 +126,8 @@ const useStore = create(
             fetchJSON('/health_extras'),
             fetchJSON('/workout_sessions'),
             fetchJSON('/mood_logs'),
+            fetchJSON('/vitals_logs'),
+            fetchJSON('/medications'),
           ]);
 
           const newState = {
@@ -149,6 +153,8 @@ const useStore = create(
             entertainment: { media: Array.isArray(media) ? media : [] },
             health_extras: healthExtras || {},
             moodLogs: Array.isArray(moodLogs) ? moodLogs : [],
+            vitalsLogs: Array.isArray(vitalsLogs) ? vitalsLogs : [],
+            medications: Array.isArray(medications) ? medications : [],
             habitLogsByHabit: {},
           };
 
@@ -627,6 +633,25 @@ const useStore = create(
           moodLogs: [log, ...state.moodLogs.filter(l => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date)),
         }));
       },
+
+      addVitalLog: async (log) => {
+        await apiSync('/vitals_logs', 'POST', log);
+        set((state) => ({
+          vitalsLogs: [log, ...state.vitalsLogs].sort((a, b) => b.date.localeCompare(a.date)),
+        }));
+      },
+
+      addMedication: async (medication) => {
+        const res = await apiSync('/medications', 'POST', medication);
+        if (res?.id) {
+          set((state) => ({ medications: [...state.medications, { ...medication, id: res.id }] }));
+        }
+      },
+
+      deleteMedication: async (id) => {
+        await apiSync(`/medications/${id}`, 'DELETE');
+        set((state) => ({ medications: state.medications.filter((m) => m.id !== id) }));
+      },
     }),
     {
       name: 'growthtrack-ultimate-v4',
@@ -760,5 +785,12 @@ export const selectDeleteSubscription = (s) => s.deleteSubscription;
 export const selectWorkouts = (s) => s.workouts;
 export const selectAddWorkoutFromTrainingDay = (s) => s.addWorkoutFromTrainingDay;
 export const selectDeleteWorkoutSession = (s) => s.deleteWorkoutSession;
+
+export const selectVitalsLogs = (s) => s.vitalsLogs;
+export const selectAddVitalLog = (s) => s.addVitalLog;
+
+export const selectMedications = (s) => s.medications;
+export const selectAddMedication = (s) => s.addMedication;
+export const selectDeleteMedication = (s) => s.deleteMedication;
 
 export default useStore;
