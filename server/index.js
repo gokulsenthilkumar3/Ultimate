@@ -200,6 +200,22 @@ const moodLogSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+const vitalLogSchema = z.object({
+  date: z.string(),
+  type: z.string().min(1).max(100),
+  value: z.number().optional(),
+  unit: z.string().max(50).optional(),
+});
+
+const medicationSchema = z.object({
+  id: z.number().int().optional(),
+  name: z.string().min(1).max(200),
+  dose: z.string().max(100).optional(),
+  frequency: z.string().max(100).optional(),
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
+});
+
 function validate(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
@@ -488,6 +504,53 @@ app.post('/api/mood_logs', validate(moodLogSchema), (req, res) => withDB(res, as
   const { date, mood, energy, note } = req.validated;
   const payload = { date, mood, energy, note: note || null };
   const { error } = await supabase.from('mood_logs').upsert(payload, { onConflict: 'date' });
+  if (error) throw error;
+  res.json({ success: true });
+}));
+
+// Vitals logs
+app.get('/api/vitals_logs', (req, res) => withDB(res, async () => {
+  const { from, to, type, limit = 90 } = req.query;
+  let query = supabase.from('vitals_logs').select('*').order('date', { ascending: false });
+  if (from) query = query.gte('date', from);
+  if (to) query = query.lte('date', to);
+  if (type) query = query.eq('type', type);
+  const { data, error } = await query.limit(Number(limit));
+  if (error) throw error;
+  res.json(data);
+}));
+
+app.post('/api/vitals_logs', validate(vitalLogSchema), (req, res) => withDB(res, async () => {
+  const { date, type, value, unit } = req.validated;
+  const payload = { date, type, value, unit };
+  const { error } = await supabase.from('vitals_logs').insert(payload);
+  if (error) throw error;
+  res.json({ success: true });
+}));
+
+// Medications
+app.get('/api/medications', (req, res) => withDB(res, async () => {
+  const { data, error } = await supabase.from('medications').select('*').order('start_date', { ascending: true });
+  if (error) throw error;
+  res.json(data);
+}));
+
+app.post('/api/medications', validate(medicationSchema), (req, res) => withDB(res, async () => {
+  const { id, name, dose, frequency, start_date, end_date } = req.validated;
+  const payload = { name, dose, frequency, start_date, end_date };
+  if (id) {
+    const { error } = await supabase.from('medications').update(payload).eq('id', id);
+    if (error) throw error;
+    res.json({ success: true, id });
+  } else {
+    const { data, error } = await supabase.from('medications').insert(payload).select('id').single();
+    if (error) throw error;
+    res.json({ success: true, id: data.id });
+  }
+}));
+
+app.delete('/api/medications/:id', (req, res) => withDB(res, async () => {
+  const { error } = await supabase.from('medications').delete().eq('id', Number(req.params.id));
   if (error) throw error;
   res.json({ success: true });
 }));
