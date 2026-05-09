@@ -31,7 +31,7 @@ export default function Overview({ user }) {
     return Math.min(100, score);
   }, [user, metric_logs]);
 
-  const sleepDebt = user?.sleep?.weeklyDebt || 4.5;
+  const sleepDebt = user?.sleep?.weeklyDebt ?? null;
   const [time, setTime] = useState(new Date());
   // Persist waterGlasses to store so it survives tab switches
   const [waterGlasses, setWaterGlassesLocal] = useState(user?.hydration?.glasses || 0);

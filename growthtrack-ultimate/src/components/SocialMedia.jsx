@@ -8,6 +8,7 @@ export default function SocialMedia() {
   const fetchInitialData = useStore(state => state.fetchInitialData);
   const [socialData, setSocialData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [newPlatform, setNewPlatform] = useState('');
   const toast = useToast();
 
   useEffect(() => {
@@ -24,7 +25,7 @@ export default function SocialMedia() {
     setIsSaving(true);
     try {
       const updatedUser = { ...user, socialMedia: socialData };
-      await apiSync('/user_profile', 'POST', updatedUser);
+      await apiSync('/user_profile', 'PUT', updatedUser);
       toast.success('Social graph synchronized.');
       fetchInitialData();
     } catch (err) {
@@ -78,12 +79,33 @@ export default function SocialMedia() {
         ))}
 
         {/* Add Custom Platform Card */}
-        <div className="glass-card" style={{ padding: '1.5rem', border: '1px dashed var(--border)', background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '160px', opacity: 0.6, cursor: 'pointer' }} onClick={() => {
-           const name = prompt('Enter new platform name:');
-           if (name) setSocialData(prev => ({ ...prev, [name]: '' }));
-        }}>
-           <Globe size={24} style={{ marginBottom: '10px' }} />
-           <p style={{ fontWeight: 800 }}>Add Custom Platform</p>
+        <div className="glass-card" style={{ padding: '1.5rem', border: '1px dashed var(--border)', background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '160px', gap: '0.75rem' }}>
+           <Globe size={24} style={{ marginBottom: '4px', opacity: 0.5 }} />
+           <p style={{ fontWeight: 800, marginBottom: '0.25rem' }}>Add Custom Platform</p>
+           <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+             <input
+               className="form-input"
+               placeholder="Platform name…"
+               value={newPlatform}
+               onChange={e => setNewPlatform(e.target.value)}
+               onKeyDown={e => {
+                 if (e.key === 'Enter' && newPlatform.trim()) {
+                   setSocialData(prev => ({ ...prev, [newPlatform.trim()]: '' }));
+                   setNewPlatform('');
+                 }
+               }}
+               style={{ flex: 1, fontSize: '0.85rem' }}
+             />
+             <button className="btn-primary" style={{ padding: '8px 12px' }}
+               disabled={!newPlatform.trim()}
+               onClick={() => {
+                 if (newPlatform.trim()) {
+                   setSocialData(prev => ({ ...prev, [newPlatform.trim()]: '' }));
+                   setNewPlatform('');
+                 }
+               }}
+             >Add</button>
+           </div>
         </div>
       </div>
     </div>

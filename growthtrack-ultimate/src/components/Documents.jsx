@@ -1,8 +1,68 @@
-import React, { useState } from 'react';
-import { FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2, Shield, Search, File } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2, Shield, Search, File, X, Lock, Globe } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import ConfirmDialog from './ui/ConfirmDialog';
 import useStore, { selectDocuments, selectAddDocument, selectDeleteDocument } from '../store/useStore';
+
+function UploadModal({ onUpload, onClose }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileType, setFileType] = useState('Private');
+  const fileRef = useRef();
+
+  const handleFileChange = (e) => {
+    const f = e.target.files[0];
+    if (f) setSelectedFile(f);
+  };
+
+  const handleConfirm = () => {
+    if (!selectedFile) return;
+    const sizeKB = selectedFile.size / 1024;
+    const size = sizeKB < 1024
+      ? `${sizeKB.toFixed(1)} KB`
+      : `${(sizeKB / 1024).toFixed(2)} MB`;
+    onUpload({ name: selectedFile.name, size, type: fileType, date: new Date().toLocaleDateString() });
+    onClose();
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div className="glass-card fade-in" style={{ width: '100%', maxWidth: '420px', padding: '2rem', position: 'relative' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} /></button>
+        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Digital Vault</p>
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '1.5rem' }}>Upload File</h3>
+
+        <div
+          onClick={() => fileRef.current?.click()}
+          style={{ border: '2px dashed var(--border)', borderRadius: '12px', padding: '2rem', textAlign: 'center', cursor: 'pointer', marginBottom: '1.25rem', background: selectedFile ? 'var(--bg-elevated)' : 'transparent', transition: 'all 0.2s' }}
+        >
+          <UploadCloud size={32} color="var(--accent)" style={{ margin: '0 auto 0.75rem' }} />
+          {selectedFile
+            ? <p style={{ fontWeight: 700 }}>{selectedFile.name}</p>
+            : <p style={{ color: 'var(--text-3)' }}>Click to select a file</p>
+          }
+          {selectedFile && <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '4px' }}>{(selectedFile.size / 1024).toFixed(1)} KB</p>}
+          <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={handleFileChange} />
+        </div>
+
+        <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Visibility</label>
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          {['Private', 'Public'].map(t => (
+            <button key={t} onClick={() => setFileType(t)}
+              style={{ flex: 1, padding: '10px', borderRadius: '10px', border: `2px solid ${fileType === t ? 'var(--accent)' : 'var(--border)'}`, background: fileType === t ? 'var(--accent-soft)' : 'transparent', color: fileType === t ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            >
+              {t === 'Private' ? <Lock size={14} /> : <Globe size={14} />} {t}
+            </button>
+          ))}
+        </div>
+
+        <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleConfirm} disabled={!selectedFile}>
+          <UploadCloud size={16} /> Upload File
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 export default function Documents() {
   const documents = useStore(selectDocuments);
@@ -13,22 +73,17 @@ export default function Documents() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
-  const handleUpload = async () => {
-    const filename = prompt("Enter filename to upload:");
-    if (!filename) return;
-    
-    const size = `${(Math.random() * 10).toFixed(1)} MB`;
-    const type = Math.random() > 0.5 ? 'Private' : 'Public';
-    const date = new Date().toLocaleDateString();
-
+  const handleUpload = async (fileData) => {
     try {
-      await addDocument({ name: filename, size, type, date });
-      toast.success(`${filename} uploaded successfully.`);
+      await addDocument(fileData);
+      toast.success(`${fileData.name} uploaded successfully.`);
     } catch {
       toast.error('Upload failed');
     }
   };
+
 
   const handleDelete = (id) => {
     setConfirmDelete(id);
@@ -52,6 +107,7 @@ export default function Documents() {
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+      {showUploadModal && <UploadModal onUpload={handleUpload} onClose={() => setShowUploadModal(false)} />}
       <ConfirmDialog
         open={!!confirmDelete}
         title="Purge document?"
@@ -72,7 +128,7 @@ export default function Documents() {
           <button className="btn-ghost" onClick={() => toast.success('Connecting to Google Drive...')}>
             <Cloud size={16} style={{ marginRight: '8px' }} /> Sync G-Drive
           </button>
-          <button className="btn-primary" onClick={handleUpload}>
+          <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
             <UploadCloud size={16} style={{ marginRight: '8px' }} /> Upload File
           </button>
         </div>
@@ -83,9 +139,9 @@ export default function Documents() {
            <h3 className="card-title"><HardDrive size={18} color="#10b981" /> Local Vault</h3>
            <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginBottom: '1rem' }}>Encrypted storage for highly sensitive documents.</p>
            <div style={{ background: 'var(--bg-dark)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-             <div style={{ width: '45%', height: '100%', background: '#10b981' }} />
+             <div style={{ width: `${Math.min(100, (documents.length / 100) * 100).toFixed(0)}%`, height: '100%', background: '#10b981' }} />
            </div>
-           <p style={{ fontSize: '0.75rem', marginTop: '8px', textAlign: 'right' }}>45% Used (45GB / 100GB)</p>
+           <p style={{ fontSize: '0.75rem', marginTop: '8px', textAlign: 'right' }}>{documents.length} / 100 files used</p>
          </div>
          
          <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--accent)' }}>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { GitBranch, Star, GitFork, ExternalLink, Code2, Clock, Circle, Search, ArrowDownUp } from 'lucide-react';
+import { GitBranch, Star, GitFork, ExternalLink, Code2, Clock, Circle, Search, ArrowDownUp, Settings } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import { useToast } from '../hooks/useToast';
+import useStore from '../store/useStore';
 
 const LANGUAGE_COLORS = {
   JavaScript: '#f1e05a',
@@ -20,15 +21,28 @@ const LANGUAGE_COLORS = {
 };
 
 export default function Projects() {
+  const user = useStore(s => s.user);
+  const updateUserSlice = useStore(s => s.updateUserSlice);
+
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('updated'); // updated, stars, forks, name
+  const [sortBy, setSortBy] = useState('updated');
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
   const toast = useToast();
 
+  // Read github username from user profile, fall back gracefully
+  const githubUsername = user?.githubUsername || user?.socialMedia?.GitHub?.replace(/.*github\.com\//, '') || '';
+
   useEffect(() => {
-    fetch('https://api.github.com/users/gokulsenthilkumar3/repos?sort=updated&per_page=100')
+    if (!githubUsername) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    fetch(`https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=100`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch repositories');
         return res.json();
@@ -42,7 +56,15 @@ export default function Projects() {
         toast.error('Failed to load GitHub projects');
         setLoading(false);
       });
-  }, [toast]);
+  }, [githubUsername, toast]);
+
+  const handleSaveUsername = () => {
+    if (!usernameInput.trim()) return;
+    updateUserSlice('githubUsername', usernameInput.trim());
+    toast.success(`GitHub username set to @${usernameInput.trim()}`);
+    setEditingUsername(false);
+    setUsernameInput('');
+  };
 
   const filteredRepos = repos.filter(repo => {
     // 1. Type Filter

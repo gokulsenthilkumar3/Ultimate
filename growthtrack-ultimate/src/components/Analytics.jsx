@@ -145,22 +145,29 @@ export default function Analytics({ user }) {
             <p style={{ fontSize: '0.75rem', fontWeight: 800, color: velocity.color, marginTop: '8px' }}>{velocity.status}</p>
          </div>
          <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6' }}>
-            <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>Avg Recovery (HRV)</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-               <Activity size={20} color="#8b5cf6" />
-               <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>{radarData.find(d => d.metric === 'Recovery').value}</span>
-               <span style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>ms</span>
-            </div>
-            <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#8b5cf6', marginTop: '8px' }}>STABLE</p>
-         </div>
-         <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
-            <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>Sleep Consistency</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-               <TrendingUp size={20} color="#10b981" />
-               <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>{radarData.find(d => d.metric === 'Sleep').value}%</span>
-            </div>
-            <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>IMPROVING</p>
-         </div>
+          <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>Avg Recovery (HRV)</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+             <Activity size={20} color="#8b5cf6" />
+             <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>
+               {logs.some(l => l.hrv) ? `${radarData.find(d => d.metric === 'Recovery').value}ms` : '—'}
+             </span>
+          </div>
+          <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#8b5cf6', marginTop: '8px' }}>
+            {logs.some(l => l.hrv) ? 'FROM LOGS' : 'NO DATA'}
+          </p>
+       </div>
+       <div className="glass-card" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
+          <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>Sleep Consistency</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+             <TrendingUp size={20} color="#10b981" />
+             <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>
+               {logs.some(l => l.sleep) ? `${radarData.find(d => d.metric === 'Sleep').value}%` : '—'}
+             </span>
+          </div>
+          <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>
+            {logs.some(l => l.sleep) ? 'FROM LOGS' : 'NO DATA'}
+          </p>
+       </div>
       </div>
 
       <div className="glass-card" style={{ padding: '2rem', minHeight: '450px' }}>
@@ -171,6 +178,15 @@ export default function Analytics({ user }) {
               <p className="text-secondary" style={{ fontSize: '0.8rem' }}>Aggregated weekly averages vs baseline.</p>
             </div>
             <div style={{ height: '350px' }}>
+              {weeklyData.length === 0 ? (
+                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: 'var(--text-3)' }}>
+                  <BarChart3 size={40} style={{ opacity: 0.25 }} />
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontWeight: 700, marginBottom: '4px' }}>No data yet</p>
+                    <p style={{ fontSize: '0.82rem' }}>Log weight, sleep, or check-ins to see your trend charts.</p>
+                  </div>
+                </div>
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -182,6 +198,7 @@ export default function Analytics({ user }) {
                   <Line yAxisId="right" type="monotone" dataKey="weight" name="Weight (kg)" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 4 }} />
                 </ComposedChart>
               </ResponsiveContainer>
+              )}
             </div>
           </>
         )}
@@ -202,6 +219,12 @@ export default function Analytics({ user }) {
 
         {tab === 'weight' && (
           <div style={{ height: '400px' }}>
+            {weightData.length === 0 ? (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: 'var(--text-3)' }}>
+                <TrendingUp size={40} style={{ opacity: 0.25 }} />
+                <p style={{ fontSize: '0.82rem' }}>Log weight data via Daily Check-in to see your trend.</p>
+              </div>
+            ) : (
              <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={weightData}>
                   <defs>
@@ -217,6 +240,7 @@ export default function Analytics({ user }) {
                   <Area type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#weightGrad)" />
                 </AreaChart>
              </ResponsiveContainer>
+            )}
           </div>
         )}
       </div>
