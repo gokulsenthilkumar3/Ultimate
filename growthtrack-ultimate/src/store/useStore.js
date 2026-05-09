@@ -17,7 +17,6 @@ export async function apiSync(endpoint, method = 'POST', data = null) {
     if (data) options.body = JSON.stringify(data);
     const res = await fetch(`${API_BASE}${endpoint}`, options);
     if (!res.ok) throw new Error(`HTTP ${res.status} on ${endpoint}`);
-    // Guard: 204 No Content and other empty bodies have no JSON to parse
     const text = await res.text();
     return text ? JSON.parse(text) : null;
   } catch (e) {
@@ -26,51 +25,28 @@ export async function apiSync(endpoint, method = 'POST', data = null) {
   }
 }
 
-// Data is now fetched from the backend API. 
-// No hardcoded data is maintained in the application source code.
-
-
-/**
- * GrowthTrack Ultimate — Zustand Store
- *
- * Replaces the monolithic `useLocalStorage('ultimate_user', USER)` pattern.
- * Each module has its own slice and actions so components only re-render
- * when their specific data changes.
- *
- * Persisted to localStorage via zustand/middleware persist.
- */
 const useStore = create(
   persist(
     (set, get) => ({
-      // ── UI State (not persisted — handled separately)
       theme: 'dark',
       palette: 'gold',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards'],
       isLoading: false,
-      serverStatus: 'unknown', // 'online' | 'offline' | 'unknown'
+      serverStatus: 'unknown',
       onboardingComplete: false,
-      lastCheckIn: null, // ISO date string e.g. '2026-05-03'
+      lastCheckIn: null,
 
-      // ── Core user profile (hydrated from database)
       user: null,
       skills: [],
       calendar_events: [],
 
-      // ── Finance slice
       finance: { transactions: [], budgets: [] },
-
-      // ── Shopping slice
       shopping: { items: [] },
-
-      // ── Entertainment slice
       entertainment: { media: [] },
-
-      // ── Timesheet slice
       timesheet: { sessions: [] },
       metric_logs: [],
 
-      // ── Migrated DB Slices (hydrated from DB)
       trainingPlan: null,
       nutritionStrategy: null,
       lifestyleTips: [],
@@ -79,36 +55,15 @@ const useStore = create(
       assessmentQA: [],
       wellnessData: null,
 
-      // ── Workout slice (DB-backed)
+      moodLogs: [],
+
       workouts: {
         sessions: [],
-        exercisesBySession: {}, // { [sessionId]: Exercise[] }
+        exercisesBySession: {},
       },
 
-      // UI Actions
-      // ──────────────────────────────────────────────────────────
       setLastCheckIn: (date) => set({ lastCheckIn: date }),
-      setUser: (user) => set({ user }),
-      setOnboardingComplete: (val) => set({ onboardingComplete: val }),
-      setTheme: (theme) => set({ theme }),
-      setPalette: (palette) => set({ palette }),
-      setActiveTab: (activeTab) => {
-        set({ activeTab });
-        // Scroll to top on tab change
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'instant' });
-      },
-      togglePinnedTab: (tabId) => set((state) => {
-        if (state.pinnedTabs.includes(tabId)) {
-          return { pinnedTabs: state.pinnedTabs.filter(id => id !== tabId) };
-        } else {
-          return { pinnedTabs: [...state.pinnedTabs, tabId] };
-        }
-      }),
 
-      // ──────────────────────────────────────────────────────────
-      // User Actions — granular updates
-      // ──────────────────────────────────────────────────────────
-      /** Replace the entire user object (used by legacy setUser callers) */
       setUser: (userOrUpdater) => {
         set((state) => {
           const newUser = typeof userOrUpdater === 'function'
@@ -119,7 +74,6 @@ const useStore = create(
         });
       },
 
-      /** Merge a partial update into a user sub-key (e.g., 'lifestyle') */
       updateUserSlice: (key, data) => {
         set((state) => {
           const newUser = {
@@ -131,9 +85,6 @@ const useStore = create(
         });
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Sync Actions
-      // ──────────────────────────────────────────────────────────
       fetchInitialData: async () => {
         set({ isLoading: true });
         const fetchJSON = async (ep) => await apiSync(ep, 'GET');
@@ -144,7 +95,7 @@ const useStore = create(
             training, nutrition, lifestyle,
             medical, physique, assessment, wellness, metricLogs, skills, events,
             financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras,
-            workoutSessions
+            workoutSessions, moodLogs
           ] = await Promise.all([
             fetchJSON('/user'),
             fetchJSON('/tasks'),
@@ -170,6 +121,7 @@ const useStore = create(
             fetchJSON('/entertainment'),
             fetchJSON('/health_extras'),
             fetchJSON('/workout_sessions'),
+            fetchJSON('/mood_logs'),
           ]);
 
           const newState = {
@@ -194,6 +146,7 @@ const useStore = create(
             habits: Array.isArray(habits) ? habits : [],
             entertainment: { media: Array.isArray(media) ? media : [] },
             health_extras: healthExtras || {},
+            moodLogs: Array.isArray(moodLogs) ? moodLogs : [],
           };
 
           if (user) newState.user = user;
@@ -213,7 +166,6 @@ const useStore = create(
 
           set(newState);
 
-          // Merge tasks into user object
           if (Array.isArray(tasks) && tasks.length > 0) {
             const pending = tasks.filter(t => !t.done);
             const completed = tasks.filter(t => t.done);
@@ -242,9 +194,6 @@ const useStore = create(
         await apiSync('/health_extras', 'PUT', data);
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Workout Actions
-      // ──────────────────────────────────────────────────────────
       fetchWorkoutExercisesForSession: async (sessionId) => {
         const exercises = await apiSync(`/workout_sessions/${sessionId}/exercises`, 'GET');
         if (Array.isArray(exercises)) {
@@ -285,7 +234,6 @@ const useStore = create(
         };
         await apiSync(`/workout_sessions/${sessionRes.id}/exercises`, 'POST', exercisesPayload);
 
-        // Optimistically add to local state
         set((state) => ({
           workouts: {
             sessions: [
@@ -315,16 +263,11 @@ const useStore = create(
         }));
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Finance Actions
-      // ──────────────────────────────────────────────────────────
       addTransaction: async (tx) => {
         const payload = { ...tx, id: Date.now().toString(), date: tx.date || new Date().toISOString().split('T')[0] };
-        // Optimistic update
         set((state) => ({
           finance: { ...state.finance, transactions: [payload, ...state.finance.transactions] },
         }));
-        // Persist to DB
         apiSync('/finance', 'POST', payload).catch(e => console.warn('[Finance] sync failed', e));
       },
 
@@ -350,8 +293,6 @@ const useStore = create(
         apiSync(`/budgets/${id}`, 'DELETE').catch(() => {});
       },
 
-      // Shopping Actions
-      // ──────────────────────────────────────────────────────────
       addShoppingItem: async (item) => {
         const res = await apiSync('/shopping', 'POST', item);
         if (res?.id) {
@@ -392,9 +333,6 @@ const useStore = create(
         }
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Task Actions
-      // ──────────────────────────────────────────────────────────
       addTask: async (task) => {
         const res = await apiSync('/tasks', 'POST', task);
         if (res?.id) {
@@ -480,9 +418,6 @@ const useStore = create(
         }
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Timesheet Actions
-      // ──────────────────────────────────────────────────────────
       addTimesheetSession: async (session) => {
         const res = await apiSync('/timesheet', 'POST', session);
         if (res?.id) {
@@ -505,9 +440,6 @@ const useStore = create(
         }));
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Entertainment Actions
-      // ──────────────────────────────────────────────────────────
       addMediaItem: async (item) => {
         const res = await apiSync('/entertainment', 'POST', item);
         if (res?.id) {
@@ -534,7 +466,7 @@ const useStore = create(
         const item = get().entertainment.media.find(m => m.id === id);
         if (item) {
           const updates = { ...item, [field]: value };
-          apiSync('/entertainment', 'POST', updates); // POST handles updates if id is present
+          apiSync('/entertainment', 'POST', updates);
           set((state) => ({
             entertainment: {
               ...state.entertainment,
@@ -546,9 +478,6 @@ const useStore = create(
         }
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Notes Actions
-      // ──────────────────────────────────────────────────────────
       addNote: async (note) => {
         const res = await apiSync('/notes', 'POST', note);
         if (res?.id) {
@@ -564,9 +493,6 @@ const useStore = create(
         set((state) => ({ notes: state.notes.map(n => n.id === id ? { ...n, ...updates } : n) }));
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Goal Actions
-      // ──────────────────────────────────────────────────────────
       addGoal: async (goal) => {
         const res = await apiSync('/goals', 'POST', goal);
         if (res?.id) {
@@ -582,9 +508,6 @@ const useStore = create(
         set((state) => ({ goals: state.goals.map(g => g.id === id ? { ...g, ...updates } : g) }));
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Sleep Actions
-      // ──────────────────────────────────────────────────────────
       saveSleepLog: async (log) => {
         await apiSync('/sleep_logs', 'POST', log);
         set((state) => ({
@@ -592,9 +515,6 @@ const useStore = create(
         }));
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Document Actions
-      // ──────────────────────────────────────────────────────────
       addDocument: async (doc) => {
         const res = await apiSync('/documents', 'POST', doc);
         if (res?.id) {
@@ -606,9 +526,6 @@ const useStore = create(
         set((state) => ({ documents: state.documents.filter(d => d.id !== id) }));
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Habit Actions
-      // ──────────────────────────────────────────────────────────
       addHabit: async (habit) => {
         const res = await apiSync('/habits', 'POST', habit);
         if (res?.id) {
@@ -624,9 +541,6 @@ const useStore = create(
         set((state) => ({ habits: state.habits.map(h => h.id === id ? { ...h, ...updates } : h) }));
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Subscription Actions
-      // ──────────────────────────────────────────────────────────
       addSubscription: async (sub) => {
         const res = await apiSync('/subscriptions', 'POST', sub);
         if (res?.id) {
@@ -638,9 +552,6 @@ const useStore = create(
         set((state) => ({ subscriptions: state.subscriptions.filter(s => s.id !== id) }));
       },
 
-      // ──────────────────────────────────────────────────────────
-      // Singleton Persisted Actions
-      // ──────────────────────────────────────────────────────────
       updateTrainingPlan: async (data) => {
         set({ trainingPlan: data });
         apiSync('/training_plan', 'POST', data);
@@ -677,30 +588,30 @@ const useStore = create(
         set({ wellnessData: data });
         apiSync('/wellness_data', 'POST', data);
       },
+
+      addMoodLog: async (log) => {
+        await apiSync('/mood_logs', 'POST', log);
+        set((state) => ({
+          moodLogs: [log, ...state.moodLogs.filter(l => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date)),
+        }));
+      },
     }),
     {
       name: 'growthtrack-ultimate-v4',
       storage: createJSONStorage(() => localStorage),
       version: 4,
-      // Only persist UI preferences and local fallback data
-      // NEVER persist isLoading or serverStatus — they are transient runtime state
       partialize: (state) => ({
         theme: state.theme,
         palette: state.palette,
-        // activeTab intentionally NOT persisted — app always boots on Overview
-        // to prevent landing on a crashed/empty tab after a failed session.
         pinnedTabs: state.pinnedTabs,
-        // Persist finance/shopping/entertainment locally as fallback if server is offline
         finance: state.finance,
         entertainment: state.entertainment,
         timesheet: state.timesheet,
         shopping: state.shopping,
         onboardingComplete: state.onboardingComplete,
         lastCheckIn: state.lastCheckIn,
-        // Note: isLoading and serverStatus are intentionally NOT persisted
       }),
       migrate: (persistedState, version) => {
-        // Clean migration — no dependency on deleted USER constant
         try {
           if (version < 4) {
             const oldTheme = localStorage.getItem('ultimate_theme');
@@ -709,7 +620,6 @@ const useStore = create(
             if (oldPalette) persistedState.palette = JSON.parse(oldPalette);
           }
         } catch {
-          // silent — start fresh
         }
         return persistedState;
       },
@@ -717,7 +627,6 @@ const useStore = create(
   )
 );
 
-// ── Granular selectors (stable references, prevent unnecessary re-renders)
 export const selectUser = (s) => s.user;
 export const selectSetUser = (s) => s.setUser;
 export const selectUpdateUserSlice = (s) => s.updateUserSlice;
@@ -728,7 +637,7 @@ export const selectActiveTab = (s) => s.activeTab;
 export const selectPinnedTabs = (s) => s.pinnedTabs;
 export const selectSetTheme = (s) => s.setTheme;
 export const selectSetPalette = (s) => s.setPalette;
-export const selectSetActiveTab = (s) => s.setActiveTab;
+export const selectActiveTabSetter = (s) => s.setActiveTab;
 export const selectTogglePinnedTab = (s) => s.togglePinnedTab;
 export const selectOnboardingComplete = (s) => s.onboardingComplete;
 export const selectSetOnboardingComplete = (s) => s.setOnboardingComplete;
@@ -779,6 +688,9 @@ export const selectCalendarEvents = (s) => s.calendar_events;
 export const selectUpdateCalendarEvents = (s) => s.updateCalendarEvents;
 export const selectWellnessData = (s) => s.wellnessData;
 export const selectUpdateWellnessData = (s) => s.updateWellnessData;
+
+export const selectMoodLogs = (s) => s.moodLogs;
+export const selectAddMoodLog = (s) => s.addMoodLog;
 
 export const selectAddBudget = (s) => s.addBudget;
 export const selectDeleteBudget = (s) => s.deleteBudget;
