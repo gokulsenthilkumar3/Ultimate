@@ -176,6 +176,23 @@ const entertainmentSchema = z.object({
   poster: z.string().url().optional().or(z.literal(''))
 });
 
+const workoutSessionSchema = z.object({
+  date: z.string(),
+  notes: z.string().max(500).optional(),
+  duration_minutes: z.number().int().min(0).optional(),
+});
+
+const workoutExercisesSchema = z.object({
+  session_id: z.number().int(),
+  exercises: z.array(z.object({
+    exercise_name: z.string().min(1).max(200),
+    sets: z.number().int().min(1).optional(),
+    reps: z.number().int().min(1).optional(),
+    weight_kg: z.number().nonnegative().optional(),
+    notes: z.string().max(300).optional(),
+  })).min(1),
+});
+
 function validate(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
@@ -393,6 +410,60 @@ app.post('/api/metric_logs', (req, res) => withDB(res, async () => {
   const { data, error } = await supabase.from('metric_logs').insert({ data: JSON.stringify(rest), date }).select('id').single();
   if (error) throw error;
   res.json({ id: data.id });
+}));
+
+// Workout Sessions
+app.get('/api/workout_sessions', (req, res) => withDB(res, async () => {
+  const { from, to } = req.query;
+  let query = supabase.from('workout_sessions').select('*').order('date', { ascending: false }).order('created_at', { ascending: false }).limit(60);
+  if (from) query = query.gte('date', from);
+  if (to) query = query.lte('date', to);
+  const { data, error } = await query;
+  if (error) throw error;
+  res.json(data);
+}));
+
+app.post('/api/workout_sessions', validate(workoutSessionSchema), (req, res) => withDB(res, async () => {
+  const { date, notes, duration_minutes } = req.validated;
+  if (!date) return res.status(422).json({ error: 'date is required' });
+  const payload = { date, notes: notes || null, duration_minutes: duration_minutes || null };
+  const { data, error } = await supabase.from('workout_sessions').insert(payload).select('id').single();
+  if (error) throw error;
+  res.json({ id: data.id });
+}));
+
+app.delete('/api/workout_sessions/:id', (req, res) => withDB(res, async () => {
+  const { error } = await supabase.from('workout_sessions').delete().eq('id', Number(req.params.id));
+  if (error) throw error;
+  res.json({ success: true });
+}));
+
+// Workout Exercises for a session
+app.get('/api/workout_sessions/:id/exercises', (req, res) => withDB(res, async () => {
+  const sessionId = Number(req.params.id);
+  const { data, error } = await supabase.from('workout_exercises').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
+  if (error) throw error;
+  res.json(data);
+}));
+
+app.post('/api/workout_sessions/:id/exercises', (req, res) => withDB(res, async () => {
+  const sessionId = Number(req.params.id);
+  const result = workoutExercisesSchema.safeParse({ session_id: sessionId, exercises: req.body.exercises });
+  if (!result.success) {
+    return res.status(422).json({ error: 'Validation failed', issues: result.error.issues });
+  }
+  const { exercises } = result.data;
+  const rows = exercises.map(e => ({
+    session_id: sessionId,
+    exercise_name: e.exercise_name,
+    sets: e.sets || null,
+    reps: e.reps || null,
+    weight_kg: e.weight_kg || null,
+    notes: e.notes || null,
+  }));
+  const { error } = await supabase.from('workout_exercises').insert(rows);
+  if (error) throw error;
+  res.json({ success: true });
 }));
 
 // Generic singleton tables
