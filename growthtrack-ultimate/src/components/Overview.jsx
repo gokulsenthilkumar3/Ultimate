@@ -115,7 +115,10 @@ export default function Overview({ user }) {
       {/* Top Banner */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ flex: 1 }}>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Systems Check: {time.toLocaleTimeString()}</p>
+          <p className="label-caps" style={{ color: 'var(--success)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
+            API ONLINE
+          </p>
           <h2 className="text-display" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.8rem)', letterSpacing: '-0.02em', lineHeight: 1 }}>
             {greeting}, <span style={{ color: 'var(--accent)' }}>{user?.name?.split(' ')[0] || 'Operator'}</span>
           </h2>

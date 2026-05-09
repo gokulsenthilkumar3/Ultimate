@@ -90,6 +90,14 @@ export default function Finance() {
           <p className="text-secondary">Track Axio, Slice, UPI, and bank flow month-to-month.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button 
+            onClick={() => window.open('http://localhost:5000/api/finance/export', '_blank')}
+            className="btn-ghost" 
+            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderColor: 'var(--accent)', color: 'var(--accent)' }}
+          >
+            <ArrowDownRight size={14} style={{ marginRight: '6px' }} />
+            CSV EXPORT
+          </button>
           <input 
             type="month" 
             value={selectedMonth} 
@@ -292,11 +300,18 @@ export default function Finance() {
                      Total budget limits: <strong style={{ color: 'var(--text-1)' }}>{fmtINR(budgets.reduce((a, b) => a + b.limit_amount, 0))}</strong><br/>
                      Total monthly expenses: <strong style={{ color: 'var(--text-1)' }}>{fmtINR(expenses)}</strong>
                    </p>
-                   {expenses > budgets.reduce((a, b) => a + b.limit_amount, 0) && budgets.length > 0 ? (
-                     <p style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 700 }}>⚠️ You have exceeded your total defined budgets!</p>
-                   ) : (
-                     <p style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 700 }}>✅ You are within your total defined budgets.</p>
-                   )}
+                   {(() => {
+                     const totalLimits = budgets.reduce((a, b) => a + b.limit_amount, 0);
+                     if (totalLimits === 0) return null;
+                     const ratio = expenses / totalLimits;
+                     if (ratio > 1) {
+                       return <p style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 700 }}>⚠️ You have exceeded your total defined budgets!</p>;
+                     } else if (ratio >= 0.8) {
+                       return <p style={{ fontSize: '0.8rem', color: 'var(--warning)', fontWeight: 700 }}>⚠️ Warning: You have consumed {(ratio * 100).toFixed(0)}% of your budget limit!</p>;
+                     } else {
+                       return <p style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 700 }}>✅ You are within your total defined budgets.</p>;
+                     }
+                   })()}
                 </div>
               </div>
            </div>

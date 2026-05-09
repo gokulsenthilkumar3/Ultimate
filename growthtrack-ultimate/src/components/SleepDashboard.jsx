@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Legend
 } from 'recharts';
 import { Moon, Sun, Zap, Clock, TrendingUp, AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-import useStore, { selectSleepLogs, selectSaveSleepLog } from '../store/useStore';
+import useStore, { selectSleepLogs, selectSaveSleepLog, apiSync } from '../store/useStore';
 
 const SLEEP_TIPS = [
   { icon: Moon, tip: 'Aim for consistent bed/wake times within 30-min window', priority: 'HIGH' },
@@ -15,11 +15,13 @@ const SLEEP_TIPS = [
   { icon: TrendingUp, tip: 'Progressive resistance training improves slow-wave sleep by ~15%', priority: 'LOW' },
 ];
 const PRIORITY_COLOR = { HIGH: '#ef4444', MED: '#f59e0b', LOW: '#22c55e' };
+const QUALITY_LABELS = { 1: 'Terrible', 2: 'Very Bad', 3: 'Bad', 4: 'Below Avg', 5: 'Average', 6: 'Above Avg', 7: 'Good', 8: 'Very Good', 9: 'Excellent', 10: 'Perfect' };
 
 const buildChartData = (logs) =>
   [...logs].reverse().slice(-14).map((entry, i) => {
     const hrs = parseFloat(entry.duration) || 0;
-    const score = Math.min(100, Math.round(30 + (hrs / 9) * 70));
+    // Corrected: 8h = 100 score (0h = 0, linear — old formula gave 30 even for 0h sleep)
+    const score = Math.min(100, Math.round((hrs / 8) * 100));
     return {
       day: entry.date ? entry.date.slice(5) : `D${i + 1}`,
       hours: +hrs.toFixed(1),
@@ -56,6 +58,16 @@ export default function SleepDashboard() {
     quality: 7, notes: ''
   });
   const [saving, setSaving] = useState(false);
+
+  const handleDeleteEntry = useCallback(async (date) => {
+    try {
+      await apiSync(`/sleep_logs/${date}`, 'DELETE');
+      toast.success('Entry deleted');
+      // Refresh store
+      const fetchData = useStore.getState().fetchInitialData;
+      if (fetchData) fetchData();
+    } catch { toast.error('Delete failed'); }
+  }, [toast]);
 
   const handleLogSleep = async () => {
     if (!logForm.date) return toast.error('Date is required');
@@ -167,7 +179,8 @@ export default function SleepDashboard() {
       {activeView === 'stages' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
           <div className="glass-card">
-            <span className="card-title">Last Entry — Stage Breakdown (Estimated)</span>
+            <span className="card-title">Last Entry — Stage Breakdown</span>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '4px', marginBottom: '0.5rem' }}>⚠️ Estimated values — 22% Deep / 20% REM / 58% Light. Actual stages require a sleep tracker device.</p>
             {stageData.length === 0 ? (
               <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>No sleep data yet</p>
             ) : (
@@ -221,9 +234,19 @@ export default function SleepDashboard() {
                   {previewDuration}h
                 </div>
               )}
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Quality (1-10)</label>
-                <input type="number" value={logForm.quality} min="1" max="10" onChange={e => setLogForm({ ...logForm, quality: e.target.value })} className="form-input" style={{ maxWidth: '90px' }} />
+              <div style={{ flex: '1 1 180px' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>
+                  Quality: <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{logForm.quality}/10 — {QUALITY_LABELS[logForm.quality]}</span>
+                </label>
+                <input
+                  type="range" min="1" max="10" step="1"
+                  value={logForm.quality}
+                  onChange={e => setLogForm({ ...logForm, quality: parseInt(e.target.value) })}
+                  style={{ width: '100%', accentColor: 'var(--accent)' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>
+                  <span>1 — Terrible</span><span>10 — Perfect</span>
+                </div>
               </div>
               <div style={{ flex: '1 1 200px' }}>
                 <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Notes</label>
@@ -252,10 +275,21 @@ export default function SleepDashboard() {
                     <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ fontWeight: 800, color: 'var(--text-1)', minWidth: '85px' }}>{entry.date}</span>
                       <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{parseFloat(entry.duration || 0).toFixed(1)}h</span>
+                      <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '6px', background: 'var(--bg-elevated)', color: 'var(--text-2)', fontWeight: 700 }}>
+                        Score: {Math.min(100, Math.round((parseFloat(entry.duration||0)/8)*100))}/100
+                      </span>
                       {entry.bed_time && <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{entry.bed_time} → {entry.wake_time}</span>}
-                      {entry.quality && <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 700 }}>Q:{entry.quality}/10</span>}
+                      {entry.quality && <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 700 }}>Q:{entry.quality}/10 — {QUALITY_LABELS[entry.quality]}</span>}
                       {entry.notes && <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontStyle: 'italic' }}>{entry.notes}</span>}
                     </div>
+                    <button
+                      onClick={() => handleDeleteEntry(entry.date)}
+                      className="btn-icon"
+                      style={{ color: 'var(--text-3)', flexShrink: 0 }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+                      title="Delete entry"
+                    ><Trash2 size={14} /></button>
                   </div>
                 ))}
               </div>

@@ -137,7 +137,7 @@ const useStore = create(
             user, tasks, shopping, timesheet,
             training, nutrition, lifestyle,
             medical, physique, assessment, wellness, metricLogs, skills, events,
-            financeData, notes, goals, sleep, docs, subs, habits, media
+            financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras
           ] = await Promise.all([
             fetchJSON('/user'),
             fetchJSON('/tasks'),
@@ -161,6 +161,7 @@ const useStore = create(
             fetchJSON('/subscriptions'),
             fetchJSON('/habits'),
             fetchJSON('/entertainment'),
+            fetchJSON('/health_extras'),
           ]);
 
           const newState = {
@@ -184,6 +185,7 @@ const useStore = create(
             subscriptions: Array.isArray(subs) ? subs : [],
             habits: Array.isArray(habits) ? habits : [],
             entertainment: { media: Array.isArray(media) ? media : [] },
+            health_extras: healthExtras || {},
           };
 
           if (user) newState.user = user;
@@ -218,6 +220,11 @@ const useStore = create(
         if (res && res.id) {
           set(state => ({ metric_logs: [{ ...log, id: res.id }, ...state.metric_logs] }));
         }
+      },
+
+      updateHealthExtras: async (data) => {
+        set((state) => ({ health_extras: { ...(state.health_extras || {}), ...data } }));
+        await apiSync('/health_extras', 'PUT', data);
       },
 
       // ──────────────────────────────────────────────────────────

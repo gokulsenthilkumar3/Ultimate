@@ -8,9 +8,9 @@ import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 
 const PRIORITIES = [
-  { key: 'High',   label: 'High', color: '#ef4444' },
-  { key: 'Medium', label: 'Med',  color: '#f59e0b' },
-  { key: 'Low',    label: 'Low',  color: '#10b981' },
+  { key: 'high',   label: 'High', color: '#ef4444' },
+  { key: 'medium', label: 'Med',  color: '#f59e0b' },
+  { key: 'low',    label: 'Low',  color: '#10b981' },
 ];
 const TAGS = ['fitness', 'finance', 'work', 'personal', 'health', 'learning', 'creative', 'admin'];
 const today = () => new Date().toISOString().slice(0, 10);
@@ -61,9 +61,16 @@ function TaskCard({ task, onDelete, onComplete, onReopen, onUpdate }) {
             style={{ flex: 1, marginRight: '8px', padding: '4px 8px', fontSize: '0.9rem', height: '32px' }}
           />
         ) : (
-          <p style={{ fontSize: '0.92rem', fontWeight: 700, color: task.done ? 'var(--text-3)' : 'var(--text-1)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.5, flex: 1 }}>
-            {task.title}
-          </p>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '0.92rem', fontWeight: 700, color: task.done ? 'var(--text-3)' : 'var(--text-1)', textDecoration: task.done ? 'line-through' : 'none', lineHeight: 1.5 }}>
+              {task.title}
+            </p>
+            {task.description && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '4px', textDecoration: task.done ? 'line-through' : 'none' }}>
+                {task.description}
+              </p>
+            )}
+          </div>
         )}
         <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
           {editing ? (
@@ -85,8 +92,8 @@ function TaskCard({ task, onDelete, onComplete, onReopen, onUpdate }) {
         <span style={{ fontSize: '0.62rem', padding: '2px 8px', borderRadius: '6px', background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           {task.tag || 'general'}
         </span>
-        <span style={{ fontSize: '0.62rem', padding: '2px 8px', borderRadius: '6px', background: `${priorityColor}18`, color: priorityColor, fontWeight: 800 }}>
-          {task.priority || 'Medium'}
+        <span style={{ fontSize: '0.62rem', padding: '2px 8px', borderRadius: '6px', background: `${priorityColor}18`, color: priorityColor, fontWeight: 800, textTransform: 'capitalize' }}>
+          {task.priority || 'medium'}
         </span>
         {task.dueDate && (
           <span style={{ fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '4px', color: overdue ? 'var(--danger)' : (days !== null && days <= 2 ? 'var(--warning)' : 'var(--text-3)'), fontWeight: 600 }}>
@@ -117,7 +124,7 @@ function TaskCard({ task, onDelete, onComplete, onReopen, onUpdate }) {
   );
 }
 
-const EMPTY_FORM = { title: '', priority: 'Medium', dueDate: '', tag: 'personal', recurring: false, frequency: 'daily' };
+const EMPTY_FORM = { title: '', description: '', priority: 'medium', dueDate: '', tag: 'personal', recurring: false, frequency: 'daily' };
 
 export default function Tasks({ user }) {
   const storeAddTask = useStore(selectAddTask);
@@ -147,13 +154,13 @@ export default function Tasks({ user }) {
     if (searchTerm) items = items.filter(t => t.title?.toLowerCase().includes(searchTerm.toLowerCase()) || t.tag?.toLowerCase().includes(searchTerm.toLowerCase()));
     if (filter === 'today') items = items.filter(t => t.dueDate === today());
     if (filter === 'overdue') items = items.filter(t => isOverdue(t));
-    if (filter === 'high') items = items.filter(t => t.priority === 'High');
+    if (filter === 'high') items = items.filter(t => t.priority === 'high');
     return items;
   };
 
   const pending = getFilteredPending();
-  const highPriority = pending.filter(t => t.priority === 'High');
-  const normal = pending.filter(t => t.priority !== 'High');
+  const highPriority = pending.filter(t => t.priority === 'high');
+  const normal = pending.filter(t => t.priority !== 'high');
   const completed = (tasks.completed || []).slice(0, 20);
 
   const overdueCount = (tasks.pending || []).filter(t => isOverdue(t)).length;
@@ -218,6 +225,15 @@ export default function Tasks({ user }) {
               <input
                 autoFocus placeholder="What needs to be accomplished?" value={form.title}
                 onChange={e => setForm({ ...form, title: e.target.value })}
+                onKeyDown={e => e.key === 'Enter' && handleAddTask()}
+                className="form-input"
+              />
+            </div>
+            <div style={{ flex: '1 1 200px' }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Description</label>
+              <input
+                placeholder="Optional notes" value={form.description || ''}
+                onChange={e => setForm({ ...form, description: e.target.value })}
                 onKeyDown={e => e.key === 'Enter' && handleAddTask()}
                 className="form-input"
               />
