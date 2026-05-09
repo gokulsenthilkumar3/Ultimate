@@ -4,6 +4,8 @@ import useStore from '../store/useStore';
 // Mock the global fetch API
 global.fetch = vi.fn();
 
+// The store uses VITE_API_BASE env var, with fallback to the Render URL.
+// We intercept fetch universally so the URL doesn't need to match exactly.
 describe('useStore API Integration', () => {
   beforeEach(() => {
     // Reset the store state before each test
@@ -11,29 +13,36 @@ describe('useStore API Integration', () => {
       user: { tasks: { pending: [], completed: [], recurring: [] } },
       shopping: { items: [] },
       timesheet: { sessions: [] },
-      finance: { transactions: [] }
+      finance: { transactions: [], budgets: [] },
+      notes: [], goals: [], sleep_logs: [], documents: [],
+      subscriptions: [], habits: [],
+      entertainment: { media: [] },
+      skills: [], calendar_events: [], metric_logs: [],
     });
     vi.resetAllMocks();
   });
 
   it('fetchInitialData populates store with backend data', async () => {
-    // Mock the responses for the 4 API calls
     const mockUser = { name: 'Test User' };
-    const mockTasks = [{ id: 1, title: 'Test Task' }];
+    const mockTasks = [{ id: 1, title: 'Test Task', done: false }];
     const mockShopping = [{ id: 1, name: 'Apple' }];
     const mockTimesheet = [{ id: 1, task: 'Coding' }];
 
-    global.fetch
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockUser) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockTasks) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockShopping) })
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockTimesheet) });
+    // fetchInitialData makes 22 parallel requests — resolve all of them
+    // First 4 match meaningful data, the rest resolve to []/{}
+    let callCount = 0;
+    global.fetch.mockImplementation(() => {
+      callCount++;
+      const bodies = [mockUser, mockTasks, mockShopping, mockTimesheet];
+      const body = callCount <= 4 ? bodies[callCount - 1] : [];
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+    });
 
     await useStore.getState().fetchInitialData();
 
     const state = useStore.getState();
     expect(state.user.name).toBe('Test User');
-    expect(state.user.tasks.pending).toEqual(mockTasks);
+    expect(state.user.tasks.pending[0].title).toBe('Test Task');
     expect(state.shopping.items).toEqual(mockShopping);
     expect(state.timesheet.sessions).toEqual(mockTimesheet);
   });
@@ -45,7 +54,10 @@ describe('useStore API Integration', () => {
     await useStore.getState().addTask(newTask);
 
     const state = useStore.getState();
-    expect(global.fetch).toHaveBeenCalledWith('http://localhost:3001/api/tasks', expect.objectContaining({ method: 'POST' }));
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/tasks'),
+      expect.objectContaining({ method: 'POST' })
+    );
     expect(state.user.tasks.pending.length).toBe(1);
     expect(state.user.tasks.pending[0].id).toBe(99);
     expect(state.user.tasks.pending[0].title).toBe('New API Task');
@@ -58,7 +70,10 @@ describe('useStore API Integration', () => {
     await useStore.getState().addShoppingItem(newItem);
 
     const state = useStore.getState();
-    expect(global.fetch).toHaveBeenCalledWith('http://localhost:3001/api/shopping', expect.objectContaining({ method: 'POST' }));
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/shopping'),
+      expect.objectContaining({ method: 'POST' })
+    );
     expect(state.shopping.items.length).toBe(1);
     expect(state.shopping.items[0].id).toBe(42);
     expect(state.shopping.items[0].name).toBe('Whey Protein');

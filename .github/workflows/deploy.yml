@@ -1,63 +1,79 @@
-name: Deploy to GitHub Pages
+name: CI → Test → Deploy
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build
+  test:
+    name: Unit & Component Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20.19.1'
           cache: 'npm'
-          cache-dependency-path: growthtrack-ultimate/package-lock.json
 
-      - name: Install dependencies
+      - name: Install Dependencies
         working-directory: growthtrack-ultimate
         run: npm ci
 
-      - name: Build
+      - name: Run Vitest Tests
         working-directory: growthtrack-ultimate
+        run: npm run test:run
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: npm run build
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+  build-and-deploy:
+    name: Build & Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [test]          # ← Blocks deploy if tests fail
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.1'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        working-directory: growthtrack-ultimate
+        run: npm ci
+
+      - name: Build Application
+        working-directory: growthtrack-ultimate
+        run: npm run build
+        env:
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+
+      - name: Add cache-busting headers (no-cache 404.html trick)
+        working-directory: growthtrack-ultimate/dist
+        run: |
+          cp index.html 404.html
+          echo '{ "headers": [{ "source": "**/*.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] }] }' > _headers
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: growthtrack-ultimate/dist
 
-  deploy:
-    name: Deploy
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

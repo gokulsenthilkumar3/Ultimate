@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://ultimate-8we7.onrender.com/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export async function apiSync(endpoint, method = 'POST', data = null) {
   try {
@@ -12,7 +12,6 @@ export async function apiSync(endpoint, method = 'POST', data = null) {
           'Content-Type': 'application/json',
           'x-user-id': state.user?.id || 1,
           'x-actor-name': state.user?.name || 'System',
-          'x-actor-email': state.user?.email || 'admin@growthtrack.ultimate'
         },
       };
     if (data) options.body = JSON.stringify(data);
