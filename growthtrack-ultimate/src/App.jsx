@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo } from 'react';
 import useStore, {
   selectUser, selectSetUser, selectTheme, selectPalette,
   selectSetTheme, selectSetPalette, selectActiveTab, selectSetActiveTab,
@@ -16,13 +16,40 @@ import CommandPalette from './components/CommandPalette';
 import DailyCheckIn from './components/DailyCheckIn';
 import BottomNavBar from './components/BottomNavBar';
 import SettingsModal from './components/SettingsModal';
+import NotificationCenter from './components/NotificationCenter';
 
 import { preloadHumanoidModel } from './components/morphEngine/useModelLoader';
 import { useVascularitySync } from './store/use3DStore.usage';
 
 preloadHumanoidModel();
 
-// ── Lazy-load all dashboard modules
+// ── local notif generator (mirrors NotificationCenter logic) ──
+function countUnreadNotifs(user) {
+  if (!user) return 0;
+  const today = new Date().toISOString().slice(0, 10);
+  let count = 0;
+  // missed habits
+  (user.habits || []).forEach(h => {
+    const last = h.lastLog || h.last_log;
+    if (!last || last < today) count++;
+  });
+  // overdue tasks
+  (user.tasks?.pending || []).forEach(t => {
+    const due = t.dueDate || t.due_date;
+    if (due && due < today) count++;
+  });
+  // goal deadlines within 7 days
+  (user.goals || []).forEach(g => {
+    if (g.status === 'completed') return;
+    const dl = g.deadline || g.target_date;
+    if (!dl) return;
+    const daysLeft = Math.ceil((new Date(dl) - new Date(today)) / 86400000);
+    if (daysLeft <= 7) count++;
+  });
+  return count;
+}
+
+// ── Lazy modules ──────────────────────────────────────────────────────────────
 const Overview           = lazy(() => import('./components/Overview'));
 const Assessment         = lazy(() => import('./components/Assessment'));
 const Medical            = lazy(() => import('./components/Medical'));
@@ -64,7 +91,7 @@ const SIPCalculator      = lazy(() => import('./components/SIPCalculator'));
 const TransformationPredictor = lazy(() => import('./components/TransformationPredictor'));
 const HabitsMatrix       = lazy(() => import('./components/HabitsMatrix'));
 
-// ── Master map of all modules
+// ── Master module map ──────────────────────────────────────────────────────────────
 export const GLOBAL_MODULES = {
   overview: 'Overview', humanoid: '3D Model', physique: 'Blueprint', assessment: 'Assessment',
   training: 'Training', nutrition: 'Nutrition', sleep: 'Sleep', lifestyle: 'Lifestyle',
@@ -76,6 +103,7 @@ export const GLOBAL_MODULES = {
   logs: 'Logs', settings: 'Settings', dashboards: 'Dashboards', mind: 'Mind & Wellness',
   medical: 'Medical', hydration: 'Hydration', strength: 'Strength', analytics: 'Analytics',
   apps: 'App Hub', about: 'About', sip: 'SIP Calculator', forecast: 'Growth Forecast',
+  notifications: 'Notifications',
 };
 
 function TabSpinner() {
@@ -88,14 +116,12 @@ function TabSpinner() {
       <span style={{
         color: 'var(--text-3)', fontSize: '0.78rem',
         letterSpacing: '0.1em', fontFamily: 'var(--font-display)', fontWeight: 600,
-      }}>
-        LOADING MODULE
-      </span>
+      }}>LOADING MODULE</span>
     </div>
   );
 }
 
-function renderTab(tab, user, setUser, theme, setTheme) {
+function renderTab(tab, user, setUser, theme, setTheme, setActiveTab) {
   const props = { user, setUser, theme, setTheme };
   switch (tab) {
     case 'overview':       return <Overview {...props} />;
@@ -138,6 +164,8 @@ function renderTab(tab, user, setUser, theme, setTheme) {
     case 'sip':            return <SIPCalculator />;
     case 'forecast':       return <TransformationPredictor logs={useStore.getState().metric_logs} />;
     case 'apps':           return <AppLauncher setActiveTab={useStore.getState().setActiveTab} />;
+    // ── NEW: Notification Center ──
+    case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} />;
     default:               return <Overview {...props} />;
   }
 }
@@ -164,7 +192,16 @@ function FloatingNav({ activeTab, setActiveTab, navItems }) {
             aria-current={activeTab === item.id ? 'page' : undefined}
           >
             <span className="nav-icon-wrap">
-              {item.badge && <span className="nav-badge">{item.badge}</span>}
+              {item.badge > 0 && (
+                <span className="nav-badge" style={{
+                  background: '#ef4444',
+                  boxShadow: '0 0 6px rgba(239,68,68,0.6)',
+                  minWidth: '16px', height: '16px', borderRadius: '99px',
+                  fontSize: '0.58rem', fontWeight: 900,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 3px',
+                }}>{item.badge > 9 ? '9+' : item.badge}</span>
+              )}
             </span>
             <span className="nav-label">{item.label}</span>
           </button>
@@ -187,16 +224,25 @@ export default function App() {
   const fetchInitialData  = useStore(selectFetchInitialData);
   const checkServerHealth = useStore(selectCheckServerHealth);
   const serverStatus      = useStore(selectServerStatus);
-  const isLoading         = useStore(selectIsLoading);
   const onboardingComplete = useStore((state) => state.onboardingComplete);
   const lastCheckIn        = useStore((state) => state.lastCheckIn);
+
   const [showCheckIn,  setShowCheckIn]  = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const navItems = pinnedTabs.map(id => ({ id, label: GLOBAL_MODULES[id] || id }));
-  navItems.push({ id: 'apps', label: 'App Hub' });
+  // ── Unread notification count for Bell badge ──
+  const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);
+
+  // ── Build nav items, inject Notifications with live badge ──
+  const navItems = useMemo(() => {
+    const items = pinnedTabs.map(id => ({ id, label: GLOBAL_MODULES[id] || id }));
+    items.push({ id: 'apps', label: 'App Hub' });
+    // Always append Notifications at end with live badge
+    items.push({ id: 'notifications', label: '🔔 Alerts', badge: unreadCount });
+    return items;
+  }, [pinnedTabs, unreadCount]);
 
   useEffect(() => {
     fetchInitialData();
@@ -214,7 +260,7 @@ export default function App() {
             if (permission === 'granted') {
               new Notification('Daily Check-In Reminder', {
                 body: 'Time to log your daily workouts, weight, and water intake!',
-                icon: '/Ultimate/favicon.ico'
+                icon: '/Ultimate/favicon.ico',
               });
             }
           });
@@ -267,7 +313,12 @@ export default function App() {
             color: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
             backdropFilter: 'blur(8px)',
           }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)', animation: serverStatus === 'online' ? 'pulse 2s infinite' : 'none', display: 'inline-block' }} />
+            <span style={{
+              width: '6px', height: '6px', borderRadius: '50%',
+              background: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
+              animation: serverStatus === 'online' ? 'pulse 2s infinite' : 'none',
+              display: 'inline-block',
+            }} />
             API {serverStatus === 'online' ? 'ONLINE' : 'OFFLINE'}
           </div>
         )}
@@ -280,12 +331,14 @@ export default function App() {
             palette={palette}
             setPalette={setPalette}
             onOpenSettings={() => setShowSettings(true)}
+            unreadCount={unreadCount}
+            onOpenNotifications={() => setActiveTab('notifications')}
           />
 
           <main className="content-area">
             <ErrorBoundary resetKey={activeTab}>
               <Suspense fallback={<TabSpinner />}>
-                {renderTab(activeTab, user, setUser, theme, setTheme)}
+                {renderTab(activeTab, user, setUser, theme, setTheme, setActiveTab)}
               </Suspense>
             </ErrorBoundary>
           </main>
