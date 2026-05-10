@@ -23,6 +23,18 @@ const nutritionLogSchema = z.object({
   fat_g: z.number().nonnegative().optional(),
   notes: z.string().max(300).optional(),
   logged_at: z.string().optional(),
+  date: z.string().optional(),
+});
+
+const nutritionLogUpdateSchema = z.object({
+  meal: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).optional(),
+  calories: z.number().nonnegative().optional(),
+  protein_g: z.number().nonnegative().optional(),
+  carbs_g: z.number().nonnegative().optional(),
+  fat_g: z.number().nonnegative().optional(),
+  notes: z.string().max(300).optional(),
+  logged_at: z.string().optional(),
+  date: z.string().optional(),
 });
 
 const auditLogSchema = z.object({
@@ -125,14 +137,22 @@ module.exports = function phase4aRoutes(supabase) {
   }));
 
   router.post('/nutrition_logs', validate(nutritionLogSchema), (req, res) => withDB(supabase, res, async () => {
-    const { meal, calories, protein_g, carbs_g, fat_g, notes, logged_at } = req.validated;
+    const { meal, calories, protein_g, carbs_g, fat_g, notes, logged_at, date } = req.validated;
     const { data, error } = await supabase
       .from('nutrition_logs')
-      .insert({ meal, calories, protein_g, carbs_g, fat_g, notes, logged_at: logged_at || new Date().toISOString() })
+      .insert({ meal, calories, protein_g, carbs_g, fat_g, notes, logged_at: logged_at || new Date().toISOString(), date: date || new Date().toISOString().slice(0, 10) })
       .select('id')
       .single();
     if (error) throw error;
     res.json({ success: true, id: data.id });
+  }));
+
+  // 4G-2: PUT for updateNutritionLog store action
+  router.put('/nutrition_logs/:id', validate(nutritionLogUpdateSchema), (req, res) => withDB(supabase, res, async () => {
+    const patch = { ...req.validated, modified_at: new Date().toISOString() };
+    const { error } = await supabase.from('nutrition_logs').update(patch).eq('id', Number(req.params.id));
+    if (error) throw error;
+    res.json({ success: true });
   }));
 
   router.delete('/nutrition_logs/:id', (req, res) => withDB(supabase, res, async () => {

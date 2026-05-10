@@ -8,6 +8,9 @@ const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
 const { createClient } = require('@supabase/supabase-js');
 
+// 4G-3: import phase4a router
+const phase4aRoutes = require('./routes/phase4a');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -239,6 +242,9 @@ async function withDB(res, fn) {
 }
 
 // --- ROUTES ---
+
+// 4G-3: Mount phase4a extended routes (hydration, nutrition_logs, audit_log, etc.)
+app.use('/api', phase4aRoutes(supabase));
 
 // Health check
 app.get('/api/health', async (req, res) => {
