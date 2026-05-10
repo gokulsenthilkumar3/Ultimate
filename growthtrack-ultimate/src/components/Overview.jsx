@@ -3,10 +3,9 @@ import useStore from '../store/useStore';
 import {
   Sun, Cloud, CloudRain, Zap, Wind, Droplets, Eye, Thermometer,
   CheckSquare, Target, Flame, TrendingUp, Activity, Clock, Star,
-  ChevronRight, AlertTriangle, Moon, CloudSnow, CloudLightning,
+  ChevronRight, AlertTriangle, Moon, CloudSnow, CloudLightning, Heart,
 } from 'lucide-react';
 
-// Open-Meteo weather codes → human-readable
 const WMO_CODES = {
   0: 'Clear', 1: 'Mostly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
   45: 'Foggy', 48: 'Icy Fog',
@@ -37,7 +36,7 @@ function StatCard({ label, value, sub, icon: Icon, color = 'text-amber-400', onC
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-xs text-gray-500 mb-1">{label}</p>
-          <p className={`text-2xl font-bold ${color}`}>{value ?? '–'}</p>
+          <p className={`text-2xl font-bold ${color}`}>{value ?? '\u2013'}</p>
           {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
         </div>
         {Icon && <Icon size={18} className={`${color} opacity-60 group-hover:opacity-100 transition mt-0.5`} />}
@@ -46,35 +45,78 @@ function StatCard({ label, value, sub, icon: Icon, color = 'text-amber-400', onC
   );
 }
 
+// BUG-11: Compute health score from real metrics
+function useHealthScore({ habitsDoneToday, habitsTotal, moodStreak, lastSleep, lastWeight, activeGoals }) {
+  return useMemo(() => {
+    let score = 0;
+    let factors = 0;
+
+    // Habit completion (max 25 pts)
+    if (habitsTotal > 0) {
+      score += Math.round((habitsDoneToday / habitsTotal) * 25);
+      factors++;
+    }
+
+    // Mood streak (max 20 pts — cap at 7 days)
+    if (moodStreak > 0) {
+      score += Math.min(20, Math.round((moodStreak / 7) * 20));
+      factors++;
+    }
+
+    // Sleep quality/duration (max 25 pts)
+    if (lastSleep) {
+      const hrs = parseFloat(lastSleep.duration || lastSleep.hours || 0);
+      const q = Number(lastSleep.quality || 5);
+      const sleepPts = Math.round(Math.min(1, hrs / 8) * 15) + Math.round((q / 10) * 10);
+      score += sleepPts;
+      factors++;
+    }
+
+    // Weight tracked (max 10 pts)
+    if (lastWeight) {
+      score += 10;
+      factors++;
+    }
+
+    // Active goals (max 20 pts — 4 pts each up to 5)
+    if (activeGoals > 0) {
+      score += Math.min(20, activeGoals * 4);
+      factors++;
+    }
+
+    // If no data at all, return null
+    if (factors === 0) return null;
+
+    return Math.min(100, score);
+  }, [habitsDoneToday, habitsTotal, moodStreak, lastSleep, lastWeight, activeGoals]);
+}
+
 export default function Overview() {
   const setActiveTab = useStore(s => s.setActiveTab);
 
-  // Live data from store
-  const tasks        = useStore(s => s.user?.tasks);
-  const goals        = useStore(s => s.goals) || [];
-  const habits       = useStore(s => s.habits) || [];
-  const habitLogs    = useStore(s => s.habitLogsByHabit) || {};
-  const moodLogs     = useStore(s => s.moodLogs) || [];
-  const finance      = useStore(s => s.finance) || { transactions: [], budgets: [] };
-  const sleep_logs   = useStore(s => s.sleep_logs) || [];
-  const metric_logs  = useStore(s => s.metric_logs) || [];
+  // BUG-09: reactive selector instead of getState() snapshot
+  const userName    = useStore(s => s.user?.name);
+
+  const tasks       = useStore(s => s.user?.tasks);
+  const goals       = useStore(s => s.goals) || [];
+  const habits      = useStore(s => s.habits) || [];
+  const habitLogs   = useStore(s => s.habitLogsByHabit) || {};
+  const moodLogs    = useStore(s => s.moodLogs) || [];
+  const finance     = useStore(s => s.finance) || { transactions: [], budgets: [] };
+  const sleep_logs  = useStore(s => s.sleep_logs) || [];
+  const metric_logs = useStore(s => s.metric_logs) || [];
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // Task stats
   const pendingTasks  = tasks?.pending?.length || 0;
   const overdueTasks  = (tasks?.pending || []).filter(t => t.dueDate && t.dueDate < today).length;
-
-  // Goal stats
   const activeGoals   = goals.filter(g => g.status === 'active').length;
 
-  // Habit stats — done today
   const habitsDoneToday = habits.filter(h => {
     const logs = habitLogs[h.id] || [];
     return logs.some(l => l.date === today);
   }).length;
 
-  // Mood streak
   const moodStreak = useMemo(() => {
     if (!moodLogs.length) return 0;
     const logSet = new Set(moodLogs.map(l => l.date));
@@ -87,16 +129,13 @@ export default function Overview() {
     return streak;
   }, [moodLogs]);
 
-  // Latest weight from metric_logs
   const lastWeight = useMemo(() => {
     const wLogs = metric_logs.filter(l => l.type === 'weight').sort((a, b) => b.logged_at?.localeCompare(a.logged_at));
     return wLogs[0]?.value ?? null;
   }, [metric_logs]);
 
-  // Last night sleep
-  const lastSleep = sleep_logs[0];
+  const lastSleep = sleep_logs[0] || null;
 
-  // Monthly spend
   const monthlySpend = useMemo(() => {
     const thisMonth = today.slice(0, 7);
     return finance.transactions
@@ -104,12 +143,24 @@ export default function Overview() {
       .reduce((s, t) => s + Number(t.amount || 0), 0);
   }, [finance.transactions, today]);
 
-  // Weather
+  // BUG-11: computed health score
+  const healthScore = useHealthScore({
+    habitsDoneToday,
+    habitsTotal: habits.length,
+    moodStreak,
+    lastSleep,
+    lastWeight,
+    activeGoals,
+  });
+  const scoreColor = healthScore === null ? 'text-gray-500'
+    : healthScore >= 75 ? 'text-emerald-400'
+    : healthScore >= 50 ? 'text-amber-400'
+    : 'text-red-400';
+
   const [weather, setWeather] = useState(null);
   const [weatherErr, setWeatherErr] = useState(false);
 
   useEffect(() => {
-    // Sivanmalai, Tamil Nadu
     const lat = 11.0168, lon = 77.4059;
     fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
@@ -124,7 +175,6 @@ export default function Overview() {
   const wCode = weather?.weather_code;
   const wCondition = WMO_CODES[wCode] ?? 'Unknown';
 
-  // Time greeting
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -136,12 +186,23 @@ export default function Overview() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-gray-400 text-sm">{greeting},</p>
+            {/* BUG-09 fix: reactive selector */}
             <h1 className="text-3xl font-bold text-white mt-0.5">
-              {useStore.getState().user?.name || 'Gokul'} ⚡
+              {userName || 'Operator'} \u26a1
             </h1>
             <p className="text-gray-400 text-sm mt-1">
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
+            {/* BUG-11: health score */}
+            {healthScore !== null && (
+              <div className="flex items-center gap-2 mt-2">
+                <Heart size={14} className={scoreColor} />
+                <span className={`text-sm font-bold ${scoreColor}`}>Health Score: {healthScore}/100</span>
+                <span className="text-xs text-gray-500">
+                  {healthScore >= 75 ? '\u2014 Great' : healthScore >= 50 ? '\u2014 Moderate' : '\u2014 Needs attention'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Weather card */}
@@ -150,7 +211,7 @@ export default function Overview() {
               <>
                 <div className="flex items-center gap-1.5 justify-end">
                   <WeatherIcon code={wCode} size={20} />
-                  <span className="text-2xl font-bold text-white">{Math.round(weather.temperature_2m)}°C</span>
+                  <span className="text-2xl font-bold text-white">{Math.round(weather.temperature_2m)}\u00b0C</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5">{wCondition}</p>
                 <p className="text-xs text-gray-500">Sivanmalai, TN</p>
@@ -163,7 +224,7 @@ export default function Overview() {
             ) : weatherErr ? (
               <p className="text-xs text-gray-500">Weather unavailable</p>
             ) : (
-              <p className="text-xs text-gray-500 animate-pulse">Loading weather…</p>
+              <p className="text-xs text-gray-500 animate-pulse">Loading weather\u2026</p>
             )}
           </div>
         </div>
@@ -220,8 +281,8 @@ export default function Overview() {
         {lastSleep && (
           <StatCard
             label="Last Sleep"
-            value={`${lastSleep.hours}h`}
-            sub={lastSleep.quality ? `Quality: ${lastSleep.quality}/5` : lastSleep.date}
+            value={`${lastSleep.hours || parseFloat(lastSleep.duration || 0).toFixed(1)}h`}
+            sub={lastSleep.quality ? `Quality: ${lastSleep.quality}/10` : lastSleep.date}
             icon={Moon}
             color="text-indigo-400"
             onClick={() => setActiveTab('sleep')}
@@ -229,7 +290,7 @@ export default function Overview() {
         )}
         <StatCard
           label="Month Spend"
-          value={monthlySpend > 0 ? `₹${monthlySpend.toLocaleString('en-IN')}` : '₹0'}
+          value={monthlySpend > 0 ? `\u20b9${monthlySpend.toLocaleString('en-IN')}` : '\u20b90'}
           sub={new Date().toLocaleString('en-IN', { month: 'long' })}
           icon={TrendingUp}
           color="text-emerald-400"
@@ -269,7 +330,7 @@ export default function Overview() {
             <p className="text-sm text-red-300 font-semibold">{overdueTasks} overdue task{overdueTasks > 1 ? 's' : ''}</p>
             <p className="text-xs text-red-400/70 mt-0.5">Check the Tasks tab to catch up.</p>
           </div>
-          <button onClick={() => setActiveTab('tasks')} className="ml-auto text-xs text-red-400 hover:text-red-300 underline">Go →</button>
+          <button onClick={() => setActiveTab('tasks')} className="ml-auto text-xs text-red-400 hover:text-red-300 underline">Go \u2192</button>
         </div>
       )}
     </div>
