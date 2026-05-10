@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, Moon, Sun, Bell, Search, Command, Circle, Settings } from 'lucide-react';
+import { Zap, Moon, Sun, Bell, Circle, Settings, Plus, CheckSquare, Flame, Utensils } from 'lucide-react';
 import HealthScoreRing from './HealthScoreRing';
+import useStore from '../store/useStore';
 
 const PALETTES = [
   { id: 'gold',   color: '#e5a50a', name: 'Gold' },
@@ -10,8 +11,62 @@ const PALETTES = [
   { id: 'rose',   color: '#f43f5e', name: 'Rose' },
 ];
 
-export default function Header({ user, theme, setTheme, palette, setPalette, onOpenSettings }) {
+// ── Quick Action Tray ──
+function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+  const actions = [
+    { id: 'tasks',     icon: CheckSquare, label: '+ Task',  color: '#f59e0b' },
+    { id: 'habits',    icon: Flame,       label: '+ Habit', color: '#f97316' },
+    { id: 'nutrition', icon: Utensils,    label: '+ Meal',  color: '#84cc16' },
+  ];
+  return (
+    <div ref={ref} style={{
+      position: 'absolute', top: '52px', right: '0', zIndex: 9999,
+      background: 'var(--bg-card)',
+      border: '1px solid var(--border-strong)',
+      borderRadius: '16px',
+      backdropFilter: 'blur(24px)',
+      padding: '8px',
+      display: 'flex', flexDirection: 'column', gap: '4px',
+      minWidth: '140px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+    }}>
+      <p style={{ fontSize: '0.55rem', letterSpacing: '0.15em', color: 'var(--text-3)', fontWeight: 700, padding: '4px 8px 2px', textTransform: 'uppercase' }}>Quick Add</p>
+      {actions.map(a => (
+        <button
+          key={a.id}
+          onClick={() => { setActiveTab(a.id); onClose(); }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '8px 12px', borderRadius: '10px',
+            border: 'none', background: 'transparent',
+            color: a.color, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <a.icon size={13} />
+          {a.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function Header({ user, theme, setTheme, palette, setPalette, onOpenSettings, unreadCount = 0, onOpenNotifications }) {
   const accentColor = PALETTES.find(p => p.id === palette)?.color || '#e5a50a';
+  const setActiveTab = useStore(s => s.setActiveTab);
+
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   return (
     <header style={{
@@ -35,8 +90,7 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
         <div style={{
           background: `linear-gradient(135deg, ${accentColor}, ${accentColor}aa)`,
-          padding: '9px',
-          borderRadius: '14px',
+          padding: '9px', borderRadius: '14px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: `0 4px 20px ${accentColor}50, 0 0 0 1px rgba(255,255,255,0.1) inset`,
           minWidth: '40px', minHeight: '40px', flexShrink: 0,
@@ -47,8 +101,7 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
         <div>
           <h1 style={{
             fontFamily: 'var(--font-display)', fontSize: '1.25rem', lineHeight: 1.1,
-            color: accentColor, fontWeight: 900,
-            transition: 'color 0.4s ease',
+            color: accentColor, fontWeight: 900, transition: 'color 0.4s ease',
           }}>Ultimate</h1>
           <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.55rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-3)', marginTop: '2px' }}>
             Digital Twin v2.0
@@ -67,11 +120,9 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
           border: '1px solid var(--border)',
         }}>
           {PALETTES.map(p => (
-            <button key={p.id} onClick={() => setPalette(p.id)} aria-label={`${p.name} theme`}
-              title={p.name}
+            <button key={p.id} onClick={() => setPalette(p.id)} aria-label={`${p.name} theme`} title={p.name}
               style={{
-                width: '18px', height: '18px', borderRadius: '50%',
-                background: p.color, border: 'none',
+                width: '18px', height: '18px', borderRadius: '50%', background: p.color, border: 'none',
                 outline: palette === p.id ? `2.5px solid ${p.color}` : '2px solid transparent',
                 outlineOffset: '2.5px',
                 boxShadow: palette === p.id ? `0 0 12px ${p.color}70` : 'none',
@@ -83,23 +134,73 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
           ))}
         </div>
 
-        {/* Notification */}
-        <button title="Notifications" style={{
-          position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: '36px', height: '36px', padding: 0,
-          borderRadius: '12px', background: 'rgba(255,255,255,0.04)',
-          border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-2)',
-          transition: 'all 0.25s ease',
-        }}
+        {/* ── Quick Add tray button ── */}
+        <div style={{ position: 'relative' }}>
+          <button
+            title="Quick Add"
+            onClick={() => setShowQuickAdd(v => !v)}
+            style={{
+              position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '36px', height: '36px', padding: 0,
+              borderRadius: '12px', background: showQuickAdd ? `${accentColor}22` : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${showQuickAdd ? accentColor : 'var(--border)'}`,
+              cursor: 'pointer', color: showQuickAdd ? accentColor : 'var(--text-2)',
+              transition: 'all 0.25s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
+            onMouseLeave={e => {
+              if (!showQuickAdd) {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.color = 'var(--text-2)';
+              }
+            }}
+          >
+            <Plus size={16} />
+          </button>
+          <QuickActionTray
+            open={showQuickAdd}
+            onClose={() => setShowQuickAdd(false)}
+            accentColor={accentColor}
+            setActiveTab={setActiveTab}
+          />
+        </div>
+
+        {/* ── Notification Bell with live unread count ── */}
+        <button
+          title={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+          onClick={onOpenNotifications}
+          style={{
+            position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '36px', height: '36px', padding: 0,
+            borderRadius: '12px',
+            background: unreadCount > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${unreadCount > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)'}`,
+            cursor: 'pointer',
+            color: unreadCount > 0 ? '#ef4444' : 'var(--text-2)',
+            transition: 'all 0.25s ease',
+          }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = unreadCount > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)';
+            e.currentTarget.style.color = unreadCount > 0 ? '#ef4444' : 'var(--text-2)';
+          }}
+        >
           <Bell size={16} />
-          <span style={{
-            position: 'absolute', top: '7px', right: '8px',
-            width: '6px', height: '6px',
-            background: 'var(--danger)', borderRadius: '50%',
-            border: '1.5px solid var(--bg-card)',
-          }} />
+          {unreadCount > 0 && (
+            <span style={{
+              position: 'absolute', top: '-5px', right: '-5px',
+              minWidth: '17px', height: '17px', borderRadius: '99px',
+              background: '#ef4444',
+              border: '2px solid var(--bg-base)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.55rem', fontWeight: 900, color: '#fff',
+              padding: '0 2px',
+              boxShadow: '0 0 8px rgba(239,68,68,0.6)',
+              animation: 'pulse 2s infinite',
+            }}>
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
         </button>
 
         {/* Health Score Ring */}
@@ -107,19 +208,13 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
           <HealthScoreRing size={36} />
         </div>
 
-        {/* Settings Toggle */}
-        <button onClick={onOpenSettings}
-          aria-label="Open settings"
-          title="Settings"
+        {/* Settings */}
+        <button onClick={onOpenSettings} aria-label="Open settings" title="Settings"
           style={{
-            width: '36px', height: '36px', padding: 0,
-            borderRadius: '12px',
+            width: '36px', height: '36px', padding: 0, borderRadius: '12px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--text-2)',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid var(--border)',
-            cursor: 'pointer',
-            transition: 'all 0.25s ease',
+            color: 'var(--text-2)', background: 'rgba(255,255,255,0.04)',
+            border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.25s ease',
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
@@ -127,21 +222,18 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
         </button>
 
         {/* Theme Toggle */}
-        <button onClick={() => {
+        <button
+          onClick={() => {
             const nextTheme = theme === 'dark' ? 'amoled' : (theme === 'amoled' ? 'light' : 'dark');
             setTheme(nextTheme);
           }}
           aria-label="Toggle theme"
           title={`Switch to ${theme === 'dark' ? 'amoled' : (theme === 'amoled' ? 'light' : 'dark')} mode`}
           style={{
-            width: '36px', height: '36px', padding: 0,
-            borderRadius: '12px',
+            width: '36px', height: '36px', padding: 0, borderRadius: '12px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--text-2)',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid var(--border)',
-            cursor: 'pointer',
-            transition: 'all 0.25s ease',
+            color: 'var(--text-2)', background: 'rgba(255,255,255,0.04)',
+            border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.25s ease',
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
@@ -163,16 +255,13 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
             </p>
           </div>
           <div style={{
-            width: '36px', height: '36px',
-            borderRadius: '12px',
+            width: '36px', height: '36px', borderRadius: '12px',
             background: `linear-gradient(135deg, ${accentColor}, ${accentColor}bb)`,
             color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 900, fontSize: '0.9rem',
             boxShadow: `0 3px 14px ${accentColor}50`,
-            flexShrink: 0,
-            transition: 'all 0.4s ease',
-            cursor: 'pointer',
+            flexShrink: 0, transition: 'all 0.4s ease', cursor: 'pointer',
           }}>
             {user?.name?.[0]?.toUpperCase() || 'G'}
           </div>
