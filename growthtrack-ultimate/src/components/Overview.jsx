@@ -4,6 +4,7 @@ import {
   Sun, Cloud, CloudRain, Zap, Wind, Droplets, Eye, Thermometer,
   CheckSquare, Target, Flame, TrendingUp, Activity, Clock, Star,
   ChevronRight, AlertTriangle, Moon, CloudSnow, CloudLightning, Heart,
+  Bell, Utensils,
 } from 'lucide-react';
 
 const WMO_CODES = {
@@ -45,58 +46,95 @@ function StatCard({ label, value, sub, icon: Icon, color = 'text-amber-400', onC
   );
 }
 
-// BUG-11: Compute health score from real metrics
 function useHealthScore({ habitsDoneToday, habitsTotal, moodStreak, lastSleep, lastWeight, activeGoals }) {
   return useMemo(() => {
     let score = 0;
     let factors = 0;
-
-    // Habit completion (max 25 pts)
-    if (habitsTotal > 0) {
-      score += Math.round((habitsDoneToday / habitsTotal) * 25);
-      factors++;
-    }
-
-    // Mood streak (max 20 pts — cap at 7 days)
-    if (moodStreak > 0) {
-      score += Math.min(20, Math.round((moodStreak / 7) * 20));
-      factors++;
-    }
-
-    // Sleep quality/duration (max 25 pts)
+    if (habitsTotal > 0) { score += Math.round((habitsDoneToday / habitsTotal) * 25); factors++; }
+    if (moodStreak > 0) { score += Math.min(20, Math.round((moodStreak / 7) * 20)); factors++; }
     if (lastSleep) {
       const hrs = parseFloat(lastSleep.duration || lastSleep.hours || 0);
       const q = Number(lastSleep.quality || 5);
-      const sleepPts = Math.round(Math.min(1, hrs / 8) * 15) + Math.round((q / 10) * 10);
-      score += sleepPts;
+      score += Math.round(Math.min(1, hrs / 8) * 15) + Math.round((q / 10) * 10);
       factors++;
     }
-
-    // Weight tracked (max 10 pts)
-    if (lastWeight) {
-      score += 10;
-      factors++;
-    }
-
-    // Active goals (max 20 pts — 4 pts each up to 5)
-    if (activeGoals > 0) {
-      score += Math.min(20, activeGoals * 4);
-      factors++;
-    }
-
-    // If no data at all, return null
+    if (lastWeight) { score += 10; factors++; }
+    if (activeGoals > 0) { score += Math.min(20, activeGoals * 4); factors++; }
     if (factors === 0) return null;
-
     return Math.min(100, score);
   }, [habitsDoneToday, habitsTotal, moodStreak, lastSleep, lastWeight, activeGoals]);
 }
 
+// ── Generate top-3 local alerts for mini-feed ──
+function useTodayAlerts(user, habits, habitLogs, goals) {
+  return useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const alerts = [];
+
+    // Missed habits
+    (habits || []).forEach(h => {
+      const logs = habitLogs[h.id] || [];
+      const doneToday = logs.some(l => l.date === today);
+      if (!doneToday) {
+        const streak = h.streak || h.current_streak || 0;
+        alerts.push({
+          id: `h-${h.id}`,
+          type: 'habit',
+          emoji: '\ud83d\udd25',
+          color: 'text-orange-400',
+          bg: 'bg-orange-500/10 border-orange-500/20',
+          text: `Missed habit: ${h.name || h.title}${streak > 0 ? ` \u2014 ${streak}-day streak at risk` : ''}`,
+          tab: 'habits',
+        });
+      }
+    });
+
+    // Overdue tasks
+    (user?.tasks?.pending || []).forEach(t => {
+      const due = t.dueDate || t.due_date;
+      if (due && due < today) {
+        const days = Math.ceil((new Date(today) - new Date(due)) / 86400000);
+        alerts.push({
+          id: `t-${t.id || t.title}`,
+          type: 'task',
+          emoji: '\u23f0',
+          color: 'text-red-400',
+          bg: 'bg-red-500/10 border-red-500/20',
+          text: `Overdue task: \u201c${t.title}\u201d (${days}d late)`,
+          tab: 'tasks',
+        });
+      }
+    });
+
+    // Goal deadlines \u2264 7 days
+    (goals || []).forEach(g => {
+      if (g.status === 'completed') return;
+      const dl = g.deadline || g.target_date;
+      if (!dl) return;
+      const daysLeft = Math.ceil((new Date(dl) - new Date(today)) / 86400000);
+      if (daysLeft <= 7) {
+        alerts.push({
+          id: `g-${g.id}`,
+          type: 'goal',
+          emoji: '\ud83c\udfaf',
+          color: 'text-purple-400',
+          bg: 'bg-purple-500/10 border-purple-500/20',
+          text: daysLeft < 0
+            ? `Goal past deadline: \u201c${g.title}\u201d`
+            : `Goal due in ${daysLeft}d: \u201c${g.title}\u201d`,
+          tab: 'goals',
+        });
+      }
+    });
+
+    return alerts.slice(0, 3);
+  }, [user, habits, habitLogs, goals]);
+}
+
 export default function Overview() {
   const setActiveTab = useStore(s => s.setActiveTab);
-
-  // BUG-09: reactive selector instead of getState() snapshot
   const userName    = useStore(s => s.user?.name);
-
+  const user        = useStore(s => s.user);
   const tasks       = useStore(s => s.user?.tasks);
   const goals       = useStore(s => s.goals) || [];
   const habits      = useStore(s => s.habits) || [];
@@ -105,6 +143,7 @@ export default function Overview() {
   const finance     = useStore(s => s.finance) || { transactions: [], budgets: [] };
   const sleep_logs  = useStore(s => s.sleep_logs) || [];
   const metric_logs = useStore(s => s.metric_logs) || [];
+  const nutrition   = useStore(s => s.nutrition_logs) || [];
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -116,6 +155,12 @@ export default function Overview() {
     const logs = habitLogs[h.id] || [];
     return logs.some(l => l.date === today);
   }).length;
+
+  // Live calorie KPI from nutrition_logs
+  const caloriesToday = useMemo(() => {
+    return (nutrition || []).filter(l => (l.date || l.logged_at?.slice(0, 10)) === today)
+      .reduce((s, l) => s + Number(l.calories || 0), 0);
+  }, [nutrition, today]);
 
   const moodStreak = useMemo(() => {
     if (!moodLogs.length) return 0;
@@ -143,19 +188,14 @@ export default function Overview() {
       .reduce((s, t) => s + Number(t.amount || 0), 0);
   }, [finance.transactions, today]);
 
-  // BUG-11: computed health score
-  const healthScore = useHealthScore({
-    habitsDoneToday,
-    habitsTotal: habits.length,
-    moodStreak,
-    lastSleep,
-    lastWeight,
-    activeGoals,
-  });
+  const healthScore = useHealthScore({ habitsDoneToday, habitsTotal: habits.length, moodStreak, lastSleep, lastWeight, activeGoals });
   const scoreColor = healthScore === null ? 'text-gray-500'
     : healthScore >= 75 ? 'text-emerald-400'
     : healthScore >= 50 ? 'text-amber-400'
     : 'text-red-400';
+
+  // Today's Alerts mini-feed
+  const todayAlerts = useTodayAlerts(user, habits, habitLogs, goals);
 
   const [weather, setWeather] = useState(null);
   const [weatherErr, setWeatherErr] = useState(false);
@@ -166,15 +206,11 @@ export default function Overview() {
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,uv_index,apparent_temperature` +
       `&timezone=Asia%2FKolkata`
-    )
-      .then(r => r.json())
-      .then(data => setWeather(data.current))
-      .catch(() => setWeatherErr(true));
+    ).then(r => r.json()).then(data => setWeather(data.current)).catch(() => setWeatherErr(true));
   }, []);
 
   const wCode = weather?.weather_code;
   const wCondition = WMO_CODES[wCode] ?? 'Unknown';
-
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -186,14 +222,10 @@ export default function Overview() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-gray-400 text-sm">{greeting},</p>
-            {/* BUG-09 fix: reactive selector */}
-            <h1 className="text-3xl font-bold text-white mt-0.5">
-              {userName || 'Operator'} \u26a1
-            </h1>
+            <h1 className="text-3xl font-bold text-white mt-0.5">{userName || 'Operator'} \u26a1</h1>
             <p className="text-gray-400 text-sm mt-1">
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
-            {/* BUG-11: health score */}
             {healthScore !== null && (
               <div className="flex items-center gap-2 mt-2">
                 <Heart size={14} className={scoreColor} />
@@ -205,7 +237,7 @@ export default function Overview() {
             )}
           </div>
 
-          {/* Weather card */}
+          {/* Weather */}
           <div className="flex-shrink-0 text-right">
             {weather ? (
               <>
@@ -232,83 +264,88 @@ export default function Overview() {
 
       {/* Live stat grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          label="Pending Tasks"
-          value={pendingTasks}
+        <StatCard label="Pending Tasks" value={pendingTasks}
           sub={overdueTasks > 0 ? `${overdueTasks} overdue` : 'all on time'}
-          icon={CheckSquare}
-          color={overdueTasks > 0 ? 'text-red-400' : 'text-amber-400'}
-          onClick={() => setActiveTab('tasks')}
-        />
-        <StatCard
-          label="Active Goals"
-          value={activeGoals}
-          sub={`${goals.length} total`}
-          icon={Target}
-          color="text-purple-400"
-          onClick={() => setActiveTab('goals')}
-        />
-        <StatCard
-          label="Habits Today"
-          value={`${habitsDoneToday}/${habits.length}`}
+          icon={CheckSquare} color={overdueTasks > 0 ? 'text-red-400' : 'text-amber-400'}
+          onClick={() => setActiveTab('tasks')} />
+        <StatCard label="Active Goals" value={activeGoals}
+          sub={`${goals.length} total`} icon={Target} color="text-purple-400"
+          onClick={() => setActiveTab('goals')} />
+        <StatCard label="Habits Today" value={`${habitsDoneToday}/${habits.length}`}
           sub={habits.length > 0 ? `${Math.round((habitsDoneToday / habits.length) * 100)}% done` : 'no habits'}
-          icon={Flame}
-          color="text-orange-400"
-          onClick={() => setActiveTab('habits')}
-        />
-        <StatCard
-          label="Mood Streak"
-          value={moodStreak}
+          icon={Flame} color="text-orange-400" onClick={() => setActiveTab('habits')} />
+        <StatCard label="Mood Streak" value={moodStreak}
           sub={moodStreak > 0 ? 'days logged' : 'start logging'}
-          icon={Activity}
-          color="text-pink-400"
-          onClick={() => setActiveTab('mind')}
-        />
+          icon={Activity} color="text-pink-400" onClick={() => setActiveTab('mind')} />
       </div>
 
       {/* Secondary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* NEW: live calories today */}
+        <StatCard label="Calories Today" value={caloriesToday > 0 ? caloriesToday.toLocaleString() : '0'}
+          sub="kcal logged" icon={Utensils} color="text-lime-400"
+          onClick={() => setActiveTab('nutrition')} />
         {lastWeight && (
-          <StatCard
-            label="Last Weight"
-            value={`${lastWeight} kg`}
-            sub="from metric log"
-            icon={TrendingUp}
-            color="text-blue-400"
-            onClick={() => setActiveTab('progress')}
-          />
+          <StatCard label="Last Weight" value={`${lastWeight} kg`} sub="from metric log"
+            icon={TrendingUp} color="text-blue-400" onClick={() => setActiveTab('progress')} />
         )}
         {lastSleep && (
           <StatCard
             label="Last Sleep"
             value={`${lastSleep.hours || parseFloat(lastSleep.duration || 0).toFixed(1)}h`}
             sub={lastSleep.quality ? `Quality: ${lastSleep.quality}/10` : lastSleep.date}
-            icon={Moon}
-            color="text-indigo-400"
-            onClick={() => setActiveTab('sleep')}
-          />
+            icon={Moon} color="text-indigo-400" onClick={() => setActiveTab('sleep')} />
         )}
-        <StatCard
-          label="Month Spend"
+        <StatCard label="Month Spend"
           value={monthlySpend > 0 ? `\u20b9${monthlySpend.toLocaleString('en-IN')}` : '\u20b90'}
           sub={new Date().toLocaleString('en-IN', { month: 'long' })}
-          icon={TrendingUp}
-          color="text-emerald-400"
-          onClick={() => setActiveTab('finance')}
-        />
+          icon={TrendingUp} color="text-emerald-400" onClick={() => setActiveTab('finance')} />
       </div>
 
-      {/* Quick actions */}
+      {/* ── Today's Alerts mini-feed ── */}
+      {todayAlerts.length > 0 && (
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Bell size={14} className="text-amber-400" />
+              <p className="text-xs font-semibold text-gray-300">Today\u2019s Alerts</p>
+              <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{todayAlerts.length}</span>
+            </div>
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className="text-xs text-amber-400 hover:text-amber-300 underline"
+            >View all \u2192</button>
+          </div>
+          <div className="space-y-2">
+            {todayAlerts.map(alert => (
+              <div
+                key={alert.id}
+                className={`flex items-start gap-2.5 rounded-lg border px-3 py-2 ${alert.bg}`}
+              >
+                <span className="text-base mt-0.5">{alert.emoji}</span>
+                <p className={`text-xs flex-1 ${alert.color}`}>{alert.text}</p>
+                <button
+                  onClick={() => setActiveTab(alert.tab)}
+                  className={`text-[10px] ${alert.color} hover:opacity-80 underline flex-shrink-0`}
+                >Go \u2192</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick navigate */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4">
         <p className="text-xs font-semibold text-gray-400 mb-3">Quick Navigate</p>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
           {[
-            { id: 'tasks',    label: 'Tasks',    color: 'text-amber-400' },
-            { id: 'goals',    label: 'Goals',    color: 'text-purple-400' },
-            { id: 'habits',   label: 'Habits',   color: 'text-orange-400' },
-            { id: 'finance',  label: 'Finance',  color: 'text-emerald-400' },
-            { id: 'training', label: 'Training', color: 'text-blue-400' },
-            { id: 'mind',     label: 'Wellness', color: 'text-pink-400' },
+            { id: 'tasks',         label: 'Tasks',    color: 'text-amber-400' },
+            { id: 'goals',         label: 'Goals',    color: 'text-purple-400' },
+            { id: 'habits',        label: 'Habits',   color: 'text-orange-400' },
+            { id: 'finance',       label: 'Finance',  color: 'text-emerald-400' },
+            { id: 'training',      label: 'Training', color: 'text-blue-400' },
+            { id: 'mind',          label: 'Wellness', color: 'text-pink-400' },
+            { id: 'notifications', label: '\ud83d\udd14 Alerts', color: 'text-red-400' },
           ].map(item => (
             <button
               key={item.id}
@@ -322,7 +359,7 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Overdue task alert */}
+      {/* Overdue task alert banner */}
       {overdueTasks > 0 && (
         <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
           <AlertTriangle size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
