@@ -67,6 +67,7 @@ const useStore = create(
       habitLogsByHabit: {},
 
       setLastCheckIn: (date) => set({ lastCheckIn: date }),
+      setActiveTab: (tab) => set({ activeTab: tab }),
 
       setUser: (userOrUpdater) => {
         set((state) => {
@@ -350,7 +351,7 @@ const useStore = create(
               ...state.user,
               tasks: {
                 ...state.user.tasks,
-                pending: [{ ...task, id: res.id, done: false }, ...state.user.tasks.pending],
+                pending: [{ ...task, id: res.id, done: false }, ...(state.user?.tasks?.pending || [])],
               },
             },
           }));
@@ -364,7 +365,7 @@ const useStore = create(
             ...state.user,
             tasks: {
               ...state.user.tasks,
-              [list]: state.user.tasks[list].filter((t) => t.id !== id),
+              [list]: (state.user?.tasks?.[list] || []).filter((t) => t.id !== id),
             },
           },
         }));
@@ -388,17 +389,22 @@ const useStore = create(
         }
       },
 
+      // Fixed: also mutates completed list so edits from completed view persist
       updateTask: (id, updates) => {
         apiSync(`/tasks/${id}`, 'PUT', updates);
-        set((state) => ({
-          user: {
-            ...state.user,
-            tasks: {
-              ...state.user.tasks,
-              pending: (state.user.tasks?.pending || []).map(t => t.id === id ? { ...t, ...updates } : t),
+        set((state) => {
+          const tasks = state.user?.tasks || {};
+          return {
+            user: {
+              ...state.user,
+              tasks: {
+                ...tasks,
+                pending:   (tasks.pending   || []).map(t => t.id === id ? { ...t, ...updates } : t),
+                completed: (tasks.completed || []).map(t => t.id === id ? { ...t, ...updates } : t),
+              },
             },
-          },
-        }));
+          };
+        });
       },
 
       reopenTask: (id) => {
@@ -676,8 +682,7 @@ const useStore = create(
             const oldPalette = localStorage.getItem('ultimate_palette');
             if (oldPalette) persistedState.palette = JSON.parse(oldPalette);
           }
-        } catch {
-        }
+        } catch {}
         return persistedState;
       },
     }
@@ -694,7 +699,8 @@ export const selectActiveTab = (s) => s.activeTab;
 export const selectPinnedTabs = (s) => s.pinnedTabs;
 export const selectSetTheme = (s) => s.setTheme;
 export const selectSetPalette = (s) => s.setPalette;
-export const selectActiveTabSetter = (s) => s.setActiveTab;
+export const selectSetActiveTab = (s) => s.setActiveTab;       // was missing
+export const selectActiveTabSetter = (s) => s.setActiveTab;    // alias kept for compat
 export const selectTogglePinnedTab = (s) => s.togglePinnedTab;
 export const selectOnboardingComplete = (s) => s.onboardingComplete;
 export const selectSetOnboardingComplete = (s) => s.setOnboardingComplete;
