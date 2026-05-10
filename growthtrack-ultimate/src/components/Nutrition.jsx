@@ -1,13 +1,19 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Apple, Plus, Trash2, Calculator, RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import { useToast } from '../hooks/useToast';
-import ProgressRing from './ui/ProgressRing';
 import PageHeader from './ui/PageHeader';
-import useStore, { selectNutritionStrategy } from '../store/useStore';
+import useStore, {
+  selectNutritionStrategy,
+  selectNutritionLogs,
+  selectAddNutritionLog,
+  selectDeleteNutritionLog,
+  selectFetchInitialData,
+  selectIsLoading,
+} from '../store/useStore';
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Pre-workout', 'Post-workout'];
 const EMPTY_FORM = { name: '', meal: 'Breakfast', calories: '', protein_g: '', carbs_g: '', fat_g: '' };
@@ -47,65 +53,49 @@ function MacroProgressBar({ label, consumed, target, color }) {
   );
 }
 
-export default function Nutrition({ user, setUser }) {
-  const dbNutrition = useStore(selectNutritionStrategy);
-  const nutrition   = user?.nutrition || dbNutrition || {};
-  const meals       = user?.mealPlan  || dbNutrition?.meals || [];
-  const toast       = useToast();
+export default function Nutrition({ user }) {
+  const dbNutrition    = useStore(selectNutritionStrategy);
+  const nutrition      = user?.nutrition || dbNutrition || {};
+  const meals          = user?.mealPlan  || dbNutrition?.meals || [];
+  const toast          = useToast();
 
-  const [nutritionLogs, setNutritionLogs] = useState([]);
-  const [loadingLogs,   setLoadingLogs]   = useState(false);
-  const [logForm,       setLogForm]       = useState(EMPTY_FORM);
-  const [historyDays,   setHistoryDays]   = useState(7);
+  // ── Store-backed nutrition logs ──────────────────────────────────────────
+  const nutritionLogs  = useStore(selectNutritionLogs);
+  const addNutritionLog    = useStore(selectAddNutritionLog);
+  const deleteNutritionLog = useStore(selectDeleteNutritionLog);
+  const fetchInitialData   = useStore(selectFetchInitialData);
+  const isLoading          = useStore(selectIsLoading);
 
-  const [calcWeight,    setCalcWeight]    = useState(user?.weight || 75);
-  const [calcGoal,      setCalcGoal]      = useState('maintain');
-  const [macroTargets,  setMacroTargets]  = useState(() => calcMacroTargets(user?.weight || 75, 'maintain'));
-
-  const fetchNutritionLogs = useCallback(async () => {
-    setLoadingLogs(true);
-    try {
-      const res  = await fetch('/api/nutrition_logs');
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setNutritionLogs(Array.isArray(data) ? data : []);
-    } catch { /* silent */ }
-    finally  { setLoadingLogs(false); }
-  }, []);
-
-  useEffect(() => { fetchNutritionLogs(); }, [fetchNutritionLogs]);
+  const [logForm,      setLogForm]      = useState(EMPTY_FORM);
+  const [historyDays,  setHistoryDays]  = useState(7);
+  const [calcWeight,   setCalcWeight]   = useState(user?.weight || 75);
+  const [calcGoal,     setCalcGoal]     = useState('maintain');
+  const [macroTargets, setMacroTargets] = useState(() => calcMacroTargets(user?.weight || 75, 'maintain'));
 
   const addLog = useCallback(async () => {
     if (!logForm.name.trim()) { toast.error('Meal name cannot be empty.'); return; }
     const cal = parseFloat(logForm.calories);
     if (!cal || cal <= 0)     { toast.error('Calories must be > 0.'); return; }
     try {
-      const res = await fetch('/api/nutrition_logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...logForm,
-          calories:  cal,
-          protein_g: parseFloat(logForm.protein_g) || 0,
-          carbs_g:   parseFloat(logForm.carbs_g)   || 0,
-          fat_g:     parseFloat(logForm.fat_g)     || 0,
-          date: new Date().toISOString().slice(0, 10),
-        }),
+      await addNutritionLog({
+        ...logForm,
+        calories:  cal,
+        protein_g: parseFloat(logForm.protein_g) || 0,
+        carbs_g:   parseFloat(logForm.carbs_g)   || 0,
+        fat_g:     parseFloat(logForm.fat_g)     || 0,
+        date: new Date().toISOString().slice(0, 10),
       });
-      if (!res.ok) throw new Error();
       toast.success(`${logForm.name} logged — ${cal} kcal`);
       setLogForm(EMPTY_FORM);
-      fetchNutritionLogs();
     } catch { toast.error('Failed to save meal log.'); }
-  }, [logForm, toast, fetchNutritionLogs]);
+  }, [logForm, toast, addNutritionLog]);
 
   const removeLog = useCallback(async (id, name) => {
     try {
-      await fetch(`/api/nutrition_logs/${id}`, { method: 'DELETE' });
-      setNutritionLogs(prev => prev.filter(l => l.id !== id));
+      await deleteNutritionLog(id);
       toast.info(`${name} removed.`);
     } catch { toast.error('Delete failed.'); }
-  }, [toast]);
+  }, [toast, deleteNutritionLog]);
 
   const today    = new Date().toISOString().slice(0, 10);
   const todayLog = useMemo(() => nutritionLogs.filter(l => l.date === today), [nutritionLogs, today]);
@@ -117,22 +107,18 @@ export default function Nutrition({ user, setUser }) {
     fat:      todayLog.reduce((s, l) => s + Number(l.fat_g     || 0), 0),
   }), [todayLog]);
 
-  // surplus / deficit
   const balance      = consumed.calories - macroTargets.calories;
   const balanceLabel = balance > 50  ? 'SURPLUS'  : balance < -50 ? 'DEFICIT' : 'ON TARGET';
   const balanceColor = balance > 50  ? '#f59e0b'  : balance < -50 ? '#10b981' : '#8b5cf6';
   const BalanceIcon  = balance > 50  ? TrendingUp : balance < -50 ? TrendingDown : Minus;
 
   const calPct = Math.min(100, macroTargets.calories ? Math.round((consumed.calories / macroTargets.calories) * 100) : 0);
-  const proPct = Math.min(100, macroTargets.protein  ? Math.round((consumed.protein  / macroTargets.protein)  * 100) : 0);
 
-  // per-meal bar chart data (today)
   const mealBarData = useMemo(() =>
     todayLog.map(l => ({ name: l.name.length > 12 ? l.name.slice(0, 11) + '…' : l.name,
                           calories: Number(l.calories || 0) })),
   [todayLog]);
 
-  // weekly history rollup
   const weeklyHistory = useMemo(() => {
     const days = [];
     for (let i = historyDays - 1; i >= 0; i--) {
@@ -213,7 +199,6 @@ export default function Nutrition({ user, setUser }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
                     gap: '1.5rem', marginBottom: '1.5rem' }}>
 
-        {/* Calorie card with balance badge */}
         <div className="glass-card" style={{ borderTop: `3px solid ${balanceColor}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <p className="label-caps">Daily Calories</p>
@@ -237,7 +222,6 @@ export default function Nutrition({ user, setUser }) {
           </div>
         </div>
 
-        {/* Macro breakdown bars */}
         <div className="glass-card">
           <p className="label-caps" style={{ marginBottom: '0.75rem' }}>Macro Targets Today</p>
           <MacroProgressBar label="Protein" consumed={Math.round(consumed.protein)} target={macroTargets.protein} color={MACRO_COLORS.protein} />
@@ -245,9 +229,8 @@ export default function Nutrition({ user, setUser }) {
           <MacroProgressBar label="Fat"     consumed={Math.round(consumed.fat)}     target={macroTargets.fat}     color={MACRO_COLORS.fat}     />
         </div>
 
-        {/* Ring chart */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <p className="label-caps mb-sm" style={{ alignSelf: 'flex-start' }}>Today’s Macro Breakdown</p>
+          <p className="label-caps mb-sm" style={{ alignSelf: 'flex-start' }}>Today's Macro Breakdown</p>
           {ringData.length === 0 ? (
             <p className="empty-msg" style={{ fontSize: '0.78rem', marginTop: '1rem' }}>Log meals to see breakdown</p>
           ) : (
@@ -271,7 +254,7 @@ export default function Nutrition({ user, setUser }) {
         </div>
       </div>
 
-      {/* ── Log Meal + Today’s Log ── */}
+      {/* ── Log Meal + Today's Log ── */}
       <div className="dual-grid mb-lg">
         <div className="glass-card">
           <span className="card-title">Log Meal</span>
@@ -300,10 +283,10 @@ export default function Nutrition({ user, setUser }) {
 
         <div className="glass-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <span className="card-title" style={{ margin: 0 }}>Today’s Log</span>
-            <button className="btn-icon" onClick={fetchNutritionLogs} title="Refresh"
-              style={{ opacity: loadingLogs ? 0.5 : 1 }}>
-              <RefreshCw size={14} className={loadingLogs ? 'spin' : ''} />
+            <span className="card-title" style={{ margin: 0 }}>Today's Log</span>
+            <button className="btn-icon" onClick={() => fetchInitialData()} title="Refresh"
+              style={{ opacity: isLoading ? 0.5 : 1 }}>
+              <RefreshCw size={14} className={isLoading ? 'spin' : ''} />
             </button>
           </div>
           {todayLog.length === 0 ? (
@@ -430,7 +413,7 @@ export default function Nutrition({ user, setUser }) {
       <div className="glass-card">
         <div className="card-header-row mb-sm">
           <span style={{ fontSize: '1.25rem' }}>🦴</span>
-          <span className="card-title" style={{ margin: 0 }}>Bone Health & Calcium Guide</span>
+          <span className="card-title" style={{ margin: 0 }}>Bone Health &amp; Calcium Guide</span>
         </div>
         <p className="text-muted mb-sm" style={{ fontSize: '0.82rem' }}>Tamil Nadu foods rich in calcium for strong bones and joints.</p>
         <div className="bone-grid">
