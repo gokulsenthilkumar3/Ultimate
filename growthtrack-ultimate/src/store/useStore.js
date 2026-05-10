@@ -46,6 +46,8 @@ const useStore = create(
       entertainment: { media: [] },
       timesheet: { sessions: [] },
       metric_logs: [],
+      // 4G-1: nutrition logs slice
+      nutrition_logs: [],
 
       trainingPlan: null,
       nutritionStrategy: null,
@@ -100,7 +102,7 @@ const useStore = create(
             training, nutrition, lifestyle,
             medical, physique, assessment, wellness, metricLogs, skills, events,
             financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras,
-            workoutSessions, moodLogs, vitalsLogs, medications
+            workoutSessions, moodLogs, vitalsLogs, medications, nutritionLogs,
           ] = await Promise.all([
             fetchJSON('/user'),
             fetchJSON('/tasks'),
@@ -129,6 +131,8 @@ const useStore = create(
             fetchJSON('/mood_logs'),
             fetchJSON('/vitals_logs'),
             fetchJSON('/medications'),
+            // 4G-1: fetch nutrition logs
+            fetchJSON('/nutrition_logs'),
           ]);
 
           const newState = {
@@ -138,6 +142,8 @@ const useStore = create(
             timesheet: { sessions: Array.isArray(timesheet) ? timesheet : [] },
             shopping: { items: Array.isArray(shopping) ? shopping : [] },
             metric_logs: Array.isArray(metricLogs) ? metricLogs : [],
+            // 4G-1: hydrate nutrition_logs
+            nutrition_logs: Array.isArray(nutritionLogs) ? nutritionLogs : [],
             trainingPlan: training,
             nutritionStrategy: nutrition,
             lifestyleTips: Array.isArray(lifestyle) ? lifestyle : [],
@@ -192,11 +198,37 @@ const useStore = create(
         }
       },
 
+      // 4G-1: addMetricLog = alias for saveMetricLog (DailyCheckIn bridge)
       saveMetricLog: async (log) => {
         const res = await apiSync('/metric_logs', 'POST', log);
         if (res && res.id) {
           set(state => ({ metric_logs: [{ ...log, id: res.id }, ...state.metric_logs] }));
         }
+      },
+      addMetricLog: async (log) => {
+        const res = await apiSync('/metric_logs', 'POST', log);
+        if (res && res.id) {
+          set(state => ({ metric_logs: [{ ...log, id: res.id }, ...state.metric_logs] }));
+        } else {
+          // optimistic insert if server doesn't return id
+          set(state => ({ metric_logs: [{ ...log, id: Date.now() }, ...state.metric_logs] }));
+        }
+      },
+
+      // 4G-1: nutrition_logs CRUD
+      addNutritionLog: async (log) => {
+        const payload = { ...log, id: log.id || Date.now(), logged_at: log.logged_at || new Date().toISOString(), date: log.date || new Date().toISOString().slice(0, 10) };
+        const res = await apiSync('/nutrition_logs', 'POST', payload);
+        const id = res?.id || payload.id;
+        set(state => ({ nutrition_logs: [{ ...payload, id }, ...state.nutrition_logs] }));
+      },
+      deleteNutritionLog: (id) => {
+        apiSync(`/nutrition_logs/${id}`, 'DELETE');
+        set(state => ({ nutrition_logs: state.nutrition_logs.filter(l => l.id !== id) }));
+      },
+      updateNutritionLog: (id, updates) => {
+        apiSync(`/nutrition_logs/${id}`, 'PUT', updates);
+        set(state => ({ nutrition_logs: state.nutrition_logs.map(l => l.id === id ? { ...l, ...updates } : l) }));
       },
 
       updateHealthExtras: async (data) => {
@@ -389,7 +421,6 @@ const useStore = create(
         }
       },
 
-      // Fixed: also mutates completed list so edits from completed view persist
       updateTask: (id, updates) => {
         apiSync(`/tasks/${id}`, 'PUT', updates);
         set((state) => {
@@ -596,42 +627,15 @@ const useStore = create(
         set((state) => ({ subscriptions: state.subscriptions.filter(s => s.id !== id) }));
       },
 
-      updateTrainingPlan: async (data) => {
-        set({ trainingPlan: data });
-        apiSync('/training_plan', 'POST', data);
-      },
-      updateNutritionStrategy: async (data) => {
-        set({ nutritionStrategy: data });
-        apiSync('/nutrition_strategy', 'POST', data);
-      },
-      updateLifestyleTips: async (data) => {
-        set({ lifestyleTips: data });
-        apiSync('/lifestyle_tips', 'POST', data);
-      },
-      updateMedicalData: async (data) => {
-        set({ medicalData: data });
-        apiSync('/medical_data', 'POST', data);
-      },
-      updatePhysiqueTargets: async (data) => {
-        set({ physiqueTargets: data });
-        apiSync('/physique_targets', 'POST', data);
-      },
-      updateAssessmentQA: async (data) => {
-        set({ assessmentQA: data });
-        apiSync('/assessment_qa', 'POST', data);
-      },
-      updateSkills: async (data) => {
-        set({ skills: data });
-        apiSync('/skills', 'POST', data);
-      },
-      updateCalendarEvents: async (data) => {
-        set({ calendar_events: data });
-        apiSync('/calendar_events', 'POST', data);
-      },
-      updateWellnessData: async (data) => {
-        set({ wellnessData: data });
-        apiSync('/wellness_data', 'POST', data);
-      },
+      updateTrainingPlan: async (data) => { set({ trainingPlan: data }); apiSync('/training_plan', 'POST', data); },
+      updateNutritionStrategy: async (data) => { set({ nutritionStrategy: data }); apiSync('/nutrition_strategy', 'POST', data); },
+      updateLifestyleTips: async (data) => { set({ lifestyleTips: data }); apiSync('/lifestyle_tips', 'POST', data); },
+      updateMedicalData: async (data) => { set({ medicalData: data }); apiSync('/medical_data', 'POST', data); },
+      updatePhysiqueTargets: async (data) => { set({ physiqueTargets: data }); apiSync('/physique_targets', 'POST', data); },
+      updateAssessmentQA: async (data) => { set({ assessmentQA: data }); apiSync('/assessment_qa', 'POST', data); },
+      updateSkills: async (data) => { set({ skills: data }); apiSync('/skills', 'POST', data); },
+      updateCalendarEvents: async (data) => { set({ calendar_events: data }); apiSync('/calendar_events', 'POST', data); },
+      updateWellnessData: async (data) => { set({ wellnessData: data }); apiSync('/wellness_data', 'POST', data); },
 
       addMoodLog: async (log) => {
         await apiSync('/mood_logs', 'POST', log);
@@ -699,8 +703,8 @@ export const selectActiveTab = (s) => s.activeTab;
 export const selectPinnedTabs = (s) => s.pinnedTabs;
 export const selectSetTheme = (s) => s.setTheme;
 export const selectSetPalette = (s) => s.setPalette;
-export const selectSetActiveTab = (s) => s.setActiveTab;       // was missing
-export const selectActiveTabSetter = (s) => s.setActiveTab;    // alias kept for compat
+export const selectSetActiveTab = (s) => s.setActiveTab;
+export const selectActiveTabSetter = (s) => s.setActiveTab;
 export const selectTogglePinnedTab = (s) => s.togglePinnedTab;
 export const selectOnboardingComplete = (s) => s.onboardingComplete;
 export const selectSetOnboardingComplete = (s) => s.setOnboardingComplete;
@@ -798,5 +802,13 @@ export const selectAddVitalLog = (s) => s.addVitalLog;
 export const selectMedications = (s) => s.medications;
 export const selectAddMedication = (s) => s.addMedication;
 export const selectDeleteMedication = (s) => s.deleteMedication;
+
+// 4G-1: new exports
+export const selectSaveMetricLog = (s) => s.saveMetricLog;
+export const selectAddMetricLog = (s) => s.addMetricLog;
+export const selectNutritionLogs = (s) => s.nutrition_logs;
+export const selectAddNutritionLog = (s) => s.addNutritionLog;
+export const selectDeleteNutritionLog = (s) => s.deleteNutritionLog;
+export const selectUpdateNutritionLog = (s) => s.updateNutritionLog;
 
 export default useStore;
