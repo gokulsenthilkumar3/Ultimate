@@ -1,20 +1,24 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ComposedChart, Bar, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis,
-  PolarRadiusAxis, Radar, PieChart, Pie, Cell
+  PolarRadiusAxis, Radar
 } from 'recharts';
 import {
   BarChart3, TrendingUp, Activity, Gauge, Target, Flame,
-  CheckCircle2, ArrowUpRight, ArrowDownRight, Layers
+  CheckCircle2, Layers
 } from 'lucide-react';
-import useStore, { apiSync } from '../store/useStore';
+import useStore, {
+  selectHabits,
+  selectGoals,
+  selectNutritionLogs,
+} from '../store/useStore';
 
 const TABS = [
-  { id: 'overview',  label: '📊 Weekly Overview' },
-  { id: 'modules',   label: '🧩 Modules' },
-  { id: 'radar',     label: '🎯 Performance Radar' },
-  { id: 'weight',    label: '⚖️ Weight Trend' },
+  { id: 'overview',  label: '\ud83d\udcca Weekly Overview' },
+  { id: 'modules',   label: '\ud83e\udde9 Modules' },
+  { id: 'radar',     label: '\ud83c\udfaf Performance Radar' },
+  { id: 'weight',    label: '\u2696\ufe0f Weight Trend' },
 ];
 
 const tooltipStyle = {
@@ -26,54 +30,25 @@ const tooltipStyle = {
   fontSize: '0.8rem',
 };
 
-// ── tiny helpers ─────────────────────────────────────────────────────────────
 const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 const pct = (n, t) => t ? Math.min(100, Math.round((n / t) * 100)) : 0;
 
 export default function Analytics({ user }) {
-  const metric_logs = useStore((s) => s.metric_logs);
-  const [tab, setTab]     = useState('overview');
-  const [loading, setLoading] = useState(false);
-  const [liveData, setLiveData] = useState(null);
-  // cross-module DB data
-  const [habitData,  setHabitData]  = useState([]);
-  const [goalData,   setGoalData]   = useState([]);
-  const [taskData,   setTaskData]   = useState([]);
-  const [nutriData,  setNutriData]  = useState([]);
+  // ── Store-backed data (no fetch on mount) ────────────────────────────────
+  const metric_logs = useStore((s) => s.metric_logs) || [];
+  const habitData   = useStore(selectHabits) || [];
+  const goalData    = useStore(selectGoals)  || [];
+  const nutriData   = useStore(selectNutritionLogs) || [];
+  const taskData    = useMemo(() => [
+    ...(user?.tasks?.pending   || []),
+    ...(user?.tasks?.completed || []),
+  ], [user]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    // parallel fetch all modules
-    Promise.all([
-      apiSync('/metric_logs', 'GET').catch(() => []),
-      apiSync('/habits', 'GET').catch(() => []),
-      apiSync('/goals', 'GET').catch(() => []),
-      apiSync('/tasks', 'GET').catch(() => []),
-      apiSync('/nutrition_logs', 'GET').catch(() => []),
-    ]).then(([mLogs, habits, goals, tasks, nutri]) => {
-      if (cancelled) return;
-      const parsedLogs = Array.isArray(mLogs)
-        ? mLogs.map((r) => {
-            if (r.data && !r.date) {
-              try { return { ...JSON.parse(r.data || '{}'), date: r.date, id: r.id }; }
-              catch { return { date: r.date, id: r.id }; }
-            }
-            return r;
-          })
-        : [];
-      setLiveData(parsedLogs);
-      setHabitData(Array.isArray(habits) ? habits : []);
-      setGoalData(Array.isArray(goals) ? goals : []);
-      setTaskData(Array.isArray(tasks) ? tasks : []);
-      setNutriData(Array.isArray(nutri) ? nutri : []);
-    }).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  const [tab, setTab] = useState('overview');
 
-  const logs = liveData !== null ? liveData : metric_logs || [];
+  const logs = metric_logs;
 
-  // ── velocity ────────────────────────────────────────────────────────────────
+  // ── velocity ──────────────────────────────────────────────────────────────────
   const velocity = useMemo(() => {
     if (!logs.length) return { val: 0, status: 'NO DATA', color: 'var(--text-3)' };
     const weighted = logs.filter((l) => l.weight && l.date).sort((a, b) => b.date.localeCompare(a.date));
@@ -91,7 +66,7 @@ export default function Analytics({ user }) {
     return { val: rate, status: 'MAINTENANCE', color: 'var(--text-3)' };
   }, [logs]);
 
-  // ── weekly rollup ────────────────────────────────────────────────────────────
+  // ── weekly rollup ───────────────────────────────────────────────────────────
   const weeklyData = useMemo(() => {
     if (!logs.length) return [];
     const buckets = {};
@@ -114,7 +89,7 @@ export default function Analytics({ user }) {
     }));
   }, [logs]);
 
-  // ── weight trend ─────────────────────────────────────────────────────────────
+  // ── weight trend ──────────────────────────────────────────────────────────
   const weightData = useMemo(() =>
     logs.filter((l) => l.weight && l.date)
         .sort((a, b) => a.date.localeCompare(b.date))
@@ -122,14 +97,13 @@ export default function Analytics({ user }) {
         .map((l) => ({ date: l.date.slice(5), weight: Number(l.weight) })),
   [logs]);
 
-  // ── habit 30-day heatmap ──────────────────────────────────────────────────────
+  // ── habit 30-day heatmap ───────────────────────────────────────────────────
   const habitHeatmap = useMemo(() => {
     const today = new Date();
     return Array.from({ length: 30 }, (_, i) => {
       const d = new Date(today);
       d.setDate(today.getDate() - (29 - i));
       const ds = d.toISOString().slice(0, 10);
-      // count habits that have a completion entry on this date
       const done = habitData.filter((h) =>
         Array.isArray(h.completions) ? h.completions.includes(ds) :
         (h.last_completed === ds || h.completed_date === ds)
@@ -139,7 +113,7 @@ export default function Analytics({ user }) {
     });
   }, [habitData]);
 
-  // ── goal progress for radar ───────────────────────────────────────────────────
+  // ── goal progress for radar ───────────────────────────────────────────────
   const goalProgress = useMemo(() => {
     if (!goalData.length) return null;
     const byCategory = {};
@@ -153,7 +127,7 @@ export default function Analytics({ user }) {
     }));
   }, [goalData]);
 
-  // ── performance radar (merged) ────────────────────────────────────────────────
+  // ── performance radar ───────────────────────────────────────────────────────
   const radarData = useMemo(() => {
     const recent = logs.slice(0, 30);
     const avgs = (key) => { const v = recent.filter((l) => l[key]).map((l) => Number(l[key])); return avg(v); };
@@ -169,7 +143,7 @@ export default function Analytics({ user }) {
         ) * 1.2)
       : 85;
     const taskScore = taskData.length
-      ? Math.round(pct(taskData.filter((t) => t.status === 'done').length, taskData.length))
+      ? Math.round(pct(taskData.filter((t) => t.status === 'done' || t.done).length, taskData.length))
       : (user?.scores?.endurance ?? 58);
     return [
       { metric: 'Strength',    value: user?.scores?.strength ?? 65 },
@@ -181,12 +155,12 @@ export default function Analytics({ user }) {
     ];
   }, [logs, user, goalData, habitData, taskData]);
 
-  // ── module stat cards ─────────────────────────────────────────────────────────
+  // ── module stat cards ───────────────────────────────────────────────────────
   const moduleStats = useMemo(() => [
     {
       label: 'Active Habits',
       value: habitData.length,
-      sub: `${habitData.filter((h) => (h.streak || 0) >= 3).length} on streak ≥3`,
+      sub: `${habitData.filter((h) => (h.streak || 0) >= 3).length} on streak \u22653`,
       color: '#f59e0b', icon: Flame,
     },
     {
@@ -198,7 +172,7 @@ export default function Analytics({ user }) {
     {
       label: 'Tasks',
       value: taskData.length,
-      sub: `${taskData.filter((t) => t.status === 'done').length} completed`,
+      sub: `${taskData.filter((t) => t.status === 'done' || t.done).length} completed`,
       color: '#10b981', icon: CheckCircle2,
     },
     {
@@ -214,7 +188,6 @@ export default function Analytics({ user }) {
   const hasHrv   = logs.some((l) => l.hrv);
   const hasSleep = logs.some((l) => l.sleep);
 
-  // heatmap colour helper
   const heatColor = (p) => {
     if (p === 0)   return 'rgba(255,255,255,0.05)';
     if (p < 30)    return 'rgba(245,158,11,0.25)';
@@ -229,9 +202,9 @@ export default function Analytics({ user }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
                     marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
         <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Intelligence & Trends</p>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Intelligence &amp; Trends</p>
           <h2 className="text-display" style={{ fontSize: '2.5rem' }}>Growth Analytics</h2>
-          <p className="text-secondary">Cross-module biometric & behavioural aggregation.</p>
+          <p className="text-secondary">Cross-module biometric &amp; behavioural aggregation.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
           {TABS.map((t) => (
@@ -262,7 +235,7 @@ export default function Analytics({ user }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Activity size={20} color="#8b5cf6" />
             <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>
-              {hasHrv ? `${radarData.find((d) => d.metric === 'Recovery')?.value ?? '—'}ms` : '—'}
+              {hasHrv ? `${radarData.find((d) => d.metric === 'Recovery')?.value ?? '\u2014'}ms` : '\u2014'}
             </span>
           </div>
           <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#8b5cf6', marginTop: '8px' }}>{hasHrv ? 'FROM LOGS' : 'NO DATA'}</p>
@@ -273,7 +246,7 @@ export default function Analytics({ user }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <TrendingUp size={20} color="#10b981" />
             <span style={{ fontSize: '1.8rem', fontWeight: 900 }}>
-              {hasSleep ? `${radarData.find((d) => d.metric === 'Sleep')?.value ?? '—'}%` : '—'}
+              {hasSleep ? `${radarData.find((d) => d.metric === 'Sleep')?.value ?? '\u2014'}%` : '\u2014'}
             </span>
           </div>
           <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>{hasSleep ? 'FROM LOGS' : 'NO DATA'}</p>
@@ -303,7 +276,7 @@ export default function Analytics({ user }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                           marginBottom: '1.5rem' }}>
               <h3 className="card-title" style={{ margin: 0 }}>Biometric Synchronization</h3>
-              <p className="text-secondary" style={{ fontSize: '0.8rem' }}>Weekly averages · last 8 weeks</p>
+              <p className="text-secondary" style={{ fontSize: '0.8rem' }}>Weekly averages \u00b7 last 8 weeks</p>
             </div>
             <div style={{ height: '340px' }}>
               {weeklyData.length === 0 ? (
@@ -376,7 +349,6 @@ export default function Analytics({ user }) {
               ))}
             </div>
 
-            {/* goal progress bars */}
             {goalData.length > 0 && (
               <>
                 <p className="label-caps" style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: '0.75rem' }}>Goal Progress</p>
