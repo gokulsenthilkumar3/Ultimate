@@ -15,16 +15,17 @@ const TYPES    = ['Anime', 'Series', 'Movie', 'Documentary'];
 const STATUSES = ['Watching', 'Plan to Watch', 'Completed', 'Dropped'];
 const STATUS_COLOR = { Watching: 'var(--info)', Completed: 'var(--success)', Dropped: 'var(--danger)', 'Plan to Watch': 'var(--warning)' };
 const TYPE_COLOR   = { Anime: '#ec4899', Series: '#0ea5e9', Movie: '#e5a50a', Documentary: '#10b981' };
-const EMPTY_FORM   = { title: '', type: 'Anime', season: 1, episode: 1, total_episodes: '', rating: 7.0, status: 'Watching' };
+const EMPTY_FORM = { title: '', type: 'Anime', season: 1, episode: 1, total_episodes: '', rating: 5.0, status: 'Watching' };
 
-/** Render 0–10 stars (filled/half/empty) for display only */
-function StarDisplay({ rating }) {
-  const pct = Math.round(rating * 10);
+/** Render 0-10 star dots for a rating value */
+function RatingDisplay({ value }) {
+  const filled = Math.round(value);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-      <Star size={12} color="#e5a50a" fill="#e5a50a" />
-      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#e5a50a' }}>{rating.toFixed(1)}</span>
-      <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>/10</span>
+    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+      {Array.from({ length: 10 }).map((_, i) => (
+        <span key={i} style={{ fontSize: '8px', color: i < filled ? '#e5a50a' : 'rgba(255,255,255,0.15)' }}>●</span>
+      ))}
+      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#e5a50a', marginLeft: '4px' }}>{value.toFixed(1)}</span>
     </div>
   );
 }
@@ -44,7 +45,8 @@ export default function Entertainment() {
     media.filter(m =>
       m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.type.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [media, searchTerm]);
+    ), [media, searchTerm]
+  );
 
   const stats = useMemo(() => ({
     total:     media.length,
@@ -54,34 +56,30 @@ export default function Entertainment() {
 
   const handleAdd = useCallback(() => {
     if (!form.title.trim()) { toast.error('Title name cannot be empty.'); return; }
-    addMediaItem({
-      ...form,
-      total_episodes: parseInt(form.total_episodes) || null,
-      rating: parseFloat(form.rating) || 7.0,
-    });
+    addMediaItem({ ...form, total_episodes: parseInt(form.total_episodes) || 0 });
     setForm(EMPTY_FORM);
-    toast.success(`"​${form.title}" added to your library.`);
+    toast.success(`"${form.title}" added to your library.`);
   }, [form, addMediaItem, toast]);
 
-  const handleDelete  = useCallback((id, title) => { deleteMediaItem(id); toast.info(`"​${title}" removed from library.`); }, [deleteMediaItem, toast]);
-  const handleProgress = useCallback((id, field, value) => { updateMediaProgress(id, field, value); }, [updateMediaProgress]);
+  const handleDelete = useCallback((id, title) => {
+    deleteMediaItem(id);
+    toast.info(`"${title}" removed from library.`);
+  }, [deleteMediaItem, toast]);
+
+  const handleProgress = useCallback((id, field, value) => {
+    updateMediaProgress(id, field, value);
+  }, [updateMediaProgress]);
 
   const statCards = useMemo(() => [
     { label: 'Total Titles', value: stats.total,     icon: Film, color: 'var(--accent)' },
-    { label: 'Watching',     value: stats.watching,  icon: Tv,   color: 'var(--info)'   },
+    { label: 'Watching',     value: stats.watching,  icon: Tv,   color: 'var(--info)' },
     { label: 'Completed',    value: stats.completed, icon: Star, color: 'var(--success)' },
   ], [stats]);
 
   return (
     <div className="fade-in module-page">
-      <PageHeader
-        accent="Entertainment"
-        icon={<Film size={24} />}
-        title="Entertainment Tracker"
-        subtitle="Track your favourite Anime, Series, and Movies"
-      />
+      <PageHeader accent="Entertainment" icon={<Film size={24} />} title="Entertainment Tracker" subtitle="Track your favourite Anime, Series, and Movies" />
 
-      {/* Stats */}
       <div className="stats-grid mb-lg">
         {statCards.map(c => <StatCard key={c.label} icon={c.icon} label={c.label} value={c.value} color={c.color} />)}
       </div>
@@ -97,13 +95,13 @@ export default function Entertainment() {
 
       {activeTab === 'Library' && (
         <>
-          {/* Add & Search */}
           <div className="dual-grid mb-lg">
+            {/* Add form */}
             <div className="glass-card">
               <span className="card-title">Add New Title</span>
               <div className="form-stack mt-sm">
-                <input type="text" placeholder="Title name"
-                  value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+                <input type="text" placeholder="Title name" value={form.title}
+                  onChange={e => setForm({ ...form, title: e.target.value })}
                   onKeyDown={e => e.key === 'Enter' && handleAdd()}
                   className="form-input" />
                 <div className="flex-row gap-sm">
@@ -114,39 +112,32 @@ export default function Entertainment() {
                     {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
-                {/* Episode range */}
-                <div className="flex-row gap-sm">
+                {/* Total episodes */}
+                <div className="flex-row gap-sm" style={{ alignItems: 'center' }}>
                   <div style={{ flex: 1 }}>
-                    <label className="label-caps" style={{ fontSize: '0.65rem', marginBottom: '4px', display: 'block' }}>Start Ep</label>
-                    <input type="number" value={form.episode} min="1"
-                      onChange={e => setForm({ ...form, episode: parseInt(e.target.value) || 1 })} className="form-input" />
+                    <p className="label-caps" style={{ marginBottom: '4px', fontSize: '0.65rem' }}>Total Episodes</p>
+                    <input type="number" placeholder="e.g. 24" value={form.total_episodes}
+                      onChange={e => setForm({ ...form, total_episodes: e.target.value })}
+                      className="form-input" min="0" />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label className="label-caps" style={{ fontSize: '0.65rem', marginBottom: '4px', display: 'block' }}>Total Eps</label>
-                    <input type="number" placeholder="?" value={form.total_episodes} min="1"
-                      onChange={e => setForm({ ...form, total_episodes: e.target.value })} className="form-input" />
+                    <p className="label-caps" style={{ marginBottom: '4px', fontSize: '0.65rem' }}>Rating: {form.rating.toFixed(1)}/10</p>
+                    <input type="range" min="0" max="10" step="0.5" value={form.rating}
+                      onChange={e => setForm({ ...form, rating: parseFloat(e.target.value) })}
+                      className="form-input" style={{ padding: '6px 0', accentColor: '#e5a50a' }} />
                   </div>
-                </div>
-                {/* Rating slider */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <label className="label-caps" style={{ fontSize: '0.65rem' }}>Rating</label>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#e5a50a' }}>{parseFloat(form.rating).toFixed(1)} / 10</span>
-                  </div>
-                  <input type="range" min="0" max="10" step="0.5"
-                    value={form.rating} onChange={e => setForm({ ...form, rating: parseFloat(e.target.value) })}
-                    className="form-input" style={{ padding: 0, cursor: 'pointer', accentColor: '#e5a50a' }} />
                 </div>
                 <button onClick={handleAdd} className="btn-primary btn-full"><Plus size={16} /> Add to Library</button>
               </div>
             </div>
 
+            {/* Search */}
             <div className="glass-card flex-center-col">
               <span className="card-title">Search Library</span>
               <div style={{ position: 'relative', marginTop: '0.5rem' }}>
                 <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
-                <input type="text" placeholder="Search by title or type..."
-                  value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                <input type="text" placeholder="Search by title or type..." value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="form-input" style={{ paddingLeft: '40px' }} />
               </div>
             </div>
@@ -155,8 +146,9 @@ export default function Entertainment() {
           {/* Media grid */}
           <div className="media-grid">
             {filteredMedia.map(item => {
-              const totalEps  = item.total_episodes || null;
-              const epProgress = totalEps ? Math.min((item.episode / totalEps) * 100, 100) : null;
+              const totalEps = parseInt(item.total_episodes) || 0;
+              const curEp    = parseInt(item.episode) || 0;
+              const epProgress = totalEps > 0 ? Math.min(100, Math.round((curEp / totalEps) * 100)) : (item.status === 'Completed' ? 100 : 0);
 
               return (
                 <div key={item.id} className="glass-card media-card">
@@ -171,54 +163,47 @@ export default function Entertainment() {
                       </button>
                     </div>
 
-                    {/* Episode tracking */}
-                    <div className="flex-row gap-sm mb-sm" style={{ alignItems: 'flex-end' }}>
+                    {/* Season / Episode / Total */}
+                    <div className="flex-row gap-sm mb-sm">
+                      {[{ label: 'Season', field: 'season' }, { label: 'Episode', field: 'episode' }].map(({ label, field }) => (
+                        <div key={field} style={{ flex: 1 }}>
+                          <p className="label-caps" style={{ marginBottom: '4px' }}>{label}</p>
+                          <input type="number" value={item[field]}
+                            onChange={e => handleProgress(item.id, field, parseInt(e.target.value) || 1)}
+                            className="form-input" style={{ padding: '0.4rem', fontSize: '0.82rem' }} min="1" />
+                        </div>
+                      ))}
                       <div style={{ flex: 1 }}>
-                        <p className="label-caps" style={{ marginBottom: '4px', fontSize: '0.65rem' }}>Season</p>
-                        <input type="number" value={item.season}
-                          onChange={e => handleProgress(item.id, 'season', parseInt(e.target.value) || 1)}
-                          className="form-input" style={{ padding: '0.4rem', fontSize: '0.82rem' }} min="1" />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p className="label-caps" style={{ marginBottom: '4px', fontSize: '0.65rem' }}>Episode</p>
-                        <input type="number" value={item.episode}
-                          onChange={e => handleProgress(item.id, 'episode', parseInt(e.target.value) || 1)}
-                          className="form-input" style={{ padding: '0.4rem', fontSize: '0.82rem' }} min="1" />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p className="label-caps" style={{ marginBottom: '4px', fontSize: '0.65rem' }}>Total Eps</p>
-                        <input type="number" placeholder="?"
-                          value={item.total_episodes || ''}
-                          onChange={e => handleProgress(item.id, 'total_episodes', parseInt(e.target.value) || null)}
-                          className="form-input" style={{ padding: '0.4rem', fontSize: '0.82rem' }} min="1" />
+                        <p className="label-caps" style={{ marginBottom: '4px' }}>Total Ep.</p>
+                        <input type="number" value={item.total_episodes || ''}
+                          onChange={e => handleProgress(item.id, 'total_episodes', parseInt(e.target.value) || 0)}
+                          className="form-input" style={{ padding: '0.4rem', fontSize: '0.82rem' }} min="0" placeholder="?" />
                       </div>
                     </div>
 
                     {/* Episode progress bar */}
-                    {epProgress !== null && (
-                      <div style={{ marginBottom: '0.5rem' }}>
+                    {totalEps > 0 && (
+                      <div style={{ marginBottom: '0.75rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Progress</span>
-                          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: TYPE_COLOR[item.type] }}>
-                            Ep {item.episode}/{item.total_episodes}
-                          </span>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Episode progress</span>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: STATUS_COLOR[item.status] }}>{curEp}/{totalEps} ({epProgress}%)</span>
                         </div>
-                        <div style={{ height: '4px', background: 'rgba(255,255,255,0.07)', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ width: `${epProgress}%`, height: '100%', background: TYPE_COLOR[item.type], borderRadius: '2px', transition: '0.3s' }} />
+                        <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${epProgress}%`, background: `linear-gradient(90deg, ${STATUS_COLOR[item.status]}, ${TYPE_COLOR[item.type]})`, borderRadius: '2px', transition: 'width 0.4s' }} />
                         </div>
                       </div>
                     )}
 
                     {/* Rating slider */}
                     <div style={{ marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Rating</span>
-                        <StarDisplay rating={parseFloat(item.rating) || 0} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <p className="label-caps" style={{ fontSize: '0.6rem' }}>Rating</p>
+                        <RatingDisplay value={parseFloat(item.rating) || 0} />
                       </div>
                       <input type="range" min="0" max="10" step="0.5"
-                        value={item.rating || 0}
+                        value={parseFloat(item.rating) || 0}
                         onChange={e => handleProgress(item.id, 'rating', parseFloat(e.target.value))}
-                        style={{ width: '100%', cursor: 'pointer', accentColor: '#e5a50a' }} />
+                        style={{ width: '100%', accentColor: '#e5a50a', cursor: 'pointer' }} />
                     </div>
 
                     <div className="media-card__footer">
@@ -230,13 +215,10 @@ export default function Entertainment() {
                     </div>
                   </div>
 
-                  {/* Card bottom progress track */}
+                  {/* Progress bar at bottom of card */}
                   <div className="media-card__progress-track">
                     <div className="media-card__progress-fill"
-                      style={{
-                        width: item.status === 'Completed' ? '100%' : epProgress !== null ? `${epProgress}%` : '40%',
-                        background: `linear-gradient(90deg, ${STATUS_COLOR[item.status]}, ${TYPE_COLOR[item.type]})`,
-                      }} />
+                      style={{ width: item.status === 'Completed' ? '100%' : `${epProgress}%`, background: `linear-gradient(90deg, ${STATUS_COLOR[item.status]}, ${TYPE_COLOR[item.type]})` }} />
                   </div>
                 </div>
               );
@@ -256,11 +238,12 @@ export default function Entertainment() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
             {[
               { name: 'Netflix',        color: '#E50914', status: 'Connected' },
-              { name: 'Amazon Prime',   color: '#00A8E1', status: 'Connect'   },
-              { name: 'Disney+ Hotstar',color: '#032541', status: 'Connect'   },
-              { name: 'Zee5',           color: '#8230C6', status: 'Connect'   },
+              { name: 'Amazon Prime',   color: '#00A8E1', status: 'Connect' },
+              { name: 'Disney+ Hotstar',color: '#032541', status: 'Connect' },
+              { name: 'Zee5',           color: '#8230C6', status: 'Connect' },
             ].map(provider => (
-              <div key={provider.name} style={{ border: `1px solid ${provider.color}55`, padding: '1.5rem', borderRadius: '12px', background: `linear-gradient(135deg, ${provider.color}11, transparent)`, display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+              <div key={provider.name}
+                style={{ border: `1px solid ${provider.color}55`, padding: '1.5rem', borderRadius: '12px', background: `linear-gradient(135deg, ${provider.color}11, transparent)`, display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <h4 style={{ fontWeight: 800, fontSize: '1.2rem', color: provider.color }}>{provider.name}</h4>
                 <button className="btn-ghost" style={{ width: '100%', borderColor: provider.color, color: provider.status === 'Connected' ? 'var(--text-1)' : provider.color, background: provider.status === 'Connected' ? `${provider.color}44` : 'transparent' }}
                   onClick={() => toast.success(`${provider.name} sync initiated.`)}>
