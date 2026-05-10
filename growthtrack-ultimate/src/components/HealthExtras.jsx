@@ -1,337 +1,172 @@
-import React, { useState, useMemo } from 'react';
-import { Eye, Ear, Wind, Fingerprint, Brain, Activity, ClipboardList, Target, Smile, Heart, Sparkles, Droplets, X, Edit3, Check, Info } from 'lucide-react';
+import React, { useState } from 'react';
 import useStore from '../store/useStore';
-import { useToast } from '../hooks/useToast';
+import {
+  Activity, Brain, Zap, Moon, Heart, Eye, Dumbbell,
+  Apple, Wind, Thermometer, SmilePlus, Save, ChevronDown, ChevronUp
+} from 'lucide-react';
+
+const SECTIONS = [
+  {
+    id: 'sensory', label: 'Sensory & Nervous', icon: Brain, color: 'text-purple-400',
+    fields: [
+      { key: 'vision_score', label: 'Vision Score', type: 'number', placeholder: '8 / 10', unit: '/10' },
+      { key: 'hearing_score', label: 'Hearing Score', type: 'number', placeholder: '9 / 10', unit: '/10' },
+      { key: 'reaction_ms', label: 'Reaction Time', type: 'number', placeholder: '220', unit: 'ms' },
+      { key: 'balance_score', label: 'Balance Score', type: 'number', placeholder: '7 / 10', unit: '/10' },
+      { key: 'coordination_score', label: 'Coordination', type: 'number', placeholder: '8 / 10', unit: '/10' },
+    ],
+  },
+  {
+    id: 'posture', label: 'Posture & Flexibility', icon: Activity, color: 'text-blue-400',
+    fields: [
+      { key: 'posture_rating', label: 'Posture Rating', type: 'number', placeholder: '6 / 10', unit: '/10' },
+      { key: 'flexibility_score', label: 'Flexibility', type: 'number', placeholder: '7 / 10', unit: '/10' },
+      { key: 'sit_reach_cm', label: 'Sit & Reach', type: 'number', placeholder: '30', unit: 'cm' },
+      { key: 'shoulder_mobility', label: 'Shoulder Mobility', type: 'number', placeholder: '8 / 10', unit: '/10' },
+      { key: 'hip_mobility', label: 'Hip Mobility', type: 'number', placeholder: '7 / 10', unit: '/10' },
+    ],
+  },
+  {
+    id: 'respiratory', label: 'Respiratory', icon: Wind, color: 'text-cyan-400',
+    fields: [
+      { key: 'resting_breath_rate', label: 'Resting Breath Rate', type: 'number', placeholder: '15', unit: '/min' },
+      { key: 'breath_hold_sec', label: 'Breath Hold', type: 'number', placeholder: '60', unit: 'sec' },
+      { key: 'vo2_max', label: 'VO₂ Max (est)', type: 'number', placeholder: '45', unit: 'ml/kg/min' },
+      { key: 'lung_capacity_pct', label: 'Lung Capacity', type: 'number', placeholder: '90', unit: '%' },
+    ],
+  },
+  {
+    id: 'recovery', label: 'Recovery & Sleep Quality', icon: Moon, color: 'text-indigo-400',
+    fields: [
+      { key: 'hrv_ms', label: 'HRV', type: 'number', placeholder: '55', unit: 'ms' },
+      { key: 'recovery_score', label: 'Recovery Score', type: 'number', placeholder: '7 / 10', unit: '/10' },
+      { key: 'soreness_level', label: 'Soreness Level', type: 'number', placeholder: '3 / 10', unit: '/10' },
+      { key: 'stress_level', label: 'Stress Level', type: 'number', placeholder: '4 / 10', unit: '/10' },
+      { key: 'energy_level', label: 'Energy Level', type: 'number', placeholder: '7 / 10', unit: '/10' },
+    ],
+  },
+  {
+    id: 'diet', label: 'Diet & Hydration', icon: Apple, color: 'text-green-400',
+    fields: [
+      { key: 'diet_type', label: 'Diet Type', type: 'text', placeholder: 'e.g. Balanced / Keto' },
+      { key: 'meal_freq', label: 'Meals per Day', type: 'number', placeholder: '3', unit: '/day' },
+      { key: 'water_target_l', label: 'Water Target', type: 'number', placeholder: '3', unit: 'L' },
+      { key: 'cheat_meals_per_week', label: 'Cheat Meals/week', type: 'number', placeholder: '1' },
+      { key: 'supplement_notes', label: 'Supplements', type: 'text', placeholder: 'Creatine, Whey, D3...' },
+    ],
+  },
+  {
+    id: 'hobbies', label: 'Hobbies & Lifestyle', icon: SmilePlus, color: 'text-amber-400',
+    fields: [
+      { key: 'hobbies', label: 'Active Hobbies', type: 'text', placeholder: 'Anime, F1, Gaming...' },
+      { key: 'screen_time_hr', label: 'Avg Screen Time', type: 'number', placeholder: '5', unit: 'hr/day' },
+      { key: 'outdoor_time_hr', label: 'Outdoor Time', type: 'number', placeholder: '1', unit: 'hr/day' },
+      { key: 'social_score', label: 'Social Engagement', type: 'number', placeholder: '6 / 10', unit: '/10' },
+      { key: 'mood_baseline', label: 'Mood Baseline', type: 'number', placeholder: '7 / 10', unit: '/10' },
+    ],
+  },
+];
 
 export default function HealthExtras() {
-  const user = useStore(s => s.user);
-  const healthExtras = useStore(s => s.health_extras || {});
+  const health_extras = useStore(s => s.health_extras) || {};
   const updateHealthExtras = useStore(s => s.updateHealthExtras);
-  const toast = useToast();
 
-  const senses = {
-    vision:  { level: healthExtras.vision_score ?? 85, note: 'Slight strain after long work', exercises: ['Palming', 'Focus Shifting'], color: '#3b82f6', icon: Eye,         currentPower: '-2.5 D',        targetPower: '0.0 D (20/20)',   path: 'Laser correction, extended outdoor focus, and targeted ocular exercises.' },
-    hearing: { level: healthExtras.hearing_score ?? 90, note: 'Normal acoustic range',        exercises: ['Sound Localization'],         color: '#8b5cf6', icon: Ear,         currentPower: '15 dB HL',      targetPower: '0 dB HL',         path: 'Acoustic therapy & strictly avoiding high-decibel environments.' },
-    smell:   { level: healthExtras.smell_score ?? 95, note: 'Highly sensitive olfactory',   exercises: ['Scent Identification'],       color: '#10b981', icon: Wind,        currentPower: 'Tier 2 (High)', targetPower: 'Tier 1 (Sommelier)', path: 'Daily essential oil scent discrimination training.' },
-    taste:   { level: healthExtras.taste_score ?? 90, note: 'Clear palate',                 exercises: ['Mindful Eating'],             color: '#f59e0b', icon: Activity,    currentPower: 'High Sensitivity', targetPower: 'Peak Sensitivity', path: 'Zinc supplementation, regular fasting, & daily tongue scraping.' },
-    touch:   { level: healthExtras.touch_score ?? 88, note: 'Responsive tactile feedback',  exercises: ['Texture Discrimination'],     color: '#ef4444', icon: Fingerprint, currentPower: '88% Acuity',    targetPower: '95% Acuity',      path: 'Tactile discrimination exercises & improved hydration.' }
+  const [local, setLocal] = useState({ ...health_extras });
+  const [openSections, setOpenSections] = useState({ sensory: true });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const toggle = (id) => setOpenSections(s => ({ ...s, [id]: !s[id] }));
+
+  const handleChange = (key, val) => setLocal(l => ({ ...l, [key]: val }));
+
+  const handleSave = async (sectionFields) => {
+    setSaving(true);
+    const partial = {};
+    sectionFields.forEach(f => { if (local[f.key] !== undefined) partial[f.key] = local[f.key]; });
+    await updateHealthExtras(partial);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
-  const [editSense, setEditSense] = useState(null); // key being edited
-  const [editLevel, setEditLevel] = useState(50);
-  const [activeSense, setActiveSense] = useState(null);
-
-  // Read from store — fall back to user defaults if empty
-  const diets = useMemo(() => Array.isArray(healthExtras.active_diets) && healthExtras.active_diets.length > 0 ? healthExtras.active_diets : (user?.data?.activeDiets || user?.activeDiets || ['—']), [healthExtras, user]);
-  const hobbies = useMemo(() => Array.isArray(healthExtras.hobbies) && healthExtras.hobbies.length > 0 ? healthExtras.hobbies : (user?.data?.hobbies || user?.hobbies || ['—']), [healthExtras, user]);
-  const posture = healthExtras.posture_status || user?.data?.posture || user?.posture || 'Not set';
-  const broncoTest = healthExtras.bronco_level || user?.data?.broncoTest || user?.broncoTest || '—';
-
-  const specialized = [
-    { name: 'Gut Biome',    score: healthExtras.gut_biome_score ?? 78, note: 'Balanced',    icon: Target,   color: '#10b981', dbKey: 'gut_biome_score' },
-    { name: 'Dermatology',  score: healthExtras.dermatology_score ?? 82, note: 'Hydrated',    icon: Droplets, color: '#3b82f6', dbKey: 'dermatology_score' },
-    { name: 'Hair Vitality',score: healthExtras.hair_vitality_score ?? 85, note: 'Voluminous',  icon: Sparkles, color: '#8b5cf6', dbKey: 'hair_vitality_score' }
-  ];
-  const [editSpecIdx, setEditSpecIdx] = useState(null);
-  const [editSpecScore, setEditSpecScore] = useState(80);
-
-  // NEW: Recovery & Stress section (third pillar in Health+)
-  const recovery = {
-    hrv: healthExtras.hrv_score ?? 70,
-    stress: healthExtras.stress_load_score ?? 60,
-    recoveryIndex: healthExtras.recovery_index_score ?? 65,
-  };
-
-  const updateScalar = async (key, value, label) => {
-    await updateHealthExtras({ [key]: value });
-    toast.success(`${label} updated`);
+  const handleSaveAll = async () => {
+    setSaving(true);
+    await updateHealthExtras(local);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+    <div className="space-y-4 p-4">
+      <div className="flex items-center justify-between">
         <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Advanced Telemetry</p>
-          <h2 className="text-display" style={{ fontSize: '2.5rem' }}>Health+ & Extras</h2>
-          <p className="text-secondary" style={{ maxWidth: '600px' }}>Deep bio-metric analysis of your five senses, specialized organ health, and comprehensive lifestyle markers.</p>
+          <h2 className="text-2xl font-bold text-white">Health+</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Detailed bio-metrics · auto-synced to Supabase</p>
         </div>
+        <button
+          onClick={handleSaveAll}
+          disabled={saving}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition"
+        >
+          <Save size={13} /> {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save All'}
+        </button>
       </div>
 
-      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        
-        {/* 5 Senses Section */}
-        <div className="glass-card" style={{ gridColumn: '1 / -1' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2rem' }}>
-            <Brain size={28} color="var(--accent)" />
-            <div>
-              <h3 className="text-display" style={{ fontSize: '1.5rem', margin: 0 }}>Sensory Optimization</h3>
-              <p className="label-caps" style={{ fontSize: '0.65rem' }}>Neuro-biological feedback</p>
-            </div>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-            {Object.entries(senses).map(([key, data]) => {
-              const Icon = data.icon;
-              return (
-                <div
-                  key={key}
-                  onClick={() => { if (editSense !== key) setActiveSense({ key, ...data }); }}
-                  style={{ padding: '1.5rem', background: 'var(--bg-dark)', borderRadius: '16px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = data.color; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-                >
-                  <div style={{ position: 'absolute', top: 0, right: 0, width: '100px', height: '100px', background: data.color, filter: 'blur(50px)', opacity: 0.1, pointerEvents: 'none' }} />
+      {SECTIONS.map(section => {
+        const Icon = section.icon;
+        const isOpen = openSections[section.id];
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: `${data.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon size={20} color={data.color} />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {editSense === key ? (
-                        <>
-                          <input type="range" min={0} max={100} value={editLevel}
-                            onClick={e => e.stopPropagation()}
-                            onChange={e => setEditLevel(+e.target.value)}
-                            style={{ width: '70px', accentColor: data.color }}
-                          />
-                          <button onClick={async (e) => { 
-                              e.stopPropagation(); 
-                              await updateScalar(`${key}_score`, editLevel, `${key} score`);
-                              setEditSense(null); 
-                            }}
-                            style={{ background: data.color, border: 'none', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer', color: '#fff' }}>
-                            <Check size={12} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span style={{ fontSize: '1.4rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: data.color }}>
-                            {data.level}<span style={{ fontSize: '0.8rem', opacity: 0.6 }}>%</span>
-                          </span>
-                          <button onClick={e => { e.stopPropagation(); setEditSense(key); setEditLevel(data.level); }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '2px' }}>
-                            <Edit3 size={12} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <h4 style={{ fontSize: '1.1rem', fontWeight: 800, textTransform: 'capitalize', marginBottom: '4px' }}>{key}</h4>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', minHeight: '36px' }}>{data.note}</p>
-
-                  <div style={{ marginTop: '1rem', height: '4px', background: 'var(--bg-elevated)', borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{ width: `${data.level}%`, height: '100%', background: `linear-gradient(90deg, ${data.color}, ${data.color}88)` }} />
-                  </div>
-
-                  {/* Self-assessed badge */}
-                  <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    <Info size={10} /> Self-assessed estimate
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Specialized Health */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2rem' }}>
-            <Heart size={24} color="#f43f5e" />
-            <div>
-              <h3 className="text-display" style={{ fontSize: '1.3rem', margin: 0 }}>Specialized Vitality</h3>
-              <p className="label-caps" style={{ fontSize: '0.65rem' }}>Organ & Tissue Status</p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'center' }}>
-            {specialized.map((item, i) => {
-              const Icon = item.icon;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: `2px solid ${item.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                    <Icon size={20} color={item.color} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{item.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {editSpecIdx === i ? (
-                          <>
-                            <input type="range" min={0} max={100} value={editSpecScore}
-                              onChange={e => setEditSpecScore(+e.target.value)}
-                              style={{ width: '70px', accentColor: item.color }}
-                            />
-                            <button onClick={async () => { 
-                                await updateScalar(item.dbKey, editSpecScore, item.name);
-                                setEditSpecIdx(null); 
-                              }}
-                              style={{ background: item.color, border: 'none', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer', color: '#fff' }}>
-                              <Check size={12} />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <span style={{ fontWeight: 900, color: item.color }}>{item.score}%</span>
-                            <button onClick={() => { setEditSpecIdx(i); setEditSpecScore(item.score); }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '2px' }}>
-                              <Edit3 size={12} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ height: '6px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ width: `${item.score}%`, height: '100%', background: item.color }} />
-                    </div>
-                    <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                      <Info size={9} /> Self-assessed estimate
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Lifestyle, Performance & Recovery */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2rem' }}>
-            <Activity size={24} color="var(--info)" />
-            <div>
-              <h3 className="text-display" style={{ fontSize: '1.3rem', margin: 0 }}>Lifestyle, Performance & Recovery</h3>
-              <p className="label-caps" style={{ fontSize: '0.65rem' }}>Habits, Output & Recovery</p>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ padding: '1.25rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center' }}>
-               <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '8px' }}>Bronco Test</p>
-               <p style={{ fontSize: '1.5rem', fontWeight: 900 }}>{broncoTest}</p>
-               <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Info size={9} /> Self-assessed</p>
-            </div>
-            <div style={{ padding: '1.25rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center' }}>
-               <p className="label-caps" style={{ color: 'var(--success)', marginBottom: '8px' }}>Posture</p>
-               <p style={{ fontSize: '1.5rem', fontWeight: 900 }}>{posture}</p>
-               <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}><Info size={9} /> Self-assessed</p>
-            </div>
-          </div>
-
-          {/* NEW Recovery row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            {[{ key: 'hrv_score', label: 'HRV Quality', value: recovery.hrv, color: '#22c55e' }, { key: 'stress_load_score', label: 'Stress Load', value: recovery.stress, color: '#f97316' }, { key: 'recovery_index_score', label: 'Recovery Index', value: recovery.recoveryIndex, color: '#6366f1' }].map(metric => (
-              <div key={metric.key} style={{ padding: '0.9rem', background: 'var(--bg-elevated)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)', fontWeight: 700 }}>{metric.label}</span>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: metric.color }}>{metric.value ?? '—'}<span style={{ fontSize: '0.7rem', opacity: 0.7 }}>%</span></span>
-                </div>
-                <div style={{ height: '4px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${metric.value || 0}%`, height: '100%', background: metric.color }} />
-                </div>
+        return (
+          <div key={section.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+            {/* Section header */}
+            <button
+              onClick={() => toggle(section.id)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition"
+            >
+              <div className="flex items-center gap-2.5">
+                <Icon size={16} className={section.color} />
+                <span className="text-sm font-semibold text-white">{section.label}</span>
+                <span className="text-xs text-gray-500">
+                  {section.fields.filter(f => local[f.key] !== undefined && local[f.key] !== '').length}/{section.fields.length} filled
+                </span>
               </div>
-            ))}
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h4 style={{ fontSize: '0.8rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ClipboardList size={14} /> Active Diets
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginLeft: '4px', fontWeight: 400 }}>— from your profile</span>
-            </h4>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {diets.map(diet => (
-                <span key={diet} style={{ padding: '6px 12px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                  {diet}
-                </span>
-              ))}
-              {diets.length === 1 && diets[0] === '—' && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontStyle: 'italic' }}>Set your active diets in your profile</span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <h4 style={{ fontSize: '0.8rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Smile size={14} /> Hobby Matrix
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginLeft: '4px', fontWeight: 400 }}>— from your profile</span>
-            </h4>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {hobbies.map(hobby => (
-                <span key={hobby} style={{ padding: '6px 12px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-                  {hobby}
-                </span>
-              ))}
-              {hobbies.length === 1 && hobbies[0] === '—' && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontStyle: 'italic' }}>Set your hobbies in your profile</span>
-              )}
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Sensory Detail Modal */}
-      {activeSense && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
-          <div className="fade-in glass-card" style={{ width: '100%', maxWidth: '500px', position: 'relative', padding: '2.5rem', border: `1px solid ${activeSense.color}` }}>
-            <div style={{ position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%', background: `radial-gradient(circle at center, ${activeSense.color}33 0%, transparent 60%)`, pointerEvents: 'none' }} />
-            
-            <button onClick={() => setActiveSense(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'var(--text-2)', cursor: 'pointer' }}>
-              <X size={24} />
+              {isOpen ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
             </button>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '2rem', position: 'relative', zIndex: 1 }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: `${activeSense.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                 {React.createElement(activeSense.icon, { size: 32, color: activeSense.color })}
-              </div>
-              <div>
-                <h2 className="text-display" style={{ fontSize: '2rem', margin: 0, textTransform: 'capitalize' }}>{activeSense.key}</h2>
-                <p className="label-caps" style={{ color: activeSense.color }}>Neurological Optimization</p>
-              </div>
-            </div>
 
-            <div style={{ position: 'relative', zIndex: 1, display: 'grid', gap: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <div>
-                  <p className="label-caps" style={{ marginBottom: '4px' }}>Current Power</p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--danger)' }}>{activeSense.currentPower}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p className="label-caps" style={{ marginBottom: '4px' }}>Target Power</p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--success)' }}>{activeSense.targetPower}</p>
-                </div>
-              </div>
-
-              <div>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                  Achievement Path
-                </h4>
-                <div style={{ padding: '1.25rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: `1px solid ${activeSense.color}44`, lineHeight: 1.6, fontSize: '0.95rem' }}>
-                  {activeSense.path}
-                </div>
-              </div>
-
-              <div>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                  Recommended Exercises
-                </h4>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {activeSense.exercises.map((ex, i) => (
-                    <span key={i} style={{ padding: '6px 12px', background: `${activeSense.color}15`, color: activeSense.color, borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, border: `1px solid ${activeSense.color}33` }}>
-                      {ex}
-                    </span>
+            {/* Section fields */}
+            {isOpen && (
+              <div className="px-4 pb-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {section.fields.map(field => (
+                    <div key={field.key}>
+                      <label className="text-xs text-gray-400 block mb-1">
+                        {field.label} {field.unit && <span className="text-gray-600">({field.unit})</span>}
+                      </label>
+                      <input
+                        type={field.type}
+                        placeholder={field.placeholder}
+                        value={local[field.key] ?? ''}
+                        onChange={e => handleChange(field.key, e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-amber-500 transition"
+                      />
+                    </div>
                   ))}
                 </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleSave(section.fields)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg transition"
+                  >
+                    <Save size={12} /> Save section
+                  </button>
+                </div>
               </div>
-            </div>
-            
-            <div style={{ marginTop: '2.5rem', position: 'relative', zIndex: 1 }}>
-              <button className="btn-primary" style={{ width: '100%', padding: '1rem', background: activeSense.color, color: '#fff', fontSize: '1rem' }} onClick={() => setActiveSense(null)}>
-                Acknowledge & Close
-              </button>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 }
