@@ -62,22 +62,22 @@ const Dashboards         = lazy(() => import('./components/Dashboards'));
 const About              = lazy(() => import('./components/About'));
 const SIPCalculator      = lazy(() => import('./components/SIPCalculator'));
 const TransformationPredictor = lazy(() => import('./components/TransformationPredictor'));
+const HabitsMatrix       = lazy(() => import('./components/HabitsMatrix'));
 
-// ── Master map of all modules to get their labels
+// ── Master map of all modules
 export const GLOBAL_MODULES = {
   overview: 'Overview', humanoid: '3D Model', physique: 'Blueprint', assessment: 'Assessment',
   training: 'Training', nutrition: 'Nutrition', sleep: 'Sleep', lifestyle: 'Lifestyle',
   progress: 'Progress', goals: 'Goals', skills: 'Skills', health: 'Health+',
-  shopping: 'Shopping', tasks: 'Tasks', projects: 'Projects', portfolio: 'Portfolio',
-  calendar: 'Calendar', timesheet: 'Timesheet', finance: 'Finance', entertainment: 'Entertainment',
-  social: 'Social Media', ai: 'Agent', maps: 'Maps', documents: 'Documents', current: 'Current',
-  notes: 'Notes', databases: 'Databases', logs: 'Logs', settings: 'Settings',
-  dashboards: 'Dashboards', mind: 'Mind & Wellness', medical: 'Medical',
-  hydration: 'Hydration', strength: 'Strength', analytics: 'Analytics',
+  habits: 'Habits', shopping: 'Shopping', tasks: 'Tasks', projects: 'Projects',
+  portfolio: 'Portfolio', calendar: 'Calendar', timesheet: 'Timesheet', finance: 'Finance',
+  entertainment: 'Entertainment', social: 'Social Media', ai: 'Agent', maps: 'Maps',
+  documents: 'Documents', current: 'Current', notes: 'Notes', databases: 'Databases',
+  logs: 'Logs', settings: 'Settings', dashboards: 'Dashboards', mind: 'Mind & Wellness',
+  medical: 'Medical', hydration: 'Hydration', strength: 'Strength', analytics: 'Analytics',
   apps: 'App Hub', about: 'About', sip: 'SIP Calculator', forecast: 'Growth Forecast',
 };
 
-// ── Module-level loading spinner
 function TabSpinner() {
   return (
     <div style={{
@@ -95,7 +95,6 @@ function TabSpinner() {
   );
 }
 
-// ── Tab renderer — props forwarded for legacy components that haven't migrated to Zustand yet
 function renderTab(tab, user, setUser, theme, setTheme) {
   const props = { user, setUser, theme, setTheme };
   switch (tab) {
@@ -116,16 +115,17 @@ function renderTab(tab, user, setUser, theme, setTheme) {
     case 'analytics':      return <Analytics {...props} />;
     case 'settings':       return <ProfileEditor {...props} />;
     case 'skills':         return <Skills {...props} />;
-    case 'health':         return <HealthExtras {...props} />;
-    case 'shopping':       return <Shopping />;          // now reads from Zustand directly
+    case 'health':         return <HealthExtras />;
+    case 'habits':         return <HabitsMatrix />;
+    case 'shopping':       return <Shopping />;
     case 'tasks':          return <Tasks {...props} />;
     case 'projects':       return <Projects />;
     case 'portfolio':      return <Portfolio />;
     case 'calendar':       return <Calendar />;
     case 'timesheet':      return <Timesheet />;
     case 'logs':           return <Logs />;
-    case 'finance':        return <Finance />;           // now reads from Zustand directly
-    case 'entertainment':  return <Entertainment />;     // now reads from Zustand directly
+    case 'finance':        return <Finance />;
+    case 'entertainment':  return <Entertainment />;
     case 'social':         return <SocialMedia />;
     case 'ai':             return <AiDashboard />;
     case 'maps':           return <Maps />;
@@ -142,7 +142,6 @@ function renderTab(tab, user, setUser, theme, setTheme) {
   }
 }
 
-// ── Floating Pill Navigation
 function FloatingNav({ activeTab, setActiveTab, navItems }) {
   const scrollRef = React.useRef(null);
 
@@ -175,31 +174,29 @@ function FloatingNav({ activeTab, setActiveTab, navItems }) {
   );
 }
 
-// ── Root App — reads from Zustand store (no more prop-drilled useLocalStorage)
 export default function App() {
-  const user      = useStore(selectUser);
-  const setUser   = useStore(selectSetUser);
-  const theme     = useStore(selectTheme);
-  const palette   = useStore(selectPalette);
-  const setTheme  = useStore(selectSetTheme);
-  const setPalette = useStore(selectSetPalette);
-  const activeTab  = useStore(selectActiveTab);
+  const user         = useStore(selectUser);
+  const setUser      = useStore(selectSetUser);
+  const theme        = useStore(selectTheme);
+  const palette      = useStore(selectPalette);
+  const setTheme     = useStore(selectSetTheme);
+  const setPalette   = useStore(selectSetPalette);
+  const activeTab    = useStore(selectActiveTab);
   const setActiveTab = useStore(selectSetActiveTab);
-  const pinnedTabs = useStore((state) => state.pinnedTabs);
-  const fetchInitialData = useStore(selectFetchInitialData);
+  const pinnedTabs   = useStore((state) => state.pinnedTabs);
+  const fetchInitialData  = useStore(selectFetchInitialData);
   const checkServerHealth = useStore(selectCheckServerHealth);
-  const serverStatus = useStore(selectServerStatus);
-  const isLoading = useStore(selectIsLoading);
+  const serverStatus      = useStore(selectServerStatus);
+  const isLoading         = useStore(selectIsLoading);
   const onboardingComplete = useStore((state) => state.onboardingComplete);
-  const lastCheckIn = useStore((state) => state.lastCheckIn);
-  const [showCheckIn, setShowCheckIn] = React.useState(false);
+  const lastCheckIn        = useStore((state) => state.lastCheckIn);
+  const [showCheckIn,  setShowCheckIn]  = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Generate the floating nav dynamically based on pinned tabs
   const navItems = pinnedTabs.map(id => ({ id, label: GLOBAL_MODULES[id] || id }));
-  navItems.push({ id: 'apps', label: 'App Hub' }); // Always keep App Hub at the end
+  navItems.push({ id: 'apps', label: 'App Hub' });
 
   useEffect(() => {
     fetchInitialData();
@@ -208,13 +205,10 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Show Daily Check-In if onboarded and not yet done today
   useEffect(() => {
     if (onboardingComplete && lastCheckIn !== todayStr) {
-      // Small delay so the app finishes loading first
       const t = setTimeout(() => {
         setShowCheckIn(true);
-        // Prompt for notification and show reminder
         if ('Notification' in window && Notification.permission !== 'denied') {
           Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
@@ -230,10 +224,8 @@ export default function App() {
     }
   }, [onboardingComplete, lastCheckIn, todayStr]);
 
-  // Keyboard navigation for pinned tabs
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Allow Ctrl+1 to Ctrl+9
       if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
         const index = parseInt(e.key, 10) - 1;
         if (index < navItems.length) {
@@ -246,7 +238,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navItems, setActiveTab]);
 
-  // Apply theme/palette as data attributes on <html>
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-palette', palette);
@@ -265,7 +256,6 @@ export default function App() {
       <div className="app-shell" data-theme={theme} data-palette={palette}>
         <div className="mesh-bg" />
 
-        {/* Server Status Indicator */}
         {serverStatus !== 'unknown' && (
           <div style={{
             position: 'fixed', top: '12px', right: '16px', zIndex: 9999,
