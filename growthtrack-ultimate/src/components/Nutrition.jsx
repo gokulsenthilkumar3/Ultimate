@@ -1,56 +1,76 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Apple, Plus, Trash2, Calculator, RefreshCw } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { Apple, Plus, Trash2, Calculator, RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from 'recharts';
 import { useToast } from '../hooks/useToast';
 import ProgressRing from './ui/ProgressRing';
-import MacroBar from './ui/MacroBar';
 import PageHeader from './ui/PageHeader';
 import useStore, { selectNutritionStrategy } from '../store/useStore';
 
-const MEAL_TYPES = ['Breakfast', 'Lunch', dinner: 'Dinner', 'Snack', 'Pre-workout', 'Post-workout'];
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Pre-workout', 'Post-workout'];
 const EMPTY_FORM = { name: '', meal: 'Breakfast', calories: '', protein_g: '', carbs_g: '', fat_g: '' };
 const MACRO_COLORS = { protein: '#10b981', carbs: '#0ea5e9', fat: '#f59e0b' };
 
-// ── Macro calculator logic
+const tooltipStyle = {
+  background: 'var(--bg-glass)', border: '1px solid var(--border)',
+  borderRadius: '8px', backdropFilter: 'blur(12px)',
+  color: 'var(--text-1)', fontSize: '0.78rem',
+};
+
 function calcMacroTargets(weightKg, goal) {
   const w = parseFloat(weightKg) || 75;
   const protein = Math.round(w * 2.2);
   let carbs, fat;
-  if (goal === 'bulk')    { carbs = Math.round(w * 4.5); fat = Math.round(w * 1.0); }
+  if (goal === 'bulk')     { carbs = Math.round(w * 4.5); fat = Math.round(w * 1.0); }
   else if (goal === 'cut') { carbs = Math.round(w * 2.5); fat = Math.round(w * 0.8); }
-  else                     { carbs = Math.round(w * 3.5); fat = Math.round(w * 0.9); } // maintain
-  const calories = protein * 4 + carbs * 4 + fat * 9;
-  return { protein, carbs, fat, calories };
+  else                     { carbs = Math.round(w * 3.5); fat = Math.round(w * 0.9); }
+  return { protein, carbs, fat, calories: protein * 4 + carbs * 4 + fat * 9 };
+}
+
+function MacroProgressBar({ label, consumed, target, color }) {
+  const pct = Math.min(100, target ? Math.round((consumed / target) * 100) : 0);
+  return (
+    <div style={{ marginBottom: '0.65rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{label}</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>
+          {consumed}g <span style={{ color: 'var(--text-3)' }}>/ {target}g</span>
+        </span>
+      </div>
+      <div style={{ height: 7, borderRadius: 99, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', borderRadius: 99, width: `${pct}%`,
+                     background: color, transition: 'width 0.5s ease' }} />
+      </div>
+    </div>
+  );
 }
 
 export default function Nutrition({ user, setUser }) {
   const dbNutrition = useStore(selectNutritionStrategy);
-  const nutrition = user?.nutrition || dbNutrition || {};
-  const meals     = user?.mealPlan  || dbNutrition?.meals || [];
-  const toast     = useToast();
+  const nutrition   = user?.nutrition || dbNutrition || {};
+  const meals       = user?.mealPlan  || dbNutrition?.meals || [];
+  const toast       = useToast();
 
-  // ── Nutrition logs (from DB via API)
   const [nutritionLogs, setNutritionLogs] = useState([]);
-  const [loadingLogs, setLoadingLogs]     = useState(false);
-  const [logForm, setLogForm]             = useState(EMPTY_FORM);
+  const [loadingLogs,   setLoadingLogs]   = useState(false);
+  const [logForm,       setLogForm]       = useState(EMPTY_FORM);
+  const [historyDays,   setHistoryDays]   = useState(7);
 
-  // ── Macro calculator state
-  const [calcWeight, setCalcWeight] = useState(user?.weight || 75);
-  const [calcGoal,   setCalcGoal]   = useState('maintain');
-  const [macroTargets, setMacroTargets] = useState(() => calcMacroTargets(user?.weight || 75, 'maintain'));
+  const [calcWeight,    setCalcWeight]    = useState(user?.weight || 75);
+  const [calcGoal,      setCalcGoal]      = useState('maintain');
+  const [macroTargets,  setMacroTargets]  = useState(() => calcMacroTargets(user?.weight || 75, 'maintain'));
 
   const fetchNutritionLogs = useCallback(async () => {
     setLoadingLogs(true);
     try {
-      const res = await fetch('/api/nutrition_logs');
-      if (!res.ok) throw new Error('fetch failed');
+      const res  = await fetch('/api/nutrition_logs');
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setNutritionLogs(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error('nutrition_logs fetch error', e);
-    } finally {
-      setLoadingLogs(false);
-    }
+    } catch { /* silent */ }
+    finally  { setLoadingLogs(false); }
   }, []);
 
   useEffect(() => { fetchNutritionLogs(); }, [fetchNutritionLogs]);
@@ -58,27 +78,25 @@ export default function Nutrition({ user, setUser }) {
   const addLog = useCallback(async () => {
     if (!logForm.name.trim()) { toast.error('Meal name cannot be empty.'); return; }
     const cal = parseFloat(logForm.calories);
-    if (!logForm.calories || isNaN(cal) || cal <= 0) { toast.error('Calories must be > 0.'); return; }
+    if (!cal || cal <= 0)     { toast.error('Calories must be > 0.'); return; }
     try {
       const res = await fetch('/api/nutrition_logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...logForm,
-          calories: cal,
+          calories:  cal,
           protein_g: parseFloat(logForm.protein_g) || 0,
           carbs_g:   parseFloat(logForm.carbs_g)   || 0,
           fat_g:     parseFloat(logForm.fat_g)     || 0,
           date: new Date().toISOString().slice(0, 10),
         }),
       });
-      if (!res.ok) throw new Error('save failed');
+      if (!res.ok) throw new Error();
       toast.success(`${logForm.name} logged — ${cal} kcal`);
       setLogForm(EMPTY_FORM);
       fetchNutritionLogs();
-    } catch (e) {
-      toast.error('Failed to save meal log.');
-    }
+    } catch { toast.error('Failed to save meal log.'); }
   }, [logForm, toast, fetchNutritionLogs]);
 
   const removeLog = useCallback(async (id, name) => {
@@ -89,42 +107,69 @@ export default function Nutrition({ user, setUser }) {
     } catch { toast.error('Delete failed.'); }
   }, [toast]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today    = new Date().toISOString().slice(0, 10);
   const todayLog = useMemo(() => nutritionLogs.filter(l => l.date === today), [nutritionLogs, today]);
 
   const consumed = useMemo(() => ({
-    calories: todayLog.reduce((s, l) => s + Number(l.calories || 0), 0),
+    calories: todayLog.reduce((s, l) => s + Number(l.calories  || 0), 0),
     protein:  todayLog.reduce((s, l) => s + Number(l.protein_g || 0), 0),
     carbs:    todayLog.reduce((s, l) => s + Number(l.carbs_g   || 0), 0),
     fat:      todayLog.reduce((s, l) => s + Number(l.fat_g     || 0), 0),
   }), [todayLog]);
 
-  const calPct = Math.min(100, Math.round((consumed.calories / macroTargets.calories) * 100));
-  const proPct = Math.min(100, Math.round((consumed.protein  / macroTargets.protein)  * 100));
+  // surplus / deficit
+  const balance      = consumed.calories - macroTargets.calories;
+  const balanceLabel = balance > 50  ? 'SURPLUS'  : balance < -50 ? 'DEFICIT' : 'ON TARGET';
+  const balanceColor = balance > 50  ? '#f59e0b'  : balance < -50 ? '#10b981' : '#8b5cf6';
+  const BalanceIcon  = balance > 50  ? TrendingUp : balance < -50 ? TrendingDown : Minus;
 
-  // ── Ring chart data (consumed vs remaining)
+  const calPct = Math.min(100, macroTargets.calories ? Math.round((consumed.calories / macroTargets.calories) * 100) : 0);
+  const proPct = Math.min(100, macroTargets.protein  ? Math.round((consumed.protein  / macroTargets.protein)  * 100) : 0);
+
+  // per-meal bar chart data (today)
+  const mealBarData = useMemo(() =>
+    todayLog.map(l => ({ name: l.name.length > 12 ? l.name.slice(0, 11) + '…' : l.name,
+                          calories: Number(l.calories || 0) })),
+  [todayLog]);
+
+  // weekly history rollup
+  const weeklyHistory = useMemo(() => {
+    const days = [];
+    for (let i = historyDays - 1; i >= 0; i--) {
+      const d   = new Date();
+      d.setDate(d.getDate() - i);
+      const ds  = d.toISOString().slice(0, 10);
+      const row = nutritionLogs.filter(l => l.date === ds);
+      days.push({
+        date:     ds.slice(5),
+        calories: row.reduce((s, l) => s + Number(l.calories  || 0), 0),
+        protein:  row.reduce((s, l) => s + Number(l.protein_g || 0), 0),
+        carbs:    row.reduce((s, l) => s + Number(l.carbs_g   || 0), 0),
+        fat:      row.reduce((s, l) => s + Number(l.fat_g     || 0), 0),
+        count:    row.length,
+      });
+    }
+    return days;
+  }, [nutritionLogs, historyDays]);
+
   const ringData = useMemo(() => [
-    { name: 'Protein',  value: Math.max(0, consumed.protein), fill: MACRO_COLORS.protein },
-    { name: 'Carbs',    value: Math.max(0, consumed.carbs),   fill: MACRO_COLORS.carbs },
-    { name: 'Fat',      value: Math.max(0, consumed.fat),     fill: MACRO_COLORS.fat },
+    { name: 'Protein', value: Math.max(0, consumed.protein), fill: MACRO_COLORS.protein },
+    { name: 'Carbs',   value: Math.max(0, consumed.carbs),   fill: MACRO_COLORS.carbs },
+    { name: 'Fat',     value: Math.max(0, consumed.fat),     fill: MACRO_COLORS.fat },
   ].filter(d => d.value > 0), [consumed]);
 
   const handleCalcMacros = () => {
     const t = calcMacroTargets(calcWeight, calcGoal);
     setMacroTargets(t);
-    toast.success(`Targets updated — ${t.calories} kcal, P:${t.protein}g C:${t.carbs}g F:${t.fat}g`);
+    toast.success(`Targets updated — ${t.calories} kcal`);
   };
 
   return (
     <div className="fade-in module-page">
-      <PageHeader
-        accent="Nutrition"
-        icon={<Apple size={24} />}
-        title="Fueling Strategy"
-        subtitle="Per-meal logging with macro tracking."
-      />
+      <PageHeader accent="Nutrition" icon={<Apple size={24} />}
+        title="Fueling Strategy" subtitle="Per-meal logging with macro tracking." />
 
-      {/* Macro Calculator */}
+      {/* ── Macro Calculator ── */}
       <div className="glass-card mb-lg" style={{ borderTop: '2px solid var(--accent)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
           <Calculator size={18} color="var(--accent)" />
@@ -133,8 +178,8 @@ export default function Nutrition({ user, setUser }) {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ flex: '1 1 120px' }}>
             <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Body Weight (kg)</label>
-            <input className="form-input" type="number" min={30} max={200} value={calcWeight}
-              onChange={e => setCalcWeight(e.target.value)} />
+            <input className="form-input" type="number" min={30} max={200}
+              value={calcWeight} onChange={e => setCalcWeight(e.target.value)} />
           </div>
           <div style={{ flex: '1 1 140px' }}>
             <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Goal</label>
@@ -155,7 +200,8 @@ export default function Nutrition({ user, setUser }) {
             { label: 'Carbs',    value: `${macroTargets.carbs}g`,         color: MACRO_COLORS.carbs },
             { label: 'Fat',      value: `${macroTargets.fat}g`,           color: MACRO_COLORS.fat },
           ].map(t => (
-            <div key={t.label} style={{ padding: '0.75rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+            <div key={t.label} style={{ padding: '0.75rem', background: 'var(--bg-elevated)',
+                                       borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
               <p className="label-caps" style={{ fontSize: '0.6rem', marginBottom: '4px' }}>{t.label}</p>
               <span style={{ fontWeight: 800, fontSize: '1.1rem', color: t.color }}>{t.value}</span>
             </div>
@@ -163,46 +209,54 @@ export default function Nutrition({ user, setUser }) {
         </div>
       </div>
 
-      {/* Daily Progress + Ring Chart */}
-      <div className="triple-grid mb-lg">
-        <div className="glass-card">
-          <div className="progress-header">
-            <div>
-              <p className="label-caps">Daily Calories</p>
-              <p className="progress-value" style={{ color: calPct >= 100 ? 'var(--success)' : 'var(--text-1)' }}>
-                {consumed.calories}<span className="progress-value__sub"> / {macroTargets.calories}</span>
-              </p>
-            </div>
-            <ProgressRing pct={calPct} color="var(--accent)" />
+      {/* ── Daily Progress strip ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                    gap: '1.5rem', marginBottom: '1.5rem' }}>
+
+        {/* Calorie card with balance badge */}
+        <div className="glass-card" style={{ borderTop: `3px solid ${balanceColor}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <p className="label-caps">Daily Calories</p>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px',
+                           fontSize: '0.68rem', fontWeight: 800, color: balanceColor,
+                           background: `${balanceColor}1a`, borderRadius: 99,
+                           padding: '2px 8px' }}>
+              <BalanceIcon size={11} />
+              {balanceLabel} {balance !== 0 && `${balance > 0 ? '+' : ''}${balance} kcal`}
+            </span>
           </div>
-          <div className="progress-track"><div className="progress-fill" style={{ width: `${calPct}%`, background: 'var(--accent)' }} /></div>
+          <p style={{ fontSize: '1.9rem', fontWeight: 900, lineHeight: 1 }}>
+            {consumed.calories}
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-3)', marginLeft: '6px' }}>/ {macroTargets.calories} kcal</span>
+          </p>
+          <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.07)',
+                        overflow: 'hidden', marginTop: '0.75rem' }}>
+            <div style={{ height: '100%', borderRadius: 99, width: `${calPct}%`,
+                         background: `linear-gradient(90deg, var(--accent), ${balanceColor})`,
+                         transition: 'width 0.5s ease' }} />
+          </div>
         </div>
 
+        {/* Macro breakdown bars */}
         <div className="glass-card">
-          <div className="progress-header">
-            <div>
-              <p className="label-caps">Protein</p>
-              <p className="progress-value" style={{ color: proPct >= 100 ? 'var(--success)' : 'var(--text-1)' }}>
-                {consumed.protein}g<span className="progress-value__sub"> / {macroTargets.protein}g</span>
-              </p>
-            </div>
-            <ProgressRing pct={proPct} color="var(--success)" />
-          </div>
-          <div className="progress-track"><div className="progress-fill" style={{ width: `${proPct}%`, background: 'var(--success)' }} /></div>
+          <p className="label-caps" style={{ marginBottom: '0.75rem' }}>Macro Targets Today</p>
+          <MacroProgressBar label="Protein" consumed={Math.round(consumed.protein)} target={macroTargets.protein} color={MACRO_COLORS.protein} />
+          <MacroProgressBar label="Carbs"   consumed={Math.round(consumed.carbs)}   target={macroTargets.carbs}   color={MACRO_COLORS.carbs}   />
+          <MacroProgressBar label="Fat"     consumed={Math.round(consumed.fat)}     target={macroTargets.fat}     color={MACRO_COLORS.fat}     />
         </div>
 
-        {/* Macro Ring Chart */}
+        {/* Ring chart */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <p className="label-caps mb-sm" style={{ alignSelf: 'flex-start' }}>Today's Macro Breakdown</p>
+          <p className="label-caps mb-sm" style={{ alignSelf: 'flex-start' }}>Today’s Macro Breakdown</p>
           {ringData.length === 0 ? (
             <p className="empty-msg" style={{ fontSize: '0.78rem', marginTop: '1rem' }}>Log meals to see breakdown</p>
           ) : (
-            <ResponsiveContainer width="100%" height={120}>
+            <ResponsiveContainer width="100%" height={130}>
               <PieChart>
                 <Pie data={ringData} cx="50%" cy="50%" innerRadius={32} outerRadius={52} paddingAngle={3} dataKey="value">
-                  {ringData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  {ringData.map((e, i) => <Cell key={i} fill={e.fill} />)}
                 </Pie>
-                <Tooltip formatter={(v, name) => [`${v}g`, name]} contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.75rem' }} />
+                <Tooltip formatter={(v, n) => [`${v}g`, n]} contentStyle={tooltipStyle} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -217,15 +271,16 @@ export default function Nutrition({ user, setUser }) {
         </div>
       </div>
 
-      {/* Log Meal + Today's Log */}
+      {/* ── Log Meal + Today’s Log ── */}
       <div className="dual-grid mb-lg">
         <div className="glass-card">
           <span className="card-title">Log Meal</span>
           <div className="form-stack mt-sm">
-            <select className="form-input" value={logForm.meal} onChange={e => setLogForm({ ...logForm, meal: e.target.value })}>
-              {['Breakfast','Lunch','Dinner','Snack','Pre-workout','Post-workout'].map(m => <option key={m}>{m}</option>)}
+            <select className="form-input" value={logForm.meal}
+              onChange={e => setLogForm({ ...logForm, meal: e.target.value })}>
+              {MEAL_TYPES.map(m => <option key={m}>{m}</option>)}
             </select>
-            <input type="text" placeholder="Food/meal name" value={logForm.name}
+            <input type="text" placeholder="Food / meal name" value={logForm.name}
               onChange={e => setLogForm({ ...logForm, name: e.target.value })} className="form-input" />
             <div className="flex-row gap-sm">
               <input type="number" placeholder="Calories" value={logForm.calories}
@@ -245,8 +300,9 @@ export default function Nutrition({ user, setUser }) {
 
         <div className="glass-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <span className="card-title" style={{ margin: 0 }}>Today's Log</span>
-            <button className="btn-icon" onClick={fetchNutritionLogs} title="Refresh" style={{ opacity: loadingLogs ? 0.5 : 1 }}>
+            <span className="card-title" style={{ margin: 0 }}>Today’s Log</span>
+            <button className="btn-icon" onClick={fetchNutritionLogs} title="Refresh"
+              style={{ opacity: loadingLogs ? 0.5 : 1 }}>
               <RefreshCw size={14} className={loadingLogs ? 'spin' : ''} />
             </button>
           </div>
@@ -262,7 +318,8 @@ export default function Nutrition({ user, setUser }) {
                       {l.meal} · {l.calories} kcal · P:{l.protein_g||0}g C:{l.carbs_g||0}g F:{l.fat_g||0}g
                     </p>
                   </div>
-                  <button onClick={() => removeLog(l.id, l.name)} className="btn-icon btn-icon--danger" aria-label="Remove meal">
+                  <button onClick={() => removeLog(l.id, l.name)}
+                    className="btn-icon btn-icon--danger" aria-label="Remove meal">
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -272,7 +329,84 @@ export default function Nutrition({ user, setUser }) {
         </div>
       </div>
 
-      {/* Meal Plan */}
+      {/* ── Per-meal calorie bar chart ── */}
+      {mealBarData.length > 0 && (
+        <div className="glass-card mb-lg">
+          <span className="card-title">Calorie Breakdown by Meal</span>
+          <div style={{ height: 180, marginTop: '1rem' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={mealBarData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="name" stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={tooltipStyle} formatter={v => [`${v} kcal`, 'Calories']} />
+                <Bar dataKey="calories" fill="var(--accent)" radius={[6, 6, 0, 0]} barSize={36} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* ── Weekly History Table ── */}
+      <div className="glass-card mb-lg">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <span className="card-title" style={{ margin: 0 }}>Nutrition History</span>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {[7, 14, 30].map(d => (
+              <button key={d} onClick={() => setHistoryDays(d)}
+                className={`btn-sm ${historyDays === d ? 'active' : ''}`}
+                style={{ padding: '4px 10px', borderRadius: '99px', fontSize: '0.75rem' }}>
+                {d}d
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Date', 'Meals', 'Calories', 'Protein', 'Carbs', 'Fat', 'Balance'].map(h => (
+                  <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: h === 'Date' || h === 'Meals' ? 'left' : 'right',
+                                      color: 'var(--text-3)', fontWeight: 700, fontSize: '0.72rem',
+                                      textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {weeklyHistory.map((row) => {
+                const bal   = row.calories - macroTargets.calories;
+                const bCol  = bal > 50 ? '#f59e0b' : bal < -50 ? '#10b981' : 'var(--text-3)';
+                const noData = row.count === 0;
+                return (
+                  <tr key={row.date} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                             opacity: noData ? 0.4 : 1 }}>
+                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600 }}>{row.date}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-3)' }}>{row.count}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>
+                      {row.calories || '—'}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: MACRO_COLORS.protein }}>
+                      {row.protein ? `${row.protein}g` : '—'}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: MACRO_COLORS.carbs }}>
+                      {row.carbs ? `${row.carbs}g` : '—'}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: MACRO_COLORS.fat }}>
+                      {row.fat ? `${row.fat}g` : '—'}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right',
+                                 fontWeight: 800, color: bCol, fontSize: '0.75rem' }}>
+                      {row.count ? (bal > 0 ? `+${bal}` : bal === 0 ? '•' : bal) : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Meal Plan (from profile) ── */}
       {meals.length > 0 && (
         <div className="glass-card mb-lg">
           <span className="card-title">Recommended Meal Plan</span>
@@ -292,7 +426,7 @@ export default function Nutrition({ user, setUser }) {
         </div>
       )}
 
-      {/* Bone Health */}
+      {/* ── Bone Health ── */}
       <div className="glass-card">
         <div className="card-header-row mb-sm">
           <span style={{ fontSize: '1.25rem' }}>🦴</span>
