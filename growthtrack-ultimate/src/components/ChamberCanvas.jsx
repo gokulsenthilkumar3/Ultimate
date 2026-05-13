@@ -4,19 +4,19 @@
  */
 
 import React, { Suspense, useCallback } from "react";
-import { Canvas } from "@react-three/fiber";
-import { Stats, AdaptiveDpr, AdaptiveEvents, Preload } from "@react-three/drei";
-import * as THREE from "three";
+import { Canvas }                        from "@react-three/fiber";
+import { Html }                          from "@react-three/drei";
+import * as THREE                        from "three";
 
 import StudioLighting      from "./morphEngine/StudioLighting";
 import ChamberFloor        from "./morphEngine/ChamberFloor";
 import SceneEnvironment    from "./morphEngine/SceneEnvironment";
 import CameraRig           from "./morphEngine/CameraRig";
 import PostProcessingStack from "./morphEngine/PostProcessingStack";
-
 import { CloneEngine, BodyPartInteraction } from "./morphEngine";
-import use3DStore, { GPU_TIERS } from "../store/use3DStore";
-import { detectAndSetGpuTier } from "../store/use3DStore.usage";
+import use3DStore, { GPU_TIERS }            from "../store/use3DStore";
+import { detectAndSetGpuTier }              from "../store/use3DStore.usage";
+import ErrorBoundary                        from "./ErrorBoundary";
 
 const LOD_CONFIG = {
   [GPU_TIERS.HIGH]: {
@@ -73,15 +73,34 @@ function CanvasScene({ lodConfig }) {
       )}
 
       <Suspense fallback={null}>
-        <CloneEngine />
-        
-        {(viewMode === 'SOLO' || viewMode === 'DUAL') && (
-          <BodyPartInteraction clonePosition={[0, 0, 0]} />
-        )}
+        <ErrorBoundary
+          fallback={
+            <Html center style={{ pointerEvents: 'none' }}>
+              <div style={{
+                padding: '1rem 1.5rem',
+                background: 'rgba(239,68,68,0.12)',
+                border: '1px solid rgba(239,68,68,0.4)',
+                borderRadius: '12px',
+                color: '#f87171',
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: '0.8rem',
+                textAlign: 'center',
+                maxWidth: '260px',
+              }}>
+                <div style={{ fontWeight: 700, marginBottom: '4px' }}>⚠ Model Unavailable</div>
+                <div style={{ opacity: 0.75 }}>Place humanoid-base.glb in<br/>/public/assets/models/</div>
+              </div>
+            </Html>
+          }
+        >
+          <CloneEngine />
+
+          {(viewMode === 'SOLO' || viewMode === 'DUAL') && (
+            <BodyPartInteraction clonePosition={[0, 0, 0]} />
+          )}
+        </ErrorBoundary>
       </Suspense>
 
-      {process.env.NODE_ENV === "development" && <Stats />}
-      <Preload all />
     </>
   );
 }
@@ -98,16 +117,10 @@ function useGlCreated(setLodConfig) {
     const config = LOD_CONFIG[tier];
     setLodConfig(config);
 
-    gl.toneMapping         = THREE.ACESFilmicToneMapping;
-    gl.toneMappingExposure = 1.15;
+    // Keep toneMapping simple to avoid PMREMGenerator initialization in three.js 0.184
     gl.outputColorSpace    = THREE.SRGBColorSpace;
-
-    if (config.shadowMapSize) {
-      gl.shadowMap.enabled = true;
-      gl.shadowMap.type    = config.shadowType;
-    } else {
-      gl.shadowMap.enabled = false;
-    }
+    // Shadows disabled — do not enable here.
+    gl.shadowMap.enabled = false;
 
     camera.position.set(0, 1.1, 3.5);
     camera.fov = 42;
@@ -124,16 +137,20 @@ export default function ChamberCanvas({ className = "", style = {} }) {
   return (
     <Canvas
       gl={{
-        powerPreference:    "high-performance",
-        antialias:          lodConfig.antialias,
-        alpha:              false,
-        stencil:            false,
-        depth:              true,
+        powerPreference:      "high-performance",
+        antialias:            lodConfig.antialias,
+        alpha:                false,
+        stencil:              true,
+        depth:                true,
         preserveDrawingBuffer: true,
+        // Override R3F's default ACESFilmicToneMapping — in three.js 0.184
+        // this triggers PMREMGenerator which internally creates a CubeCamera
+        // that crashes when shadows are disabled. Use LinearToneMapping instead.
+        toneMapping:          THREE.LinearToneMapping,
       }}
       dpr={lodConfig.dpr}
       camera={{ fov: 42, near: 0.1, far: 100 }}
-      shadows={!!lodConfig.shadowMapSize}
+      shadows={false}       /* disabled: no model yet; re-enable with real GLB */
       frameloop="always"
       onCreated={onCreated}
       style={{ width: "100%", height: "100%", ...style }}

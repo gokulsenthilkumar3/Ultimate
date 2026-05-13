@@ -2,20 +2,16 @@
  * GrowthTrack Ultimate — Layer 2: Render Pipeline
  * ChamberFloor.jsx
  *
- * Deep-space reflective floor using MeshReflectorMaterial.
- * Spec from architecture doc:
- *   MeshReflectorMaterial  blur[400,200]  mixStrength 0.6  color #030508
+ * NOTE: MeshReflectorMaterial (drei) creates an internal CubeCamera FBO.
+ * In three.js 0.184.0, WebGLShadowMap.render incorrectly calls CubeCamera.update
+ * causing "undefined.length". Replaced with a simple dark MeshStandardMaterial
+ * until the drei/three.js compatibility is resolved.
  *
- * Also renders:
- *  - Subtle grid lines (distance-faded) for depth
- *  - Ambition path glow strip origin point (Layer 7 will extend this)
- *
- * Deps: @react-three/drei (MeshReflectorMaterial, useTexture)
+ * Deps: three
  */
 
-import React, { useMemo }       from "react";
-import { MeshReflectorMaterial } from "@react-three/drei";
-import * as THREE                from "three";
+import React, { useMemo } from "react";
+import * as THREE          from "three";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FLOOR GRID — procedural shader-based subtle grid (no texture file needed)
@@ -46,10 +42,10 @@ const gridFragmentShader = /* glsl */ `
   }
 
   void main() {
-    float line     = gridLine(vUv, uGridScale, uLineWidth);
-    float fade     = 1.0 - smoothstep(uFadeRadius * 0.3, uFadeRadius, vDist);
-    float alpha    = line * fade * 0.18;
-    gl_FragColor   = vec4(uLineColor, alpha);
+    float line   = gridLine(vUv, uGridScale, uLineWidth);
+    float fade   = 1.0 - smoothstep(uFadeRadius * 0.3, uFadeRadius, vDist);
+    float alpha  = line * fade * 0.18;
+    gl_FragColor = vec4(uLineColor, alpha);
   }
 `;
 
@@ -60,10 +56,10 @@ function FloorGrid() {
         vertexShader:   gridVertexShader,
         fragmentShader: gridFragmentShader,
         uniforms: {
-          uGridScale:   { value: 8.0 },
-          uLineColor:   { value: new THREE.Color("#22D3EE") },
-          uLineWidth:   { value: 0.04 },
-          uFadeRadius:  { value: 6.0 },
+          uGridScale:  { value: 8.0 },
+          uLineColor:  { value: new THREE.Color("#22D3EE") },
+          uLineWidth:  { value: 0.04 },
+          uFadeRadius: { value: 6.0 },
         },
         transparent: true,
         depthWrite:  false,
@@ -81,41 +77,27 @@ function FloorGrid() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CHAMBER FLOOR — main reflector plane
+// CHAMBER FLOOR — simple dark surface (no CubeCamera FBO)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ChamberFloor() {
   return (
     <group name="chamber-floor">
-      {/* ── Main reflective surface ── */}
+      {/* ── Simple dark base plane ── */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0, 0]}
-        receiveShadow
+        receiveShadow={false}
       >
         <planeGeometry args={[20, 20]} />
-        <MeshReflectorMaterial
-          // ── Reflection config ──────────────────────────────────────────
-          blur={[400, 200]}           // horizontal + vertical blur px
-          resolution={1024}           // reflection render target size
-          mixBlur={6}                 // reflection blur mix intensity
-          mixStrength={0.6}           // how strong the reflection is
-          mixContrast={1.2}           // punch up the reflection contrast
-          mirror={0}                  // 0 = env-based, 1 = perfect mirror
-          depthScale={0.8}
-          minDepthThreshold={0.4}
-          maxDepthThreshold={1.4}
-          // ── Surface appearance ─────────────────────────────────────────
+        <meshStandardMaterial
           color="#030508"
-          metalness={0.5}
-          roughness={1.0}
-          // ── Distortion (subtle imperfection for realism) ───────────────
-          distortion={0.15}
-          distortionMap={null}        // can plug in a normal map later
+          metalness={0.4}
+          roughness={0.9}
         />
       </mesh>
 
-      {/* ── Cyan grid overlay ── */}
+      {/* ── Cyan procedural grid overlay ── */}
       <FloorGrid />
     </group>
   );

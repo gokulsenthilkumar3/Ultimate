@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
+import ErrorBoundary from './ErrorBoundary';
 import {
   Rotate3D, Eye, Layers, Zap, Shirt, Ruler, Camera, Download,
   ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle,
@@ -117,9 +118,12 @@ export default function HumanoidViewer() {
   const setStressLevel = () => {};
   const setTimelinePos = use3DStore((s) => s.scrubTimeline);
   const updateCurrentMetric = use3DStore((s) => s.setCurrentMetric);
-  const updateGoalMetric = use3DStore((s) => s.setGoalMetric);
-  const setMorphOverride = () => {};
-  const syncMorphsFromMetrics = () => {};
+  const updateGoalMetric    = use3DStore((s) => s.setGoalMetric);
+  // Alias: morph sliders directly update the underlying metric
+  const setMorphOverride = useCallback(
+    (metricKey, value) => updateCurrentMetric(metricKey, value),
+    [updateCurrentMetric]
+  );
 
   const addTimelineSnap = use3DStore((s) => s.addTimelineSnap);
   const saveSnapshot = useCallback(() => {
@@ -238,9 +242,21 @@ export default function HumanoidViewer() {
           </div>
 
           {/* 3D Canvas */}
-          <Suspense fallback={<ChamberSpinner />}>
-            <ChamberCanvas />
-          </Suspense>
+          <ErrorBoundary
+            fallback={
+              <div className="chamber-spinner">
+                <div style={{ color: '#f87171', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚠️</div>
+                  <strong>3D Engine Error</strong>
+                  <div style={{ opacity: 0.7, marginTop: '0.25rem', fontSize: '0.75rem' }}>Reload the page to retry</div>
+                </div>
+              </div>
+            }
+          >
+            <Suspense fallback={<ChamberSpinner />}>
+              <ChamberCanvas />
+            </Suspense>
+          </ErrorBoundary>
 
           {/* Bottom labels */}
           <div className="chamber-viewport-labels">
@@ -276,7 +292,7 @@ export default function HumanoidViewer() {
               <div className="chamber-timeline__track">
                 {milestones.map((m, i) => (
                   <div key={i} className={`chamber-milestone${m.achieved ? ' achieved' : ''}`}
-                    style={{ left: `${(m.month / 20) * 100}%` }}
+                    style={{ left: `${((m.monthIndex ?? 0) / 20) * 100}%` }}
                     title={m.label}>
                     <div className="chamber-milestone__dot" />
                     <span className="chamber-milestone__label">{m.label.split('—')[0]}</span>
@@ -363,10 +379,6 @@ export default function HumanoidViewer() {
                       </div>
                     ))}
                   </div>
-                  <button className="btn-primary btn-full" style={{ marginTop: '1rem' }}
-                    onClick={() => { syncMorphsFromMetrics(); toast.success('Morphs synced from metrics'); }}>
-                    Sync Morphs from Metrics
-                  </button>
                 </div>
               )}
 
@@ -377,24 +389,30 @@ export default function HumanoidViewer() {
                     <Zap size={14} /> Manual Morph Control
                   </h4>
                   {[
-                    { id: 'shoulders', label: 'Shoulder Span' },
-                    { id: 'chest', label: 'Chest Girth' },
-                    { id: 'waist', label: 'Waist (Vacuum)' },
-                    { id: 'arms', label: 'Arm Sweep' },
-                  ].map((s) => (
-                    <div key={s.id} className="chamber-morph-row">
-                      <div className="chamber-morph-row__header">
-                        <span>{s.label}</span>
-                        <span className="chamber-morph-row__value">
-                          {morphOverrides[s.id].toFixed(2)}x
-                        </span>
+                    { id: 'shoulders', metricKey: 'shoulders', label: 'Shoulder Span', min: 90,  max: 140, unit: 'cm' },
+                    { id: 'chest',     metricKey: 'chest',     label: 'Chest Girth',   min: 80,  max: 130, unit: 'cm' },
+                    { id: 'waist',     metricKey: 'waist',     label: 'Waist',         min: 65,  max: 110, unit: 'cm' },
+                    { id: 'arms',      metricKey: 'arms',      label: 'Arm Sweep',     min: 28,  max: 55,  unit: 'cm' },
+                    { id: 'thighs',    metricKey: 'thighs',    label: 'Thigh Sweep',   min: 45,  max: 75,  unit: 'cm' },
+                    { id: 'weight',    metricKey: 'weight',    label: 'Body Mass',     min: 45,  max: 130, unit: 'kg' },
+                    { id: 'bodyFat',   metricKey: 'bodyFat',   label: 'Body Fat',      min: 5,   max: 40,  unit: '%'  },
+                  ].map((s) => {
+                    const val = currentMetrics[s.metricKey] ?? s.min;
+                    return (
+                      <div key={s.id} className="chamber-morph-row">
+                        <div className="chamber-morph-row__header">
+                          <span>{s.label}</span>
+                          <span className="chamber-morph-row__value">
+                            {val}{s.unit}
+                          </span>
+                        </div>
+                        <input type="range" min={s.min} max={s.max} step="1"
+                          value={val}
+                          onChange={(e) => setMorphOverride(s.metricKey, parseFloat(e.target.value))}
+                          className="chamber-slider" />
                       </div>
-                      <input type="range" min="0.6" max="1.6" step="0.01"
-                        value={morphOverrides[s.id]}
-                        onChange={(e) => setMorphOverride(s.id, parseFloat(e.target.value))}
-                        className="chamber-slider" />
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div className="chamber-divider" />
                   <h4 className="chamber-editor__heading">
                     <Activity size={14} /> Bio-Feedback
@@ -543,9 +561,9 @@ export default function HumanoidViewer() {
                     style={{ width: `${pctComplete}%`, background: isGrowth ? 'var(--chamber-success)' : 'var(--chamber-glow)' }} />
                 </div>
                 <div className="chamber-delta-card__bottom">
-                  <span>{d.current.toFixed(1)}{meta.unit}</span>
+                  <span>{(d.current ?? 0).toFixed(1)}{meta.unit}</span>
                   <ArrowRight size={10} />
-                  <span style={{ color: 'var(--chamber-glow)' }}>{d.goal.toFixed(1)}{meta.unit}</span>
+                  <span style={{ color: 'var(--chamber-glow)' }}>{(d.goal ?? 0).toFixed(1)}{meta.unit}</span>
                 </div>
               </div>
             );
@@ -561,7 +579,7 @@ export default function HumanoidViewer() {
         <div className="chamber-ambition__road">
           <div className="chamber-ambition__line" />
           {milestones.map((m, i) => {
-            const left = (m.month / 20) * 100;
+            const left = ((m.monthIndex ?? 0) / 20) * 100;
             const isFinal = i === milestones.length - 1;
             return (
               <div key={i} className={`chamber-ambition__node${m.achieved ? ' achieved' : ''}${isFinal ? ' final' : ''}`}
@@ -570,9 +588,8 @@ export default function HumanoidViewer() {
                   {isFinal ? <Star size={16} /> : m.achieved ? <CheckCircle size={14} /> : <Target size={14} />}
                 </div>
                 <div className="chamber-ambition__info">
-                  <span className="chamber-ambition__month">Month {m.month}</span>
+                  <span className="chamber-ambition__month">{m.month}</span>
                   <span className="chamber-ambition__label">{m.label}</span>
-                  <span className="chamber-ambition__weight">{m.weight}kg · {m.bodyFat}% BF</span>
                 </div>
               </div>
             );

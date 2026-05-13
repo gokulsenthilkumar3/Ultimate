@@ -61,6 +61,7 @@ export default function Portfolio() {
     );
   }
 
+  return (
     <div className="fade-in module-page" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
         accent="External"

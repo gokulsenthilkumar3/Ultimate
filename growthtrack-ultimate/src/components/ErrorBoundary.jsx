@@ -50,6 +50,11 @@ class ErrorBoundary extends React.Component {
       return this.props.children;
     }
 
+    // Compact inline fallback — used inside Canvas / embedded contexts
+    if (this.props.fallback) {
+      return this.props.fallback;
+    }
+
     const confirmModal = this.state.showConfirm && (
       <div
         role="dialog"
