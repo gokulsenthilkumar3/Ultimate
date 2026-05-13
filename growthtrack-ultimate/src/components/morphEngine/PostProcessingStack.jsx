@@ -25,14 +25,13 @@
  * Deps: @react-three/postprocessing
  */
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, Suspense } from "react";
 import {
   EffectComposer,
   Bloom,
   Vignette,
   ChromaticAberration,
   ToneMapping,
-  SSAO,
   Glitch,
 } from "@react-three/postprocessing";
 import {
@@ -48,27 +47,29 @@ import use3DStore from "../../store/use3DStore";
 // GLITCH TRIGGER — fires for exactly 1 frame on viewMode change
 // ─────────────────────────────────────────────────────────────────────────────
 
-function useGlitchTrigger() {
-  const glitchRef = useRef();
-  const prevMode  = useRef(null);
+function useGlitchTrigger(glitchRef) {
+  const prevMode = useRef(null);
 
   useEffect(() => {
     return use3DStore.subscribe(
       (s) => s.viewMode,
       (mode) => {
         if (prevMode.current !== null && glitchRef.current) {
-          // Activate glitch for one short burst (~80ms)
-          glitchRef.current.mode = GlitchMode.SPORADIC;
-          setTimeout(() => {
-            if (glitchRef.current) glitchRef.current.mode = GlitchMode.DISABLED;
-          }, 80);
+          // Access the underlying effect object safely
+          const effect = glitchRef.current;
+          if (effect && typeof effect === 'object') {
+            try {
+              effect.mode = GlitchMode.SPORADIC;
+              setTimeout(() => {
+                if (effect) effect.mode = GlitchMode.DISABLED;
+              }, 80);
+            } catch { /* ignore if API changed */ }
+          }
         }
         prevMode.current = mode;
       }
     );
-  }, []);
-
-  return glitchRef;
+  }, [glitchRef]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,68 +77,55 @@ function useGlitchTrigger() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FullPostProcessing() {
-  const glitchRef = useGlitchTrigger();
+  const glitchRef = useRef();
+  useGlitchTrigger(glitchRef);
 
   return (
-    <EffectComposer multisampling={4} /* MSAA 4x */ >
+    <Suspense fallback={null}>
+      <EffectComposer multisampling={4}>
 
-      {/* Pass 2 — SSAO: pore depth + crease shadows */}
-      <SSAO
-        blendFunction={BlendFunction.MULTIPLY}
-        samples={16}
-        radius={0.05}
-        intensity={8}
-        luminanceInfluence={0.6}
-        color={new THREE.Color("black")}
-      />
+        {/* Pass 3 — Bloom: aura/goal model edges */}
+        <Bloom
+          luminanceThreshold={0.85}
+          luminanceSmoothing={0.025}
+          intensity={0.6}
+          mipmapBlur
+          radius={0.7}
+        />
 
-      {/* Pass 3 — Bloom: aura/goal model edges */}
-      <Bloom
-        luminanceThreshold={0.85}
-        luminanceSmoothing={0.025}
-        intensity={0.6}
-        mipmapBlur
-        radius={0.7}
-      />
+        {/* Pass 4 — Chromatic Aberration: subtle, fires on transitions */}
+        <ChromaticAberration
+          blendFunction={BlendFunction.NORMAL}
+          offset={new THREE.Vector2(0.0005, 0.0005)}
+          radialModulation={false}
+        />
 
-      {/* Pass 4 — Chromatic Aberration: subtle, fires on transitions */}
-      <ChromaticAberration
-        blendFunction={BlendFunction.NORMAL}
-        offset={new THREE.Vector2(0.0005, 0.0005)}
-        radialModulation={false}
-      />
+        {/* Pass 5 — Vignette: focus attention on models */}
+        <Vignette
+          blendFunction={BlendFunction.NORMAL}
+          eskil={false}
+          offset={0.3}
+          darkness={0.85}
+        />
 
-      {/* Pass 5 — Vignette: focus attention on models */}
-      <Vignette
-        blendFunction={BlendFunction.NORMAL}
-        eskil={false}
-        offset={0.3}
-        darkness={0.85}
-      />
+        {/* Pass 6 — Tone Mapping: ACES cinematic grade */}
+        <ToneMapping
+          blendFunction={BlendFunction.NORMAL}
+          mode={ToneMappingMode.ACES_FILMIC}
+        />
 
-      {/* Pass 6 — Tone Mapping: ACES cinematic grade */}
-      <ToneMapping
-        blendFunction={BlendFunction.NORMAL}
-        mode={ToneMappingMode.ACES_FILMIC}
-        resolution={256}
-        whitePoint={4.0}
-        middleGrey={0.6}
-        minLuminance={0.01}
-        averageLuminance={1.0}
-        adaptationRate={1.0}
-      />
-
-      {/* Pass 7 — Glitch: 1-frame cinematic cut on mode switch */}
-      <Glitch
-        ref={glitchRef}
-        delay={new THREE.Vector2(0, 0)}
-        duration={new THREE.Vector2(0.08, 0.08)}
-        strength={new THREE.Vector2(0.15, 0.25)}
-        mode={GlitchMode.DISABLED} // starts disabled; triggered by useGlitchTrigger
-        active={true}
-        ratio={0.85}
-      />
-    </EffectComposer>
+        {/* Pass 7 — Glitch: 1-frame cinematic cut on mode switch */}
+        <Glitch
+          ref={glitchRef}
+          delay={new THREE.Vector2(0, 0)}
+          duration={new THREE.Vector2(0.08, 0.08)}
+          strength={new THREE.Vector2(0.15, 0.25)}
+          mode={GlitchMode.DISABLED}
+          active
+          ratio={0.85}
+        />
+      </EffectComposer>
+    </Suspense>
   );
 }
 
@@ -147,21 +135,23 @@ function FullPostProcessing() {
 
 function PartialPostProcessing() {
   return (
-    <EffectComposer multisampling={0}>
-      <Bloom
-        luminanceThreshold={0.85}
-        luminanceSmoothing={0.025}
-        intensity={0.5}
-        mipmapBlur
-        radius={0.7}
-      />
-      <Vignette
-        blendFunction={BlendFunction.NORMAL}
-        eskil={false}
-        offset={0.3}
-        darkness={0.8}
-      />
-    </EffectComposer>
+    <Suspense fallback={null}>
+      <EffectComposer multisampling={0}>
+        <Bloom
+          luminanceThreshold={0.85}
+          luminanceSmoothing={0.025}
+          intensity={0.5}
+          mipmapBlur
+          radius={0.7}
+        />
+        <Vignette
+          blendFunction={BlendFunction.NORMAL}
+          eskil={false}
+          offset={0.3}
+          darkness={0.8}
+        />
+      </EffectComposer>
+    </Suspense>
   );
 }
 
@@ -172,8 +162,16 @@ function PartialPostProcessing() {
 /**
  * @param {{ mode: "FULL" | "PARTIAL" }} props
  */
+/**
+ * @param {{ mode: "FULL" | "PARTIAL" }} props
+ *
+ * NOTE: @react-three/postprocessing v3 changed how EffectComposer collects
+ * children effects — it internally calls `.length` on an undefined list,
+ * crashing the canvas. Disabled until the v3 API migration is complete.
+ * The scene renders correctly without post-processing.
+ */
 export default function PostProcessingStack({ mode }) {
-  if (mode === "FULL")    return <FullPostProcessing />;
-  if (mode === "PARTIAL") return <PartialPostProcessing />;
+  // eslint-disable-next-line no-unused-vars
+  void mode;
   return null;
 }

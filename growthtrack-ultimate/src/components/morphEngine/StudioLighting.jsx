@@ -115,7 +115,12 @@ function SubLight() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AmbientBase() {
-  return <ambientLight intensity={0.08} color="#0D0D1A" />;
+  return (
+    <>
+      <ambientLight intensity={0.35} color="#e8d5c0" />
+      <hemisphereLight skyColor="#FFF5E0" groundColor="#0D1025" intensity={0.5} />
+    </>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

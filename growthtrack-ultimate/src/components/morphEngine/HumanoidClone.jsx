@@ -27,6 +27,7 @@ import * as THREE                             from "three";
 import { useModelLoader }                  from "./useModelLoader";
 import { useMorphInterpolator }            from "./MorphInterpolator";
 import PostureRig                          from "./PostureRig";
+import ProceduralHumanoid                  from "./ProceduralHumanoid";
 import use3DStore                          from "../../store/use3DStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,7 +138,7 @@ export default function HumanoidClone({
   const meshRef   = useRef();
 
   // ── Load model ─────────────────────────────────────────────────────────────
-  const { bodyMesh, morphIndexMap, skeleton, scene } = useModelLoader();
+  const { bodyMesh, morphIndexMap, skeleton, scene, isDev } = useModelLoader();
 
   // ── Store slice ────────────────────────────────────────────────────────────
   const { weights, metrics, posture } = use3DStore(
@@ -199,6 +200,19 @@ export default function HumanoidClone({
         interpolator.getWeight("vascularity_intensity");
     }
   });
+
+  // ── Dev fallback — use procedural humanoid when no GLB is loaded ─────────
+  if (isDev) {
+    return (
+      <ProceduralHumanoid
+        cloneKey={cloneKey}
+        position={position}
+        renderMode={renderMode}
+        opacity={opacity}
+        visible={visible}
+      />
+    );
+  }
 
   if (!bodyMesh || !visible) return null;
 

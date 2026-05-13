@@ -108,19 +108,19 @@ function buildFallbackMesh() {
  * }}
  */
 export function useModelLoader() {
-  // Must be called unconditionally (Rules of Hooks).
-  // useGLTF throws a Promise while loading — ChamberCanvas's Suspense handles that.
-  // On actual error (404 etc.) we fall back to the procedural mesh below.
+  // useGLTF is called unconditionally per Rules of Hooks.
+  // Suspense promises (loading state) must be re-thrown so Suspense handles them.
+  // Real errors (404 / parse failure) are caught and fall through to the dev fallback.
   let gltf = null;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     gltf = useGLTF(MODEL_PATH);
-    window.__HUMANOID_GLB_LOADED__ = true;
   } catch (err) {
-    // Re-throw Suspense promises so the Suspense boundary can handle loading state
-    if (err instanceof Promise) throw err;
-    // Actual errors (404, parse failure) — fall through to dev fallback below
-    console.warn('[useModelLoader] GLB load failed, using fallback mesh:', err.message);
+    if (err && typeof err.then === 'function') throw err; // re-throw Suspense promises
+    // 404 / network / parse errors → fall through, gltf stays null → dev fallback renders
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[useModelLoader] GLB load failed, using fallback mesh:', err?.message ?? err);
+    }
   }
 
   return useMemo(() => {
@@ -144,20 +144,25 @@ export function useModelLoader() {
         }
       });
 
+      if (!bodyMesh) {
+        // GLB loaded but no skinned mesh named "body" found — use fallback
+        console.warn("[useModelLoader] No 'body' SkinnedMesh found in GLB scene, using fallback.");
+        const mesh  = buildFallbackMesh();
+        const group = new THREE.Group();
+        group.add(mesh);
+        return { bodyMesh: mesh, morphIndexMap: {}, skeleton: null, scene: group, isDev: true };
+      }
+
       return { bodyMesh, morphIndexMap, skeleton, scene: clonedScene, isDev: false };
     }
 
     // ── DEV FALLBACK ─────────────────────────────────────────────────────────
-    if (!gltf?.scene) {
-      console.info("[useModelLoader] Using fallback capsule mesh (no GLB found)");
-      const mesh        = buildFallbackMesh();
-      const morphIndexMap = buildMorphIndexMap(mesh);
-      const group       = new THREE.Group();
-      group.add(mesh);
-      return { bodyMesh: mesh, morphIndexMap, skeleton: null, scene: group, isDev: true };
-    }
-
-    return { bodyMesh: null, morphIndexMap: {}, skeleton: null, scene: null, isDev: false };
+    console.info("[useModelLoader] Using fallback capsule mesh (no GLB found)");
+    const mesh        = buildFallbackMesh();
+    const morphIndexMap = buildMorphIndexMap(mesh);
+    const group       = new THREE.Group();
+    group.add(mesh);
+    return { bodyMesh: mesh, morphIndexMap, skeleton: null, scene: group, isDev: true };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gltf]);
 }
