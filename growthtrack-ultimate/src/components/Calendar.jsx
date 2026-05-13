@@ -1,29 +1,32 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, 
-  Plus, CheckCircle2, Circle, Clock, Tag, X, Save
+import {
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight,
+  Plus, CheckCircle2, Circle, Clock, X, Save
 } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+
+const EVENT_TYPES = ['task', 'fitness', 'work', 'health'];
+const TYPE_COLOR  = { task: 'var(--accent)', fitness: '#f43f5e', work: '#3b82f6', health: '#10b981' };
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', type: 'task', time: '09:00' });
-  
+  const [newEvent, setNewEvent]       = useState({ title: '', type: 'task', time: '09:00' });
+
   const events = useStore(state => state.calendar_events) || [];
-  const toast = useToast();
+  const tasks  = useStore(state => state.tasks) || [];
+  const toast  = useToast();
   const fetchInitialData = useStore(state => state.fetchInitialData);
 
-  const year = currentDate.getFullYear();
+  const year  = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInMonth    = new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
 
-  const monthNames = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
@@ -33,39 +36,76 @@ export default function Calendar() {
     return today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
   };
 
+  const toDateStr = (day) =>
+    `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
   const getEventsForDay = (day) => {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dateStr = toDateStr(day);
     return events.filter(e => e.date === dateStr);
   };
 
+  // Task due-date markers: tasks that have a due_date in the current month
+  const taskDueDates = useMemo(() => {
+    const map = {}; // dateStr -> count
+    (tasks || []).forEach(t => {
+      if (!t.due_date) return;
+      const d = t.due_date.slice(0, 10); // YYYY-MM-DD
+      const [y, m] = d.split('-').map(Number);
+      if (y === year && m === month + 1) {
+        map[d] = (map[d] || 0) + 1;
+      }
+    });
+    return map;
+  }, [tasks, year, month]);
+
+  // Normalized single-row POST: add ONE event
   const handleAddEvent = async () => {
     if (!newEvent.title || !selectedDay) return;
-    
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
-    const updatedEvents = [...events, { 
-      id: Date.now().toString(), 
-      ...newEvent, 
-      date: dateStr, 
-      completed: false 
-    }];
-
+    const dateStr = toDateStr(selectedDay);
+    const event = {
+      id: Date.now().toString(),
+      ...newEvent,
+      date: dateStr,
+      completed: false,
+    };
     try {
-      await apiSync('/calendar_events', 'POST', updatedEvents);
+      // POST single normalized row
+      await apiSync('/calendar_events/single', 'POST', event);
       toast.success('Event added to calendar');
       fetchInitialData();
       setIsModalOpen(false);
       setNewEvent({ title: '', type: 'task', time: '09:00' });
-    } catch (err) {
-      toast.error('Failed to save event');
+    } catch {
+      // Fallback: update full array for backends that don't yet support /single
+      const updatedEvents = [...events, event];
+      try {
+        await apiSync('/calendar_events', 'POST', updatedEvents);
+        fetchInitialData();
+        setIsModalOpen(false);
+        setNewEvent({ title: '', type: 'task', time: '09:00' });
+        toast.success('Event added');
+      } catch { toast.error('Failed to save event'); }
     }
   };
 
+  // Normalized PATCH: toggle a single event's completed flag
   const toggleComplete = async (eventId) => {
-    const updatedEvents = events.map(e => e.id === eventId ? { ...e, completed: !e.completed } : e);
+    const ev = events.find(e => e.id === eventId);
+    if (!ev) return;
     try {
-      await apiSync('/calendar_events', 'POST', updatedEvents);
+      await apiSync(`/calendar_events/${eventId}`, 'PATCH', { completed: !ev.completed });
       fetchInitialData();
-    } catch (err) {}
+    } catch {
+      // Fallback
+      const updatedEvents = events.map(e => e.id === eventId ? { ...e, completed: !e.completed } : e);
+      try { await apiSync('/calendar_events', 'POST', updatedEvents); fetchInitialData(); } catch {}
+    }
+  };
+
+  // Click on a day cell -> select it and open modal
+  const handleDayClick = (day) => {
+    setSelectedDay(day);
+    setIsModalOpen(true);
   };
 
   return (
@@ -76,11 +116,9 @@ export default function Calendar() {
           <h2 className="text-display" style={{ fontSize: '2.2rem' }}>Personal Calendar</h2>
           <p className="text-secondary">Track your habits, events, and performance plans.</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-           <button onClick={() => { setSelectedDay(new Date().getDate()); setIsModalOpen(true); }} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             <Plus size={18} /> ADD EVENT
-           </button>
-        </div>
+        <button onClick={() => { setSelectedDay(new Date().getDate()); setIsModalOpen(true); }} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Plus size={18} /> ADD EVENT
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
@@ -95,63 +133,67 @@ export default function Calendar() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '1rem' }}>
-            {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
+            {['SUN','MON','TUE','WED','THU','FRI','SAT'].map(day => (
               <div key={day} style={{ fontWeight: 900, color: 'var(--text-3)', fontSize: '0.7rem', letterSpacing: '0.1em' }}>{day}</div>
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: 'minmax(120px, auto)', gap: '4px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: 'minmax(110px, auto)', gap: '4px' }}>
             {Array.from({ length: firstDayOfMonth }).map((_, i) => (
               <div key={`empty-${i}`} style={{ background: 'rgba(255,255,255,0.01)', borderRadius: '4px' }} />
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
+              const day       = i + 1;
               const dayEvents = getEventsForDay(day);
-              const active = isToday(day);
-              
+              const dateStr   = toDateStr(day);
+              const dueTasks  = taskDueDates[dateStr] || 0;
+              const active    = isToday(day);
+              const isSelected = selectedDay === day;
+
               return (
-                <div 
-                  key={day} 
-                  onClick={() => setSelectedDay(day)}
-                  style={{ 
-                    padding: '0.75rem', 
-                    background: active ? 'rgba(6,182,212,0.05)' : 'var(--bg-elevated)', 
-                    border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                <div
+                  key={day}
+                  onClick={() => handleDayClick(day)}
+                  style={{
+                    padding: '0.6rem',
+                    background: active ? 'rgba(6,182,212,0.05)' : 'var(--bg-elevated)',
+                    border: isSelected ? '1px solid var(--accent)' : active ? '1px solid var(--accent)' : '1px solid var(--border)',
                     borderRadius: '4px',
                     cursor: 'pointer',
                     transition: '0.2s',
-                    position: 'relative'
+                    position: 'relative',
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onMouseLeave={(e) => !active && (e.currentTarget.style.borderColor = 'var(--border)')}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                  onMouseLeave={e => { if (!active && !isSelected) e.currentTarget.style.borderColor = 'var(--border)'; }}
                 >
-                  <span style={{ 
-                    fontWeight: 800, 
-                    fontSize: '0.9rem',
-                    color: active ? 'var(--accent)' : 'var(--text-2)',
-                    display: 'block',
-                    marginBottom: '8px'
-                  }}>{day}</span>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {dayEvents.slice(0, 3).map(e => (
-                      <div key={e.id} style={{ 
-                        fontSize: '0.65rem', 
-                        padding: '2px 6px', 
-                        borderRadius: '3px', 
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: active ? 'var(--accent)' : 'var(--text-2)', display: 'block', marginBottom: '4px' }}>{day}</span>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {/* Calendar events */}
+                    {dayEvents.slice(0, 2).map(e => (
+                      <div key={e.id} style={{
+                        fontSize: '0.6rem', padding: '2px 5px', borderRadius: '3px',
                         background: e.completed ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)',
                         color: e.completed ? 'var(--success)' : 'var(--text-2)',
-                        borderLeft: `2px solid ${e.type === 'fitness' ? '#f43f5e' : 'var(--accent)'}`,
+                        borderLeft: `2px solid ${TYPE_COLOR[e.type] || 'var(--accent)'}`,
                         textDecoration: e.completed ? 'line-through' : 'none',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {e.title}
-                      </div>
+                        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                      }}>{e.title}</div>
                     ))}
-                    {dayEvents.length > 3 && (
-                      <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 800 }}>+ {dayEvents.length - 3} MORE</span>
+                    {dayEvents.length > 2 && (
+                      <span style={{ fontSize: '0.55rem', color: 'var(--text-3)', fontWeight: 800 }}>+{dayEvents.length - 2} more</span>
+                    )}
+
+                    {/* Task due-date markers */}
+                    {dueTasks > 0 && (
+                      <div style={{
+                        fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px',
+                        background: 'rgba(139,92,246,0.12)',
+                        color: '#a78bfa',
+                        borderLeft: '2px solid #8b5cf6',
+                        fontWeight: 700,
+                        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                      }}>\uD83D\uDCCC {dueTasks} task{dueTasks !== 1 ? 's' : ''} due</div>
                     )}
                   </div>
                 </div>
@@ -164,26 +206,19 @@ export default function Calendar() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="glass-card" style={{ padding: '1.5rem' }}>
             <h4 className="label-caps" style={{ color: 'var(--accent)', marginBottom: '1.25rem' }}>
-              Schedule for {selectedDay || 'Today'}
+              {selectedDay ? `${monthNames[month]} ${selectedDay}` : 'Today'}
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {getEventsForDay(selectedDay || new Date().getDate()).map(e => (
                 <div key={e.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
-                  <button 
-                    onClick={() => toggleComplete(e.id)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '2px' }}
-                  >
+                  <button onClick={() => toggleComplete(e.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '2px' }}>
                     {e.completed ? <CheckCircle2 size={18} color="var(--success)" /> : <Circle size={18} color="var(--text-3)" />}
                   </button>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: '0.85rem', fontWeight: 700, color: e.completed ? 'var(--text-3)' : 'var(--text-1)', textDecoration: e.completed ? 'line-through' : 'none' }}>{e.title}</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock size={10} /> {e.time || 'All day'}
-                      </span>
-                      <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-3)', textTransform: 'uppercase' }}>
-                        {e.type}
-                      </span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={10} /> {e.time || 'All day'}</span>
+                      <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: TYPE_COLOR[e.type] || 'var(--text-3)', textTransform: 'uppercase' }}>{e.type}</span>
                     </div>
                   </div>
                 </div>
@@ -213,51 +248,32 @@ export default function Calendar() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: 800, fontSize: '1.2rem' }}>New Event - {selectedDay} {monthNames[month]}</h3>
+              <h3 style={{ fontWeight: 800, fontSize: '1.2rem' }}>New Event — {selectedDay} {monthNames[month]}</h3>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }}><X size={20} /></button>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Event Title</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={newEvent.title}
-                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  placeholder="e.g. Back Day Workout"
-                  style={{ width: '100%' }}
-                />
+                <input type="text" className="form-input" value={newEvent.title}
+                  onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
+                  onKeyDown={e => e.key === 'Enter' && handleAddEvent()}
+                  placeholder="e.g. Back Day Workout" style={{ width: '100%' }} autoFocus />
               </div>
-              
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Type</label>
-                  <select 
-                    className="form-input" 
-                    value={newEvent.type}
-                    onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
-                    style={{ width: '100%' }}
-                  >
-                    <option value="task">Task</option>
-                    <option value="fitness">Fitness</option>
-                    <option value="work">Work</option>
-                    <option value="health">Health</option>
+                  <select className="form-input" value={newEvent.type} onChange={e => setNewEvent({ ...newEvent, type: e.target.value })} style={{ width: '100%' }}>
+                    {EVENT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Time</label>
-                  <input 
-                    type="time" 
-                    className="form-input" 
-                    value={newEvent.time}
-                    onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                    style={{ width: '100%' }}
-                  />
+                  <input type="time" className="form-input" value={newEvent.time}
+                    onChange={e => setNewEvent({ ...newEvent, time: e.target.value })} style={{ width: '100%' }} />
                 </div>
               </div>
-
-              <button onClick={handleAddEvent} className="btn-primary" style={{ width: '100%', padding: '1rem', marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <button onClick={handleAddEvent} className="btn-primary" style={{ width: '100%', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <Save size={18} /> SAVE EVENT
               </button>
             </div>

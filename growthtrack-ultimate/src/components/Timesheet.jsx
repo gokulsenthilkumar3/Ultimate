@@ -30,6 +30,7 @@ export default function Timesheet() {
   const [countdownStart, setCountdownStart] = useState(1500);
   const [taskName, setTaskName] = useState('');
   const [activeTab, setActiveTab] = useState('timer');
+  const [manualForm, setManualForm] = useState({ task: '', duration: '', date: new Date().toLocaleString() });
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function Timesheet() {
       }, 1000);
     } else clearInterval(timerRef.current);
     return () => clearInterval(timerRef.current);
-  }, [isRunning, mode]);
+  }, [isRunning, mode, toast]);
 
   const progress = mode === 'countdown' && countdownStart > 0
     ? ((countdownStart - time) / countdownStart) * 100
@@ -77,8 +78,27 @@ export default function Timesheet() {
     setTaskName('');
   };
 
+  const handleAddManual = async () => {
+    if (!manualForm.task.trim()) return toast.error('Task name is required');
+    const mins = parseFloat(manualForm.duration);
+    if (!mins || mins <= 0) return toast.error('Duration must be > 0 minutes');
+    const secs = Math.round(mins * 60);
+    await addSession({ task: manualForm.task.trim(), duration: secs, date: manualForm.date });
+    toast.success('Manual session added');
+    setManualForm({ task: '', duration: '', date: new Date().toLocaleString() });
+  };
+
   const totalTime = useMemo(() => sessions.reduce((a, s) => a + s.duration, 0), [sessions]);
   const todaySessions = sessions.filter(s => s.date?.includes(new Date().toLocaleDateString()));
+
+  const byTask = useMemo(() => {
+    const map = {};
+    sessions.forEach(s => {
+      const key = s.task || 'Unnamed';
+      map[key] = (map[key] || 0) + s.duration;
+    });
+    return Object.entries(map).map(([task, duration]) => ({ task, duration })).sort((a, b) => b.duration - a.duration).slice(0, 5);
+  }, [sessions]);
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
@@ -87,7 +107,7 @@ export default function Timesheet() {
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem', letterSpacing: '0.2em' }}>Productivity Engine</p>
           <h2 className="text-display text-gradient" style={{ fontSize: '2.4rem' }}>Chrono Timesheet</h2>
-          <p className="text-secondary" style={{ marginTop: '0.4rem' }}>Deep work tracking with precision timers and session analytics.</p>
+          <p className="text-secondary" style={{ marginTop: '0.4rem' }}>Deep work tracking with precision timers, manual entries, and session analytics.</p>
         </div>
         <div className="glass-card" style={{ padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Activity size={20} color="var(--accent)" />
@@ -100,7 +120,7 @@ export default function Timesheet() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', background: 'rgba(255,255,255,0.04)', padding: '4px', borderRadius: '14px', border: '1px solid var(--border)', width: 'fit-content' }}>
-        {['timer', 'log'].map(t => (
+        {['timer', 'log', 'summary'].map(t => (
           <button key={t} onClick={() => setActiveTab(t)} style={{
             padding: '8px 24px', borderRadius: '10px', border: 'none',
             background: activeTab === t ? 'var(--accent)' : 'transparent',
@@ -108,7 +128,7 @@ export default function Timesheet() {
             fontWeight: 800, cursor: 'pointer', fontSize: '0.78rem',
             textTransform: 'uppercase', letterSpacing: '0.08em',
             transition: 'all 0.3s ease',
-          }}>{t === 'timer' ? '⏱ Timer' : '📋 Log'}</button>
+          }}>{t === 'timer' ? '⏱ Timer' : t === 'log' ? '📋 Log' : '📊 Summary'}</button>
         ))}
       </div>
 
@@ -189,7 +209,7 @@ export default function Timesheet() {
             </div>
           </div>
 
-          {/* Stats Panel */}
+          {/* Stats & Manual Entry */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
               <p className="label-caps" style={{ marginBottom: '1rem' }}>Today's Sessions</p>
@@ -199,18 +219,28 @@ export default function Timesheet() {
               </p>
             </div>
             <div className="glass-card" style={{ padding: '1.5rem' }}>
-              <p className="label-caps" style={{ marginBottom: '1rem' }}>Quick Stats</p>
+              <p className="label-caps" style={{ marginBottom: '1rem' }}>Quick Manual Entry</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {[
-                  { label: 'Total Sessions', value: sessions.length },
-                  { label: 'Avg Duration', value: sessions.length ? fmt(Math.round(totalTime / sessions.length)) : '--' },
-                  { label: 'Longest Session', value: sessions.length ? fmt(Math.max(...sessions.map(s => s.duration))) : '--' },
-                ].map((s, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.65rem 0', borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}>
-                    <span className="text-secondary">{s.label}</span>
-                    <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{s.value}</span>
-                  </div>
-                ))}
+                <input
+                  type="text" className="form-input" placeholder="Task name"
+                  value={manualForm.task}
+                  onChange={e => setManualForm({ ...manualForm, task: e.target.value })}
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '0.75rem' }}>
+                  <input
+                    type="number" className="form-input" placeholder="Duration (minutes)"
+                    value={manualForm.duration}
+                    min="1"
+                    onChange={e => setManualForm({ ...manualForm, duration: e.target.value })}
+                  />
+                  <input
+                    type="text" className="form-input" value={manualForm.date}
+                    onChange={e => setManualForm({ ...manualForm, date: e.target.value })}
+                  />
+                </div>
+                <button className="btn-primary" onClick={handleAddManual}>
+                  <CheckCircle size={16} /> ADD MANUAL SESSION
+                </button>
               </div>
             </div>
           </div>
@@ -251,6 +281,24 @@ export default function Timesheet() {
                       <Trash2 size={14} />
                     </button>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'summary' && (
+        <div className="glass-card" style={{ padding: '1.5rem' }}>
+          <p className="label-caps" style={{ marginBottom: '1rem' }}>Top Focus Streams</p>
+          {byTask.length === 0 ? (
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>Log some sessions to see your breakdown by task.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {byTask.map(row => (
+                <div key={row.task} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{row.task}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>{fmt(row.duration)}</span>
                 </div>
               ))}
             </div>
