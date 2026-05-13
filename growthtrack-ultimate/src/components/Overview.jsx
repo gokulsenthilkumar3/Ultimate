@@ -1,255 +1,375 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import {
-  Zap, Target, Flame, Droplets, Moon,
-  TrendingUp, Activity, ArrowUpRight, Shield, Clock,
-  Calendar as CalendarIcon, CloudRain, Wind, Sunrise, Sunset,
-  Quote, Plus, Minus, ArrowDownRight, Compass, Gauge,
-  Thermometer, Droplet, Wind as WindIcon, Sun, Cloud
-} from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
 import useStore from '../store/useStore';
-import AnimatedNumber from './ui/AnimatedNumber';
+import {
+  Sun, Cloud, CloudRain, Zap, Wind, Droplets, Eye, Thermometer,
+  CheckSquare, Target, Flame, TrendingUp, Activity, Clock, Star,
+  ChevronRight, AlertTriangle, Moon, CloudSnow, CloudLightning, Heart,
+  Bell, Utensils,
+} from 'lucide-react';
 
-export default function Overview({ user }) {
-  const metric_logs = useStore(s => s.metric_logs);
-  const goals = useStore(s => s.goals || []);
-  const sleep_logs = useStore(s => s.sleep_logs || []);
-  const updateUserSlice = useStore(s => s.updateUserSlice);
+const WMO_CODES = {
+  0: 'Clear', 1: 'Mostly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
+  45: 'Foggy', 48: 'Icy Fog',
+  51: 'Light Drizzle', 53: 'Drizzle', 55: 'Heavy Drizzle',
+  61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
+  71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow',
+  80: 'Rain Showers', 81: 'Heavy Showers', 82: 'Violent Showers',
+  95: 'Thunderstorm', 96: 'Thunderstorm + Hail', 99: 'Heavy Thunderstorm',
+};
 
-  // Compute health score dynamically from available data (0–100)
-  const healthScore = useMemo(() => {
-    let score = 60; // baseline
-    if (user?.weight && user?.height) {
-      const bmiVal = user.weight / Math.pow(user.height / 100, 2);
-      if (bmiVal >= 18.5 && bmiVal <= 24.9) score += 10;
-    }
-    if (metric_logs && metric_logs.length > 0) score += 5;
-    if (sleep_logs && sleep_logs.length > 0) {
-      const avgSleep = sleep_logs.slice(-7).reduce((a, l) => a + (l.duration || 0), 0) / Math.min(7, sleep_logs.length);
-      if (avgSleep >= 7) score += 10;
-    } else if (user?.sleep?.logs?.length > 0) {
-      const avgSleep = user.sleep.logs.slice(-7).reduce((a, l) => a + l.hours, 0) / Math.min(7, user.sleep.logs.length);
-      if (avgSleep >= 7) score += 10;
-    }
-    if (user?.checkIns?.length > 0) score += 5;
-    if (goals.some(g => !g.done)) score += 5;
-    if (user?.hydration?.glasses >= 8) score += 5;
-    return Math.min(100, score);
-  }, [user, metric_logs, sleep_logs, goals]);
+function WeatherIcon({ code, size = 20 }) {
+  if (!code && code !== 0) return <Sun size={size} className="text-yellow-400" />;
+  if (code === 0 || code === 1) return <Sun size={size} className="text-yellow-400" />;
+  if (code === 2 || code === 3) return <Cloud size={size} className="text-gray-400" />;
+  if (code >= 51 && code <= 67) return <CloudRain size={size} className="text-blue-400" />;
+  if (code >= 71 && code <= 77) return <CloudSnow size={size} className="text-blue-200" />;
+  if (code >= 80 && code <= 82) return <CloudRain size={size} className="text-blue-500" />;
+  if (code >= 95) return <CloudLightning size={size} className="text-purple-400" />;
+  return <Cloud size={size} className="text-gray-400" />;
+}
 
-  const sleepDebt = user?.sleep?.weeklyDebt ?? null;
-  const [time, setTime] = useState(new Date());
-  // Persist waterGlasses to store so it survives tab switches
-  const [waterGlasses, setWaterGlassesLocal] = useState(user?.hydration?.glasses || 0);
-  const setWaterGlasses = useCallback((val) => {
-    setWaterGlassesLocal(val);
-    updateUserSlice('hydration', { glasses: val });
-  }, [updateUserSlice]);
-
-  // BMI Logic: use latest log weight if available, else fallback to profile
-  const latestLog = useMemo(() => {
-    if (!metric_logs || metric_logs.length === 0) return null;
-    return [...metric_logs].sort((a, b) => b.date.localeCompare(a.date))[0];
-  }, [metric_logs]);
-
-  const height = user?.height || 175;
-  const currentWeight = latestLog?.weight || user?.weight || 63;
-  const bmi = (currentWeight / Math.pow(height / 100, 2)).toFixed(1);
-
-  // Weather Logic: Dynamic from Open-Meteo API (No API key required)
-  const [weather, setWeather] = useState({
-    temp: '--°C', condition: '--', humidity: '--%', aqi: '42 (Good)',
-    windSpeed: '-- km/h', windDir: '--', uv: '--', precip: '--', pressure: '-- hPa', visibility: '-- km'
-  });
-
-  const weatherFetched = useRef(false);
-  useEffect(() => {
-    if (weatherFetched.current) return;
-    weatherFetched.current = true;
-    const fetchWeather = async () => {
-      try {
-        // Defaulting to Bangalore, India.
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=12.9716&longitude=77.5946&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=uv_index&timezone=auto');
-        const data = await res.json();
-        if (data && data.current) {
-          const wDir = (deg) => {
-            const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-            return dirs[Math.round(deg / 22.5) % 16];
-          };
-          const uv = Math.round(data.hourly?.uv_index?.[new Date().getHours()] || 4);
-          setWeather({
-            temp: `${Math.round(data.current.temperature_2m)}°C`,
-            condition: data.current.precipitation > 0 ? 'Rainy' : data.current.temperature_2m > 30 ? 'Sunny' : 'Clear',
-            humidity: `${Math.round(data.current.relative_humidity_2m)}%`,
-            aqi: '42 (Good)',
-            windSpeed: `${Math.round(data.current.wind_speed_10m)} km/h`,
-            windDir: wDir(data.current.wind_direction_10m),
-            uv: `${uv} ${uv > 7 ? '(High)' : uv > 3 ? '(Mod)' : '(Low)'}`,
-            precip: `${data.current.precipitation}mm`,
-            pressure: `${Math.round(data.current.surface_pressure)} hPa`,
-            visibility: `${(data.current.visibility / 1000).toFixed(1)} km`
-          });
-        }
-      } catch (err) {
-        console.warn('Weather fetch failed', err);
-      }
-    };
-    fetchWeather();
-
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-
-  const vitals = [
-    { label: 'Health Score', value: healthScore, unit: '/100', icon: Zap, color: 'var(--accent)', trend: '+3', state: 'optimal' },
-    { label: 'Weight', value: currentWeight, unit: 'kg', icon: Activity, color: '#3b82f6', trend: latestLog ? 'LIVE' : '+0.5', state: 'stable' },
-    { label: 'BMI', value: bmi, unit: '', icon: Gauge, color: '#10b981', trend: 'STABLE', state: 'normal' },
-    { label: 'Body Fat', value: `${user?.bodyFat || 22}`, unit: '%', icon: Flame, color: '#f43f5e', trend: '-1.2', state: 'cutting' },
-  ];
-
-  const hour = time.getHours();
-  const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
-
+function StatCard({ label, value, sub, icon: Icon, color = 'text-amber-400', onClick }) {
   return (
-    <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
-      {/* Top Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ flex: 1 }}>
-          <p className="label-caps" style={{ color: 'var(--success)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
-            API ONLINE
-          </p>
-          <h2 className="text-display" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.8rem)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-            {greeting}, <span style={{ color: 'var(--accent)' }}>{user?.name?.split(' ')[0] || 'Operator'}</span>
-          </h2>
-          <p className="text-secondary" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
-            Environment and physiology are within target operating ranges.
-          </p>
+    <button
+      onClick={onClick}
+      className="bg-white/5 border border-white/10 rounded-xl p-4 text-left hover:bg-white/8 transition group w-full"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-xs text-gray-500 mb-1">{label}</p>
+          <p className={`text-2xl font-bold ${color}`}>{value ?? '\u2013'}</p>
+          {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
         </div>
-        <div className="glass-card" style={{ padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', border: '1px solid var(--accent-soft)' }}>
-          <p className="label-caps" style={{ color: 'var(--text-3)', fontSize: '0.65rem' }}>{time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: 'var(--text-1)' }}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-        </div>
+        {Icon && <Icon size={18} className={`${color} opacity-60 group-hover:opacity-100 transition mt-0.5`} />}
       </div>
-
-      {/* KPI Vitals Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        {vitals.map((v, i) => (
-          <div key={i} className="glass-card" style={{ padding: '1.75rem', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-              <div style={{ background: `${v.color}15`, padding: '10px', borderRadius: '12px' }}>
-                <v.icon size={22} color={v.color} />
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: v.trend.includes('-') ? '#f43f5e' : '#10b981', background: v.trend.includes('-') ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '6px' }}>{v.trend}</span>
-              </div>
-            </div>
-            <p className="label-caps" style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px' }}>{v.label}</p>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              <span className="text-display" style={{ fontSize: '2.2rem' }}>
-                {typeof v.value === 'number' ? <AnimatedNumber value={v.value} decimals={v.label === 'Health Score' ? 0 : 1} /> : v.value}
-              </span>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-3)', fontWeight: 600 }}>{v.unit}</span>
-            </div>
-            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: v.state === 'optimal' || v.state === 'normal' ? '#10b981' : 'var(--accent)' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{v.state}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Grid: Telemetry + Sensors */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-        {/* Environment & Sensors */}
-        <div className="glass-card" style={{ padding: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h3 className="card-title" style={{ margin: 0 }}><Compass size={20} /> Environmental Sensors</h3>
-            <span className="badge" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>NOMINAL</span>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem' }}>
-             {[
-               { label: 'Outside Temp', value: weather.temp, icon: Thermometer, color: '#f59e0b' },
-               { label: 'Humidity', value: weather.humidity, icon: Droplet, color: '#0ea5e9' },
-               { label: 'Wind Speed', value: weather.windSpeed, icon: WindIcon, color: '#94a3b8' },
-               { label: 'Air Quality', value: weather.aqi, icon: Wind, color: '#10b981' },
-               { label: 'UV Index', value: weather.uv, icon: Sun, color: '#f59e0b' },
-               { label: 'Wind Dir', value: weather.windDir, icon: Compass, color: '#8b5cf6' },
-               { label: 'Pressure', value: weather.pressure, icon: Gauge, color: '#6366f1' },
-               { label: 'Visibility', value: weather.visibility, icon: Eye, color: '#ec4899' }
-             ].map((s, i) => (
-               <div key={i}>
-                 <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>{s.label}</p>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                   <s.icon size={18} color={s.color} style={{ opacity: 0.8 }} />
-                   <span style={{ fontWeight: 800, color: 'var(--text-1)', fontSize: '1.1rem' }}>{s.value}</span>
-                 </div>
-               </div>
-             ))}
-          </div>
-
-          <div style={{ marginTop: '2.5rem', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--border)' }}>
-             <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', lineHeight: 1.6 }}>
-               <Shield size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} color="var(--accent)" />
-               All environmental sensors reporting within target thresholds. BMI stable at <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{bmi}</span>. 
-               Last weigh-in: <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>{latestLog ? latestLog.date : 'Initial Profile'}</span>.
-             </p>
-          </div>
-        </div>
-
-        {/* Daily Progress / Targets */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-           <div className="glass-card" style={{ flex: 1, padding: '1.75rem' }}>
-              <h3 className="card-title"><Target size={18} /> Strategic Priorities</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                {/* Pull from store goals — top 3 active goals */}
-                {(() => {
-                  const active = goals
-                    .filter(g => !g.done && g.target_value > 0)
-                    .map((g, i) => ({
-                      label: g.title,
-                      target: `${g.target_value} ${g.unit || ''}`.trim(),
-                      progress: Math.min(100, Math.max(0, Math.round((g.current_value / g.target_value) * 100))),
-                      color: ['var(--accent)', '#8b5cf6', '#10b981'][i % 3]
-                    }))
-                    .slice(0, 3);
-
-                  const items = active.length > 0 ? active : [
-                    { label: 'No active goals yet', target: 'Add goals to track progress', progress: 0, color: 'var(--text-3)' }
-                  ];
-
-                  return items.map((g, i) => (
-                    <div key={i}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)' }}>{g.label}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{active.length > 0 ? `${g.progress}%` : ''}</span>
-                      </div>
-                      <div style={{ width: '100%', height: '6px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ width: `${g.progress}%`, height: '100%', background: g.color }} />
-                      </div>
-                      {g.target && active.length > 0 && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '3px' }}>Target: {g.target}</p>}
-                    </div>
-                  ));
-                })()}
-              </div>
-           </div>
-
-           <div className="glass-card" style={{ padding: '1.75rem', background: 'linear-gradient(135deg, var(--accent)22, transparent)', border: '1px solid var(--accent)33' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-                 <div style={{ background: 'var(--accent)', color: '#000', padding: '8px', borderRadius: '10px' }}>
-                    <Quote size={18} />
-                 </div>
-                 <h4 className="label-caps" style={{ color: 'var(--accent)', margin: 0 }}>Ambition Directive</h4>
-              </div>
-              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, fontStyle: 'italic' }}>
-                "The resistance you fight physically in the gym and the resistance you fight in life can only build a strong character."
-              </p>
-           </div>
-        </div>
-      </div>
-    </div>
+    </button>
   );
 }
 
-function Eye({ size, color, style }) { return <Compass size={size} color={color} style={style} />; }
+function useHealthScore({ habitsDoneToday, habitsTotal, moodStreak, lastSleep, lastWeight, activeGoals }) {
+  return useMemo(() => {
+    let score = 0;
+    let factors = 0;
+    if (habitsTotal > 0) { score += Math.round((habitsDoneToday / habitsTotal) * 25); factors++; }
+    if (moodStreak > 0) { score += Math.min(20, Math.round((moodStreak / 7) * 20)); factors++; }
+    if (lastSleep) {
+      const hrs = parseFloat(lastSleep.duration || lastSleep.hours || 0);
+      const q = Number(lastSleep.quality || 5);
+      score += Math.round(Math.min(1, hrs / 8) * 15) + Math.round((q / 10) * 10);
+      factors++;
+    }
+    if (lastWeight) { score += 10; factors++; }
+    if (activeGoals > 0) { score += Math.min(20, activeGoals * 4); factors++; }
+    if (factors === 0) return null;
+    return Math.min(100, score);
+  }, [habitsDoneToday, habitsTotal, moodStreak, lastSleep, lastWeight, activeGoals]);
+}
+
+// ── Generate top-3 local alerts for mini-feed ──
+function useTodayAlerts(user, habits, habitLogs, goals) {
+  return useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const alerts = [];
+
+    // Missed habits
+    (habits || []).forEach(h => {
+      const logs = habitLogs[h.id] || [];
+      const doneToday = logs.some(l => l.date === today);
+      if (!doneToday) {
+        const streak = h.streak || h.current_streak || 0;
+        alerts.push({
+          id: `h-${h.id}`,
+          type: 'habit',
+          emoji: '\ud83d\udd25',
+          color: 'text-orange-400',
+          bg: 'bg-orange-500/10 border-orange-500/20',
+          text: `Missed habit: ${h.name || h.title}${streak > 0 ? ` \u2014 ${streak}-day streak at risk` : ''}`,
+          tab: 'habits',
+        });
+      }
+    });
+
+    // Overdue tasks
+    (user?.tasks?.pending || []).forEach(t => {
+      const due = t.dueDate || t.due_date;
+      if (due && due < today) {
+        const days = Math.ceil((new Date(today) - new Date(due)) / 86400000);
+        alerts.push({
+          id: `t-${t.id || t.title}`,
+          type: 'task',
+          emoji: '\u23f0',
+          color: 'text-red-400',
+          bg: 'bg-red-500/10 border-red-500/20',
+          text: `Overdue task: \u201c${t.title}\u201d (${days}d late)`,
+          tab: 'tasks',
+        });
+      }
+    });
+
+    // Goal deadlines \u2264 7 days
+    (goals || []).forEach(g => {
+      if (g.status === 'completed') return;
+      const dl = g.deadline || g.target_date;
+      if (!dl) return;
+      const daysLeft = Math.ceil((new Date(dl) - new Date(today)) / 86400000);
+      if (daysLeft <= 7) {
+        alerts.push({
+          id: `g-${g.id}`,
+          type: 'goal',
+          emoji: '\ud83c\udfaf',
+          color: 'text-purple-400',
+          bg: 'bg-purple-500/10 border-purple-500/20',
+          text: daysLeft < 0
+            ? `Goal past deadline: \u201c${g.title}\u201d`
+            : `Goal due in ${daysLeft}d: \u201c${g.title}\u201d`,
+          tab: 'goals',
+        });
+      }
+    });
+
+    return alerts.slice(0, 3);
+  }, [user, habits, habitLogs, goals]);
+}
+
+export default function Overview() {
+  const setActiveTab = useStore(s => s.setActiveTab);
+  const userName    = useStore(s => s.user?.name);
+  const user        = useStore(s => s.user);
+  const tasks       = useStore(s => s.user?.tasks);
+  const goals       = useStore(s => s.goals) || [];
+  const habits      = useStore(s => s.habits) || [];
+  const habitLogs   = useStore(s => s.habitLogsByHabit) || {};
+  const moodLogs    = useStore(s => s.moodLogs) || [];
+  const finance     = useStore(s => s.finance) || { transactions: [], budgets: [] };
+  const sleep_logs  = useStore(s => s.sleep_logs) || [];
+  const metric_logs = useStore(s => s.metric_logs) || [];
+  const nutrition   = useStore(s => s.nutrition_logs) || [];
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const pendingTasks  = tasks?.pending?.length || 0;
+  const overdueTasks  = (tasks?.pending || []).filter(t => t.dueDate && t.dueDate < today).length;
+  const activeGoals   = goals.filter(g => g.status === 'active').length;
+
+  const habitsDoneToday = habits.filter(h => {
+    const logs = habitLogs[h.id] || [];
+    return logs.some(l => l.date === today);
+  }).length;
+
+  // Live calorie KPI from nutrition_logs
+  const caloriesToday = useMemo(() => {
+    return (nutrition || []).filter(l => (l.date || l.logged_at?.slice(0, 10)) === today)
+      .reduce((s, l) => s + Number(l.calories || 0), 0);
+  }, [nutrition, today]);
+
+  const moodStreak = useMemo(() => {
+    if (!moodLogs.length) return 0;
+    const logSet = new Set(moodLogs.map(l => l.date));
+    let streak = 0;
+    let d = new Date();
+    while (logSet.has(d.toISOString().slice(0, 10))) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    }
+    return streak;
+  }, [moodLogs]);
+
+  const lastWeight = useMemo(() => {
+    const wLogs = metric_logs.filter(l => l.type === 'weight').sort((a, b) => b.logged_at?.localeCompare(a.logged_at));
+    return wLogs[0]?.value ?? null;
+  }, [metric_logs]);
+
+  const lastSleep = sleep_logs[0] || null;
+
+  const monthlySpend = useMemo(() => {
+    const thisMonth = today.slice(0, 7);
+    return finance.transactions
+      .filter(t => t.type === 'expense' && t.date?.startsWith(thisMonth))
+      .reduce((s, t) => s + Number(t.amount || 0), 0);
+  }, [finance.transactions, today]);
+
+  const healthScore = useHealthScore({ habitsDoneToday, habitsTotal: habits.length, moodStreak, lastSleep, lastWeight, activeGoals });
+  const scoreColor = healthScore === null ? 'text-gray-500'
+    : healthScore >= 75 ? 'text-emerald-400'
+    : healthScore >= 50 ? 'text-amber-400'
+    : 'text-red-400';
+
+  // Today's Alerts mini-feed
+  const todayAlerts = useTodayAlerts(user, habits, habitLogs, goals);
+
+  const [weather, setWeather] = useState(null);
+  const [weatherErr, setWeatherErr] = useState(false);
+
+  useEffect(() => {
+    const lat = 11.0168, lon = 77.4059;
+    fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,uv_index,apparent_temperature` +
+      `&timezone=Asia%2FKolkata`
+    ).then(r => r.json()).then(data => setWeather(data.current)).catch(() => setWeatherErr(true));
+  }, []);
+
+  const wCode = weather?.weather_code;
+  const wCondition = WMO_CODES[wCode] ?? 'Unknown';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  return (
+    <div className="space-y-6 p-4 max-w-4xl mx-auto">
+      {/* Hero greeting */}
+      <div className="relative bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/20 rounded-2xl p-5 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(251,191,36,0.08),transparent)] pointer-events-none" />
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-gray-400 text-sm">{greeting},</p>
+            <h1 className="text-3xl font-bold text-white mt-0.5">{userName || 'Operator'} \u26a1</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+            {healthScore !== null && (
+              <div className="flex items-center gap-2 mt-2">
+                <Heart size={14} className={scoreColor} />
+                <span className={`text-sm font-bold ${scoreColor}`}>Health Score: {healthScore}/100</span>
+                <span className="text-xs text-gray-500">
+                  {healthScore >= 75 ? '\u2014 Great' : healthScore >= 50 ? '\u2014 Moderate' : '\u2014 Needs attention'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Weather */}
+          <div className="flex-shrink-0 text-right">
+            {weather ? (
+              <>
+                <div className="flex items-center gap-1.5 justify-end">
+                  <WeatherIcon code={wCode} size={20} />
+                  <span className="text-2xl font-bold text-white">{Math.round(weather.temperature_2m)}\u00b0C</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">{wCondition}</p>
+                <p className="text-xs text-gray-500">Sivanmalai, TN</p>
+                <div className="flex gap-2 mt-1.5 justify-end text-xs text-gray-500">
+                  <span className="flex items-center gap-0.5"><Droplets size={10}/> {weather.relative_humidity_2m}%</span>
+                  <span className="flex items-center gap-0.5"><Wind size={10}/> {Math.round(weather.wind_speed_10m)} km/h</span>
+                  <span className="flex items-center gap-0.5"><Eye size={10}/> UV {Math.round(weather.uv_index ?? 0)}</span>
+                </div>
+              </>
+            ) : weatherErr ? (
+              <p className="text-xs text-gray-500">Weather unavailable</p>
+            ) : (
+              <p className="text-xs text-gray-500 animate-pulse">Loading weather\u2026</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Live stat grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="Pending Tasks" value={pendingTasks}
+          sub={overdueTasks > 0 ? `${overdueTasks} overdue` : 'all on time'}
+          icon={CheckSquare} color={overdueTasks > 0 ? 'text-red-400' : 'text-amber-400'}
+          onClick={() => setActiveTab('tasks')} />
+        <StatCard label="Active Goals" value={activeGoals}
+          sub={`${goals.length} total`} icon={Target} color="text-purple-400"
+          onClick={() => setActiveTab('goals')} />
+        <StatCard label="Habits Today" value={`${habitsDoneToday}/${habits.length}`}
+          sub={habits.length > 0 ? `${Math.round((habitsDoneToday / habits.length) * 100)}% done` : 'no habits'}
+          icon={Flame} color="text-orange-400" onClick={() => setActiveTab('habits')} />
+        <StatCard label="Mood Streak" value={moodStreak}
+          sub={moodStreak > 0 ? 'days logged' : 'start logging'}
+          icon={Activity} color="text-pink-400" onClick={() => setActiveTab('mind')} />
+      </div>
+
+      {/* Secondary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* NEW: live calories today */}
+        <StatCard label="Calories Today" value={caloriesToday > 0 ? caloriesToday.toLocaleString() : '0'}
+          sub="kcal logged" icon={Utensils} color="text-lime-400"
+          onClick={() => setActiveTab('nutrition')} />
+        {lastWeight && (
+          <StatCard label="Last Weight" value={`${lastWeight} kg`} sub="from metric log"
+            icon={TrendingUp} color="text-blue-400" onClick={() => setActiveTab('progress')} />
+        )}
+        {lastSleep && (
+          <StatCard
+            label="Last Sleep"
+            value={`${lastSleep.hours || parseFloat(lastSleep.duration || 0).toFixed(1)}h`}
+            sub={lastSleep.quality ? `Quality: ${lastSleep.quality}/10` : lastSleep.date}
+            icon={Moon} color="text-indigo-400" onClick={() => setActiveTab('sleep')} />
+        )}
+        <StatCard label="Month Spend"
+          value={monthlySpend > 0 ? `\u20b9${monthlySpend.toLocaleString('en-IN')}` : '\u20b90'}
+          sub={new Date().toLocaleString('en-IN', { month: 'long' })}
+          icon={TrendingUp} color="text-emerald-400" onClick={() => setActiveTab('finance')} />
+      </div>
+
+      {/* ── Today's Alerts mini-feed ── */}
+      {todayAlerts.length > 0 && (
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Bell size={14} className="text-amber-400" />
+              <p className="text-xs font-semibold text-gray-300">Today\u2019s Alerts</p>
+              <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{todayAlerts.length}</span>
+            </div>
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className="text-xs text-amber-400 hover:text-amber-300 underline"
+            >View all \u2192</button>
+          </div>
+          <div className="space-y-2">
+            {todayAlerts.map(alert => (
+              <div
+                key={alert.id}
+                className={`flex items-start gap-2.5 rounded-lg border px-3 py-2 ${alert.bg}`}
+              >
+                <span className="text-base mt-0.5">{alert.emoji}</span>
+                <p className={`text-xs flex-1 ${alert.color}`}>{alert.text}</p>
+                <button
+                  onClick={() => setActiveTab(alert.tab)}
+                  className={`text-[10px] ${alert.color} hover:opacity-80 underline flex-shrink-0`}
+                >Go \u2192</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick navigate */}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+        <p className="text-xs font-semibold text-gray-400 mb-3">Quick Navigate</p>
+        <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
+          {[
+            { id: 'tasks',         label: 'Tasks',    color: 'text-amber-400' },
+            { id: 'goals',         label: 'Goals',    color: 'text-purple-400' },
+            { id: 'habits',        label: 'Habits',   color: 'text-orange-400' },
+            { id: 'finance',       label: 'Finance',  color: 'text-emerald-400' },
+            { id: 'training',      label: 'Training', color: 'text-blue-400' },
+            { id: 'mind',          label: 'Wellness', color: 'text-pink-400' },
+            { id: 'notifications', label: '\ud83d\udd14 Alerts', color: 'text-red-400' },
+          ].map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className="flex flex-col items-center gap-1.5 py-3 rounded-xl border border-white/10 hover:bg-white/10 hover:border-white/20 transition"
+            >
+              <ChevronRight size={14} className={item.color} />
+              <span className={`text-xs font-medium ${item.color}`}>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Overdue task alert banner */}
+      {overdueTasks > 0 && (
+        <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+          <AlertTriangle size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm text-red-300 font-semibold">{overdueTasks} overdue task{overdueTasks > 1 ? 's' : ''}</p>
+            <p className="text-xs text-red-400/70 mt-0.5">Check the Tasks tab to catch up.</p>
+          </div>
+          <button onClick={() => setActiveTab('tasks')} className="ml-auto text-xs text-red-400 hover:text-red-300 underline">Go \u2192</button>
+        </div>
+      )}
+    </div>
+  );
+}
