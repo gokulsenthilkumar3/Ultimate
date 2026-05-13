@@ -290,8 +290,9 @@ export default function App() {
   }, [theme, palette]);
 
   return (
-    <ToastProvider>
-      <CommandPalette />
+    <ErrorBoundary resetKey="root">
+      <ToastProvider>
+        <CommandPalette />
       {!onboardingComplete && <OnboardingWizard />}
       {showCheckIn && onboardingComplete && (
         <DailyCheckIn onClose={() => setShowCheckIn(false)} />
@@ -355,5 +356,6 @@ export default function App() {
         />
       </div>
     </ToastProvider>
+    </ErrorBoundary>
   );
 }

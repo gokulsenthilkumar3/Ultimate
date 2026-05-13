@@ -22,11 +22,11 @@ export default function Logs() {
 
   useEffect(() => {
     apiSync('/logs', 'GET')
-      .then(data => { setLogs(data); setLoading(false); })
+      .then(data => { setLogs(data || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  const tables = useMemo(() => ['All', ...new Set(logs.map(l => l.table_name))], [logs]);
+  const tables = useMemo(() => ['All', ...new Set((logs || []).map(l => l.table_name))], [logs]);
 
   const filteredLogs = useMemo(() => {
     return logs

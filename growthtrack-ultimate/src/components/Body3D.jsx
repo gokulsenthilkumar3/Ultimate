@@ -23,16 +23,15 @@ import {
   Html,
   Bvh
 } from "@react-three/drei";
-import { Activity, Zap, Ruler, Scissors, User, Settings, Info, Camera, Save, RefreshCw, ZoomIn } from "lucide-react";
+import { getGPUTier } from 'detect-gpu';
 import Sprite3DViewer from "./Sprite3DViewer";
 import MeasurementGuide from "./MeasurementGuide";
 import { STATUS, BODY_PARTS } from "../data/userData";
 import useStore from "../store/useStore";
 
 // ── CONFIG & FALLBACKS ──
-const GLB_CURRENT = ""; 
-const GLB_GOAL = "";       
-const GLB_HAIR = "";     
+const GLB_CURRENT = "/assets/models/humanoid-base.glb";
+const GLB_GOAL = "/assets/models/humanoid-base.glb";
 
 // Fallback for demo (using Soldier.glb if local paths missing)
 const FALLBACK_GLB = "https://threejs.org/examples/models/gltf/Soldier.glb";
@@ -545,14 +544,39 @@ export default function Body3D({ onSelectPart }) {
   const [quality, setQuality] = useState('HIGH'); // 'HIGH', 'MED', 'LOW'
   
   useEffect(() => {
-    const gl = document.createElement('canvas').getContext('webgl');
-    const ext = gl.getExtension('WEBGL_debug_renderer_info');
-    if (ext) {
-      const gpu = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL).toLowerCase();
-      if (gpu.includes('intel') || gpu.includes('mobile')) setQuality('LOW');
-      else if (gpu.includes('nvidia') || gpu.includes('amd') || gpu.includes('apple')) setQuality('HIGH');
-      else setQuality('MED');
-    }
+    const detectGPU = async () => {
+      try {
+        const gpuTier = await getGPUTier();
+        if (gpuTier.tier === 0) {
+          setQuality('LOW');
+          setViewMode('SPRITE');
+        } else if (gpuTier.tier === 1) {
+          setQuality('MED');
+          setViewMode('WEBGL');
+        } else {
+          setQuality('HIGH');
+          setViewMode('WEBGL');
+        }
+      } catch (e) {
+        // Fallback to basic detection
+        const gl = document.createElement('canvas').getContext('webgl');
+        const ext = gl?.getExtension('WEBGL_debug_renderer_info');
+        if (ext) {
+          const gpu = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL).toLowerCase();
+          if (gpu.includes('intel') || gpu.includes('mobile')) {
+            setQuality('LOW');
+            setViewMode('SPRITE');
+          } else if (gpu.includes('nvidia') || gpu.includes('amd') || gpu.includes('apple')) {
+            setQuality('HIGH');
+            setViewMode('WEBGL');
+          } else {
+            setQuality('MED');
+            setViewMode('WEBGL');
+          }
+        }
+      }
+    };
+    detectGPU();
   }, []);
   
   const [metrics, setMetrics] = useState({
