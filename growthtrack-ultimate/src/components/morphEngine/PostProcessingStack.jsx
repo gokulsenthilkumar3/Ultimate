@@ -108,10 +108,10 @@ function FullPostProcessing() {
           darkness={0.85}
         />
 
-        {/* Pass 6 — Tone Mapping: ACES cinematic grade */}
+        {/* Pass 6 — Tone Mapping: Safe linear grade to prevent crash in three.js 0.184 */}
         <ToneMapping
           blendFunction={BlendFunction.NORMAL}
-          mode={ToneMappingMode.ACES_FILMIC}
+          mode={ToneMappingMode.LINEAR}
         />
 
         {/* Pass 7 — Glitch: 1-frame cinematic cut on mode switch */}

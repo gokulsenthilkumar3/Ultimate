@@ -70,6 +70,7 @@ const useStore = create(
 
       setLastCheckIn: (date) => set({ lastCheckIn: date }),
       setActiveTab: (tab) => set({ activeTab: tab }),
+      setOnboardingComplete: (status) => set({ onboardingComplete: status }),
 
       setUser: (userOrUpdater) => {
         set((state) => {
