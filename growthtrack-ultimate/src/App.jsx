@@ -21,8 +21,11 @@ import NotificationCenter  from './components/NotificationCenter';
 import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
 import { useVascularitySync }    from './store/use3DStore.usage';
 import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
+import { initRemoteConfig, trackTabSwitch, trackPageView } from './lib/firebase';
 
 preloadHumanoidModel();
+initRemoteConfig();
+trackPageView('App');
 
 // ── Unread notification count ──────────────────────────────────────────────
 function countUnreadNotifs(user) {
@@ -438,11 +441,12 @@ export default function App() {
           <FloatingNav
             activeTab={activeTab}
             setActiveTab={setActiveTab}
+                    const handleTabChange = (tab) => { setActiveTab(tab); trackTabSwitch(tab); };
             navItems={navItems}
           />
           <BottomNavBar
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
           />
         </div>
       </ToastProvider>
