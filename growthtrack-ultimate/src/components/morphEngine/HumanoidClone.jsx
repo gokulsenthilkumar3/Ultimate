@@ -214,7 +214,8 @@ export default function HumanoidClone({
     );
   }
 
-  if (!bodyMesh || !visible) return null;
+    if (!visible) return null;
+    if (!bodyMesh) return <ProceduralHumanoid position={position} />;
 
   return (
     <group
