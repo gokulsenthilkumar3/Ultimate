@@ -13,6 +13,7 @@ import useStore, {
   selectGoals,
   selectNutritionLogs,
 } from '../store/useStore';
+import { trackEvent, trackPageView } from '../lib/firebase';
 
 const TABS = [
   { id: 'overview',  label: '\ud83d\udcca Weekly Overview' },
@@ -45,6 +46,10 @@ export default function Analytics({ user }) {
   ], [user]);
 
   const [tab, setTab] = useState('overview');
+  
+  // ── Firebase Analytics tracking ──
+  React.useEffect(() => { trackPageView('Analytics'); }, []);
+  React.useEffect(() => { trackEvent('analytics_tab_switch', { tab }); }, [tab]);
 
   const logs = metric_logs;
 
