@@ -1,4 +1,4 @@
-﻿name: GrowthTrack CI Pipeline
+name: GrowthTrack CI Pipeline
 
 on:
   push:
@@ -39,7 +39,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./server/package-lock.json
       - run: npm ci
-      - run: npm test
+      # Use the project-level vitest config (sets up in-memory SQLite via setupFiles)
+      - run: npx vitest run --config vitest.config.js
+        env:
+          DB_PATH: ':memory:'
+          NODE_ENV: test
+          SUPABASE_URL: 'https://placeholder.supabase.co'
+          SUPABASE_KEY: 'placeholder-anon-key'
 
   build-frontend:
     needs: [test-frontend, test-backend]
