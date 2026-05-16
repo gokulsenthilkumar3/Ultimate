@@ -108,6 +108,7 @@ const shoppingCreateSchema = z.object({
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Tasks
 app.post('/api/tasks', (req, res) => {
