@@ -26,7 +26,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: growthtrack-ultimate
-        run: npm ci
+            run: npm install
 
       - name: Run Vitest Tests
         working-directory: growthtrack-ultimate
@@ -57,7 +57,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: growthtrack-ultimate
-        run: npm ci
+            run: npm install
 
       - name: Build Application
         working-directory: growthtrack-ultimate
