@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   test-frontend:
     runs-on: ubuntu-latest
@@ -20,7 +25,7 @@ jobs:
           node-version: '20.x'
           cache: 'npm'
           cache-dependency-path: ./growthtrack-ultimate/package-lock.json
-          - run: npm install
+      - run: npm install
       - run: npm run test:run
         env:
           VITE_API_BASE: http://localhost:3001/api
@@ -39,7 +44,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./server/package-lock.json
       - run: npm ci
-      # Use the project-level vitest config (sets up in-memory SQLite via setupFiles)
       - run: npx vitest run --config vitest.config.js
         env:
           DB_PATH: ':memory:'
@@ -47,9 +51,12 @@ jobs:
           SUPABASE_URL: 'https://placeholder.supabase.co'
           SUPABASE_KEY: 'placeholder-anon-key'
 
-  build-frontend:
+  build-and-deploy:
     needs: [test-frontend, test-backend]
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     defaults:
       run:
         working-directory: ./growthtrack-ultimate
@@ -61,5 +68,26 @@ jobs:
           node-version: '20.x'
           cache: 'npm'
           cache-dependency-path: ./growthtrack-ultimate/package-lock.json
-          - run: npm install
-      - run: npm run build
+      - run: npm install
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./growthtrack-ultimate/dist
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
