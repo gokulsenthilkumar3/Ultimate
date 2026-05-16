@@ -25,7 +25,7 @@ vi.mock('firebase/performance', () => ({
 }));
 
 vi.mock('firebase/remote-config', () => ({
-  getRemoteConfig: vi.fn(() => ({})),
+  getRemoteConfig: vi.fn(() => { settings: {}, defaultConfig: {} }})),
   fetchAndActivate: vi.fn(() => Promise.resolve(true)),
   getValue: vi.fn(() => ({ asString: () => '' })),
 }));
