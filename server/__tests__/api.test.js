@@ -1,86 +1,21 @@
 /**
  * GrowthTrack Backend API — Integration Tests
  *
- * vi.mock() factories are hoisted and run before any imports.
- * ALL state must live on globalThis (accessible from factory scope).
+ * Uses __mocks__ directory for @supabase/supabase-js and routes/phase4a.
+ * This avoids all vi.mock() ESM hoisting complexity.
  */
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 
-// Shared in-memory store on globalThis so the hoisted factory can access it
-globalThis.__db__     = { tasks: [], shopping: [] };
-globalThis.__nextId__ = 1;
+// Activate the __mocks__ versions (no factory needed)
+vi.mock('@supabase/supabase-js');
+vi.mock('../routes/phase4a');
 
-vi.mock('@supabase/supabase-js', () => {
-  function buildChain(tableName) {
-    let _eqVal   = null;
-    let _pending = null;
-    const store  = () => (globalThis.__db__[tableName] || []);
-
-    const ch = {
-      select: () => ch,
-      order:  () => ch,
-      limit:  () => ch,
-      gte:    () => ch,
-      lte:    () => ch,
-      eq:     (_f, v) => { _eqVal = v; return ch; },
-
-      single: () => Promise.resolve({ data: _pending, error: null }),
-
-      upsert: (row) => {
-        const id  = globalThis.__nextId__++;
-        const rec = { id, ...(Array.isArray(row) ? row[0] : row), created_at: new Date().toISOString() };
-        const arr = store();
-        arr.push(rec);
-        globalThis.__db__[tableName] = arr;
-        _pending = { id };
-        return ch;
-      },
-
-      insert: (row) => {
-        const id  = globalThis.__nextId__++;
-        const rec = { id, ...(Array.isArray(row) ? row[0] : row), created_at: new Date().toISOString() };
-        const arr = store();
-        arr.push(rec);
-        globalThis.__db__[tableName] = arr;
-        _pending = { id };
-        return ch;
-      },
-
-      update: (patch) => {
-        const arr = store();
-        const idx = arr.findIndex(r => String(r.id) === String(_eqVal));
-        if (idx !== -1) Object.assign(arr[idx], patch);
-        globalThis.__db__[tableName] = arr;
-        _pending = arr[idx] || null;
-        return ch;
-      },
-
-      delete: () => {
-        const arr = store();
-        const idx = arr.findIndex(r => String(r.id) === String(_eqVal));
-        if (idx !== -1) arr.splice(idx, 1);
-        globalThis.__db__[tableName] = arr;
-        _pending = null;
-        return ch;
-      },
-
-      then: (res, rej) =>
-        Promise.resolve({
-          data: _pending !== null ? _pending : [...store()],
-          error: null,
-        }).then(res, rej),
-    };
-    ch[Symbol.toStringTag] = 'Promise';
-    return ch;
-  }
-
-  return { createClient: () => ({ from: (t) => buildChain(t) }) };
+// Reset in-memory DB before each test file run
+beforeEach(() => {
+  globalThis.__db__     = { tasks: [], shopping: [] };
+  globalThis.__nextId__ = 1;
 });
-
-vi.mock('../routes/phase4a', () => ({
-  default: () => (_req, _res, next) => next(),
-}));
 
 let app;
 beforeAll(async () => {
@@ -146,7 +81,7 @@ describe('GrowthTrack Backend API — Integration Tests', () => {
   });
 
   describe('Audit Logging', () => {
-    it('GET /api/logs — 404 (route lives in phase4a, mocked out)', async () => {
+    it('GET /api/logs — 404 (route in phase4a, mocked out)', async () => {
       const res = await request(app).get('/api/logs');
       expect(res.status).toBe(404);
     });
