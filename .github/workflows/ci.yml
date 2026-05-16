@@ -71,6 +71,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./growthtrack-ultimate/package-lock.json
       - run: npm install
+      - name: Clear Vite cache
+        run: rm -rf node_modules/.vite
       - name: Build
         run: npm run build
         env:
