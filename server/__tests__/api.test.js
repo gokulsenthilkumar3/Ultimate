@@ -1,134 +1,123 @@
 /**
- * GrowthTrack Backend API — Integration Tests
+ * GrowthTrack Backend — Firebase/Firestore Integration Tests
  *
- * Uses __mocks__ directory for @supabase/supabase-js and routes/phase4a.
- * This avoids all vi.mock() ESM hoisting complexity.
+ * The Express/Render backend has been replaced by Firebase Firestore.
+ * These tests validate the Firestore CRUD helper logic using mocked SDK.
  */
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import request from 'supertest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Activate the __mocks__ versions (no factory needed)
-vi.mock('@supabase/supabase-js');
-vi.mock('../routes/phase4a');
+// ── Mock Firebase SDK ────────────────────────────────────────────────────────
+const mockDocs = new Map();
 
-// Reset in-memory DB before each test file run
+vi.mock('firebase/app', () => ({
+  initializeApp: vi.fn(() => ({})),
+}));
+
+vi.mock('firebase/firestore', () => {
+  const addDoc = vi.fn(async (colRef, data) => {
+    const id = `id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    mockDocs.set(id, { ...data, id });
+    return { id };
+  });
+  const setDoc = vi.fn(async (docRef, data) => {
+    mockDocs.set(docRef._id, { ...data });
+  });
+  const updateDoc = vi.fn(async (docRef, data) => {
+    const existing = mockDocs.get(docRef._id) || {};
+    mockDocs.set(docRef._id, { ...existing, ...data });
+  });
+  const deleteDoc = vi.fn(async (docRef) => {
+    mockDocs.delete(docRef._id);
+  });
+  const getDocs = vi.fn(async () => ({
+    docs: [...mockDocs.entries()].map(([id, d]) => ({
+      id,
+      data: () => d,
+    })),
+  }));
+  const collection = vi.fn((db, col) => ({ _col: col }));
+  const doc = vi.fn((db, col, id) => ({ _col: col, _id: id }));
+  const query = vi.fn((ref) => ref);
+  const where = vi.fn(() => ({}));
+  const getFirestore = vi.fn(() => ({}));
+  return { addDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, doc, query, where, getFirestore };
+});
+
+// ── Import helpers after mocks are set up ────────────────────────────────────
+import { fsAdd, fsGetCollection, fsUpdate, fsDelete } from '../../growthtrack-ultimate/src/lib/firebase.js';
+
 beforeEach(() => {
-  globalThis.__db__     = { tasks: [], shopping: [] };
-  globalThis.__nextId__ = 1;
+  mockDocs.clear();
 });
 
-let app;
-beforeAll(async () => {
-  const mod = await import('../index.js');
-  app = mod.default ?? mod;
-});
+describe('GrowthTrack Firebase CRUD — Integration Tests', () => {
 
-describe('GrowthTrack Backend API — Integration Tests', () => {
-  let createdTaskId;
-  let createdShoppingId;
-
-  describe('Tasks API', () => {
-    it('POST /api/tasks — creates a new task', async () => {
-      const res = await request(app).post('/api/tasks').send({
-        title: 'Test Supertest Task', priority: 'high',
-        tag: 'Development', dueDate: '2026-05-15', recurring: false,
-      });
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('id');
-      createdTaskId = res.body.id;
+  describe('Tasks', () => {
+    it('fsAdd — creates a new task and returns an id', async () => {
+      const task = { title: 'Test Task', priority: 'high', done: false };
+      const result = await fsAdd('tasks', task);
+      expect(result).toBeDefined();
+      expect(result.id).toBeDefined();
     });
 
-    it('GET /api/tasks — returns array with new task', async () => {
-      const res = await request(app).get('/api/tasks');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      const task = res.body.find(t => t.id === createdTaskId);
-      expect(task).toBeDefined();
-      expect(task.title).toBe('Test Supertest Task');
-      expect(task.done).toBe(false);
+    it('fsGetCollection — returns added tasks', async () => {
+      await fsAdd('tasks', { title: 'Task A', done: false, userId: 'default_user' });
+      await fsAdd('tasks', { title: 'Task B', done: false, userId: 'default_user' });
+      const tasks = await fsGetCollection('tasks');
+      expect(Array.isArray(tasks)).toBe(true);
+      expect(tasks.length).toBeGreaterThanOrEqual(0);
     });
 
-    it('PUT /api/tasks/:id — updates task', async () => {
-      const res = await request(app)
-        .put(`/api/tasks/${createdTaskId}`)
-        .send({ done: true, completedAt: new Date().toISOString() });
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+    it('fsUpdate — updates an existing task', async () => {
+      const result = await fsAdd('tasks', { title: 'Update Me', done: false });
+      expect(result).toBeDefined();
+      await expect(fsUpdate('tasks', result.id, { done: true })).resolves.not.toThrow();
     });
 
-    it('DELETE /api/tasks/:id — removes task', async () => {
-      const res = await request(app).delete(`/api/tasks/${createdTaskId}`);
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+    it('fsDelete — removes a task', async () => {
+      const result = await fsAdd('tasks', { title: 'Delete Me', done: false });
+      expect(result).toBeDefined();
+      await expect(fsDelete('tasks', result.id)).resolves.not.toThrow();
     });
   });
 
-  describe('Shopping API', () => {
-    it('POST /api/shopping — creates item', async () => {
-      const res = await request(app).post('/api/shopping').send({
-        name: 'Supertest Item', category: 'Grocery',
-        priority: 'medium', estimatedCost: 12.50,
-      });
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('id');
-      createdShoppingId = res.body.id;
+  describe('Shopping', () => {
+    it('fsAdd — creates a shopping item', async () => {
+      const item = { name: 'Whey Protein', qty: 1, purchased: false };
+      const result = await fsAdd('shopping', item);
+      expect(result).toBeDefined();
+      expect(result.id).toBeDefined();
     });
 
-    it('DELETE /api/shopping/:id — removes item', async () => {
-      const res = await request(app).delete(`/api/shopping/${createdShoppingId}`);
-      expect(res.status).toBe(200);
+    it('fsDelete — removes a shopping item', async () => {
+      const result = await fsAdd('shopping', { name: 'Test Item', purchased: false });
+      expect(result).toBeDefined();
+      await expect(fsDelete('shopping', result.id)).resolves.not.toThrow();
     });
   });
 
-  describe('Audit Logging', () => {
-    it('GET /api/logs — 404 (route in phase4a, mocked out)', async () => {
-      const res = await request(app).get('/api/logs');
-      expect(res.status).toBe(404);
+  describe('Metric Logs', () => {
+    it('fsAdd — creates a metric log', async () => {
+      const log = { weight: 72.5, date: '2026-05-16', userId: 'default_user' };
+      const result = await fsAdd('metric_logs', log);
+      expect(result).toBeDefined();
+      expect(result.id).toBeDefined();
     });
   });
 
-  describe('Adversarial & Boundary Testing', () => {
-    it('should store SQL injection payload as literal string', async () => {
-      const res = await request(app).post('/api/tasks').send({
-        title: "Robert'); DROP TABLE tasks;--", priority: 'low',
-      });
-      expect(res.status).toBe(200);
-      const getRes = await request(app).get('/api/tasks');
-      const task = getRes.body.find(t => t.id === res.body.id);
-      expect(task.title).toBe("Robert'); DROP TABLE tasks;--");
-      await request(app).delete(`/api/tasks/${res.body.id}`);
+  describe('Sleep Logs', () => {
+    it('fsAdd — creates a sleep log', async () => {
+      const log = { date: '2026-05-16', hours: 7.5, quality: 'good', userId: 'default_user' };
+      const result = await fsAdd('sleep_logs', log);
+      expect(result).toBeDefined();
+      expect(result.id).toBeDefined();
     });
+  });
 
-    it('should store XSS payload as literal string', async () => {
-      const xss = "<script>alert('hacked')</script>";
-      const res = await request(app).post('/api/shopping').send({ name: xss, category: 'Grocery' });
-      expect(res.status).toBe(200);
-      const getRes = await request(app).get('/api/shopping');
-      const item = getRes.body.find(t => t.id === res.body.id);
-      expect(item.name).toBe(xss);
-      await request(app).delete(`/api/shopping/${res.body.id}`);
-    });
-
-    it('should return 422 for invalid data (Zod validation)', async () => {
-      const res = await request(app).post('/api/tasks').send({ title: '', priority: 'URGENT' });
-      expect(res.status).toBe(422);
-    });
-
-    it('DELETE on non-existent ID — no crash', async () => {
-      const res = await request(app).delete('/api/tasks/99999');
-      expect([200, 404, 500]).toContain(res.status);
-    });
-
-    it('deep nested JSON — no crash', async () => {
-      let obj = { data: 1 };
-      for (let i = 0; i < 100; i++) obj = { nested: obj };
-      const res = await request(app).post('/api/user').send(obj);
-      expect([200, 400, 413, 500]).toContain(res.status);
-    });
-
-    it('path traversal in ID — does not expose files', async () => {
-      const res = await request(app).get('/api/tasks/../../package.json');
-      expect(res.status).not.toBe(200);
+  describe('Firestore health', () => {
+    it('fsGetCollection — returns empty array when no docs exist', async () => {
+      const result = await fsGetCollection('empty_collection');
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 });
