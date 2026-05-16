@@ -440,13 +440,12 @@ export default function App() {
 
           <FloatingNav
             activeTab={activeTab}
-            setActiveTab={setActiveTab}
-                          const handleTabChange = (tab) => { setActiveTab(tab); trackTabSwitch(tab); };
-            navItems={navItems}
+            setActiveTab={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
+                                      navItems={navItems}
           />
           <BottomNavBar
             activeTab={activeTab}
-            onTabChange={handleTabChange}
+                  onTabChange={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
           />
         </div>
       </ToastProvider>
