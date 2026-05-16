@@ -4,47 +4,45 @@ import useStore, {
   selectSetTheme, selectSetPalette, selectActiveTab, selectSetActiveTab,
   selectFetchInitialData, selectCheckServerHealth, selectServerStatus, selectIsLoading,
 } from './store/useStore';
-import { ToastProvider } from './hooks/useToast';
-import ErrorBoundary from './components/ErrorBoundary';
-import Header from './components/Header';
+import { ToastProvider }   from './hooks/useToast';
+import ErrorBoundary       from './components/ErrorBoundary';
+import Header              from './components/Header';
 import './index.css';
 import './styles/chamber.css';
 import './styles/premium.css';
 
-import OnboardingWizard from './components/OnboardingWizard';
-import CommandPalette from './components/CommandPalette';
-import DailyCheckIn from './components/DailyCheckIn';
-import BottomNavBar from './components/BottomNavBar';
-import SettingsModal from './components/SettingsModal';
-import NotificationCenter from './components/NotificationCenter';
+import OnboardingWizard    from './components/OnboardingWizard';
+import CommandPalette      from './components/CommandPalette';
+import DailyCheckIn        from './components/DailyCheckIn';
+import BottomNavBar        from './components/BottomNavBar';
+import SettingsModal       from './components/SettingsModal';
+import NotificationCenter  from './components/NotificationCenter';
 
-import { preloadHumanoidModel } from './components/morphEngine/useModelLoader';
-import { useVascularitySync } from './store/use3DStore.usage';
+import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
+import { useVascularitySync }    from './store/use3DStore.usage';
+import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
 
 preloadHumanoidModel();
 
-// ── local notif generator (mirrors NotificationCenter logic) ──
+// ── Unread notification count ──────────────────────────────────────────────
 function countUnreadNotifs(user) {
   if (!user) return 0;
   const today = new Date().toISOString().slice(0, 10);
   let count = 0;
-  // missed habits
   (user.habits || []).forEach(h => {
     const last = h.lastLog || h.last_log;
     if (!last || last < today) count++;
   });
-  // overdue tasks
   (user.tasks?.pending || []).forEach(t => {
     const due = t.dueDate || t.due_date;
     if (due && due < today) count++;
   });
-  // goal deadlines within 7 days
   (user.goals || []).forEach(g => {
     if (g.status === 'completed') return;
     const dl = g.deadline || g.target_date;
     if (!dl) return;
-    const daysLeft = Math.ceil((new Date(dl) - new Date(today)) / 86400000);
-    if (daysLeft <= 7) count++;
+    const daysLeft = Math.ceil((new Date(dl) - new Date(today)) / 86_400_000);
+    if (daysLeft <= NOTIFICATION.GOAL_DEADLINE_WARN_DAYS) count++;
   });
   return count;
 }
@@ -164,10 +162,74 @@ function renderTab(tab, user, setUser, theme, setTheme, setActiveTab) {
     case 'sip':            return <SIPCalculator />;
     case 'forecast':       return <TransformationPredictor logs={useStore.getState().metric_logs} />;
     case 'apps':           return <AppLauncher setActiveTab={useStore.getState().setActiveTab} />;
-    // ── NEW: Notification Center ──
     case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} />;
     default:               return <Overview {...props} />;
   }
+}
+
+// ── Navbar Alert Banner (replaces full-screen Daily Check-In trigger) ─────────
+// Shows a slim dismissible banner inside the header area when the user
+// hasn't done today's check-in yet. Clicking it opens DailyCheckIn modal.
+function NavbarCheckInAlert({ onOpen, onDismiss }) {
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      style={{
+        position: 'fixed',
+        top: '54px',               // sits just below the Header bar
+        left: 0,
+        right: 0,
+        zIndex: LAYOUT.STATUS_PILL_ZINDEX - 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px',
+        padding: '7px 16px',
+        background: COLORS.ALERT_BANNER_BG,
+        borderBottom: `1px solid ${COLORS.ALERT_BANNER_BORDER}`,
+        backdropFilter: 'blur(8px)',
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        color: COLORS.ALERT_BANNER_COLOR,
+        letterSpacing: '0.04em',
+      }}
+    >
+      <span>⚡ Daily Check-In pending — keep your streak alive!</span>
+      <button
+        onClick={onOpen}
+        style={{
+          background: COLORS.ALERT_BANNER_BORDER,
+          border: `1px solid ${COLORS.ALERT_BANNER_BORDER}`,
+          borderRadius: '8px',
+          padding: '3px 12px',
+          fontSize: '0.68rem',
+          color: COLORS.ALERT_BANNER_COLOR,
+          cursor: 'pointer',
+          fontWeight: 800,
+          letterSpacing: '0.08em',
+        }}
+      >
+        CHECK IN NOW
+      </button>
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss check-in reminder"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: COLORS.ALERT_BANNER_COLOR,
+          cursor: 'pointer',
+          fontSize: '1rem',
+          lineHeight: 1,
+          opacity: 0.7,
+          padding: '0 4px',
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  );
 }
 
 function FloatingNav({ activeTab, setActiveTab, navItems }) {
@@ -194,13 +256,13 @@ function FloatingNav({ activeTab, setActiveTab, navItems }) {
             <span className="nav-icon-wrap">
               {item.badge > 0 && (
                 <span className="nav-badge" style={{
-                  background: '#ef4444',
-                  boxShadow: '0 0 6px rgba(239,68,68,0.6)',
+                  background:  COLORS.NAV_BADGE_BG,
+                  boxShadow:   `0 0 6px ${COLORS.NAV_BADGE_SHADOW}`,
                   minWidth: '16px', height: '16px', borderRadius: '99px',
                   fontSize: '0.58rem', fontWeight: 900,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   padding: '0 3px',
-                }}>{item.badge > 9 ? '9+' : item.badge}</span>
+                }}>{item.badge > LAYOUT.BADGE_MAX ? `${LAYOUT.BADGE_MAX}+` : item.badge}</span>
               )}
             </span>
             <span className="nav-label">{item.label}</span>
@@ -221,25 +283,24 @@ export default function App() {
   const activeTab    = useStore(selectActiveTab);
   const setActiveTab = useStore(selectSetActiveTab);
   const pinnedTabs   = useStore((state) => state.pinnedTabs);
-  const fetchInitialData  = useStore(selectFetchInitialData);
-  const checkServerHealth = useStore(selectCheckServerHealth);
-  const serverStatus      = useStore(selectServerStatus);
+  const fetchInitialData   = useStore(selectFetchInitialData);
+  const checkServerHealth  = useStore(selectCheckServerHealth);
+  const serverStatus       = useStore(selectServerStatus);
   const onboardingComplete = useStore((state) => state.onboardingComplete);
   const lastCheckIn        = useStore((state) => state.lastCheckIn);
 
-  const [showCheckIn,  setShowCheckIn]  = React.useState(false);
-  const [showSettings, setShowSettings] = React.useState(false);
+  const [showCheckIn,       setShowCheckIn]       = React.useState(false);
+  const [showSettings,      setShowSettings]      = React.useState(false);
+  // ── NEW: navbar alert visibility (separate from the modal) ──
+  const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // ── Unread notification count for Bell badge ──
   const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);
 
-  // ── Build nav items, inject Notifications with live badge ──
   const navItems = useMemo(() => {
     const items = pinnedTabs.map(id => ({ id, label: GLOBAL_MODULES[id] || id }));
     items.push({ id: 'apps', label: 'App Hub' });
-    // Always append Notifications at end with live badge
     items.push({ id: 'notifications', label: '🔔 Alerts', badge: unreadCount });
     return items;
   }, [pinnedTabs, unreadCount]);
@@ -247,25 +308,32 @@ export default function App() {
   useEffect(() => {
     fetchInitialData();
     checkServerHealth();
-    const interval = setInterval(checkServerHealth, 30000);
+    const interval = setInterval(checkServerHealth, TIMING.SERVER_HEALTH_POLL_MS);
     return () => clearInterval(interval);
   }, []);
 
+  // ── Daily Check-In: show navbar alert instead of auto-modal ─────────────
+  // Old behaviour: setTimeout → open full-screen DailyCheckIn modal.
+  // New behaviour: setTimeout → show slim NavbarCheckInAlert banner.
+  //   User can then click "CHECK IN NOW" to open the modal, or dismiss banner.
   useEffect(() => {
     if (onboardingComplete && lastCheckIn !== todayStr) {
       const t = setTimeout(() => {
-        setShowCheckIn(true);
+        // Show the navbar alert banner (not the modal directly)
+        setShowCheckInAlert(true);
+
+        // Still send a push notification if permission was granted
         if ('Notification' in window && Notification.permission !== 'denied') {
           Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
-              new Notification('Daily Check-In Reminder', {
-                body: 'Time to log your daily workouts, weight, and water intake!',
-                icon: '/Ultimate/favicon.ico',
+              new Notification(NOTIFICATION.CHECKIN_NOTIF_TITLE, {
+                body: NOTIFICATION.CHECKIN_NOTIF_BODY,
+                icon: ASSET_PATHS.FAVICON,
               });
             }
           });
         }
-      }, 2000);
+      }, TIMING.DAILY_CHECKIN_DELAY_MS);
       return () => clearTimeout(t);
     }
   }, [onboardingComplete, lastCheckIn, todayStr]);
@@ -285,7 +353,7 @@ export default function App() {
   }, [navItems, setActiveTab]);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-theme',   theme);
     document.documentElement.setAttribute('data-palette', palette);
   }, [theme, palette]);
 
@@ -293,69 +361,91 @@ export default function App() {
     <ErrorBoundary resetKey="root">
       <ToastProvider>
         <CommandPalette />
-      {!onboardingComplete && <OnboardingWizard />}
-      {showCheckIn && onboardingComplete && (
-        <DailyCheckIn onClose={() => setShowCheckIn(false)} />
-      )}
-      {showSettings && (
-        <SettingsModal onClose={() => setShowSettings(false)} />
-      )}
-      <div className="app-shell" data-theme={theme} data-palette={palette}>
-        <div className="mesh-bg" />
 
-        {serverStatus !== 'unknown' && (
-          <div style={{
-            position: 'fixed', top: '12px', right: '16px', zIndex: 9999,
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '4px 12px', borderRadius: '20px',
-            background: serverStatus === 'online' ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)',
-            border: `1px solid ${serverStatus === 'online' ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}`,
-            fontSize: '0.65rem', fontWeight: 800,
-            color: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
-            backdropFilter: 'blur(8px)',
-          }}>
-            <span style={{
-              width: '6px', height: '6px', borderRadius: '50%',
-              background: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
-              animation: serverStatus === 'online' ? 'pulse 2s infinite' : 'none',
-              display: 'inline-block',
-            }} />
-            API {serverStatus === 'online' ? 'ONLINE' : 'OFFLINE'}
-          </div>
+        {/* Onboarding — only when not yet completed */}
+        {!onboardingComplete && <OnboardingWizard />}
+
+        {/* Daily Check-In modal — opened by navbar alert or programmatically */}
+        {showCheckIn && onboardingComplete && (
+          <DailyCheckIn onClose={() => {
+            setShowCheckIn(false);
+            setShowCheckInAlert(false); // also hide banner after completing check-in
+          }} />
         )}
 
-        <div className="main-area">
-          <Header
-            user={user}
-            theme={theme}
-            setTheme={setTheme}
-            palette={palette}
-            setPalette={setPalette}
-            onOpenSettings={() => setShowSettings(true)}
-            unreadCount={unreadCount}
-            onOpenNotifications={() => setActiveTab('notifications')}
+        {showSettings && (
+          <SettingsModal onClose={() => setShowSettings(false)} />
+        )}
+
+        <div className="app-shell" data-theme={theme} data-palette={palette}>
+          <div className="mesh-bg" />
+
+          {/* Server status pill */}
+          {serverStatus !== 'unknown' && (
+            <div style={{
+              position: 'fixed', top: '12px', right: '16px',
+              zIndex: LAYOUT.STATUS_PILL_ZINDEX,
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '4px 12px', borderRadius: '20px',
+              background: serverStatus === 'online' ? COLORS.STATUS_ONLINE_BG    : COLORS.STATUS_OFFLINE_BG,
+              border:    `1px solid ${serverStatus === 'online' ? COLORS.STATUS_ONLINE_BORDER : COLORS.STATUS_OFFLINE_BORDER}`,
+              fontSize: '0.65rem', fontWeight: 800,
+              color: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
+              backdropFilter: 'blur(8px)',
+            }}>
+              <span style={{
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
+                animation: serverStatus === 'online' ? 'pulse 2s infinite' : 'none',
+                display: 'inline-block',
+              }} />
+              API {serverStatus === 'online' ? 'ONLINE' : 'OFFLINE'}
+            </div>
+          )}
+
+          <div className="main-area">
+            <Header
+              user={user}
+              theme={theme}
+              setTheme={setTheme}
+              palette={palette}
+              setPalette={setPalette}
+              onOpenSettings={() => setShowSettings(true)}
+              unreadCount={unreadCount}
+              onOpenNotifications={() => setActiveTab('notifications')}
+            />
+
+            {/* ── Navbar Check-In Alert Banner ── */}
+            {showCheckInAlert && onboardingComplete && (
+              <NavbarCheckInAlert
+                onOpen={() => {
+                  setShowCheckIn(true);
+                  setShowCheckInAlert(false);
+                }}
+                onDismiss={() => setShowCheckInAlert(false)}
+              />
+            )}
+
+            <main className="content-area">
+              <ErrorBoundary resetKey={activeTab}>
+                <Suspense fallback={<TabSpinner />}>
+                  {renderTab(activeTab, user, setUser, theme, setTheme, setActiveTab)}
+                </Suspense>
+              </ErrorBoundary>
+            </main>
+          </div>
+
+          <FloatingNav
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            navItems={navItems}
           />
-
-          <main className="content-area">
-            <ErrorBoundary resetKey={activeTab}>
-              <Suspense fallback={<TabSpinner />}>
-                {renderTab(activeTab, user, setUser, theme, setTheme, setActiveTab)}
-              </Suspense>
-            </ErrorBoundary>
-          </main>
+          <BottomNavBar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
         </div>
-
-        <FloatingNav
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          navItems={navItems}
-        />
-        <BottomNavBar
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-      </div>
-    </ToastProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }
