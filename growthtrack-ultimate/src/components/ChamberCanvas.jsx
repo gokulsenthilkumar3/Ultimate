@@ -5,7 +5,7 @@
 
 import React, { Suspense, useCallback } from "react";
 import { Canvas }                        from "@react-three/fiber";
-import { Html }                          from "@react-three/drei";
+import { Html, AdaptiveDpr, AdaptiveEvents } from "@react-three/drei";
 import * as THREE                        from "three";
 
 import StudioLighting      from "./morphEngine/StudioLighting";
@@ -150,7 +150,7 @@ export default function ChamberCanvas({ className = "", style = {} }) {
       }}
       dpr={lodConfig.dpr}
       camera={{ fov: 42, near: 0.1, far: 100 }}
-      shadows={false}       /* disabled: no model yet; re-enable with real GLB */
+      shadows={false}
       frameloop="always"
       onCreated={onCreated}
       style={{ width: "100%", height: "100%", ...style }}
