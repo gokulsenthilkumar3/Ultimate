@@ -13,6 +13,29 @@ vi.mock('firebase/app', () => ({
   initializeApp: vi.fn(() => ({})),
 }));
 
+vi.mock('firebase/analytics', () => ({
+  getAnalytics: vi.fn(() => ({})),
+  logEvent: vi.fn(),
+  setUserProperties: vi.fn(),
+}));
+
+vi.mock('firebase/performance', () => ({
+  getPerformance: vi.fn(() => ({})),
+  trace: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
+}));
+
+vi.mock('firebase/remote-config', () => ({
+  getRemoteConfig: vi.fn(() => ({})),
+  fetchAndActivate: vi.fn(() => Promise.resolve(true)),
+  getValue: vi.fn(() => ({ asString: () => '' })),
+}));
+
+vi.mock('firebase/ai', () => ({
+  getAI: vi.fn(() => ({})),
+  getGenerativeModel: vi.fn(() => ({})),
+  GoogleAIBackend: vi.fn(),
+}));
+
 vi.mock('firebase/firestore', () => {
   const addDoc = vi.fn(async (colRef, data) => {
     const id = `id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
