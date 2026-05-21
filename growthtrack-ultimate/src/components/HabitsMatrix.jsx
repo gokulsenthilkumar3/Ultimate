@@ -4,6 +4,8 @@ import useStore, {
   selectHabitLogsByHabit, selectFetchHabitLogsForHabit, selectToggleHabitForDate,
 } from '../store/useStore';
 import { Plus, Trash2, Flame, Check, ChevronDown, ChevronUp, Smile } from 'lucide-react';
+import EmptyState from './ui/EmptyState';
+import { useToast } from '../hooks/useToast';
 
 const DAYS_BACK = 28;
 
@@ -61,6 +63,7 @@ export default function HabitsMatrix() {
   const updateHabit         = useStore(selectUpdateHabit);
   const habitLogsByHabit    = useStore(selectHabitLogsByHabit);
   const fetchHabitLogsForHabit = useStore(selectFetchHabitLogsForHabit);
+  const toast = useToast();
   const toggleHabitForDate  = useStore(selectToggleHabitForDate);
 
   const [showAdd, setShowAdd]   = useState(false);
@@ -72,15 +75,29 @@ export default function HabitsMatrix() {
   // Emoji editing: habitId -> draft emoji
   const [emojiEdit, setEmojiEdit] = useState({});
 
+  useEffect(() => {
+    const handleOpen = (e) => {
+      if (e.detail === 'habits') setShowAdd(true);
+    };
+    window.addEventListener('open-add-form', handleOpen);
+    return () => window.removeEventListener('open-add-form', handleOpen);
+  }, []);
+
   const dates = useMemo(() => getDateRange(), []);
   const today = new Date().toISOString().slice(0, 10);
 
-  // ── Fetch habit logs for all habits on mount
+  // ── Fetch logs on mount
   useEffect(() => {
-    habits.forEach(h => {
-      if (!habitLogsByHabit[h.id]) fetchHabitLogsForHabit(h.id);
+    habits.forEach(h => { fetchHabitLogsForHabit(h.id); });
+  }, [habits, fetchHabitLogsForHabit]);
+
+  const handleDelete = (id) => {
+    const habitToRestore = habits.find(h => h.id === id);
+    deleteHabit(id);
+    toast.info('Habit deleted', 5000, {
+      action: { label: 'Undo', onClick: () => { if (habitToRestore) addHabit(habitToRestore); } }
     });
-  }, [habits]);
+  };
 
   const handleAdd = async () => {
     if (!form.name.trim()) return;
@@ -266,7 +283,13 @@ export default function HabitsMatrix() {
       {viewMode === 'grid' && (
         <div className="space-y-6">
           {habits.length === 0 && (
-            <div className="text-center text-gray-500 py-12">No habits yet. Add your first habit above.</div>
+            <EmptyState 
+              icon={Flame} 
+              title="No Habits" 
+              description="You have no habits configured. Start building your routine today." 
+              ctaLabel="Create Habit" 
+              onAction={() => setShowAdd(true)} 
+            />
           )}
           {visibleCategories.map(cat => (
             <div key={cat.key}>
@@ -345,7 +368,7 @@ export default function HabitsMatrix() {
                           {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
 
-                        <button onClick={() => deleteHabit(habit.id)} className="text-red-500 hover:text-red-400 transition">
+                        <button onClick={() => handleDelete(habit.id)} className="text-red-500 hover:text-red-400 transition">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -432,7 +455,7 @@ export default function HabitsMatrix() {
                     </td>
                     <td className="py-2 pr-4 text-center text-blue-400">{completionRate(h.id)}%</td>
                     <td className="py-2 text-center">
-                      <button onClick={() => deleteHabit(h.id)} className="text-red-500 hover:text-red-400">
+                      <button onClick={() => handleDelete(h.id)} className="text-red-500 hover:text-red-400">
                         <Trash2 size={14} />
                       </button>
                     </td>
@@ -442,7 +465,13 @@ export default function HabitsMatrix() {
             </tbody>
           </table>
           {habits.length === 0 && (
-            <p className="text-center text-gray-500 py-8">No habits yet.</p>
+            <EmptyState 
+              icon={Flame} 
+              title="No Habits" 
+              description="You have no habits configured. Start building your routine today." 
+              ctaLabel="Create Habit" 
+              onAction={() => setShowAdd(true)} 
+            />
           )}
         </div>
       )}

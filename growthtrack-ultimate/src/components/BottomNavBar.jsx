@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Shield, Heart, Wallet, FileText } from 'lucide-react';
 
 // Tab → group mapping (single source of truth)
-const TAB_GROUP_MAP = {
+export const TAB_GROUP_MAP = {
   overview: 'command', dashboards: 'command', logs: 'command',
   settings: 'command', apps: 'command', current: 'command', about: 'command',
   humanoid: 'physiology', physique: 'physiology', training: 'physiology',
@@ -19,7 +19,7 @@ const TAB_GROUP_MAP = {
   ai: 'library', maps: 'library',
 };
 
-const GROUPS = [
+export const GROUPS = [
   { id: 'command',    label: 'Command',    icon: LayoutDashboard, firstTab: 'overview' },
   { id: 'physiology', label: 'Physiology', icon: Shield,          firstTab: 'humanoid' },
   { id: 'lifestyle',  label: 'Lifestyle',  icon: Heart,           firstTab: 'sleep'    },

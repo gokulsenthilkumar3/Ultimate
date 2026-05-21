@@ -240,7 +240,15 @@ function FloatingNav({ activeTab, setActiveTab, navItems }) {
   return (
     <nav className="nav-container" role="navigation" aria-label="Main navigation">
       <div className="nav-track" ref={scrollRef}>
-        {navItems.map((item) => (
+        {navItems.map((item) => {
+          if (item.isDivider) {
+            return (
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '0 8px', gap: '4px', opacity: 0.6, borderLeft: '1px solid var(--border-strong)', marginLeft: '4px', paddingLeft: '12px' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</span>
+              </div>
+            );
+          }
+          return (
           <button
             key={item.id}
             title={item.label}
@@ -262,7 +270,8 @@ function FloatingNav({ activeTab, setActiveTab, navItems }) {
             </span>
             <span className="nav-label">{item.label}</span>
           </button>
-        ))}
+          );
+        })}
       </div>
     </nav>
   );
@@ -284,6 +293,8 @@ export default function App() {
   const isLoading          = useStore(selectIsLoading);
   const onboardingComplete = useStore((state) => state.onboardingComplete);
   const lastCheckIn        = useStore((state) => state.lastCheckIn);
+  const checkInAlertDismissedDate = useStore((state) => state.checkInAlertDismissedDate);
+  const setCheckInAlertDismissedDate = useStore((state) => state.setCheckInAlertDismissedDate);
   // Bug 2 fix: subscribe to metric_logs via hook so TransformationPredictor re-renders on changes
   const metricLogs         = useStore((state) => state.metric_logs);
 
@@ -315,8 +326,30 @@ export default function App() {
 
   const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);
 
+
   const navItems = useMemo(() => {
-    const items = pinnedTabs.map(id => ({ id, label: GLOBAL_MODULES[id] || id }));
+    const items = [];
+    
+    // Group pinned tabs
+    GROUPS.forEach(g => {
+      const gItems = pinnedTabs.filter(id => TAB_GROUP_MAP[id] === g.id);
+      if (gItems.length > 0) {
+        items.push({ isDivider: true, id: `div-${g.id}`, label: g.label });
+        gItems.forEach(id => {
+          items.push({ id, label: GLOBAL_MODULES[id] || id });
+        });
+      }
+    });
+
+    const ungrouped = pinnedTabs.filter(id => !TAB_GROUP_MAP[id]);
+    if (ungrouped.length > 0) {
+      items.push({ isDivider: true, id: 'div-other', label: 'Other' });
+      ungrouped.forEach(id => {
+        items.push({ id, label: GLOBAL_MODULES[id] || id });
+      });
+    }
+
+    items.push({ isDivider: true, id: 'div-system', label: 'System' });
     items.push({ id: 'apps', label: 'App Hub' });
     items.push({ id: 'notifications', label: '🔔 Alerts', badge: unreadCount });
     return items;
@@ -329,12 +362,12 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Daily Check-In: show navbar alert instead of auto-modal ─────────────
-  // Old behaviour: setTimeout → open full-screen DailyCheckIn modal.
-  // New behaviour: setTimeout → show slim NavbarCheckInAlert banner.
+  // 🔔 Daily Check-In: show navbar alert instead of auto-modal 🔔
+  // Old behaviour: setTimeout -> open full-screen DailyCheckIn modal.
+  // New behaviour: setTimeout -> show slim NavbarCheckInAlert banner.
   //   User can then click "CHECK IN NOW" to open the modal, or dismiss banner.
   useEffect(() => {
-    if (onboardingComplete && lastCheckIn !== todayStr) {
+    if (onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr) {
       const t = setTimeout(() => {
         // Show the navbar alert banner (not the modal directly)
         setShowCheckInAlert(true);
@@ -343,8 +376,8 @@ export default function App() {
         if ('Notification' in window && Notification.permission !== 'denied') {
           Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
-              new Notification(NOTIFICATION.CHECKIN_NOTIF_TITLE, {
-                body: NOTIFICATION.CHECKIN_NOTIF_BODY,
+              new Notification('Daily Check-In', {
+                body: "It's time for your daily review.",
                 icon: ASSET_PATHS.FAVICON,
               });
             }
@@ -352,8 +385,10 @@ export default function App() {
         }
       }, TIMING.DAILY_CHECKIN_DELAY_MS);
       return () => clearTimeout(t);
+    } else {
+      setShowCheckInAlert(false);
     }
-  }, [onboardingComplete, lastCheckIn, todayStr]);
+  }, [onboardingComplete, lastCheckIn, checkInAlertDismissedDate, todayStr]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -378,6 +413,7 @@ export default function App() {
     <ErrorBoundary resetKey="root">
       <ToastProvider>
         <CommandPalette />
+
 
         {/* Onboarding — only when not yet completed */}
         {!onboardingComplete && <OnboardingWizard />}

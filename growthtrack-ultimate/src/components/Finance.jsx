@@ -5,6 +5,8 @@ import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction,
 import { useToast } from '../hooks/useToast';
 import StatCard from './ui/StatCard';
 import SIPCalculator from './SIPCalculator';
+import EmptyState from './ui/EmptyState';
+import { ListTodo, Activity } from 'lucide-react';
 
 const CURRENCY = '₹';
 const fmtINR = (n) => CURRENCY + Number(n).toLocaleString('en-IN');
@@ -139,6 +141,30 @@ export default function Finance() {
     toast.success(`${form.type} added successfully.`);
   }, [form, addTransaction, toast]);
 
+  const handleDeleteTransaction = useCallback((id) => {
+    const txToRestore = transactions.find(t => t.id === id);
+    deleteTransaction(id);
+    toast.info('Transaction deleted', 5000, {
+      action: { label: 'Undo', onClick: () => { if (txToRestore) addTransaction(txToRestore); } }
+    });
+  }, [transactions, deleteTransaction, addTransaction, toast]);
+
+  const handleDeleteBudget = useCallback((id) => {
+    const bToRestore = budgets.find(t => t.id === id);
+    deleteBudget(id);
+    toast.info('Budget deleted', 5000, {
+      action: { label: 'Undo', onClick: () => { if (bToRestore) addBudget(bToRestore); } }
+    });
+  }, [budgets, deleteBudget, addBudget, toast]);
+
+  const handleDeleteSubscription = useCallback((id) => {
+    const subToRestore = subs.find(t => t.id === id);
+    deleteSubscription(id);
+    toast.info('Subscription deleted', 5000, {
+      action: { label: 'Undo', onClick: () => { if (subToRestore) addSubscription(subToRestore); } }
+    });
+  }, [subs, deleteSubscription, addSubscription, toast]);
+
   const handleCsvImport = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -236,7 +262,7 @@ export default function Finance() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {methodData.length === 0
-                  ? <p className="empty-msg">No expense data for this month.</p>
+                  ? <EmptyState icon={CreditCard} title="No Spends" description="No expense data recorded for this month yet." />
                   : methodData.map((d, i) => (
                     <div key={d.name}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -300,7 +326,13 @@ export default function Finance() {
           <div className="glass-card">
             <span className="card-title">Ledger: {selectedMonth}</span>
             <div className="item-list mt-sm">
-              {filteredTransactions.length === 0 && <p className="empty-msg">No transactions found for this month.</p>}
+              {filteredTransactions.length === 0 && (
+                <EmptyState 
+                  icon={Wallet} 
+                  title="No Transactions" 
+                  description="No transactions found for this month. Start by adding a new ledger entry." 
+                />
+              )}
               {[...filteredTransactions].sort((a,b) => new Date(b.date) - new Date(a.date)).map((tx) => (
                 <div key={tx.id} className="list-row" style={{ display: 'grid', gridTemplateColumns: '100px 2fr 1.5fr 1fr 40px', alignItems: 'center', gap: '1rem', padding: '1rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 800 }}>{tx.date}</div>
@@ -312,7 +344,7 @@ export default function Finance() {
                   <div style={{ fontWeight: 900, textAlign: 'right', color: tx.type === 'Income' ? 'var(--success)' : tx.type === 'Expense' ? 'var(--danger)' : 'var(--info)' }}>
                     {tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '-' : ''}{fmtINR(tx.amount)}
                   </div>
-                  <button onClick={() => deleteTransaction(tx.id)} className="btn-icon btn-icon--danger" style={{ marginLeft: 'auto' }}><Trash2 size={16} /></button>
+                  <button onClick={() => handleDeleteTransaction(tx.id)} className="btn-icon btn-icon--danger" style={{ marginLeft: 'auto' }}><Trash2 size={16} /></button>
                 </div>
               ))}
             </div>
@@ -477,10 +509,10 @@ export default function Finance() {
             <div>
               <h4 style={{ fontSize: '0.9rem', color: 'var(--accent)', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>ACTIVE BUDGETS</h4>
               {budgets.length === 0
-                ? <p className="empty-msg" style={{ fontSize: '0.85rem' }}>No budgets defined. Add one above.</p>
+                ? <EmptyState icon={Activity} title="No Budgets" description="No budgets defined. Add one above to start tracking." />
                 : budgets.map(b => {
                   const actual = pieData.find(d => d.name === b.category)?.value || 0;
-                  return renderBudgetRow({ id: b.id, name: b.category, actual, limit: b.limit_amount, onDelete: () => deleteBudget(b.id) });
+                  return renderBudgetRow({ id: b.id, name: b.category, actual, limit: b.limit_amount, onDelete: () => handleDeleteBudget(b.id) });
                 })}
             </div>
             <div>
@@ -537,7 +569,7 @@ export default function Finance() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--danger)', marginBottom: '4px' }}>{fmtINR(sub.cost)}</div>
-                    <button onClick={() => deleteSubscription(sub.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.7rem' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>[Delete]</button>
+                    <button onClick={() => handleDeleteSubscription(sub.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.7rem' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>[Delete]</button>
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>

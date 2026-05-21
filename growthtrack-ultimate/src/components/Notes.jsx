@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Pin, PinOff, Save, Search, FileText, Tag, X } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-import ConfirmDialog from './ui/ConfirmDialog';
 import useStore, {
   selectNotes, selectAddNote, selectDeleteNote, selectUpdateNote
 } from '../store/useStore';
+import EmptyState from './ui/EmptyState';
 
 const NOTE_COLORS = [
   { val: 'var(--accent)', label: 'Accent' },
@@ -41,7 +41,6 @@ export default function Notes() {
   const [tagInput, setTagInput]     = useState('');
   const [search, setSearch]         = useState('');
   const [saving, setSaving]         = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null);
   const toast = useToast();
 
   const selectNote = (note) => {
@@ -71,12 +70,13 @@ export default function Notes() {
 
   const handleTogglePin = async (note) => { await updateNote(note.id, { pinned: !note.pinned }); };
 
-  const doDelete = async () => {
-    if (!confirmDelete) return;
-    await deleteNoteAction(confirmDelete);
-    if (selected === confirmDelete) { setSelected(null); setEditTitle(''); setEditContent(''); setEditTags([]); }
-    toast.success('Note deleted');
-    setConfirmDelete(null);
+  const handleDelete = async (id) => {
+    const noteToRestore = notes.find(n => n.id === id);
+    await deleteNoteAction(id);
+    if (selected === id) { setSelected(null); setEditTitle(''); setEditContent(''); setEditTags([]); }
+    toast.info('Note deleted', 5000, {
+      action: { label: 'Undo', onClick: () => { if (noteToRestore) addNote(noteToRestore); } }
+    });
   };
 
   // Tag helpers
@@ -102,17 +102,7 @@ export default function Notes() {
   const wordCount = editContent.trim() ? editContent.trim().split(/\s+/).length : 0;
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0', height: '100%' }}>
-      <ConfirmDialog
-        open={!!confirmDelete}
-        title="Delete this note?"
-        description="This action cannot be undone."
-        confirmLabel="Delete Note"
-        onConfirm={doDelete}
-        onCancel={() => setConfirmDelete(null)}
-      />
-
-      {/* Header */}
+    <div className="fade-in module-page" style={{ padding: '1rem 0', height: '100%' }}>      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Personal Knowledge Base</p>
@@ -146,7 +136,15 @@ export default function Notes() {
             {isLoading ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>Syncing…</div>
             ) : ordered.length === 0 ? (
-              <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.85rem' }}>No notes yet.<br />Create your first one!</div>
+              <div style={{ padding: '1rem' }}>
+                <EmptyState 
+                  icon={FileText} 
+                  title="No Notes" 
+                  description="Your knowledge base is empty. Capture your first thought." 
+                  ctaLabel="Create Note" 
+                  onAction={() => { setForm({ title: '', content: '', folder: 'Inbox', tags: [] }); setIsEditing(true); }}
+                />
+              </div>
             ) : ordered.map(note => (
               <div key={note.id} onClick={() => selectNote(note)}
                 style={{
@@ -168,7 +166,7 @@ export default function Notes() {
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: note.pinned ? 'var(--accent)' : 'var(--text-3)', padding: '2px', display: 'flex' }}>
                       {note.pinned ? <Pin size={12} /> : <PinOff size={12} />}
                     </button>
-                    <button onClick={e => { e.stopPropagation(); setConfirmDelete(note.id); }}
+                    <button onClick={e => { e.stopPropagation(); handleDelete(note.id); }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '2px', display: 'flex' }}
                       onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
                       onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>

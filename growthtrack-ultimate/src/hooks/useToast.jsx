@@ -30,18 +30,18 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const toast = useCallback((message, type = 'info', duration = 3500) => {
+  const toast = useCallback((message, type = 'info', duration = 3500, options = {}) => {
     const id = ++toastId;
-    setToasts((prev) => [...prev.slice(-4), { id, message, type }]); // max 5 stacked
+    setToasts((prev) => [...prev.slice(-4), { id, message, type, ...options }]); // max 5 stacked
     timers.current[id] = setTimeout(() => dismiss(id), duration);
     return id;
   }, [dismiss]);
 
   // Convenience wrappers
-  toast.success = (msg, dur) => toast(msg, 'success', dur);
-  toast.error   = (msg, dur) => toast(msg, 'error',   dur || 5000);
-  toast.warning = (msg, dur) => toast(msg, 'warning', dur);
-  toast.info    = (msg, dur) => toast(msg, 'info',    dur);
+  toast.success = (msg, dur, opts) => toast(msg, 'success', dur, opts);
+  toast.error   = (msg, dur, opts) => toast(msg, 'error',   dur || 5000, opts);
+  toast.warning = (msg, dur, opts) => toast(msg, 'warning', dur, opts);
+  toast.info    = (msg, dur, opts) => toast(msg, 'info',    dur, opts);
 
   return (
     <ToastContext.Provider value={toast}>
@@ -95,6 +95,27 @@ export function ToastProvider({ children }) {
               }}>
                 {t.message}
               </span>
+              {t.action && (
+                <button
+                  onClick={() => {
+                    t.action.onClick();
+                    dismiss(t.id);
+                  }}
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-1)',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  {t.action.label}
+                </button>
+              )}
               <button
                 onClick={() => dismiss(t.id)}
                 style={{

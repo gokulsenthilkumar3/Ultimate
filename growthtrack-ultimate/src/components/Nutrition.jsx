@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Apple, Plus, Trash2, Calculator, RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -68,6 +68,17 @@ export default function Nutrition({ user }) {
 
   const [logForm,      setLogForm]      = useState(EMPTY_FORM);
   const [historyDays,  setHistoryDays]  = useState(7);
+  const nameInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleOpen = (e) => {
+      if (e.detail === 'nutrition' && nameInputRef.current) {
+        nameInputRef.current.focus();
+      }
+    };
+    window.addEventListener('open-add-form', handleOpen);
+    return () => window.removeEventListener('open-add-form', handleOpen);
+  }, []);
   const [calcWeight,   setCalcWeight]   = useState(user?.weight || 75);
   const [calcGoal,     setCalcGoal]     = useState('maintain');
   const [macroTargets, setMacroTargets] = useState(() => calcMacroTargets(user?.weight || 75, 'maintain'));
@@ -264,6 +275,7 @@ export default function Nutrition({ user }) {
               {MEAL_TYPES.map(m => <option key={m}>{m}</option>)}
             </select>
             <input type="text" placeholder="Food / meal name" value={logForm.name}
+              ref={nameInputRef}
               onChange={e => setLogForm({ ...logForm, name: e.target.value })} className="form-input" />
             <div className="flex-row gap-sm">
               <input type="number" placeholder="Calories" value={logForm.calories}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { apiSync } from '../store/useStore';
+import EmptyState from './ui/EmptyState';
 
 // ── P1-P4 priority config ─────────────────────────────────────────────────────────────
 const PRIORITIES = [
@@ -282,6 +283,17 @@ export default function Tasks() {
   const [filter,   setFilter]   = useState('all');
   const [sortBy,   setSortBy]   = useState('created');
 
+  useEffect(() => {
+    const handleOpen = (e) => {
+      if (e.detail === 'tasks') {
+        setShowForm(true);
+        setEditId(null);
+      }
+    };
+    window.addEventListener('open-add-form', handleOpen);
+    return () => window.removeEventListener('open-add-form', handleOpen);
+  }, []);
+
   const EMPTY_FORM = { title: '', description: '', priority: 'p3', category: 'Work', dueDate: '' };
   const [form, setForm] = useState(EMPTY_FORM);
 
@@ -326,12 +338,29 @@ export default function Tasks() {
   }, [storeCompleteTask, toast]);
 
   const handleDelete = useCallback(async (id, bucket) => {
+    const taskToRestore = allTasks.find(t => t.id === id);
     try {
       await apiSync(`/tasks/${id}`, 'DELETE');
       setDbTasks(prev => prev ? prev.filter(t => t.id !== id) : null);
     } catch { storeDeleteTask(id, bucket); }
-    toast.info('Task deleted');
-  }, [storeDeleteTask, toast]);
+    
+    toast.info('Task deleted', 5000, {
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          if (!taskToRestore) return;
+          try {
+            const created = await apiSync('/tasks', 'POST', taskToRestore);
+            const newTask = created?.id ? created : { ...taskToRestore, id: Date.now() };
+            setDbTasks(prev => prev ? [...prev, newTask] : null);
+          } catch {
+            storeAddTask(taskToRestore);
+          }
+          toast.success('Task restored');
+        }
+      }
+    });
+  }, [storeDeleteTask, toast, allTasks]);
 
   const handleReopen = useCallback(async (id) => {
     try {
@@ -586,11 +615,14 @@ export default function Tasks() {
         ))}
 
         {tab === 'pending' && filteredPending.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '3.5rem 0', color: 'var(--text-3)' }}>
-            <AlertCircle size={32} style={{ opacity: 0.2, marginBottom: '0.5rem' }} />
-            <p style={{ fontSize: '0.82rem' }}>
-              {filter !== 'all' ? 'No tasks match this filter.' : 'No pending tasks — add one above!'}
-            </p>
+          <div style={{ marginTop: '1rem' }}>
+            <EmptyState 
+              icon={ListTodo} 
+              title={filter !== 'all' ? 'No matches found' : 'No Pending Tasks'} 
+              description={filter !== 'all' ? 'No tasks match your current filter criteria.' : 'You have no pending tasks. Start by adding one to keep track of your goals.'}
+              ctaLabel={filter === 'all' ? 'Add First Task' : null}
+              onAction={filter === 'all' ? () => setShowForm(true) : null}
+            />
           </div>
         )}
         {tab === 'completed' && completed.length === 0 && (
