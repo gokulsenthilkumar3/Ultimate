@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Command as CmdIcon, ArrowRight } from 'lucide-react';
 import useStore, { selectSetActiveTab } from '../store/useStore';
-import { GLOBAL_MODULES } from '../App';
+import { GLOBAL_MODULES } from '../constants/modules';
 
 export default function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);

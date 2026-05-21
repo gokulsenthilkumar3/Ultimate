@@ -1,16 +1,24 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { createFinanceSlice } from './slices/financeSlice';
+import { createTaskSlice } from './slices/taskSlice';
+import { createHealthSlice } from './slices/healthSlice';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export async function apiSync(endpoint, method = 'POST', data = null) {
   try {
     const state = useStore.getState();
+    if (!state.user?.id && !endpoint.includes('/login') && !endpoint.includes('/onboarding')) {
+      console.warn(`[useStore] Blocked unauthenticated API call to ${endpoint}`);
+      return null;
+    }
+
     const options = {
       method,
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id': state.user?.id || 1,
+        'x-user-id': state.user?.id,
         'x-actor-name': state.user?.name || 'System',
       },
     };
@@ -28,6 +36,10 @@ export async function apiSync(endpoint, method = 'POST', data = null) {
 const useStore = create(
   persist(
     (set, get) => ({
+      ...createFinanceSlice(set, get),
+      ...createTaskSlice(set, get),
+      ...createHealthSlice(set, get),
+
       theme: 'dark',
       palette: 'gold',
       activeTab: 'overview',
@@ -52,13 +64,9 @@ const useStore = create(
       skills: [],
       calendar_events: [],
 
-      finance: { transactions: [], budgets: [] },
+      calendar_events: [],
+
       shopping: { items: [] },
-      entertainment: { media: [] },
-      timesheet: { sessions: [] },
-      metric_logs: [],
-      // 4G-1: nutrition logs slice
-      nutrition_logs: [],
 
       trainingPlan: null,
       nutritionStrategy: null,
@@ -214,38 +222,6 @@ const useStore = create(
         }
       },
 
-      // saveMetricLog and addMetricLog are unified — both use optimistic fallback
-      saveMetricLog: async (log) => {
-        const res = await apiSync('/metric_logs', 'POST', log);
-        // optimistic insert: use server id if returned, else a local timestamp id
-        set(state => ({ metric_logs: [{ ...log, id: res?.id ?? Date.now() }, ...state.metric_logs] }));
-      },
-      addMetricLog: async (log) => {
-        const res = await apiSync('/metric_logs', 'POST', log);
-        set(state => ({ metric_logs: [{ ...log, id: res?.id ?? Date.now() }, ...state.metric_logs] }));
-      },
-
-      // 4G-1: nutrition_logs CRUD
-      addNutritionLog: async (log) => {
-        const payload = { ...log, id: log.id || Date.now(), logged_at: log.logged_at || new Date().toISOString(), date: log.date || new Date().toISOString().slice(0, 10) };
-        const res = await apiSync('/nutrition_logs', 'POST', payload);
-        const id = res?.id || payload.id;
-        set(state => ({ nutrition_logs: [{ ...payload, id }, ...state.nutrition_logs] }));
-      },
-      deleteNutritionLog: (id) => {
-        apiSync(`/nutrition_logs/${id}`, 'DELETE');
-        set(state => ({ nutrition_logs: state.nutrition_logs.filter(l => l.id !== id) }));
-      },
-      updateNutritionLog: (id, updates) => {
-        apiSync(`/nutrition_logs/${id}`, 'PUT', updates);
-        set(state => ({ nutrition_logs: state.nutrition_logs.map(l => l.id === id ? { ...l, ...updates } : l) }));
-      },
-
-      updateHealthExtras: async (data) => {
-        set((state) => ({ health_extras: { ...(state.health_extras || {}), ...data } }));
-        await apiSync('/health_extras', 'PUT', data);
-      },
-
       fetchWorkoutExercisesForSession: async (sessionId) => {
         const exercises = await apiSync(`/workout_sessions/${sessionId}/exercises`, 'GET');
         if (Array.isArray(exercises)) {
@@ -315,36 +291,6 @@ const useStore = create(
         }));
       },
 
-      addTransaction: async (tx) => {
-        const payload = { ...tx, id: Date.now().toString(), date: tx.date || new Date().toISOString().split('T')[0] };
-        set((state) => ({
-          finance: { ...state.finance, transactions: [payload, ...state.finance.transactions] },
-        }));
-        apiSync('/finance', 'POST', payload).catch(e => console.warn('[Finance] sync failed', e));
-      },
-
-      deleteTransaction: async (id) => {
-        set((state) => ({
-          finance: { ...state.finance, transactions: state.finance.transactions.filter((t) => t.id !== id) },
-        }));
-        apiSync(`/finance/${id}`, 'DELETE').catch(() => {});
-      },
-
-      addBudget: async (budget) => {
-        const payload = { ...budget, id: Date.now().toString() };
-        set((state) => ({
-          finance: { ...state.finance, budgets: [...(state.finance.budgets || []), payload] },
-        }));
-        apiSync('/budgets', 'POST', payload).catch(() => {});
-      },
-
-      deleteBudget: async (id) => {
-        set((state) => ({
-          finance: { ...state.finance, budgets: (state.finance.budgets || []).filter(b => b.id !== id) },
-        }));
-        apiSync(`/budgets/${id}`, 'DELETE').catch(() => {});
-      },
-
       addShoppingItem: async (item) => {
         const res = await apiSync('/shopping', 'POST', item);
         if (res?.id) {
@@ -380,86 +326,6 @@ const useStore = create(
               items: state.shopping.items.map((i) =>
                 i.id === id ? { ...i, purchased: !item.purchased } : i
               ),
-            },
-          }));
-        }
-      },
-
-      addTask: async (task) => {
-        const res = await apiSync('/tasks', 'POST', task);
-        if (res?.id) {
-          set((state) => ({
-            user: {
-              ...state.user,
-              tasks: {
-                ...state.user.tasks,
-                pending: [{ ...task, id: res.id, done: false }, ...(state.user?.tasks?.pending || [])],
-              },
-            },
-          }));
-        }
-      },
-
-      deleteTask: (id, list) => {
-        apiSync(`/tasks/${id}`, 'DELETE');
-        set((state) => ({
-          user: {
-            ...state.user,
-            tasks: {
-              ...state.user.tasks,
-              [list]: (state.user?.tasks?.[list] || []).filter((t) => t.id !== id),
-            },
-          },
-        }));
-      },
-
-      completeTask: (id) => {
-        const task = get().user?.tasks?.pending?.find((t) => t.id === id);
-        if (task) {
-          const completedAt = new Date().toISOString();
-          apiSync(`/tasks/${id}`, 'PUT', { done: true, completedAt });
-          set((state) => ({
-            user: {
-              ...state.user,
-              tasks: {
-                ...state.user.tasks,
-                pending: (state.user.tasks.pending || []).filter((t) => t.id !== id),
-                completed: [{ ...task, done: true, completedAt }, ...(state.user.tasks.completed || [])],
-              },
-            },
-          }));
-        }
-      },
-
-      updateTask: (id, updates) => {
-        apiSync(`/tasks/${id}`, 'PUT', updates);
-        set((state) => {
-          const tasks = state.user?.tasks || {};
-          return {
-            user: {
-              ...state.user,
-              tasks: {
-                ...tasks,
-                pending:   (tasks.pending   || []).map(t => t.id === id ? { ...t, ...updates } : t),
-                completed: (tasks.completed || []).map(t => t.id === id ? { ...t, ...updates } : t),
-              },
-            },
-          };
-        });
-      },
-
-      reopenTask: (id) => {
-        const task = get().user?.tasks?.completed?.find((t) => t.id === id);
-        if (task) {
-          apiSync(`/tasks/${id}`, 'PUT', { done: false, completedAt: null });
-          set((state) => ({
-            user: {
-              ...state.user,
-              tasks: {
-                ...state.user.tasks,
-                completed: (state.user.tasks.completed || []).filter(t => t.id !== id),
-                pending: [{ ...task, done: false, completedAt: null }, ...(state.user.tasks.pending || [])],
-              },
             },
           }));
         }
