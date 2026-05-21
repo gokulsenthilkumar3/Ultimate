@@ -26,8 +26,6 @@ import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
 import { initRemoteConfig, trackTabSwitch, trackPageView } from './lib/firebase';
 import { GLOBAL_MODULES } from './constants/modules';
 import { TAB_GROUP_MAP, GROUPS } from './components/BottomNavBar';
-
-preloadHumanoidModel();
 initRemoteConfig();
 trackPageView('App');
 
@@ -308,6 +306,10 @@ export default function App() {
   const location = useLocation();
 
   // ── Sync URL and Store ──
+  useEffect(() => {
+    preloadHumanoidModel();
+  }, []);
+
   useEffect(() => {
     const pathTab = location.pathname.substring(1);
     if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== activeTab) {
