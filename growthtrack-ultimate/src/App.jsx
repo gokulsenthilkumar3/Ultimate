@@ -122,7 +122,7 @@ function TabSpinner() {
   );
 }
 
-function renderTab(tab, user, setUser, theme, setTheme, setActiveTab) {
+function renderTab(tab, user, setUser, theme, setTheme, setActiveTab, metricLogs) {
   const props = { user, setUser, theme, setTheme };
   switch (tab) {
     case 'overview':       return <Overview {...props} />;
@@ -163,8 +163,10 @@ function renderTab(tab, user, setUser, theme, setTheme, setActiveTab) {
     case 'dashboards':     return <Dashboards />;
     case 'about':          return <About />;
     case 'sip':            return <SIPCalculator />;
-    case 'forecast':       return <TransformationPredictor logs={useStore.getState().metric_logs} />;
-    case 'apps':           return <AppLauncher setActiveTab={useStore.getState().setActiveTab} />;
+    // Bug 2 fix: use hook-derived values, not useStore.getState() inside render
+    case 'forecast':       return <TransformationPredictor logs={metricLogs} />;
+    case 'apps':           return <AppLauncher setActiveTab={setActiveTab} />;
+    // 🔔 NEW: Notification Center 🔔
     case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} />;
     default:               return <Overview {...props} />;
   }
@@ -291,6 +293,8 @@ export default function App() {
   const serverStatus       = useStore(selectServerStatus);
   const onboardingComplete = useStore((state) => state.onboardingComplete);
   const lastCheckIn        = useStore((state) => state.lastCheckIn);
+  // Bug 2 fix: subscribe to metric_logs via hook so TransformationPredictor re-renders on changes
+  const metricLogs         = useStore((state) => state.metric_logs);
 
   const [showCheckIn,       setShowCheckIn]       = React.useState(false);
   const [showSettings,      setShowSettings]      = React.useState(false);
@@ -432,7 +436,7 @@ export default function App() {
             <main className="content-area">
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
-                  {renderTab(activeTab, user, setUser, theme, setTheme, setActiveTab)}
+                  {renderTab(activeTab, user, setUser, theme, setTheme, setActiveTab, metricLogs)}
                 </Suspense>
               </ErrorBoundary>
             </main>
@@ -447,6 +451,7 @@ export default function App() {
             activeTab={activeTab}
                   onTabChange={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
           />
+
         </div>
       </ToastProvider>
     </ErrorBoundary>

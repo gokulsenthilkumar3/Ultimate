@@ -4,7 +4,7 @@ import {
   TrendingUp, Activity, ArrowUpRight, Shield, Clock,
   Calendar as CalendarIcon, CloudRain, Wind, Sunrise, Sunset,
   Quote, Plus, Minus, ArrowDownRight, Compass, Gauge,
-  Thermometer, Droplet, Wind as WindIcon, Sun, Cloud
+  Thermometer, Droplet, Wind as WindIcon, Sun, Cloud, Eye
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import AnimatedNumber from './ui/AnimatedNumber';
@@ -60,10 +60,14 @@ export default function Overview({ user }) {
   useEffect(() => {
     if (weatherFetched.current) return;
     weatherFetched.current = true;
-    const fetchWeather = async () => {
+
+    const fetchWeather = async (latitude, longitude) => {
       try {
-        // Defaulting to Bangalore, India.
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=12.9716&longitude=77.5946&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=uv_index&timezone=auto');
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+          `&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,visibility` +
+          `&hourly=uv_index&timezone=auto`
+        );
         const data = await res.json();
         if (data && data.current) {
           const wDir = (deg) => {
@@ -75,7 +79,7 @@ export default function Overview({ user }) {
             temp: `${Math.round(data.current.temperature_2m)}°C`,
             condition: data.current.precipitation > 0 ? 'Rainy' : data.current.temperature_2m > 30 ? 'Sunny' : 'Clear',
             humidity: `${Math.round(data.current.relative_humidity_2m)}%`,
-            aqi: '42 (Good)',
+            aqi: '-- (fetching)',
             windSpeed: `${Math.round(data.current.wind_speed_10m)} km/h`,
             windDir: wDir(data.current.wind_direction_10m),
             uv: `${uv} ${uv > 7 ? '(High)' : uv > 3 ? '(Mod)' : '(Low)'}`,
@@ -88,7 +92,25 @@ export default function Overview({ user }) {
         console.warn('Weather fetch failed', err);
       }
     };
-    fetchWeather();
+
+    // Resolve coordinates: browser geolocation → user profile → generic fallback
+    const startFetch = () => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+          () => {
+            // Permission denied — fall back to profile or generic India centre
+            const lat = user?.location?.lat ?? 20.5937;
+            const lon = user?.location?.lon ?? 78.9629;
+            fetchWeather(lat, lon);
+          },
+          { timeout: 5000 }
+        );
+      } else {
+        fetchWeather(user?.location?.lat ?? 20.5937, user?.location?.lon ?? 78.9629);
+      }
+    };
+    startFetch();
 
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -229,5 +251,3 @@ export default function Overview({ user }) {
     </div>
   );
 }
-
-function Eye({ size, color, style }) { return <Compass size={size} color={color} style={style} />; }
