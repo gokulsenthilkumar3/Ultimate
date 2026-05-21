@@ -32,6 +32,17 @@ const useStore = create(
       palette: 'gold',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards'],
+
+      togglePinnedTab: (tabId) => {
+        set((state) => {
+          const already = state.pinnedTabs.includes(tabId);
+          return {
+            pinnedTabs: already
+              ? state.pinnedTabs.filter((t) => t !== tabId)
+              : [...state.pinnedTabs, tabId],
+          };
+        });
+      },
       isLoading: false,
       serverStatus: 'unknown',
       onboardingComplete: false,
@@ -98,13 +109,8 @@ const useStore = create(
         const fetchJSON = async (ep) => await apiSync(ep, 'GET');
 
         try {
-          const [
-            user, tasks, shopping, timesheet,
-            training, nutrition, lifestyle,
-            medical, physique, assessment, wellness, metricLogs, skills, events,
-            financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras,
-            workoutSessions, moodLogs, vitalsLogs, medications, nutritionLogs,
-          ] = await Promise.all([
+          // Use allSettled so one failing endpoint doesn't block the rest
+          const results = await Promise.allSettled([
             fetchJSON('/user'),
             fetchJSON('/tasks'),
             fetchJSON('/shopping'),
@@ -135,6 +141,15 @@ const useStore = create(
             // 4G-1: fetch nutrition logs
             fetchJSON('/nutrition_logs'),
           ]);
+
+          const val = (i) => results[i].status === 'fulfilled' ? results[i].value : null;
+          const [
+            user, tasks, shopping, timesheet,
+            training, nutrition, lifestyle,
+            medical, physique, assessment, wellness, metricLogs, skills, events,
+            financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras,
+            workoutSessions, moodLogs, vitalsLogs, medications, nutritionLogs,
+          ] = results.map((_, i) => val(i));
 
           const newState = {
             isLoading: false,
@@ -199,21 +214,15 @@ const useStore = create(
         }
       },
 
-      // 4G-1: addMetricLog = alias for saveMetricLog (DailyCheckIn bridge)
+      // saveMetricLog and addMetricLog are unified — both use optimistic fallback
       saveMetricLog: async (log) => {
         const res = await apiSync('/metric_logs', 'POST', log);
-        if (res && res.id) {
-          set(state => ({ metric_logs: [{ ...log, id: res.id }, ...state.metric_logs] }));
-        }
+        // optimistic insert: use server id if returned, else a local timestamp id
+        set(state => ({ metric_logs: [{ ...log, id: res?.id ?? Date.now() }, ...state.metric_logs] }));
       },
       addMetricLog: async (log) => {
         const res = await apiSync('/metric_logs', 'POST', log);
-        if (res && res.id) {
-          set(state => ({ metric_logs: [{ ...log, id: res.id }, ...state.metric_logs] }));
-        } else {
-          // optimistic insert if server doesn't return id
-          set(state => ({ metric_logs: [{ ...log, id: Date.now() }, ...state.metric_logs] }));
-        }
+        set(state => ({ metric_logs: [{ ...log, id: res?.id ?? Date.now() }, ...state.metric_logs] }));
       },
 
       // 4G-1: nutrition_logs CRUD
@@ -536,7 +545,7 @@ const useStore = create(
         set((state) => ({ notes: state.notes.filter(n => n.id !== id) }));
       },
       updateNote: (id, updates) => {
-        apiSync('/notes', 'POST', { id, ...updates });
+        apiSync(`/notes/${id}`, 'PUT', updates);
         set((state) => ({ notes: state.notes.map(n => n.id === id ? { ...n, ...updates } : n) }));
       },
 
@@ -551,7 +560,7 @@ const useStore = create(
         set((state) => ({ goals: state.goals.filter(g => g.id !== id) }));
       },
       updateGoal: (id, updates) => {
-        apiSync('/goals', 'POST', { id, ...updates });
+        apiSync(`/goals/${id}`, 'PUT', updates);
         set((state) => ({ goals: state.goals.map(g => g.id === id ? { ...g, ...updates } : g) }));
       },
 
