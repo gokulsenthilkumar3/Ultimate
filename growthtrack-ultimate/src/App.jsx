@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useEffect, useMemo } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import useStore, {
   selectUser, selectSetUser, selectTheme, selectPalette,
   selectSetTheme, selectSetPalette, selectActiveTab, selectSetActiveTab,
@@ -17,11 +18,14 @@ import DailyCheckIn        from './components/DailyCheckIn';
 import BottomNavBar        from './components/BottomNavBar';
 import SettingsModal       from './components/SettingsModal';
 import NotificationCenter  from './components/NotificationCenter';
+import LoadingSkeleton     from './components/ui/LoadingSkeleton';
 
 import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
 import { useVascularitySync }    from './store/use3DStore.usage';
 import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
 import { initRemoteConfig, trackTabSwitch, trackPageView } from './lib/firebase';
+import { GLOBAL_MODULES } from './constants/modules';
+import { TAB_GROUP_MAP, GROUPS } from './components/BottomNavBar';
 
 preloadHumanoidModel();
 initRemoteConfig();
@@ -92,20 +96,6 @@ const SIPCalculator      = lazy(() => import('./components/SIPCalculator'));
 const TransformationPredictor = lazy(() => import('./components/TransformationPredictor'));
 const HabitsMatrix       = lazy(() => import('./components/HabitsMatrix'));
 
-// ── Master module map ──────────────────────────────────────────────────────────────
-export const GLOBAL_MODULES = {
-  overview: 'Overview', humanoid: '3D Model', physique: 'Blueprint', assessment: 'Assessment',
-  training: 'Training', nutrition: 'Nutrition', sleep: 'Sleep', lifestyle: 'Lifestyle',
-  progress: 'Progress', goals: 'Goals', skills: 'Skills', health: 'Health+',
-  habits: 'Habits', shopping: 'Shopping', tasks: 'Tasks', projects: 'Projects',
-  portfolio: 'Portfolio', calendar: 'Calendar', timesheet: 'Timesheet', finance: 'Finance',
-  entertainment: 'Entertainment', social: 'Social Media', ai: 'Agent', maps: 'Maps',
-  documents: 'Documents', current: 'Current', notes: 'Notes', databases: 'Databases',
-  logs: 'Logs', settings: 'Settings', dashboards: 'Dashboards', mind: 'Mind & Wellness',
-  medical: 'Medical', hydration: 'Hydration', strength: 'Strength', analytics: 'Analytics',
-  apps: 'App Hub', about: 'About', sip: 'SIP Calculator', forecast: 'Growth Forecast',
-  notifications: 'Notifications',
-};
 
 function TabSpinner() {
   return (
@@ -291,6 +281,7 @@ export default function App() {
   const fetchInitialData   = useStore(selectFetchInitialData);
   const checkServerHealth  = useStore(selectCheckServerHealth);
   const serverStatus       = useStore(selectServerStatus);
+  const isLoading          = useStore(selectIsLoading);
   const onboardingComplete = useStore((state) => state.onboardingComplete);
   const lastCheckIn        = useStore((state) => state.lastCheckIn);
   // Bug 2 fix: subscribe to metric_logs via hook so TransformationPredictor re-renders on changes
@@ -302,6 +293,25 @@ export default function App() {
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // ── Sync URL and Store ──
+  useEffect(() => {
+    const pathTab = location.pathname.substring(1);
+    if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== activeTab) {
+      setActiveTab(pathTab);
+    } else if (location.pathname === '/') {
+      navigate(`/${activeTab}`, { replace: true });
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const pathTab = location.pathname.substring(1);
+    if (activeTab && pathTab !== activeTab) {
+      navigate(`/${activeTab}`);
+    }
+  }, [activeTab, navigate]);
 
   const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);
 
@@ -452,6 +462,17 @@ export default function App() {
                   onTabChange={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
           />
 
+          <main className="content-area">
+            {isLoading ? (
+              <LoadingSkeleton />
+            ) : (
+              <ErrorBoundary resetKey={activeTab}>
+                <Suspense fallback={<TabSpinner />}>
+                  {renderTab(activeTab, user, setUser, theme, setTheme, setActiveTab, metricLogs)}
+                </Suspense>
+              </ErrorBoundary>
+            )}
+          </main>
         </div>
       </ToastProvider>
     </ErrorBoundary>
