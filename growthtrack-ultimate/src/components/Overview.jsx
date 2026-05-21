@@ -11,6 +11,7 @@ import AnimatedNumber from './ui/AnimatedNumber';
 
 export default function Overview({ user }) {
   const metric_logs = useStore(s => s.metric_logs);
+  const tasks = useStore(s => s.tasks) || [];
   const updateUserSlice = useStore(s => s.updateUserSlice);
 
   // Compute health score dynamically from available data (0–100)
@@ -63,23 +64,34 @@ export default function Overview({ user }) {
 
     const fetchWeather = async (latitude, longitude) => {
       try {
-        const res = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
-          `&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,visibility` +
-          `&hourly=uv_index&timezone=auto`
-        );
+        const [res, aqiRes] = await Promise.all([
+          fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+            `&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,visibility` +
+            `&hourly=uv_index&timezone=auto`
+          ),
+          fetch(
+            `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`
+          ).catch(() => null)
+        ]);
+
         const data = await res.json();
+        const aqiData = aqiRes ? await aqiRes.json() : null;
+
         if (data && data.current) {
           const wDir = (deg) => {
             const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
             return dirs[Math.round(deg / 22.5) % 16];
           };
           const uv = Math.round(data.hourly?.uv_index?.[new Date().getHours()] || 4);
+          const aqiVal = Math.round(aqiData?.current?.us_aqi || 42);
+          const aqiLabel = aqiVal <= 50 ? '(Good)' : aqiVal <= 100 ? '(Mod)' : '(Poor)';
+          
           setWeather({
             temp: `${Math.round(data.current.temperature_2m)}°C`,
             condition: data.current.precipitation > 0 ? 'Rainy' : data.current.temperature_2m > 30 ? 'Sunny' : 'Clear',
             humidity: `${Math.round(data.current.relative_humidity_2m)}%`,
-            aqi: '-- (fetching)',
+            aqi: `${aqiVal} ${aqiLabel}`,
             windSpeed: `${Math.round(data.current.wind_speed_10m)} km/h`,
             windDir: wDir(data.current.wind_direction_10m),
             uv: `${uv} ${uv > 7 ? '(High)' : uv > 3 ? '(Mod)' : '(Low)'}`,
@@ -126,6 +138,16 @@ export default function Overview({ user }) {
 
   const hour = time.getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+
+  // Compute Priorities
+  const completedTasks = tasks.filter(t => t.completed).length;
+  const taskProgress = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+  const hydrationProgress = Math.min(100, Math.round(((user?.hydration?.glasses || 0) / 8) * 100));
+
+  const sleepLogs = user?.sleep?.logs || [];
+  const avgSleep = sleepLogs.length ? (sleepLogs.slice(-7).reduce((a, b) => a + b.hours, 0) / Math.min(7, sleepLogs.length)) : 0;
+  const sleepProgress = Math.min(100, Math.round((avgSleep / 7.5) * 100));
 
   return (
     <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
@@ -218,9 +240,9 @@ export default function Overview({ user }) {
               <h3 className="card-title"><Target size={18} /> Strategic Priorities</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                 {[
-                  { label: 'Hypertrophy Goal', target: 'Gain 0.5kg/wk', progress: 65, color: 'var(--accent)' },
-                  { label: 'Sleep Recovery', target: 'Avg 7.5h', progress: 42, color: '#8b5cf6' },
-                  { label: 'Lean Mass Retention', target: '2.2g Protein/kg', progress: 88, color: '#10b981' }
+                  { label: 'Task Execution', target: 'Complete all daily tasks', progress: taskProgress, color: 'var(--accent)' },
+                  { label: 'Sleep Recovery', target: 'Avg 7.5h', progress: sleepProgress, color: '#8b5cf6' },
+                  { label: 'Daily Hydration', target: '8 Glasses', progress: hydrationProgress, color: '#0ea5e9' }
                 ].map((g, i) => (
                   <div key={i}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>

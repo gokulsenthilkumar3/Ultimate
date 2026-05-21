@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis } from 'recharts';
 import { useToast } from '../hooks/useToast';
+import EmptyState from './ui/EmptyState';
 
 const STATUS_OPTIONS = ['active', 'completed', 'paused', 'cancelled'];
 
@@ -144,6 +145,14 @@ export default function GoalsDashboard() {
     if (catFilter    !== 'all') list = list.filter(g => g.category === catFilter);
     return list;
   }, [goals, statusFilter, catFilter]);
+
+  const handleDelete = useCallback((id) => {
+    const goalToRestore = goals.find(g => g.id === id);
+    deleteGoal(id);
+    toast.info('Goal deleted', 5000, {
+      action: { label: 'Undo', onClick: () => { if (goalToRestore) addGoal(goalToRestore); } }
+    });
+  }, [goals, deleteGoal, addGoal, toast]);
 
   const stats = useMemo(() => ({
     total:       goals.length,
@@ -282,7 +291,15 @@ export default function GoalsDashboard() {
       {/* Goal cards */}
       <div className="space-y-3">
         {filtered.length === 0 && (
-          <p className="text-center text-gray-500 py-12">No goals here. Add one above!</p>
+          <div style={{ marginTop: '1rem' }}>
+            <EmptyState 
+              icon={Target} 
+              title="No Goals" 
+              description={goals.length === 0 ? "You have no goals set. Start tracking your progress today!" : "No goals match your current filter."}
+              ctaLabel={goals.length === 0 ? "Create Goal" : null}
+              onAction={goals.length === 0 ? () => { setForm(EMPTY_GOAL); setShowForm(true); setEditId(null); } : null}
+            />
+          </div>
         )}
         {filtered.map(g => {
           const prog     = getProgress(g);
@@ -386,7 +403,7 @@ export default function GoalsDashboard() {
                     <button onClick={() => setExpandedId(isExpanded ? null : g.id)} className="text-gray-500 hover:text-white transition">
                       {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                     </button>
-                    <button onClick={() => deleteGoal(g.id)} className="text-red-500 hover:text-red-400 transition"><Trash2 size={14}/></button>
+                    <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-400 transition"><Trash2 size={14}/></button>
                   </div>
                 )}
               </div>

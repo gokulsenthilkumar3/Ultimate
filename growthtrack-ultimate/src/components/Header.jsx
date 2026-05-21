@@ -29,7 +29,7 @@ function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
   ];
   return (
     <div ref={ref} style={{
-      position: 'absolute', top: '52px', right: '0', zIndex: 9999,
+      position: 'absolute', top: 'calc(100% + 12px)', right: '0', zIndex: 9999,
       background: 'var(--bg-card)',
       border: '1px solid var(--border-strong)',
       borderRadius: '16px',
@@ -43,7 +43,13 @@ function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
       {actions.map(a => (
         <button
           key={a.id}
-          onClick={() => { setActiveTab(a.id); onClose(); }}
+          onClick={() => {
+            setActiveTab(a.id);
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('open-add-form', { detail: a.id }));
+            }, 100);
+            onClose();
+          }}
           style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '8px 12px', borderRadius: '10px',

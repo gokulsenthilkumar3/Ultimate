@@ -59,6 +59,7 @@ const useStore = create(
       serverStatus: 'unknown',
       onboardingComplete: false,
       lastCheckIn: null,
+      checkInAlertDismissedDate: null,
 
       user: null,
       skills: [],
@@ -88,6 +89,7 @@ const useStore = create(
       habitLogsByHabit: {},
 
       setLastCheckIn: (date) => set({ lastCheckIn: date }),
+      setCheckInAlertDismissedDate: (date) => set({ checkInAlertDismissedDate: date }),
       setActiveTab: (tab) => set({ activeTab: tab }),
       setOnboardingComplete: (status) => set({ onboardingComplete: status }),
 
@@ -553,6 +555,7 @@ const useStore = create(
         shopping: state.shopping,
         onboardingComplete: state.onboardingComplete,
         lastCheckIn: state.lastCheckIn,
+        checkInAlertDismissedDate: state.checkInAlertDismissedDate,
       }),
       migrate: (persistedState, version) => {
         try {
