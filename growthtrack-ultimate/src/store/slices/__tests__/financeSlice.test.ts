@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createFinanceSlice } from '../financeSlice';
 
+// vi.mock must be at the top level — Vitest hoists it before any test runs.
+// Placing it inside beforeEach causes a hoisting warning and will become a
+// hard error in Vitest v5+.
+vi.mock('../../useStore', () => ({
+  apiSync: vi.fn().mockResolvedValue({}),
+}));
+
 describe('financeSlice', () => {
   let set: any;
   let get: any;
@@ -12,12 +19,6 @@ describe('financeSlice', () => {
       state = typeof updater === 'function' ? updater(state) : updater;
     });
     get = vi.fn(() => state);
-
-    // Mock global apiSync import somehow if needed, or rely on fetch mocking.
-    // For now we just test the set/get logic.
-    vi.mock('../../useStore', () => ({
-      apiSync: vi.fn().mockResolvedValue({}),
-    }));
   });
 
   it('initializes with empty finance object', () => {
