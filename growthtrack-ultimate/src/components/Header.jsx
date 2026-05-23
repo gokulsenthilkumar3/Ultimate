@@ -1,6 +1,6 @@
 import { Z_INDEX } from '../constants';
 import React, { useState, useRef, useEffect } from 'react';
-import { Zap, Moon, Sun, Bell, Circle, Settings, Plus, CheckSquare, Flame, Utensils } from 'lucide-react';
+import { Zap, Moon, Sun, Bell, Circle, Settings, Plus, CheckSquare, Flame, Utensils, Target, FileText, DollarSign, Dumbbell } from 'lucide-react';
 import HealthScoreRing from './HealthScoreRing';
 import useStore from '../store/useStore';
 
@@ -23,11 +23,17 @@ function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
   }, [open, onClose]);
 
   if (!open) return null;
+
   const actions = [
-    { id: 'tasks',     icon: CheckSquare, label: '+ Task',  color: '#f59e0b' },
-    { id: 'habits',    icon: Flame,       label: '+ Habit', color: '#f97316' },
-    { id: 'nutrition', icon: Utensils,    label: '+ Meal',  color: '#84cc16' },
+    { id: 'tasks',     icon: CheckSquare, label: '+ Task',    color: '#f59e0b' },
+    { id: 'habits',    icon: Flame,       label: '+ Habit',   color: '#f97316' },
+    { id: 'nutrition', icon: Utensils,    label: '+ Meal',    color: '#84cc16' },
+    { id: 'goals',     icon: Target,      label: '+ Goal',    color: '#60a5fa' },
+    { id: 'notes',     icon: FileText,    label: '+ Note',    color: '#a78bfa' },
+    { id: 'finance',   icon: DollarSign,  label: '+ Finance', color: '#34d399' },
+    { id: 'training',  icon: Dumbbell,    label: '+ Workout', color: '#fb923c' },
   ];
+
   return (
     <div ref={ref} style={{
       position: 'absolute', top: 'calc(100% + 12px)', right: '0', zIndex: Z_INDEX.OVERLAY,
@@ -37,7 +43,7 @@ function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
       backdropFilter: 'blur(24px)',
       padding: '8px',
       display: 'flex', flexDirection: 'column', gap: '4px',
-      minWidth: '140px',
+      minWidth: '160px',
       boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
     }}>
       <p style={{ fontSize: '0.55rem', letterSpacing: '0.15em', color: 'var(--text-3)', fontWeight: 700, padding: '4px 8px 2px', textTransform: 'uppercase' }}>Quick Add</p>
@@ -46,9 +52,10 @@ function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
           key={a.id}
           onClick={() => {
             setActiveTab(a.id);
+            // Delay so the component mounts before receiving the open-form event
             setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('open-add-form', { detail: a.id }));
-            }, 100);
+              window.dispatchEvent(new CustomEvent('open-add-form', { detail: { tab: a.id } }));
+            }, 150);
             onClose();
           }}
           className="hover-bg-subtle"
