@@ -2,7 +2,7 @@ import { Z_INDEX } from '../constants';
 import React, { useState, useMemo } from 'react';
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight,
-  Plus, CheckCircle2, Circle, Clock, X, Save, Pencil, Trash2
+  Plus, CheckCircle2, Circle, Clock, X, Save, Pencil, Trash2, Repeat
 } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
@@ -10,13 +10,21 @@ import { useToast } from '../hooks/useToast';
 const EVENT_TYPES = ['task', 'fitness', 'work', 'health'];
 const TYPE_COLOR  = { task: 'var(--accent)', fitness: '#f43f5e', work: '#3b82f6', health: '#10b981' };
 
-const EMPTY_EVENT = { title: '', type: 'task', time: '09:00', notes: '' };
+/** Palette of quick-pick event accent colours */
+const EVENT_COLORS = [
+  'var(--accent)', '#f43f5e', '#3b82f6', '#10b981',
+  '#f59e0b',       '#8b5cf6', '#ec4899', '#06b6d4',
+];
+
+const RECURRENCE_OPTIONS = ['none', 'daily', 'weekly', 'monthly'];
+
+const EMPTY_EVENT = { title: '', type: 'task', time: '09:00', notes: '', color: '', recurrence: 'none' };
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState(null); // null = add mode, object = edit mode
+  const [editingEvent, setEditingEvent] = useState(null);
   const [formData, setFormData] = useState(EMPTY_EVENT);
 
   const events = useStore(state => state.calendar_events) || [];
@@ -71,7 +79,14 @@ export default function Calendar() {
   const openEditModal = (ev, e) => {
     e.stopPropagation();
     setEditingEvent(ev);
-    setFormData({ title: ev.title, type: ev.type, time: ev.time || '09:00', notes: ev.notes || '' });
+    setFormData({
+      title:      ev.title,
+      type:       ev.type,
+      time:       ev.time || '09:00',
+      notes:      ev.notes || '',
+      color:      ev.color || '',
+      recurrence: ev.recurrence || 'none',
+    });
     setIsModalOpen(true);
   };
 
@@ -81,7 +96,6 @@ export default function Calendar() {
     setFormData(EMPTY_EVENT);
   };
 
-  // ADD event
   const handleAddEvent = async () => {
     if (!formData.title.trim()) { toast.error('Event title is required'); return; }
     if (!selectedDay) return;
@@ -109,7 +123,6 @@ export default function Calendar() {
     }
   };
 
-  // EDIT / UPDATE event
   const handleEditEvent = async () => {
     if (!formData.title.trim()) { toast.error('Event title is required'); return; }
     const updated = { ...editingEvent, ...formData, title: formData.title.trim() };
@@ -129,7 +142,6 @@ export default function Calendar() {
     }
   };
 
-  // DELETE event
   const handleDeleteEvent = async (eventId, e) => {
     e.stopPropagation();
     try {
@@ -146,7 +158,6 @@ export default function Calendar() {
     }
   };
 
-  // TOGGLE complete
   const toggleComplete = async (eventId) => {
     const ev = events.find(e => e.id === eventId);
     if (!ev) return;
@@ -160,8 +171,10 @@ export default function Calendar() {
   };
 
   const handleDayClick = (day) => openAddModal(day);
+  const handleSubmit   = () => editingEvent ? handleEditEvent() : handleAddEvent();
 
-  const handleSubmit = () => editingEvent ? handleEditEvent() : handleAddEvent();
+  // Derive effective accent for an event
+  const eventAccent = (e) => e.color || TYPE_COLOR[e.type] || 'var(--accent)';
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
@@ -222,17 +235,16 @@ export default function Calendar() {
                   onMouseLeave={e => { if (!active && !isSelected) e.currentTarget.style.borderColor = 'var(--border)'; }}
                 >
                   <span style={{ fontWeight: 800, fontSize: '0.9rem', color: active ? 'var(--accent)' : 'var(--text-2)', display: 'block', marginBottom: '4px' }}>{day}</span>
-
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     {dayEvents.slice(0, 2).map(e => (
                       <div key={e.id} style={{
                         fontSize: '0.6rem', padding: '2px 5px', borderRadius: '3px',
                         background: e.completed ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)',
                         color: e.completed ? 'var(--success)' : 'var(--text-2)',
-                        borderLeft: `2px solid ${TYPE_COLOR[e.type] || 'var(--accent)'}`,
+                        borderLeft: `2px solid ${eventAccent(e)}`,
                         textDecoration: e.completed ? 'line-through' : 'none',
                         overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                      }}>{e.title}</div>
+                      }}>{e.recurrence && e.recurrence !== 'none' && <Repeat size={8} style={{ marginRight: 3, verticalAlign: 'middle' }} />}{e.title}</div>
                     ))}
                     {dayEvents.length > 2 && (
                       <span style={{ fontSize: '0.55rem', color: 'var(--text-3)', fontWeight: 800 }}>+{dayEvents.length - 2} more</span>
@@ -259,20 +271,38 @@ export default function Calendar() {
               {selectedDay ? `${monthNames[month]} ${selectedDay}` : 'Today'}
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {getEventsForDay(selectedDay || new Date().getDate()).length === 0 && (
+                <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+                  <CalendarIcon size={32} style={{ color: 'var(--text-3)', margin: '0 auto 0.5rem' }} />
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontStyle: 'italic' }}>No events scheduled.</p>
+                  <button
+                    onClick={() => openAddModal(selectedDay || new Date().getDate())}
+                    className="btn-ghost"
+                    style={{ marginTop: '0.75rem', fontSize: '0.75rem', fontWeight: 800 }}
+                  >
+                    <Plus size={12} /> ADD FIRST EVENT
+                  </button>
+                </div>
+              )}
               {getEventsForDay(selectedDay || new Date().getDate()).map(e => (
                 <div key={e.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
                   <button onClick={() => toggleComplete(e.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '2px' }}>
                     {e.completed ? <CheckCircle2 size={18} color="var(--success)" /> : <Circle size={18} color="var(--text-3)" />}
                   </button>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '0.85rem', fontWeight: 700, color: e.completed ? 'var(--text-3)' : 'var(--text-1)', textDecoration: e.completed ? 'line-through' : 'none' }}>{e.title}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                    <p style={{ fontSize: '0.85rem', fontWeight: 700, color: e.completed ? 'var(--text-3)' : 'var(--text-1)', textDecoration: e.completed ? 'line-through' : 'none' }}>
+                      {e.recurrence && e.recurrence !== 'none' && <Repeat size={11} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--text-3)' }} />}
+                      {e.title}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={10} /> {e.time || 'All day'}</span>
-                      <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: TYPE_COLOR[e.type] || 'var(--text-3)', textTransform: 'uppercase' }}>{e.type}</span>
+                      <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: eventAccent(e), textTransform: 'uppercase' }}>{e.type}</span>
+                      {e.recurrence && e.recurrence !== 'none' && (
+                        <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', textTransform: 'capitalize' }}>{e.recurrence}</span>
+                      )}
                     </div>
                     {e.notes && <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '4px', fontStyle: 'italic' }}>{e.notes}</p>}
                   </div>
-                  {/* Inline edit / delete actions */}
                   <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                     <button
                       onClick={(ev) => openEditModal(e, ev)}
@@ -295,13 +325,12 @@ export default function Calendar() {
                   </div>
                 </div>
               ))}
-              {getEventsForDay(selectedDay || new Date().getDate()).length === 0 && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontStyle: 'italic', textAlign: 'center', padding: '1rem' }}>No events scheduled.</p>
-              )}
             </div>
-            <button onClick={() => openAddModal(selectedDay || new Date().getDate())} className="btn-ghost" style={{ width: '100%', marginTop: '1rem', fontSize: '0.75rem', fontWeight: 800 }}>
-              <Plus size={14} /> ADD NEW ITEM
-            </button>
+            {getEventsForDay(selectedDay || new Date().getDate()).length > 0 && (
+              <button onClick={() => openAddModal(selectedDay || new Date().getDate())} className="btn-ghost" style={{ width: '100%', marginTop: '1rem', fontSize: '0.75rem', fontWeight: 800 }}>
+                <Plus size={14} /> ADD NEW ITEM
+              </button>
+            )}
           </div>
 
           <div className="glass-card" style={{ padding: '1.5rem', background: 'var(--accent-gradient)', color: 'white' }}>
@@ -321,15 +350,16 @@ export default function Calendar() {
           style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_INDEX.HEADER }}
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
-          <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '2rem' }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '460px', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h3 style={{ fontWeight: 800, fontSize: '1.2rem' }}>
-                {editingEvent ? `Edit Event` : `New Event — ${selectedDay} ${monthNames[month]}`}
+                {editingEvent ? 'Edit Event' : `New Event — ${selectedDay} ${monthNames[month]}`}
               </h3>
               <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Title */}
               <div>
                 <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Event Title *</label>
                 <input
@@ -343,6 +373,8 @@ export default function Calendar() {
                   autoFocus
                 />
               </div>
+
+              {/* Type + Time */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Type</label>
@@ -355,6 +387,37 @@ export default function Calendar() {
                   <input type="time" className="form-input" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} style={{ width: '100%' }} />
                 </div>
               </div>
+
+              {/* Recurrence */}
+              <div>
+                <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Recurrence</label>
+                <select className="form-input" value={formData.recurrence} onChange={e => setFormData({ ...formData, recurrence: e.target.value })} style={{ width: '100%' }}>
+                  {RECURRENCE_OPTIONS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                </select>
+              </div>
+
+              {/* Colour picker */}
+              <div>
+                <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Accent Colour (optional)</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {EVENT_COLORS.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, color: formData.color === c ? '' : c })}
+                      style={{
+                        width: '24px', height: '24px', borderRadius: '50%',
+                        background: c, border: formData.color === c ? '2px solid white' : '2px solid transparent',
+                        cursor: 'pointer', outline: formData.color === c ? `2px solid ${c}` : 'none',
+                        outlineOffset: '2px', transition: 'all 0.15s',
+                      }}
+                      aria-label={`Color ${c}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
               <div>
                 <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Notes (optional)</label>
                 <textarea
@@ -366,6 +429,8 @@ export default function Calendar() {
                   rows={3}
                 />
               </div>
+
+              {/* Actions */}
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 {editingEvent && (
                   <button
