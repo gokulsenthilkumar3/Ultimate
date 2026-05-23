@@ -1,5 +1,7 @@
-import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import matchers from '@testing-library/jest-dom/matchers';
+import { expect, vi } from 'vitest';
+
+expect.extend(matchers);
 
 // ─── Canvas / WebGL mock ────────────────────────────────────────────────────
 // jsdom has no real canvas. Three.js / R3F import WebGLRenderer on module load,

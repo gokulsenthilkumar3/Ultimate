@@ -116,6 +116,7 @@ body {
 
 .mesh-bg {
   position: fixed; inset: 0; z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(ellipse 60% 50% at 15% 45%, var(--accent-soft) 0%, transparent 70%),
     radial-gradient(ellipse 40% 40% at 80% 25%, rgba(139,92,246,0.06) 0%, transparent 70%);
