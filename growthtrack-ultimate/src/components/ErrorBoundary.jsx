@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React from 'react';
 import { AlertTriangle, RefreshCw, Trash2, X } from 'lucide-react';
 
@@ -61,7 +62,7 @@ class ErrorBoundary extends React.Component {
         aria-modal="true"
         aria-labelledby="confirm-title"
         style={{
-          position: 'fixed', inset: 0, zIndex: 999999,
+          position: 'fixed', inset: 0, zIndex: Z_INDEX.ERROR_BOUNDARY,
           background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '1rem',

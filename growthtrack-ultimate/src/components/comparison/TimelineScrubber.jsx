@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 /**
  * GrowthTrack Ultimate — Layer 6: Comparison & Clone Engine
  * TimelineScrubber.jsx

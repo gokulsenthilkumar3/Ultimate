@@ -151,7 +151,7 @@ export default function ProfileEditor() {
         <tr key={fullPath}>
           <td colSpan="2" style={{ padding: 0 }}>
             <div style={{ background: 'rgba(255,255,255,0.01)', borderBottom: '1px solid var(--border)', padding: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex-between">
                 <button 
                   onClick={() => setExpandedArrays(prev => ({ ...prev, [fullPath]: !prev[fullPath] }))}
                   style={{ background: 'none', border: 'none', color: 'var(--text-1)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}

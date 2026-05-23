@@ -29,6 +29,13 @@ export const TIMING = {
   GLITCH_DURATION_MS:          80,
   /** Canvas transition duration (Body3D zoom toggle) */
   CANVAS_TRANSITION:    '0.8s ease-in-out',
+  /** Toast copied to clipboard duration */
+  TOAST_COPIED_MS:          2_000,
+  /** Level up animation duration */
+  LEVEL_UP_ANIM_MS:         2_500,
+  /** Quick UI transition timings */
+  TRANSITION_FAST:      'all 0.15s ease',
+  TRANSITION_BASE:      'all 0.25s ease',
 };
 
 // ─── 2. COLORS ───────────────────────────────────────────────────────────────
@@ -120,6 +127,20 @@ export const LAYOUT = {
   BADGE_MAX:                   9,
   /** Server status pill z-index */
   STATUS_PILL_ZINDEX:       9999,
+};
+
+export const Z_INDEX = {
+  BASE: 1,
+  FLOATING_ELEMENT: 10,
+  SLIDER: 20,
+  MODAL_BACKDROP: 200,
+  MODAL: 300,
+  DROPDOWN: 1000,
+  HEADER: 1000,
+  OVERLAY: 9999,
+  WIZARD: 10000,
+  PALETTE: 100000,
+  ERROR_BOUNDARY: 999999,
 };
 
 // ─── 4. BODY (Biometric defaults & ranges) ───────────────────────────────────

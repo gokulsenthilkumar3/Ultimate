@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useRef } from 'react';
 import { FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2, Shield, Search, File, X, Lock, Globe } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
@@ -25,7 +26,7 @@ function UploadModal({ onUpload, onClose }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <div className="glass-card fade-in" style={{ width: '100%', maxWidth: '420px', padding: '2rem', position: 'relative' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} /></button>
         <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Digital Vault</p>
@@ -192,7 +193,7 @@ export default function Documents() {
                 <tr><td colSpan="5" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>No documents found.</td></tr>
               ) : (
                 filtered.map((file) => (
-                  <tr key={file.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <tr key={file.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} className="hover-bg-subtle">
                     <td style={{ padding: '1rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <FileText size={18} color={file.type === 'Private' ? 'var(--accent)' : 'var(--text-3)'} />

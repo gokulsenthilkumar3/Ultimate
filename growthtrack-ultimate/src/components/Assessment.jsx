@@ -159,7 +159,7 @@ export default function Assessment({ user }) {
           </div>
 
           {/* Navigation */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="flex-between">
             <button
               className="btn-secondary"
               onClick={() => setStep(s => Math.max(0, s - 1))}

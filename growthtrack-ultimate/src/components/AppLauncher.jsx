@@ -114,29 +114,21 @@ export default function AppLauncher({ setActiveTab }) {
                 return (
                   <div 
                     key={app.id} 
-                    className="glass-card" 
+                    className="glass-card hover-app-card" 
                     style={{ 
-                      padding: '1.5rem 1rem', 
+                      '--hover-color': app.color,
+                      '--hover-shadow': `${app.color}33`,
+                      padding: '24px 16px',
+                      background: 'rgba(255,255,255,0.02)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '16px',
+                      cursor: 'pointer',
                       display: 'flex', 
                       flexDirection: 'column', 
                       alignItems: 'center', 
-                      justifyContent: 'center', 
-                      gap: '0.75rem', 
-                      cursor: 'pointer', 
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg-elevated)',
+                      gap: '16px',
                       transition: 'all 0.3s ease',
                       position: 'relative'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.borderColor = app.color;
-                      e.currentTarget.style.boxShadow = `0 8px 24px ${app.color}33`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                      e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
                     <button 

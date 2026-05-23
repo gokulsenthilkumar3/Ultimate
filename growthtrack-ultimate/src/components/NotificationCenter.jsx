@@ -175,13 +175,13 @@ function NotifCard({ notif, onRead, onDismiss, onNavigate }) {
       <button
         onClick={e => { e.stopPropagation(); onDismiss(notif.id); }}
         title="Dismiss"
+        className="hover-btn-close"
         style={{
-          padding: '4px', borderRadius: '7px', background: 'none',
+          width: '24px', height: '24px', padding: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: '1px solid transparent', cursor: 'pointer',
-          color: 'var(--text-3)', flexShrink: 0, transition: 'all 0.15s',
+          color: 'var(--text-3)', flexShrink: 0
         }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'var(--text-1)'; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-3)'; }}
       ><X size={13} /></button>
     </div>
   );

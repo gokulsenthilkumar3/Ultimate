@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState } from 'react';
 import { LayoutDashboard, ExternalLink, RefreshCw, Code, Smartphone, Monitor, Settings, X, Check } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
@@ -115,7 +116,7 @@ export default function Portfolio() {
       </div>
 
       {editingUrl && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div className="glass-card fade-in" style={{ width: '100%', maxWidth: '440px', padding: '2rem', position: 'relative' }}>
             <button onClick={() => setEditingUrl(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} /></button>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.25rem' }}>Change Portfolio URL</h3>
@@ -156,7 +157,7 @@ export default function Portfolio() {
           position: 'relative'
         }}>
           {device === 'mobile' && (
-            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '120px', height: '24px', background: 'var(--bg-surface)', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: 10 }}></div>
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '120px', height: '24px', background: 'var(--bg-surface)', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: Z_INDEX.FLOATING_ELEMENT }}></div>
           )}
           <iframe
             key={iframeKey}

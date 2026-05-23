@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState } from 'react';
 import { ArrowRight, Check, Activity, Target, User as UserIcon, AlertCircle } from 'lucide-react';
 import useStore, { selectSetUser, selectSetOnboardingComplete } from '../store/useStore';
@@ -72,7 +73,7 @@ export default function OnboardingWizard() {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 10000,
+      position: 'fixed', inset: 0, zIndex: Z_INDEX.WIZARD,
       background: 'var(--bg-base)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '20px'

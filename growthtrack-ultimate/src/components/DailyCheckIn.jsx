@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon, Zap, Scale, X, CheckCircle2, AlertTriangle, Flame } from 'lucide-react';
 import useStore, { selectSaveSleepLog, selectAddMoodLog } from '../store/useStore';
@@ -188,7 +189,7 @@ export default function DailyCheckIn({ onClose }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 99999,
+      position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY,
       background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '1rem',
@@ -204,8 +205,7 @@ export default function DailyCheckIn({ onClose }) {
           background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)',
           display: 'flex', padding: '4px', borderRadius: '8px', transition: 'color 0.2s',
         }}
-          onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
-          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+          className="hover-text-1"
         >
           <X size={18} />
         </button>

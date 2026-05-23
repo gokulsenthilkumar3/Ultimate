@@ -177,7 +177,7 @@ export default function Physique({ user }) {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="flex-between">
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>
                       {displayVal(t.current)} / <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{displayVal(t.target)}</span>
                     </div>
