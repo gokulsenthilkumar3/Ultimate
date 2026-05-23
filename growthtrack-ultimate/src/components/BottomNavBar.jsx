@@ -32,19 +32,40 @@ export default function BottomNavBar({ activeTab, onTabChange }) {
 
   return (
     <nav className="mobile-bottom-nav" role="tablist" aria-label="Section navigation">
-      {GROUPS.map((group) => (
-        <button
-          key={group.id}
-          role="tab"
-          aria-selected={activeGroup === group.id}
-          aria-label={`${group.label} section`}
-          className={`bottom-nav-item ${activeGroup === group.id ? 'active' : ''}`}
-          onClick={() => onTabChange(group.firstTab)}
-        >
-          <group.icon size={20} aria-hidden="true" />
-          <span className="bottom-nav-label">{group.label}</span>
-        </button>
-      ))}
+      {GROUPS.map((group) => {
+        const isActive = activeGroup === group.id;
+        return (
+          <button
+            key={group.id}
+            role="tab"
+            aria-selected={isActive}
+            aria-label={`${group.label} section`}
+            className={`bottom-nav-item ${isActive ? 'active' : ''}`}
+            onClick={() => onTabChange(group.firstTab)}
+          >
+            <group.icon size={20} aria-hidden="true" />
+            {/* Active label rendered below icon — always present for layout stability,
+                visible only when active via CSS opacity/transform */}
+            <span className="bottom-nav-label" aria-hidden={!isActive}>
+              {group.label}
+            </span>
+            {isActive && (
+              <span
+                className="bottom-nav-active-dot"
+                aria-hidden="true"
+                style={{
+                  display: 'block',
+                  width: '4px',
+                  height: '4px',
+                  borderRadius: '50%',
+                  background: 'var(--accent)',
+                  margin: '2px auto 0',
+                }}
+              />
+            )}
+          </button>
+        );
+      })}
     </nav>
   );
 }

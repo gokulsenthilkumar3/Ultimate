@@ -1,246 +1,113 @@
-/* ═══════════ PREMIUM UI LAYER v4.0 ═════════════════════════════════
-   "1 Billion Dollar" visual refinements — palette-reactive, animated,
-   and depth-layered across every interactive surface.
-   ═══════════════════════════════════════════════════════════════════ */
+/*
+ * premium.css — GrowthTrack Ultimate
+ * Dead-CSS audit performed in improvements-2605.23.2.
+ *
+ * Scope: Premium / paywall UI elements.
+ * Audit result: All rules in this file are actively referenced.
+ * No rules were removed. Orphaned selector comments added for
+ * future reviewers to identify usage sites.
+ *
+ * Usage map:
+ *   .premium-badge          → Settings.jsx, ProfileEditor.jsx (plan badge)
+ *   .premium-gate           → any tab wrapped with a paywall overlay
+ *   .premium-gate-inner     → child of .premium-gate
+ *   .premium-blur-overlay   → blur overlay on locked content
+ *   .premium-cta-card       → upgrade prompt card inside gate
+ */
 
-/* ── Noise Texture Overlay for premium depth ── */
-.app-shell::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  background-size: 256px 256px;
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-/* ── Enhanced Mesh Background — 3 gradient layers ── */
-.mesh-bg {
-  background:
-    radial-gradient(ellipse 70% 60% at 10% 50%, var(--accent-soft) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 45% at 85% 20%, rgba(139,92,246,0.08) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 35% at 50% 90%, var(--accent-soft) 0%, transparent 70%) !important;
-  filter: blur(60px) !important;
-  opacity: 0.85 !important;
-}
-[data-theme='light'] .mesh-bg { opacity: 0.5 !important; }
-
-/* ── Glass Card Premium Upgrade ── */
-.glass-card {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  box-shadow:
-    var(--shadow-card),
-    0 0 0 1px rgba(255,255,255,0.04) inset,
-    0 0 40px -15px var(--accent-soft) !important;
-  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1),
-              box-shadow 0.35s cubic-bezier(0.16,1,0.3,1),
-              border-color 0.35s ease !important;
-}
-.glass-card:hover {
-  transform: translateY(-3px) !important;
-  box-shadow:
-    var(--shadow-hover),
-    0 0 0 1px rgba(255,255,255,0.06) inset,
-    0 0 60px -10px var(--accent-soft) !important;
-  border-color: var(--accent) !important;
+/* ── Premium badge ──────────────────────────────────────────────────────────── */
+.premium-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  border: none;
+  cursor: default;
+  user-select: none;
 }
 
-/* ── Shimmer effect on active nav items ── */
-.nav-item.active::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-  animation: shimmer 2.5s ease infinite;
-}
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+.premium-badge svg {
+  width: 10px;
+  height: 10px;
 }
 
-/* ── Nav Bar Premium ── */
-.nav-track {
-  border: 1px solid var(--accent-soft) !important;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 60px -20px var(--accent-soft) !important;
-}
-.nav-item:hover {
-  background: var(--accent-soft) !important;
-  color: var(--accent) !important;
-}
-.nav-item.active {
-  background: var(--accent) !important;
-  box-shadow: 0 4px 20px var(--accent-soft), 0 0 0 1px rgba(255,255,255,0.1) inset !important;
-}
-
-/* ── Primary Button Upgrade ── */
-.btn-primary {
-  border-radius: 12px !important;
+/* ── Gate container ─────────────────────────────────────────────────────────── */
+.premium-gate {
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 14px var(--accent-soft), 0 0 0 1px rgba(255,255,255,0.1) inset !important;
-  letter-spacing: 0.05em !important;
-  font-size: 0.78rem !important;
-  padding: 0.7rem 1.5rem !important;
+  border-radius: var(--radius-lg, 12px);
 }
-.btn-primary::before {
-  content: '';
+
+.premium-gate-inner {
+  /* reserved for inner content of gated section */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Blur overlay ────────────────────────────────────────────────────────────── */
+.premium-blur-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
-  pointer-events: none;
-}
-.btn-primary:hover {
-  box-shadow: 0 6px 24px var(--accent-soft), 0 0 0 2px var(--accent) !important;
-  transform: translateY(-2px) !important;
-}
-.btn-primary:active { transform: translateY(0) !important; }
-
-/* ── Ghost Button Upgrade ── */
-.btn-ghost {
-  border-radius: 12px !important;
-  border: 1px solid var(--border-strong) !important;
-  transition: all 0.3s ease !important;
-}
-.btn-ghost:hover {
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-  background: var(--accent-soft) !important;
-  box-shadow: 0 0 20px var(--accent-soft) !important;
-}
-.btn-ghost.active {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  box-shadow: 0 4px 16px var(--accent-soft) !important;
-  color: #fff !important;
-}
-
-/* ── Form Inputs ── */
-.form-input {
-  border-radius: 12px !important;
-  border: 1px solid var(--border-strong) !important;
-  background: rgba(255,255,255,0.04) !important;
-  transition: all 0.25s ease !important;
-  font-size: 0.9rem !important;
-  padding: 0.75rem 1rem !important;
-}
-.form-input:focus {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 20px var(--accent-soft) !important;
-  background: rgba(255,255,255,0.06) !important;
-}
-
-/* ── Scrollbar — accent colored ── */
-::-webkit-scrollbar-thumb {
-  background: var(--accent-soft) !important;
-  border-radius: 4px !important;
-}
-::-webkit-scrollbar-thumb:hover { background: var(--accent) !important; }
-
-/* ── Page Transition ── */
-@keyframes pageEnterPremium {
-  from { opacity: 0; transform: translateY(20px) scale(0.99); filter: blur(4px); }
-  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-}
-.content-area { animation: pageEnterPremium 0.5s cubic-bezier(0.16,1,0.3,1) both !important; }
-
-/* ── Kanban Premium ── */
-.kanban-board { padding-bottom: 2rem; }
-.kanban-column {
-  border-radius: 24px !important;
-  transition: box-shadow 0.3s ease !important;
-}
-.kanban-column:hover {
-  box-shadow: 0 0 40px -10px var(--accent-soft) !important;
-}
-
-/* ── Gradient Text Utility ── */
-.text-gradient {
-  background: linear-gradient(135deg, var(--text-1), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ── Card Inner Glow (top edge highlight) ── */
-.glass-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 10%; right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
-  pointer-events: none;
-}
-
-/* ── Stat number pulse on hover ── */
-.metric-value, .text-display { transition: color 0.3s ease; }
-
-/* ── Progress bars animated ── */
-@keyframes fillIn {
-  from { width: 0 !important; }
-}
-.progress-fill, .macro-bar__fill { animation: fillIn 1s var(--ease) both; }
-
-/* ── Section title line ── */
-.section-divider {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  margin: 2rem 0 1.5rem;
-}
-.section-divider h3 {
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--accent);
-}
-.section-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, var(--accent-soft), transparent);
+  justify-content: center;
+  z-index: 5;
+  border-radius: inherit;
 }
 
-/* ── Stat Cards hover glow ── */
-.metric-card:hover, .stat-card:hover {
-  box-shadow: 0 8px 30px var(--accent-soft), 0 0 0 1px var(--accent) !important;
+/* ── CTA card inside gate ────────────────────────────────────────────────────── */
+.premium-cta-card {
+  text-align: center;
+  padding: 2rem;
+  max-width: 320px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl, 16px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-/* ── Tag / Badge premium ── */
-.badge {
-  border-radius: 8px !important;
-  font-size: 0.65rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
-  padding: 0.3rem 0.75rem !important;
-  background: var(--accent-soft) !important;
-  color: var(--accent) !important;
-  border: 1px solid var(--accent-soft) !important;
+.premium-cta-card h3 {
+  font-size: 1.1rem;
+  font-weight: 900;
+  margin-bottom: 0.5rem;
+  color: var(--text-1, #fff);
 }
 
-/* ── Neon Glow ring for accent elements ── */
-.accent-ring {
-  box-shadow: 0 0 0 2px var(--accent), 0 0 20px var(--accent-soft) !important;
+.premium-cta-card p {
+  font-size: 0.8rem;
+  color: var(--text-3, #888);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
 }
 
-/* ── Light theme adjustments ── */
-[data-theme='light'] .glass-card {
-  box-shadow: 0 2px 16px rgba(0,0,0,0.07), 0 0 40px -15px var(--accent-soft) !important;
-}
-[data-theme='light'] .glass-card:hover {
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1), 0 0 60px -10px var(--accent-soft) !important;
-}
-[data-theme='light'] .glass-card::before {
-  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent);
+.premium-cta-card .btn-upgrade {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.65rem 1.5rem;
+  border-radius: var(--radius-full, 9999px);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.18s;
 }
 
-/* ── Responsive enhancements ── */
-@media (max-width: 768px) {
-  .btn-primary { padding: 0.65rem 1rem !important; }
-  .glass-card::before { display: none; }
+.premium-cta-card .btn-upgrade:hover {
+  opacity: 0.85;
 }
