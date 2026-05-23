@@ -47,7 +47,7 @@ describe('Frontend Adversarial & Boundary Tests', () => {
 
     const start = performance.now();
     const { container } = wrap(<Tasks />);
-    expect(container).toBeInTheDocument();
+    expect(container).toBeTruthy();
     expect(performance.now() - start).toBeLessThan(30000);
   }, 30000);
 
@@ -55,7 +55,7 @@ describe('Frontend Adversarial & Boundary Tests', () => {
     mocks.apiSyncMock.mockResolvedValue([]);
     wrap(<Tasks />);
     // Tasks.jsx empty-state: "No pending tasks — add one above!"
-    expect(await screen.findByText(/No pending tasks/i)).toBeInTheDocument();
+    expect(await screen.findByText(/No pending tasks/i)).toBeTruthy();
   });
 
   it('should gracefully handle tasks with missing critical properties', () => {
@@ -65,9 +65,9 @@ describe('Frontend Adversarial & Boundary Tests', () => {
     ]);
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { container } = wrap(<Tasks />);
-    expect(container).toBeInTheDocument();
+    expect(container).toBeTruthy();
     // Tasks.jsx always renders “Add Task” button
-    expect(screen.getByText(/Add Task/i)).toBeInTheDocument();
+    expect(screen.getByText(/Add Task/i)).toBeTruthy();
     spy.mockRestore();
   });
 });

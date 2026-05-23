@@ -10,7 +10,7 @@ describe('useStore API Integration', () => {
   beforeEach(() => {
     // Reset the store state before each test
     useStore.setState({
-      user: { tasks: { pending: [], completed: [], recurring: [] } },
+      user: { id: 'test-user-123', tasks: { pending: [], completed: [], recurring: [] } },
       shopping: { items: [] },
       timesheet: { sessions: [] },
       finance: { transactions: [], budgets: [] },
