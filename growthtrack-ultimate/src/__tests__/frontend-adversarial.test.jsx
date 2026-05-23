@@ -1,20 +1,19 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ToastProvider } from '../hooks/useToast';
 
 // vi.hoisted() runs BEFORE the module graph is resolved — safe for ESM.
-// Variables returned here can be referenced in vi.mock() factories below.
 const mocks = vi.hoisted(() => {
   const noop = vi.fn();
   const apiSyncMock = vi.fn(() => Promise.resolve([]));
   const state = {
     user: { tasks: { pending: [], completed: [], recurring: [] } },
-    addTask:      noop,
-    deleteTask:   noop,
+    addTask: noop,
+    deleteTask: noop,
     completeTask: noop,
-    updateTask:   noop,
-    reopenTask:   noop,
+    updateTask: noop,
+    reopenTask: noop,
   };
   const storeMock = vi.fn((selector) =>
     typeof selector === 'function' ? selector(state) : state
@@ -23,30 +22,41 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('../store/useStore', () => ({
-  default:            mocks.storeMock,
-  apiSync:            mocks.apiSyncMock,
-  selectAddTask:      (s) => s.addTask,
+  default: mocks.storeMock,
+  apiSync: mocks.apiSyncMock,
+  selectAddTask: (s) => s.addTask,
   selectCompleteTask: (s) => s.completeTask,
-  selectDeleteTask:   (s) => s.deleteTask,
-  selectUpdateTask:   (s) => s.updateTask,
-  selectReopenTask:   (s) => s.reopenTask,
+  selectDeleteTask: (s) => s.deleteTask,
+  selectUpdateTask: (s) => s.updateTask,
+  selectReopenTask: (s) => s.reopenTask,
 }));
 
 import Tasks from '../components/Tasks';
 
-const wrap = (ui) => render(<ToastProvider>{ui}</ToastProvider>);
+const wrap = (ui) =>
+  render(<ToastProvider>{ui}</ToastProvider>);
 
 describe('Frontend Adversarial & Boundary Tests', () => {
-
-  it('should survive rendering 1,000 tasks without crashing', () => {
+  it('should survive rendering 1,000 tasks without crashing', async () => {
     const massiveTasks = Array.from({ length: 1000 }, (_, i) => ({
-      id: i, title: `Spam Task ${i}`, priority: 'p3',
-      category: 'Work', status: 'pending', subtasks: [],
+      id: i,
+      title: `Spam Task ${i}`,
+      priority: 'p3',
+      category: 'Work',
+      status: 'pending',
+      subtasks: [],
     }));
-    mocks.apiSyncMock.mockResolvedValue(massiveTasks);
+
+    await act(async () => {
+      mocks.apiSyncMock.mockResolvedValue(massiveTasks);
+    });
 
     const start = performance.now();
-    const { container } = wrap(<Tasks />);
+    let container;
+    await act(async () => {
+      ({ container } = wrap(<Tasks />));
+    });
+
     expect(container).toBeTruthy();
     expect(performance.now() - start).toBeLessThan(30000);
   }, 30000);
@@ -61,13 +71,21 @@ describe('Frontend Adversarial & Boundary Tests', () => {
     expect(emptyStateEls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('should gracefully handle tasks with missing critical properties', () => {
-    mocks.apiSyncMock.mockResolvedValue([
-      { id: undefined, title: undefined, priority: undefined, status: 'pending', subtasks: [] },
-      { id: null,      title: null,      priority: 'p2',      status: 'pending', subtasks: [] },
-    ]);
+  it('should gracefully handle tasks with missing critical properties', async () => {
+    await act(async () => {
+      mocks.apiSyncMock.mockResolvedValue([
+        { id: undefined, title: undefined, priority: undefined, status: 'pending', subtasks: [] },
+        { id: null, title: null, priority: 'p2', status: 'pending', subtasks: [] },
+      ]);
+    });
+
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { container } = wrap(<Tasks />);
+
+    let container;
+    await act(async () => {
+      ({ container } = wrap(<Tasks />));
+    });
+
     expect(container).toBeTruthy();
     // Tasks.jsx always renders "Add Task" button
     expect(screen.getByText(/Add Task/i)).toBeTruthy();
