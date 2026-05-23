@@ -9,6 +9,30 @@ import {
 import useStore from '../store/useStore';
 import AnimatedNumber from './ui/AnimatedNumber';
 
+/** Map US-AQI value → human-readable label + colour */
+function aqiMeta(val) {
+  if (val <= 0)  return { label: '--',          color: 'var(--text-3)' };
+  if (val <= 50) return { label: 'Good',         color: '#10b981' };
+  if (val <= 100) return { label: 'Moderate',    color: '#f59e0b' };
+  if (val <= 150) return { label: 'USG',         color: '#f97316' };
+  if (val <= 200) return { label: 'Unhealthy',   color: '#ef4444' };
+  if (val <= 300) return { label: 'Very Unhealthy', color: '#a855f7' };
+  return               { label: 'Hazardous',    color: '#7f1d1d' };
+}
+
+/** Derive a weather condition string from Open-Meteo current data */
+function deriveCondition(current) {
+  if (!current) return '--';
+  const { precipitation, temperature_2m: t, relative_humidity_2m: rh } = current;
+  if (precipitation > 1)  return 'Rainy';
+  if (precipitation > 0)  return 'Drizzle';
+  if (t > 35)             return 'Hot & Sunny';
+  if (t > 28)             return 'Sunny';
+  if (rh > 85)            return 'Humid & Cloudy';
+  if (t < 15)             return 'Cold & Clear';
+  return 'Clear';
+}
+
 export default function Overview({ user }) {
   const metric_logs  = useStore(s => s.metric_logs);
   const tasks        = useStore(s => s.tasks) || [];
@@ -55,18 +79,22 @@ export default function Overview({ user }) {
   const currentWeight = latestLog?.weight || user?.weight || 63;
   const bmi           = (currentWeight / Math.pow(height / 100, 2)).toFixed(1);
 
-  // ── Weather / AQI (Open-Meteo, no API key) ─────────────────────────────────
+  // ── Weather / AQI state ─────────────────────────────────────────────────────
   const [weather, setWeather] = useState({
-    temp: '--°C', condition: '--', humidity: '--%', aqi: '-- (--)',
-    windSpeed: '-- km/h', windDir: '--', uv: '--', precip: '--', pressure: '-- hPa', visibility: '-- km'
+    temp: '--°C', condition: '--', humidity: '--%',
+    aqi: '--', aqiLabel: '--', aqiColor: 'var(--text-3)',
+    windSpeed: '-- km/h', windDir: '--', uv: '--',
+    precip: '--', pressure: '-- hPa', visibility: '-- km',
+    locationName: 'Detecting…',
   });
+  const [geoError, setGeoError] = useState(null);
 
   const weatherFetched = useRef(false);
   useEffect(() => {
     if (weatherFetched.current) return;
     weatherFetched.current = true;
 
-    const fetchWeather = async (latitude, longitude) => {
+    const fetchWeather = async (latitude, longitude, locationName = null) => {
       try {
         const [res, aqiRes] = await Promise.all([
           fetch(
@@ -76,7 +104,7 @@ export default function Overview({ user }) {
           ),
           fetch(
             `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`
-          ).catch(() => null)
+          ).catch(() => null),
         ]);
 
         const data    = await res.json();
@@ -87,39 +115,62 @@ export default function Overview({ user }) {
             const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
             return dirs[Math.round(deg / 22.5) % 16];
           };
-          const uv     = Math.round(data.hourly?.uv_index?.[new Date().getHours()] || 4);
+          const uvHour = new Date().getHours();
+          const uv     = Math.round(data.hourly?.uv_index?.[uvHour] ?? 4);
           const aqiVal = Math.round(aqiData?.current?.us_aqi ?? 0);
-          const aqiLabel = aqiVal > 0
-            ? (aqiVal <= 50 ? '(Good)' : aqiVal <= 100 ? '(Moderate)' : aqiVal <= 150 ? '(USG)' : '(Unhealthy)')
-            : '(--)' ;
+          const { label: aqiLabel, color: aqiColor } = aqiMeta(aqiVal);
 
+          setGeoError(null);
           setWeather({
-            temp:       `${Math.round(data.current.temperature_2m)}°C`,
-            condition:  data.current.precipitation > 0 ? 'Rainy' : data.current.temperature_2m > 30 ? 'Sunny' : 'Clear',
-            humidity:   `${Math.round(data.current.relative_humidity_2m)}%`,
-            aqi:        aqiVal > 0 ? `${aqiVal} ${aqiLabel}` : 'Fetching…',
-            windSpeed:  `${Math.round(data.current.wind_speed_10m)} km/h`,
-            windDir:    wDir(data.current.wind_direction_10m),
-            uv:         `${uv} ${uv > 7 ? '(High)' : uv > 3 ? '(Moderate)' : '(Low)'}`,
-            precip:     `${data.current.precipitation} mm`,
-            pressure:   `${Math.round(data.current.surface_pressure)} hPa`,
-            visibility: `${(data.current.visibility / 1000).toFixed(1)} km`,
+            temp:         `${Math.round(data.current.temperature_2m)}°C`,
+            condition:    deriveCondition(data.current),
+            humidity:     `${Math.round(data.current.relative_humidity_2m)}%`,
+            aqi:          aqiVal > 0 ? String(aqiVal) : '--',
+            aqiLabel,
+            aqiColor,
+            windSpeed:    `${Math.round(data.current.wind_speed_10m)} km/h`,
+            windDir:      wDir(data.current.wind_direction_10m),
+            uv:           `${uv} (${uv > 7 ? 'High' : uv > 3 ? 'Moderate' : 'Low'})`,
+            precip:       `${data.current.precipitation} mm`,
+            pressure:     `${Math.round(data.current.surface_pressure)} hPa`,
+            visibility:   `${(data.current.visibility / 1000).toFixed(1)} km`,
+            locationName: locationName || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
           });
         }
       } catch (err) {
         console.warn('Weather fetch failed', err);
+        setGeoError('Weather data unavailable');
       }
     };
 
-    // Browser geolocation → user profile coords → India centre fallback
+    const fallbackFetch = () =>
+      fetchWeather(
+        user?.location?.lat ?? 11.1271,
+        user?.location?.lon ?? 78.6569,
+        user?.location_name || 'Tamil Nadu, IN',
+      );
+
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-        ()    => fetchWeather(user?.location?.lat ?? 20.5937, user?.location?.lon ?? 78.9629),
-        { timeout: 5000 }
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          // Reverse-geocode display name via Open-Meteo (no API key)
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+            .then(r => r.json())
+            .then(geo => {
+              const name = geo?.address?.town || geo?.address?.city || geo?.address?.county || null;
+              fetchWeather(latitude, longitude, name);
+            })
+            .catch(() => fetchWeather(latitude, longitude, null));
+        },
+        (err) => {
+          setGeoError(`Location access denied — using ${user?.location_name || 'Tamil Nadu'} fallback`);
+          fallbackFetch();
+        },
+        { timeout: 6000, maximumAge: 300_000 }
       );
     } else {
-      fetchWeather(user?.location?.lat ?? 20.5937, user?.location?.lon ?? 78.9629);
+      fallbackFetch();
     }
 
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -128,10 +179,10 @@ export default function Overview({ user }) {
 
   // ── KPI vitals ──────────────────────────────────────────────────────────────
   const vitals = [
-    { label: 'Health Score', value: healthScore, unit: '/100', icon: Zap, color: 'var(--accent)', trend: '+3', state: 'optimal' },
-    { label: 'Weight', value: currentWeight, unit: 'kg', icon: Activity, color: '#3b82f6', trend: latestLog ? 'LIVE' : '+0.5', state: 'stable' },
-    { label: 'BMI', value: bmi, unit: '', icon: Gauge, color: '#10b981', trend: 'STABLE', state: 'normal' },
-    { label: 'Body Fat', value: `${user?.bodyFat || 22}`, unit: '%', icon: Flame, color: '#f43f5e', trend: '-1.2', state: 'cutting' },
+    { label: 'Health Score', value: healthScore, unit: '/100', icon: Zap,      color: 'var(--accent)', trend: '+3',  state: 'optimal' },
+    { label: 'Weight',       value: currentWeight, unit: 'kg', icon: Activity, color: '#3b82f6',       trend: latestLog ? 'LIVE' : '+0.5', state: 'stable' },
+    { label: 'BMI',          value: bmi,           unit: '',   icon: Gauge,    color: '#10b981',       trend: 'STABLE', state: 'normal' },
+    { label: 'Body Fat',     value: `${user?.bodyFat || 22}`, unit: '%', icon: Flame, color: '#f43f5e', trend: '-1.2', state: 'cutting' },
   ];
 
   const hour     = time.getHours();
@@ -140,11 +191,8 @@ export default function Overview({ user }) {
   // ── Strategic Priorities from real store data ───────────────────────────────
   const completedTasks  = tasks.filter(t => t.completed).length;
   const taskProgress    = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
-  const taskTarget      = tasks.length
-    ? `${completedTasks}/${tasks.length} completed`
-    : 'No tasks yet';
+  const taskTarget      = tasks.length ? `${completedTasks}/${tasks.length} completed` : 'No tasks yet';
 
-  // Sleep: prefer store sleep_logs, fallback to user.sleep.logs
   const allSleepLogs  = sleep_logs.length > 0 ? sleep_logs : (user?.sleep?.logs || []);
   const avgSleep      = allSleepLogs.length
     ? (allSleepLogs.slice(-7).reduce((a, b) => a + (b.hours || 0), 0) / Math.min(7, allSleepLogs.length))
@@ -155,24 +203,22 @@ export default function Overview({ user }) {
   const hydrationProgress = Math.min(100, Math.round(((user?.hydration?.glasses || 0) / 8) * 100));
   const hydrationTarget   = `${user?.hydration?.glasses || 0}/8 glasses`;
 
-  // Habits streak (most-recent habit entry completions today)
   const today         = new Date().toISOString().slice(0, 10);
   const habitsToday   = habits.filter(h => h.logs?.some(l => l.date === today && l.completed));
   const habitProgress = habits.length ? Math.round((habitsToday.length / habits.length) * 100) : 0;
   const habitTarget   = habits.length ? `${habitsToday.length}/${habits.length} today` : 'No habits set';
 
-  // Goals: count active (non-completed) goals
   const activeGoals    = goals.filter(g => !g.completed && !g.archived);
   const completedGoals = goals.filter(g => g.completed);
   const goalProgress   = goals.length ? Math.round((completedGoals.length / goals.length) * 100) : 0;
   const goalTarget     = goals.length ? `${completedGoals.length}/${goals.length} achieved` : 'Set your first goal';
 
   const priorities = [
-    { label: 'Task Execution',   target: taskTarget,      progress: taskProgress,    color: 'var(--accent)' },
-    { label: 'Sleep Recovery',   target: sleepTarget,     progress: sleepProgress,   color: '#8b5cf6' },
-    { label: 'Daily Hydration',  target: hydrationTarget, progress: hydrationProgress, color: '#0ea5e9' },
-    { label: 'Habit Completion', target: habitTarget,     progress: habitProgress,   color: '#f59e0b' },
-    { label: 'Goal Progress',    target: goalTarget,      progress: goalProgress,    color: '#10b981' },
+    { label: 'Task Execution',   target: taskTarget,        progress: taskProgress,      color: 'var(--accent)' },
+    { label: 'Sleep Recovery',   target: sleepTarget,       progress: sleepProgress,     color: '#8b5cf6' },
+    { label: 'Daily Hydration',  target: hydrationTarget,   progress: hydrationProgress, color: '#0ea5e9' },
+    { label: 'Habit Completion', target: habitTarget,       progress: habitProgress,     color: '#f59e0b' },
+    { label: 'Goal Progress',    target: goalTarget,        progress: goalProgress,      color: '#10b981' },
   ];
 
   return (
@@ -185,12 +231,17 @@ export default function Overview({ user }) {
             {greeting}, <span style={{ color: 'var(--accent)' }}>{user?.name?.split(' ')[0] || 'Operator'}</span>
           </h2>
           <p className="text-secondary" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
-            Environment and physiology are within target operating ranges.
+            {geoError
+              ? <span style={{ color: '#f59e0b', fontSize: '0.8rem' }}>⚠ {geoError}</span>
+              : 'Environment and physiology are within target operating ranges.'}
           </p>
         </div>
         <div className="glass-card" style={{ padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', border: '1px solid var(--accent-soft)' }}>
           <p className="label-caps" style={{ color: 'var(--text-3)', fontSize: '0.65rem' }}>{time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           <p style={{ fontSize: '1.5rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: 'var(--text-1)' }}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+          {weather.locationName && weather.locationName !== 'Detecting…' && (
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>📍 {weather.locationName}</p>
+          )}
         </div>
       </div>
 
@@ -233,7 +284,12 @@ export default function Overview({ user }) {
               { label: 'Outside Temp', value: weather.temp,       icon: Thermometer, color: '#f59e0b' },
               { label: 'Humidity',     value: weather.humidity,   icon: Droplet,     color: '#0ea5e9' },
               { label: 'Wind Speed',   value: weather.windSpeed,  icon: WindIcon,    color: '#94a3b8' },
-              { label: 'Air Quality',  value: weather.aqi,        icon: Wind,        color: '#10b981' },
+              {
+                label: 'Air Quality',
+                value: weather.aqi !== '--' ? `${weather.aqi} · ${weather.aqiLabel}` : weather.aqi,
+                icon: Wind,
+                color: weather.aqiColor,
+              },
               { label: 'UV Index',     value: weather.uv,         icon: Sun,         color: '#f59e0b' },
               { label: 'Wind Dir',     value: weather.windDir,    icon: Compass,     color: '#8b5cf6' },
               { label: 'Pressure',     value: weather.pressure,   icon: Gauge,       color: '#6366f1' },
@@ -252,8 +308,8 @@ export default function Overview({ user }) {
           <div style={{ marginTop: '2.5rem', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--border)' }}>
             <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', lineHeight: 1.6 }}>
               <Shield size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} color="var(--accent)" />
-              All environmental sensors reporting within target thresholds. BMI stable at{' '}
-              <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{bmi}</span>.{' '}
+              {weather.condition !== '--' && <span>Conditions: <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>{weather.condition}</span>. </span>}
+              BMI stable at <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{bmi}</span>.{' '}
               Last weigh-in: <span style={{ color: 'var(--text-2)', fontWeight: 700 }}>{latestLog ? latestLog.date : 'Initial Profile'}</span>.
             </p>
           </div>
@@ -271,13 +327,7 @@ export default function Overview({ user }) {
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{g.target}</span>
                   </div>
                   <div style={{ width: '100%', height: '5px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        width: `${g.progress}%`, height: '100%', background: g.color,
-                        transition: 'width 0.6s ease',
-                        borderRadius: '3px',
-                      }}
-                    />
+                    <div style={{ width: `${g.progress}%`, height: '100%', background: g.color, transition: 'width 0.6s ease', borderRadius: '3px' }} />
                   </div>
                   <div style={{ textAlign: 'right', marginTop: '2px' }}>
                     <span style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>{g.progress}%</span>
