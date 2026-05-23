@@ -65,9 +65,8 @@ const useStore = create<any>()(
       skills: [],
       calendar_events: [],
 
-      calendar_events: [],
-
       shopping: { items: [] },
+
 
       trainingPlan: null,
       nutritionStrategy: null,

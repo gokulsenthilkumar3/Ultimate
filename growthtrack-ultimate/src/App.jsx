@@ -110,7 +110,8 @@ function TabSpinner() {
   );
 }
 
-function renderTab(tab, user, setUser, theme, setTheme, setActiveTab, metricLogs) {
+// ── Memoized tab renderer — prevents re-creation on every App render ──────────
+const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme, setTheme, setActiveTab, metricLogs }) {
   const props = { user, setUser, theme, setTheme };
   switch (tab) {
     case 'overview':       return <Overview {...props} />;
@@ -151,18 +152,14 @@ function renderTab(tab, user, setUser, theme, setTheme, setActiveTab, metricLogs
     case 'dashboards':     return <Dashboards />;
     case 'about':          return <About />;
     case 'sip':            return <SIPCalculator />;
-    // Bug 2 fix: use hook-derived values, not useStore.getState() inside render
     case 'forecast':       return <TransformationPredictor logs={metricLogs} />;
     case 'apps':           return <AppLauncher setActiveTab={setActiveTab} />;
-    // 🔔 NEW: Notification Center 🔔
     case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} />;
     default:               return <Overview {...props} />;
   }
-}
+});
 
-// ── Navbar Alert Banner (replaces full-screen Daily Check-In trigger) ─────────
-// Shows a slim dismissible banner inside the header area when the user
-// hasn't done today's check-in yet. Clicking it opens DailyCheckIn modal.
+// ── Navbar Alert Banner ─────────────────────────────────────────────────────
 function NavbarCheckInAlert({ onOpen, onDismiss }) {
   return (
     <div
@@ -170,7 +167,7 @@ function NavbarCheckInAlert({ onOpen, onDismiss }) {
       aria-live="polite"
       style={{
         position: 'fixed',
-        top: '54px',               // sits just below the Header bar
+        top: 'var(--header-height, 54px)',
         left: 0,
         right: 0,
         zIndex: LAYOUT.STATUS_PILL_ZINDEX - 1,
@@ -293,32 +290,34 @@ export default function App() {
   const lastCheckIn        = useStore((state) => state.lastCheckIn);
   const checkInAlertDismissedDate = useStore((state) => state.checkInAlertDismissedDate);
   const setCheckInAlertDismissedDate = useStore((state) => state.setCheckInAlertDismissedDate);
-  // Bug 2 fix: subscribe to metric_logs via hook so TransformationPredictor re-renders on changes
   const metricLogs         = useStore((state) => state.metric_logs);
 
   const [showCheckIn,       setShowCheckIn]       = React.useState(false);
   const [showSettings,      setShowSettings]      = React.useState(false);
-  // ── NEW: navbar alert visibility (separate from the modal) ──
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ── Sync URL and Store ──
+  // ── Preload 3D model once on mount ──
   useEffect(() => {
     preloadHumanoidModel();
   }, []);
 
+  // ── Sync URL → Store: read tab from URL on path change ──
   useEffect(() => {
     const pathTab = location.pathname.substring(1);
     if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== activeTab) {
       setActiveTab(pathTab);
     } else if (location.pathname === '/') {
       navigate(`/${activeTab}`, { replace: true });
+    } else if (pathTab && !GLOBAL_MODULES[pathTab]) {
+      navigate('/overview', { replace: true });
     }
   }, [location.pathname]);
 
+  // ── Sync Store → URL: push URL on tab change ──
   useEffect(() => {
     const pathTab = location.pathname.substring(1);
     if (activeTab && pathTab !== activeTab) {
@@ -328,11 +327,9 @@ export default function App() {
 
   const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);
 
-
   const navItems = useMemo(() => {
     const items = [];
     
-    // Group pinned tabs
     GROUPS.forEach(g => {
       const gItems = pinnedTabs.filter(id => TAB_GROUP_MAP[id] === g.id);
       if (gItems.length > 0) {
@@ -364,17 +361,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // 🔔 Daily Check-In: show navbar alert instead of auto-modal 🔔
-  // Old behaviour: setTimeout -> open full-screen DailyCheckIn modal.
-  // New behaviour: setTimeout -> show slim NavbarCheckInAlert banner.
-  //   User can then click "CHECK IN NOW" to open the modal, or dismiss banner.
+  // ── Daily Check-In alert: show slim banner (not auto-modal) ──
   useEffect(() => {
     if (onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr) {
       const t = setTimeout(() => {
-        // Show the navbar alert banner (not the modal directly)
         setShowCheckInAlert(true);
-
-        // Still send a push notification if permission was granted
         if ('Notification' in window && Notification.permission !== 'denied') {
           Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
@@ -392,13 +383,15 @@ export default function App() {
     }
   }, [onboardingComplete, lastCheckIn, checkInAlertDismissedDate, todayStr]);
 
+  // ── Keyboard shortcuts: Ctrl+1–9 navigate to real nav tabs (skip dividers) ──
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
+        const tabItems = navItems.filter(item => !item.isDivider);
         const index = parseInt(e.key, 10) - 1;
-        if (index < navItems.length) {
+        if (index < tabItems.length) {
           e.preventDefault();
-          setActiveTab(navItems[index].id);
+          setActiveTab(tabItems[index].id);
         }
       }
     };
@@ -416,15 +409,14 @@ export default function App() {
       <ToastProvider>
         <CommandPalette />
 
-
         {/* Onboarding — only when not yet completed */}
         {!onboardingComplete && <OnboardingWizard />}
 
-        {/* Daily Check-In modal — opened by navbar alert or programmatically */}
+        {/* Daily Check-In modal */}
         {showCheckIn && onboardingComplete && (
           <DailyCheckIn onClose={() => {
             setShowCheckIn(false);
-            setShowCheckInAlert(false); // also hide banner after completing check-in
+            setShowCheckInAlert(false);
           }} />
         )}
 
@@ -458,7 +450,8 @@ export default function App() {
             </div>
           )}
 
-          <div className="main-area">
+          {/* ── Single .main-area: header + content + both navbars ── */}
+          <div className={`main-area${showCheckInAlert && onboardingComplete ? ' has-alert' : ''}`}>
             <Header
               user={user}
               theme={theme}
@@ -477,42 +470,47 @@ export default function App() {
                   setShowCheckIn(true);
                   setShowCheckInAlert(false);
                 }}
-                onDismiss={() => setShowCheckInAlert(false)}
+                onDismiss={() => {
+                  setShowCheckInAlert(false);
+                  setCheckInAlertDismissedDate(todayStr);
+                }}
               />
             )}
 
+            {/* ── Single content area: shows skeleton during load, tab after ── */}
             <main className="content-area">
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
-                  {renderTab(activeTab, user, setUser, theme, setTheme, setActiveTab, metricLogs)}
+                  {isLoading
+                    ? <LoadingSkeleton />
+                    : <TabRenderer
+                        tab={activeTab}
+                        user={user}
+                        setUser={setUser}
+                        theme={theme}
+                        setTheme={setTheme}
+                        setActiveTab={setActiveTab}
+                        metricLogs={metricLogs}
+                      />
+                  }
                 </Suspense>
               </ErrorBoundary>
             </main>
+
+            {/* ── Navigation: FloatingNav on desktop, BottomNavBar on mobile ── */}
+            <FloatingNav
+              activeTab={activeTab}
+              setActiveTab={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
+              navItems={navItems}
+            />
+            <BottomNavBar
+              activeTab={activeTab}
+              onTabChange={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
+            />
           </div>
-
-          <FloatingNav
-            activeTab={activeTab}
-            setActiveTab={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
-                                      navItems={navItems}
-          />
-          <BottomNavBar
-            activeTab={activeTab}
-                  onTabChange={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
-          />
-
-          <main className="content-area">
-            {isLoading ? (
-              <LoadingSkeleton />
-            ) : (
-              <ErrorBoundary resetKey={activeTab}>
-                <Suspense fallback={<TabSpinner />}>
-                  {renderTab(activeTab, user, setUser, theme, setTheme, setActiveTab, metricLogs)}
-                </Suspense>
-              </ErrorBoundary>
-            )}
-          </main>
         </div>
       </ToastProvider>
     </ErrorBoundary>
   );
 }
+

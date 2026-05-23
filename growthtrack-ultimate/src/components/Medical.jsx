@@ -8,6 +8,7 @@ import useStore, {
   selectDeleteMedication,
 } from '../store/useStore';
 import { AlertCircle, Activity, Droplets, Stethoscope, Plus, Trash2 } from 'lucide-react';
+import { useToast } from '../hooks/useToast';
 
 export default function Medical({ user }) {
   const dbMedical = useStore(selectMedicalData);
@@ -40,26 +41,46 @@ export default function Medical({ user }) {
     [vitalsLogs]
   );
 
+  const toast = useToast();
+
   const addVital = async () => {
-    if (!logForm.value) return;
-    await addVitalLog({
-      date: logForm.date,
-      type: logForm.type,
-      value: Number(logForm.value) || null,
-      unit: logForm.unit || null,
-    });
-    setLogForm({ ...logForm, value: '', unit: '' });
+    if (!logForm.value.trim()) return toast.error('Please enter a value for this vital reading.');
+    try {
+      await addVitalLog({
+        date: logForm.date,
+        type: logForm.type,
+        value: Number(logForm.value) || null,
+        unit: logForm.unit || null,
+      });
+      setLogForm({ ...logForm, value: '', unit: '' });
+      toast.success(`${logForm.type} logged ✓`);
+    } catch {
+      toast.error('Failed to save vital — check your connection.');
+    }
   };
 
   const addMed = async () => {
-    if (!medForm.name) return;
-    await addMedication(medForm);
-    setMedForm({
-      name: '',
-      dose: '',
-      frequency: '',
-      start_date: new Date().toISOString().slice(0, 10),
-      end_date: '',
+    if (!medForm.name.trim()) return toast.error('Medication name is required.');
+    if (!medForm.dose.trim()) return toast.error('Dose / dosage is required (e.g. 1000 IU).');
+    try {
+      await addMedication(medForm);
+      setMedForm({
+        name: '',
+        dose: '',
+        frequency: '',
+        start_date: new Date().toISOString().slice(0, 10),
+        end_date: '',
+      });
+      toast.success(`${medForm.name} added to your medication list.`);
+    } catch {
+      toast.error('Failed to save medication.');
+    }
+  };
+
+  const handleDeleteMed = (m) => {
+    deleteMedication(m.id);
+    toast.info(`${m.name} removed`, 5000, {
+      action: { label: 'Undo', onClick: () => addMedication(m) }
     });
   };
 
@@ -273,7 +294,7 @@ export default function Medical({ user }) {
                   </div>
                 </div>
                 <button
-                  onClick={() => deleteMedication(m.id)}
+                  onClick={() => handleDeleteMed(m)}
                   style={{
                     background: 'rgba(248,113,113,0.1)',
                     border: 'none',

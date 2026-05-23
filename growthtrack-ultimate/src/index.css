@@ -42,7 +42,12 @@
   --radius-md: 14px;
   --radius-sm: 8px;
   --radius-pill: 999px;
+
+  /* Layout sizing tokens */
+  --header-height: 72px;
+  --alert-banner-height: 38px;
 }
+
 
 /* ── Light Theme ── */
 [data-theme='light'] {
@@ -1139,6 +1144,17 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
     display: none;
   }
 }
+
+/* ── Desktop: ensure BottomNavBar is never shown above 768px ── */
+@media (min-width: 769px) {
+  .mobile-bottom-nav { display: none !important; }
+}
+
+/* ── Alert banner: shift content down when check-in alert is visible ── */
+.main-area.has-alert .content-area {
+  padding-top: var(--alert-banner-height, 38px);
+}
+
 
 @keyframes pulse-shimmer { 0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; } }
 .skeleton-pulse { background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%); background-size: 1000px 100%; animation: pulse-shimmer 2s infinite linear; opacity: 0.7; }
