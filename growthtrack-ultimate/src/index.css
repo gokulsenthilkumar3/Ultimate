@@ -1141,3 +1141,76 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 
 @keyframes pulse-shimmer { 0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; } }
 .skeleton-pulse { background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%); background-size: 1000px 100%; animation: pulse-shimmer 2s infinite linear; opacity: 0.7; }
+
+/* ═══════════ HOVER UTILITIES ═══════════════════════ */
+.hover-bg-subtle { transition: background 0.2s ease; }
+.hover-bg-subtle:hover { background: rgba(255,255,255,0.06) !important; }
+[data-theme='light'] .hover-bg-subtle:hover { background: rgba(0,0,0,0.04) !important; }
+
+.hover-border-accent { transition: border-color 0.25s ease, color 0.25s ease; }
+.hover-border-accent:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
+
+.hover-text-danger { transition: color 0.25s ease; }
+.hover-text-danger:hover { color: var(--danger) !important; }
+
+.hover-text-accent { transition: color 0.25s ease; }
+.hover-text-accent:hover { color: var(--accent) !important; }
+
+.hover-text-1 { transition: color 0.25s ease; }
+.hover-text-1:hover { color: var(--text-1) !important; }
+
+.hover-scale-11 { transition: transform 0.25s ease; }
+.hover-scale-11:hover { transform: scale(1.1) !important; }
+
+.hover-scale-115 { transition: transform 0.25s ease; }
+.hover-scale-115:hover { transform: scale(1.15) !important; }
+
+.hover-scale-12 { transition: transform 0.25s ease; }
+.hover-scale-12:hover { transform: scale(1.2) !important; }
+
+.hover-scale-125 { transition: transform 0.25s ease; }
+.hover-scale-125:hover { transform: scale(1.25) !important; }
+
+.hover-lift { transition: transform 0.25s ease, border-color 0.25s ease; }
+.hover-lift:hover { transform: translateY(-2px) !important; border-color: var(--accent) !important; }
+
+.hover-lift-4px { transition: transform 0.25s ease, border-color 0.25s ease; }
+.hover-lift-4px:hover { transform: translateY(-4px) !important; border-color: var(--accent) !important; }
+
+.hover-opacity-75 { transition: opacity 0.25s ease; }
+.hover-opacity-75:hover { opacity: 0.75 !important; }
+
+.hover-opacity-100 { transition: opacity 0.25s ease; }
+.hover-opacity-100:hover { opacity: 1 !important; }
+
+.hover-bg-elevated { transition: background 0.2s ease; }
+.hover-bg-elevated:hover { background: var(--bg-elevated) !important; }
+
+.hover-bg-danger-subtle { transition: background 0.2s ease, color 0.2s ease; }
+.hover-bg-danger-subtle:hover { background: rgba(248,113,113,0.1) !important; color: var(--danger) !important; }
+
+/* Specific Button Hovers */
+.hover-btn-success { transition: all 0.2s ease; }
+.hover-btn-success:hover { border-color: var(--success) !important; background: rgba(52,211,153,0.1) !important; }
+
+.hover-btn-warning { transition: all 0.15s ease; }
+.hover-btn-warning:hover { border-color: var(--warning) !important; color: var(--warning) !important; }
+
+.hover-btn-danger { transition: all 0.15s ease; }
+.hover-btn-danger:hover { border-color: var(--danger) !important; color: var(--danger) !important; }
+
+.hover-btn-danger-strong { transition: all 0.15s ease; }
+.hover-btn-danger-strong:hover { border-color: rgba(239,68,68,0.35) !important; color: var(--danger) !important; }
+
+.hover-btn-info { transition: all 0.15s ease; }
+.hover-btn-info:hover { border-color: rgba(96,165,250,0.35) !important; color: var(--info) !important; }
+
+.hover-app-card { transition: all 0.3s ease; }
+.hover-app-card:hover { transform: translateY(-4px) !important; border-color: var(--hover-color) !important; box-shadow: 0 8px 24px var(--hover-shadow) !important; }
+
+.hover-opacity-reveal { opacity: 0; transition: opacity 0.2s ease; }
+.hover-opacity-reveal:hover { opacity: 1 !important; }
+
+.hover-btn-close { transition: all 0.15s ease; }
+.hover-btn-close:hover { border-color: rgba(255,255,255,0.15) !important; color: var(--text-1) !important; }
+

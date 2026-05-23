@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState } from 'react';
 import { Eye, Ear, Wind, Fingerprint, Brain, Activity, ClipboardList, Target, Smile, Heart, Sparkles, Droplets, X } from 'lucide-react';
 
@@ -54,9 +55,8 @@ export default function HealthExtras() {
                 <div 
                   key={key} 
                   onClick={() => setActiveSense({ key, ...data })}
-                  style={{ padding: '1.5rem', background: 'var(--bg-dark)', borderRadius: '16px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = data.color; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                  className="hover-app-card"
+                  style={{ '--hover-color': data.color, '--hover-shadow': 'transparent', padding: '1.5rem', background: 'var(--bg-dark)', borderRadius: '16px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
                 >
                   <div style={{ position: 'absolute', top: 0, right: 0, width: '100px', height: '100px', background: data.color, filter: 'blur(50px)', opacity: 0.1, pointerEvents: 'none' }} />
                   
@@ -170,7 +170,7 @@ export default function HealthExtras() {
 
       {/* Sensory Detail Modal */}
       {activeSense && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
           <div className="fade-in glass-card" style={{ width: '100%', maxWidth: '500px', position: 'relative', padding: '2.5rem', border: `1px solid ${activeSense.color}` }}>
             <div style={{ position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%', background: `radial-gradient(circle at center, ${activeSense.color}33 0%, transparent 60%)`, pointerEvents: 'none' }} />
             
@@ -178,7 +178,7 @@ export default function HealthExtras() {
               <X size={24} />
             </button>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '2rem', position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '2rem', position: 'relative', zIndex: Z_INDEX.BASE }}>
               <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: `${activeSense.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                  {React.createElement(activeSense.icon, { size: 32, color: activeSense.color })}
               </div>
@@ -188,7 +188,7 @@ export default function HealthExtras() {
               </div>
             </div>
 
-            <div style={{ position: 'relative', zIndex: 1, display: 'grid', gap: '1.5rem' }}>
+            <div style={{ position: 'relative', zIndex: Z_INDEX.BASE, display: 'grid', gap: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                 <div>
                   <p className="label-caps" style={{ marginBottom: '4px' }}>Current Power</p>
@@ -223,7 +223,7 @@ export default function HealthExtras() {
               </div>
             </div>
             
-            <div style={{ marginTop: '2.5rem', position: 'relative', zIndex: 1 }}>
+            <div style={{ marginTop: '2.5rem', position: 'relative', zIndex: Z_INDEX.BASE }}>
               <button className="btn-primary" style={{ width: '100%', padding: '1rem', background: activeSense.color, color: '#fff', fontSize: '1rem' }} onClick={() => setActiveSense(null)}>
                 Acknowledge & Close
               </button>

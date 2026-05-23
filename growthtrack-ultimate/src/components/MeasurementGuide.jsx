@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React from 'react';
 import { Ruler, Info, Target, CheckCircle } from 'lucide-react';
 import useStore, { selectUser } from '../store/useStore';
@@ -10,7 +11,7 @@ export default function MeasurementGuide({ onClose }) {
     <div style={{
       position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
       background: 'rgba(5,8,16,0.95)', backdropFilter: 'blur(20px)',
-      display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000,
+      display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: Z_INDEX.WIZARD,
       padding: '2rem'
     }}>
       <div className="glass-card stagger-container" style={{ 

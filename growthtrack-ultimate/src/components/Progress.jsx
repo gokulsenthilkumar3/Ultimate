@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import useStore, { selectUser } from '../store/useStore';
 import {
@@ -130,7 +131,7 @@ export default function Progress() {
       {/* Lightbox */}
       {lightboxIdx !== null && photoEntries[lightboxIdx] && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 300,
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: Z_INDEX.MODAL,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }} onClick={() => setLightboxIdx(null)}>
           <button onClick={e => { e.stopPropagation(); handleLightboxPrev(); }}
@@ -317,14 +318,11 @@ export default function Progress() {
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
                 {/* Hover overlay */}
-                <div style={{
-                  position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  opacity: 0, transition: 'opacity 0.2s',
-                }}
-                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                  onMouseLeave={e => e.currentTarget.style.opacity = 0}
-                >
+                <div className="hover-opacity-reveal" style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(0,0,0,0.6)', borderRadius: '12px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                }}>
                   <ZoomIn size={20} color="#fff" />
                   <p style={{ color: '#fff', fontSize: '0.65rem', marginTop: '4px' }}>{entry.date}</p>
                   {entry.weight && <p style={{ color: '#fbbf24', fontSize: '0.65rem' }}>{entry.weight}kg</p>}

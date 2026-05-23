@@ -154,8 +154,7 @@ export default function Notes() {
                   background: selected === note.id ? 'var(--accent-soft)' : 'transparent',
                   transition: 'background 0.2s',
                 }}
-                onMouseEnter={e => { if (selected !== note.id) e.currentTarget.style.background = 'var(--bg-elevated)'; }}
-                onMouseLeave={e => { if (selected !== note.id) e.currentTarget.style.background = 'transparent'; }}
+                className="hover-bg-elevated"
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <p style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-1)', lineHeight: 1.3, flex: 1, marginRight: '6px' }}>
@@ -168,8 +167,7 @@ export default function Notes() {
                     </button>
                     <button onClick={e => { e.stopPropagation(); handleDelete(note.id); }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '2px', display: 'flex' }}
-                      onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
-                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
+                      className="hover-text-danger">
                       <Trash2 size={12} />
                     </button>
                   </div>

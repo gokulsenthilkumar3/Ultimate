@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon } from 'lucide-react';
+import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon, ListTodo } from 'lucide-react';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, AreaChart, Area } from 'recharts';
 import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget, apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import StatCard from './ui/StatCard';
 import SIPCalculator from './SIPCalculator';
 import EmptyState from './ui/EmptyState';
-import { ListTodo, Activity } from 'lucide-react';
 
 const CURRENCY = '₹';
 const fmtINR = (n) => CURRENCY + Number(n).toLocaleString('en-IN');
@@ -313,9 +312,7 @@ export default function Finance() {
                 const intensity = d.amount / maxDaySpend;
                 const bg = d.amount === 0 ? 'var(--bg-elevated)' : `rgba(244,63,94,${0.15 + intensity * 0.75})`;
                 return (
-                  <div key={d.day} title={`Day ${d.day}: ${fmtINR(d.amount)}`} style={{ width: '36px', height: '36px', borderRadius: '6px', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, color: intensity > 0.5 ? '#fff' : 'var(--text-2)', cursor: 'default', border: '1px solid rgba(255,255,255,0.05)', transition: 'transform 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+                  <div key={d.day} title={`Day ${d.day}: ${fmtINR(d.amount)}`} className="hover-scale-115" style={{ width: '36px', height: '36px', borderRadius: '6px', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, color: intensity > 0.5 ? '#fff' : 'var(--text-2)', cursor: 'default', border: '1px solid rgba(255,255,255,0.05)', transition: 'transform 0.15s' }}>
                     {d.day}
                   </div>
                 );
@@ -569,7 +566,7 @@ export default function Finance() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--danger)', marginBottom: '4px' }}>{fmtINR(sub.cost)}</div>
-                    <button onClick={() => handleDeleteSubscription(sub.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.7rem' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>[Delete]</button>
+                    <button onClick={() => handleDeleteSubscription(sub.id)} className="hover-text-danger" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '0.7rem' }}>[Delete]</button>
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -609,7 +606,7 @@ export default function Finance() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
             {[{ name: 'BHIM / UPI Apps', color: '#0ea5e9', desc: 'Sync GPay, PhonePe, and PayTM flow.' }, { name: 'Slice / Uni Card', color: '#8b5cf6', desc: 'Direct API sync for credit lines.' }, { name: 'Roarbank (Neobank)', color: '#f59e0b', desc: 'Real-time settlement data.' }, { name: 'HDFC / SBI NetBanking', color: '#10b981', desc: 'Secure bank statement parsing.' }].map(p => (
-              <div key={p.name} style={{ border: `1px solid ${p.color}33`, padding: '1.5rem', borderRadius: '20px', background: `linear-gradient(135deg, ${p.color}08, transparent)`, display: 'flex', flexDirection: 'column', gap: '0.75rem', cursor: 'pointer', transition: 'all 0.3s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = p.color; e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = `${p.color}33`; e.currentTarget.style.transform = 'translateY(0)'; }}>
+              <div key={p.name} className="hover-lift-dynamic" style={{ '--hover-color': p.color, border: `1px solid ${p.color}33`, padding: '1.5rem', borderRadius: '20px', background: `linear-gradient(135deg, ${p.color}08, transparent)`, display: 'flex', flexDirection: 'column', gap: '0.75rem', cursor: 'pointer', transition: 'all 0.3s' }}>
                 <h4 style={{ fontWeight: 800, fontSize: '1rem', color: p.color }}>{p.name}</h4>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', lineHeight: 1.4 }}>{p.desc}</p>
                 <button className="btn-ghost" style={{ width: '100%', borderColor: p.color, color: p.color, fontSize: '0.7rem' }} onClick={() => toast.success(`${p.name} sync initiated.`)}>AUTHORIZE CONNECTION</button>
@@ -636,11 +633,11 @@ function renderBudgetRow({ id, name, actual, limit, onDelete }) {
     <div key={id || name} style={{ marginBottom: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.8rem', alignItems: 'center' }}>
         <span style={{ fontWeight: 700 }}>{name}</span>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div className="flex-center">
           <span style={{ color: isOver ? 'var(--danger)' : 'var(--text-1)', fontWeight: 800 }}>{fmtINR(actual)}</span>
           <span style={{ color: 'var(--text-3)', margin: '0 4px' }}>/</span>
           <span>{fmtINR(limit)}</span>
-          {onDelete && <button onClick={onDelete} className="btn-icon" style={{ marginLeft: '8px', color: 'var(--text-3)', padding: '2px' }} onMouseEnter={e => e.currentTarget.style.color='var(--danger)'} onMouseLeave={e => e.currentTarget.style.color='var(--text-3)'}><Trash2 size={12}/></button>}
+          {onDelete && <button onClick={onDelete} className="btn-icon hover-text-danger" style={{ marginLeft: '8px', color: 'var(--text-3)', padding: '2px' }}><Trash2 size={12}/></button>}
         </div>
       </div>
       <div style={{ width: '100%', height: '8px', background: 'var(--bg-elevated)', borderRadius: '4px', overflow: 'hidden' }}>

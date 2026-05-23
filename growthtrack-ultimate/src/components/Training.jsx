@@ -251,7 +251,7 @@ export default function Training() {
               const color = MUSCLE_COLORS[mg] || MUSCLE_COLORS[Object.keys(MUSCLE_COLORS).find(k => mg.toLowerCase().includes(k.toLowerCase())) || ''] || 'var(--accent)';
               return (
                 <div key={day.id} style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: '1rem', border: `1px solid ${color}44` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="flex-between">
                     <div>
                       <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{day.day}</span>
                       <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color, fontWeight: 700 }}>{day.muscleGroup}</span>
@@ -300,9 +300,7 @@ export default function Training() {
               {schedule.length === 0 && <EmptyState icon={Dumbbell} title="No schedule yet" description="Go to the Schedule tab and add training days first." />}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
                 {schedule.map(day => (
-                  <button key={day.id} onClick={() => { startSession(day); setActiveTab('Live Logger'); }} style={{ padding: '1.5rem 1rem', borderRadius: '12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+                  <button key={day.id} onClick={() => { startSession(day); setActiveTab('Live Logger'); }} className="hover-lift" style={{ padding: '1.5rem 1rem', borderRadius: '12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left' }}>
                     <p style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '4px' }}>{day.day}</p>
                     <p style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 700 }}>{day.muscleGroup}</p>
                     <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '6px' }}>{(day.exercises || []).length} exercises</p>
@@ -481,9 +479,7 @@ export default function Training() {
                   const intensity = vol / maxVolume;
                   const bg = vol === 0 ? 'var(--bg-elevated)' : `rgba(99,102,241,${0.2 + intensity * 0.75})`;
                   cells.push(
-                    <div key={key} title={`${key}: ${vol > 0 ? (vol/1000).toFixed(1) + 'k kg' : 'Rest'}`} style={{ aspectRatio: '1', borderRadius: '4px', background: bg, border: isToday ? '2px solid var(--accent)' : '1px solid rgba(255,255,255,0.04)', cursor: 'default', transition: 'transform 0.1s' }}
-                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
-                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'} />
+                    <div key={key} title={`${key}: ${vol > 0 ? (vol/1000).toFixed(1) + 'k kg' : 'Rest'}`} className="hover-scale-12" style={{ aspectRatio: '1', borderRadius: '4px', background: bg, border: isToday ? '2px solid var(--accent)' : '1px solid rgba(255,255,255,0.04)', cursor: 'default' }} />
                   );
                 }
                 return cells;
@@ -520,7 +516,7 @@ export default function Training() {
                       <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent)' }}>{((s.volume || 0) / 1000).toFixed(2)}k kg</p>
                       <p style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>volume</p>
                     </div>
-                    <button onClick={() => deleteWorkoutSession(s.id)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}><Trash2 size={14} /></button>
+                    <button onClick={() => deleteWorkoutSession(s.id)} className="hover-text-danger" style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px' }}><Trash2 size={14} /></button>
                   </div>
                 </div>
               ))}

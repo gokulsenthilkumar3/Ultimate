@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useRef } from 'react';
 import { X, Save, Ruler, Activity, Zap, Camera, Upload, CheckCircle } from 'lucide-react';
 import { BODY_METRICS_LIST, VITALS_METRICS_LIST, HOLISTIC_METRICS_LIST } from '../data/userData';
@@ -131,7 +132,7 @@ export default function MetricLogger({ onClose, onSave }) {
     <div style={{
       position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
       background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)',
-      display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999,
+      display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: Z_INDEX.OVERLAY,
     }}>
       <div className="glass-card stagger-item" style={{
         width: '100%', maxWidth: '600px', maxHeight: '90vh',

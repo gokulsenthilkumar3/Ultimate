@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../../constants';
 import React, { useEffect, useRef } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
@@ -43,7 +44,7 @@ export default function ConfirmDialog({ open, title, description, confirmLabel =
       aria-modal="true"
       aria-labelledby="confirm-title"
       style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
+        position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(0,0,0,0.55)',
         backdropFilter: 'blur(8px)',

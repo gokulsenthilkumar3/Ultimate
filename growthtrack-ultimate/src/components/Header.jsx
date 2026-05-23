@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useRef, useEffect } from 'react';
 import { Zap, Moon, Sun, Bell, Circle, Settings, Plus, CheckSquare, Flame, Utensils } from 'lucide-react';
 import HealthScoreRing from './HealthScoreRing';
@@ -29,7 +30,7 @@ function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
   ];
   return (
     <div ref={ref} style={{
-      position: 'absolute', top: 'calc(100% + 12px)', right: '0', zIndex: 9999,
+      position: 'absolute', top: 'calc(100% + 12px)', right: '0', zIndex: Z_INDEX.OVERLAY,
       background: 'var(--bg-card)',
       border: '1px solid var(--border-strong)',
       borderRadius: '16px',
@@ -50,15 +51,13 @@ function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
             }, 100);
             onClose();
           }}
+          className="hover-bg-subtle"
           style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '8px 12px', borderRadius: '10px',
             border: 'none', background: 'transparent',
-            color: a.color, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
-            transition: 'background 0.2s',
+            color: a.color, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
           <a.icon size={13} />
           {a.label}
@@ -83,7 +82,7 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
       justifyContent: 'space-between',
       alignItems: 'center',
       position: 'relative',
-      zIndex: 1000,
+      zIndex: Z_INDEX.HEADER,
       background: 'var(--bg-glass)',
       border: '1px solid var(--border-strong)',
       backdropFilter: 'blur(32px) saturate(200%)',
@@ -145,20 +144,13 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
           <button
             title="Quick Add"
             onClick={() => setShowQuickAdd(v => !v)}
+            className="hover-border-accent"
             style={{
               position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: '36px', height: '36px', padding: 0,
               borderRadius: '12px', background: showQuickAdd ? `${accentColor}22` : 'rgba(255,255,255,0.04)',
               border: `1px solid ${showQuickAdd ? accentColor : 'var(--border)'}`,
-              cursor: 'pointer', color: showQuickAdd ? accentColor : 'var(--text-2)',
-              transition: 'all 0.25s ease',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
-            onMouseLeave={e => {
-              if (!showQuickAdd) {
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.color = 'var(--text-2)';
-              }
+              cursor: 'pointer', color: showQuickAdd ? accentColor : 'var(--text-2)'
             }}
           >
             <Plus size={16} />
@@ -175,6 +167,7 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
         <button
           title={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
           onClick={onOpenNotifications}
+          className="hover-border-accent"
           style={{
             position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: '36px', height: '36px', padding: 0,
@@ -182,13 +175,7 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
             background: unreadCount > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.04)',
             border: `1px solid ${unreadCount > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)'}`,
             cursor: 'pointer',
-            color: unreadCount > 0 ? '#ef4444' : 'var(--text-2)',
-            transition: 'all 0.25s ease',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = unreadCount > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)';
-            e.currentTarget.style.color = unreadCount > 0 ? '#ef4444' : 'var(--text-2)';
+            color: unreadCount > 0 ? '#ef4444' : 'var(--text-2)'
           }}
         >
           <Bell size={16} />
@@ -216,14 +203,13 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
 
         {/* Settings */}
         <button onClick={onOpenSettings} aria-label="Open settings" title="Settings"
+          className="hover-border-accent"
           style={{
             width: '36px', height: '36px', padding: 0, borderRadius: '12px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'var(--text-2)', background: 'rgba(255,255,255,0.04)',
-            border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.25s ease',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
+            border: '1px solid var(--border)', cursor: 'pointer'
+          }}>
           <Settings size={16} />
         </button>
 
@@ -235,14 +221,13 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
           }}
           aria-label="Toggle theme"
           title={`Switch to ${theme === 'dark' ? 'amoled' : (theme === 'amoled' ? 'light' : 'dark')} mode`}
+          className="hover-border-accent"
           style={{
             width: '36px', height: '36px', padding: 0, borderRadius: '12px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'var(--text-2)', background: 'rgba(255,255,255,0.04)',
-            border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.25s ease',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.color = accentColor; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}>
+            border: '1px solid var(--border)', cursor: 'pointer'
+          }}>
           {theme === 'dark' ? <Moon size={16} /> : (theme === 'amoled' ? <Circle size={16} fill="currentColor" /> : <Sun size={16} />)}
         </button>
 

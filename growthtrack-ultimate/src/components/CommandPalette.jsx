@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Command as CmdIcon, ArrowRight } from 'lucide-react';
 import useStore, { selectSetActiveTab } from '../store/useStore';
@@ -61,7 +62,7 @@ export default function CommandPalette() {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 100000,
+      position: 'fixed', inset: 0, zIndex: Z_INDEX.PALETTE,
       background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
       paddingTop: '10vh'

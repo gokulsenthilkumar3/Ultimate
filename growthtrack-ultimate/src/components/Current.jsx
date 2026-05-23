@@ -149,8 +149,7 @@ export default function Current() {
                   src={article.image} 
                   alt="" 
                   style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s ease' }} 
-                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  className="hover-scale-11"
                 />
                 <div style={{ position: 'absolute', top: '15px', left: '15px' }}>
                    <span style={{ 

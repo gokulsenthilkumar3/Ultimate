@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 /**
  * GrowthTrack Ultimate — Layer 6: Comparison & Clone Engine
  * ModeTransitionEngine.jsx
@@ -199,7 +200,7 @@ export function TransitionOverlay() {
         position:       "absolute",
         inset:          0,
         pointerEvents:  "none",
-        zIndex:         10,
+        zIndex: Z_INDEX.FLOATING_ELEMENT,
         background:     "#020307",
         opacity:        overlayOpacity,
         transition:     "none",
@@ -250,7 +251,7 @@ export function ModeLabelFlash() {
         position:       "absolute",
         inset:          0,
         pointerEvents:  "none",
-        zIndex:         20,
+        zIndex: Z_INDEX.SLIDER,
         display:        "flex",
         flexDirection:  "column",
         alignItems:     "center",

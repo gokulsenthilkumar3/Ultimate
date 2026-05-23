@@ -299,8 +299,7 @@ export default function SleepDashboard() {
                       onClick={() => handleDeleteEntry(entry.date)}
                       className="btn-icon"
                       style={{ color: 'var(--text-3)', flexShrink: 0 }}
-                      onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
-                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+                      className="hover-text-danger"
                       title="Delete entry"
                     ><Trash2 size={14} /></button>
                   </div>

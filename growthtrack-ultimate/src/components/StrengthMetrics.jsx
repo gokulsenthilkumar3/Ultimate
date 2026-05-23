@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useMemo } from 'react';
 import {
   Dumbbell, Plus, Trash2, Save, Trophy, TrendingUp, Activity, Target, Zap, BarChart2, X
@@ -205,7 +206,7 @@ export default function StrengthMetrics({ user }) {
 
       {/* Custom Exercise Modal */}
       {showAddExercise && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: Z_INDEX.MODAL_BACKDROP, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass-card" style={{ padding: '2rem', width: '100%', maxWidth: '440px', position: 'relative' }}>
             <button onClick={() => setShowAddExercise(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}>
               <X size={18} />

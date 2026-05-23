@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useMemo } from 'react';
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight,
@@ -245,7 +246,7 @@ export default function Calendar() {
 
       {/* Add Event Modal */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_INDEX.HEADER }}>
           <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h3 style={{ fontWeight: 800, fontSize: '1.2rem' }}>New Event — {selectedDay} {monthNames[month]}</h3>

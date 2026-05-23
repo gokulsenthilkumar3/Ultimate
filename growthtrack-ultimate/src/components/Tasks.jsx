@@ -102,13 +102,12 @@ function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete
         <button
           onClick={() => onComplete(task.id)}
           title="Mark complete"
+          className="hover-btn-success"
           style={{
             marginTop: '2px', width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
             border: '2px solid rgba(255,255,255,0.25)', background: 'transparent',
             cursor: 'pointer', transition: 'all 0.2s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.background = 'rgba(16,185,129,0.1)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.background = 'transparent'; }}
         />
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -215,23 +214,21 @@ function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete
         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }} className="task-actions">
           <button onClick={() => onEdit(task)}
             title="Edit"
+            className="hover-btn-warning"
             style={{
-              padding: '5px', borderRadius: '8px', background: 'none',
-              border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-              color: 'var(--text-3)', transition: 'all 0.15s',
+              background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
+              width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              color: 'var(--text-3)'
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#f59e0b'; e.currentTarget.style.color = '#f59e0b'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text-3)'; }}
           ><Edit3 size={12} /></button>
           <button onClick={() => onDelete(task.id, 'pending')}
             title="Delete"
+            className="hover-btn-danger"
             style={{
-              padding: '5px', borderRadius: '8px', background: 'none',
-              border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-              color: 'var(--text-3)', transition: 'all 0.15s',
+              background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
+              width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              color: 'var(--text-3)'
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text-3)'; }}
           ><Trash2 size={12} /></button>
         </div>
       </div>
@@ -597,18 +594,20 @@ export default function Tasks() {
             </div>
             <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
               <button onClick={() => handleReopen(task.id)} title="Reopen"
-                style={{ padding: '5px', borderRadius: '8px', background: 'none',
-                         border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer',
-                         color: 'var(--text-3)', transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#60a5fa'; e.currentTarget.style.borderColor = 'rgba(96,165,250,0.35)'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                className="hover-btn-info"
+                style={{
+                  background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px',
+                  width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  color: 'var(--text-3)'
+                }}
               ><RotateCcw size={12} /></button>
-              <button onClick={() => handleDelete(task.id, 'completed')}
-                style={{ padding: '5px', borderRadius: '8px', background: 'none',
-                         border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer',
-                         color: 'var(--text-3)', transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+              <button onClick={() => handleDelete(task.id, 'completed')} title="Delete Forever"
+                className="hover-btn-danger-strong"
+                style={{
+                  background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px',
+                  width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  color: 'var(--text-3)'
+                }}
               ><Trash2 size={12} /></button>
             </div>
           </div>

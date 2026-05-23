@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, X, User, Shield, Terminal, Globe, Server, 
@@ -116,7 +117,7 @@ export default function SettingsModal({ onClose }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
+      position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '1.5rem', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)'
     }}>
@@ -165,8 +166,7 @@ export default function SettingsModal({ onClose }) {
                 color: 'var(--text-3)', fontSize: '0.7rem', fontWeight: 700,
                 display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
               }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+              className="hover-border-accent"
             >
               <RefreshCw size={12} /> Reset Onboarding
             </button>
@@ -182,7 +182,7 @@ export default function SettingsModal({ onClose }) {
             <h3 style={{ fontWeight: 800, fontSize: '1.1rem' }}>{activeTab} Settings</h3>
             <button onClick={onClose} style={{ 
               background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' 
-            }} onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
+            }} className="hover-text-1">
               <X size={20} />
             </button>
           </header>

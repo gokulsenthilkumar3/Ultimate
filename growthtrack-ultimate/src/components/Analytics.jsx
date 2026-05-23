@@ -316,8 +316,7 @@ export default function Analytics({ user }) {
                              background: heatColor(cell.pct),
                              border: '1px solid rgba(255,255,255,0.06)',
                              cursor: 'default', transition: 'transform 0.15s' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.25)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                    className="hover-scale-125"
                   />
                 ))}
               </div>

@@ -262,8 +262,7 @@ export default function Timesheet() {
             <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
               {sessions.map((s, i) => (
                 <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 2rem', borderBottom: i < sessions.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.2s ease' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  className="hover-bg-subtle">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <CheckCircle size={16} color="var(--accent)" />
@@ -275,9 +274,7 @@ export default function Timesheet() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                     <span className="text-display" style={{ fontSize: '1.1rem', color: 'var(--accent)' }}>{fmt(s.duration)}</span>
-                    <button onClick={() => deleteSession(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '4px', borderRadius: '6px', display: 'flex', transition: 'all 0.2s ease' }}
-                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'rgba(248,113,113,0.1)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.background = 'none'; }}>
+                    <button onClick={() => deleteSession(s.id)} className="hover-bg-danger-subtle" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '4px', borderRadius: '6px', display: 'flex' }}>
                       <Trash2 size={14} />
                     </button>
                   </div>
