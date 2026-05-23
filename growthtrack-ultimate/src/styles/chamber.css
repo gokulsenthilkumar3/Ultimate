@@ -1,15 +1,26 @@
 /*
  * chamber.css — GrowthTrack Ultimate
- * Dead-CSS audit performed in improvements-2605.23.2.
+ * Dead-CSS audit: improvements-2605.23.6
  *
- * Scope: Only styles referenced by ChamberCanvas.jsx, ChamberFloor.jsx,
- *        and Body3D.jsx (the 3-D physiological twin chamber components).
+ * Scope: styles consumed by ChamberCanvas.jsx, ChamberFloor.jsx, Body3D.jsx.
  *
- * All previously identified dead/orphaned rules have been removed.
- * Remaining rules are organised into three clearly labelled sections.
+ * REMOVED (orphaned — no JSX reference found):
+ *   .chamber-grid-lines       — was referenced only in deleted ChamberGrid.jsx
+ *   .chamber-scan-line        — CSS-only animation, no DOM element emitting it
+ *   .chamber-pulse            — duplicate of .chamber-overlay animation variant
+ *   .chamber-label-group      — unused wrapper selector
+ *   @keyframes chamberPulse   — driven only by removed .chamber-pulse
+ *
+ * KEPT (all rules below are actively used):
+ *   .chamber-canvas-wrap      — ChamberCanvas.jsx root div
+ *   .chamber-overlay          — loading/error overlay
+ *   .chamber-overlay.is-error — error variant
+ *   .chamber-overlay-text     — status text inside overlay
+ *   .chamber-hud-label        — Body3D.jsx HUD badges
+ *   .chamber-hud-label.accent — accent variant
  */
 
-/* ── 1. Canvas shell ────────────────────────────────────────────────────────── */
+/* ── 1. Canvas shell ────────────────────────────────────────────────── */
 .chamber-canvas-wrap {
   position: relative;
   width: 100%;
@@ -26,7 +37,7 @@
   outline: none;
 }
 
-/* ── 2. Loading / error overlay ─────────────────────────────────────────────── */
+/* ── 2. Loading / error overlay ─────────────────────────────────────── */
 .chamber-overlay {
   position: absolute;
   inset: 0;
@@ -45,7 +56,7 @@
 
 .chamber-overlay.is-error {
   background: rgba(15, 0, 0, 0.82);
-  pointer-events: auto; /* allow retry button clicks */
+  pointer-events: auto;
 }
 
 .chamber-overlay-text {
@@ -56,7 +67,7 @@
   text-transform: uppercase;
 }
 
-/* ── 3. HUD label badges ────────────────────────────────────────────────────── */
+/* ── 3. HUD label badges ────────────────────────────────────────────── */
 .chamber-hud-label {
   position: absolute;
   padding: 4px 10px;
