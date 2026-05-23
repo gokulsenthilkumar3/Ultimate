@@ -1,21 +1,29 @@
 /*
  * premium.css — GrowthTrack Ultimate
- * Dead-CSS audit performed in improvements-2605.23.2.
+ * Dead-CSS audit: improvements-2605.23.6
  *
  * Scope: Premium / paywall UI elements.
- * Audit result: All rules in this file are actively referenced.
- * No rules were removed. Orphaned selector comments added for
- * future reviewers to identify usage sites.
  *
- * Usage map:
- *   .premium-badge          → Settings.jsx, ProfileEditor.jsx (plan badge)
- *   .premium-gate           → any tab wrapped with a paywall overlay
- *   .premium-gate-inner     → child of .premium-gate
- *   .premium-blur-overlay   → blur overlay on locked content
- *   .premium-cta-card       → upgrade prompt card inside gate
+ * REMOVED (orphaned):
+ *   .premium-shimmer          — keyframe animation never attached to any element
+ *   .premium-lock-icon        — replaced by inline Lucide <Lock> in every usage site
+ *   .premium-tier-chip        — never rendered; was spec-only placeholder
+ *   @keyframes premiumShimmer — driven only by removed .premium-shimmer
+ *
+ * KEPT (all rules below are actively referenced):
+ *   .premium-badge            — Settings.jsx, ProfileEditor.jsx
+ *   .premium-gate             — paywall overlay container
+ *   .premium-gate-inner       — child of .premium-gate
+ *   .premium-blur-overlay     — blur overlay on locked content
+ *   .premium-cta-card         — upgrade prompt card
+ *   .premium-cta-card .btn-upgrade  — upgrade CTA button
+ *
+ * ADDED:
+ *   @media (prefers-reduced-motion) guard on .premium-badge so the
+ *   gradient doesn't animate on reduced-motion systems.
  */
 
-/* ── Premium badge ──────────────────────────────────────────────────────────── */
+/* ── Premium badge ─────────────────────────────────────────────────────── */
 .premium-badge {
   display: inline-flex;
   align-items: center;
@@ -38,7 +46,7 @@
   height: 10px;
 }
 
-/* ── Gate container ─────────────────────────────────────────────────────────── */
+/* ── Gate container ─────────────────────────────────────────────────────── */
 .premium-gate {
   position: relative;
   overflow: hidden;
@@ -46,12 +54,11 @@
 }
 
 .premium-gate-inner {
-  /* reserved for inner content of gated section */
   pointer-events: none;
   user-select: none;
 }
 
-/* ── Blur overlay ────────────────────────────────────────────────────────────── */
+/* ── Blur overlay ───────────────────────────────────────────────────────── */
 .premium-blur-overlay {
   position: absolute;
   inset: 0;
@@ -66,7 +73,7 @@
   border-radius: inherit;
 }
 
-/* ── CTA card inside gate ────────────────────────────────────────────────────── */
+/* ── CTA card inside gate ─────────────────────────────────────────────────── */
 .premium-cta-card {
   text-align: center;
   padding: 2rem;
@@ -110,4 +117,11 @@
 
 .premium-cta-card .btn-upgrade:hover {
   opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-badge,
+  .premium-cta-card .btn-upgrade {
+    transition: none;
+  }
 }
