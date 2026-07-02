@@ -8,6 +8,7 @@
 ## 4A — Server + Schema (19 tasks)
 
 ### New API Endpoints
+
 - [x] `POST /api/hydration/log` — timestamped 24h hydration logging
 - [x] `GET /api/nutrition_logs` — fetch per-meal nutrition logs
 - [x] `POST /api/nutrition_logs` — add nutrition log entry
@@ -25,6 +26,7 @@
 - [x] **SECURITY** `SELECT`-only guard on `/api/query` — block non-SELECT statements
 
 ### Schema Migrations
+
 - [x] New table: `nutrition_logs` (meal, macros, timestamp)
 - [x] New table: `audit_log` (module, action, user, timestamp)
 - [x] New table: `progress_photos` (url, date, notes)
@@ -41,12 +43,14 @@
 ## 4B — Health Stack UI (12 tasks)
 
 ### Bug Fixes
+
 - [x] **BUG-01** HDRI fix → change to `Environment preset="studio"` in humanoid viewer ✅ already done
 - [x] **BUG-07** Remove `activeTab` from Zustand persist to fix stale tab state ✅ already not persisted
 - [x] **BUG-09** Overview: user name shows "Operator" → now uses `user.name || user.username || '—'`
 - [x] **BUG-11** Overview: health score computed dynamically from real metric_logs ✅ already dynamic
 
 ### Feature Work
+
 - [x] Overview: add weather skeleton/widget ✅ done (Phase 5)
 - [x] HydrationTracker: true 24h rolling window + hourly breakdown chart ✅ already done
 - [x] SleepDashboard: add time pickers for sleep/wake, fetch tips from DB ✅ already done
@@ -99,22 +103,26 @@
 ## 4F — Documents + Shopping + Entertainment + Calendar (12 tasks)
 
 ### Documents
+
 - [x] Real file upload to Supabase Storage
 - [x] Google Drive sync UI (link/unlink)
 - [x] OneDrive sync UI (link/unlink)
 
 ### Shopping
+
 - [x] `quantity` field per shopping item
 - [x] Priority sort (urgent items first)
 - [x] "Clear Purchased" bulk action
 - [x] Cart deeplinks (e.g. open in Flipkart/Amazon)
 
 ### Entertainment
+
 - [x] Rating slider (0–10) per entry
 - [x] `progress_episode` / `total_episodes` tracking
 - [x] OTT platform sync UI (Zee5, Netflix, etc.)
 
 ### Calendar
+
 - [x] Click-to-create event on date cell
 - [x] Task due date markers on calendar grid
 - [x] Normalized calendar event rows in DB
@@ -124,19 +132,23 @@
 ## 4G — AI Hub + DB Explorer + Dashboards + Misc (12 tasks)
 
 ### AI Hub
+
 - [x] User context injection into AI prompt (name, goals, habits, health score, metric logs)
 - [x] Chat history stored in DB (`ai_chat_history` table — in 4A schema + store)
 - [x] AI responses stay in-app (no external redirects)
 
 ### DB Explorer
+
 - [x] Guided INSERT form (select table → fill fields → submit)
 - [x] Dynamic table list fetched from Supabase schema ✅ done (Phase 5)
 - [x] Export with date-stamped filename
 
 ### Dashboards
+
 - [x] Live charts wired to all major DB tables (finance, habits, goals, health)
 
 ### Misc
+
 - [x] Social Media: URL validation before saving
 - [x] Portfolio: dynamic URL field (editable, not hardcoded)
 - [ ] Projects: manual entry form (title, stack, status, URL)
@@ -146,14 +158,14 @@
 
 ## Progress Tracker
 
-| Sub-phase | Total | Done | Remaining |
-|-----------|-------|------|-----------|
-| 4A — Server + Schema | 19 | 18 | 1 |
-| 4B — Health Stack UI | 12 | 11 | 1 |
-| 4C — Nutrition + Strength | 7 | 6 | 1 |
-| 4D — Habits + Goals + Progress | 10 | 7 | 3 |
-| 4E — Skills + Logs + Notes | 9 | 9 | 0 |
-| 4F — Docs + Shopping + Entertainment + Calendar | 12 | 12 | 0 |
-| 4G — AI Hub + DB Explorer + Dashboards + Misc | 12 | 12 | 0 |
-| **Phase 5 additions** | +16 | +1 | +15 |
-| **Total** | **81+** | **76** | **5** |
+| Sub-phase                                       | Total   | Done   | Remaining |
+| ----------------------------------------------- | ------- | ------ | --------- |
+| 4A — Server + Schema                            | 19      | 18     | 1         |
+| 4B — Health Stack UI                            | 12      | 11     | 1         |
+| 4C — Nutrition + Strength                       | 7       | 6      | 1         |
+| 4D — Habits + Goals + Progress                  | 10      | 7      | 3         |
+| 4E — Skills + Logs + Notes                      | 9       | 9      | 0         |
+| 4F — Docs + Shopping + Entertainment + Calendar | 12      | 12     | 0         |
+| 4G — AI Hub + DB Explorer + Dashboards + Misc   | 12      | 12     | 0         |
+| **Phase 5 additions**                           | +16     | +1     | +15       |
+| **Total**                                       | **81+** | **76** | **5**     |

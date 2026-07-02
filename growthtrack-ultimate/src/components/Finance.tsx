@@ -3,6 +3,7 @@ import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, AreaChart, Area } from 'recharts';
 import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget, apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import '../styles/finance.css';
 import StatCard from './ui/StatCard';
 import SIPCalculator from './SIPCalculator';
 import EmptyState from './ui/EmptyState';
@@ -23,7 +24,7 @@ const COLORS = ['#10b981', '#f43f5e', '#0ea5e9', '#8b5cf6', '#e5a50a', '#ec4899'
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.82rem' };
 
 const EMPTY_FORM = { type: 'Expense', category: '', amount: '', note: '', method: 'UPI (GPay/PhonePe)', date: new Date().toISOString().split('T')[0] };
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
 
 // Build last N months as YYYY-MM strings
 function lastNMonths(n = 6) {
@@ -91,7 +92,7 @@ export default function Finance() {
 
   const { income, expenses, investments, balance, pieData, methodData } = useMemo(() => {
     let inc = 0, exp = 0, inv = 0;
-    const catMap = {}, methodMap = {};
+    const catMap: Record<string, number> = {}, methodMap: Record<string, number> = {};
     filteredTransactions.forEach(t => {
       if (t.type === 'Income') inc += t.amount;
       else if (t.type === 'Expense') {
@@ -128,12 +129,12 @@ export default function Finance() {
 
   // Budget breach alerts
   const budgetAlerts = useMemo(() => {
-    return budgets.filter(b => {
+    return budgets.filter((b: any) => {
       const actual = pieData.find(d => d.name === b.category)?.value || 0;
-      return actual >= b.limit_amount * 0.8;
-    }).map(b => {
+      return (actual as number) >= (b.limit_amount as number) * 0.8;
+    }).map((b: any) => {
       const actual = pieData.find(d => d.name === b.category)?.value || 0;
-      return { ...b, actual, pct: Math.round((actual / b.limit_amount) * 100) };
+      return { ...b, actual, pct: Math.round(((actual as number) / (b.limit_amount as number)) * 100) };
     });
   }, [budgets, pieData]);
 
@@ -196,29 +197,31 @@ export default function Finance() {
   const handleCsvExport = () => window.open(`${API_BASE}/api/finance/export`, '_blank');
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+    <div className="fade-in module-page finance-container">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="finance-header">
         <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Wealth Engine</p>
-          <h2 className="text-display" style={{ fontSize: '2.2rem' }}>Financial Command</h2>
+          <p className="label-caps finance-header-label">Wealth Engine</p>
+          <h2 className="text-display finance-header-title">Financial Command</h2>
           <p className="text-secondary">Track Axio, Slice, UPI, and bank flow month-to-month.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button onClick={handleCsvExport} className="btn-ghost" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderColor: 'var(--accent)', color: 'var(--accent)' }}>
-            <ArrowDownRight size={14} style={{ marginRight: '6px' }} />CSV EXPORT
+        <div className="finance-header-actions">
+          <button onClick={handleCsvExport} className="btn-ghost finance-csv-btn" title="Export to CSV">
+            <ArrowDownRight size={14} className="finance-csv-icon" />CSV EXPORT
           </button>
-          <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="form-input" style={{ fontWeight: 800, color: 'var(--accent)', borderColor: 'var(--accent)' }} />
+          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="form-input finance-month-input" title="Select Month" aria-label="Select Month">
+            {lastNMonths(12).map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
         </div>
       </div>
 
       {/* Budget breach alerts */}
       {budgetAlerts.length > 0 && (
-        <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="finance-alerts-container">
           {budgetAlerts.map(b => (
-            <div key={b.id} style={{ padding: '0.75rem 1.25rem', borderRadius: '10px', background: b.pct >= 100 ? 'rgba(244,63,94,0.12)' : 'rgba(245,158,11,0.1)', border: `1px solid ${b.pct >= 100 ? 'rgba(244,63,94,0.4)' : 'rgba(245,158,11,0.4)'}`, display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span style={{ fontSize: '1.1rem' }}>{b.pct >= 100 ? '🚨' : '⚠️'}</span>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+            <div key={b.id} className={`finance-alert ${b.pct >= 100 ? 'finance-alert-danger' : 'finance-alert-warning'}`}>
+              <span className="finance-alert-icon">{b.pct >= 100 ? '🚨' : '⚠️'}</span>
+              <span className="finance-alert-text">
                 {b.category}: {fmtINR(b.actual)} / {fmtINR(b.limit_amount)} ({b.pct}%)
                 {b.pct >= 100 ? ' — BUDGET BREACHED' : ' — approaching limit'}
               </span>
@@ -228,16 +231,16 @@ export default function Finance() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '4px' }}>
+      <div className="finance-tabs">
         {['Overview', 'Analytics', 'Trends', 'Budgeting', 'Subscriptions', 'Planning', 'Sync'].map(tab => (
-          <button key={tab} className={`btn-sm ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)} style={{ padding: '0.6rem 1.5rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
-            {tab === 'Overview' && <Wallet size={14} style={{ marginRight: '6px' }} />}
-            {tab === 'Analytics' && <BarChart2 size={14} style={{ marginRight: '6px' }} />}
-            {tab === 'Trends' && <LineIcon size={14} style={{ marginRight: '6px' }} />}
-            {tab === 'Budgeting' && <Activity size={14} style={{ marginRight: '6px' }} />}
-            {tab === 'Subscriptions' && <Calendar size={14} style={{ marginRight: '6px' }} />}
-            {tab === 'Planning' && <TrendingUp size={14} style={{ marginRight: '6px' }} />}
-            {tab === 'Sync' && <CreditCard size={14} style={{ marginRight: '6px' }} />}
+          <button key={tab} className={`btn-sm finance-tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+            {tab === 'Overview' && <Wallet size={14} className="finance-tab-icon" />}
+            {tab === 'Analytics' && <BarChart2 size={14} className="finance-tab-icon" />}
+            {tab === 'Trends' && <LineIcon size={14} className="finance-tab-icon" />}
+            {tab === 'Budgeting' && <Activity size={14} className="finance-tab-icon" />}
+            {tab === 'Subscriptions' && <Calendar size={14} className="finance-tab-icon" />}
+            {tab === 'Planning' && <TrendingUp size={14} className="finance-tab-icon" />}
+            {tab === 'Sync' && <CreditCard size={14} className="finance-tab-icon" />}
             {tab}
           </button>
         ))}
@@ -249,27 +252,27 @@ export default function Finance() {
       {activeTab === 'Budgeting' && <BudgetingTab {...{ fmtINR, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }} />}
       {activeTab === 'Subscriptions' && <SubscriptionsTab {...{ fmtINR, form, showAddSub, setShowAddSub, subForm, setSubForm, addSubscription, subs, handleDeleteSubscription }} />}
       {activeTab === 'Planning' && <div className="fade-in"><SIPCalculator /></div>}
-      {activeTab === 'Sync' && <SyncTab {...{  }} />}
+      {activeTab === 'Sync' && <SyncTab {...{ axioLastSync, axioSyncing, handleAxioSync: () => {}, csvUploading, handleCsvImport: () => {} }} />}
     </div>
   );
 }
 
-function renderBudgetRow({ id, name, actual, limit, onDelete }) {
+function renderBudgetRow({ id, name, actual, limit, onDelete }: any) {
   const percent = Math.min((actual / limit) * 100, 100);
   const isOver = actual > limit;
   return (
-    <div key={id || name} style={{ marginBottom: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.8rem', alignItems: 'center' }}>
-        <span style={{ fontWeight: 700 }}>{name}</span>
+    <div key={id || name} className="finance-budget-row">
+      <div className="finance-budget-header">
+        <span className="finance-budget-name">{name}</span>
         <div className="flex-center">
-          <span style={{ color: isOver ? 'var(--danger)' : 'var(--text-1)', fontWeight: 800 }}>{fmtINR(actual)}</span>
-          <span style={{ color: 'var(--text-3)', margin: '0 4px' }}>/</span>
+          <span className={isOver ? 'finance-budget-actual-danger' : 'finance-budget-actual'}>{fmtINR(actual)}</span>
+          <span className="finance-budget-slash">/</span>
           <span>{fmtINR(limit)}</span>
-          {onDelete && <button onClick={onDelete} className="btn-icon hover-text-danger" style={{ marginLeft: '8px', color: 'var(--text-3)', padding: '2px' }}><Trash2 size={12}/></button>}
+          {onDelete && <button onClick={onDelete} className="btn-icon hover-text-danger finance-budget-delete" title="Delete budget" aria-label="Delete budget"><Trash2 size={12}/></button>}
         </div>
       </div>
-      <div style={{ width: '100%', height: '8px', background: 'var(--bg-elevated)', borderRadius: '4px', overflow: 'hidden' }}>
-        <div style={{ width: `${percent}%`, height: '100%', background: isOver ? 'var(--danger)' : actual / limit >= 0.8 ? 'var(--warning)' : 'var(--success)', transition: 'width 0.4s' }} />
+      <div className="finance-budget-bar-container">
+        <div className={`finance-budget-bar ${isOver ? 'finance-budget-bar-danger' : actual / limit >= 0.8 ? 'finance-budget-bar-warning' : 'finance-budget-bar-success'}`} ref={el => { if (el) el.style.width = `${percent}%`; }} />
       </div>
     </div>
   );
