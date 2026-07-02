@@ -165,6 +165,13 @@ export default function GoalsDashboard() {
 
   const handleAdd = async () => {
     if (!form.title.trim()) return;
+    if (form.deadline) {
+      const today = new Date().toISOString().split('T')[0];
+      if (form.deadline < today) {
+        toast.error('Deadline cannot be in the past.');
+        return;
+      }
+    }
     await addGoal({
       ...form,
       target_value:  form.target_value  ? Number(form.target_value)  : null,
@@ -177,7 +184,18 @@ export default function GoalsDashboard() {
   };
 
   const startEdit = (g) => { setEditId(g.id); setEditForm({ ...g }); };
-  const saveEdit  = () => { updateGoal(editId, editForm); setEditId(null); toast.success('Goal updated.'); };
+  const saveEdit  = () => {
+    if (editForm.deadline) {
+      const today = new Date().toISOString().split('T')[0];
+      if (editForm.deadline < today) {
+        toast.error('Deadline cannot be in the past.');
+        return;
+      }
+    }
+    updateGoal(editId, editForm);
+    setEditId(null);
+    toast.success('Goal updated.');
+  };
 
   return (
     <div className="space-y-6 p-4">

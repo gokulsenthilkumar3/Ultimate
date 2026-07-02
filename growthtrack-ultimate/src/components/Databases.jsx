@@ -1,28 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Database, Download, RefreshCw, Box, Table, Power, Code, LayoutGrid } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import useStore, { selectFetchInitialData, apiSync } from '../store/useStore';
 
 export default function Databases() {
   const [data, setData] = useState({});
+  const [dynamicTables, setDynamicTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTable, setActiveTable] = useState('user_profile');
-  const [activeTab, setActiveTab] = useState('Explorer'); // 'Explorer' | 'SQL'
+  const [activeTab, setActiveTab] = useState('Explorer'); // 'Explorer' | 'Insert' | 'SQL'
   const [sqlQuery, setSqlQuery] = useState('SELECT * FROM user_profile;');
   const [sqlResult, setSqlResult] = useState(null);
   const [sqlError, setSqlError] = useState(null);
   const [isQuerying, setIsQuerying] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'json'
+  const [tableSearch, setTableSearch] = useState('');
+  
+  // Insert form state
+  const [insertForm, setInsertForm] = useState({});
+  const [inserting, setInserting] = useState(false);
+  
   const fetchInitialData = useStore(selectFetchInitialData);
   const toast = useToast();
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const json = await apiSync('/all', 'GET');
+      // Load table data and dynamic table list in parallel
+      const [json, tablesRes] = await Promise.all([
+        apiSync('/all', 'GET'),
+        apiSync('/tables', 'GET').catch(() => null),
+      ]);
       setData(json);
+      // If the server exposes a /tables endpoint, use it; otherwise fall back to Object.keys
+      if (tablesRes?.tables) {
+        setDynamicTables(tablesRes.tables);
+      }
       if (!Object.keys(json).includes(activeTable) && Object.keys(json).length > 0) {
-         setActiveTable(Object.keys(json)[0]);
+        setActiveTable(Object.keys(json)[0]);
       }
     } catch (err) {
       toast.error('Failed to connect to database nodes.');
@@ -32,7 +47,15 @@ export default function Databases() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Effective table list: prefer dynamic list from server (includes tables without rows),
+  // fall back to keys from the data object
+  const tables = useMemo(() => {
+    const base = dynamicTables.length > 0 ? dynamicTables : Object.keys(data);
+    if (!tableSearch.trim()) return base;
+    return base.filter(t => t.toLowerCase().includes(tableSearch.toLowerCase()));
+  }, [dynamicTables, data, tableSearch]);
 
   const exportDB = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -44,10 +67,18 @@ export default function Databases() {
     toast.success('Database exported successfully.');
   };
 
-  const tables = Object.keys(data);
-
   const runQuery = async () => {
     if (!sqlQuery.trim()) return;
+
+    // CLIENT-SIDE GUARD: only allow SELECT statements
+    const trimmed = sqlQuery.trim().replace(/\/\*.*?\*\//gs, '').replace(/--[^\n]*/g, '').trim();
+    const firstWord = trimmed.split(/\s+/)[0].toUpperCase();
+    const FORBIDDEN = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE', 'ALTER', 'CREATE', 'REPLACE', 'EXEC'];
+    if (FORBIDDEN.includes(firstWord)) {
+      setSqlError(`⛔ Only SELECT queries are allowed in the SQL console. Use the INSERT tab to add records.`);
+      return;
+    }
+
     setIsQuerying(true);
     setSqlError(null);
     setSqlResult(null);
@@ -71,14 +102,50 @@ export default function Databases() {
       setSqlResult(null);
       setSqlError(null);
     }
+    setInsertForm({});
+  };
+
+  const getTableColumns = () => {
+    if (!data[activeTable] || !Array.isArray(data[activeTable]) || data[activeTable].length === 0) return [];
+    return Object.keys(data[activeTable][0]);
+  };
+
+  const handleInsert = async (e) => {
+    e.preventDefault();
+    const columns = Object.keys(insertForm).filter(k => insertForm[k] !== undefined && insertForm[k] !== '');
+    if (columns.length === 0) {
+      toast.error('Form is empty.');
+      return;
+    }
+
+    // SECURITY: use dedicated /api/insert endpoint with parameterised row object
+    // Never construct raw SQL on the client
+    const row = Object.fromEntries(columns.map(c => [c, insertForm[c]]));
+
+    setInserting(true);
+    try {
+      const result = await apiSync('/insert', 'POST', { table: activeTable, row });
+      if (result.success) {
+        toast.success(`Record inserted into ${activeTable}`);
+        setInsertForm({});
+        loadData();
+      } else {
+        toast.error(`Insert failed: ${result.error}`);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setInserting(false);
   };
 
   const insertTemplate = () => {
-    setSqlQuery(`INSERT INTO ${activeTable} (column1, column2) VALUES ('value1', 'value2');`);
+    setSqlQuery(`SELECT * FROM ${activeTable} LIMIT 10;`);
+    setActiveTab('SQL');
   };
 
   const updateTemplate = () => {
-    setSqlQuery(`UPDATE ${activeTable} SET column1 = 'new_value' WHERE id = 1;`);
+    setSqlQuery(`SELECT * FROM ${activeTable} WHERE id = 1;`);
+    setActiveTab('SQL');
   };
 
   const renderResultTable = () => {
@@ -136,6 +203,7 @@ export default function Databases() {
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: '8px', padding: '4px' }}>
              <button className={`btn-sm ${activeTab === 'Explorer' ? 'active' : ''}`} onClick={() => setActiveTab('Explorer')} style={{ background: activeTab === 'Explorer' ? 'var(--accent)' : 'transparent', color: activeTab === 'Explorer' ? '#fff' : 'var(--text-2)' }}>EXPLORER</button>
+             <button className={`btn-sm ${activeTab === 'Insert' ? 'active' : ''}`} onClick={() => setActiveTab('Insert')} style={{ background: activeTab === 'Insert' ? 'var(--accent)' : 'transparent', color: activeTab === 'Insert' ? '#fff' : 'var(--text-2)' }}>INSERT</button>
              <button className={`btn-sm ${activeTab === 'SQL' ? 'active' : ''}`} onClick={() => setActiveTab('SQL')} style={{ background: activeTab === 'SQL' ? 'var(--accent)' : 'transparent', color: activeTab === 'SQL' ? '#fff' : 'var(--text-2)' }}>COMPILER</button>
           </div>
           <button onClick={loadData} className="btn-ghost" disabled={loading} title="Refresh Table List">
@@ -160,10 +228,19 @@ export default function Databases() {
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '2rem' }}>
         {/* Left Sidebar - Table List */}
         <div className="glass-card" style={{ padding: '1rem', height: 'fit-content' }}>
-          <h3 className="label-caps" style={{ color: 'var(--text-2)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 className="label-caps" style={{ color: 'var(--text-2)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Database size={14} /> AVAILABLE TABLES
+            <span style={{ marginLeft: 'auto', fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 400 }}>{tables.length} tables</span>
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <input
+            type="text"
+            placeholder="Filter tables..."
+            value={tableSearch}
+            onChange={e => setTableSearch(e.target.value)}
+            className="form-input"
+            style={{ width: '100%', marginBottom: '0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '60vh', overflowY: 'auto' }}>
             {tables.map(table => (
               <button
                 key={table}
@@ -217,6 +294,46 @@ export default function Databases() {
                 }}>
                   {JSON.stringify(data[activeTable], null, 2)}
                 </pre>
+              )}
+            </div>
+          </div>
+        ) : activeTab === 'Insert' ? (
+          <div className="glass-card" style={{ padding: '1.5rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Box size={20} color="var(--accent)" />
+                Insert into: {activeTable}
+              </h3>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+              {getTableColumns().length === 0 ? (
+                <p style={{ color: 'var(--text-3)' }}>Cannot infer schema: table is empty.</p>
+              ) : (
+                <form onSubmit={handleInsert} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                    {getTableColumns().map(col => {
+                      if (col.toLowerCase() === 'id') return null; // Skip primary key typically
+                      return (
+                        <div key={col}>
+                          <label className="form-label" style={{ display: 'block', marginBottom: '4px' }}>{col}</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            style={{ width: '100%' }}
+                            value={insertForm[col] || ''} 
+                            onChange={(e) => setInsertForm({ ...insertForm, [col]: e.target.value })}
+                            placeholder={`Enter ${col}...`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: '1rem' }}>
+                    <button type="submit" disabled={inserting} className="btn-primary">
+                      {inserting ? 'Inserting...' : 'INSERT RECORD'}
+                    </button>
+                  </div>
+                </form>
               )}
             </div>
           </div>

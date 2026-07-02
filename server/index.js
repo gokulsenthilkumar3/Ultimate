@@ -160,6 +160,44 @@ app.post('/api/user', (_req, res) => res.json({ ok: true }));
 // Phase 4A routes
 app.use('/', phase4aRoutes(supabase, requireSecret, safeError, queryLimiter));
 
+// --- Finance Sync Simulation (Mock AA Webhook) ---
+app.post('/api/finance/sync/bank', (req, res) => {
+  // Simulate 10-15 realistic transactions over the last 30 days
+  const transactions = [];
+  const count = Math.floor(Math.random() * 6) + 10;
+  const categories = ['Food & Dining', 'Groceries', 'Transport', 'Shopping', 'Bills & Utilities', 'Entertainment'];
+  const merchants = ['Zomato', 'Swiggy', 'Blinkit', 'Zepto', 'Uber', 'Ola', 'Amazon', 'Flipkart', 'Netflix', 'Spotify', 'Jio'];
+  const methods = ['UPI (GPay/PhonePe)', 'Credit Card', 'Debit Card', 'Net Banking'];
+
+  for (let i = 0; i < count; i++) {
+    const isIncome = Math.random() > 0.85;
+    const amount = isIncome ? Math.floor(Math.random() * 50000) + 15000 : Math.floor(Math.random() * 2000) + 50;
+    
+    const dateObj = new Date();
+    dateObj.setDate(dateObj.getDate() - Math.floor(Math.random() * 30));
+    const dateStr = dateObj.toISOString().split('T')[0];
+    
+    transactions.push({
+      id: `sync_${Date.now()}_${i}`,
+      date: dateStr,
+      amount: amount,
+      type: isIncome ? 'income' : 'expense',
+      category: isIncome ? 'Salary / Income' : categories[Math.floor(Math.random() * categories.length)],
+      payment_method: methods[Math.floor(Math.random() * methods.length)],
+      note: isIncome ? 'Salary Credit (Mock)' : `POS / UPI @ ${merchants[Math.floor(Math.random() * merchants.length)]}`,
+      is_synced: true,
+      provider: req.body.provider || 'Simulated Bank'
+    });
+  }
+  
+  // Return the payload simulating an AA webhook response
+  res.json({
+    success: true,
+    message: 'Sync successful via mock provider',
+    data: { transactions }
+  });
+});
+
 // ── Start ───────────────────────────────────────────────────────────────────
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 

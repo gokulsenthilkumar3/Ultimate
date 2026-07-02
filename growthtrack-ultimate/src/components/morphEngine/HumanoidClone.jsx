@@ -202,6 +202,9 @@ export default function HumanoidClone({
   });
 
   // ── Dev fallback — use procedural humanoid when no GLB is loaded ─────────
+  // NOTE: visible check MUST come first to avoid rendering invisible clones
+  if (!visible) return null;
+
   if (isDev) {
     return (
       <ProceduralHumanoid
@@ -214,8 +217,7 @@ export default function HumanoidClone({
     );
   }
 
-    if (!visible) return null;
-    if (!bodyMesh) return <ProceduralHumanoid position={position} />;
+  if (!bodyMesh) return <ProceduralHumanoid cloneKey={cloneKey} position={position} renderMode={renderMode} opacity={opacity} visible={visible} />;
 
   return (
     <group

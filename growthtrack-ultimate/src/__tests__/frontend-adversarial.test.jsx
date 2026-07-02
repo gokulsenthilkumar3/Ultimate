@@ -54,8 +54,9 @@ describe('Frontend Adversarial & Boundary Tests', () => {
   it('should not crash on empty task list and show empty state', async () => {
     mocks.apiSyncMock.mockResolvedValue([]);
     wrap(<Tasks />);
-    // Tasks.jsx empty-state: "No pending tasks — add one above!"
-    expect(await screen.findByText(/No pending tasks/i)).toBeTruthy();
+    // EmptyState renders title="No Pending Tasks" in an <h3> and ctaLabel="Add First Task" in a button
+    const heading = await screen.findByRole('heading', { name: /No Pending Tasks/i });
+    expect(heading).toBeTruthy();
   });
 
   it('should gracefully handle tasks with missing critical properties', () => {

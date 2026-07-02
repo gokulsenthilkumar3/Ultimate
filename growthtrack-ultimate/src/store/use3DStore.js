@@ -377,6 +377,12 @@ const use3DStore = create(
       /** Auto-rotate the scene (pauses on hover) */
       autoRotate: true,
 
+      /** Render mode: 'WEBGL' = 3D canvas | 'SPRITE' = 2D sprite viewer */
+      renderMode: 'WEBGL',
+
+      /** Stress/cortisol level 0–100 — drives face-flush bio-feedback on model */
+      stressLevel: 0,
+
       // ───────────────────────────────────────────────────────────────────────
       // ACTIONS — VIEW MODE
       // ───────────────────────────────────────────────────────────────────────
@@ -671,9 +677,16 @@ const use3DStore = create(
       // ACTIONS — AUTO-ROTATE
       // ───────────────────────────────────────────────────────────────────────
 
-      setAutoRotate: (val) => {
-        set({ autoRotate: val }, false, "setAutoRotate");
-      },
+      setAutoRotate: (val) =>
+        set({ autoRotate: val }, false, "setAutoRotate"),
+
+      /** Toggle between 3D WebGL canvas and 2D sprite viewer */
+      setRenderMode: (mode) =>
+        set({ renderMode: mode }, false, `setRenderMode:${mode}`),
+
+      /** Update bio-feedback stress level (0–100) */
+      setStressLevel: (level) =>
+        set({ stressLevel: Math.max(0, Math.min(100, level)) }, false, "setStressLevel"),
 
       // ───────────────────────────────────────────────────────────────────────
       // ACTIONS — AMBITION PATH

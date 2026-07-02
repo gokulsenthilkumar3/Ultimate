@@ -56,7 +56,7 @@ const CAT_MAP = Object.fromEntries(CATEGORY_CONFIG.map(c => [c.key, c]));
 
 const DEFAULT_EMOJI = '✅';
 
-export default function HabitsMatrix() {
+export default React.memo(function HabitsMatrix() {
   const habits              = useStore(selectHabits);
   const addHabit            = useStore(selectAddHabit);
   const deleteHabit         = useStore(selectDeleteHabit);
@@ -116,7 +116,7 @@ export default function HabitsMatrix() {
     if (draft === undefined) return;
     // Extract first emoji/char only
     const clean = [...(draft.trim())][0] || DEFAULT_EMOJI;
-    await updateHabit({ ...habit, emoji: clean });
+    await updateHabit(habit.id, { emoji: clean });
     setEmojiEdit(e => { const n = { ...e }; delete n[habit.id]; return n; });
   };
 
@@ -143,10 +143,34 @@ export default function HabitsMatrix() {
       const cat = h.category && groups[h.category] !== undefined ? h.category : 'other';
       groups[cat].push(h);
     });
+    Object.keys(groups).forEach(k => {
+      groups[k].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    });
     return groups;
   }, [habits, catFilter]);
 
   const visibleCategories = CATEGORY_CONFIG.filter(c => groupedHabits[c.key]?.length > 0);
+
+  const handleMove = async (habit, dir) => {
+    const cat = habit.category && CAT_MAP[habit.category] ? habit.category : 'other';
+    const list = groupedHabits[cat];
+    const idx = list.findIndex(h => h.id === habit.id);
+    if (dir === 'up' && idx > 0) {
+      const updates = list.map((h, i) => ({ ...h, order_index: h.order_index ?? i }));
+      const temp = updates[idx].order_index;
+      updates[idx].order_index = updates[idx-1].order_index;
+      updates[idx-1].order_index = temp;
+      updateHabit(updates[idx].id, { order_index: updates[idx].order_index });
+      updateHabit(updates[idx-1].id, { order_index: updates[idx-1].order_index });
+    } else if (dir === 'down' && idx < list.length - 1) {
+      const updates = list.map((h, i) => ({ ...h, order_index: h.order_index ?? i }));
+      const temp = updates[idx].order_index;
+      updates[idx].order_index = updates[idx+1].order_index;
+      updates[idx+1].order_index = temp;
+      updateHabit(updates[idx].id, { order_index: updates[idx].order_index });
+      updateHabit(updates[idx+1].id, { order_index: updates[idx+1].order_index });
+    }
+  };
 
   return (
     <div className="space-y-6 p-4">
@@ -360,15 +384,23 @@ export default function HabitsMatrix() {
                         </div>
 
                         <div className="text-xs text-gray-400 w-10 text-right">{rate}%</div>
-
                         <button
                           onClick={() => setExpanded(e => ({ ...e, [habit.id]: !isOpen }))}
-                          className="text-gray-500 hover:text-white transition"
+                          className="text-gray-500 hover:text-white transition ml-2"
                         >
                           {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
 
-                        <button onClick={() => handleDelete(habit.id)} className="text-red-500 hover:text-red-400 transition">
+                        <div className="flex flex-col gap-1 ml-2">
+                          <button onClick={() => handleMove(habit, 'up')} className="text-gray-500 hover:text-white transition" title="Move Up">
+                            <ChevronUp size={14} />
+                          </button>
+                          <button onClick={() => handleMove(habit, 'down')} className="text-gray-500 hover:text-white transition" title="Move Down">
+                            <ChevronDown size={14} />
+                          </button>
+                        </div>
+
+                        <button onClick={() => handleDelete(habit.id)} className="text-red-500 hover:text-red-400 transition ml-2">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -477,4 +509,4 @@ export default function HabitsMatrix() {
       )}
     </div>
   );
-}
+});
