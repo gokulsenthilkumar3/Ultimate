@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import useStore, { selectAssessmentQA } from '../store/useStore';
+import useStore, { selectAssessmentQA, apiSync } from '../store/useStore';
 import { ChevronDown, ChevronUp, Search, ClipboardList, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 
-// ── New QA form questions
-const QA_FORM_QUESTIONS = [
+const FALLBACK_QUESTIONS = [
   { key: 'current_weight',    label: 'Current Weight',          placeholder: 'e.g. 72 kg' },
   { key: 'target_weight',     label: 'Target Weight',           placeholder: 'e.g. 80 kg' },
   { key: 'height',            label: 'Height',                  placeholder: 'e.g. 175 cm' },
@@ -22,11 +21,23 @@ export default function Assessment({ user }) {
   const saveAssessment = useStore(s => s.saveAssessmentQA);
   const toast = useToast();
 
-  // ── View state: 'history' | 'form'
+  const [questions, setQuestions] = useState(FALLBACK_QUESTIONS);
   const [view, setView]   = useState('history');
   const [step, setStep]   = useState(0);
   const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Fetch questions from DB
+  useEffect(() => {
+    apiSync('/assessment_questions', 'GET')
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setQuestions(data);
+        }
+      })
+      .catch(() => { /* keep fallback */ });
+  }, []);
+
 
   // ── History search
   const [expandedIndex, setExpandedIndex] = useState(0);
@@ -41,14 +52,14 @@ export default function Assessment({ user }) {
     const hydrated = {};
     latest.items.forEach(item => {
       // Match by question text to key
-      const match = QA_FORM_QUESTIONS.find(q => q.label.toLowerCase() === item.q.toLowerCase());
+      const match = questions.find(q => q.label.toLowerCase() === item.q.toLowerCase());
       if (match) hydrated[match.key] = item.a;
     });
     if (Object.keys(hydrated).length > 0) setAnswers(hydrated);
   }, [assessmentQA]);
 
-  const current = QA_FORM_QUESTIONS[step];
-  const totalSteps = QA_FORM_QUESTIONS.length;
+  const current = questions[step];
+  const totalSteps = questions.length;
   const progress = Math.round(((step + 1) / totalSteps) * 100);
 
   const handleNext = () => {
@@ -60,10 +71,10 @@ export default function Assessment({ user }) {
   };
 
   const handleSubmitForm = useCallback(async () => {
-    const unanswered = QA_FORM_QUESTIONS.filter(q => !answers[q.key]?.trim());
+    const unanswered = questions.filter(q => !answers[q.key]?.trim());
     if (unanswered.length > 0) {
       toast.error(`Please answer: ${unanswered[0].label}`);
-      setStep(QA_FORM_QUESTIONS.indexOf(unanswered[0]));
+      setStep(questions.indexOf(unanswered[0]));
       return;
     }
     setSubmitting(true);
@@ -71,7 +82,7 @@ export default function Assessment({ user }) {
       const round = {
         round: `Assessment — ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`,
         color: 'var(--accent)',
-        items: QA_FORM_QUESTIONS.map(q => ({ q: q.label, a: answers[q.key] || '—' })),
+        items: questions.map(q => ({ q: q.label, a: answers[q.key] || '—' })),
       };
       if (typeof saveAssessment === 'function') {
         await saveAssessment(round);
@@ -91,7 +102,7 @@ export default function Assessment({ user }) {
     } finally {
       setSubmitting(false);
     }
-  }, [answers, saveAssessment, toast]);
+  }, [answers, saveAssessment, toast, questions]);
 
   const filtered = searchTerm
     ? assessmentQA.filter(r => r.round.toLowerCase().includes(searchTerm.toLowerCase()) || r.items.some(i => i.q.toLowerCase().includes(searchTerm.toLowerCase()) || i.a.toLowerCase().includes(searchTerm.toLowerCase())))

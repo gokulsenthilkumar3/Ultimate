@@ -243,7 +243,7 @@ export default function Finance() {
         ))}
       </div>
 
-      {activeTab === 'Overview' && <OverviewTab {...{ statCards, savingsRate, methodData, COLORS, fmtINR, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, handleDeleteTransaction, expenses }} />}
+      {activeTab === 'Overview' && <OverviewTab {...{ statCards, savingsRate, methodData, COLORS, fmtINR, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, handleDeleteTransaction, expenses, selectedMonth }} />}
       {activeTab === 'Analytics' && <AnalyticsTab {...{ COLORS, fmtINR, form, pieData, TOOLTIP_STYLE, expenses }} />}
       {activeTab === 'Trends' && <TrendsTab {...{ fmtINR, form, TOOLTIP_STYLE, trendWindow, setTrendWindow, trendData, expenses }} />}
       {activeTab === 'Budgeting' && <BudgetingTab {...{ fmtINR, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }} />}

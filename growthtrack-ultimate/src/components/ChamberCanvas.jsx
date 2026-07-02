@@ -143,10 +143,7 @@ export default function ChamberCanvas({ className = "", style = {} }) {
         stencil:              true,
         depth:                true,
         preserveDrawingBuffer: true,
-        // Override R3F's default ACESFilmicToneMapping — in three.js 0.184
-        // this triggers PMREMGenerator which internally creates a CubeCamera
-        // that crashes when shadows are disabled. Use LinearToneMapping instead.
-        toneMapping:          THREE.LinearToneMapping,
+        toneMapping:          THREE.ACESFilmicToneMapping,
       }}
       dpr={lodConfig.dpr}
       camera={{ fov: 42, near: 0.1, far: 100 }}

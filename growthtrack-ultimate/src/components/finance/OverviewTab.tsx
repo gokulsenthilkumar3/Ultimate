@@ -5,7 +5,7 @@ import StatCard from '../ui/StatCard';
 import EmptyState from '../ui/EmptyState';
 
 
-export default function OverviewTab({ statCards, savingsRate, methodData, COLORS, fmtINR, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, handleDeleteTransaction, expenses }) {
+export default function OverviewTab({ statCards, savingsRate, methodData, COLORS, fmtINR, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, handleDeleteTransaction, expenses, selectedMonth }) {
   {/* ── OVERVIEW ── */}
       return (
     <>

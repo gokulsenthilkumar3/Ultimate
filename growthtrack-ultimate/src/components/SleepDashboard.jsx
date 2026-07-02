@@ -86,7 +86,7 @@ export default function SleepDashboard() {
     if (!logForm.date) return toast.error('Date is required');
     if (!logForm.bed_time || !logForm.wake_time) return toast.error('Enter bed and wake times');
     const duration = parseFloat(calcDuration(logForm.bed_time, logForm.wake_time));
-    if (duration <= 0 || duration > 14) return toast.error('Invalid sleep duration calculated');
+    if (duration <= 0 || duration > 12) return toast.error('Invalid sleep duration (max 12h)');
     setSaving(true);
     try {
       await saveSleepLog({ ...logForm, duration });

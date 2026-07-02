@@ -401,6 +401,10 @@ const useStore = create<any>()(
         }
       },
 
+      // OTT sync state — persisted in store (not local useState)
+      entertainmentSync: { otts: ['Netflix'] } as any,
+      setEntertainmentSync: (sync: any) => set({ entertainmentSync: sync }),
+
       addNote: async (note: any) => {
         const res = await apiSync('/notes', 'POST', note);
         if (res?.id) {

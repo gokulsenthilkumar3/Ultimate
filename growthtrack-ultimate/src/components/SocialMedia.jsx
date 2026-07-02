@@ -21,7 +21,29 @@ export default function SocialMedia() {
     }
   }, [user]);
 
+  const validateUrls = () => {
+    for (const [platform, link] of Object.entries(socialData)) {
+      if (!link || !link.trim()) continue;
+      // If it looks like a URL (has a dot or starts with http) but isn't valid → warn
+      const looksLikeUrl = link.includes('.') || link.startsWith('http');
+      if (looksLikeUrl) {
+        try {
+          const url = link.startsWith('http') ? link : 'https://' + link;
+          new URL(url);
+        } catch {
+          return platform; // return the invalid platform name
+        }
+      }
+    }
+    return null;
+  };
+
   const handleSave = async () => {
+    const invalid = validateUrls();
+    if (invalid) {
+      toast.error(`Invalid URL for ${invalid}. Please enter a valid URL or handle.`);
+      return;
+    }
     setIsSaving(true);
     try {
       const updatedUser = { ...user, socialMedia: socialData };

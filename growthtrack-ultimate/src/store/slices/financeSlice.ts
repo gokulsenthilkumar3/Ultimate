@@ -57,4 +57,28 @@ export const createFinanceSlice: StateCreator<any, [], [], FinanceSlice> = (set)
     }));
     apiSync(`/budgets/${id}`, 'DELETE').catch(() => {});
   },
+
+  syncBankData: async (provider: string) => {
+    try {
+      const result = await apiSync('/finance/sync/bank', 'POST', { provider });
+      if (result && result.data && Array.isArray(result.data.transactions)) {
+        set((state: any) => {
+          const existingTxs = state.finance?.transactions || [];
+          // Simple dedup by ID just in case
+          const newTxs = result.data.transactions.filter(nt => !existingTxs.some(et => et.id === nt.id));
+          return {
+            finance: {
+              ...state.finance,
+              transactions: [...newTxs, ...existingTxs]
+            }
+          };
+        });
+        return result.data.transactions.length; // return count of new txs
+      }
+    } catch (e) {
+      console.error('Failed to sync bank data', e);
+      throw e;
+    }
+    return 0;
+  },
 });
