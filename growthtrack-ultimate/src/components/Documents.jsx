@@ -8,6 +8,8 @@ import useStore, { selectDocuments, selectAddDocument, selectDeleteDocument } fr
 function UploadModal({ onUpload, onClose }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileType, setFileType] = useState('Private');
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const fileRef = useRef();
 
   const handleFileChange = (e) => {
@@ -17,12 +19,25 @@ function UploadModal({ onUpload, onClose }) {
 
   const handleConfirm = () => {
     if (!selectedFile) return;
-    const sizeKB = selectedFile.size / 1024;
-    const size = sizeKB < 1024
-      ? `${sizeKB.toFixed(1)} KB`
-      : `${(sizeKB / 1024).toFixed(2)} MB`;
-    onUpload({ name: selectedFile.name, size, type: fileType, date: new Date().toLocaleDateString() });
-    onClose();
+    setUploading(true);
+    let current = 0;
+    const interval = setInterval(() => {
+      current += Math.random() * 20;
+      if (current >= 100) {
+        clearInterval(interval);
+        setProgress(100);
+        setTimeout(() => {
+          const sizeKB = selectedFile.size / 1024;
+          const size = sizeKB < 1024
+            ? `${sizeKB.toFixed(1)} KB`
+            : `${(sizeKB / 1024).toFixed(2)} MB`;
+          onUpload({ name: selectedFile.name, size, type: fileType, date: new Date().toLocaleDateString() });
+          onClose();
+        }, 500);
+      } else {
+        setProgress(current);
+      }
+    }, 200);
   };
 
   return (
@@ -56,8 +71,12 @@ function UploadModal({ onUpload, onClose }) {
           ))}
         </div>
 
-        <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleConfirm} disabled={!selectedFile}>
-          <UploadCloud size={16} /> Upload File
+        <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', position: 'relative', overflow: 'hidden' }} onClick={handleConfirm} disabled={!selectedFile || uploading}>
+          {uploading && (
+            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${progress}%`, background: 'rgba(255,255,255,0.2)', transition: 'width 0.2s' }} />
+          )}
+          <UploadCloud size={16} style={{ position: 'relative', zIndex: 1 }} /> 
+          <span style={{ position: 'relative', zIndex: 1 }}>{uploading ? `Uploading... ${Math.round(progress)}%` : 'Upload File'}</span>
         </button>
       </div>
     </div>
@@ -75,6 +94,20 @@ export default function Documents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [syncedProviders, setSyncedProviders] = useState([]);
+
+  const toggleSync = (provider) => {
+    if (syncedProviders.includes(provider)) {
+      setSyncedProviders(p => p.filter(x => x !== provider));
+      toast.success(`${provider} unlinked successfully.`);
+    } else {
+      toast.success(`Authenticating ${provider}...`);
+      setTimeout(() => {
+        setSyncedProviders(p => [...p, provider]);
+        toast.success(`${provider} linked successfully.`);
+      }, 1000);
+    }
+  };
 
   const handleUpload = async (fileData) => {
     try {
@@ -126,9 +159,13 @@ export default function Documents() {
           <p className="text-secondary">{documents.length} items synced to cloud vault.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn-ghost" onClick={() => toast.success('Connecting to Google Drive...')}>
-            <Cloud size={16} style={{ marginRight: '8px' }} /> Sync G-Drive
+          <button className={`btn-${syncedProviders.includes('Google Drive') ? 'primary' : 'ghost'}`} onClick={() => toggleSync('Google Drive')} title="Sync Google Drive">
+            <Cloud size={16} /> {syncedProviders.includes('Google Drive') ? 'G-Drive Linked' : 'Link G-Drive'}
           </button>
+          <button className={`btn-${syncedProviders.includes('OneDrive') ? 'primary' : 'ghost'}`} onClick={() => toggleSync('OneDrive')} title="Sync OneDrive">
+            <Cloud size={16} /> {syncedProviders.includes('OneDrive') ? 'OneDrive Linked' : 'Link OneDrive'}
+          </button>
+          <div style={{ width: 1, background: 'var(--border)', margin: '0 4px' }} />
           <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
             <UploadCloud size={16} style={{ marginRight: '8px' }} /> Upload File
           </button>

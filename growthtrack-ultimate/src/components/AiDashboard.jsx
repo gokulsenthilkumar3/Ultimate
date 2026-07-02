@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, BrainCircuit, Loader2, Copy, Check, Trash2, ExternalLink, Zap } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Bot, Send, Sparkles, BrainCircuit, Loader2, Copy, Check, Trash2, Zap, User } from 'lucide-react';
 import { askGemini, trackEvent, getConfig, initRemoteConfig } from '../lib/firebase';
 import useStore from '../store/useStore';
 
@@ -12,12 +12,53 @@ const QUICK_PROMPTS = [
   { label: 'Finance Tips', prompt: 'Give me 5 practical money-saving habits I can start today.' },
 ];
 
+// Build a rich user context string for injecting into the AI system prompt
+function buildUserContext(user, goals, habits, tasks, metricLogs) {
+  if (!user) return '';
+  const lines = [];
+  if (user.name) lines.push(`Name: ${user.name}`);
+  if (user.age)  lines.push(`Age: ${user.age}`);
+  const weight = metricLogs?.slice(-1)[0]?.weight || user.weight;
+  const height = user.height;
+  if (weight) lines.push(`Weight: ${weight} kg`);
+  if (height) lines.push(`Height: ${height} cm`);
+  if (weight && height) {
+    const bmi = (weight / Math.pow(height / 100, 2)).toFixed(1);
+    lines.push(`BMI: ${bmi}`);
+  }
+  if (user.bodyFat) lines.push(`Body Fat: ${user.bodyFat}%`);
+  // Active goals
+  const activeGoals = (goals || []).filter(g => g.status === 'active').slice(0, 4);
+  if (activeGoals.length) {
+    lines.push(`Active goals: ${activeGoals.map(g => `${g.title} (${g.current_value || 0}/${g.target_value || '?'} ${g.unit || ''})`).join(', ')}`);
+  }
+  // Today's habits
+  const today = new Date().toISOString().slice(0, 10);
+  const pendingHabits = (habits || []).filter(h => !h.last_log || h.last_log < today).slice(0, 5);
+  if (pendingHabits.length) {
+    lines.push(`Pending habits today: ${pendingHabits.map(h => h.name || h.title).join(', ')}`);
+  }
+  // Overdue/urgent tasks
+  const overdueTasks = (tasks || []).filter(t => !t.done && t.due_date && t.due_date < today).slice(0, 3);
+  if (overdueTasks.length) {
+    lines.push(`Overdue tasks: ${overdueTasks.map(t => t.title).join(', ')}`);
+  }
+  return lines.length ? `\n\nUser profile:\n${lines.join('\n')}` : '';
+}
+
 export default function AiDashboard() {
-  const user = useStore(s => s.user);
+  const user      = useStore(s => s.user);
+  const goals     = useStore(s => s.goals);
+  const habits    = useStore(s => s.habits);
+  const tasks     = useStore(s => s.tasks);
+  const metricLogs = useStore(s => s.metric_logs);
+
+  const firstName = user?.name?.split(' ')[0] || user?.username?.split(' ')[0] || '';
+
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      text: `Hey${user?.name ? ' ' + user.name.split(' ')[0] : ''}! I'm your GrowthTrack AI powered by Gemini. Ask me anything about fitness, nutrition, habits, finance, or your goals.`,
+      text: `Hey${firstName ? ' ' + firstName : ''}! I'm your GrowthTrack AI powered by Gemini. Ask me anything about fitness, nutrition, habits, finance, or your goals — I have access to your profile data to give personalised advice.`,
       ts: Date.now(),
     }
   ]);
@@ -27,6 +68,12 @@ export default function AiDashboard() {
   const [aiEnabled, setAiEnabled] = useState(true);
   const [model, setModel]       = useState('gemini-2.0-flash');
   const bottomRef               = useRef(null);
+
+  // Build context string once per render (memoised)
+  const userContext = useMemo(
+    () => buildUserContext(user, goals, habits, tasks, metricLogs),
+    [user, goals, habits, tasks, metricLogs]
+  );
 
   useEffect(() => {
     initRemoteConfig().then(() => {
@@ -50,10 +97,9 @@ export default function AiDashboard() {
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
     try {
-      // Build context-aware system prompt
-      const systemContext = user
-        ? `You are GrowthTrack AI, a personal assistant embedded in GrowthTrack Ultimate, a health and productivity app. The user's name is ${user.name || 'the user'}. Their goals include fitness, habit tracking, nutrition, and personal finance. Be concise, actionable, and encouraging.\n\nUser question: `
-        : 'You are GrowthTrack AI, a personal health and productivity assistant. Be concise and actionable.\n\nUser question: ';
+      // Build context-aware system prompt with full user data
+      const baseContext = `You are GrowthTrack AI, a personal coach embedded in GrowthTrack Ultimate — a health, fitness, and productivity tracking app. Be concise (max 250 words), actionable, encouraging, and specific to the user's data. Never mention you are an AI model by Google; just be GrowthTrack AI.${userContext}`;
+      const systemContext = `${baseContext}\n\nUser question: `;
       const response = await askGemini(systemContext + text, model);
       setMessages(prev => [...prev, { role: 'assistant', text: response, ts: Date.now() }]);
     } catch (err) {

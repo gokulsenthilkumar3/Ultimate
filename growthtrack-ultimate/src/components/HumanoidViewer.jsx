@@ -26,6 +26,7 @@ import { useToast } from '../hooks/useToast';
 
 // Lazy load the heavy 3D canvas
 const ChamberCanvas = lazy(() => import('./ChamberCanvas'));
+const Sprite3DViewer = lazy(() => import('./Sprite3DViewer'));
 
 const EMPTY_OBJECT = {};
 const EMPTY_ARRAY = [];
@@ -81,7 +82,7 @@ export default function HumanoidViewer() {
   
   // ── Store
   const viewMode = use3DStore((s) => s.viewMode);
-  const renderMode = 'WEBGL';
+  const renderMode = use3DStore((s) => s.renderMode);
   const cameraPreset = use3DStore((s) => s.cameraPreset);
   const autoRotate = use3DStore((s) => s.autoRotate);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -97,14 +98,16 @@ export default function HumanoidViewer() {
   const milestones = use3DStore((s) => s.ambitionPath?.milestones || EMPTY_ARRAY);
   const snapshots = use3DStore((s) => s.timelineSnaps || EMPTY_ARRAY);
   const timelinePos = use3DStore((s) => s.timelineScrubIndex || 0);
-  const stressLevel = 0;
+  const stressLevel = use3DStore((s) => s.stressLevel);
+
 
   // ── Actions
   const setViewMode = use3DStore((s) => s.setViewMode);
-  const setRenderMode = () => {};
+  const setRenderMode = use3DStore((s) => s.setRenderMode);
   const setCameraPreset = use3DStore((s) => s.setCameraPreset);
   const setAutoRotate = use3DStore((s) => s.setAutoRotate);
-  
+  const setStressLevel = use3DStore((s) => s.setStressLevel);
+
   const setWardrobe = use3DStore((s) => s.setWardrobe);
   const setAnatomyDepth = use3DStore((s) => s.setAnatomyDepth);
   const setSelectedPart = use3DStore((s) => s.setFocusedBodyPart);
@@ -115,7 +118,6 @@ export default function HumanoidViewer() {
   const setSplitPos = useCallback((v) => setSplitDividerX(v/100), [setSplitDividerX]);
   
   const setQuality = use3DStore((s) => s.setGpuTier);
-  const setStressLevel = () => {};
   const setTimelinePos = use3DStore((s) => s.scrubTimeline);
   const updateCurrentMetric = use3DStore((s) => s.setCurrentMetric);
   const updateGoalMetric    = use3DStore((s) => s.setGoalMetric);
@@ -241,7 +243,7 @@ export default function HumanoidViewer() {
             </div>
           </div>
 
-          {/* 3D Canvas */}
+          {/* 3D Canvas or Sprite fallback */}
           <ErrorBoundary
             fallback={
               <div className="chamber-spinner">
@@ -254,9 +256,12 @@ export default function HumanoidViewer() {
             }
           >
             <Suspense fallback={<ChamberSpinner />}>
-              <ChamberCanvas />
+              {renderMode === 'SPRITE'
+                ? <Sprite3DViewer />
+                : <ChamberCanvas />}
             </Suspense>
           </ErrorBoundary>
+
 
           {/* Bottom labels */}
           <div className="chamber-viewport-labels">
@@ -286,28 +291,39 @@ export default function HumanoidViewer() {
             </div>
           )}
 
-          {/* Timeline scrubber */}
-          {viewMode === 'TIMELINE' && (
-            <div className="chamber-timeline">
-              <div className="chamber-timeline__track">
-                {milestones.map((m, i) => (
-                  <div key={i} className={`chamber-milestone${m.achieved ? ' achieved' : ''}`}
-                    style={{ left: `${((m.monthIndex ?? 0) / 20) * 100}%` }}
-                    title={m.label}>
-                    <div className="chamber-milestone__dot" />
-                    <span className="chamber-milestone__label">{m.label.split('—')[0]}</span>
-                  </div>
-                ))}
-                <input type="range" min="0" max="100" value={timelinePos}
-                  onChange={(e) => setTimelinePos(parseInt(e.target.value))}
-                  className="chamber-timeline__slider" />
+          {/* ── TIMELINE SCRUBBER ── */}
+          {viewMode === 'TIMELINE' && (() => {
+            const firstSnap = snapshots[0];
+            const lastSnap  = snapshots[snapshots.length - 1];
+            const startLabel = firstSnap
+              ? new Date(firstSnap.date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+              : 'Start';
+            const endLabel = lastSnap
+              ? new Date(lastSnap.date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+              : 'Goal';
+            return (
+              <div className="chamber-timeline">
+                <div className="chamber-timeline__track">
+                  {milestones.map((m, i) => (
+                    <div key={i} className={`chamber-milestone${m.achieved ? ' achieved' : ''}`}
+                      style={{ left: `${((m.monthIndex ?? 0) / 20) * 100}%` }}
+                      title={m.label}>
+                      <div className="chamber-milestone__dot" />
+                      <span className="chamber-milestone__label">{m.label.split('—')[0]}</span>
+                    </div>
+                  ))}
+                  <input type="range" min="0" max={Math.max(snapshots.length - 1, 1)} value={timelinePos}
+                    onChange={(e) => setTimelinePos(parseInt(e.target.value))}
+                    className="chamber-timeline__slider" />
+                </div>
+                <div className="chamber-timeline__ends">
+                  <span>{startLabel}</span>
+                  <span style={{ color: 'var(--chamber-gold)' }}>{endLabel} — DESTINATION</span>
+                </div>
               </div>
-              <div className="chamber-timeline__ends">
-                <span>Apr 2026</span>
-                <span style={{ color: 'var(--chamber-gold)' }}>Dec 2026 — GREEK GOD</span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
+
 
           {/* Floating action buttons */}
           <div className="chamber-fab-row">
@@ -427,7 +443,11 @@ export default function HumanoidViewer() {
                     <input type="range" min="0" max="100" value={stressLevel}
                       onChange={(e) => setStressLevel(parseInt(e.target.value))}
                       className="chamber-slider" style={{ accentColor: '#ef4444' }} />
+                    <p style={{ fontSize: '0.68rem', color: stressLevel > 60 ? '#ef4444' : 'var(--text-3)', marginTop: '4px' }}>
+                      {stressLevel > 80 ? '🔴 High cortisol — face flush active' : stressLevel > 40 ? '🟡 Moderate stress' : '🟢 Relaxed state'}
+                    </p>
                   </div>
+
                 </div>
               )}
 

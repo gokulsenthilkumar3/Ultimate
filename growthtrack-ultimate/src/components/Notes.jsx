@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Pin, PinOff, Save, Search, FileText, Tag, X } from 'lucide-react';
+import { Plus, Trash2, Pin, PinOff, Save, Search, FileText, Tag, X, Edit3, Eye } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useToast } from '../hooks/useToast';
 import useStore, {
   selectNotes, selectAddNote, selectDeleteNote, selectUpdateNote
@@ -41,6 +43,7 @@ export default function Notes() {
   const [tagInput, setTagInput]     = useState('');
   const [search, setSearch]         = useState('');
   const [saving, setSaving]         = useState(false);
+  const [isPreview, setIsPreview]   = useState(true);
   const toast = useToast();
 
   const selectNote = (note) => {
@@ -49,6 +52,7 @@ export default function Notes() {
     setEditContent(note.content || '');
     setEditColor(note.color || 'var(--accent)');
     setEditTags(note.tags || []);
+    setIsPreview(true);
   };
 
   const handleCreateNote = async () => {
@@ -208,6 +212,14 @@ export default function Notes() {
                     outline: editColor === c.val ? `2.5px solid ${c.val}` : '2px solid transparent', outlineOffset: '2px',
                     transform: editColor === c.val ? 'scale(1.2)' : 'scale(1)', transition: 'all 0.2s' }} />
               ))}
+              <div style={{ display: 'flex', background: 'var(--bg-dark)', borderRadius: '6px', padding: '2px' }}>
+                 <button onClick={() => setIsPreview(false)} className="btn-ghost" style={{ padding: '4px 8px', background: !isPreview ? 'var(--accent)' : 'transparent', color: !isPreview ? '#fff' : 'var(--text-2)' }}>
+                   <Edit3 size={14} />
+                 </button>
+                 <button onClick={() => setIsPreview(true)} className="btn-ghost" style={{ padding: '4px 8px', background: isPreview ? 'var(--accent)' : 'transparent', color: isPreview ? '#fff' : 'var(--text-2)' }}>
+                   <Eye size={14} />
+                 </button>
+              </div>
               <button onClick={handleSaveNote} className="btn-primary" disabled={saving} style={{ padding: '7px 16px' }}>
                 <Save size={14} /> {saving ? 'Saving…' : 'Save'}
               </button>
@@ -234,11 +246,28 @@ export default function Notes() {
             </div>
 
             {/* Content */}
-            <textarea value={editContent} onChange={e => setEditContent(e.target.value)}
-              placeholder={`Start writing…\n\nTip: Use Ctrl+S to save quickly.`}
-              style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-1)', fontSize: '0.95rem', lineHeight: 1.8, padding: '1.5rem 2rem', resize: 'none', outline: 'none', fontFamily: 'var(--font-body)' }}
-              onKeyDown={e => { if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleSaveNote(); } }}
-            />
+            {isPreview ? (
+              <div 
+                className="markdown-body" 
+                style={{ flex: 1, padding: '1.5rem 2rem', overflowY: 'auto', color: 'var(--text-1)', fontSize: '0.95rem', lineHeight: 1.8 }}
+                onDoubleClick={() => setIsPreview(false)}
+              >
+                {editContent.trim() ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {editContent}
+                  </ReactMarkdown>
+                ) : (
+                  <p style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>Double-click to start writing...</p>
+                )}
+              </div>
+            ) : (
+              <textarea value={editContent} onChange={e => setEditContent(e.target.value)}
+                placeholder={`Start writing…\n\nTip: Use Ctrl+S to save quickly.`}
+                style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-1)', fontSize: '0.95rem', lineHeight: 1.8, padding: '1.5rem 2rem', resize: 'none', outline: 'none', fontFamily: 'var(--font-body)' }}
+                onKeyDown={e => { if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleSaveNote(); } }}
+                autoFocus
+              />
+            )}
 
             {/* Footer */}
             <div style={{ padding: '0.6rem 2rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>

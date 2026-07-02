@@ -64,11 +64,9 @@ describe('Frontend Adversarial & Boundary Tests', () => {
   it('should not crash on empty task list and show empty state', async () => {
     mocks.apiSyncMock.mockResolvedValue([]);
     wrap(<Tasks />);
-    // Use getAllByText to guard against duplicate renders until App.jsx
-    // duplicate-main block is removed. Once that fix lands this will
-    // naturally find exactly 1 element and the length assertion holds.
-    const emptyStateEls = await screen.findAllByText(/No pending tasks/i);
-    expect(emptyStateEls.length).toBeGreaterThanOrEqual(1);
+    // EmptyState renders title="No Pending Tasks" in an <h3> and ctaLabel="Add First Task" in a button
+    const heading = await screen.findByRole('heading', { name: /No Pending Tasks/i });
+    expect(heading).toBeTruthy();
   });
 
   it('should gracefully handle tasks with missing critical properties', async () => {

@@ -1,10 +1,30 @@
-import React from 'react';
-import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon, ListTodo } from 'lucide-react';
+import React, { useState } from 'react';
+import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon, ListTodo, Loader2 } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
-import { apiSync } from '../../store/useStore';
+import useStore from '../../store/useStore';
 
 export default function SyncTab({ axioLastSync, axioSyncing, handleAxioSync, csvUploading, handleCsvImport }) {
   const toast = useToast();
+  const syncBankData = useStore((state: any) => state.syncBankData);
+  const [syncingProvider, setSyncingProvider] = useState(null);
+
+  const handleProviderSync = async (providerName) => {
+    setSyncingProvider(providerName);
+    toast.info(`Connecting to ${providerName}...`);
+    try {
+      // Simulate OAuth network delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      toast.info(`Authenticating and fetching secure ledger...`);
+      
+      const count = await syncBankData(providerName);
+      
+      toast.success(`Successfully synced ${count} new transactions from ${providerName}!`);
+    } catch (e) {
+      toast.error(`Failed to sync from ${providerName}. Please try again.`);
+    } finally {
+      setSyncingProvider(null);
+    }
+  };
 
   return (
     <div className="glass-card" style={{ padding: '2.5rem' }}>
@@ -27,13 +47,24 @@ export default function SyncTab({ axioLastSync, axioSyncing, handleAxioSync, csv
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        {[{ name: 'BHIM / UPI Apps', color: '#0ea5e9', desc: 'Sync GPay, PhonePe, and PayTM flow.' }, { name: 'Slice / Uni Card', color: '#8b5cf6', desc: 'Direct API sync for credit lines.' }, { name: 'Roarbank (Neobank)', color: '#f59e0b', desc: 'Real-time settlement data.' }, { name: 'HDFC / SBI NetBanking', color: '#10b981', desc: 'Secure bank statement parsing.' }].map(p => (
-          <div key={p.name} className="hover-lift-dynamic" style={{ '--hover-color': p.color, border: `1px solid ${p.color}33`, padding: '1.5rem', borderRadius: '20px', background: `linear-gradient(135deg, ${p.color}08, transparent)`, display: 'flex', flexDirection: 'column', gap: '0.75rem', cursor: 'pointer', transition: 'all 0.3s' }}>
-            <h4 style={{ fontWeight: 800, fontSize: '1rem', color: p.color }}>{p.name}</h4>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', lineHeight: 1.4 }}>{p.desc}</p>
-            <button className="btn-ghost" style={{ width: '100%', borderColor: p.color, color: p.color, fontSize: '0.7rem' }} onClick={() => toast.success(`${p.name} sync initiated.`)}>AUTHORIZE CONNECTION</button>
-          </div>
-        ))}
+        {[{ name: 'BHIM / UPI Apps', color: '#0ea5e9', desc: 'Sync GPay, PhonePe, and PayTM flow.' }, { name: 'Slice / Uni Card', color: '#8b5cf6', desc: 'Direct API sync for credit lines.' }, { name: 'Roarbank (Neobank)', color: '#f59e0b', desc: 'Real-time settlement data.' }, { name: 'HDFC / SBI NetBanking', color: '#10b981', desc: 'Secure bank statement parsing.' }].map(p => {
+          const isSyncing = syncingProvider === p.name;
+          return (
+            <div key={p.name} className="hover-lift-dynamic" style={{ '--hover-color': p.color, border: `1px solid ${p.color}33`, padding: '1.5rem', borderRadius: '20px', background: `linear-gradient(135deg, ${p.color}08, transparent)`, display: 'flex', flexDirection: 'column', gap: '0.75rem', cursor: 'pointer', transition: 'all 0.3s' }}>
+              <h4 style={{ fontWeight: 800, fontSize: '1rem', color: p.color }}>{p.name}</h4>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', lineHeight: 1.4 }}>{p.desc}</p>
+              <button 
+                className="btn-ghost" 
+                style={{ width: '100%', borderColor: p.color, color: p.color, fontSize: '0.7rem', opacity: isSyncing || syncingProvider ? 0.5 : 1 }} 
+                onClick={() => handleProviderSync(p.name)}
+                disabled={!!syncingProvider}
+              >
+                {isSyncing ? <Activity className="spin" size={14} style={{ display: 'inline', marginRight: 4 }} /> : null}
+                {isSyncing ? 'AUTHORIZING...' : 'AUTHORIZE CONNECTION'}
+              </button>
+            </div>
+          );
+        })}
       </div>
       <div className="glass-card" style={{ background: 'rgba(0,0,0,0.2)', border: '1px dashed var(--border-strong)', textAlign: 'center', padding: '2rem' }}>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-2)', marginBottom: '1rem' }}>Missing an app? Import via CSV — supports 200+ Indian financial institutions.</p>

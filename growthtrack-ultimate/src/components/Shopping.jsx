@@ -88,6 +88,8 @@ export default function Shopping() {
 
   const clearPurchased = useCallback(() => {
     const purchased = items.filter(i => i.purchased);
+    if (purchased.length === 0) return;
+    if (!window.confirm(`Are you sure you want to clear ${purchased.length} purchased item(s)?`)) return;
     purchased.forEach(i => deleteItem(i.id));
     toast.success(`${purchased.length} purchased item${purchased.length !== 1 ? 's' : ''} cleared.`);
   }, [items, deleteItem, toast]);

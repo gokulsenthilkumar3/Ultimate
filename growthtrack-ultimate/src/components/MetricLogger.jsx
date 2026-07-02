@@ -79,6 +79,15 @@ export default function MetricLogger({ onClose, onSave }) {
   // ── Submit: upload photo first (if any), then save metric log + progress_entry
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.weight !== undefined) {
+      const w = parseFloat(formData.weight);
+      if (isNaN(w) || w < 20 || w > 300) {
+        toast.error('Please enter a valid weight (20 - 300 kg).');
+        return;
+      }
+    }
+
     let finalPhotoUrl = photoUrl; // already uploaded?
     if (photoFile && !photoUrl) {
       finalPhotoUrl = await uploadPhoto();

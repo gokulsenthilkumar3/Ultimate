@@ -19,13 +19,14 @@ const EMPTY_FORM = { title: '', type: 'Anime', season: 1, episode: 1, total_epis
 
 /** Render 0-10 star dots for a rating value */
 function RatingDisplay({ value }) {
-  const filled = Math.round(value);
+  const numVal = typeof value === 'number' && !isNaN(value) ? value : 0;
+  const filled = Math.round(numVal);
   return (
     <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
       {Array.from({ length: 10 }).map((_, i) => (
         <span key={i} style={{ fontSize: '8px', color: i < filled ? '#e5a50a' : 'rgba(255,255,255,0.15)' }}>●</span>
       ))}
-      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#e5a50a', marginLeft: '4px' }}>{value.toFixed(1)}</span>
+      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#e5a50a', marginLeft: '4px' }}>{numVal.toFixed(1)}</span>
     </div>
   );
 }
@@ -37,9 +38,21 @@ export default function Entertainment() {
   const updateMediaProgress = useStore(selectUpdateMediaProgress);
   const toast = useToast();
 
+  const entertainmentSync = useStore(s => s.entertainmentSync) || { otts: ['Netflix'] };
+  const setEntertainmentSync = useStore(s => s.setEntertainmentSync);
+
   const [form, setForm]             = useState(EMPTY_FORM);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab]   = useState('Library');
+  const syncedOTTs = entertainmentSync.otts || ['Netflix'];
+
+  const toggleSync = (provider) => {
+    const next = syncedOTTs.includes(provider)
+      ? syncedOTTs.filter(x => x !== provider)
+      : [...syncedOTTs, provider];
+    setEntertainmentSync({ otts: next });
+    toast.success(syncedOTTs.includes(provider) ? `${provider} unlinked.` : `${provider} linked.`);
+  };
 
   const filteredMedia = useMemo(() =>
     media.filter(m =>
@@ -169,7 +182,10 @@ export default function Entertainment() {
                         <div key={field} style={{ flex: 1 }}>
                           <p className="label-caps" style={{ marginBottom: '4px' }}>{label}</p>
                           <input type="number" value={item[field]}
-                            onChange={e => handleProgress(item.id, field, parseInt(e.target.value) || 1)}
+                            onChange={e => {
+                              const v = parseInt(e.target.value);
+                              if (v >= 1) handleProgress(item.id, field, v);
+                            }}
                             className="form-input" style={{ padding: '0.4rem', fontSize: '0.82rem' }} min="1" />
                         </div>
                       ))}
@@ -237,20 +253,22 @@ export default function Entertainment() {
           <p className="text-secondary" style={{ marginBottom: '2rem' }}>Connect your streaming accounts to automatically pull watch history into your library.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
             {[
-              { name: 'Netflix',        color: '#E50914', status: 'Connected' },
-              { name: 'Amazon Prime',   color: '#00A8E1', status: 'Connect' },
-              { name: 'Disney+ Hotstar',color: '#032541', status: 'Connect' },
-              { name: 'Zee5',           color: '#8230C6', status: 'Connect' },
-            ].map(provider => (
+              { name: 'Netflix',        color: '#E50914' },
+              { name: 'Amazon Prime',   color: '#00A8E1' },
+              { name: 'Disney+ Hotstar',color: '#032541' },
+              { name: 'Zee5',           color: '#8230C6' },
+            ].map(provider => {
+              const isConnected = syncedOTTs.includes(provider.name);
+              return (
               <div key={provider.name}
                 style={{ border: `1px solid ${provider.color}55`, padding: '1.5rem', borderRadius: '12px', background: `linear-gradient(135deg, ${provider.color}11, transparent)`, display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <h4 style={{ fontWeight: 800, fontSize: '1.2rem', color: provider.color }}>{provider.name}</h4>
-                <button className="btn-ghost" style={{ width: '100%', borderColor: provider.color, color: provider.status === 'Connected' ? 'var(--text-1)' : provider.color, background: provider.status === 'Connected' ? `${provider.color}44` : 'transparent' }}
-                  onClick={() => toast.success(`${provider.name} sync initiated.`)}>
-                  {provider.status}
+                <button className="btn-ghost" style={{ width: '100%', borderColor: provider.color, color: isConnected ? 'var(--text-1)' : provider.color, background: isConnected ? `${provider.color}44` : 'transparent' }}
+                  onClick={() => toggleSync(provider.name)}>
+                  {isConnected ? 'Unlink' : 'Connect'}
                 </button>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}
