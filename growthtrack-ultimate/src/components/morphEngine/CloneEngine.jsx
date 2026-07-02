@@ -158,21 +158,36 @@ function SplitDivider({ dividerX }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TimelineClone() {
-  // We use cloneA geometry but override weights with timeline scrub output.
-  // The scrubbed state is pushed into a temporary store override.
-  // Simplest approach: use cloneA and sync scrubbed weights in useFrame.
-  const getScrubbedMorphState = use3DStore.getState().getScrubbedMorphState;
+  // Read scrubbed state from store on each timeline scrub change
+  // WITHOUT permanently mutating cloneA — we pass scrubbedMetrics as local state
+  const scrubIndex = use3DStore((s) => s.timelineScrubIndex);
+  const snapshots  = use3DStore((s) => s.timelineSnaps);
 
-  useEffect(() => {
-    // Subscribe to timeline scrub changes and push into cloneA weights
-    return use3DStore.subscribe(
-      (s) => s.timelineScrubIndex,
-      () => {
-        const scrubbedState = use3DStore.getState().getScrubbedMorphState();
-        use3DStore.getState().setCurrentMetrics(scrubbedState.metrics);
-      }
+  // Compute scrubbed metrics locally (no store mutation)
+  const scrubbedMetrics = useMemo(() => {
+    if (scrubIndex === null || !snapshots.length) return null;
+    const i     = Math.floor(scrubIndex);
+    const t     = scrubIndex - i;
+    const snapA = snapshots[Math.min(i, snapshots.length - 1)];
+    const snapB = snapshots[Math.min(i + 1, snapshots.length - 1)];
+    if (!snapA) return null;
+    if (!snapB || t === 0) return snapA.metrics;
+    return Object.fromEntries(
+      Object.keys(snapA.metrics).map((key) => {
+        const a = snapA.metrics[key];
+        const b = snapB.metrics[key];
+        return typeof a === 'number' ? [key, a + (b - a) * t] : [key, a];
+      })
     );
-  }, []);
+  }, [scrubIndex, snapshots]);
+
+  // Push scrubbed metrics into cloneA temporarily; restore on unmount
+  useEffect(() => {
+    if (!scrubbedMetrics) return;
+    const prev = use3DStore.getState().cloneA.metrics;
+    use3DStore.getState().setCurrentMetrics(scrubbedMetrics);
+    return () => use3DStore.getState().setCurrentMetrics(prev); // restore
+  }, [scrubbedMetrics]);
 
   return (
     <HumanoidClone
@@ -194,9 +209,18 @@ function TimelineClone() {
 export default function CloneEngine() {
   const viewMode      = use3DStore((s) => s.viewMode);
   const splitDividerX = use3DStore((s) => s.splitDividerX);
-  const getDeltas     = use3DStore((s) => s.getDeltas);
-
-  const deltas = useMemo(() => getDeltas(), [getDeltas, viewMode]);
+  // Live delta subscription — updates on every metric change, not just viewMode
+  const cloneAMetrics = use3DStore((s) => s.cloneA.metrics);
+  const cloneBMetrics = use3DStore((s) => s.cloneB.metrics);
+  const deltas = useMemo(() => {
+    const d = {};
+    for (const key of Object.keys(cloneAMetrics)) {
+      if (typeof cloneAMetrics[key] === 'number') {
+        d[key] = (cloneBMetrics[key] ?? cloneAMetrics[key]) - cloneAMetrics[key];
+      }
+    }
+    return d;
+  }, [cloneAMetrics, cloneBMetrics]);
 
   switch (viewMode) {
 

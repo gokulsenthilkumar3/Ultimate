@@ -81,12 +81,11 @@ export default function Overview({ user }) {
 
   // ── Weather / AQI state ─────────────────────────────────────────────────────
   const [weather, setWeather] = useState({
-    temp: '--°C', condition: '--', humidity: '--%',
-    aqi: '--', aqiLabel: '--', aqiColor: 'var(--text-3)',
-    windSpeed: '-- km/h', windDir: '--', uv: '--',
-    precip: '--', pressure: '-- hPa', visibility: '-- km',
-    locationName: 'Detecting…',
+    temp: null, condition: null, humidity: null, aqi: null, aqiLabel: null, aqiColor: null,
+    windSpeed: null, windDir: null, uv: null, precip: null, pressure: null, visibility: null,
+    locationName: null,
   });
+  const [weatherLoading, setWeatherLoading] = useState(true);
   const [geoError, setGeoError] = useState(null);
 
   const weatherFetched = useRef(false);
@@ -136,10 +135,12 @@ export default function Overview({ user }) {
             visibility:   `${(data.current.visibility / 1000).toFixed(1)} km`,
             locationName: locationName || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
           });
+          setWeatherLoading(false);
         }
       } catch (err) {
         console.warn('Weather fetch failed', err);
         setGeoError('Weather data unavailable');
+        setWeatherLoading(false);
       }
     };
 
@@ -228,7 +229,7 @@ export default function Overview({ user }) {
         <div style={{ flex: 1 }}>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Systems Check: {time.toLocaleTimeString()}</p>
           <h2 className="text-display" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.8rem)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-            {greeting}, <span style={{ color: 'var(--accent)' }}>{user?.name?.split(' ')[0] || 'Operator'}</span>
+            {greeting}, <span style={{ color: 'var(--accent)' }}>{user?.name?.split(' ')[0] || user?.username?.split(' ')[0] || '—'}</span>
           </h2>
           <p className="text-secondary" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
             {geoError
@@ -286,9 +287,9 @@ export default function Overview({ user }) {
               { label: 'Wind Speed',   value: weather.windSpeed,  icon: WindIcon,    color: '#94a3b8' },
               {
                 label: 'Air Quality',
-                value: weather.aqi !== '--' ? `${weather.aqi} · ${weather.aqiLabel}` : weather.aqi,
+                value: weather.aqi ? `${weather.aqi} · ${weather.aqiLabel}` : null,
                 icon: Wind,
-                color: weather.aqiColor,
+                color: weather.aqiColor || '#10b981',
               },
               { label: 'UV Index',     value: weather.uv,         icon: Sun,         color: '#f59e0b' },
               { label: 'Wind Dir',     value: weather.windDir,    icon: Compass,     color: '#8b5cf6' },
@@ -299,11 +300,27 @@ export default function Overview({ user }) {
                 <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '8px' }}>{s.label}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <s.icon size={18} color={s.color} style={{ opacity: 0.8 }} />
-                  <span style={{ fontWeight: 800, color: 'var(--text-1)', fontSize: '1.1rem' }}>{s.value}</span>
+                  {weatherLoading ? (
+                    <span style={{
+                      display: 'inline-block', width: '60px', height: '16px',
+                      background: 'linear-gradient(90deg, var(--bg-elevated) 25%, var(--border) 50%, var(--bg-elevated) 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 1.4s infinite',
+                      borderRadius: '4px',
+                    }} />
+                  ) : (
+                    <span style={{ fontWeight: 800, color: 'var(--text-1)', fontSize: '1.1rem' }}>{s.value ?? '--'}</span>
+                  )}
                 </div>
               </div>
             ))}
           </div>
+
+          {geoError && (
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              📍 Location access denied — using estimated regional data.
+            </p>
+          )}
 
           <div style={{ marginTop: '2.5rem', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--border)' }}>
             <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', lineHeight: 1.6 }}>

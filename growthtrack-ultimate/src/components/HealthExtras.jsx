@@ -1,6 +1,6 @@
 import { Z_INDEX } from '../constants';
 import React, { useState } from 'react';
-import { Eye, Ear, Wind, Fingerprint, Brain, Activity, ClipboardList, Target, Smile, Heart, Sparkles, Droplets, X } from 'lucide-react';
+import { Eye, Ear, Wind, Fingerprint, Brain, Activity, ClipboardList, Target, Smile, Heart, Sparkles, Droplets, X, Battery, Plus, Trash2 } from 'lucide-react';
 
 export default function HealthExtras() {
   const [senses, setSenses] = useState({
@@ -24,6 +24,11 @@ export default function HealthExtras() {
     { name: 'Gut Biome', score: 78, note: 'Balanced', icon: Target, color: '#10b981' },
     { name: 'Dermatology', score: 82, note: 'Hydrated', icon: Droplets, color: '#3b82f6' },
     { name: 'Hair Vitality', score: 85, note: 'Voluminous', icon: Sparkles, color: '#8b5cf6' }
+  ]);
+
+  const [recoveryMetrics, setRecoveryMetrics] = useState([
+    { id: 1, name: 'HRV', value: '65 ms', status: 'Optimal' },
+    { id: 2, name: 'Resting HR', value: '54 bpm', status: 'Optimal' }
   ]);
 
   return (
@@ -166,6 +171,43 @@ export default function HealthExtras() {
           </div>
 
         </div>
+        
+        {/* Recovery & Stress (Section 3) */}
+        <div className="glass-card" style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Battery size={24} color="var(--success)" />
+              <div>
+                <h3 className="text-display" style={{ fontSize: '1.3rem', margin: 0 }}>Recovery & Stress</h3>
+                <p className="label-caps" style={{ fontSize: '0.65rem' }}>System Readiness</p>
+              </div>
+            </div>
+            <button className="btn-sm" onClick={() => setRecoveryMetrics([...recoveryMetrics, { id: Date.now(), name: 'New Metric', value: '0', status: 'Pending' }])}>
+              <Plus size={14} /> Add Metric
+            </button>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+            {recoveryMetrics.map(metric => (
+              <div key={metric.id} style={{ padding: '1.25rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <input className="form-input" value={metric.name} onChange={e => setRecoveryMetrics(prev => prev.map(m => m.id === metric.id ? { ...m, name: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-1)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <input className="form-input" value={metric.value} onChange={e => setRecoveryMetrics(prev => prev.map(m => m.id === metric.id ? { ...m, value: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--accent)', width: '60%' }} />
+                  <select value={metric.status} onChange={e => setRecoveryMetrics(prev => prev.map(m => m.id === metric.id ? { ...m, status: e.target.value } : m))} style={{ background: 'var(--bg-dark)', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px' }}>
+                    <option value="Optimal">Optimal</option>
+                    <option value="Warning">Warning</option>
+                    <option value="Critical">Critical</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button className="btn-icon" onClick={() => setRecoveryMetrics(prev => prev.filter(m => m.id !== metric.id))} style={{ color: 'var(--danger)', padding: '4px' }}><Trash2 size={14} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
 
       {/* Sensory Detail Modal */}

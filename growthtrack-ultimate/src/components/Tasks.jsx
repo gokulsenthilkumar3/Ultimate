@@ -291,7 +291,7 @@ export default function Tasks() {
     return () => window.removeEventListener('open-add-form', handleOpen);
   }, []);
 
-  const EMPTY_FORM = { title: '', description: '', priority: 'p3', category: 'Work', dueDate: '' };
+  const EMPTY_FORM = { title: '', description: '', priority: 'p3', category: 'Work', dueDate: '', parent_task_id: '' };
   const [form, setForm] = useState(EMPTY_FORM);
 
   const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(false); };
@@ -300,6 +300,18 @@ export default function Tasks() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) return;
+
+    if (form.parent_task_id) {
+      if (form.parent_task_id === editId) {
+        toast.error("Task cannot be its own parent.");
+        return;
+      }
+      const parentTask = allTasks.find(t => t.id === form.parent_task_id);
+      if (parentTask && parentTask.parent_task_id === editId) {
+        toast.error("Circular reference detected.");
+        return;
+      }
+    }
     if (editId) {
       // PATCH to API
       try {
@@ -374,6 +386,7 @@ export default function Tasks() {
       priority:    normPriority(task.priority),
       category:    task.category    || 'Work',
       dueDate:     task.dueDate     || task.due_date || '',
+      parent_task_id: task.parent_task_id || ''
     });
     setEditId(task.id);
     setShowForm(true);
@@ -497,6 +510,15 @@ export default function Tasks() {
                 <label className="label-caps" style={{ display: 'block', marginBottom: '5px', fontSize: '0.6rem' }}>Due Date</label>
                 <input type="date" value={form.dueDate}
                   onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className="form-input" />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '5px', fontSize: '0.6rem' }}>Parent Task (Optional)</label>
+                <select value={form.parent_task_id} onChange={e => setForm(f => ({ ...f, parent_task_id: e.target.value }))} className="form-input">
+                  <option value="">None</option>
+                  {allTasks.filter(t => t.id !== editId).map(t => (
+                    <option key={t.id} value={t.id}>{t.title}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.25rem' }}>
