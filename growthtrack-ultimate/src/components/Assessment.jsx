@@ -43,20 +43,24 @@ export default function Assessment({ user }) {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [searchTerm, setSearchTerm]       = useState('');
 
-  // ── BUG FIX: Hydrate form answers from DB on mount
+  // ── Hydrate form answers from DB on mount ── match by key, not label
   useEffect(() => {
     if (!assessmentQA?.length) return;
-    // Flatten all Q&A items from the latest round into answers map
     const latest = assessmentQA[assessmentQA.length - 1];
     if (!latest?.items?.length) return;
     const hydrated = {};
     latest.items.forEach(item => {
-      // Match by question text to key
-      const match = questions.find(q => q.label.toLowerCase() === item.q.toLowerCase());
-      if (match) hydrated[match.key] = item.a;
+      // Primary: match by stored key field
+      if (item.key) {
+        hydrated[item.key] = item.a;
+      } else {
+        // Legacy fallback: match by label text
+        const match = questions.find(q => q.label.toLowerCase() === item.q?.toLowerCase());
+        if (match) hydrated[match.key] = item.a;
+      }
     });
     if (Object.keys(hydrated).length > 0) setAnswers(hydrated);
-  }, [assessmentQA]);
+  }, [assessmentQA, questions]);
 
   const current = questions[step];
   const totalSteps = questions.length;
@@ -143,6 +147,27 @@ export default function Assessment({ user }) {
       {/* ── QA FORM (Stepper) */}
       {view === 'form' && (
         <div className="glass-card" style={{ padding: '2rem', maxWidth: '560px', margin: '0 auto' }}>
+          {/* Step dot strip — click any answered dot to jump */}
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+            {questions.map((q, i) => {
+              const answered = !!answers[q.key]?.trim();
+              const isCurrent = i === step;
+              return (
+                <button
+                  key={q.key}
+                  title={q.label}
+                  onClick={() => setStep(i)}
+                  style={{
+                    width: isCurrent ? '20px' : '8px', height: '8px', borderRadius: '99px',
+                    background: isCurrent ? 'var(--accent)' : answered ? 'rgba(16,185,129,0.7)' : 'var(--bg-elevated)',
+                    border: isCurrent ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    transition: 'all 0.2s', cursor: 'pointer', padding: 0, flexShrink: 0,
+                  }}
+                />
+              );
+            })}
+          </div>
+
           {/* Progress bar */}
           <div style={{ marginBottom: '1.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

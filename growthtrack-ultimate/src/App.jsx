@@ -317,12 +317,15 @@ export default function App() {
     }
   }, [location.pathname]);
 
-  // ── Sync Store → URL: push URL on tab change ──
+  // ── Sync Store → URL: push URL on tab change + update document title ──
   useEffect(() => {
     const pathTab = location.pathname.substring(1);
     if (activeTab && pathTab !== activeTab) {
       navigate(`/${activeTab}`);
     }
+    const moduleName = GLOBAL_MODULES[activeTab];
+    if (moduleName) document.title = `GrowthTrack — ${moduleName}`;
+    else document.title = 'GrowthTrack Ultimate';
   }, [activeTab, navigate]);
 
   const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);

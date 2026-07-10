@@ -56,6 +56,19 @@ const CAT_MAP = Object.fromEntries(CATEGORY_CONFIG.map(c => [c.key, c]));
 
 const DEFAULT_EMOJI = '✅';
 
+// Streak milestone badges
+const STREAK_MILESTONES = [
+  { days: 100, label: '💯 100 Days!', color: '#f43f5e' },
+  { days: 60,  label: '🌟 60 Days',  color: '#8b5cf6' },
+  { days: 30,  label: '🏆 30 Days',  color: '#f59e0b' },
+  { days: 21,  label: '💪 21 Days',  color: '#10b981' },
+  { days: 14,  label: '🔥 2 Weeks',  color: '#f97316' },
+  { days: 7,   label: '⚡ 1 Week',   color: '#0ea5e9' },
+];
+function getStreakMilestone(streak) {
+  return STREAK_MILESTONES.find(m => streak >= m.days) || null;
+}
+
 export default React.memo(function HabitsMatrix() {
   const habits              = useStore(selectHabits);
   const addHabit            = useStore(selectAddHabit);
@@ -74,6 +87,8 @@ export default React.memo(function HabitsMatrix() {
   const [catFilter, setCatFilter] = useState('all');
   // Emoji editing: habitId -> draft emoji
   const [emojiEdit, setEmojiEdit] = useState({});
+  // Track which habit IDs had their first "done today" toggle (for animation)
+  const [justCompleted, setJustCompleted] = useState(new Set());
 
   useEffect(() => {
     const handleOpen = (e) => {
@@ -123,6 +138,15 @@ export default React.memo(function HabitsMatrix() {
   const isLogged = (habitId, date) => {
     const logs = habitLogsByHabit[habitId] || [];
     return logs.some(l => l.date === date && l.completed !== false);
+  };
+
+  const handleToggleToday = (habitId) => {
+    const wasLogged = isLogged(habitId, today);
+    toggleHabitForDate(habitId, today);
+    if (!wasLogged) {
+      setJustCompleted(prev => { const next = new Set(prev); next.add(habitId); return next; });
+      setTimeout(() => setJustCompleted(prev => { const next = new Set(prev); next.delete(habitId); return next; }), 700);
+    }
   };
 
   const completionRate = (habitId) => {
@@ -339,12 +363,12 @@ export default React.memo(function HabitsMatrix() {
                       <div className="flex items-center gap-3 px-4 py-3">
                         {/* Today toggle */}
                         <button
-                          onClick={() => toggleHabitForDate(habit.id, today)}
+                          onClick={() => handleToggleToday(habit.id)}
                           className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${
                             isLogged(habit.id, today)
                               ? 'bg-emerald-500 border-emerald-400'
                               : 'border-white/20 hover:border-emerald-400'
-                          }`}
+                          } ${justCompleted.has(habit.id) ? 'habit-complete-flash' : ''}`}
                         >
                           {isLogged(habit.id, today) && <Check size={14} className="text-white" />}
                         </button>
@@ -377,10 +401,17 @@ export default React.memo(function HabitsMatrix() {
                           <p style={{ fontSize: '0.68rem', color: cat.color }}>{cat.emoji} {cat.label}</p>
                         </div>
 
-                        {/* Streak — 🔥 if >= 3 */}
-                        <div className="flex items-center gap-1" style={{ color: streak >= 3 ? '#f97316' : 'var(--text-3)' }}>
-                          {streak >= 3 ? <Flame size={14} /> : <span style={{ fontSize: '0.75rem' }}>💫</span>}
-                          <span className="text-sm font-bold">{streak}</span>
+                        {/* Streak — 🔥 if >= 3, milestone badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <div className="flex items-center gap-1" style={{ color: streak >= 3 ? '#f97316' : 'var(--text-3)' }}>
+                            {streak >= 3 ? <Flame size={14} /> : <span style={{ fontSize: '0.75rem' }}>💫</span>}
+                            <span className="text-sm font-bold">{streak}</span>
+                          </div>
+                          {getStreakMilestone(streak) && (
+                            <span style={{ fontSize: '0.55rem', fontWeight: 800, color: getStreakMilestone(streak).color, background: `${getStreakMilestone(streak).color}22`, padding: '1px 5px', borderRadius: '99px', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+                              {getStreakMilestone(streak).label}
+                            </span>
+                          )}
                         </div>
 
                         <div className="text-xs text-gray-400 w-10 text-right">{rate}%</div>

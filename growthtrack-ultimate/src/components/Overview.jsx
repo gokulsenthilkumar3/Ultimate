@@ -4,10 +4,26 @@ import {
   TrendingUp, Activity, ArrowUpRight, Shield, Clock,
   Calendar as CalendarIcon, CloudRain, Wind, Sunrise, Sunset,
   Quote, Plus, Minus, ArrowDownRight, Compass, Gauge,
-  Thermometer, Droplet, Wind as WindIcon, Sun, Cloud, Eye
+  Thermometer, Droplet, Wind as WindIcon, Sun, Cloud, Eye,
+  Dumbbell, CheckSquare, Droplets as DropIcon, ChevronRight
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import AnimatedNumber from './ui/AnimatedNumber';
+
+const MOTIVATIONAL_QUOTES = [
+  { text: "The resistance you fight physically in the gym and the resistance you fight in life can only build a strong character.", author: "Arnold Schwarzenegger" },
+  { text: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
+  { text: "The body achieves what the mind believes.", author: "Napoleon Hill" },
+  { text: "No man has the right to be an amateur in the matter of physical training.", author: "Socrates" },
+  { text: "Take care of your body. It's the only place you have to live.", author: "Jim Rohn" },
+  { text: "A year from now you may wish you had started today.", author: "Karen Lamb" },
+  { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+  { text: "Champions are made from something they have deep inside them — a desire, a dream, a vision.", author: "Muhammad Ali" },
+  { text: "The difference between try and triumph is just a little umph!", author: "Marvin Phillips" },
+  { text: "Your body can stand almost anything. It's your mind that you have to convince.", author: "Unknown" },
+  { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
+  { text: "Small daily improvements are the key to staggering long-term results.", author: "Unknown" },
+];
 
 /** Map US-AQI value → human-readable label + colour */
 function aqiMeta(val) {
@@ -40,6 +56,7 @@ export default function Overview({ user }) {
   const goals        = useStore(s => s.goals) || [];
   const sleep_logs   = useStore(s => s.sleep_logs) || [];
   const updateUserSlice = useStore(s => s.updateUserSlice);
+  const setActiveTab = useStore(s => s.setActiveTab);
 
   // ── Health Score (dynamic) ──────────────────────────────────────────────────
   const healthScore = useMemo(() => {
@@ -68,6 +85,15 @@ export default function Overview({ user }) {
     setWaterGlassesLocal(val);
     updateUserSlice('hydration', { glasses: val });
   }, [updateUserSlice]);
+  const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length));
+
+  // Rotate quote every 15 seconds
+  useEffect(() => {
+    const qi = setInterval(() => setQuoteIndex(i => (i + 1) % MOTIVATIONAL_QUOTES.length), 15000);
+    return () => clearInterval(qi);
+  }, []);
+
+  const currentQuote = MOTIVATIONAL_QUOTES[quoteIndex];
 
   // ── Latest metric log ───────────────────────────────────────────────────────
   const latestLog = useMemo(() => {
@@ -246,6 +272,53 @@ export default function Overview({ user }) {
         </div>
       </div>
 
+      {/* Quick-Action Bar */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <button
+          className="btn-ghost"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem' }}
+          onClick={() => setWaterGlasses(Math.min(20, waterGlasses + 1))}
+          title="Log one glass of water"
+        >
+          <DropIcon size={15} color="#0ea5e9" />
+          Log Water
+          <span style={{ background: 'rgba(14,165,233,0.15)', color: '#0ea5e9', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{waterGlasses}/8</span>
+        </button>
+        <button
+          className="btn-ghost"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem' }}
+          onClick={() => { window.dispatchEvent(new CustomEvent('open-module', { detail: 'tasks' })); setActiveTab('tasks'); }}
+          title="Navigate to Tasks"
+        >
+          <CheckSquare size={15} color="var(--accent)" />
+          Add Task
+          {tasks.filter(t => !t.completed).length > 0 && (
+            <span style={{ background: 'rgba(var(--accent-rgb, 255,199,0),0.15)', color: 'var(--accent)', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{tasks.filter(t => !t.completed).length} open</span>
+          )}
+        </button>
+        <button
+          className="btn-ghost"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem' }}
+          onClick={() => setActiveTab('training')}
+          title="Navigate to Training"
+        >
+          <Dumbbell size={15} color="#10b981" />
+          Open Training
+        </button>
+        <button
+          className="btn-ghost"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem' }}
+          onClick={() => setActiveTab('habits')}
+          title="Navigate to Habits"
+        >
+          <Flame size={15} color="#f59e0b" />
+          Habits
+          {habits.filter(h => !h.logs?.some(l => l.date === new Date().toISOString().slice(0,10) && l.completed)).length > 0 && (
+            <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{habits.filter(h => !h.logs?.some(l => l.date === new Date().toISOString().slice(0,10) && l.completed)).length} pending</span>
+          )}
+        </button>
+      </div>
+
       {/* KPI Vitals Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         {vitals.map((v, i) => (
@@ -354,16 +427,18 @@ export default function Overview({ user }) {
             </div>
           </div>
 
-          <div className="glass-card" style={{ padding: '1.75rem', background: 'linear-gradient(135deg, var(--accent)22, transparent)', border: '1px solid var(--accent)33' }}>
+          <div className="glass-card" style={{ padding: '1.75rem', background: 'linear-gradient(135deg, var(--accent)22, transparent)', border: '1px solid var(--accent)33', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-              <div style={{ background: 'var(--accent)', color: '#000', padding: '8px', borderRadius: '10px' }}>
+              <div style={{ background: 'var(--accent)', color: '#000', padding: '8px', borderRadius: '10px', flexShrink: 0 }}>
                 <Quote size={18} />
               </div>
               <h4 className="label-caps" style={{ color: 'var(--accent)', margin: 0 }}>Ambition Directive</h4>
+              <span style={{ marginLeft: 'auto', fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700 }}>{quoteIndex + 1}/{MOTIVATIONAL_QUOTES.length}</span>
             </div>
-            <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.5, fontStyle: 'italic' }}>
-              "The resistance you fight physically in the gym and the resistance you fight in life can only build a strong character."
+            <p key={quoteIndex} style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.6, fontStyle: 'italic', animation: 'fadeIn 0.6s ease' }}>
+              "{currentQuote.text}"
             </p>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '0.75rem', fontWeight: 600 }}>— {currentQuote.author}</p>
           </div>
         </div>
       </div>

@@ -279,6 +279,7 @@ export default function Tasks() {
   const [editId,   setEditId]   = useState(null);
   const [filter,   setFilter]   = useState('all');
   const [sortBy,   setSortBy]   = useState('created');
+  const [selected, setSelected] = useState(new Set()); // multi-select IDs
 
   useEffect(() => {
     const handleOpen = (e) => {
@@ -289,6 +290,19 @@ export default function Tasks() {
     };
     window.addEventListener('open-add-form', handleOpen);
     return () => window.removeEventListener('open-add-form', handleOpen);
+  }, []);
+
+  // 'N' key shortcut: open new task form when no input is focused
+  useEffect(() => {
+    const handleKey = (e) => {
+      if ((e.key === 'n' || e.key === 'N') && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        setShowForm(true);
+        setEditId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
   const EMPTY_FORM = { title: '', description: '', priority: 'p3', category: 'Work', dueDate: '', parent_task_id: '' };
@@ -441,6 +455,24 @@ export default function Tasks() {
     return list;
   }, [pending, filter, sortBy, today]);
 
+  const catCounts = useMemo(() => {
+    const counts = {};
+    CATEGORIES.forEach(c => { counts[c] = pending.filter(t => t.category === c).length; });
+    return counts;
+  }, [pending]);
+
+  // Bulk actions
+  const handleBulkComplete = useCallback(async () => {
+    for (const id of selected) { await handleComplete(id).catch(() => {}); }
+    setSelected(new Set());
+    toast.success(`${selected.size} task(s) marked complete!`);
+  }, [selected, handleComplete, toast]);
+
+  const handleBulkDelete = useCallback(async () => {
+    for (const id of selected) { await handleDelete(id, 'pending').catch(() => {}); }
+    setSelected(new Set());
+  }, [selected, handleDelete]);
+
   // ── Render ──
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: '1rem' }}>
@@ -567,6 +599,16 @@ export default function Tasks() {
                 transition: 'all 0.15s',
               }}>{l}</button>
           ))}
+          {CATEGORIES.filter(c => catCounts[c] > 0).map(c => (
+            <button key={c} onClick={() => setFilter(f => f === c ? 'all' : c)}
+              style={{
+                padding: '4px 11px', borderRadius: 99, fontSize: '0.72rem', fontWeight: 700,
+                border: `1px solid ${filter === c ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                background: filter === c ? 'rgba(99,102,241,0.12)' : 'transparent',
+                color: filter === c ? '#818cf8' : 'var(--text-3)', cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}>{c} ({catCounts[c]})</button>
+          ))}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Sort:</span>
             {[['created','Created'],['priority','Priority'],['due','Due']].map(([v, l]) => (
@@ -582,17 +624,46 @@ export default function Tasks() {
         </div>
       )}
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1rem', marginBottom: '0.75rem', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '12px' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent)' }}>{selected.size} selected</span>
+          <button onClick={handleBulkComplete} style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', cursor: 'pointer' }}>
+            ✓ Mark Complete
+          </button>
+          <button onClick={handleBulkDelete} style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer' }}>
+            🗑 Delete Selected
+          </button>
+          <button onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '0.75rem' }}>Clear</button>
+        </div>
+      )}
+
       {/* Task list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         {tab === 'pending' && filteredPending.map(task => (
-          <TaskCard key={task.id} task={task}
-            onComplete={handleComplete}
-            onDelete={handleDelete}
-            onEdit={startEdit}
-            onSubToggle={handleSubToggle}
-            onSubDelete={handleSubDelete}
-            onSubAdd={handleSubAdd}
-          />
+          <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
+            <input
+              type="checkbox"
+              checked={selected.has(task.id)}
+              onChange={(e) => setSelected(prev => {
+                const next = new Set(prev);
+                e.target.checked ? next.add(task.id) : next.delete(task.id);
+                return next;
+              })}
+              style={{ marginTop: '18px', accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }}
+              title="Select task"
+            />
+            <div style={{ flex: 1 }}>
+              <TaskCard task={task}
+                onComplete={handleComplete}
+                onDelete={handleDelete}
+                onEdit={startEdit}
+                onSubToggle={handleSubToggle}
+                onSubDelete={handleSubDelete}
+                onSubAdd={handleSubAdd}
+              />
+            </div>
+          </div>
         ))}
 
         {tab === 'completed' && completed.map(task => (
