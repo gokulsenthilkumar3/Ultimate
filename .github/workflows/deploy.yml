@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - restructure
+      - TerraUltimateonJul7-2026
   workflow_dispatch:
 
 permissions:
@@ -17,7 +18,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,28 +28,40 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Merge source into ultimate
-        run: |
-          # Copy growthtrack-ultimate components/hooks/data/workers/css into ultimate/src
-          # EXCLUDE files that already exist in ultimate/ (App.jsx, store/, Info.jsx)
-          rsync -av --exclude='App.jsx' --exclude='main.jsx' --exclude='store/' growthtrack-ultimate/src/ ultimate/src/
-          rsync -av growthtrack-ultimate/public/ ultimate/public/
-          # Add unique new files from dashboard-app
-          cp -n dashboard-app/src/components/EditableMetric.jsx ultimate/src/components/ 2>/dev/null || true
-          cp -n dashboard-app/src/components/BodyPartOverlay.jsx ultimate/src/components/ 2>/dev/null || true
-          cp -n dashboard-app/src/components/BodyPartOverlay.css ultimate/src/components/ 2>/dev/null || true
-          cp -n dashboard-app/src/workers/metricsWorker.js ultimate/src/workers/ 2>/dev/null || true
-          echo 'Merge done'
-          ls ultimate/src/components/ | head -30
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./ultimate
+        working-directory: ./growthtrack-ultimate
+        run: npm install
+
+      - name: Lint
+        working-directory: ./growthtrack-ultimate
+        run: npm run lint
+        continue-on-error: true
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./growthtrack-ultimate
         run: npm install
 
       - name: Build
-        working-directory: ./ultimate
+        working-directory: ./growthtrack-ultimate
         run: npm run build
         env:
           VITE_BRANCH: ${{ github.ref_name }}
@@ -55,9 +69,10 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./ultimate/dist
+          path: ./growthtrack-ultimate/dist
 
   deploy:
+    name: Deploy
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
