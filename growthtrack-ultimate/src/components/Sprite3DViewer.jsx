@@ -1,4 +1,14 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+
+// Pure function — no closure over component state, stale closure safe
+function generateSpriteUrl(modelPrefix, row, frame) {
+  let rowStr = '0';
+  if (row === 1) rowStr = '45';
+  if (row === -1) rowStr = 'n45';
+  if (row === 2) return `/${modelPrefix}_top_001.webp`;
+  const frameStr = frame.toString().padStart(3, '0');
+  return `/${modelPrefix}_${rowStr}_${frameStr}.webp`;
+}
 
 // Using functional component architecture
 export default function Sprite3DViewer({ modelPrefix = 'current' }) {
@@ -18,27 +28,17 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
   const [zoom, setZoom] = useState(1);
   const [isMagnifier, setIsMagnifier] = useState(false);
   
-  const generateSpriteUrl = (row, frame) => {
-    let rowStr = '0';
-    if (row === 1) rowStr = '45';
-    if (row === -1) rowStr = 'n45';
-    if (row === 2) return `/${modelPrefix}_top_001.webp`;
-    
-    // pad frame to 3 chars
-    const frameStr = frame.toString().padStart(3, '0');
-    return `/${modelPrefix}_${rowStr}_${frameStr}.webp`;
-  };
 
   useEffect(() => {
-    // Generate all URLs
+    // Generate all URLs — use pure fn with explicit modelPrefix to avoid stale closures
     const allUrls = [];
     // Priority: 0, 1, -1, 2
     [0, 1, -1].forEach(row => {
       for (let frame = 1; frame <= 36; frame++) {
-        allUrls.push(generateSpriteUrl(row, frame));
+        allUrls.push(generateSpriteUrl(modelPrefix, row, frame));
       }
     });
-    allUrls.push(generateSpriteUrl(2, 1));
+    allUrls.push(generateSpriteUrl(modelPrefix, 2, 1));
 
     const worker = new Worker(new URL('../workers/sprite-preloader.worker.js', import.meta.url));
     
@@ -67,7 +67,7 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
     const height = canvasRef.current.height;
     ctx.clearRect(0, 0, width, height);
 
-    const url = generateSpriteUrl(currRow, currentFrame);
+    const url = generateSpriteUrl(modelPrefix, currRow, currentFrame);
     const img = images.get(url);
     
     if (img) {

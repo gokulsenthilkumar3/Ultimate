@@ -5,8 +5,10 @@ import { createTaskSlice } from './slices/taskSlice';
 import { createHealthSlice } from './slices/healthSlice';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '';
+let isOffline = false;
 
 export async function apiSync(endpoint: string, method: string = 'POST', data: any = null): Promise<any> {
+  if (isOffline) return null;
   try {
     const state = useStore.getState();
     if (!state.user?.id && !endpoint.includes('/login') && !endpoint.includes('/onboarding')) {
@@ -27,7 +29,8 @@ export async function apiSync(endpoint: string, method: string = 'POST', data: a
     if (!res.ok) throw new Error(`HTTP ${res.status} on ${endpoint}`);
     const text = await res.text();
     return text ? JSON.parse(text) : null;
-  } catch (e) {
+  } catch (e: any) {
+    if (e.message.includes('Failed to fetch')) isOffline = true;
     console.warn(`[useStore] API sync failed for ${endpoint}:`, e.message);
     return null;
   }
@@ -43,7 +46,7 @@ const useStore = create<any>()(
       theme: 'dark',
       palette: 'gold',
       activeTab: 'overview',
-      pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards'],
+      pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'portfolio', 'logs'],
 
       togglePinnedTab: (tabId: string) => {
         set((state: any) => {
@@ -91,12 +94,22 @@ const useStore = create<any>()(
       setCheckInAlertDismissedDate: (date: string) => set({ checkInAlertDismissedDate: date }),
       setActiveTab: (tab: string) => set({ activeTab: tab }),
       setOnboardingComplete: (status: boolean) => set({ onboardingComplete: status }),
+      setTheme: (theme: string) => set({ theme }),
+      setPalette: (palette: string) => set({ palette }),
 
       setUser: (userOrUpdater: any) => {
         set((state: any) => {
           const newUser = typeof userOrUpdater === 'function'
             ? userOrUpdater(state.user)
             : userOrUpdater;
+          apiSync('/user', 'POST', newUser);
+          return { user: newUser };
+        });
+      },
+
+      updateUser: (data: any) => {
+        set((state: any) => {
+          const newUser = { ...state.user, ...data };
           apiSync('/user', 'POST', newUser);
           return { user: newUser };
         });

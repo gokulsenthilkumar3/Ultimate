@@ -117,7 +117,9 @@ function useGlCreated(setLodConfig) {
     const config = LOD_CONFIG[tier];
     setLodConfig(config);
 
-    // Keep toneMapping simple to avoid PMREMGenerator initialization in three.js 0.184
+    // Apply tone mapping after renderer is initialized (must be set here, not in gl={} props)
+    gl.toneMapping         = THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = 1.2;
     gl.outputColorSpace    = THREE.SRGBColorSpace;
     // Shadows disabled — do not enable here.
     gl.shadowMap.enabled = false;
@@ -143,7 +145,6 @@ export default function ChamberCanvas({ className = "", style = {} }) {
         stencil:              true,
         depth:                true,
         preserveDrawingBuffer: true,
-        toneMapping:          THREE.ACESFilmicToneMapping,
       }}
       dpr={lodConfig.dpr}
       camera={{ fov: 42, near: 0.1, far: 100 }}

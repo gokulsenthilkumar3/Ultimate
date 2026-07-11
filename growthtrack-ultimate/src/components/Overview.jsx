@@ -181,14 +181,9 @@ export default function Overview({ user }) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          // Reverse-geocode display name via Open-Meteo (no API key)
-          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-            .then(r => r.json())
-            .then(geo => {
-              const name = geo?.address?.town || geo?.address?.city || geo?.address?.county || null;
-              fetchWeather(latitude, longitude, name);
-            })
-            .catch(() => fetchWeather(latitude, longitude, null));
+          // Mock Reverse-geocode display name to avoid 429
+          const name = 'Local Area';
+          fetchWeather(latitude, longitude, name);
         },
         (err) => {
           setGeoError(`Location access denied — using ${user?.location_name || 'Tamil Nadu'} fallback`);

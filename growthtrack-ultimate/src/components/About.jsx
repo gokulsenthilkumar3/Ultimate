@@ -24,11 +24,9 @@ export default function About() {
         navigator.geolocation.getCurrentPosition(async (pos) => {
           try {
             const { latitude, longitude } = pos.coords;
-            // Reverse geocode via open API
-            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-            const geoData = await geoRes.json();
-            const loc = geoData.address.city || geoData.address.town || geoData.address.village || 'Unknown';
-            const country = geoData.address.country || '';
+            // Mock Reverse geocode to avoid 429 Too Many Requests
+            const loc = 'Local';
+            const country = 'Network';
             
             // Still fetch IP for the network stats
             const ipRes = await fetch('https://ipapi.co/json/');
@@ -176,7 +174,7 @@ export default function About() {
           }}>
             {loadingLogs ? (
               <p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Loading logs...</p>
-            ) : logs.length === 0 ? (
+            ) : (!logs || logs.length === 0) ? (
               <p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>No recent activity logged.</p>
             ) : (
               logs.map((log, i) => (

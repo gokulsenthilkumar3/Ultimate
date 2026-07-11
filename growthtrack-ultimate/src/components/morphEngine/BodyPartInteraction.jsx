@@ -212,6 +212,8 @@ function HitZoneMesh({ region, onHit, onUnhover }) {
 //   </group>
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { useShallow } from 'zustand/react/shallow';
+
 /**
  * @param {{ clonePosition: [number, number, number] }} props
  */
@@ -220,11 +222,11 @@ export default function BodyPartInteraction({ clonePosition = [0, 0, 0] }) {
   const lastClickTime = useRef(0);
 
   const { setFocusedBodyPart, focusedBodyPart, setCameraPreset } = use3DStore(
-    (s) => ({
+    useShallow((s) => ({
       setFocusedBodyPart: s.setFocusedBodyPart,
       focusedBodyPart:    s.focusedBodyPart,
       setCameraPreset:    s.setCameraPreset,
-    })
+    }))
   );
 
   const handleHit = useCallback(

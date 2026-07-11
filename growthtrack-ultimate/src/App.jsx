@@ -19,6 +19,7 @@ import BottomNavBar        from './components/BottomNavBar';
 import SettingsModal       from './components/SettingsModal';
 import NotificationCenter  from './components/NotificationCenter';
 import LoadingSkeleton     from './components/ui/LoadingSkeleton';
+import NotFound            from './components/NotFound';
 
 import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
 import { useVascularitySync }    from './store/use3DStore.usage';
@@ -295,6 +296,7 @@ export default function App() {
   const [showCheckIn,       setShowCheckIn]       = React.useState(false);
   const [showSettings,      setShowSettings]      = React.useState(false);
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
+  const [isNotFound,        setIsNotFound]        = React.useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const navigate = useNavigate();
@@ -310,10 +312,13 @@ export default function App() {
     const pathTab = location.pathname.substring(1);
     if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== activeTab) {
       setActiveTab(pathTab);
+      setIsNotFound(false);
     } else if (location.pathname === '/') {
       navigate(`/${activeTab}`, { replace: true });
+      setIsNotFound(false);
     } else if (pathTab && !GLOBAL_MODULES[pathTab]) {
-      navigate('/overview', { replace: true });
+      // Unknown route — show 404 instead of silently redirecting
+      setIsNotFound(true);
     }
   }, [location.pathname]);
 
@@ -484,7 +489,9 @@ export default function App() {
             <main className="content-area">
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
-                  {isLoading
+                  {isNotFound
+                    ? <NotFound />
+                    : isLoading
                     ? <LoadingSkeleton />
                     : <TabRenderer
                         tab={activeTab}

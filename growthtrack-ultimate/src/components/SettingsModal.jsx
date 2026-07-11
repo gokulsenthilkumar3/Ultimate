@@ -28,10 +28,9 @@ export default function SettingsModal({ onClose }) {
         navigator.geolocation.getCurrentPosition(async (pos) => {
           try {
             const { latitude, longitude } = pos.coords;
-            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-            const geoData = await geoRes.json();
-            const loc = geoData.address.city || geoData.address.town || geoData.address.village || 'Unknown';
-            const country = geoData.address.country || '';
+            // Mock Reverse geocode to avoid 429 Too Many Requests
+            const loc = 'Local';
+            const country = 'Network';
             const ipRes = await fetch('https://ipapi.co/json/');
             const ipData = await ipRes.json();
             setNetworkInfo({ ip: ipData.ip, location: `${loc}, ${country} (GPS)` });
