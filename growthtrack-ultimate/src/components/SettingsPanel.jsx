@@ -1,3 +1,4 @@
+import { Z_INDEX } from '../constants';
 import React from 'react';
 import { X, UserRound, Target, Activity } from 'lucide-react';
 import { USER } from '../data/userData';
@@ -23,7 +24,7 @@ export default function SettingsPanel({ isOpen, onClose }) {
     <div style={{
       position: 'fixed', top: 0, right: 0, width: '400px', height: '100vh',
       background: 'var(--bg-glass)', backdropFilter: 'blur(30px)',
-      borderLeft: '1px solid var(--border)', zIndex: 9999,
+      borderLeft: '1px solid var(--border)', zIndex: Z_INDEX.OVERLAY,
       transform: 'translateX(0)', transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
       display: 'flex', flexDirection: 'column',
       boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
@@ -48,19 +49,19 @@ export default function SettingsPanel({ isOpen, onClose }) {
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="flex-between">
               <label>Bodyweight (kg)</label>
               <input type="number" name="weight" value={profile.weight} onChange={handleChange} 
                 style={{ width: '80px', padding: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-1)' }} />
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="flex-between">
               <label>Height (cm)</label>
               <input type="number" name="height" value={profile.height} onChange={handleChange}
                 style={{ width: '80px', padding: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-1)' }} />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="flex-between">
               <label>Est Body Fat (%)</label>
               <input type="number" name="bodyFat" value={profile.bodyFat} onChange={handleChange}
                 style={{ width: '80px', padding: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-1)' }} />

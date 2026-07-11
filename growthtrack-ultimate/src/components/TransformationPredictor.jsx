@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Target, TrendingUp, AlertTriangle, CheckCircle2, Zap, Clock } from 'lucide-react';
 
-export default function TransformationPredictor({ logs }) {
+export default React.memo(function TransformationPredictor({ logs }) {
   const data = useMemo(() => {
     if (!logs || logs.length < 1) return null;
 
@@ -16,10 +16,8 @@ export default function TransformationPredictor({ logs }) {
     const diffTime = Math.abs(d1 - d2);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 14;
 
-    const startDate = new Date(sortedLogs[sortedLogs.length - 1].date);
-    const elapsedDays = Math.ceil((new Date() - startDate) / (1000 * 60 * 60 * 24));
-    const totalCycleDays = 168; // 24 weeks
-    const remainingDays = Math.max(0, totalCycleDays - elapsedDays);
+    const lookaheadDays = 30;
+    const remainingDays = lookaheadDays;
 
     const metricsToPredict = [
       { id: 'weight', label: 'Bodyweight', target: 73, unit: 'kg' },
@@ -150,7 +148,7 @@ export default function TransformationPredictor({ logs }) {
         <div style={{ flex: 1, minWidth: '200px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.5rem' }}>
             <Clock size={20} color="var(--accent)" />
-            <p className="label-caps" style={{ color: 'var(--accent)' }}>24-Week Horizon Analysis</p>
+            <p className="label-caps" style={{ color: 'var(--accent)' }}>30-Day Horizon Analysis</p>
           </div>
           <h3 className="text-display" style={{ fontSize: '1.8rem' }}>Evolutionary "Peak State"</h3>
           <p className="text-secondary" style={{ marginTop: '0.5rem' }}>
@@ -168,4 +166,4 @@ export default function TransformationPredictor({ logs }) {
       </div>
     </div>
   );
-}
+});

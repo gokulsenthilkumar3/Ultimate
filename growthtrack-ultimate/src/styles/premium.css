@@ -1,0 +1,127 @@
+/*
+ * premium.css — GrowthTrack Ultimate
+ * Dead-CSS audit: improvements-2605.23.6
+ *
+ * Scope: Premium / paywall UI elements.
+ *
+ * REMOVED (orphaned):
+ *   .premium-shimmer          — keyframe animation never attached to any element
+ *   .premium-lock-icon        — replaced by inline Lucide <Lock> in every usage site
+ *   .premium-tier-chip        — never rendered; was spec-only placeholder
+ *   @keyframes premiumShimmer — driven only by removed .premium-shimmer
+ *
+ * KEPT (all rules below are actively referenced):
+ *   .premium-badge            — Settings.jsx, ProfileEditor.jsx
+ *   .premium-gate             — paywall overlay container
+ *   .premium-gate-inner       — child of .premium-gate
+ *   .premium-blur-overlay     — blur overlay on locked content
+ *   .premium-cta-card         — upgrade prompt card
+ *   .premium-cta-card .btn-upgrade  — upgrade CTA button
+ *
+ * ADDED:
+ *   @media (prefers-reduced-motion) guard on .premium-badge so the
+ *   gradient doesn't animate on reduced-motion systems.
+ */
+
+/* ── Premium badge ─────────────────────────────────────────────────────── */
+.premium-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  border: none;
+  cursor: default;
+  user-select: none;
+}
+
+.premium-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ── Gate container ─────────────────────────────────────────────────────── */
+.premium-gate {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg, 12px);
+}
+
+.premium-gate-inner {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Blur overlay ───────────────────────────────────────────────────────── */
+.premium-blur-overlay {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  border-radius: inherit;
+}
+
+/* ── CTA card inside gate ─────────────────────────────────────────────────── */
+.premium-cta-card {
+  text-align: center;
+  padding: 2rem;
+  max-width: 320px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl, 16px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.premium-cta-card h3 {
+  font-size: 1.1rem;
+  font-weight: 900;
+  margin-bottom: 0.5rem;
+  color: var(--text-1, #fff);
+}
+
+.premium-cta-card p {
+  font-size: 0.8rem;
+  color: var(--text-3, #888);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.premium-cta-card .btn-upgrade {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.65rem 1.5rem;
+  border-radius: var(--radius-full, 9999px);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.18s;
+}
+
+.premium-cta-card .btn-upgrade:hover {
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-badge,
+  .premium-cta-card .btn-upgrade {
+    transition: none;
+  }
+}
