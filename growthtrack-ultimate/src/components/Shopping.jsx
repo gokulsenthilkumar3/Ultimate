@@ -1,265 +1,188 @@
-import React, { useState } from 'react';
-import { ShoppingCart, Plus, Trash2, DollarSign } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { ShoppingCart, Plus, Trash2, IndianRupee, Check, XCircle, ExternalLink } from 'lucide-react';
+import useStore, {
+  selectShopping,
+  selectAddShoppingItem,
+  selectDeleteShoppingItem,
+  selectToggleShoppingPurchased,
+} from '../store/useStore';
+import { useToast } from '../hooks/useToast';
+import StatCard from './ui/StatCard';
+import PageHeader from './ui/PageHeader';
 
-const Shopping = () => {
-  const [items, setItems] = useState([
-    { id: 1, name: 'Protein Powder', category: 'Supplements', priority: 'High', estimatedCost: 45, purchased: false },
-    { id: 2, name: 'Resistance Bands', category: 'Equipment', priority: 'Medium', estimatedCost: 25, purchased: false },
-    { id: 3, name: 'Running Shoes', category: 'Apparel', priority: 'High', estimatedCost: 120, purchased: false }
-  ]);
-  const [newItem, setNewItem] = useState({ name: '', category: '', priority: 'Medium', estimatedCost: 0 });
+const fmtINR = (n) => '\u20b9' + Number(n).toLocaleString('en-IN');
+const CATEGORIES = ['Supplements', 'Equipment', 'Apparel', 'Food', 'Medical', 'Other'];
+const PRIORITIES = ['Urgent', 'High', 'Medium', 'Low'];
+const PRIORITY_COLOR  = { Urgent: 'var(--danger)', High: '#e5a50a', Medium: 'var(--success)', Low: 'var(--text-3)' };
+const PRIORITY_ORDER  = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
+const EMPTY_FORM = { name: '', category: '', priority: 'Medium', estimatedCost: '', quantity: 1 };
 
-  const categories = ['Supplements', 'Equipment', 'Apparel', 'Food', 'Other'];
-  const priorities = ['Urgent', 'High', 'Medium', 'Low'];
+// Cart deeplink helpers
+const STORES = [
+  { label: 'Flipkart', icon: '\uD83D\uDED2', color: '#2874f0', url: (q) => `https://www.flipkart.com/search?q=${encodeURIComponent(q)}` },
+  { label: 'Amazon',   icon: '\uD83D\uDCE6', color: '#ff9900', url: (q) => `https://www.amazon.in/s?k=${encodeURIComponent(q)}` },
+];
 
-  const addItem = () => {
-    if (newItem.name.trim()) {
-      setItems([...items, { ...newItem, id: Date.now(), purchased: false }]);
-      setNewItem({ name: '', category: '', priority: 'Medium', estimatedCost: 0 });
-    }
-  };
+function CartLinks({ name }) {
+  return (
+    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+      {STORES.map(s => (
+        <a
+          key={s.label}
+          href={s.url(name)}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Search on ${s.label}`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '3px',
+            fontSize: '0.65rem', fontWeight: 700,
+            padding: '2px 7px', borderRadius: '6px',
+            border: `1px solid ${s.color}55`,
+            color: s.color,
+            background: `${s.color}18`,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+            transition: 'opacity 0.15s',
+          }}
+          className="hover-opacity-75"
+        >
+          {s.icon} {s.label} <ExternalLink size={9} />
+        </a>
+      ))}
+    </div>
+  );
+}
 
-  const deleteItem = (id) => {
-    setItems(items.filter(item => item.id !== id));
-  };
+export default function Shopping() {
+  const { items }       = useStore(selectShopping);
+  const addItem         = useStore(selectAddShoppingItem);
+  const deleteItem      = useStore(selectDeleteShoppingItem);
+  const togglePurchased = useStore(selectToggleShoppingPurchased);
+  const toast = useToast();
 
-  const togglePurchased = (id) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, purchased: !item.purchased } : item
-    ));
-  };
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  const getPriorityColor = (priority) => {
-    switch(priority) {
-      case 'Urgent': return '#ef4444';
-      case 'High': return '#f59e0b';
-      case 'Medium': return '#10b981';
-      case 'Low': return '#6b7280';
-      default: return '#6b7280';
-    }
-  };
+  const sortedItems = useMemo(() => [...items].sort((a, b) => {
+    if (a.purchased !== b.purchased) return a.purchased ? 1 : -1;
+    return (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99);
+  }), [items]);
 
-  const totalCost = items.reduce((sum, item) => sum + (item.purchased ? 0 : item.estimatedCost), 0);
+  const { totalCost, purchasedCount, pendingCount } = useMemo(() => ({
+    totalCost:      items.reduce((s, i) => s + (i.purchased ? 0 : (i.estimatedCost || 0) * (i.quantity || 1)), 0),
+    purchasedCount: items.filter(i => i.purchased).length,
+    pendingCount:   items.filter(i => !i.purchased).length,
+  }), [items]);
+
+  const handleAdd = useCallback(() => {
+    if (!form.name.trim()) { toast.error('Item name cannot be empty.'); return; }
+    const cost = parseFloat(form.estimatedCost);
+    addItem({ ...form, estimatedCost: isNaN(cost) ? 0 : cost, quantity: parseInt(form.quantity) || 1 });
+    setForm(EMPTY_FORM);
+    toast.success(`"${form.name}" added to shopping list.`);
+  }, [form, addItem, toast]);
+
+  const handleDelete = useCallback((id, name) => {
+    deleteItem(id);
+    toast.info(`"${name}" removed.`);
+  }, [deleteItem, toast]);
+
+  const clearPurchased = useCallback(() => {
+    const purchased = items.filter(i => i.purchased);
+    if (purchased.length === 0) return;
+    if (!window.confirm(`Are you sure you want to clear ${purchased.length} purchased item(s)?`)) return;
+    purchased.forEach(i => deleteItem(i.id));
+    toast.success(`${purchased.length} purchased item${purchased.length !== 1 ? 's' : ''} cleared.`);
+  }, [items, deleteItem, toast]);
+
+  const statCards = useMemo(() => [
+    { label: 'Total Items',  value: items.length,       icon: ShoppingCart, color: 'var(--accent)' },
+    { label: 'Pending',      value: pendingCount,       icon: ShoppingCart, color: 'var(--warning)' },
+    { label: 'Purchased',    value: purchasedCount,     icon: Check,        color: 'var(--success)' },
+    { label: 'Pending Cost', value: fmtINR(totalCost),  icon: IndianRupee,  color: 'var(--info)' },
+  ], [items.length, pendingCount, purchasedCount, totalCost]);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ marginBottom: '30px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '24px', marginBottom: '10px' }}>
-          <ShoppingCart size={28} color="#3b82f6" />
-          Shopping List - Need to Buy
-        </h2>
-        <p style={{ color: '#94a3b8' }}>Track items you need to purchase for your fitness journey</p>
+    <div className="fade-in module-page">
+      <PageHeader accent="Shopping" icon={<ShoppingCart size={24} />} title="Shopping List" subtitle="Track items you need for your fitness journey" />
+
+      <div className="stats-grid mb-lg">
+        {statCards.map(c => <StatCard key={c.label} icon={c.icon} label={c.label} value={c.value} color={c.color} />)}
       </div>
 
-      {/* Add New Item */}
-      <div style={{ 
-        background: 'rgba(255, 255, 255, 0.05)', 
-        padding: '20px', 
-        borderRadius: '12px',
-        marginBottom: '25px',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
-      }}>
-        <h3 style={{ marginBottom: '15px', fontSize: '18px' }}>Add New Item</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
-          <input
-            type="text"
-            placeholder="Item name"
-            value={newItem.name}
-            onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-            style={{
-              padding: '10px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              background: 'rgba(0, 0, 0, 0.3)',
-              color: 'white',
-              fontSize: '14px'
-            }}
-          />
-          <select
-            value={newItem.category}
-            onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-            style={{
-              padding: '10px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              background: 'rgba(0, 0, 0, 0.3)',
-              color: 'white',
-              fontSize: '14px'
-            }}
-          >
-            <option value="">Select category</option>
-            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+      {/* Add form */}
+      <div className="glass-card mb-lg">
+        <span className="card-title">Add New Item</span>
+        <div className="form-grid-4 mt-sm mb-sm">
+          <input type="text" placeholder="Item name" value={form.name}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            className="form-input col-span-2" />
+          <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="form-input">
+            <option value="">Category</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select
-            value={newItem.priority}
-            onChange={(e) => setNewItem({ ...newItem, priority: e.target.value })}
-            style={{
-              padding: '10px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              background: 'rgba(0, 0, 0, 0.3)',
-              color: 'white',
-              fontSize: '14px'
-            }}
-          >
-            {priorities.map(pri => <option key={pri} value={pri}>{pri}</option>)}
+          <select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })} className="form-input">
+            {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          <input
-            type="number"
-            placeholder="Estimated cost"
-            value={newItem.estimatedCost || ''}
-            onChange={(e) => setNewItem({ ...newItem, estimatedCost: parseFloat(e.target.value) || 0 })}
-            style={{
-              padding: '10px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              background: 'rgba(0, 0, 0, 0.3)',
-              color: 'white',
-              fontSize: '14px'
-            }}
-          />
+          <input type="number" placeholder="Cost (\u20b9)" value={form.estimatedCost}
+            onChange={e => setForm({ ...form, estimatedCost: e.target.value })}
+            className="form-input" min="0" />
+          <input type="number" placeholder="Qty" value={form.quantity}
+            onChange={e => setForm({ ...form, quantity: e.target.value })}
+            className="form-input" min="1" />
         </div>
-        <button
-          onClick={addItem}
-          style={{
-            padding: '10px 20px',
-            borderRadius: '8px',
-            border: 'none',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            color: 'white',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '14px',
-            fontWeight: '600'
-          }}
-        >
-          <Plus size={18} />
-          Add Item
-        </button>
-      </div>
-
-      {/* Summary */}
-      <div style={{ 
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-        padding: '20px',
-        borderRadius: '12px',
-        marginBottom: '25px',
-        border: '1px solid rgba(59, 130, 246, 0.3)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '5px' }}>Total Items</p>
-            <p style={{ fontSize: '28px', fontWeight: 'bold' }}>{items.length}</p>
-          </div>
-          <div>
-            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '5px' }}>Pending</p>
-            <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#f59e0b' }}>{items.filter(i => !i.purchased).length}</p>
-          </div>
-          <div>
-            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '5px' }}>Purchased</p>
-            <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>{items.filter(i => i.purchased).length}</p>
-          </div>
-          <div>
-            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <DollarSign size={14} />
-              Estimated Cost
-            </p>
-            <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#3b82f6' }}>${totalCost.toFixed(2)}</p>
-          </div>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button onClick={handleAdd} className="btn-primary"><Plus size={16} /> Add Item</button>
+          {purchasedCount > 0 && (
+            <button onClick={clearPurchased} className="btn-ghost" style={{ color: 'var(--danger)', borderColor: 'var(--danger)', fontSize: '0.8rem' }}>
+              <XCircle size={14} /> Clear {purchasedCount} Purchased
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Items List */}
-      <div style={{ display: 'grid', gap: '15px' }}>
-        {items.map(item => (
-          <div
-            key={item.id}
-            style={{
-              background: item.purchased ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-              padding: '20px',
-              borderRadius: '12px',
-              border: `1px solid ${item.purchased ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              opacity: item.purchased ? 0.7 : 1
-            }}
+      {/* Items list */}
+      <div className="item-list">
+        {sortedItems.map(item => (
+          <div key={item.id} className="glass-card list-card"
+            style={{ opacity: item.purchased ? 0.6 : 1, borderColor: item.purchased ? 'rgba(52,211,153,0.3)' : 'var(--border)' }}
           >
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '8px' }}>
-                <input
-                  type="checkbox"
-                  checked={item.purchased}
-                  onChange={() => togglePurchased(item.id)}
-                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                />
-                <h4 style={{ 
-                  fontSize: '18px', 
-                  margin: 0,
-                  textDecoration: item.purchased ? 'line-through' : 'none'
-                }}>
-                  {item.name}
-                </h4>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  background: getPriorityColor(item.priority),
-                  color: 'white'
-                }}>
-                  {item.priority}
-                </span>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  color: '#94a3b8'
-                }}>
-                  {item.category}
-                </span>
-              </div>
-              <div style={{ paddingLeft: '35px' }}>Add Shopping.jsx component to growthtrack-ultimate
-                <p style={{ fontSize: '16px', color: '#3b82f6', fontWeight: '600', margin: 0 }}>
-                  ${item.estimatedCost.toFixed(2)}
+            <div className="list-card__left">
+              <button
+                onClick={() => togglePurchased(item.id)}
+                className={`check-box${item.purchased ? ' check-box--checked' : ''}`}
+                aria-label={item.purchased ? 'Mark unpurchased' : 'Mark purchased'}
+              >
+                {item.purchased && <Check size={14} color="#fff" />}
+              </button>
+              <div>
+                <div className="tag-row">
+                  <p className="list-row__title" style={{ textDecoration: item.purchased ? 'line-through' : 'none' }}>{item.name}</p>
+                  <span className="priority-badge" style={{ background: PRIORITY_COLOR[item.priority] }}>{item.priority}</span>
+                  {item.category && <span className="category-badge">{item.category}</span>}
+                </div>
+                <p className="list-row__amount" style={{ color: 'var(--accent)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {fmtINR(item.estimatedCost)}
+                  {item.quantity > 1 && (
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 400 }}>\u00d7 {item.quantity} = {fmtINR(item.estimatedCost * item.quantity)}</span>
+                  )}
                 </p>
+                {/* Cart deeplinks */}
+                {!item.purchased && <CartLinks name={item.name} />}
               </div>
             </div>
-            <button
-              onClick={() => deleteItem(item.id)}
-              style={{
-                padding: '10px',
-                borderRadius: '8px',
-                border: 'none',
-                background: 'rgba(239, 68, 68, 0.2)',
-                color: '#ef4444',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <Trash2 size={18} />
+            <button onClick={() => handleDelete(item.id, item.name)} className="btn-icon btn-icon--danger" aria-label="Delete item">
+              <Trash2 size={16} />
             </button>
           </div>
         ))}
+        {items.length === 0 && (
+          <div className="empty-state">
+            <ShoppingCart size={56} className="empty-state__icon" />
+            <p className="empty-state__text">No items in your shopping list</p>
+          </div>
+        )}
       </div>
-
-      {items.length === 0 && (
-        <div style={{
-          textAlign: 'center',
-          padding: '60px 20px',
-          color: '#64748b'
-        }}>
-          <ShoppingCart size={64} style={{ opacity: 0.3, marginBottom: '20px' }} />
-          <p style={{ fontSize: '18px' }}>No items in your shopping list</p>
-          <p style={{ fontSize: '14px' }}>Add items you need to buy for your fitness journey</p>
-        </div>
-      )}
     </div>
   );
-};
-
-export default Shopping;
+}

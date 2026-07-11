@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: CI -> Test -> Deploy
 
 on:
   push:
@@ -14,18 +14,17 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -64,7 +63,20 @@ jobs:
         working-directory: ./growthtrack-ultimate
         run: npm run build
         env:
-          VITE_BRANCH: ${{ github.ref_name }}
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+
+      - name: Add cache-busting headers
+        working-directory: growthtrack-ultimate/dist
+        run: |
+          cp index.html 404.html
+          echo '{ "headers": [{ "source": "**/*.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] }] }' > _headers
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

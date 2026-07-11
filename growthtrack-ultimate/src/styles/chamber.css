@@ -1,0 +1,92 @@
+/*
+ * chamber.css — GrowthTrack Ultimate
+ * Dead-CSS audit: improvements-2605.23.6
+ *
+ * Scope: styles consumed by ChamberCanvas.jsx, ChamberFloor.jsx, Body3D.jsx.
+ *
+ * REMOVED (orphaned — no JSX reference found):
+ *   .chamber-grid-lines       — was referenced only in deleted ChamberGrid.jsx
+ *   .chamber-scan-line        — CSS-only animation, no DOM element emitting it
+ *   .chamber-pulse            — duplicate of .chamber-overlay animation variant
+ *   .chamber-label-group      — unused wrapper selector
+ *   @keyframes chamberPulse   — driven only by removed .chamber-pulse
+ *
+ * KEPT (all rules below are actively used):
+ *   .chamber-canvas-wrap      — ChamberCanvas.jsx root div
+ *   .chamber-overlay          — loading/error overlay
+ *   .chamber-overlay.is-error — error variant
+ *   .chamber-overlay-text     — status text inside overlay
+ *   .chamber-hud-label        — Body3D.jsx HUD badges
+ *   .chamber-hud-label.accent — accent variant
+ */
+
+/* ── 1. Canvas shell ────────────────────────────────────────────────── */
+.chamber-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-lg, 12px);
+  background: var(--bg-dark, #0a0a0f);
+}
+
+.chamber-canvas-wrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+
+/* ── 2. Loading / error overlay ─────────────────────────────────────── */
+.chamber-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 10;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.chamber-overlay.is-error {
+  background: rgba(15, 0, 0, 0.82);
+  pointer-events: auto;
+}
+
+.chamber-overlay-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-3, #666);
+  text-transform: uppercase;
+}
+
+/* ── 3. HUD label badges ────────────────────────────────────────────── */
+.chamber-hud-label {
+  position: absolute;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-2, #ccc);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.chamber-hud-label.accent {
+  border-color: var(--accent, #06b6d4);
+  color: var(--accent, #06b6d4);
+}
