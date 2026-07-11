@@ -35,7 +35,13 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/__tests__/setup.js'],
-    include: ['src/**/*.test.{js,jsx}'],
+    include: ['src/**/*.test.{js,jsx,ts,tsx}'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      // setup.js is a global setup file, not a test suite
+      'src/__tests__/setup.js',
+    ],
     coverage: {
       reporter: ['text', 'lcov'],
       include: ['src/utils/**'],
