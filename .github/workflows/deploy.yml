@@ -28,13 +28,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: growthtrack-ultimate/package-lock.json
 
       - name: Install dependencies
         working-directory: ./growthtrack-ultimate
-        run: npm ci
+        run: npm install
 
       - name: Lint
         working-directory: ./growthtrack-ultimate
@@ -52,13 +52,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: growthtrack-ultimate/package-lock.json
 
       - name: Install dependencies
         working-directory: ./growthtrack-ultimate
-        run: npm ci
+        run: npm install
 
       - name: Build
         working-directory: ./growthtrack-ultimate
