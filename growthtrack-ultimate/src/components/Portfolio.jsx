@@ -15,9 +15,9 @@ export default function Portfolio() {
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlInput, setUrlInput] = useState('');
 
-  // Read portfolio URL from user profile — not hardcoded
-  const portfolioUrl = user?.portfolioUrl || user?.data?.portfolioUrl || '';
-  const repoUrl = user?.socialMedia?.GitHub || 'https://github.com';
+  // Read portfolio URL from user profile — or use default
+  const portfolioUrl = user?.portfolioUrl || user?.data?.portfolioUrl || 'https://portfolio-ten-plum-98.vercel.app/';
+  const repoUrl = user?.socialMedia?.GitHub || 'https://github.com/gokulsenthilkumar3';
 
   const refreshIframe = () => setIframeKey(prev => prev + 1);
 

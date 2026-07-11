@@ -32,11 +32,11 @@ const firebaseConfig = {
   measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// ── Guard: skip Firebase init if env vars are missing (e.g. GitHub Pages without secrets) ──
+// ── Guard: skip Firebase init if env vars are missing or dummy ──
 const FIREBASE_ENABLED = Boolean(
-  firebaseConfig.projectId &&
-  firebaseConfig.apiKey &&
-  firebaseConfig.appId
+  firebaseConfig.projectId && !firebaseConfig.projectId.includes('dummy') &&
+  firebaseConfig.apiKey && !firebaseConfig.apiKey.includes('dummy') &&
+  firebaseConfig.appId && !firebaseConfig.appId.includes('dummy')
 );
 
 if (!FIREBASE_ENABLED) {

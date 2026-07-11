@@ -218,7 +218,7 @@ export default function HumanoidViewer() {
               {/* VFX toggles */}
               <div className="chamber-pill-group">
                 <button className={`chamber-pill${heatmapMode ? ' active' : ''}`}
-                  onClick={() => setHeatmapMode(!heatmapMode)}>
+                  onClick={setHeatmapMode}>
                   {heatmapMode ? '🔥 HEAT' : 'HEAT'}
                 </button>
               </div>
