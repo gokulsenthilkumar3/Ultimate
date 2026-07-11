@@ -22,3 +22,24 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Vite cache
+.vite/
+
+# Playwright generated output
+playwright-report/
+test-results/
+
+# Environment files (except examples)
+.env
+.env.local
+.env.*.local
+# Note: .env.example is safe to commit
+# Note: .env.test is committed intentionally for CI — review if it contains secrets
+
+# AI context files (never commit)
+Claude.md
+*.claude.md
+
+# One-off scripts output
+*.tmp
