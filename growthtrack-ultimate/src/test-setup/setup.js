@@ -4,8 +4,6 @@ import { expect, vi } from 'vitest';
 expect.extend(matchers);
 
 // ─── Canvas / WebGL mock ────────────────────────────────────────────────────
-// jsdom has no real canvas. Three.js / R3F import WebGLRenderer on module load,
-// so we must provide a stub before any test file runs.
 class WebGLRenderingContextStub {
   enable() {}
   disable() {}
@@ -60,13 +58,11 @@ class WebGLRenderingContextStub {
   getContextAttributes() { return { antialias: false, alpha: true }; }
 }
 
-// Patch HTMLCanvasElement.getContext so it returns our stub for webgl contexts
 HTMLCanvasElement.prototype.getContext = function (type) {
   if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
     return new WebGLRenderingContextStub();
   }
   if (type === '2d') {
-    // Basic 2D stub
     return {
       fillRect: () => {},
       clearRect: () => {},
@@ -95,8 +91,6 @@ HTMLCanvasElement.prototype.getContext = function (type) {
 HTMLCanvasElement.prototype.toDataURL = () => '';
 
 // ─── R3F / Three.js module mocks ────────────────────────────────────────────
-// React-Three-Fiber and Drei try to access DOM features not available in jsdom.
-// We mock the entire packages so component imports don't crash.
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ children }) => children,
   useFrame: vi.fn(),
@@ -138,8 +132,7 @@ vi.mock('@react-three/postprocessing', () => ({
   Glitch: () => null,
 }));
 
-// ─── Browser API stubs missing from jsdom ───────────────────────────────────
-
+// ─── Browser API stubs ───────────────────────────────────────────────────────
 if (!globalThis.ResizeObserver) {
   globalThis.ResizeObserver = class {
     observe() {}
@@ -170,7 +163,6 @@ if (!window.matchMedia) {
   }));
 }
 
-// Silence Three.js WebGL warnings — expected in jsdom environment
 const originalConsoleWarn = console.warn;
 console.warn = (...args) => {
   const msg = args[0]?.toString() ?? '';
