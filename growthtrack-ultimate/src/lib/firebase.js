@@ -32,23 +32,40 @@ const firebaseConfig = {
   measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+// ── Guard: skip Firebase init if env vars are missing (e.g. GitHub Pages without secrets) ──
+const FIREBASE_ENABLED = Boolean(
+  firebaseConfig.projectId &&
+  firebaseConfig.apiKey &&
+  firebaseConfig.appId
+);
+
+if (!FIREBASE_ENABLED) {
+  console.warn(
+    '[Firebase] Missing required env vars (VITE_FIREBASE_PROJECT_ID / API_KEY / APP_ID). ' +
+    'Firebase features disabled. Add secrets to GitHub Actions to enable.'
+  );
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
-export const app        = initializeApp(firebaseConfig);
-export const db         = getFirestore(app);
-export const analytics  = getAnalytics(app);
-export const perf       = getPerformance(app);
-export const USER_ID    = 'default_user';
+export const app = FIREBASE_ENABLED ? initializeApp(firebaseConfig) : null;
+export const db  = FIREBASE_ENABLED ? getFirestore(app) : null;
+export const analytics = FIREBASE_ENABLED ? (() => { try { return getAnalytics(app); } catch { return null; } })() : null;
+export const perf      = FIREBASE_ENABLED ? (() => { try { return getPerformance(app); } catch { return null; } })() : null;
+export const USER_ID   = 'default_user';
 
 // ── Remote Config ─────────────────────────────────────────────────────────────
-export const remoteConfig = getRemoteConfig(app);
-remoteConfig.settings.minimumFetchIntervalMillis = 3600000; // 1 hr cache
-remoteConfig.defaultConfig = {
-  ai_enabled:   true,
-  gemini_model: 'gemini-2.0-flash',
-  app_version:  '5.0.0',
-};
+export const remoteConfig = FIREBASE_ENABLED ? getRemoteConfig(app) : null;
+if (remoteConfig) {
+  remoteConfig.settings.minimumFetchIntervalMillis = 3600000;
+  remoteConfig.defaultConfig = {
+    ai_enabled:   true,
+    gemini_model: 'gemini-2.0-flash',
+    app_version:  '5.0.0',
+  };
+}
 
 export async function initRemoteConfig() {
+  if (!remoteConfig) return;
   try {
     await fetchAndActivate(remoteConfig);
   } catch (e) {
@@ -57,17 +74,23 @@ export async function initRemoteConfig() {
 }
 
 export function getConfig(key) {
+  if (!remoteConfig) return null;
   return getValue(remoteConfig, key);
 }
 
 // ── AI (Gemini) ───────────────────────────────────────────────────────────────
-const ai = getAI(app, { backend: new GoogleAIBackend() });
+const ai = FIREBASE_ENABLED ? (() => { try { return getAI(app, { backend: new GoogleAIBackend() }); } catch { return null; } })() : null;
 
 export function getGeminiModel(modelName = 'gemini-2.0-flash') {
+  if (!ai) throw new Error('[Firebase] AI not initialised — missing env vars.');
   return getGenerativeModel(ai, { model: modelName });
 }
 
 export async function askGemini(prompt, modelName = 'gemini-2.0-flash') {
+  if (!ai) {
+    console.warn('[Gemini] Skipped — Firebase not initialised.');
+    return null;
+  }
   try {
     trackEvent('ai_query', { model: modelName, prompt_length: prompt.length });
     const model  = getGeminiModel(modelName);
@@ -83,6 +106,7 @@ export async function askGemini(prompt, modelName = 'gemini-2.0-flash') {
 
 // ── Analytics helpers ─────────────────────────────────────────────────────────
 export function trackEvent(eventName, params = {}) {
+  if (!analytics) return;
   try {
     logEvent(analytics, eventName, { ...params, app_version: '5.0.0' });
   } catch (e) {
@@ -99,6 +123,7 @@ export function trackTabSwitch(tabName) {
 }
 
 export function trackUserProperties(props = {}) {
+  if (!analytics) return;
   try {
     setUserProperties(analytics, props);
   } catch (e) {
@@ -108,6 +133,7 @@ export function trackUserProperties(props = {}) {
 
 // ── Performance trace helper ──────────────────────────────────────────────────
 export function startTrace(traceName) {
+  if (!perf) return null;
   try {
     const t = trace(perf, traceName);
     t.start();
@@ -123,6 +149,7 @@ export function stopTrace(t) {
 
 // ── Firestore CRUD helpers ────────────────────────────────────────────────────
 export async function fsGetCollection(col) {
+  if (!db) return [];
   try {
     const q    = query(collection(db, col), where('userId', '==', USER_ID));
     const snap = await getDocs(q);
@@ -134,6 +161,7 @@ export async function fsGetCollection(col) {
 }
 
 export async function fsAdd(col, data) {
+  if (!db) return null;
   try {
     const ref = await addDoc(collection(db, col), { ...data, userId: USER_ID });
     return { id: ref.id };
@@ -144,6 +172,7 @@ export async function fsAdd(col, data) {
 }
 
 export async function fsSet(col, id, data) {
+  if (!db) return;
   try {
     await setDoc(doc(db, col, id), { ...data, userId: USER_ID }, { merge: true });
   } catch (e) {
@@ -152,6 +181,7 @@ export async function fsSet(col, id, data) {
 }
 
 export async function fsUpdate(col, id, data) {
+  if (!db) return;
   try {
     await updateDoc(doc(db, col, id), data);
   } catch (e) {
@@ -160,6 +190,7 @@ export async function fsUpdate(col, id, data) {
 }
 
 export async function fsDelete(col, id) {
+  if (!db) return;
   try {
     await deleteDoc(doc(db, col, id));
   } catch (e) {
@@ -168,6 +199,7 @@ export async function fsDelete(col, id) {
 }
 
 export async function fsSetUser(data) {
+  if (!db) return;
   try {
     await setDoc(doc(db, 'users', USER_ID), data, { merge: true });
   } catch (e) {
@@ -176,6 +208,7 @@ export async function fsSetUser(data) {
 }
 
 export async function fsCheckHealth() {
+  if (!db) return false;
   try {
     await getDocs(query(collection(db, 'health_check'), where('userId', '==', USER_ID)));
     return true;
