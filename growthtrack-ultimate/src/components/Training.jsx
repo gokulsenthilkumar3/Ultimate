@@ -69,6 +69,7 @@ export default function Training() {
   const [newDay, setNewDay] = useState({ day: 'Mon', muscleGroup: '' });
   const [prForm, setPrForm] = useState({ lift: 'benchPress', weight: '' });
   const [activePRLift, setActivePRLift] = useState('benchPress');
+  const [calc1RM, setCalc1RM] = useState({ weight: '', reps: '' });
 
   // Live session logger state
   const [activeSession, setActiveSession] = useState(null); // { day, startTime, sets: [{exName, set, reps, weight, done}] }
@@ -118,18 +119,34 @@ export default function Training() {
 
   // ── Live Session Logger ──
   const startSession = (day) => {
-    const sets = (day.exercises || []).flatMap(ex =>
-      Array.from({ length: parseInt(ex.sets) || 3 }, (_, i) => ({
+    const sets = (day.exercises || []).flatMap(ex => {
+      let prevWeight = null;
+      let prevReps = null;
+      for (let i = workoutSessions.length - 1; i >= 0; i--) {
+        const s = workoutSessions[i];
+        if (s._sets) {
+          const pastSet = s._sets.find(st => st.exName === ex.name);
+          if (pastSet) {
+            prevWeight = pastSet.actualWeight;
+            prevReps = pastSet.actualReps;
+            break;
+          }
+        }
+      }
+      
+      return Array.from({ length: parseInt(ex.sets) || 3 }, (_, i) => ({
         id: `${ex.id}-${i}`,
         exName: ex.name,
         setNum: i + 1,
         plannedReps: ex.reps,
         plannedWeight: ex.weight,
-        actualReps: ex.reps,
-        actualWeight: ex.weight,
+        actualReps: prevReps || ex.reps,
+        actualWeight: prevWeight || ex.weight,
+        prevWeight,
+        prevReps,
         done: false,
-      }))
-    );
+      }));
+    });
     setActiveSession({ day, startTime: Date.now(), sets });
     setSessionNotes('');
     toast.success(`Session started: ${day.day} — ${day.muscleGroup}`);
@@ -166,7 +183,7 @@ export default function Training() {
     const doneSets = activeSession.sets.filter(s => s.done);
     const volume = doneSets.reduce((sum, s) => sum + (Number(s.actualReps) * Number(s.actualWeight) || 0), 0);
     const elapsed = Math.round((Date.now() - activeSession.startTime) / 60000);
-    await addWorkoutFromDay({ ...activeSession.day, _volume: volume, _notes: sessionNotes || `${elapsed} min session — ${doneSets.length} sets completed` });
+    await addWorkoutFromDay({ ...activeSession.day, _volume: volume, _sets: doneSets, _notes: sessionNotes || `${elapsed} min session — ${doneSets.length} sets completed` });
     incrementStreak();
     setActiveSession(null);
     if (sessionRestTimer) clearInterval(sessionRestTimer);
@@ -357,7 +374,10 @@ export default function Training() {
                       </div>
                       {exSets.map(s => (
                         <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr 50px', gap: '8px', alignItems: 'center', marginBottom: '8px', opacity: s.done ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>#{s.setNum}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>#{s.setNum}</span>
+                            {s.prevWeight && !s.done && <span style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Prev: {s.prevWeight}kg</span>}
+                          </div>
                           <input type="number" value={s.actualReps} onChange={e => updateSetValue(s.id, 'actualReps', e.target.value)} className="form-input" style={{ padding: '0.35rem', fontSize: '0.82rem', textAlign: 'center' }} disabled={s.done} />
                           <input type="number" value={s.actualWeight} onChange={e => updateSetValue(s.id, 'actualWeight', e.target.value)} className="form-input" style={{ padding: '0.35rem', fontSize: '0.82rem', textAlign: 'center' }} disabled={s.done} />
                           <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-2)' }}>{(Number(s.actualReps) * Number(s.actualWeight) || 0).toLocaleString()} kg</span>
@@ -429,6 +449,27 @@ export default function Training() {
             ) : (
               <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', textAlign: 'center', padding: '2.5rem 0' }}>Log PRs to see progression chart</p>
             )}
+          </div>
+          
+          <div className="glass-card mt-4">
+            <span className="card-title">1RM Calculator (Epley Formula)</span>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Calculate your 1-Rep Max based on weight and reps performed.</p>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Weight (kg)</label>
+                <input type="number" placeholder="100" value={calc1RM.weight} onChange={e => setCalc1RM(prev => ({...prev, weight: e.target.value}))} className="form-input" style={{ width: '120px' }} />
+              </div>
+              <div>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Reps</label>
+                <input type="number" placeholder="5" value={calc1RM.reps} onChange={e => setCalc1RM(prev => ({...prev, reps: e.target.value}))} className="form-input" style={{ width: '120px' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '4px', marginLeft: '1rem' }}>
+                <span className="label-caps" style={{ color: 'var(--text-3)' }}>Estimated 1RM</span>
+                <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
+                  {calc1RM.weight && calc1RM.reps ? `${Math.round(Number(calc1RM.weight) * (1 + Number(calc1RM.reps) / 30))} kg` : '—'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}

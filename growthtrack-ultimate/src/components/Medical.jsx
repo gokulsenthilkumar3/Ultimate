@@ -7,7 +7,7 @@ import useStore, {
   selectAddMedication,
   selectDeleteMedication,
 } from '../store/useStore';
-import { AlertCircle, Activity, Droplets, Stethoscope, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Activity, Droplets, Stethoscope, Plus, Trash2, Printer } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 
 export default function Medical({ user }) {
@@ -92,14 +92,19 @@ export default function Medical({ user }) {
   };
 
   return (
-    <div className="fade-in" style={{ padding: '0.5rem 0' }}>
-      <div style={{ marginBottom: '1.75rem' }}>
-        <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Medical</p>
-        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
-          <Stethoscope size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
-          Medical & Bio-Vitals
-        </h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Clinical baseline data, required diagnostics, and medication tracking.</p>
+    <div className="fade-in medical-theme" style={{ padding: '0.5rem 0' }} id="medical-report">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--danger)' }}>Clinical Overview</p>
+          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem', color: 'var(--text-1)' }}>
+            <Stethoscope size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem', color: 'var(--danger)' }} />
+            Medical History
+          </h2>
+          <p style={{ color: 'var(--text-2)', fontSize: '0.85rem' }}>Clinical baseline data, required diagnostics, and medication tracking.</p>
+        </div>
+        <button className="btn-primary no-print" onClick={() => window.print()} style={{ background: 'var(--danger)', color: '#fff', border: 'none' }}>
+          <Printer size={16} /> Export PDF
+        </button>
       </div>
 
       {/* Warning Banner */}

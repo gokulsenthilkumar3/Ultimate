@@ -59,6 +59,20 @@ function daysLeft(deadline) {
   return Math.ceil((new Date(deadline) - new Date()) / 86400000);
 }
 
+function generateMilestones(goal) {
+  if (!goal.target_value) return [];
+  const start = goal.created_at ? new Date(goal.created_at) : new Date(Date.now() - 30 * 86400000);
+  const end = goal.deadline ? new Date(goal.deadline) : new Date(start.getTime() + 90 * 86400000);
+  const totalDays = Math.max(1, (end - start) / 86400000);
+  
+  return [25, 50, 75, 100].map(pct => {
+    const targetDate = new Date(start.getTime() + totalDays * (pct/100) * 86400000);
+    const targetVal = Number(goal.target_value) * (pct/100);
+    const achieved = Number(goal.current_value || 0) >= targetVal;
+    return { pct, targetDate, targetVal: targetVal.toLocaleString(undefined, { maximumFractionDigits: 1 }), achieved };
+  });
+}
+
 export default function GoalsDashboard() {
   const toast = useToast();
   const goals      = useStore(selectGoals);
@@ -221,7 +235,7 @@ export default function GoalsDashboard() {
           { label: 'Done',   val: stats.completed,          color: 'text-blue-400' },
           { label: 'Avg %',  val: stats.avgProgress + '%',  color: 'text-amber-400' },
         ].map(s => (
-          <div key={s.label} className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+          <div key={s.label} className="glass-card rounded-xl p-3 text-center">
             <p className={`text-2xl font-bold ${s.color}`}>{s.val}</p>
             <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
           </div>
@@ -230,7 +244,7 @@ export default function GoalsDashboard() {
 
       {/* Add form */}
       {showAdd && (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+        <div className="glass-card rounded-xl p-4 space-y-3">
           <p className="text-sm font-semibold text-white">New Goal</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input placeholder="Goal title *" value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))}
@@ -334,7 +348,7 @@ export default function GoalsDashboard() {
           const dlLabel = dl === null ? null : dl < 0 ? `${Math.abs(dl)}d overdue` : dl === 0 ? 'Due today' : `${dl}d left`;
 
           return (
-            <div key={g.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+            <div key={g.id} className="glass-card rounded-xl overflow-hidden relative">
               <div className="flex items-start gap-4 p-4">
                 {/* Progress ring */}
                 <div className="relative flex-shrink-0">
@@ -499,8 +513,27 @@ export default function GoalsDashboard() {
                   ) : history.length === 1 ? (
                     <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>1 log entry — log more to see chart.</p>
                   ) : (
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>No progress logs yet.</p>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>No logs yet.</p>
                   )}
+
+                  {/* Timeline View */}
+                  {g.target_value && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '16px' }}>Milestone Timeline</p>
+                      <div className="flex justify-between relative px-2">
+                        <div className="absolute top-1.5 left-2 right-2 h-1 bg-white/10 -translate-y-1/2 z-0 rounded-full" />
+                        <div className="absolute top-1.5 left-2 h-1 -translate-y-1/2 z-0 transition-all rounded-full" style={{ width: `calc(${prog}% - 16px)`, background: cat.color }} />
+                        {generateMilestones(g).map(m => (
+                          <div key={m.pct} className="relative z-10 flex flex-col items-center group">
+                            <div className={`w-3 h-3 rounded-full border-2 transition-transform group-hover:scale-125 ${m.achieved ? 'bg-emerald-500 border-emerald-400' : 'bg-gray-800 border-gray-600'}`} style={{ boxShadow: m.achieved ? `0 0 8px ${cat.color}` : 'none' }} />
+                            <span className="text-[0.55rem] text-gray-400 mt-1 font-bold">{m.pct}%</span>
+                            <span className="text-[0.55rem] text-gray-500">{m.targetVal} {g.unit}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               )}
             </div>

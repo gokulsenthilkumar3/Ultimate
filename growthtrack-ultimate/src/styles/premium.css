@@ -38,6 +38,7 @@
   color: #000;
   border: none;
   cursor: default;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -55,6 +56,7 @@
 
 .premium-gate-inner {
   pointer-events: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -62,8 +64,8 @@
 .premium-blur-overlay {
   position: absolute;
   inset: 0;
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
@@ -81,8 +83,8 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-xl, 16px);
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .premium-cta-card h3 {
@@ -241,8 +243,8 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: all 0.3s var(--ease);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 .platform-analytics-card:hover {
   transform: translateY(-3px);
@@ -504,6 +506,7 @@
   border: 1px solid var(--accent);
   color: var(--accent);
   cursor: default;
+  -webkit-user-select: none;
   user-select: none;
 }
 .tag-pill__remove {
@@ -643,8 +646,8 @@
   right: 0;
   padding: 0.85rem 1.5rem;
   background: var(--bg-glass);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border-top: 1px solid var(--border-strong);
   display: flex;
   align-items: center;
@@ -750,6 +753,9 @@
   flex: 1;
 }
 .macro-ring-legend__value {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-1);
 }
 
 /* ── Stopwatch display ──────────────────────────────────────────────── */
@@ -838,8 +844,8 @@
   right: 0;
   padding: 0.85rem 1.5rem;
   background: var(--bg-glass);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border-top: 1px solid var(--border-strong);
   display: flex;
   align-items: center;
@@ -1155,5 +1161,71 @@
   .breath-circle--out,
   .confetti-piece {
     animation: none !important;
+  }
+}
+
+/* ── Medical Theme (Sterile UI & PDF Export) ─────────────────────────── */
+.medical-theme {
+  --bg-card: #ffffff;
+  --bg-elevated: #f8fafc;
+  --bg-dark: #f1f5f9;
+  --text-1: #0f172a;
+  --text-2: #334155;
+  --text-3: #64748b;
+  --border: #e2e8f0;
+  --accent: #ef4444; 
+  --danger: #dc2626;
+  background: var(--bg-card);
+  padding: 2rem !important;
+  border-radius: 16px;
+  color: var(--text-1);
+}
+.medical-theme .glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.medical-theme input.form-input, .medical-theme select.form-input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+}
+.medical-theme .card-title {
+  color: var(--text-1);
+  border-bottom: 2px solid var(--accent);
+}
+.medical-theme .text-display {
+  color: var(--text-1);
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #medical-report, #medical-report * {
+    visibility: visible;
+  }
+  #medical-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: #fff;
+    color: #000;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .medical-theme {
+    box-shadow: none;
+    border: none;
+    padding: 0 !important;
+  }
+  .medical-theme .glass-card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+    break-inside: avoid;
   }
 }
