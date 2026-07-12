@@ -4,7 +4,7 @@ import useStore, {
 } from '../store/useStore';
 import {
   Plus, Check, Trash2, RotateCcw, Edit3, X, Clock,
-  ChevronDown, ChevronRight, ListTodo, AlertCircle, RefreshCw
+  ChevronDown, ChevronRight, ListTodo, AlertCircle, RefreshCw, LayoutGrid, List
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { apiSync } from '../store/useStore';
@@ -275,6 +275,7 @@ export default function Tasks() {
   const completed = useMemo(() => allTasks.filter(t => t.status === 'done'),  [allTasks]);
 
   const [tab,      setTab]      = useState('pending');
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'matrix'
   const [showForm, setShowForm] = useState(false);
   const [editId,   setEditId]   = useState(null);
   const [filter,   setFilter]   = useState('all');
@@ -473,6 +474,33 @@ export default function Tasks() {
     setSelected(new Set());
   }, [selected, handleDelete]);
 
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+  const getQuadrant = (task) => {
+    const due = task.dueDate || task.due_date;
+    const urgent = due && due <= tomorrowStr;
+    const p = normPriority(task.priority);
+    const important = p === 'p1' || p === 'p2';
+    if (urgent && important) return 1; // Do First
+    if (!urgent && important) return 2; // Schedule
+    if (urgent && !important) return 3; // Delegate
+    if (!urgent && !important) return 4; // Don't Do / Later
+  };
+
+  const matrixTasks = useMemo(() => {
+    const q1 = [], q2 = [], q3 = [], q4 = [];
+    filteredPending.forEach(t => {
+      const q = getQuadrant(t);
+      if (q === 1) q1.push(t);
+      else if (q === 2) q2.push(t);
+      else if (q === 3) q3.push(t);
+      else if (q === 4) q4.push(t);
+    });
+    return { q1, q2, q3, q4 };
+  }, [filteredPending, tomorrowStr]);
+
   // ── Render ──
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: '1rem' }}>
@@ -620,6 +648,13 @@ export default function Tasks() {
                   color: sortBy === v ? 'var(--text-1)' : 'var(--text-3)', cursor: 'pointer',
                 }}>{l}</button>
             ))}
+            <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+            <button onClick={() => setViewMode('list')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : 'var(--text-3)' }}>
+              <List size={16} />
+            </button>
+            <button onClick={() => setViewMode('matrix')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: viewMode === 'matrix' ? 'var(--accent)' : 'var(--text-3)' }}>
+              <LayoutGrid size={16} />
+            </button>
           </div>
         </div>
       )}
@@ -638,9 +673,9 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* Task list */}
+      {/* Task list / Matrix */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-        {tab === 'pending' && filteredPending.map(task => (
+        {tab === 'pending' && viewMode === 'list' && filteredPending.map(task => (
           <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
             <input
               type="checkbox"
@@ -665,6 +700,54 @@ export default function Tasks() {
             </div>
           </div>
         ))}
+        
+        {tab === 'pending' && viewMode === 'matrix' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+            {/* Q1: Urgent & Important */}
+            <div className="glass-card" style={{ padding: '1rem', borderTop: '3px solid #ef4444' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 900, marginBottom: '0.5rem', color: '#ef4444' }}>Do First</h3>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Urgent & Important</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {matrixTasks.q1.map(task => (
+                  <TaskCard key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onEdit={startEdit} onSubToggle={handleSubToggle} onSubDelete={handleSubDelete} onSubAdd={handleSubAdd} />
+                ))}
+              </div>
+            </div>
+            
+            {/* Q2: Not Urgent & Important */}
+            <div className="glass-card" style={{ padding: '1rem', borderTop: '3px solid #3b82f6' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 900, marginBottom: '0.5rem', color: '#3b82f6' }}>Schedule</h3>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Not Urgent & Important</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {matrixTasks.q2.map(task => (
+                  <TaskCard key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onEdit={startEdit} onSubToggle={handleSubToggle} onSubDelete={handleSubDelete} onSubAdd={handleSubAdd} />
+                ))}
+              </div>
+            </div>
+            
+            {/* Q3: Urgent & Not Important */}
+            <div className="glass-card" style={{ padding: '1rem', borderTop: '3px solid #f59e0b' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 900, marginBottom: '0.5rem', color: '#f59e0b' }}>Delegate</h3>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Urgent & Not Important</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {matrixTasks.q3.map(task => (
+                  <TaskCard key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onEdit={startEdit} onSubToggle={handleSubToggle} onSubDelete={handleSubDelete} onSubAdd={handleSubAdd} />
+                ))}
+              </div>
+            </div>
+            
+            {/* Q4: Not Urgent & Not Important */}
+            <div className="glass-card" style={{ padding: '1rem', borderTop: '3px solid #6b7280' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 900, marginBottom: '0.5rem', color: '#9ca3af' }}>Later / Eliminate</h3>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Not Urgent & Not Important</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {matrixTasks.q4.map(task => (
+                  <TaskCard key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onEdit={startEdit} onSubToggle={handleSubToggle} onSubDelete={handleSubDelete} onSubAdd={handleSubAdd} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {tab === 'completed' && completed.map(task => (
           <div key={task.id}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Database, Download, RefreshCw, Box, Table, Power, Code, LayoutGrid } from 'lucide-react';
+import { Database, Download, Upload, RefreshCw, Box, Table, Power, Code, LayoutGrid } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import useStore, { selectFetchInitialData, apiSync } from '../store/useStore';
 
@@ -15,6 +15,7 @@ export default function Databases() {
   const [isQuerying, setIsQuerying] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'json'
   const [tableSearch, setTableSearch] = useState('');
+  const [explorerSort, setExplorerSort] = useState({ key: null, direction: 'asc' });
   
   // Insert form state
   const [insertForm, setInsertForm] = useState({});
@@ -57,14 +58,79 @@ export default function Databases() {
     return base.filter(t => t.toLowerCase().includes(tableSearch.toLowerCase()));
   }, [dynamicTables, data, tableSearch]);
 
-  const exportDB = () => {
+  const handleImportCSV = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const rows = text.split('\n').filter(r => r.trim());
+      if (rows.length < 2) {
+        toast.error('CSV file is empty or missing data.');
+        return;
+      }
+      const headers = rows[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+      const dataRows = rows.slice(1).map(r => {
+        // Basic CSV parsing, doesn't handle commas inside quotes perfectly, but sufficient for simple data
+        const vals = r.split(',').map(v => v.replace(/^"|"$/g, '').trim());
+        const rowObj = {};
+        headers.forEach((h, i) => { rowObj[h] = vals[i] || ''; });
+        return rowObj;
+      });
+
+      if (!window.confirm(`Import ${dataRows.length} rows into ${activeTable}?`)) {
+        e.target.value = null;
+        return;
+      }
+      
+      setLoading(true);
+      let successCount = 0;
+      for (const row of dataRows) {
+        try {
+          const res = await apiSync('/insert', 'POST', { table: activeTable, row });
+          if (res.success) successCount++;
+        } catch (err) {
+          console.error('Row import error:', err);
+        }
+      }
+      toast.success(`Imported ${successCount} / ${dataRows.length} rows successfully.`);
+      loadData();
+    } catch (err) {
+      toast.error('Failed to parse CSV file.');
+    } finally {
+      e.target.value = null;
+      setLoading(false);
+    }
+  };
+
+  const exportDB = (format = 'json') => {
+    if (format === 'csv') {
+      if (!Array.isArray(data[activeTable])) {
+        toast.error('Cannot export non-array table as CSV.');
+        return;
+      }
+      const rows = data[activeTable];
+      if (rows.length === 0) return;
+      const headers = Object.keys(rows[0]);
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeTable}_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      toast.success(`${activeTable} exported as CSV.`);
+      return;
+    }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `growthtrack_db_export_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
-    toast.success('Database exported successfully.');
+    toast.success('Database exported as JSON successfully.');
   };
 
   const runQuery = async () => {
@@ -102,6 +168,7 @@ export default function Databases() {
       setSqlResult(null);
       setSqlError(null);
     }
+    setExplorerSort({ key: null, direction: 'asc' });
     setInsertForm({});
   };
 
@@ -219,9 +286,20 @@ export default function Databases() {
           >
             <Power size={16} /> SYNC APP
           </button>
-          <button onClick={exportDB} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Download size={16} /> EXPORT
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <label className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, padding: '0.45rem 0.85rem' }} title={`Import CSV into ${activeTable}`}>
+              <Upload size={14} /> IMPORT
+              <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportCSV} />
+            </label>
+            <div style={{ display: 'flex', gap: '0' }}>
+              <button onClick={() => exportDB('csv')} className="btn-icon" style={{ borderRadius: 'var(--radius-md) 0 0 var(--radius-md)', borderRight: '1px solid var(--border)', padding: '0.45rem 0.85rem', fontSize: '0.78rem' }}>
+                <Download size={14} /> CSV
+              </button>
+              <button onClick={() => exportDB('json')} className="btn-primary" style={{ borderRadius: '0 var(--radius-md) var(--radius-md) 0', padding: '0.45rem 0.85rem', fontSize: '0.78rem' }}>
+                JSON
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -283,6 +361,39 @@ export default function Databases() {
             <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-dark)', borderRadius: '12px', padding: '1.5rem', border: '1px solid var(--border)' }}>
               {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}><div className="spin-ring" /></div>
+              ) : Array.isArray(data[activeTable]) ? (
+                <div style={{ overflowX: 'auto', width: '100%' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        {Object.keys(data[activeTable][0] || {}).map(col => (
+                          <th key={col} style={{ padding: '0.75rem', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              onClick={() => setExplorerSort(prev => ({ key: col, direction: prev.key === col && prev.direction === 'asc' ? 'desc' : 'asc' }))}>
+                            {col} {explorerSort.key === col ? (explorerSort.direction === 'asc' ? '↑' : '↓') : ''}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...data[activeTable]].sort((a, b) => {
+                        if (!explorerSort.key) return 0;
+                        const aVal = a[explorerSort.key], bVal = b[explorerSort.key];
+                        if (aVal < bVal) return explorerSort.direction === 'asc' ? -1 : 1;
+                        if (aVal > bVal) return explorerSort.direction === 'asc' ? 1 : -1;
+                        return 0;
+                      }).map((row, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }} className="log-row-hover">
+                          {Object.keys(row).map(col => (
+                            <td key={col} style={{ padding: '0.75rem', color: 'var(--text-1)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
+                              {String(row[col])}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <style dangerouslySetInnerHTML={{ __html: '.log-row-hover:hover { background: var(--bg-elevated) !important; }' }} />
+                </div>
               ) : (
                 <pre style={{ 
                   margin: 0, 

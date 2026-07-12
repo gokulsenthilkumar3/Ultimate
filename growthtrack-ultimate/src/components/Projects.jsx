@@ -29,13 +29,14 @@ const STATUS_COLOR = {
   'On Hold': 'var(--warning)',
 };
 
-const EMPTY_FORM = { title: '', description: '', stack: '', status: 'Active', url: '' };
+const EMPTY_FORM = { title: '', description: '', stack: '', status: 'Active', url: '', startDate: new Date().toISOString().split('T')[0], endDate: '' };
 
 export default function Projects() {
   const user = useStore(s => s.user);
   const updateUserSlice = useStore(s => s.updateUserSlice);
 
   const [activeTab, setActiveTab]       = useState('github');
+  const [viewMode, setViewMode]         = useState('grid');
   const [repos, setRepos]               = useState([]);
   const [loading, setLoading]           = useState(true);
   const [filter, setFilter]             = useState('all');
@@ -120,7 +121,7 @@ export default function Projects() {
   };
 
   const startEdit = p => {
-    setForm({ title: p.title, description: p.description || '', stack: p.stack || '', status: p.status || 'Active', url: p.url || '' });
+    setForm({ title: p.title, description: p.description || '', stack: p.stack || '', status: p.status || 'Active', url: p.url || '', startDate: p.startDate || '', endDate: p.endDate || '' });
     setEditId(p.id);
     setShowForm(true);
   };
@@ -293,6 +294,16 @@ export default function Projects() {
                   <input className="form-input" placeholder="https://your-project-url.com" value={form.url}
                     onChange={e => setForm({ ...form, url: e.target.value })} style={{ width: '100%' }} />
                 </div>
+                <div>
+                  <label className="form-label">Start Date</label>
+                  <input type="date" className="form-input" value={form.startDate}
+                    onChange={e => setForm({ ...form, startDate: e.target.value })} style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <label className="form-label">Target End Date</label>
+                  <input type="date" className="form-input" value={form.endDate}
+                    onChange={e => setForm({ ...form, endDate: e.target.value })} style={{ width: '100%' }} />
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
                 <button className="btn-primary" onClick={handleAddOrEdit} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -302,10 +313,17 @@ export default function Projects() {
               </div>
             </div>
           ) : (
-            <button className="btn-primary mb-lg" onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY_FORM); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Plus size={16} /> Add Project
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <button className="btn-primary" onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY_FORM); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Plus size={16} /> Add Project
+              </button>
+              <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
+                <button className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>Grid</button>
+                <button className={`btn-sm ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')}>Kanban</button>
+                <button className={`btn-sm ${viewMode === 'gantt' ? 'active' : ''}`} onClick={() => setViewMode('gantt')}>Timeline</button>
+              </div>
+            </div>
           )}
 
           {manualProjects.length === 0 ? (
@@ -315,37 +333,91 @@ export default function Projects() {
               <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Click "Add Project" to manually track your personal projects.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
-              {manualProjects.map(p => (
-                <div key={p.id} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <h3 style={{ fontWeight: 800, fontSize: '1.05rem', margin: 0, flex: 1 }}>{p.title}</h3>
-                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
-                      <button className="btn-icon" style={{ padding: '4px' }} onClick={() => startEdit(p)} title="Edit"><Edit2 size={14} /></button>
-                      <button className="btn-icon" style={{ padding: '4px', color: 'var(--danger)' }} onClick={() => handleDelete(p.id)} title="Delete"><Trash2 size={14} /></button>
+            <>
+              {viewMode === 'grid' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+                  {manualProjects.map(p => (
+                    <div key={p.id} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <h3 style={{ fontWeight: 800, fontSize: '1.05rem', margin: 0, flex: 1 }}>{p.title}</h3>
+                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
+                          <button className="btn-icon" style={{ padding: '4px' }} onClick={() => startEdit(p)} title="Edit"><Edit2 size={14} /></button>
+                          <button className="btn-icon" style={{ padding: '4px', color: 'var(--danger)' }} onClick={() => handleDelete(p.id)} title="Delete"><Trash2 size={14} /></button>
+                        </div>
+                      </div>
+                      {p.description && <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>}
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {p.stack && p.stack.split(',').map(s => <span key={s} style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '99px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontWeight: 700 }}>{s.trim()}</span>)}
+                        <span style={{ marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 800, color: STATUS_COLOR[p.status] || 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{p.status}</span>
+                      </div>
+                      {p.url && <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--accent)', fontWeight: 700, textDecoration: 'none', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}><ExternalLink size={12} /> Visit Project</a>}
                     </div>
-                  </div>
-
-                  {p.description && (
-                    <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>
-                  )}
-
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {p.stack && p.stack.split(',').map(s => (
-                      <span key={s} style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '99px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', fontWeight: 700 }}>{s.trim()}</span>
-                    ))}
-                    <span style={{ marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 800, color: STATUS_COLOR[p.status] || 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{p.status}</span>
-                  </div>
-
-                  {p.url && (
-                    <a href={p.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--accent)', fontWeight: 700, textDecoration: 'none', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
-                      <ExternalLink size={12} /> Visit Project
-                    </a>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+
+              {viewMode === 'kanban' && (
+                <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', alignItems: 'flex-start' }}>
+                  {STATUSES.map(status => (
+                    <div key={status} style={{ minWidth: '280px', flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: '12px', padding: '1rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `2px solid ${STATUS_COLOR[status]}`, paddingBottom: '0.5rem' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--text-1)' }}>{status}</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-3)', background: 'var(--bg-glass)', padding: '2px 8px', borderRadius: '10px' }}>
+                          {manualProjects.filter(p => p.status === status).length}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {manualProjects.filter(p => p.status === status).map(p => (
+                          <div key={p.id} className="glass-card" style={{ padding: '1rem', cursor: 'pointer', transition: 'transform 0.2s', ':hover': { transform: 'translateY(-2px)' } }} onClick={() => startEdit(p)}>
+                            <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>{p.title}</h4>
+                            {p.stack && (
+                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                {p.stack.split(',').map(s => <span key={s} style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'var(--bg-input)', borderRadius: '4px', border: '1px solid var(--border)' }}>{s.trim()}</span>)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {viewMode === 'gantt' && (
+                <div className="glass-card" style={{ padding: '1.5rem', overflowX: 'auto' }}>
+                  <h3 className="card-title mb-lg">Project Timeline (90 Days)</h3>
+                  <div style={{ minWidth: '700px' }}>
+                    {manualProjects.length > 0 && manualProjects.filter(p => p.startDate).map((p, i) => {
+                      const now = new Date();
+                      const start = new Date(p.startDate);
+                      const end = p.endDate ? new Date(p.endDate) : new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+                      const totalDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+                      const ninetyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                      const daysFromStartWindow = (start.getTime() - ninetyDaysAgo.getTime()) / (1000 * 60 * 60 * 24);
+                      
+                      const left = Math.max(0, Math.min(100, (daysFromStartWindow / 90) * 100));
+                      const width = Math.max(2, Math.min(100 - left, (totalDays / 90) * 100));
+                      
+                      return (
+                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }} onClick={() => startEdit(p)}>
+                          <div style={{ width: '180px', fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>
+                            {p.title}
+                          </div>
+                          <div style={{ flex: 1, height: '36px', background: 'var(--bg-input)', borderRadius: '18px', position: 'relative', border: '1px solid var(--border)' }}>
+                            <div style={{ position: 'absolute', left: `${left}%`, width: `${width}%`, height: '100%', background: STATUS_COLOR[p.status], opacity: 0.8, borderRadius: '18px', display: 'flex', alignItems: 'center', padding: '0 12px', color: '#fff', fontSize: '0.75rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', cursor: 'pointer', transition: 'opacity 0.2s' }}>
+                              {totalDays.toFixed(0)}d
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {manualProjects.filter(p => p.startDate).length === 0 && (
+                      <p style={{ color: 'var(--text-3)', textAlign: 'center', padding: '2rem 0' }}>Assign a Start Date to your projects to view them on the timeline.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

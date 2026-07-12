@@ -35,15 +35,15 @@ function countUnreadNotifs(user) {
   if (!user) return 0;
   const today = new Date().toISOString().slice(0, 10);
   let count = 0;
-  (user.habits || []).forEach(h => {
+  (Array.isArray(user.habits) ? user.habits : []).forEach(h => {
     const last = h.lastLog || h.last_log;
     if (!last || last < today) count++;
   });
-  (user.tasks?.pending || []).forEach(t => {
+  (Array.isArray(user.tasks?.pending) ? user.tasks.pending : []).forEach(t => {
     const due = t.dueDate || t.due_date;
     if (due && due < today) count++;
   });
-  (user.goals || []).forEach(g => {
+  (Array.isArray(user.goals) ? user.goals : []).forEach(g => {
     if (g.status === 'completed') return;
     const dl = g.deadline || g.target_date;
     if (!dl) return;
@@ -280,7 +280,7 @@ export default function App() {
   const palette      = useStore(selectPalette);
   const setTheme     = useStore(selectSetTheme);
   const setPalette   = useStore(selectSetPalette);
-  const activeTab    = useStore(selectActiveTab);
+  const storeActiveTab = useStore(selectActiveTab);
   const setActiveTab = useStore(selectSetActiveTab);
   const pinnedTabs   = useStore((state) => state.pinnedTabs);
   const fetchInitialData   = useStore(selectFetchInitialData);
@@ -302,36 +302,60 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Use URL path as source of truth if valid, else fallback to store
+  const pathTabRaw = location.pathname.substring(1);
+  const activeTab = (pathTabRaw && GLOBAL_MODULES[pathTabRaw]) ? pathTabRaw : storeActiveTab;
+
   // ── Preload 3D model once on mount ──
   useEffect(() => {
     preloadHumanoidModel();
   }, []);
 
-  // ── Sync URL → Store: read tab from URL on path change ──
-  useEffect(() => {
-    const pathTab = location.pathname.substring(1);
-    if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== activeTab) {
-      setActiveTab(pathTab);
-      setIsNotFound(false);
-    } else if (location.pathname === '/') {
-      navigate(`/${activeTab}`, { replace: true });
-      setIsNotFound(false);
-    } else if (pathTab && !GLOBAL_MODULES[pathTab]) {
-      // Unknown route — show 404 instead of silently redirecting
-      setIsNotFound(true);
-    }
-  }, [location.pathname]);
+  const prevLocationRef = React.useRef(location.pathname);
+  const prevStoreTabRef = React.useRef(storeActiveTab);
+  const isMounted = React.useRef(false);
 
-  // ── Sync Store → URL: push URL on tab change + update document title ──
+  // ── Sync URL ↔ Store ──
   useEffect(() => {
     const pathTab = location.pathname.substring(1);
-    if (activeTab && pathTab !== activeTab) {
-      navigate(`/${activeTab}`);
+    const locChanged = location.pathname !== prevLocationRef.current;
+    const storeChanged = storeActiveTab !== prevStoreTabRef.current;
+
+    if (!isMounted.current) {
+      isMounted.current = true;
+      if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
+        setActiveTab(pathTab);
+        setIsNotFound(false);
+      } else if (location.pathname === '/') {
+        navigate(`/${storeActiveTab}`, { replace: true });
+        setIsNotFound(false);
+      }
+    } else if (locChanged) {
+      // URL drove the change (back/forward button or manual URL)
+      if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
+        setActiveTab(pathTab);
+        setIsNotFound(false);
+      } else if (location.pathname === '/') {
+        navigate(`/${storeActiveTab}`, { replace: true });
+        setIsNotFound(false);
+      } else if (pathTab && !GLOBAL_MODULES[pathTab]) {
+        setIsNotFound(true);
+      }
+    } else if (storeChanged) {
+      // Store drove the change (user clicked a tab)
+      if (storeActiveTab && pathTab !== storeActiveTab) {
+        navigate(`/${storeActiveTab}`);
+      }
     }
-    const moduleName = GLOBAL_MODULES[activeTab];
+
+    prevLocationRef.current = location.pathname;
+    prevStoreTabRef.current = storeActiveTab;
+
+    // Document title
+    const moduleName = GLOBAL_MODULES[storeActiveTab];
     if (moduleName) document.title = `GrowthTrack — ${moduleName}`;
     else document.title = 'GrowthTrack Ultimate';
-  }, [activeTab, navigate]);
+  }, [location.pathname, storeActiveTab, setActiveTab, navigate]);
 
   const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);
 
@@ -442,19 +466,20 @@ export default function App() {
               zIndex: LAYOUT.STATUS_PILL_ZINDEX,
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '4px 12px', borderRadius: '20px',
-              background: serverStatus === 'online' ? COLORS.STATUS_ONLINE_BG    : COLORS.STATUS_OFFLINE_BG,
-              border:    `1px solid ${serverStatus === 'online' ? COLORS.STATUS_ONLINE_BORDER : COLORS.STATUS_OFFLINE_BORDER}`,
+              background: serverStatus === 'online' ? COLORS.STATUS_ONLINE_BG    : 'rgba(255, 165, 0, 0.1)',
+              border:    `1px solid ${serverStatus === 'online' ? COLORS.STATUS_ONLINE_BORDER : 'rgba(255, 165, 0, 0.3)'}`,
               fontSize: '0.65rem', fontWeight: 800,
-              color: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
+              color: serverStatus === 'online' ? 'var(--success)' : 'orange',
               backdropFilter: 'blur(8px)',
             }}>
               <span style={{
                 width: '6px', height: '6px', borderRadius: '50%',
-                background: serverStatus === 'online' ? 'var(--success)' : 'var(--danger)',
+                background: serverStatus === 'online' ? 'var(--success)' : 'orange',
+                boxShadow: `0 0 8px ${serverStatus === 'online' ? 'var(--success)' : 'orange'}`,
                 animation: serverStatus === 'online' ? 'pulse 2s infinite' : 'none',
                 display: 'inline-block',
               }} />
-              API {serverStatus === 'online' ? 'ONLINE' : 'OFFLINE'}
+              {serverStatus === 'online' ? 'API ONLINE' : 'LOCAL SAVES'}
             </div>
           )}
 

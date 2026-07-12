@@ -2,7 +2,7 @@ import { Z_INDEX } from '../constants';
 import React, { useState, useMemo } from 'react';
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight,
-  Plus, CheckCircle2, Circle, Clock, X, Save, Pencil, Trash2, Repeat
+  Plus, CheckCircle2, Circle, Clock, X, Save, Pencil, Trash2, Repeat, Download
 } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
@@ -53,7 +53,48 @@ export default function Calendar() {
 
   const getEventsForDay = (day) => {
     const dateStr = toDateStr(day);
-    return events.filter(e => e.date === dateStr);
+    const dateObj = new Date(year, month, day);
+    const dayOfWeek = dateObj.getDay();
+    
+    return events.filter(e => {
+      if (e.date === dateStr) return true;
+      if (!e.recurrence || e.recurrence === 'none') return false;
+      
+      const eDateObj = new Date(e.date);
+      if (isNaN(eDateObj.getTime()) || eDateObj > dateObj) return false;
+      
+      if (e.recurrence === 'daily') return true;
+      if (e.recurrence === 'weekly') return eDateObj.getDay() === dayOfWeek;
+      if (e.recurrence === 'monthly') return eDateObj.getDate() === day;
+      return false;
+    });
+  };
+
+  const exportICal = () => {
+    let icsContent = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//GrowthTrack//EN\r\n";
+    events.forEach(e => {
+      if(!e.date) return;
+      const dateParts = e.date.split('-');
+      if(dateParts.length !== 3) return;
+      const y = dateParts[0], m = dateParts[1], d = dateParts[2];
+      const time = (e.time || '09:00').replace(':', '') + '00';
+      const dtstart = `${y}${m}${d}T${time}`;
+      let rrule = '';
+      if(e.recurrence === 'daily') rrule = "RRULE:FREQ=DAILY\r\n";
+      else if(e.recurrence === 'weekly') rrule = "RRULE:FREQ=WEEKLY\r\n";
+      else if(e.recurrence === 'monthly') rrule = "RRULE:FREQ=MONTHLY\r\n";
+
+      icsContent += `BEGIN:VEVENT\r\nSUMMARY:${e.title}\r\nDTSTART:${dtstart}\r\nDTEND:${dtstart}\r\n${rrule}END:VEVENT\r\n`;
+    });
+    icsContent += "END:VCALENDAR";
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'growthtrack-calendar.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Calendar exported to iCal');
   };
 
   const taskDueDates = useMemo(() => {
@@ -184,9 +225,14 @@ export default function Calendar() {
           <h2 className="text-display" style={{ fontSize: '2.2rem' }}>Personal Calendar</h2>
           <p className="text-secondary">Track your habits, events, and performance plans.</p>
         </div>
-        <button onClick={() => openAddModal(new Date().getDate())} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={18} /> ADD EVENT
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button onClick={exportICal} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)' }}>
+            <Download size={16} /> EXPORT
+          </button>
+          <button onClick={() => openAddModal(new Date().getDate())} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={18} /> ADD EVENT
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
@@ -234,7 +280,7 @@ export default function Calendar() {
                   onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                   onMouseLeave={e => { if (!active && !isSelected) e.currentTarget.style.borderColor = 'var(--border)'; }}
                 >
-                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: active ? 'var(--accent)' : 'var(--text-2)', display: 'block', marginBottom: '4px' }}>{day}</span>
+                  <span style={{ fontWeight: 900, fontSize: '0.95rem', color: active ? '#fff' : 'var(--text-2)', display: 'block', marginBottom: '6px', background: active ? 'var(--accent)' : 'transparent', width: active ? '24px' : 'auto', height: active ? '24px' : 'auto', lineHeight: active ? '24px' : 'auto', textAlign: 'center', borderRadius: active ? '50%' : '0' }}>{day}</span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     {dayEvents.slice(0, 2).map(e => (
                       <div key={e.id} style={{

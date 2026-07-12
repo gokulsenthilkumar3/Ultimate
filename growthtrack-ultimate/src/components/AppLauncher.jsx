@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Heart, Target, LayoutDashboard, Brain, Activity, Droplets,
   Moon, Dumbbell, Stethoscope, ShoppingCart, CheckSquare,
   Briefcase, Folder, Calendar, Clock, DollarSign, Film, 
   Share2, Bot, Map, FileText, Rss, Database, AlignLeft, Settings, Info, Grid, Pin, PinOff,
-  Shield, Zap, Wallet, Menu, TrendingUp
+  Shield, Zap, Wallet, Menu, TrendingUp, Star
 } from 'lucide-react';
 import useStore, { selectPinnedTabs, selectTogglePinnedTab } from '../store/useStore';
 
@@ -87,15 +87,120 @@ const GROUPS = [
 export default function AppLauncher({ setActiveTab }) {
   const pinnedTabs = useStore(selectPinnedTabs);
   const togglePinnedTab = useStore(selectTogglePinnedTab);
+  
+  const [hoverIndex, setHoverIndex] = useState(null);
+
+  const getDockScale = (index) => {
+    if (hoverIndex === null) return 1;
+    const diff = Math.abs(hoverIndex - index);
+    if (diff === 0) return 1.4;
+    if (diff === 1) return 1.15;
+    return 1;
+  };
+
+  const getDockTranslate = (index) => {
+    if (hoverIndex === null) return 0;
+    const diff = Math.abs(hoverIndex - index);
+    if (diff === 0) return -15;
+    if (diff === 1) return -5;
+    return 0;
+  };
+
+  // Mock frequent apps - in a real app, track visits in userStore
+  const frequentApps = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard, color: '#3b82f6' },
+    { id: 'tasks', label: 'Tasks', icon: Zap, color: '#ef4444' },
+    { id: 'notes', label: 'Notes', icon: AlignLeft, color: '#3b82f6' },
+    { id: 'finance', label: 'Finance', icon: Wallet, color: '#10b981' },
+    { id: 'training', label: 'Training', icon: Dumbbell, color: '#ef4444' },
+    { id: 'analytics', label: 'Analytics', icon: Activity, color: '#10b981' }
+  ];
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+    <div className="fade-in module-page" style={{ padding: '1rem 0', minHeight: '100%' }}>
       <div style={{ marginBottom: '3rem' }}>
         <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Application Matrix</p>
         <h2 className="text-display" style={{ fontSize: '2.5rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Grid size={32} /> App Hub
         </h2>
         <p className="text-secondary">Launch secondary modules and configuration interfaces.</p>
+      </div>
+
+      {/* Dock (Frequently Used) */}
+      <div style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <h3 className="label-caps" style={{ color: 'var(--text-2)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Star size={14} /> FREQUENTLY USED
+        </h3>
+        
+        <div 
+          style={{ 
+            display: 'flex', 
+            gap: '1rem', 
+            padding: '1.5rem 2rem', 
+            background: 'rgba(255,255,255,0.03)', 
+            backdropFilter: 'blur(16px)', 
+            WebkitBackdropFilter: 'blur(16px)',
+            borderRadius: '32px',
+            border: '1px solid rgba(255,255,255,0.05)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            height: '90px',
+            alignItems: 'flex-end',
+            marginBottom: '1rem'
+          }}
+          onMouseLeave={() => setHoverIndex(null)}
+        >
+          {frequentApps.map((app, idx) => {
+            const Icon = app.icon;
+            const scale = getDockScale(idx);
+            const translateY = getDockTranslate(idx);
+            
+            return (
+              <div 
+                key={app.id}
+                onMouseEnter={() => setHoverIndex(idx)}
+                onClick={() => setActiveTab(app.id)}
+                style={{
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '16px',
+                  background: `${app.color}20`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+                  transform: `scale(${scale}) translateY(${translateY}px)`,
+                  transformOrigin: 'bottom',
+                  border: `1px solid ${app.color}40`,
+                  boxShadow: hoverIndex === idx ? `0 10px 20px ${app.color}40` : 'none',
+                  position: 'relative'
+                }}
+              >
+                <Icon size={24} color={app.color} />
+                
+                {/* Tooltip */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-40px',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-1)',
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  pointerEvents: 'none',
+                  opacity: hoverIndex === idx ? 1 : 0,
+                  transform: hoverIndex === idx ? 'translateY(0)' : 'translateY(10px)',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                  border: '1px solid var(--border)'
+                }}>
+                  {app.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
@@ -156,4 +261,3 @@ export default function AppLauncher({ setActiveTab }) {
     </div>
   );
 }
-

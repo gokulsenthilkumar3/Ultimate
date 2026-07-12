@@ -22,26 +22,30 @@ export default function SIPCalculator() {
   const [monthly, setMonthly] = useState(5000);
   const [rate, setRate] = useState(12);
   const [years, setYears] = useState(15);
+  const [inflation, setInflation] = useState(6);
 
-  const { corpus, invested, gains, chartData } = useMemo(() => {
+  const { corpus, invested, gains, realCorpus, chartData } = useMemo(() => {
     const r = rate / 100 / 12;
     const n = years * 12;
     const corpus = monthly * (((Math.pow(1 + r, n) - 1) / r) * (1 + r));
     const invested = monthly * n;
     const gains = corpus - invested;
+    const realCorpus = corpus / Math.pow(1 + inflation / 100, years);
 
     const chartData = Array.from({ length: years }, (_, i) => {
       const months = (i + 1) * 12;
       const c = monthly * (((Math.pow(1 + r, months) - 1) / r) * (1 + r));
+      const rc = c / Math.pow(1 + inflation / 100, i + 1);
       return {
         year: `Yr ${i + 1}`,
         invested: Math.round(monthly * months),
         corpus: Math.round(c),
+        realCorpus: Math.round(rc),
       };
     });
 
-    return { corpus, invested, gains, chartData };
-  }, [monthly, rate, years]);
+    return { corpus, invested, gains, realCorpus, chartData };
+  }, [monthly, rate, years, inflation]);
 
   const xirr = ((corpus / invested - 1) * 100).toFixed(1);
 
@@ -93,6 +97,23 @@ export default function SIPCalculator() {
           </div>
         </div>
 
+        {/* Inflation Rate */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <label className="label-caps">Inflation Rate</label>
+            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '0.9rem' }}>{inflation}% p.a.</span>
+          </div>
+          <input
+            type="range" min={0} max={15} step={0.5}
+            value={inflation}
+            onChange={e => setInflation(Number(e.target.value))}
+            style={{ width: '100%', accentColor: 'var(--accent)' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>
+            <span>0%</span><span>15%</span>
+          </div>
+        </div>
+
         {/* Duration */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -115,8 +136,8 @@ export default function SIPCalculator() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {[
           { label: 'Total Invested', value: fmt(invested), color: 'var(--info)' },
-          { label: 'Estimated Gains', value: fmt(gains), color: 'var(--success)' },
           { label: 'Projected Corpus', value: fmt(corpus), color: 'var(--accent)' },
+          { label: 'Real Value (Infl. Adj)', value: fmt(realCorpus), color: 'var(--warning)' },
         ].map(s => (
           <div key={s.label} style={{
             background: 'var(--bg-elevated)', padding: '1.25rem', borderRadius: '16px',
@@ -160,10 +181,11 @@ export default function SIPCalculator() {
           />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
-            formatter={(value, name) => [fmt(value), name === 'corpus' ? 'Corpus' : 'Invested']}
+            formatter={(value, name) => [fmt(value), name === 'corpus' ? 'Corpus' : name === 'realCorpus' ? 'Real Value' : 'Invested']}
           />
           <Area type="monotone" dataKey="invested" stroke="var(--info)" fill="url(#sipInvested)" strokeWidth={2} />
           <Area type="monotone" dataKey="corpus" stroke="var(--accent)" fill="url(#sipCorpus)" strokeWidth={2} />
+          <Area type="monotone" dataKey="realCorpus" stroke="var(--warning)" fill="none" strokeWidth={2} strokeDasharray="5 5" />
         </AreaChart>
       </ResponsiveContainer>
       <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '0.75rem', fontSize: '0.72rem', color: 'var(--text-3)' }}>
@@ -174,6 +196,10 @@ export default function SIPCalculator() {
         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ width: '12px', height: '3px', background: 'var(--accent)', display: 'inline-block', borderRadius: '2px' }} />
           Projected Corpus
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '12px', height: '3px', borderTop: '2px dashed var(--warning)', display: 'inline-block' }} />
+          Real Value (Inflation Adjusted)
         </span>
       </div>
     </div>

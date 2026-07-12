@@ -90,6 +90,15 @@
 .finance-provider-0 { --hover-color: #0ea5e9; border-color: #0ea5e933; background: linear-gradient(135deg, #0ea5e908, transparent); }
 .finance-provider-0-text { color: #0ea5e9; }
 .finance-provider-0-btn { border-color: #0ea5e9; color: #0ea5e9; }
+
+.finance-budget-actual-danger,
+.finance-budget-actual,
+.finance-overview-spending-item-value,
+.finance-overview-ledger-amount,
+.finance-alert-text {
+  font-family: 'Space Mono', 'Fira Code', 'Courier New', monospace;
+}
+.finance-provider-0-btn { border-color: #0ea5e9; color: #0ea5e9; }
 .finance-provider-1 { --hover-color: #8b5cf6; border-color: #8b5cf633; background: linear-gradient(135deg, #8b5cf608, transparent); }
 .finance-provider-1-text { color: #8b5cf6; }
 .finance-provider-1-btn { border-color: #8b5cf6; color: #8b5cf6; }

@@ -12,6 +12,25 @@ const QUICK_PROMPTS = [
   { label: 'Finance Tips', prompt: 'Give me 5 practical money-saving habits I can start today.' },
 ];
 
+const TypingMessage = ({ text, onComplete }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  useEffect(() => {
+    let i = 0;
+    setDisplayedText('');
+    const timer = setInterval(() => {
+      if (i < text.length) {
+        setDisplayedText(prev => prev + text.charAt(i));
+        i++;
+      } else {
+        clearInterval(timer);
+        if (onComplete) onComplete();
+      }
+    }, 10);
+    return () => clearInterval(timer);
+  }, [text, onComplete]);
+  return <>{displayedText}</>;
+};
+
 // Build a rich user context string for injecting into the AI system prompt
 function buildUserContext(user, goals, habits, tasks, metricLogs) {
   if (!user) return '';
@@ -63,6 +82,7 @@ export default function AiDashboard() {
     }
   ]);
   const [input, setInput]       = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading]   = useState(false);
   const [copied, setCopied]     = useState(null);
   const [aiEnabled, setAiEnabled] = useState(true);
@@ -100,8 +120,20 @@ export default function AiDashboard() {
       // Build context-aware system prompt with full user data
       const baseContext = `You are GrowthTrack AI, a personal coach embedded in GrowthTrack Ultimate — a health, fitness, and productivity tracking app. Be concise (max 250 words), actionable, encouraging, and specific to the user's data. Never mention you are an AI model by Google; just be GrowthTrack AI.${userContext}`;
       const systemContext = `${baseContext}\n\nUser question: `;
-      const response = await askGemini(systemContext + text, model);
-      setMessages(prev => [...prev, { role: 'assistant', text: response, ts: Date.now() }]);
+      
+      const cacheKey = `gemini_cache_${model}_${btoa(encodeURIComponent(text))}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      let response;
+      if (cached) {
+        response = cached;
+        // Small delay to simulate network even on cache for UX
+        await new Promise(r => setTimeout(r, 400));
+      } else {
+        response = await askGemini(systemContext + text, model);
+        sessionStorage.setItem(cacheKey, response);
+      }
+      
+      setMessages(prev => [...prev, { role: 'assistant', text: response, ts: Date.now(), typing: true }]);
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -139,7 +171,13 @@ export default function AiDashboard() {
           </h2>
           <p className="text-secondary">Powered by <strong style={{ color: 'var(--accent)' }}>Gemini {model}</strong> via Firebase AI Logic</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '0 0.5rem', width: '200px' }}>
+            <Search size={14} color="var(--text-3)" />
+            <input type="text" placeholder="Search chat..." value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-1)', padding: '0.5rem', outline: 'none', width: '100%', fontSize: '0.8rem' }} />
+          </div>
           <div className="glass-card" style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: aiEnabled ? 'var(--success)' : 'var(--danger)' }} />
             <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>{aiEnabled ? 'AI ONLINE' : 'AI OFFLINE'}</span>
@@ -163,7 +201,7 @@ export default function AiDashboard() {
 
       {/* Chat window */}
       <div className="glass-card" style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', marginBottom: '1rem', minHeight: '300px', maxHeight: '55vh' }}>
-        {messages.map((msg, idx) => (
+        {(searchQuery ? messages.filter(m => m.text.toLowerCase().includes(searchQuery.toLowerCase())) : messages).map((msg, idx) => (
           <div key={idx} style={{
             display: 'flex', flexDirection: 'column',
             alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
@@ -188,7 +226,11 @@ export default function AiDashboard() {
                   <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 700 }}>GEMINI</span>
                 </div>
               )}
-              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.text}</div>
+              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {msg.typing && idx === messages.length - 1 && !searchQuery ? (
+                  <TypingMessage text={msg.text} onComplete={() => setMessages(prev => prev.map((m, i) => i === idx ? { ...m, typing: false } : m))} />
+                ) : msg.text}
+              </div>
               {msg.role === 'assistant' && !msg.error && (
                 <button onClick={() => copyMessage(msg.text, idx)}
                   style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '2px' }}>

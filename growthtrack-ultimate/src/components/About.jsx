@@ -12,6 +12,24 @@ export default function About() {
   const skills = useStore(state => state.skills) || [];
   const events = useStore(state => state.calendar_events) || [];
   
+  const changelog = [
+    {
+      version: 'v2.1.0',
+      date: '2026-07-12',
+      changes: ['Phase 4 (Finance & Specialty) completed', 'Projects multi-view layout and Timesheet blocks', 'AppLauncher dock magnification & frequently used apps']
+    },
+    {
+      version: 'v2.0.0',
+      date: '2026-06-15',
+      changes: ['Phase 3 (Health & Physiology) completed', 'Interactive 3D Body Model integration', 'Glass-morphism premium UI overhaul globally']
+    },
+    {
+      version: 'v1.5.0',
+      date: '2026-05-01',
+      changes: ['Database Explorer with Notion-style sortable table', 'Core multi-module tab layout and Zustand state sync']
+    }
+  ];
+  
   const [serverStatus, setServerStatus] = useState('Checking...');
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
@@ -189,6 +207,39 @@ export default function About() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+
+        {/* Changelog Timeline */}
+        <div className="glass-card" style={{ padding: '2.5rem 2rem', gridColumn: '1 / -1' }}>
+          <h3 className="label-caps" style={{ color: 'var(--accent)', marginBottom: '2.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <TrendingUp size={18} /> System Evolution Log
+          </h3>
+          <div style={{ position: 'relative', paddingLeft: '2rem', borderLeft: '2px solid var(--border)', marginLeft: '0.5rem' }}>
+            {changelog.map((entry, idx) => (
+              <div key={idx} style={{ position: 'relative', marginBottom: idx === changelog.length - 1 ? 0 : '3rem', animation: `slideUp ${(idx + 1) * 0.2}s ease forwards`, opacity: 0, transform: 'translateY(20px)' }}>
+                <style>{`
+                  @keyframes slideUp {
+                    to { opacity: 1; transform: translateY(0); }
+                  }
+                `}</style>
+                <div style={{ position: 'absolute', left: '-2.35rem', top: '0.2rem', width: '14px', height: '14px', borderRadius: '50%', background: idx === 0 ? 'var(--accent)' : 'var(--bg-elevated)', border: `2px solid ${idx === 0 ? 'var(--bg-dark)' : 'var(--border)'}`, boxShadow: idx === 0 ? '0 0 12px var(--accent)' : 'none', transition: 'all 0.3s ease' }} />
+                
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '1rem' }}>
+                  <h4 style={{ fontSize: '1.4rem', fontWeight: 900, color: idx === 0 ? 'var(--accent)' : 'var(--text-1)' }}>{entry.version}</h4>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.05em' }}>{entry.date}</span>
+                </div>
+                
+                <ul style={{ listStyleType: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {entry.changes.map((change, cIdx) => (
+                    <li key={cIdx} style={{ fontSize: '0.9rem', color: 'var(--text-2)', display: 'flex', alignItems: 'flex-start', gap: '10px', lineHeight: 1.5 }}>
+                      <span style={{ color: 'var(--accent)', fontSize: '0.8rem', marginTop: '3px', opacity: 0.8 }}>▹</span>
+                      {change}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
       </div>

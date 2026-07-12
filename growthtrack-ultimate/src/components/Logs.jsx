@@ -1,8 +1,21 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Shield, Search, Filter, ArrowUpDown, Clock, Globe, AlertCircle, CheckCircle2, 
-         Trash2, Plus, RefreshCw, Download, X, FileText, Send } from 'lucide-react';
+         Trash2, Plus, RefreshCw, Download, X, FileText, Send, Activity } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import PageHeader from './ui/PageHeader';
+import ReactMarkdown from 'react-markdown';
+
+const getSentiment = (text) => {
+  const t = (text || '').toLowerCase();
+  const positive = ['success', 'completed', 'added', 'resolved', 'fixed', 'improved', 'achieved', 'won', 'great', 'good'];
+  const negative = ['error', 'failed', 'deleted', 'removed', 'crash', 'issue', 'bad', 'warn', 'critical', 'fatal', 'down'];
+  let score = 0;
+  positive.forEach(w => { if (t.includes(w)) score++; });
+  negative.forEach(w => { if (t.includes(w)) score--; });
+  if (score > 0) return 'Positive';
+  if (score < 0) return 'Negative';
+  return 'Neutral';
+};
 
 const ACTION_OPTS  = ['All', 'INSERT', 'UPDATE', 'DELETE', 'NOTE'];
 const ACTION_COLOR = {
@@ -140,6 +153,7 @@ export default function Logs() {
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
   const [filterTable, setFilterTable]   = useState('All');
   const [filterAction, setFilterAction] = useState('All');
+  const [filterSentiment, setFilterSentiment] = useState('All');
   const [dateFrom, setDateFrom]         = useState('');
   const [dateTo, setDateTo]             = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -179,21 +193,23 @@ export default function Logs() {
         const matchFrom = !dateFrom || (ts && ts >= new Date(dateFrom));
         const matchTo   = !dateTo   || (ts && ts <= new Date(dateTo + 'T23:59:59'));
 
-        return matchSearch && matchTable && matchAction && matchFrom && matchTo;
+        const matchSentiment = filterSentiment === 'All' || getSentiment(log.details) === filterSentiment;
+
+        return matchSearch && matchTable && matchAction && matchFrom && matchTo && matchSentiment;
       })
       .sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
         if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ?  1 : -1;
         return 0;
       });
-  }, [logs, search, sortConfig, filterTable, filterAction, dateFrom, dateTo]);
+  }, [logs, search, sortConfig, filterTable, filterAction, filterSentiment, dateFrom, dateTo]);
 
   const requestSort = (key) => {
     setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
   };
 
-  const clearFilters = () => { setFilterTable('All'); setFilterAction('All'); setDateFrom(''); setDateTo(''); setSearch(''); };
-  const hasFilters = filterTable !== 'All' || filterAction !== 'All' || dateFrom || dateTo || search;
+  const clearFilters = () => { setFilterTable('All'); setFilterAction('All'); setFilterSentiment('All'); setDateFrom(''); setDateTo(''); setSearch(''); };
+  const hasFilters = filterTable !== 'All' || filterAction !== 'All' || filterSentiment !== 'All' || dateFrom || dateTo || search;
 
   const handleLogSaved = (entry) => {
     setLogs(prev => [{ ...entry, id: Date.now().toString() }, ...prev]);
@@ -281,6 +297,15 @@ export default function Logs() {
             <select className="form-input" style={{ width: 'auto' }}
               value={filterTable} onChange={e => setFilterTable(e.target.value)}>
               {tables.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          
+          {/* Sentiment filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Activity size={14} style={{ color: 'var(--text-3)' }} />
+            <select className="form-input" style={{ width: 'auto' }}
+              value={filterSentiment} onChange={e => setFilterSentiment(e.target.value)}>
+              {['All', 'Positive', 'Negative', 'Neutral'].map(s => <option key={s} value={s}>{s} Sentiment</option>)}
             </select>
           </div>
 
@@ -386,8 +411,8 @@ export default function Logs() {
                         <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--accent)' }}>{log.table_name}</span>
                       </td>
                       <td style={{ padding: '1rem', maxWidth: '300px' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', background: 'var(--bg-input)', padding: '0.5rem', borderRadius: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.details}>
-                          {log.details || '—'}
+                        <div className="log-markdown" style={{ fontSize: '0.75rem', color: 'var(--text-3)', background: 'var(--bg-input)', padding: '0.5rem', borderRadius: '4px', maxHeight: '100px', overflowY: 'auto' }}>
+                          <ReactMarkdown>{log.details || '—'}</ReactMarkdown>
                         </div>
                       </td>
                     </tr>
@@ -402,6 +427,11 @@ export default function Logs() {
       <style dangerouslySetInnerHTML={{ __html: `
         .log-row-hover:hover { background: var(--bg-elevated) !important; }
         th:hover { color: var(--accent); }
+        .log-markdown p { margin-bottom: 0.5rem; }
+        .log-markdown p:last-child { margin-bottom: 0; }
+        .log-markdown ul, .log-markdown ol { padding-left: 1.25rem; margin-bottom: 0.5rem; }
+        .log-markdown a { color: var(--accent); text-decoration: underline; }
+        .log-markdown code { background: rgba(0,0,0,0.2); padding: 0.1rem 0.3rem; border-radius: 4px; font-family: monospace; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}} />
     </div>

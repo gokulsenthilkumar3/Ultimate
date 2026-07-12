@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   ComposedChart, Bar, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis,
-  PolarRadiusAxis, Radar
+  PolarRadiusAxis, Radar, ScatterChart, Scatter, ZAxis
 } from 'recharts';
 import {
   BarChart3, TrendingUp, Activity, Gauge, Target, Flame,
@@ -12,6 +12,7 @@ import useStore, {
   selectHabits,
   selectGoals,
   selectNutritionLogs,
+  selectTimesheet
 } from '../store/useStore';
 import { trackEvent, trackPageView } from '../lib/firebase';
 
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'modules',   label: '\ud83e\udde9 Modules' },
   { id: 'radar',     label: '\ud83c\udfaf Performance Radar' },
   { id: 'weight',    label: '\u2696\ufe0f Weight Trend' },
+  { id: 'correlation', label: '\ud83d\udd04 Correlation' },
 ];
 
 const tooltipStyle = {
@@ -44,6 +46,8 @@ export default function Analytics({ user }) {
     ...(user?.tasks?.pending   || []),
     ...(user?.tasks?.completed || []),
   ], [user]);
+  const timesheetData = useStore(selectTimesheet) || { sessions: [] };
+  const { sessions } = timesheetData;
 
   const [tab, setTab] = useState('overview');
   
@@ -131,6 +135,28 @@ export default function Analytics({ user }) {
       metric: k, value: Math.round(avg(vals)),
     }));
   }, [goalData]);
+
+  // ── correlation data ────────────────────────────────────────────────────────
+  const correlationData = useMemo(() => {
+    const data = [];
+    logs.forEach((l) => {
+      if (!l.sleep || !l.date) return;
+      const sleepHr = Number(l.sleep);
+      const dateStr = l.date;
+      const daySessions = (sessions || []).filter(s => {
+        const sDate = new Date(s.date);
+        if (isNaN(sDate.getTime())) return false;
+        return sDate.toISOString().slice(0, 10) === dateStr;
+      });
+      const prodHr = daySessions.reduce((acc, s) => acc + s.duration, 0) / 3600;
+      data.push({
+        date: dateStr,
+        sleep: sleepHr,
+        productivity: Number(prodHr.toFixed(2))
+      });
+    });
+    return data;
+  }, [logs, sessions]);
 
   // ── performance radar ───────────────────────────────────────────────────────
   const radarData = useMemo(() => {
@@ -428,6 +454,33 @@ export default function Analytics({ user }) {
                   <Area type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={3}
                     fillOpacity={1} fill="url(#weightGrad)" />
                 </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )}
+
+        {/* ── CORRELATION ── */}
+        {tab === 'correlation' && (
+          <div style={{ height: '400px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 className="card-title" style={{ margin: 0 }}>Sleep vs. Productivity</h3>
+              <p className="text-secondary" style={{ fontSize: '0.8rem' }}>Focus hours correlated with sleep hours</p>
+            </div>
+            {correlationData.length === 0 ? (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)' }}>
+                <Activity size={40} style={{ opacity: 0.25 }} />
+                <p style={{ fontSize: '0.82rem', marginTop: '1rem' }}>Log sleep and track time to see correlation.</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="80%">
+                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis type="number" dataKey="sleep" name="Sleep" unit="h" stroke="var(--text-3)" domain={['auto', 'auto']} />
+                  <YAxis type="number" dataKey="productivity" name="Productivity" unit="h" stroke="var(--text-3)" domain={['auto', 'auto']} />
+                  <ZAxis type="category" dataKey="date" name="Date" />
+                  <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={tooltipStyle} />
+                  <Scatter name="Correlation" data={correlationData} fill="var(--accent)" />
+                </ScatterChart>
               </ResponsiveContainer>
             )}
           </div>
