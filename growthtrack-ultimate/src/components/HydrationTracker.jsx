@@ -93,36 +93,56 @@ export default function HydrationTracker() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
-        {/* Water Bottle Visual */}
+        {/* Animated Wave Visual */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-          <div style={{
-            position: 'relative', width: '100px', height: '200px',
-            border: '3px solid var(--accent)', borderRadius: '0 0 24px 24px',
-            borderTopLeftRadius: '8px', borderTopRightRadius: '8px',
-            overflow: 'hidden', background: 'var(--bg-elevated)', marginBottom: '1.5rem',
+          <div className="wave-container" style={{
+            width: '120px', height: '200px', position: 'relative', marginBottom: '1.5rem',
+            borderRadius: '0 0 30px 30px',
+            borderTopLeftRadius: '12px', borderTopRightRadius: '12px',
           }}>
+            {/* Background fill */}
             <div style={{
-              position: 'absolute', bottom: 0, left: 0, width: '100%',
-              height: `${pct}%`, background: 'var(--accent)', opacity: 0.3,
-              transition: 'height 0.8s var(--ease)',
-            }} />
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              height: `${pct}%`, transition: 'height 0.8s var(--ease)',
+              overflow: 'hidden', zIndex: 0, borderRadius: '0 0 28px 28px',
+            }}>
+              <div className="wave-body" style={{ background: `linear-gradient(180deg, rgba(14,165,233,0.4) 0%, rgba(14,165,233,0.8) 100%)` }} />
+              <div className="wave-body wave-body--2" />
+            </div>
+            {/* Percentage overlay */}
             <div style={{
               position: 'absolute', inset: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 900, fontSize: '1.5rem', color: 'var(--text-1)',
-              fontFamily: 'var(--font-display)',
+              fontWeight: 900, fontSize: '1.5rem', fontFamily: 'var(--font-display)',
+              zIndex: 2, color: pct > 45 ? '#fff' : 'var(--text-1)',
+              textShadow: pct > 45 ? '0 2px 8px rgba(0,0,0,0.4)' : 'none',
             }}>
               {pct}%
             </div>
+            {/* Goal markers */}
+            {[25, 50, 75].map(mark => (
+              <div key={mark} style={{
+                position: 'absolute', left: '0', right: '0', bottom: `${mark}%`,
+                borderBottom: '1px dashed rgba(14,165,233,0.25)', zIndex: 3,
+              }} />
+            ))}
           </div>
-          <p style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-1)', fontFamily: 'var(--font-display)' }}>
-            {current}<span style={{ fontSize: '0.85rem', color: 'var(--text-3)', fontWeight: 500 }}> ml (24h)</span>
+          <p style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-1)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
+            {current.toLocaleString()}<span style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontWeight: 500 }}> ml</span>
           </p>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>Target: {goal} ml</p>
-          <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Clock size={12} /> Rolling last 24 hours
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '4px' }}>
+            {Math.max(0, goal - current).toLocaleString()} ml remaining · Goal: {goal.toLocaleString()} ml
           </p>
+          <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Clock size={10} /> Rolling last 24 hours
+          </p>
+          {pct >= 100 && (
+            <div style={{ marginTop: '0.75rem', padding: '4px 12px', borderRadius: 'var(--radius-pill)', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontSize: '0.72rem', fontWeight: 800 }}>
+              ✓ Goal Reached!
+            </div>
+          )}
         </div>
+
 
         {/* Quick Add */}
         <div className="glass-card">
