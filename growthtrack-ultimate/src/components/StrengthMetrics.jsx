@@ -20,6 +20,14 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
 const EXERCISE_TYPES = ['Compound', 'Isolation', 'Cardio', 'Plyometric'];
 
+const EXERCISE_MUSCLE_MAP = {
+  'Bench Press': 'Chest',
+  'Squat': 'Legs',
+  'Deadlift': 'Back',
+  'Overhead Press': 'Shoulders',
+  'Pull-ups': 'Back',
+};
+
 export default function StrengthMetrics({ user }) {
   const toast = useToast();
   const metric_logs = useStore(s => s.metric_logs);
@@ -91,6 +99,41 @@ export default function StrengthMetrics({ user }) {
   const totalVolume  = weeklyVolume.reduce((a, d) => a + d.volume, 0);
   const trainingDays = weeklyVolume.filter(d => d.volume > 0).length;
   const maxVolume    = Math.max(...weeklyVolume.map(d => d.volume), 1);
+
+  // ── 1RM Calculator State
+  const [calcForm, setCalcForm] = useState({ weight: '', reps: '' });
+  const oneRM = useMemo(() => {
+    if (!calcForm.weight || !calcForm.reps) return null;
+    const w = parseFloat(calcForm.weight);
+    const r = parseInt(calcForm.reps);
+    if (isNaN(w) || isNaN(r) || r <= 0 || w <= 0) return null;
+    if (r === 1) return w;
+    // Epley Formula
+    return Math.round(w * (1 + r / 30));
+  }, [calcForm]);
+
+  // ── Muscle Fatigue Heatmap
+  const fatigueHeatmap = useMemo(() => {
+    const fatigue = { Chest: 0, Back: 0, Legs: 0, Shoulders: 0, Arms: 0, Core: 0 };
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    
+    strengthLogs.forEach(l => {
+      const d = new Date(l.date);
+      if (d >= threeDaysAgo) {
+        const muscle = EXERCISE_MUSCLE_MAP[l.exercise] || 'Arms'; // Fallback
+        if (fatigue[muscle] !== undefined) {
+           fatigue[muscle] += (l.weight * l.reps * (l.sets || 1));
+        }
+      }
+    });
+
+    const maxFatigue = Math.max(...Object.values(fatigue), 1000);
+    return Object.keys(fatigue).map(m => {
+       const ratio = fatigue[m] / maxFatigue;
+       return { muscle: m, value: fatigue[m], intensity: Math.min(ratio, 1) };
+    });
+  }, [strengthLogs]);
 
   const handleLogSet = async () => {
     if (!form.exercise || !form.weight || !form.reps) {
@@ -357,6 +400,61 @@ export default function StrengthMetrics({ user }) {
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+        {/* 1RM Calculator */}
+        <div className="glass-card" style={{ padding: '1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
+            <Zap size={20} color="#f59e0b" />
+            <h3 className="card-title" style={{ margin: 0 }}>1RM Calculator</h3>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: '1.25rem' }}>Calculate your one-rep max using the Epley formula.</p>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ flex: 1 }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Weight (kg)</label>
+              <input className="form-input" type="number" min={1} placeholder="100"
+                value={calcForm.weight} onChange={e => setCalcForm(f => ({ ...f, weight: e.target.value }))} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Reps</label>
+              <input className="form-input" type="number" min={1} placeholder="5"
+                value={calcForm.reps} onChange={e => setCalcForm(f => ({ ...f, reps: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center' }}>
+            <p className="label-caps" style={{ color: 'var(--text-3)', marginBottom: '4px' }}>Estimated 1RM</p>
+            <p style={{ fontSize: '2.5rem', fontWeight: 900, color: oneRM ? 'var(--accent)' : 'var(--text-3)' }}>
+              {oneRM ? `${oneRM}kg` : '—'}
+            </p>
+          </div>
+        </div>
+
+        {/* Muscle Fatigue Heatmap */}
+        <div className="glass-card" style={{ padding: '1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
+            <Activity size={20} color="#ef4444" />
+            <h3 className="card-title" style={{ margin: 0 }}>Muscle Fatigue Heatmap</h3>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: '1.5rem' }}>Relative fatigue based on volume over the last 3 days.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+            {fatigueHeatmap.map(group => {
+              // Color scales from green (rested) to red (fatigued)
+              const hue = Math.max(0, 120 - (group.intensity * 120)); // 120 is green, 0 is red
+              return (
+                <div key={group.muscle} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-2)' }}>{group.muscle}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>{Math.round(group.intensity * 100)}%</span>
+                  </div>
+                  <div style={{ height: '8px', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '100%', background: `hsl(${hue}, 80%, 50%)`, opacity: group.intensity < 0.1 ? 0.3 : 1, transform: `scaleX(${Math.max(group.intensity, 0.05)})`, transformOrigin: 'left', transition: 'transform 0.5s ease, background 0.5s ease' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

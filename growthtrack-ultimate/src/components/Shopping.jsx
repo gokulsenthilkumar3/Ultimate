@@ -15,7 +15,7 @@ const CATEGORIES = ['Supplements', 'Equipment', 'Apparel', 'Food', 'Medical', 'O
 const PRIORITIES = ['Urgent', 'High', 'Medium', 'Low'];
 const PRIORITY_COLOR  = { Urgent: 'var(--danger)', High: '#e5a50a', Medium: 'var(--success)', Low: 'var(--text-3)' };
 const PRIORITY_ORDER  = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
-const EMPTY_FORM = { name: '', category: '', priority: 'Medium', estimatedCost: '', quantity: 1 };
+const EMPTY_FORM = { name: '', category: '', priority: 'Medium', estimatedCost: '', oldCost: '', quantity: 1 };
 
 // Cart deeplink helpers
 const STORES = [
@@ -76,7 +76,8 @@ export default function Shopping() {
   const handleAdd = useCallback(() => {
     if (!form.name.trim()) { toast.error('Item name cannot be empty.'); return; }
     const cost = parseFloat(form.estimatedCost);
-    addItem({ ...form, estimatedCost: isNaN(cost) ? 0 : cost, quantity: parseInt(form.quantity) || 1 });
+    const oldCost = parseFloat(form.oldCost);
+    addItem({ ...form, estimatedCost: isNaN(cost) ? 0 : cost, oldCost: isNaN(oldCost) ? null : oldCost, quantity: parseInt(form.quantity) || 1 });
     setForm(EMPTY_FORM);
     toast.success(`"${form.name}" added to shopping list.`);
   }, [form, addItem, toast]);
@@ -127,6 +128,9 @@ export default function Shopping() {
           <input type="number" placeholder="Cost (\u20b9)" value={form.estimatedCost}
             onChange={e => setForm({ ...form, estimatedCost: e.target.value })}
             className="form-input" min="0" />
+          <input type="number" placeholder="Old Cost (Optional)" value={form.oldCost}
+            onChange={e => setForm({ ...form, oldCost: e.target.value })}
+            className="form-input" min="0" />
           <input type="number" placeholder="Qty" value={form.quantity}
             onChange={e => setForm({ ...form, quantity: e.target.value })}
             className="form-input" min="1" />
@@ -158,10 +162,20 @@ export default function Shopping() {
               <div>
                 <div className="tag-row">
                   <p className="list-row__title" style={{ textDecoration: item.purchased ? 'line-through' : 'none' }}>{item.name}</p>
-                  <span className="priority-badge" style={{ background: PRIORITY_COLOR[item.priority] }}>{item.priority}</span>
+                  <span className="priority-badge" style={{ background: `${PRIORITY_COLOR[item.priority]}15`, color: PRIORITY_COLOR[item.priority], border: `1px solid ${PRIORITY_COLOR[item.priority]}50` }}>
+                    {item.priority === 'Urgent' && '🚨 '}{item.priority === 'High' && '⚡ '}{item.priority}
+                  </span>
                   {item.category && <span className="category-badge">{item.category}</span>}
+                  {item.oldCost && item.oldCost > item.estimatedCost && (
+                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', marginLeft: 'auto', fontWeight: 800 }}>
+                      🔥 DROP {Math.round(((item.oldCost - item.estimatedCost) / item.oldCost) * 100)}%
+                    </span>
+                  )}
                 </div>
                 <p className="list-row__amount" style={{ color: 'var(--accent)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {item.oldCost && item.oldCost > item.estimatedCost && (
+                    <span style={{ textDecoration: 'line-through', color: 'var(--text-3)', fontSize: '0.8rem' }}>{fmtINR(item.oldCost)}</span>
+                  )}
                   {fmtINR(item.estimatedCost)}
                   {item.quantity > 1 && (
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 400 }}>\u00d7 {item.quantity} = {fmtINR(item.estimatedCost * item.quantity)}</span>

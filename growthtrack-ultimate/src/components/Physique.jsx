@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Zap, Target, Layers, Activity,
   ChevronRight, ArrowUpRight, Shield, Flame, Plus, Save, Edit3, X, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import useStore, { selectSetActiveTab, selectPhysiqueTargets, selectUpdatePhysiqueTargets } from '../store/useStore';
-import { useToast } from '../hooks/useToast';
+import use3DStore from '../store/use3DStore';
+import toast from 'react-hot-toast';
+import PhysiqueRoadmap from './PhysiqueRoadmap';
 
 function calculateBodyFat(gender, waist, neck, height, hip = 0) {
   const w = parseFloat(waist), n = parseFloat(neck), h = parseFloat(height), hi = parseFloat(hip);
@@ -41,10 +43,14 @@ const DEFAULT_ZONES = [
 ];
 
 const DEFAULT_TARGETS = [
-  { label: 'Chest Width',    current: '104cm', target: '112cm', progress: 45, type: 'Hypertrophy' },
-  { label: 'Waist Diameter', current: '78cm',  target: '72cm',  progress: 82, type: 'Reduction'   },
-  { label: 'Quad Volume',    current: '62cm',  target: '68cm',  progress: 30, type: 'Hypertrophy' },
-  { label: 'Bicep Peak',     current: '41cm',  target: '44cm',  progress: 55, type: 'Peak'        },
+  { label: 'Weight',    current: '63kg', target: '76.5kg', progress: 82, type: 'Hypertrophy' },
+  { label: 'Shoulders', current: '107.5cm', target: '123cm', progress: 87, type: 'Hypertrophy' },
+  { label: 'Chest',     current: '86.5cm', target: '104.5cm', progress: 82, type: 'Hypertrophy' },
+  { label: 'Waist',     current: '82cm',  target: '75cm', progress: 90, type: 'Reduction' },
+  { label: 'Arms',      current: '30cm', target: '40.5cm', progress: 74, type: 'Hypertrophy' },
+  { label: 'Forearms',  current: '27cm', target: '33.5cm', progress: 80, type: 'Hypertrophy' },
+  { label: 'Thighs',    current: '53cm', target: '59cm', progress: 89, type: 'Hypertrophy' },
+  { label: 'Calves',    current: '35cm', target: '40cm', progress: 87, type: 'Hypertrophy' },
 ];
 
 // Unit conversion helpers
@@ -69,8 +75,70 @@ export default function Physique({ user }) {
   const physiqueTargets = useStore(selectPhysiqueTargets);
   const updatePhysiqueTargets = useStore(selectUpdatePhysiqueTargets);
 
+  // Sync user profile metrics to 3D store
+  React.useEffect(() => {
+    if (!user) return;
+    const metrics = {
+      weight: parseFloat(user.weight),
+      bodyFat: parseFloat(user.bodyFat),
+      chest: parseFloat(user.chest),
+      shoulders: parseFloat(user.shoulders),
+      waist: parseFloat(user.waist),
+      arms: parseFloat(user.arms),
+      thighs: parseFloat(user.thighs),
+      calves: parseFloat(user.calves),
+      neck: parseFloat(user.neck),
+      forearm: parseFloat(user.forearm),
+      hips: parseFloat(user.hips),
+      glutes: parseFloat(user.glutes),
+      ankle: parseFloat(user.ankle),
+      d_size: parseFloat(user.d_size),
+      d_girth: parseFloat(user.d_girth),
+    };
+    
+    // Filter out NaN values
+    const validMetrics = {};
+    Object.keys(metrics).forEach(k => {
+      if (!isNaN(metrics[k])) validMetrics[k] = metrics[k];
+    });
+
+    if (Object.keys(validMetrics).length > 0) {
+      use3DStore.getState().setCurrentMetrics(validMetrics);
+    }
+  }, [
+    user?.weight, user?.bodyFat, user?.chest, user?.shoulders,
+    user?.waist, user?.arms, user?.thighs, user?.calves, user?.neck,
+    user?.forearm, user?.hips, user?.glutes, user?.ankle, user?.d_size, user?.d_girth
+  ]);
+
   const zones = physiqueTargets?.zones || DEFAULT_ZONES;
   const targets = physiqueTargets?.targets || DEFAULT_TARGETS;
+
+  // Auto-migrate old targets to the new Greek God Roadmap
+  useEffect(() => {
+    if (targets && targets.length > 0 && targets[0].label === 'Chest Width') {
+      updatePhysiqueTargets({ ...(physiqueTargets || {}), targets: DEFAULT_TARGETS });
+    }
+  }, [targets, physiqueTargets, updatePhysiqueTargets]);
+
+  // Auto-migrate user current stats to match the provided roadmap
+  const updateUser = useStore(s => s.updateUser);
+  useEffect(() => {
+    if (user && user.weight !== 63 && user.shoulders !== 107.5) {
+      updateUser({
+        primaryGoal: 'Build Muscle',
+        weight: 63,
+        height: 182,
+        shoulders: 107.5,
+        chest: 86.5,
+        waist: 82,
+        arms: 30,
+        forearm: 27,
+        thighs: 53,
+        calves: 35
+      });
+    }
+  }, [user, updateUser]);
 
   const [activeZone, setActiveZone] = useState(zones[0]?.name || '');
   const [editingTarget, setEditingTarget] = useState(null);
@@ -276,6 +344,9 @@ export default function Physique({ user }) {
           </div>
         </div>
       </div>
+
+      {/* Render the transformation roadmap */}
+      <PhysiqueRoadmap targets={targets} user={user} />
     </div>
   );
 }

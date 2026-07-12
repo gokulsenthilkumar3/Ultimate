@@ -123,8 +123,10 @@ export default function Nutrition({ user }) {
   const [calcHeight,   setCalcHeight]   = useState(user?.height || 170);
   const [calcAge,      setCalcAge]      = useState(user?.age || 30);
   const [calcGender,   setCalcGender]   = useState(user?.gender || 'M');
-  const [calcActivity, setCalcActivity] = useState('sedentary');
-  const [calcGoal,     setCalcGoal]     = useState('maintain');
+  const [calcActivity, setCalcActivity] = useState(user?.activityLevel || 'sedentary');
+  const defaultGoal = user?.primaryGoal === 'Lose Fat' ? 'cut' :
+                      user?.primaryGoal === 'Build Muscle' ? 'bulk' : 'maintain';
+  const [calcGoal,     setCalcGoal]     = useState(defaultGoal);
   const [macroTargets, setMacroTargets] = useState(() => calcMacroTargets(calcWeight, calcHeight, calcAge, calcGender, calcActivity, calcGoal));
 
   const addLog = useCallback(async () => {

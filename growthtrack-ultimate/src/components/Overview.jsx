@@ -210,108 +210,105 @@ export default function Overview({ user }) {
   const hour     = time.getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
 
-  // ── Strategic Priorities from real store data ───────────────────────────────
-  const completedTasks  = tasks.filter(t => t.completed).length;
-  const taskProgress    = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
-  const taskTarget      = tasks.length ? `${completedTasks}/${tasks.length} completed` : 'No tasks yet';
+  // ── Strategic Priorities and Aggregations ───────────────────────────────────
+  const aggregations = useMemo(() => {
+    // Tasks
+    const completedTasks  = tasks.filter(t => t.completed).length;
+    const taskProgress    = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
+    const taskTarget      = tasks.length ? `${completedTasks}/${tasks.length} completed` : 'No tasks yet';
+    const openTasksCount  = tasks.length - completedTasks;
 
-  const allSleepLogs  = sleep_logs.length > 0 ? sleep_logs : (user?.sleep?.logs || []);
-  const avgSleep      = allSleepLogs.length
-    ? (allSleepLogs.slice(-7).reduce((a, b) => a + (b.hours || 0), 0) / Math.min(7, allSleepLogs.length))
-    : 0;
-  const sleepProgress = Math.min(100, Math.round((avgSleep / 7.5) * 100));
-  const sleepTarget   = allSleepLogs.length ? `${avgSleep.toFixed(1)}h avg (7d)` : 'No logs yet';
+    // Sleep
+    const allSleepLogs  = sleep_logs.length > 0 ? sleep_logs : (user?.sleep?.logs || []);
+    const avgSleep      = allSleepLogs.length
+      ? (allSleepLogs.slice(-7).reduce((a, b) => a + (b.hours || 0), 0) / Math.min(7, allSleepLogs.length))
+      : 0;
+    const sleepProgress = Math.min(100, Math.round((avgSleep / 7.5) * 100));
+    const sleepTarget   = allSleepLogs.length ? `${avgSleep.toFixed(1)}h avg (7d)` : 'No logs yet';
 
-  const hydrationProgress = Math.min(100, Math.round(((user?.hydration?.glasses || 0) / 8) * 100));
-  const hydrationTarget   = `${user?.hydration?.glasses || 0}/8 glasses`;
+    // Hydration
+    const hydrationProgress = Math.min(100, Math.round(((user?.hydration?.glasses || 0) / 8) * 100));
+    const hydrationTarget   = `${user?.hydration?.glasses || 0}/8 glasses`;
 
-  const today         = new Date().toISOString().slice(0, 10);
-  const habitsToday   = habits.filter(h => h.logs?.some(l => l.date === today && l.completed));
-  const habitProgress = habits.length ? Math.round((habitsToday.length / habits.length) * 100) : 0;
-  const habitTarget   = habits.length ? `${habitsToday.length}/${habits.length} today` : 'No habits set';
+    // Habits
+    const today         = new Date().toISOString().slice(0, 10);
+    const habitsToday   = habits.filter(h => h.logs?.some(l => l.date === today && l.completed));
+    const pendingHabits = habits.length - habitsToday.length;
+    const habitProgress = habits.length ? Math.round((habitsToday.length / habits.length) * 100) : 0;
+    const habitTarget   = habits.length ? `${habitsToday.length}/${habits.length} today` : 'No habits set';
 
-  const activeGoals    = goals.filter(g => !g.completed && !g.archived);
-  const completedGoals = goals.filter(g => g.completed);
-  const goalProgress   = goals.length ? Math.round((completedGoals.length / goals.length) * 100) : 0;
-  const goalTarget     = goals.length ? `${completedGoals.length}/${goals.length} achieved` : 'Set your first goal';
+    // Goals
+    const completedGoals = goals.filter(g => g.completed);
+    const goalProgress   = goals.length ? Math.round((completedGoals.length / goals.length) * 100) : 0;
+    const goalTarget     = goals.length ? `${completedGoals.length}/${goals.length} achieved` : 'Set your first goal';
 
-  const priorities = [
-    { label: 'Task Execution',   target: taskTarget,        progress: taskProgress,      color: 'var(--accent)' },
-    { label: 'Sleep Recovery',   target: sleepTarget,       progress: sleepProgress,     color: '#8b5cf6' },
-    { label: 'Daily Hydration',  target: hydrationTarget,   progress: hydrationProgress, color: '#0ea5e9' },
-    { label: 'Habit Completion', target: habitTarget,       progress: habitProgress,     color: '#f59e0b' },
-    { label: 'Goal Progress',    target: goalTarget,        progress: goalProgress,      color: '#10b981' },
-  ];
+    return {
+      openTasksCount, pendingHabits,
+      priorities: [
+        { label: 'Task Execution',   target: taskTarget,        progress: taskProgress,      color: 'var(--accent)' },
+        { label: 'Sleep Recovery',   target: sleepTarget,       progress: sleepProgress,     color: '#8b5cf6' },
+        { label: 'Daily Hydration',  target: hydrationTarget,   progress: hydrationProgress, color: '#0ea5e9' },
+        { label: 'Habit Completion', target: habitTarget,       progress: habitProgress,     color: '#f59e0b' },
+        { label: 'Goal Progress',    target: goalTarget,        progress: goalProgress,      color: '#10b981' },
+      ]
+    };
+  }, [tasks, habits, sleep_logs, goals, user?.hydration?.glasses, user?.sleep?.logs]);
 
   return (
     <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
-      {/* Top Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ flex: 1 }}>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Systems Check: {time.toLocaleTimeString()}</p>
-          <h2 className="text-display" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.8rem)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+      {/* HERO: Day at a Glance */}
+      <div className="glass-card" style={{ marginBottom: '2.5rem', padding: '2.5rem', display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: '300px' }}>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Day at a Glance</p>
+          <h2 className="text-display" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', letterSpacing: '-0.02em', lineHeight: 1 }}>
             {greeting}, <span style={{ color: 'var(--accent)' }}>{user?.name?.split(' ')[0] || user?.username?.split(' ')[0] || '—'}</span>
           </h2>
-          <p className="text-secondary" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
+          <p className="text-secondary" style={{ marginTop: '1rem', fontSize: '1rem', lineHeight: 1.6 }}>
             {geoError
               ? <span style={{ color: '#f59e0b', fontSize: '0.8rem' }}>⚠ {geoError}</span>
               : 'Environment and physiology are within target operating ranges.'}
           </p>
+          
+          {/* Quick-Action Bar inside Hero */}
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2rem', flexWrap: 'wrap' }}>
+            <button className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem', background: 'rgba(255,255,255,0.05)' }} onClick={() => setWaterGlasses(Math.min(20, waterGlasses + 1))} title="Log one glass of water">
+              <DropIcon size={15} color="#0ea5e9" /> Log Water
+              <span style={{ background: 'rgba(14,165,233,0.15)', color: '#0ea5e9', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{waterGlasses}/8</span>
+            </button>
+            <button className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem', background: 'rgba(255,255,255,0.05)' }} onClick={() => { window.dispatchEvent(new CustomEvent('open-module', { detail: 'tasks' })); setActiveTab('tasks'); }} title="Navigate to Tasks">
+              <CheckSquare size={15} color="var(--accent)" /> Tasks
+              {aggregations.openTasksCount > 0 && <span style={{ background: 'rgba(var(--accent-rgb, 255,199,0),0.15)', color: 'var(--accent)', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{aggregations.openTasksCount} open</span>}
+            </button>
+            <button className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem', background: 'rgba(255,255,255,0.05)' }} onClick={() => setActiveTab('habits')} title="Navigate to Habits">
+              <Flame size={15} color="#f59e0b" /> Habits
+              {aggregations.pendingHabits > 0 && <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{aggregations.pendingHabits} pending</span>}
+            </button>
+            <button className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem', background: 'rgba(255,255,255,0.05)' }} onClick={() => setActiveTab('training')} title="Navigate to Training">
+              <Dumbbell size={15} color="#10b981" /> Training
+            </button>
+          </div>
         </div>
-        <div className="glass-card" style={{ padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', border: '1px solid var(--accent-soft)' }}>
-          <p className="label-caps" style={{ color: 'var(--text-3)', fontSize: '0.65rem' }}>{time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          <p style={{ fontSize: '1.5rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: 'var(--text-1)' }}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-          {weather.locationName && weather.locationName !== 'Detecting…' && (
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>📍 {weather.locationName}</p>
-          )}
-        </div>
-      </div>
 
-      {/* Quick-Action Bar */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <button
-          className="btn-ghost"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem' }}
-          onClick={() => setWaterGlasses(Math.min(20, waterGlasses + 1))}
-          title="Log one glass of water"
-        >
-          <DropIcon size={15} color="#0ea5e9" />
-          Log Water
-          <span style={{ background: 'rgba(14,165,233,0.15)', color: '#0ea5e9', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{waterGlasses}/8</span>
-        </button>
-        <button
-          className="btn-ghost"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem' }}
-          onClick={() => { window.dispatchEvent(new CustomEvent('open-module', { detail: 'tasks' })); setActiveTab('tasks'); }}
-          title="Navigate to Tasks"
-        >
-          <CheckSquare size={15} color="var(--accent)" />
-          Add Task
-          {tasks.filter(t => !t.completed).length > 0 && (
-            <span style={{ background: 'rgba(var(--accent-rgb, 255,199,0),0.15)', color: 'var(--accent)', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{tasks.filter(t => !t.completed).length} open</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', borderLeft: '1px solid var(--border)', paddingLeft: '2.5rem', minWidth: '250px' }}>
+          <p className="label-caps" style={{ color: 'var(--text-3)', fontSize: '0.75rem', marginBottom: '0.5rem' }}>{time.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p style={{ fontSize: '3.5rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: 'var(--text-1)', lineHeight: 1, textShadow: '0 4px 20px rgba(0,0,0,0.3)', marginBottom: '1rem' }}>
+            {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+          {weather.locationName && weather.locationName !== 'Detecting…' && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              📍 {weather.locationName}
+            </p>
           )}
-        </button>
-        <button
-          className="btn-ghost"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem' }}
-          onClick={() => setActiveTab('training')}
-          title="Navigate to Training"
-        >
-          <Dumbbell size={15} color="#10b981" />
-          Open Training
-        </button>
-        <button
-          className="btn-ghost"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', padding: '0.55rem 1.2rem' }}
-          onClick={() => setActiveTab('habits')}
-          title="Navigate to Habits"
-        >
-          <Flame size={15} color="#f59e0b" />
-          Habits
-          {habits.filter(h => !h.logs?.some(l => l.date === new Date().toISOString().slice(0,10) && l.completed)).length > 0 && (
-            <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', borderRadius: '99px', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>{habits.filter(h => !h.logs?.some(l => l.date === new Date().toISOString().slice(0,10) && l.completed)).length} pending</span>
+          {weather.condition && weather.condition !== '--' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '1rem', background: 'var(--bg-elevated)', padding: '0.75rem 1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <Thermometer size={24} color="#f59e0b" />
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{weather.condition}</p>
+                <p style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-1)' }}>{weather.temp}</p>
+              </div>
+            </div>
           )}
-        </button>
+        </div>
       </div>
 
       {/* KPI Vitals Row */}
@@ -405,7 +402,7 @@ export default function Overview({ user }) {
           <div className="glass-card" style={{ flex: 1, padding: '1.75rem' }}>
             <h3 className="card-title"><Target size={18} /> Strategic Priorities</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem', marginTop: '1rem' }}>
-              {priorities.map((g, i) => (
+              {aggregations.priorities.map((g, i) => (
                 <div key={i}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-1)' }}>{g.label}</span>

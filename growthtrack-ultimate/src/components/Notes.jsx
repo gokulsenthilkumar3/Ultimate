@@ -42,9 +42,11 @@ export default function Notes() {
   const [editTags, setEditTags]     = useState([]);   // tags for current open note
   const [tagInput, setTagInput]     = useState('');
   const [search, setSearch]         = useState('');
+  const [tagFilter, setTagFilter]   = useState(null);
   const [saving, setSaving]         = useState(false);
   const [isPreview, setIsPreview]   = useState(true);
   const toast = useToast();
+  const [saveTimeout, setSaveTimeout] = useState(null);
 
   const selectNote = (note) => {
     setSelected(note.id);
@@ -67,10 +69,26 @@ export default function Notes() {
     setSaving(true);
     try {
       await updateNote(selected, { title: editTitle.trim(), content: editContent, color: editColor, tags: editTags });
+      // Only toast on explicit manual save, not auto-save to reduce noise
       toast.success('Note saved');
     } catch { toast.error('Save failed'); }
     setSaving(false);
   };
+
+  // Auto-save
+  React.useEffect(() => {
+    if (!selected) return;
+    if (saveTimeout) clearTimeout(saveTimeout);
+    const timeout = setTimeout(() => {
+      setSaving(true);
+      updateNote(selected, { title: editTitle.trim(), content: editContent, color: editColor, tags: editTags })
+        .then(() => setSaving(false))
+        .catch(() => setSaving(false));
+    }, 1500);
+    setSaveTimeout(timeout);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editTitle, editContent, editColor, editTags, selected]);
 
   const handleTogglePin = async (note) => { await updateNote(note.id, { pinned: !note.pinned }); };
 
@@ -96,9 +114,10 @@ export default function Notes() {
   const allTags = useMemo(() => [...new Set((notes || []).flatMap(n => n.tags || []))], [notes]);
 
   const filtered = (notes || []).filter(n =>
-    n.title?.toLowerCase().includes(search.toLowerCase()) ||
+    (!tagFilter || (n.tags || []).includes(tagFilter)) &&
+    (n.title?.toLowerCase().includes(search.toLowerCase()) ||
     n.content?.toLowerCase().includes(search.toLowerCase()) ||
-    (n.tags || []).some(t => t.includes(search.toLowerCase()))
+    (n.tags || []).some(t => t.includes(search.toLowerCase())))
   );
   const pinned   = filtered.filter(n =>  n.pinned);
   const unpinned = filtered.filter(n => !n.pinned);
@@ -133,6 +152,15 @@ export default function Notes() {
                 <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0, display: 'flex' }}><X size={12} /></button>
               )}
             </div>
+            {/* Tag Filter */}
+            {allTags.length > 0 && (
+              <div style={{ display: 'flex', gap: '6px', marginTop: '0.75rem', overflowX: 'auto', paddingBottom: '4px' }} className="hide-scrollbar">
+                <button onClick={() => setTagFilter(null)} style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '12px', background: !tagFilter ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: !tagFilter ? '#000' : 'var(--text-2)', border: 'none', cursor: 'pointer', flexShrink: 0 }}>All</button>
+                {allTags.map(t => (
+                  <button key={t} onClick={() => setTagFilter(t === tagFilter ? null : t)} style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '12px', background: tagFilter === t ? 'var(--accent)' : 'rgba(6,182,212,0.1)', color: tagFilter === t ? '#000' : 'var(--accent)', border: 'none', cursor: 'pointer', flexShrink: 0 }}>#{t}</button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Note list */}

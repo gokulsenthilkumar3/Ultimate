@@ -3,6 +3,7 @@ import useStore, { selectSkills, selectUpdateSkills } from '../store/useStore';
 import { BookOpen, Award, Target, Plus, Search, TrendingUp, Save, Trash2, X, Zap, Star, AlertTriangle, Clock } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import ConfirmDialog from './ui/ConfirmDialog';
+import confetti from 'canvas-confetti';
 
 // ── 10 predefined category presets
 const CATEGORY_PRESETS = [
@@ -170,6 +171,12 @@ export default function Skills() {
 
   useEffect(() => {
     if (levelUpId) {
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.7 },
+        colors: ['#f59e0b', '#fbbf24', '#ffffff', '#3b82f6', '#ec4899']
+      });
       const t = setTimeout(() => setLevelUpId(null), 2500);
       return () => clearTimeout(t);
     }

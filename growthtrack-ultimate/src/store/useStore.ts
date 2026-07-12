@@ -4,7 +4,8 @@ import { createFinanceSlice } from './slices/financeSlice';
 import { createTaskSlice } from './slices/taskSlice';
 import { createHealthSlice } from './slices/healthSlice';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '';
+// @ts-ignore
+const API_BASE = import.meta.env?.VITE_API_BASE || '';
 let isOffline = false;
 
 export async function apiSync(endpoint: string, method: string = 'POST', data: any = null): Promise<any> {
@@ -16,7 +17,7 @@ export async function apiSync(endpoint: string, method: string = 'POST', data: a
       return null;
     }
 
-    const options = {
+    const options: RequestInit = {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -38,10 +39,10 @@ export async function apiSync(endpoint: string, method: string = 'POST', data: a
 
 const useStore = create<any>()(
   persist(
-    (set, get) => ({
-      ...createFinanceSlice(set, get),
-      ...createTaskSlice(set, get),
-      ...createHealthSlice(set, get),
+    (set, get, api) => ({
+      ...createFinanceSlice(set, get, api),
+      ...createTaskSlice(set, get, api),
+      ...createHealthSlice(set, get, api),
 
       theme: 'dark',
       palette: 'gold',
@@ -173,35 +174,34 @@ const useStore = create<any>()(
             workoutSessions, moodLogs, vitalsLogs, medications, nutritionLogs,
           ] = results.map((_, i) => val(i));
 
-          const newState = {
-            isLoading: false,
-            skills: Array.isArray(skills) ? skills : [],
-            calendar_events: Array.isArray(events) ? events : [],
-            timesheet: { sessions: Array.isArray(timesheet) ? timesheet : [] },
-            shopping: { items: Array.isArray(shopping) ? shopping : [] },
-            metric_logs: Array.isArray(metricLogs) ? metricLogs : [],
-            // 4G-1: hydrate nutrition_logs
-            nutrition_logs: Array.isArray(nutritionLogs) ? nutritionLogs : [],
-            trainingPlan: training,
-            nutritionStrategy: nutrition,
-            lifestyleTips: Array.isArray(lifestyle) ? lifestyle : [],
-            medicalData: medical,
-            physiqueTargets: physique,
-            assessmentQA: Array.isArray(assessment) ? assessment : [],
-            wellnessData: wellness,
-            notes: Array.isArray(notes) ? notes : [],
-            goals: Array.isArray(goals) ? goals : [],
-            sleep_logs: Array.isArray(sleep) ? sleep : [],
-            documents: Array.isArray(docs) ? docs : [],
-            subscriptions: Array.isArray(subs) ? subs : [],
-            habits: Array.isArray(habits) ? habits : [],
-            entertainment: { media: Array.isArray(media) ? media : [] },
-            health_extras: healthExtras || {},
-            moodLogs: Array.isArray(moodLogs) ? moodLogs : [],
-            vitalsLogs: Array.isArray(vitalsLogs) ? vitalsLogs : [],
-            medications: Array.isArray(medications) ? medications : [],
-            habitLogsByHabit: {},
-          };
+          const newState: any = { isLoading: false };
+          
+          if (skills !== null) newState.skills = Array.isArray(skills) ? skills : [];
+          if (events !== null) newState.calendar_events = Array.isArray(events) ? events : [];
+          if (timesheet !== null) newState.timesheet = { sessions: Array.isArray(timesheet) ? timesheet : [] };
+          if (shopping !== null) newState.shopping = { items: Array.isArray(shopping) ? shopping : [] };
+          if (metricLogs !== null) newState.metric_logs = Array.isArray(metricLogs) ? metricLogs : [];
+          if (nutritionLogs !== null) newState.nutrition_logs = Array.isArray(nutritionLogs) ? nutritionLogs : [];
+          if (training !== null) newState.trainingPlan = training;
+          if (nutrition !== null) newState.nutritionStrategy = nutrition;
+          if (lifestyle !== null) newState.lifestyleTips = Array.isArray(lifestyle) ? lifestyle : [];
+          if (medical !== null) newState.medicalData = medical;
+          if (physique !== null) newState.physiqueTargets = physique;
+          if (assessment !== null) newState.assessmentQA = Array.isArray(assessment) ? assessment : [];
+          if (wellness !== null) newState.wellnessData = wellness;
+          if (notes !== null) newState.notes = Array.isArray(notes) ? notes : [];
+          if (goals !== null) newState.goals = Array.isArray(goals) ? goals : [];
+          if (sleep !== null) newState.sleep_logs = Array.isArray(sleep) ? sleep : [];
+          if (docs !== null) newState.documents = Array.isArray(docs) ? docs : [];
+          if (subs !== null) newState.subscriptions = Array.isArray(subs) ? subs : [];
+          if (habits !== null) newState.habits = Array.isArray(habits) ? habits : [];
+          if (media !== null) newState.entertainment = { media: Array.isArray(media) ? media : [] };
+          if (healthExtras !== null) newState.health_extras = healthExtras || {};
+          if (moodLogs !== null) newState.moodLogs = Array.isArray(moodLogs) ? moodLogs : [];
+          if (vitalsLogs !== null) newState.vitalsLogs = Array.isArray(vitalsLogs) ? vitalsLogs : [];
+          if (medications !== null) newState.medications = Array.isArray(medications) ? medications : [];
+          
+          if (habits !== null) newState.habitLogsByHabit = {};
 
           if (user) newState.user = user;
           if (financeData) {
@@ -573,7 +573,7 @@ const useStore = create<any>()(
         lastCheckIn: state.lastCheckIn,
         checkInAlertDismissedDate: state.checkInAlertDismissedDate,
       }),
-      migrate: (persistedState, version) => {
+      migrate: (persistedState: any, version) => {
         try {
           if (version < 4) {
             const oldTheme = localStorage.getItem('ultimate_theme');

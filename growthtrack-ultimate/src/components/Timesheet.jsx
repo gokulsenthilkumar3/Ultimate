@@ -30,6 +30,7 @@ export default function Timesheet() {
   const [countdownStart, setCountdownStart] = useState(1500);
   const [taskName, setTaskName] = useState('');
   const [activeTab, setActiveTab] = useState('timer');
+  const [hourlyRate, setHourlyRate] = useState(50);
   const [manualForm, setManualForm] = useState({ task: '', duration: '', date: new Date().toLocaleString() });
   const timerRef = useRef(null);
 
@@ -109,11 +110,24 @@ export default function Timesheet() {
           <h2 className="text-display text-gradient" style={{ fontSize: '2.4rem' }}>Chrono Timesheet</h2>
           <p className="text-secondary" style={{ marginTop: '0.4rem' }}>Deep work tracking with precision timers, manual entries, and session analytics.</p>
         </div>
-        <div className="glass-card" style={{ padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Activity size={20} color="var(--accent)" />
-          <div>
-            <p className="label-caps" style={{ fontSize: '0.55rem' }}>Total Tracked (All Time)</p>
-            <p className="text-display" style={{ fontSize: '1.4rem' }}>{fmt(totalTime)}</p>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <div className="glass-card" style={{ padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Activity size={20} color="var(--accent)" />
+            <div>
+              <p className="label-caps" style={{ fontSize: '0.55rem' }}>Total Tracked</p>
+              <p className="text-display" style={{ fontSize: '1.4rem' }}>{fmt(totalTime)}</p>
+            </div>
+          </div>
+          <div className="glass-card" style={{ padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ background: 'rgba(16,185,129,0.1)', padding: '6px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '1.2rem', color: '#10b981', fontWeight: 800 }}>$</span>
+            </div>
+            <div>
+              <p className="label-caps" style={{ fontSize: '0.55rem' }}>Billable Earnings</p>
+              <p className="text-display" style={{ fontSize: '1.4rem', color: '#10b981' }}>
+                ${((totalTime / 3600) * hourlyRate).toFixed(2)}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -286,20 +300,52 @@ export default function Timesheet() {
       )}
 
       {activeTab === 'summary' && (
-        <div className="glass-card" style={{ padding: '1.5rem' }}>
-          <p className="label-caps" style={{ marginBottom: '1rem' }}>Top Focus Streams</p>
-          {byTask.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>Log some sessions to see your breakdown by task.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {byTask.map(row => (
-                <div key={row.task} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{row.task}</span>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>{fmt(row.duration)}</span>
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 700 }}>Hourly Rate ($):</label>
+            <input type="number" value={hourlyRate} onChange={e => setHourlyRate(Number(e.target.value))}
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 12px', color: 'var(--text-1)', width: '100px', outline: 'none' }} />
+          </div>
+          
+          <div className="glass-card" style={{ padding: '1.5rem' }}>
+            <p className="label-caps" style={{ marginBottom: '1rem' }}>Today's Block Timeline</p>
+            <div style={{ position: 'relative', height: '40px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+              {todaySessions.map((s, i) => {
+                const end = new Date(s.date);
+                if (isNaN(end.getTime())) return null;
+                const start = new Date(end.getTime() - s.duration * 1000);
+                const startPercent = ((start.getHours() * 3600 + start.getMinutes() * 60 + start.getSeconds()) / 86400) * 100;
+                const widthPercent = (s.duration / 86400) * 100;
+                return (
+                  <div key={i} title={`${s.task} (${fmt(s.duration)})`}
+                    style={{ position: 'absolute', left: `${startPercent}%`, width: `${widthPercent}%`, height: '100%', background: 'var(--accent)', opacity: 0.8, borderRight: '1px solid rgba(0,0,0,0.2)' }} />
+                );
+              })}
+              {/* Markers for 0, 6, 12, 18, 24 */}
+              {[0, 25, 50, 75].map(p => (
+                <div key={p} style={{ position: 'absolute', left: `${p}%`, top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.1)' }} />
               ))}
             </div>
-          )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.65rem', color: 'var(--text-3)' }}>
+              <span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span style={{ opacity: 0 }}>12 AM</span>
+            </div>
+          </div>
+          
+          <div className="glass-card" style={{ padding: '1.5rem' }}>
+            <p className="label-caps" style={{ marginBottom: '1rem' }}>Top Focus Streams</p>
+            {byTask.length === 0 ? (
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>Log some sessions to see your breakdown by task.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {byTask.map(row => (
+                  <div key={row.task} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{row.task}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>{fmt(row.duration)} <span style={{ color: '#10b981', marginLeft: '8px', fontSize: '0.75rem' }}>(${((row.duration / 3600) * hourlyRate).toFixed(2)})</span></span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

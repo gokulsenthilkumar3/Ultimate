@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Newspaper, Rss, Globe, Radio, Bookmark, ExternalLink, TrendingUp, Cpu, Activity, Briefcase } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Newspaper, Rss, Globe, Radio, Bookmark, ExternalLink, TrendingUp, Cpu, Activity, Briefcase, CloudRain, Sun, Moon } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 
 const CATEGORIES = [
@@ -15,6 +15,45 @@ export default function Current() {
   const [activeCat, setActiveCat] = useState('general');
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [weather, setWeather] = useState({ temp: '--', condition: 'Syncing Location...', icon: Sun });
+
+  const timeGradient = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'linear-gradient(135deg, rgba(251,191,36,0.08) 0%, transparent 100%)'; // Morning (Amber)
+    if (hour >= 12 && hour < 17) return 'linear-gradient(135deg, rgba(56,189,248,0.08) 0%, transparent 100%)'; // Afternoon (Sky)
+    if (hour >= 17 && hour < 20) return 'linear-gradient(135deg, rgba(244,63,94,0.08) 0%, transparent 100%)'; // Evening (Rose)
+    return 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, transparent 100%)'; // Night (Indigo)
+  }, []);
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation`);
+          const data = await res.json();
+          if (data?.current) {
+             const t = data.current.temperature_2m;
+             const p = data.current.precipitation;
+             const hour = new Date().getHours();
+             let cond = 'Clear';
+             let Icon = (hour > 18 || hour < 6) ? Moon : Sun;
+             
+             if (p > 1) { cond = 'Rainy'; Icon = CloudRain; }
+             else if (p > 0) { cond = 'Drizzle'; Icon = CloudRain; }
+             else if (t > 28) { cond = 'Hot'; }
+             else if (t < 15) { cond = 'Cold'; }
+             
+             setWeather({ temp: `${Math.round(t)}°C`, condition: cond, icon: Icon });
+          }
+        } catch (e) { 
+          setWeather({ temp: '--', condition: 'Offline', icon: Activity });
+        }
+      }, () => {
+        setWeather({ temp: '--', condition: 'Location Denied', icon: Globe });
+      });
+    }
+  }, []);
 
   const fetchNews = useCallback(async (cat = activeCat) => {
     setLoading(true);
@@ -71,15 +110,19 @@ export default function Current() {
   }, [activeCat, fetchNews]);
 
   return (
-    <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
+    <div className="fade-in module-page" style={{ padding: '0.5rem 0', background: timeGradient, borderRadius: '24px' }}>
       {/* Header Area */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem', flexWrap: 'wrap', gap: '1.5rem', padding: '0 1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Global Signal Hub</p>
           <h2 className="text-display" style={{ fontSize: '3rem', letterSpacing: '-0.03em' }}>Pulse Stream</h2>
           <p className="text-secondary" style={{ fontSize: '1.1rem' }}>Aggregating real-time telemetry from 500+ verified global sources.</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+           <div className="glass-card" style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid var(--border)' }}>
+              <weather.icon size={16} color="var(--accent)" />
+              <span className="label-caps" style={{ fontSize: '0.7rem', color: 'var(--text-1)' }}>{weather.temp} · {weather.condition}</span>
+           </div>
            <div className="glass-card" style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid var(--success-soft)' }}>
               <div className="pulse-dot" style={{ background: 'var(--success)' }} />
               <span className="label-caps" style={{ fontSize: '0.7rem', color: 'var(--success)' }}>Feed Live</span>
