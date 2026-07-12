@@ -6,6 +6,33 @@ import {
 import useStore, { selectSetActiveTab, selectPhysiqueTargets, selectUpdatePhysiqueTargets } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 
+function calculateBodyFat(gender, waist, neck, height, hip = 0) {
+  const w = parseFloat(waist), n = parseFloat(neck), h = parseFloat(height), hi = parseFloat(hip);
+  if (!w || !n || !h || (gender === 'F' && !hi)) return null;
+  
+  if (gender === 'M') {
+    if (w - n <= 0) return null;
+    return (495 / (1.0324 - 0.19077 * Math.log10(w - n) + 0.15456 * Math.log10(h))) - 450;
+  } else {
+    if (w + hi - n <= 0) return null;
+    return (495 / (1.29579 - 0.35004 * Math.log10(w + hi - n) + 0.22100 * Math.log10(h))) - 450;
+  }
+}
+
+function SilhouetteGuide({ activeMeasurement }) {
+  const points = { neck: { y: 25 }, waist: { y: 85 }, hip: { y: 110 }, height: { y: 10 } };
+  const activeY = points[activeMeasurement]?.y;
+  return (
+    <svg viewBox="0 0 100 200" width="100%" height="200" style={{ maxWidth: '120px', margin: '0 auto', display: 'block' }}>
+      <path d="M 50 10 C 60 10 60 30 50 30 C 40 30 40 10 50 10 Z" fill="var(--text-3)" />
+      <path d="M 50 30 L 50 90 M 50 40 L 20 80 M 50 40 L 80 80 M 50 90 L 30 190 M 50 90 L 70 190" stroke="var(--text-3)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {activeY && (
+        <line x1="10" y1={activeY} x2="90" y2={activeY} stroke="var(--accent)" strokeWidth="4" strokeDasharray="4 2" />
+      )}
+    </svg>
+  );
+}
+
 const DEFAULT_ZONES = [
   { name: 'Core Anterior',   status: 'Cutting',      progress: 68, color: 'var(--accent)', icon: '\u26a1' },
   { name: 'Posterior Chain', status: 'Maintenance',   progress: 85, color: '#3b82f6',       icon: '\u26d3\ufe0f' },
@@ -48,8 +75,19 @@ export default function Physique({ user }) {
   const [activeZone, setActiveZone] = useState(zones[0]?.name || '');
   const [editingTarget, setEditingTarget] = useState(null);
   const [targetDraft, setTargetDraft] = useState({});
-  // Unit toggle: 'cm' | 'in'
   const [unitMode, setUnitMode] = useState('cm');
+
+  const [bfGender, setBfGender] = useState(user?.gender || 'M');
+  const [bfHeight, setBfHeight] = useState(user?.height || '');
+  const [bfNeck, setBfNeck] = useState('');
+  const [bfWaist, setBfWaist] = useState('');
+  const [bfHip, setBfHip] = useState('');
+  const [activeMeas, setActiveMeas] = useState('');
+
+  const bfPercent = useMemo(() => {
+    const val = calculateBodyFat(bfGender, bfWaist, bfNeck, bfHeight, bfHip);
+    return val && val > 0 && val < 60 ? val.toFixed(1) : '--';
+  }, [bfGender, bfWaist, bfNeck, bfHeight, bfHip]);
 
   const displayVal = (val) => unitMode === 'in' ? convertValue(val, true) : convertValue(val, false);
 
@@ -193,15 +231,48 @@ export default function Physique({ user }) {
 
         <div className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Shield size={24} color="var(--success)" />
-            <h3 className="text-display" style={{ fontSize: '1.5rem', margin: 0 }}>Anatomic Strategy</h3>
+            <Activity size={24} color="var(--accent)" />
+            <h3 className="text-display" style={{ fontSize: '1.5rem', margin: 0 }}>Body Fat % Calculator</h3>
           </div>
-          <p className="text-secondary">Current focus is on creating a tapered silhouette by prioritizing shoulder width (medial deltoids) and reducing abdominal circumference.</p>
-          <div style={{ marginTop: 'auto', padding: '1.5rem', background: 'var(--accent-soft)', borderRadius: '16px', border: '1px solid var(--border-glow)' }}>
-            <h4 style={{ color: 'var(--accent)', fontWeight: 900, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Activity size={18} /> Strategic Leverage
-            </h4>
-            <p style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>Increase training frequency for lagging muscle groups to 3x per week while maintaining a caloric deficit of 250kcal.</p>
+          
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 120px' }}>
+              <SilhouetteGuide activeMeasurement={activeMeas} />
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <span className="badge" style={{ background: 'var(--accent)', color: '#000', fontSize: '1.2rem', padding: '6px 16px' }}>{bfPercent}%</span>
+              </div>
+            </div>
+            <div style={{ flex: '2 1 200px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Gender</label>
+                <select className="form-input" value={bfGender} onChange={e => setBfGender(e.target.value)}>
+                  <option value="M">Male</option><option value="F">Female</option>
+                </select>
+              </div>
+              <div>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Height (cm)</label>
+                <input className="form-input" type="number" value={bfHeight} onChange={e => setBfHeight(e.target.value)} onFocus={() => setActiveMeas('height')} onBlur={() => setActiveMeas('')} />
+              </div>
+              <div>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Neck (cm)</label>
+                <input className="form-input" type="number" value={bfNeck} onChange={e => setBfNeck(e.target.value)} onFocus={() => setActiveMeas('neck')} onBlur={() => setActiveMeas('')} />
+              </div>
+              <div>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Waist (cm)</label>
+                <input className="form-input" type="number" value={bfWaist} onChange={e => setBfWaist(e.target.value)} onFocus={() => setActiveMeas('waist')} onBlur={() => setActiveMeas('')} />
+              </div>
+              {bfGender === 'F' && (
+                <div>
+                  <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Hips (cm)</label>
+                  <input className="form-input" type="number" value={bfHip} onChange={e => setBfHip(e.target.value)} onFocus={() => setActiveMeas('hip')} onBlur={() => setActiveMeas('')} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 'auto', padding: '1.25rem', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <h4 style={{ color: 'var(--text-1)', fontWeight: 800, fontSize: '0.9rem', marginBottom: '4px' }}>U.S. Navy Method</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>Estimates body fat percentage based on circumferences. Measure at the widest part of hips/waist, narrowest part of neck.</p>
           </div>
         </div>
       </div>

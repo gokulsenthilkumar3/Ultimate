@@ -25,14 +25,54 @@ const tooltipStyle = {
   color: 'var(--text-1)', fontSize: '0.78rem',
 };
 
-function calcMacroTargets(weightKg, goal) {
-  const w = parseFloat(weightKg) || 75;
+function calcBMR(weight, height, age, gender) {
+  const w = parseFloat(weight) || 75;
+  const h = parseFloat(height) || 170;
+  const a = parseFloat(age) || 30;
+  let bmr = (10 * w) + (6.25 * h) - (5 * a);
+  return gender === 'F' ? bmr - 161 : bmr + 5;
+}
+
+function calcMacroTargets(weight, height, age, gender, activity, goal) {
+  const bmr = calcBMR(weight, height, age, gender);
+  const activityMultipliers = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
+  let tdee = bmr * (activityMultipliers[activity] || 1.2);
+  
+  if (goal === 'bulk') tdee += 500;
+  else if (goal === 'cut') tdee -= 500;
+  
+  const cal = Math.round(tdee);
+  const w = parseFloat(weight) || 75;
   const protein = Math.round(w * 2.2);
-  let carbs, fat;
-  if (goal === 'bulk')     { carbs = Math.round(w * 4.5); fat = Math.round(w * 1.0); }
-  else if (goal === 'cut') { carbs = Math.round(w * 2.5); fat = Math.round(w * 0.8); }
-  else                     { carbs = Math.round(w * 3.5); fat = Math.round(w * 0.9); }
-  return { protein, carbs, fat, calories: protein * 4 + carbs * 4 + fat * 9 };
+  const fat = Math.round(w * 0.9);
+  const carbs = Math.max(0, Math.round((cal - (protein * 4) - (fat * 9)) / 4));
+  
+  return { protein, carbs, fat, calories: cal, bmr: Math.round(bmr) };
+}
+
+function MacroRings({ proteinPct, carbsPct, fatPct }) {
+  const radius = [48, 36, 24];
+  const center = 60;
+  const strokeWidth = 8;
+  const getDashArray = (r, pct) => {
+    const c = 2 * Math.PI * r;
+    return `${(pct / 100) * c} ${c}`;
+  };
+
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={center} cy={center} r={radius[0]} fill="none" stroke="rgba(16, 185, 129, 0.15)" strokeWidth={strokeWidth} />
+      <circle cx={center} cy={center} r={radius[1]} fill="none" stroke="rgba(14, 165, 233, 0.15)" strokeWidth={strokeWidth} />
+      <circle cx={center} cy={center} r={radius[2]} fill="none" stroke="rgba(245, 158, 11, 0.15)" strokeWidth={strokeWidth} />
+      
+      <circle cx={center} cy={center} r={radius[0]} fill="none" stroke="#10b981" strokeWidth={strokeWidth} strokeLinecap="round"
+              strokeDasharray={getDashArray(radius[0], Math.min(100, proteinPct))} style={{ transition: 'stroke-dasharray 1s ease' }} />
+      <circle cx={center} cy={center} r={radius[1]} fill="none" stroke="#0ea5e9" strokeWidth={strokeWidth} strokeLinecap="round"
+              strokeDasharray={getDashArray(radius[1], Math.min(100, carbsPct))} style={{ transition: 'stroke-dasharray 1s ease' }} />
+      <circle cx={center} cy={center} r={radius[2]} fill="none" stroke="#f59e0b" strokeWidth={strokeWidth} strokeLinecap="round"
+              strokeDasharray={getDashArray(radius[2], Math.min(100, fatPct))} style={{ transition: 'stroke-dasharray 1s ease' }} />
+    </svg>
+  );
 }
 
 function MacroProgressBar({ label, consumed, target, color }) {
@@ -80,8 +120,12 @@ export default function Nutrition({ user }) {
     return () => window.removeEventListener('open-add-form', handleOpen);
   }, []);
   const [calcWeight,   setCalcWeight]   = useState(user?.weight || 75);
+  const [calcHeight,   setCalcHeight]   = useState(user?.height || 170);
+  const [calcAge,      setCalcAge]      = useState(user?.age || 30);
+  const [calcGender,   setCalcGender]   = useState(user?.gender || 'M');
+  const [calcActivity, setCalcActivity] = useState('sedentary');
   const [calcGoal,     setCalcGoal]     = useState('maintain');
-  const [macroTargets, setMacroTargets] = useState(() => calcMacroTargets(user?.weight || 75, 'maintain'));
+  const [macroTargets, setMacroTargets] = useState(() => calcMacroTargets(calcWeight, calcHeight, calcAge, calcGender, calcActivity, calcGoal));
 
   const addLog = useCallback(async () => {
     if (!logForm.name.trim()) { toast.error('Meal name cannot be empty.'); return; }
@@ -156,7 +200,7 @@ export default function Nutrition({ user }) {
   ].filter(d => d.value > 0), [consumed]);
 
   const handleCalcMacros = () => {
-    const t = calcMacroTargets(calcWeight, calcGoal);
+    const t = calcMacroTargets(calcWeight, calcHeight, calcAge, calcGender, calcActivity, calcGoal);
     setMacroTargets(t);
     toast.success(`Targets updated — ${t.calories} kcal`);
   };
@@ -173,26 +217,44 @@ export default function Nutrition({ user }) {
           <span className="card-title" style={{ margin: 0 }}>Macro Calculator</span>
         </div>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 120px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Body Weight (kg)</label>
-            <input className="form-input" type="number" min={30} max={200}
-              value={calcWeight} onChange={e => setCalcWeight(e.target.value)} />
+          <div style={{ flex: '1 1 80px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Age</label>
+            <input className="form-input" type="number" min={10} max={100} value={calcAge} onChange={e => setCalcAge(e.target.value)} />
           </div>
-          <div style={{ flex: '1 1 140px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Goal</label>
-            <select className="form-input" value={calcGoal} onChange={e => setCalcGoal(e.target.value)}>
-              <option value="cut">Cut (fat loss)</option>
-              <option value="maintain">Maintain</option>
-              <option value="bulk">Bulk (muscle gain)</option>
+          <div style={{ flex: '1 1 80px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Gender</label>
+            <select className="form-input" value={calcGender} onChange={e => setCalcGender(e.target.value)}>
+              <option value="M">M</option><option value="F">F</option>
             </select>
           </div>
-          <button className="btn-primary" style={{ height: '44px' }} onClick={handleCalcMacros}>
-            <Calculator size={14} /> Calculate
+          <div style={{ flex: '1 1 90px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Ht (cm)</label>
+            <input className="form-input" type="number" min={100} max={250} value={calcHeight} onChange={e => setCalcHeight(e.target.value)} />
+          </div>
+          <div style={{ flex: '1 1 90px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Wt (kg)</label>
+            <input className="form-input" type="number" min={30} max={200} value={calcWeight} onChange={e => setCalcWeight(e.target.value)} />
+          </div>
+          <div style={{ flex: '2 1 140px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Activity</label>
+            <select className="form-input" value={calcActivity} onChange={e => setCalcActivity(e.target.value)}>
+              <option value="sedentary">Sedentary</option><option value="light">Light</option><option value="moderate">Moderate</option><option value="active">Active</option><option value="very_active">Very Active</option>
+            </select>
+          </div>
+          <div style={{ flex: '2 1 140px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Goal</label>
+            <select className="form-input" value={calcGoal} onChange={e => setCalcGoal(e.target.value)}>
+              <option value="cut">Cut (fat loss)</option><option value="maintain">Maintain</option><option value="bulk">Bulk</option>
+            </select>
+          </div>
+          <button className="btn-primary" style={{ height: '44px', width: '100%' }} onClick={handleCalcMacros}>
+            <Calculator size={14} /> Calculate BMR & Targets
           </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginTop: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', marginTop: '1rem' }}>
           {[
-            { label: 'Calories', value: `${macroTargets.calories} kcal`, color: 'var(--accent)' },
+            { label: 'BMR',      value: `${macroTargets.bmr} kcal`,       color: 'var(--text-2)' },
+            { label: 'TDEE (Goal)', value: `${macroTargets.calories} kcal`, color: 'var(--accent)' },
             { label: 'Protein',  value: `${macroTargets.protein}g`,       color: MACRO_COLORS.protein },
             { label: 'Carbs',    value: `${macroTargets.carbs}g`,         color: MACRO_COLORS.carbs },
             { label: 'Fat',      value: `${macroTargets.fat}g`,           color: MACRO_COLORS.fat },
@@ -245,14 +307,13 @@ export default function Nutrition({ user }) {
           {ringData.length === 0 ? (
             <p className="empty-msg" style={{ fontSize: '0.78rem', marginTop: '1rem' }}>Log meals to see breakdown</p>
           ) : (
-            <ResponsiveContainer width="100%" height={130}>
-              <PieChart>
-                <Pie data={ringData} cx="50%" cy="50%" innerRadius={32} outerRadius={52} paddingAngle={3} dataKey="value">
-                  {ringData.map((e, i) => <Cell key={i} fill={e.fill} />)}
-                </Pie>
-                <Tooltip formatter={(v, n) => [`${v}g`, n]} contentStyle={tooltipStyle} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div style={{ width: 120, height: 120, margin: '5px auto' }}>
+              <MacroRings 
+                proteinPct={macroTargets.protein ? (consumed.protein / macroTargets.protein) * 100 : 0} 
+                carbsPct={macroTargets.carbs ? (consumed.carbs / macroTargets.carbs) * 100 : 0} 
+                fatPct={macroTargets.fat ? (consumed.fat / macroTargets.fat) * 100 : 0} 
+              />
+            </div>
           )}
           <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
             {Object.entries(MACRO_COLORS).map(([k, c]) => (

@@ -7,11 +7,12 @@ import { Plus, Trash2, Flame, Check, ChevronDown, ChevronUp, Smile } from 'lucid
 import EmptyState from './ui/EmptyState';
 import { useToast } from '../hooks/useToast';
 
-const DAYS_BACK = 28;
+const MATRIX_DAYS = 364;
+const RECENT_DAYS = 28;
 
-function getDateRange() {
+function getDateRange(daysBack) {
   const dates = [];
-  for (let i = DAYS_BACK - 1; i >= 0; i--) {
+  for (let i = daysBack - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     dates.push(d.toISOString().slice(0, 10));
@@ -26,17 +27,23 @@ function getStreakCount(logs = []) {
   );
   let streak = 0;
   let d = new Date();
-  // Allow today to count even if not yet toggled
+  let missedConsecutive = 0;
+  let started = false;
+  
   while (true) {
     const key = d.toISOString().slice(0, 10);
-    if (!logSet.has(key)) {
-      // If today not done yet, start from yesterday
-      if (streak === 0) { d.setDate(d.getDate() - 1); continue; }
-      break;
+    if (logSet.has(key)) {
+      streak++;
+      missedConsecutive = 0;
+      started = true;
+    } else {
+      if (started) {
+        missedConsecutive++;
+        // strict streak calculations accounting for "grace days" (1 day grace)
+        if (missedConsecutive > 1) break; 
+      }
     }
-    streak++;
     d.setDate(d.getDate() - 1);
-    // Safety: max 365
     if (streak > 365) break;
   }
   return streak;
@@ -98,7 +105,8 @@ export default React.memo(function HabitsMatrix() {
     return () => window.removeEventListener('open-add-form', handleOpen);
   }, []);
 
-  const dates = useMemo(() => getDateRange(), []);
+  const dates = useMemo(() => getDateRange(MATRIX_DAYS), []);
+  const recentDates = useMemo(() => getDateRange(RECENT_DAYS), []);
   const today = new Date().toISOString().slice(0, 10);
 
   // ── Fetch logs on mount
@@ -152,8 +160,8 @@ export default React.memo(function HabitsMatrix() {
   const completionRate = (habitId) => {
     const logs = habitLogsByHabit[habitId] || [];
     const logSet = new Set(logs.filter(l => l.completed !== false).map(l => l.date));
-    const count = dates.filter(d => logSet.has(d)).length;
-    return Math.round((count / DAYS_BACK) * 100);
+    const count = recentDates.filter(d => logSet.has(d)).length;
+    return Math.round((count / RECENT_DAYS) * 100);
   };
 
   const totalActiveToday = habits.filter(h => isLogged(h.id, today)).length;
@@ -436,23 +444,29 @@ export default React.memo(function HabitsMatrix() {
                         </button>
                       </div>
 
-                      {/* 28-day grid */}
+                      {/* 364-day grid */}
                       {isOpen && (
                         <div className="px-4 pb-4">
-                          <p className="text-xs text-gray-500 mb-2">Last 28 days</p>
-                          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${DAYS_BACK}, minmax(0, 1fr))` }}>
-                            {dates.map(d => (
-                              <button
-                                key={d}
-                                title={d}
-                                onClick={() => toggleHabitForDate(habit.id, d)}
-                                className={`w-full aspect-square rounded-sm transition ${
-                                  isLogged(habit.id, d)
-                                    ? 'bg-emerald-500 hover:bg-emerald-400'
-                                    : 'bg-white/10 hover:bg-white/20'
-                                } ${d === today ? 'ring-1 ring-amber-400' : ''}`}
-                              />
-                            ))}
+                          <p className="text-xs text-gray-500 mb-2">364-Day Activity Matrix</p>
+                          <div className="overflow-x-auto custom-scrollbar" style={{ paddingBottom: '8px' }}>
+                            <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 1fr)', gridAutoFlow: 'column', gap: '3px', width: 'max-content' }}>
+                              {dates.map(d => {
+                                const logged = isLogged(habit.id, d);
+                                return (
+                                  <button
+                                    key={d}
+                                    title={`${d} ${logged ? '(Done)' : ''}`}
+                                    onClick={() => toggleHabitForDate(habit.id, d)}
+                                    style={{
+                                      width: '12px', height: '12px', borderRadius: '3px', cursor: 'pointer',
+                                      border: logged ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                                      background: logged ? cat.color : 'rgba(255,255,255,0.03)'
+                                    }}
+                                    className={`transition hover:scale-125 hover:z-10 relative ${logged ? 'shadow-[0_0_8px_rgba(0,0,0,0.5)]' : ''}`}
+                                  />
+                                );
+                              })}
+                            </div>
                           </div>
                           <div className="flex justify-between text-xs text-gray-600 mt-1">
                             <span>{dates[0]}</span><span>{dates[dates.length - 1]}</span>
