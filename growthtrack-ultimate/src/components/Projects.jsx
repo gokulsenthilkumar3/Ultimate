@@ -385,35 +385,91 @@ export default function Projects() {
 
               {viewMode === 'gantt' && (
                 <div className="glass-card" style={{ padding: '1.5rem', overflowX: 'auto' }}>
-                  <h3 className="card-title mb-lg">Project Timeline (90 Days)</h3>
+                  <h3 className="card-title mb-lg">Project Timeline (6-Month Window)</h3>
                   <div style={{ minWidth: '700px' }}>
-                    {manualProjects.length > 0 && manualProjects.filter(p => p.startDate).map((p, i) => {
+                    {(() => {
+                      // 6-month window: 1 month ago → 5 months ahead (≈183 days)
                       const now = new Date();
-                      const start = new Date(p.startDate);
-                      const end = p.endDate ? new Date(p.endDate) : new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
-                      const totalDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
-                      const ninetyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                      const daysFromStartWindow = (start.getTime() - ninetyDaysAgo.getTime()) / (1000 * 60 * 60 * 24);
-                      
-                      const left = Math.max(0, Math.min(100, (daysFromStartWindow / 90) * 100));
-                      const width = Math.max(2, Math.min(100 - left, (totalDays / 90) * 100));
-                      
+                      const windowStart = new Date(now); windowStart.setDate(windowStart.getDate() - 30);
+                      const windowEnd   = new Date(now); windowEnd.setDate(windowEnd.getDate() + 153);
+                      const windowMs    = windowEnd.getTime() - windowStart.getTime();
+
+                      // Month tick labels across the window
+                      const ticks = [];
+                      const tickCur = new Date(windowStart.getFullYear(), windowStart.getMonth(), 1);
+                      tickCur.setMonth(tickCur.getMonth() + 1);
+                      while (tickCur < windowEnd) {
+                        const pct = ((tickCur.getTime() - windowStart.getTime()) / windowMs) * 100;
+                        ticks.push({ pct, label: tickCur.toLocaleDateString('en', { month: 'short', year: '2-digit' }) });
+                        tickCur.setMonth(tickCur.getMonth() + 1);
+                      }
+
+                      // "Today" marker
+                      const todayPct = ((now.getTime() - windowStart.getTime()) / windowMs) * 100;
+
+                      const withDates = manualProjects.filter(p => p.startDate);
+                      if (withDates.length === 0) {
+                        return <p style={{ color: 'var(--text-3)', textAlign: 'center', padding: '2rem 0' }}>Assign a Start Date to your projects to view them on the timeline.</p>;
+                      }
+
                       return (
-                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }} onClick={() => startEdit(p)}>
-                          <div style={{ width: '180px', fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>
-                            {p.title}
+                        <>
+                          {/* Tick header */}
+                          <div style={{ display: 'flex', marginLeft: '190px', marginBottom: '6px', position: 'relative', height: '18px' }}>
+                            {ticks.map(t => (
+                              <div key={t.label} style={{ position: 'absolute', left: `${t.pct}%`, fontSize: '0.58rem', color: 'var(--text-3)', transform: 'translateX(-50%)', fontWeight: 700, whiteSpace: 'nowrap' }}>{t.label}</div>
+                            ))}
                           </div>
-                          <div style={{ flex: 1, height: '36px', background: 'var(--bg-input)', borderRadius: '18px', position: 'relative', border: '1px solid var(--border)' }}>
-                            <div style={{ position: 'absolute', left: `${left}%`, width: `${width}%`, height: '100%', background: STATUS_COLOR[p.status], opacity: 0.8, borderRadius: '18px', display: 'flex', alignItems: 'center', padding: '0 12px', color: '#fff', fontSize: '0.75rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', cursor: 'pointer', transition: 'opacity 0.2s' }}>
-                              {totalDays.toFixed(0)}d
-                            </div>
-                          </div>
-                        </div>
+
+                          {withDates.map(p => {
+                            const projStart = new Date(p.startDate + 'T00:00:00');
+                            const projEnd   = p.endDate ? new Date(p.endDate + 'T00:00:00') : new Date(projStart.getTime() + 30 * 86400000);
+
+                            // Clamp to window
+                            const clampStart = Math.max(projStart.getTime(), windowStart.getTime());
+                            const clampEnd   = Math.min(projEnd.getTime(),   windowEnd.getTime());
+
+                            // Skip if entirely outside window
+                            if (clampStart >= clampEnd) return null;
+
+                            const leftPct = ((clampStart - windowStart.getTime()) / windowMs) * 100;
+                            const widthPct = ((clampEnd - clampStart) / windowMs) * 100;
+                            const totalDays = Math.round((projEnd.getTime() - projStart.getTime()) / 86400000);
+                            const isBeforeWindow = projStart.getTime() < windowStart.getTime();
+                            const isAfterWindow  = projEnd.getTime()   > windowEnd.getTime();
+
+                            return (
+                              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '10px' }} onClick={() => startEdit(p)}>
+                                <div style={{ width: '180px', fontSize: '0.82rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', color: 'var(--text-1)', flexShrink: 0 }}>
+                                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: STATUS_COLOR[p.status] || 'var(--accent)', marginRight: '6px', flexShrink: 0, verticalAlign: 'middle' }} />
+                                  {p.title}
+                                </div>
+                                <div style={{ flex: 1, height: '30px', background: 'var(--bg-input)', borderRadius: '6px', position: 'relative', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                  {/* Today marker */}
+                                  {todayPct >= 0 && todayPct <= 100 && (
+                                    <div style={{ position: 'absolute', left: `${todayPct}%`, top: 0, bottom: 0, width: '2px', background: 'rgba(99,102,241,0.5)', zIndex: 2 }} />
+                                  )}
+                                  {/* Bar */}
+                                  <div style={{
+                                    position: 'absolute', left: `${leftPct}%`, width: `${widthPct}%`,
+                                    height: '100%', background: STATUS_COLOR[p.status] || 'var(--accent)',
+                                    opacity: 0.85, borderRadius: '4px',
+                                    borderLeft:  isBeforeWindow ? '3px solid rgba(255,255,255,0.5)' : undefined,
+                                    borderRight: isAfterWindow  ? '3px solid rgba(255,255,255,0.5)' : undefined,
+                                    display: 'flex', alignItems: 'center', padding: '0 8px',
+                                    color: '#fff', fontSize: '0.7rem', fontWeight: 800,
+                                    whiteSpace: 'nowrap', overflow: 'hidden', cursor: 'pointer',
+                                  }}>
+                                    {widthPct > 8 && `${totalDays}d`}
+                                  </div>
+                                </div>
+                                <div style={{ width: '65px', fontSize: '0.65rem', color: STATUS_COLOR[p.status], fontWeight: 800, flexShrink: 0 }}>{p.status}</div>
+                              </div>
+                            );
+                          })}
+                        </>
                       );
-                    })}
-                    {manualProjects.filter(p => p.startDate).length === 0 && (
-                      <p style={{ color: 'var(--text-3)', textAlign: 'center', padding: '2rem 0' }}>Assign a Start Date to your projects to view them on the timeline.</p>
-                    )}
+                    })()}
                   </div>
                 </div>
               )}

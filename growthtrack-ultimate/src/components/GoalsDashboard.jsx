@@ -1,15 +1,24 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore, {
   selectGoals, selectAddGoal, selectDeleteGoal, selectUpdateGoal,
 } from '../store/useStore';
 import {
   Plus, Trash2, Edit3, Check, X, ChevronDown, ChevronUp,
-  TrendingUp, Target, Calendar, Flag, BookOpen, Dumbbell,
-  Briefcase, HeartPulse, User, Star, BarChart2
+  Target, Calendar, BarChart2, Sparkles,
 } from 'lucide-react';
 import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis } from 'recharts';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+
+// ── Confetti helper (canvas-confetti) ────────────────────────────────────
+async function fireConfetti() {
+  try {
+    const confetti = (await import('canvas-confetti')).default;
+    confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 }, colors: ['#10b981', '#f59e0b', '#0ea5e9', '#a78bfa', '#f43f5e'] });
+    setTimeout(() => confetti({ particleCount: 60, spread: 50, origin: { y: 0.4 }, angle: 60 }), 250);
+    setTimeout(() => confetti({ particleCount: 60, spread: 50, origin: { y: 0.4 }, angle: 120 }), 400);
+  } catch { /* canvas-confetti not available */ }
+}
 
 const STATUS_OPTIONS = ['active', 'completed', 'paused', 'cancelled'];
 
@@ -25,26 +34,23 @@ const CATEGORY_CONFIG = [
 const CAT_MAP = Object.fromEntries(CATEGORY_CONFIG.map(c => [c.key, c]));
 
 const STATUS_COLORS = {
-  active:    'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-  completed: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
-  paused:    'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
-  cancelled: 'text-red-400 bg-red-500/10 border-red-500/30',
+  active:    { text: '#34d399', bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.3)'  },
+  completed: { text: '#60a5fa', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.3)'  },
+  paused:    { text: '#fbbf24', bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.3)'  },
+  cancelled: { text: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.3)' },
 };
 
-function ProgressRing({ value = 0, size = 56, stroke = 4 }) {
+function ProgressRing({ value = 0, size = 54, stroke = 4, color = '#6366f1' }) {
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (value / 100) * circ;
+  const ringColor = value >= 100 ? '#10b981' : value >= 60 ? '#f59e0b' : color;
   return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
-      <circle
-        cx={size/2} cy={size/2} r={r} fill="none"
-        stroke={value >= 100 ? '#10b981' : value >= 60 ? '#f59e0b' : '#6366f1'}
-        strokeWidth={stroke} strokeLinecap="round"
-        strokeDasharray={circ} strokeDashoffset={offset}
-        style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-      />
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={ringColor} strokeWidth={stroke}
+              strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+              style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
     </svg>
   );
 }
@@ -64,15 +70,103 @@ function generateMilestones(goal) {
   const start = goal.created_at ? new Date(goal.created_at) : new Date(Date.now() - 30 * 86400000);
   const end = goal.deadline ? new Date(goal.deadline) : new Date(start.getTime() + 90 * 86400000);
   const totalDays = Math.max(1, (end - start) / 86400000);
-  
   return [25, 50, 75, 100].map(pct => {
     const targetDate = new Date(start.getTime() + totalDays * (pct/100) * 86400000);
-    const targetVal = Number(goal.target_value) * (pct/100);
-    const achieved = Number(goal.current_value || 0) >= targetVal;
+    const targetVal  = Number(goal.target_value) * (pct/100);
+    const achieved   = Number(goal.current_value || 0) >= targetVal;
     return { pct, targetDate, targetVal: targetVal.toLocaleString(undefined, { maximumFractionDigits: 1 }), achieved };
   });
 }
 
+// ── Milestone Sub-tasks ───────────────────────────────────────────────────
+function MilestoneSubtasks({ goal, updateGoal, cat }) {
+  const subtasks = goal.subtasks || [];
+  const [newTask, setNewTask] = useState('');
+
+  const addSubtask = () => {
+    if (!newTask.trim()) return;
+    const updated = [...subtasks, { id: Date.now(), text: newTask.trim(), done: false }];
+    updateGoal(goal.id, { subtasks: updated });
+    setNewTask('');
+  };
+
+  const toggleSubtask = (id) => {
+    const updated = subtasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
+    updateGoal(goal.id, { subtasks: updated });
+  };
+
+  const deleteSubtask = (id) => {
+    updateGoal(goal.id, { subtasks: subtasks.filter(t => t.id !== id) });
+  };
+
+  const doneCount = subtasks.filter(t => t.done).length;
+
+  return (
+    <div style={{ marginTop: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.5rem' }}>
+        <Sparkles size={11} color={cat.color} />
+        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Sub-tasks {subtasks.length > 0 ? `(${doneCount}/${subtasks.length})` : ''}
+        </span>
+      </div>
+
+      {/* Sub-task list */}
+      {subtasks.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.5rem' }}>
+          {subtasks.map(t => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={() => toggleSubtask(t.id)} style={{
+                width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer',
+                border: `2px solid ${t.done ? cat.color : 'rgba(255,255,255,0.2)'}`,
+                background: t.done ? cat.color : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {t.done && <Check size={9} color="#fff" />}
+              </button>
+              <span style={{
+                flex: 1, fontSize: '0.78rem', color: t.done ? 'var(--text-3)' : 'var(--text-1)',
+                textDecoration: t.done ? 'line-through' : 'none',
+              }}>{t.text}</span>
+              <button onClick={() => deleteSubtask(t.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.5)', cursor: 'pointer', padding: '1px' }}>
+                <X size={11} />
+              </button>
+            </div>
+          ))}
+          {/* Progress bar for subtasks */}
+          {subtasks.length > 0 && (
+            <div style={{ height: '3px', background: 'rgba(255,255,255,0.07)', borderRadius: '99px', overflow: 'hidden', marginTop: '4px' }}>
+              <div style={{ height: '100%', width: `${subtasks.length ? (doneCount / subtasks.length) * 100 : 0}%`, background: cat.color, transition: 'width 0.4s ease' }} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add sub-task input */}
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <input
+          value={newTask}
+          onChange={e => setNewTask(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addSubtask()}
+          placeholder="Add sub-task…"
+          style={{
+            flex: 1, padding: '5px 10px', fontSize: '0.75rem',
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '6px', color: 'var(--text-1)', outline: 'none',
+          }}
+        />
+        <button onClick={addSubtask} style={{
+          padding: '5px 10px', background: cat.color, border: 'none',
+          borderRadius: '6px', cursor: 'pointer', color: '#fff',
+          display: 'flex', alignItems: 'center',
+        }}>
+          <Plus size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────
 export default function GoalsDashboard() {
   const toast = useToast();
   const goals      = useStore(selectGoals);
@@ -80,10 +174,8 @@ export default function GoalsDashboard() {
   const deleteGoal = useStore(selectDeleteGoal);
   const updateGoal = useStore(selectUpdateGoal);
 
-  // ── Filter state: status + category
   const [statusFilter, setStatusFilter] = useState('all');
   const [catFilter,    setCatFilter]    = useState('all');
-
   const [showAdd,    setShowAdd]    = useState(false);
   const [editId,     setEditId]     = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -93,15 +185,12 @@ export default function GoalsDashboard() {
     target_value: '', current_value: '', unit: '', deadline: '',
   });
   const [editForm, setEditForm] = useState({});
-
-  // ── Log Progress state: { [goalId]: { value, note, date } }
   const [logForm,    setLogForm]    = useState({});
-  const [logHistory, setLogHistory] = useState({}); // { [goalId]: [{value, note, date}] }
+  const [logHistory, setLogHistory] = useState({});
   const [loadingLog, setLoadingLog] = useState({});
 
-  // ── Fetch progress logs for a goal when expanded
   const fetchProgressLogs = useCallback(async (goalId) => {
-    if (logHistory[goalId]) return; // already loaded
+    if (logHistory[goalId]) return;
     setLoadingLog(l => ({ ...l, [goalId]: true }));
     try {
       const res = await fetch(`/api/goal_progress_logs?goal_id=${goalId}`);
@@ -115,10 +204,7 @@ export default function GoalsDashboard() {
     }
   }, [logHistory]);
 
-  // Fetch logs when a goal is expanded
-  useEffect(() => {
-    if (expandedId) fetchProgressLogs(expandedId);
-  }, [expandedId]);
+  useEffect(() => { if (expandedId) fetchProgressLogs(expandedId); }, [expandedId]);
 
   const handleLogProgress = useCallback(async (goal) => {
     const lf = logForm[goal.id] || {};
@@ -126,10 +212,9 @@ export default function GoalsDashboard() {
     if (!lf.value || isNaN(val)) { toast.error('Enter a valid value to log.'); return; }
     try {
       const payload = {
-        goal_id: goal.id,
-        value:   val,
-        note:    lf.note || '',
-        date:    lf.date || new Date().toISOString().slice(0, 10),
+        goal_id: goal.id, value: val,
+        note: lf.note || '',
+        date: lf.date || new Date().toISOString().slice(0, 10),
       };
       const res = await fetch('/api/goal_progress_logs', {
         method: 'POST',
@@ -137,21 +222,30 @@ export default function GoalsDashboard() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error();
-      // Also update current_value on goal
       const updates = { current_value: val };
-      if (goal.target_value && val >= Number(goal.target_value)) updates.status = 'completed';
+      const wasCompleted = goal.status === 'completed';
+      if (goal.target_value && val >= Number(goal.target_value)) {
+        updates.status = 'completed';
+        if (!wasCompleted) {
+          toast.success(`🎉 Goal "${goal.title}" completed!`);
+          fireConfetti();
+        }
+      }
       await updateGoal(goal.id, updates);
-      // Refresh log history
       setLogHistory(h => ({
         ...h,
         [goal.id]: [...(h[goal.id] || []), payload].sort((a, b) => a.date.localeCompare(b.date)),
       }));
       setLogForm(f => ({ ...f, [goal.id]: {} }));
-      toast.success(`Progress logged: ${val} ${goal.unit || ''}`);
-    } catch {
-      toast.error('Failed to log progress.');
-    }
+      if (!updates.status) toast.success(`Progress logged: ${val} ${goal.unit || ''}`);
+    } catch { toast.error('Failed to log progress.'); }
   }, [logForm, updateGoal, toast]);
+
+  const handleMarkDone = useCallback(async (goal) => {
+    await updateGoal(goal.id, { status: 'completed', current_value: goal.target_value });
+    toast.success(`🎉 "${goal.title}" marked complete!`);
+    fireConfetti();
+  }, [updateGoal, toast]);
 
   const filtered = useMemo(() => {
     let list = goals;
@@ -169,28 +263,24 @@ export default function GoalsDashboard() {
   }, [goals, deleteGoal, addGoal, toast]);
 
   const stats = useMemo(() => ({
-    total:       goals.length,
-    active:      goals.filter(g => g.status === 'active').length,
-    completed:   goals.filter(g => g.status === 'completed').length,
-    avgProgress: goals.length
-      ? Math.round(goals.reduce((s, g) => s + getProgress(g), 0) / goals.length)
-      : 0,
+    total:     goals.length,
+    active:    goals.filter(g => g.status === 'active').length,
+    completed: goals.filter(g => g.status === 'completed').length,
+    avgProgress: goals.length ? Math.round(goals.reduce((s, g) => s + getProgress(g), 0) / goals.length) : 0,
   }), [goals]);
 
   const handleAdd = async () => {
     if (!form.title.trim()) return;
     if (form.deadline) {
       const today = new Date().toISOString().split('T')[0];
-      if (form.deadline < today) {
-        toast.error('Deadline cannot be in the past.');
-        return;
-      }
+      if (form.deadline < today) { toast.error('Deadline cannot be in the past.'); return; }
     }
     await addGoal({
       ...form,
       target_value:  form.target_value  ? Number(form.target_value)  : null,
       current_value: form.current_value ? Number(form.current_value) : 0,
       created_at: new Date().toISOString(),
+      subtasks: [],
     });
     setForm({ title: '', description: '', category: 'personal', status: 'active', target_value: '', current_value: '', unit: '', deadline: '' });
     setShowAdd(false);
@@ -201,10 +291,7 @@ export default function GoalsDashboard() {
   const saveEdit  = () => {
     if (editForm.deadline) {
       const today = new Date().toISOString().split('T')[0];
-      if (editForm.deadline < today) {
-        toast.error('Deadline cannot be in the past.');
-        return;
-      }
+      if (editForm.deadline < today) { toast.error('Deadline cannot be in the past.'); return; }
     }
     updateGoal(editId, editForm);
     setEditId(null);
@@ -212,328 +299,317 @@ export default function GoalsDashboard() {
   };
 
   return (
-    <div className="space-y-6 p-4">
+    <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 className="text-2xl font-bold text-white">Goals</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{stats.active} active · {stats.completed} completed</p>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.3rem' }}>Goal Tracking</p>
+          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Goals</h2>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{stats.active} active · {stats.completed} completed</p>
         </div>
-        <button
-          onClick={() => setShowAdd(s => !s)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold rounded-lg transition"
-        >
+        <button onClick={() => setShowAdd(s => !s)} className="btn-primary">
           <Plus size={14} /> New Goal
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total',  val: stats.total,              color: 'text-white' },
-          { label: 'Active', val: stats.active,             color: 'text-emerald-400' },
-          { label: 'Done',   val: stats.completed,          color: 'text-blue-400' },
-          { label: 'Avg %',  val: stats.avgProgress + '%',  color: 'text-amber-400' },
+          { label: 'Total',     val: stats.total,              color: 'var(--text-1)' },
+          { label: 'Active',    val: stats.active,             color: '#34d399' },
+          { label: 'Done',      val: stats.completed,          color: '#60a5fa' },
+          { label: 'Avg %',     val: `${stats.avgProgress}%`,  color: '#fbbf24' },
         ].map(s => (
-          <div key={s.label} className="glass-card rounded-xl p-3 text-center">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.val}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+          <div key={s.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
+            <p style={{ fontSize: '1.75rem', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</p>
+            <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '4px' }}>{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Add form */}
       {showAdd && (
-        <div className="glass-card rounded-xl p-4 space-y-3">
-          <p className="text-sm font-semibold text-white">New Goal</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input placeholder="Goal title *" value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500" />
-            <input placeholder="Description" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500" />
-            {/* Category dropdown with emoji */}
-            <select value={form.category} onChange={e => setForm(f => ({...f, category: e.target.value}))}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500">
+        <div className="glass-card mb-lg">
+          <p style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>New Goal</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
+            {[
+              { placeholder: 'Goal title *', key: 'title' },
+              { placeholder: 'Description', key: 'description' },
+              { placeholder: 'Target value (e.g. 75)', key: 'target_value', type: 'number' },
+              { placeholder: 'Unit (e.g. kg, pages, hrs)', key: 'unit' },
+            ].map(f => (
+              <input key={f.key} type={f.type || 'text'} placeholder={f.placeholder}
+                value={form[f.key]} onChange={e => setForm(ff => ({ ...ff, [f.key]: e.target.value }))}
+                className="form-input" />
+            ))}
+            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="form-input">
               {CATEGORY_CONFIG.map(c => <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}
             </select>
-            <select value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value}))}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500">
+            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="form-input">
               {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <input placeholder="Target value (e.g. 75)" type="number" value={form.target_value} onChange={e => setForm(f => ({...f, target_value: e.target.value}))}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500" />
-            <input placeholder="Unit (e.g. kg, pages, hrs)" value={form.unit} onChange={e => setForm(f => ({...f, unit: e.target.value}))}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500" />
-            {/* DATE deadline picker */}
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Deadline</label>
-              <input type="date" value={form.deadline} onChange={e => setForm(f => ({...f, deadline: e.target.value}))}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500" />
+              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Deadline</label>
+              <input type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} className="form-input" />
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition">Cancel</button>
-            <button onClick={handleAdd} className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold rounded-lg transition">Add Goal</button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+            <button onClick={handleAdd} className="btn-primary">Add Goal</button>
           </div>
         </div>
       )}
 
-      {/* Filter bar ─ Status + Category */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {/* Status filter */}
+      {/* Filter bar */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', minWidth: '54px' }}>Status</span>
-          {['all', ...STATUS_OPTIONS].map(f => (
-            <button key={f} onClick={() => setStatusFilter(f)}
-              className={`px-3 py-1 text-xs rounded-full border transition capitalize ${
-                statusFilter === f ? 'bg-amber-500 border-amber-500 text-black font-semibold' : 'border-white/10 text-gray-400 hover:border-white/30'
-              }`}
-            >{f}</button>
-          ))}
+          <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', minWidth: '50px' }}>Status</span>
+          {['all', ...STATUS_OPTIONS].map(f => {
+            const sc = STATUS_COLORS[f];
+            const active = statusFilter === f;
+            return (
+              <button key={f} onClick={() => setStatusFilter(f)} style={{
+                padding: '3px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+                background: active ? (sc ? sc.bg : 'var(--accent)') : 'rgba(255,255,255,0.05)',
+                color: active ? (sc ? sc.text : '#000') : 'var(--text-3)',
+                border: active ? `1px solid ${sc ? sc.border : 'var(--accent)'}` : '1px solid rgba(255,255,255,0.1)',
+                textTransform: 'capitalize',
+              }}>{f}</button>
+            );
+          })}
         </div>
-        {/* Category filter */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', minWidth: '54px' }}>Category</span>
-          <button
-            onClick={() => setCatFilter('all')}
-            style={{
-              padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700,
-              background: catFilter === 'all' ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
-              color: catFilter === 'all' ? '#000' : 'var(--text-3)',
-              border: catFilter === 'all' ? 'none' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-            }}
-          >All</button>
+          <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', minWidth: '50px' }}>Category</span>
+          <button onClick={() => setCatFilter('all')} style={{
+            padding: '3px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700,
+            background: catFilter === 'all' ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
+            color: catFilter === 'all' ? '#000' : 'var(--text-3)',
+            border: catFilter === 'all' ? 'none' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+          }}>All</button>
           {CATEGORY_CONFIG.map(c => {
             const count = goals.filter(g => g.category === c.key).length;
             if (count === 0) return null;
             return (
-              <button key={c.key} onClick={() => setCatFilter(c.key)}
-                style={{
-                  padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700,
-                  background: catFilter === c.key ? c.color : 'rgba(255,255,255,0.05)',
-                  color: catFilter === c.key ? '#fff' : 'var(--text-3)',
-                  border: catFilter === c.key ? 'none' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                }}
-              >{c.emoji} {c.label} ({count})</button>
+              <button key={c.key} onClick={() => setCatFilter(c.key)} style={{
+                padding: '3px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700,
+                background: catFilter === c.key ? c.color : 'rgba(255,255,255,0.05)',
+                color: catFilter === c.key ? '#fff' : 'var(--text-3)',
+                border: catFilter === c.key ? 'none' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+              }}>{c.emoji} {c.label} ({count})</button>
             );
           })}
         </div>
       </div>
 
       {/* Goal cards */}
-      <div className="space-y-3">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {filtered.length === 0 && (
           <div style={{ marginTop: '1rem' }}>
-            <EmptyState 
-              icon={Target} 
-              title="No Goals" 
+            <EmptyState icon={Target} title="No Goals"
               description={goals.length === 0 ? "You have no goals set. Start tracking your progress today!" : "No goals match your current filter."}
               ctaLabel={goals.length === 0 ? "Create Goal" : null}
-              onAction={goals.length === 0 ? () => { setForm(EMPTY_GOAL); setShowForm(true); setEditId(null); } : null}
-            />
+              onAction={goals.length === 0 ? () => setShowAdd(true) : null} />
           </div>
         )}
+
         {filtered.map(g => {
-          const prog     = getProgress(g);
-          const dl       = daysLeft(g.deadline);
+          const prog       = getProgress(g);
+          const dl         = daysLeft(g.deadline);
           const isEditing  = editId === g.id;
           const isExpanded = expandedId === g.id;
           const cat        = CAT_MAP[g.category] || CAT_MAP.other;
           const lf         = logForm[g.id] || {};
           const history    = logHistory[g.id] || [];
           const chartData  = history.map(l => ({ date: l.date?.slice(5), v: Number(l.value) }));
-
-          // Days left badge styles
-          const dlColor = dl === null ? '' : dl < 0 ? '#f87171' : dl <= 7 ? '#fbbf24' : '#6b7280';
-          const dlLabel = dl === null ? null : dl < 0 ? `${Math.abs(dl)}d overdue` : dl === 0 ? 'Due today' : `${dl}d left`;
+          const sc         = STATUS_COLORS[g.status] || STATUS_COLORS.active;
+          const dlColor    = dl === null ? '' : dl < 0 ? '#f87171' : dl <= 7 ? '#fbbf24' : '#6b7280';
+          const dlLabel    = dl === null ? null : dl < 0 ? `${Math.abs(dl)}d overdue` : dl === 0 ? 'Due today' : `${dl}d left`;
+          const isCompleted = g.status === 'completed';
 
           return (
-            <div key={g.id} className="glass-card rounded-xl overflow-hidden relative">
-              <div className="flex items-start gap-4 p-4">
+            <div key={g.id} className="glass-card" style={{
+              overflow: 'hidden',
+              borderLeft: `3px solid ${isCompleted ? '#10b981' : cat.color}`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '0' }}>
                 {/* Progress ring */}
-                <div className="relative flex-shrink-0">
-                  <ProgressRing value={prog} />
-                  <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">{prog}%</span>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <ProgressRing value={prog} color={cat.color} />
+                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-1)' }}>{prog}%</span>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
+                <div style={{ flex: 1, minWidth: 0 }}>
                   {isEditing ? (
-                    <div className="space-y-2">
-                      <input value={editForm.title} onChange={e => setEditForm(f => ({...f, title: e.target.value}))}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm focus:outline-none" />
-                      <div className="flex gap-2 flex-wrap">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                        className="form-input" style={{ fontSize: '0.88rem' }} />
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <input value={editForm.current_value || ''} placeholder="Current" type="number"
-                          onChange={e => setEditForm(f => ({...f, current_value: e.target.value}))}
-                          className="w-24 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm focus:outline-none" />
+                          onChange={e => setEditForm(f => ({ ...f, current_value: e.target.value }))}
+                          className="form-input" style={{ width: '90px', fontSize: '0.82rem' }} />
                         <input value={editForm.target_value || ''} placeholder="Target" type="number"
-                          onChange={e => setEditForm(f => ({...f, target_value: e.target.value}))}
-                          className="w-24 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm focus:outline-none" />
-                        <select value={editForm.status || 'active'} onChange={e => setEditForm(f => ({...f, status: e.target.value}))}
-                          className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm focus:outline-none">
+                          onChange={e => setEditForm(f => ({ ...f, target_value: e.target.value }))}
+                          className="form-input" style={{ width: '90px', fontSize: '0.82rem' }} />
+                        <select value={editForm.status || 'active'} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                          className="form-input" style={{ fontSize: '0.82rem' }}>
                           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
-                        {/* Edit deadline */}
-                        <input type="date" value={editForm.deadline || ''} onChange={e => setEditForm(f => ({...f, deadline: e.target.value}))}
-                          className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm focus:outline-none" />
-                        {/* Edit category */}
-                        <select value={editForm.category || 'other'} onChange={e => setEditForm(f => ({...f, category: e.target.value}))}
-                          className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm focus:outline-none">
+                        <input type="date" value={editForm.deadline || ''} onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
+                          className="form-input" style={{ fontSize: '0.82rem' }} />
+                        <select value={editForm.category || 'other'} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                          className="form-input" style={{ fontSize: '0.82rem' }}>
                           {CATEGORY_CONFIG.map(c => <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}
                         </select>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={saveEdit} className="flex items-center gap-1 px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-white text-xs rounded-lg"><Check size={12}/> Save</button>
-                        <button onClick={() => setEditId(null)} className="flex items-center gap-1 px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg"><X size={12}/> Cancel</button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button onClick={saveEdit} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.75rem' }}>
+                          <Check size={12} /> Save
+                        </button>
+                        <button onClick={() => setEditId(null)} style={{ padding: '4px 12px', fontSize: '0.75rem', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-2)' }}>
+                          <X size={12} /> Cancel
+                        </button>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="flex items-start justify-between gap-2">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '1rem' }}>{cat.emoji}</span>
-                          <p className="text-white font-semibold text-sm leading-tight">{g.title}</p>
-                        </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border capitalize flex-shrink-0 ${STATUS_COLORS[g.status] || 'text-gray-400'}`}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '1rem' }}>{cat.emoji}</span>
+                        <p style={{ fontSize: '0.9rem', fontWeight: 700, color: isCompleted ? '#10b981' : 'var(--text-1)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {g.title}
+                          {isCompleted && ' ✓'}
+                        </p>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: '99px',
+                                       background: sc.bg, color: sc.text, border: `1px solid ${sc.border}`, flexShrink: 0, textTransform: 'capitalize' }}>
                           {g.status}
                         </span>
                       </div>
-                      {g.description && <p className="text-xs text-gray-400 mt-0.5 truncate">{g.description}</p>}
-                      <div className="flex items-center gap-3 mt-1.5 flex-wrap" style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+
+                      {g.description && <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.description}</p>}
+
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: '6px' }}>
                         <span style={{ color: cat.color, fontWeight: 700 }}>{cat.label}</span>
                         {g.target_value && (
                           <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                             <Target size={10} /> {g.current_value || 0}/{g.target_value} {g.unit}
                           </span>
                         )}
-                        {/* Deadline badge */}
                         {dlLabel && (
                           <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: dlColor, fontWeight: dl !== null && dl <= 7 ? 700 : 400,
-                            background: dl !== null && dl < 0 ? 'rgba(248,113,113,0.12)' : 'transparent',
-                            padding: dl !== null && dl < 0 ? '1px 6px' : '0',
-                            borderRadius: '10px',
-                          }}>
+                                         background: dl !== null && dl < 0 ? 'rgba(248,113,113,0.12)' : 'transparent',
+                                         padding: dl !== null && dl < 0 ? '1px 6px' : '0', borderRadius: '10px' }}>
                             <Calendar size={10} /> {dlLabel}
                           </span>
                         )}
                       </div>
+
                       {/* Progress bar */}
-                      <div className="mt-2 h-1 bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full transition-all" style={{
+                      <div style={{ height: '5px', background: 'rgba(255,255,255,0.07)', borderRadius: '99px', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%', borderRadius: '99px', transition: 'width 0.5s ease',
                           width: `${prog}%`,
-                          background: prog >= 100 ? '#10b981' : prog >= 60 ? 'linear-gradient(to right,#f59e0b,#fbbf24)' : 'linear-gradient(to right,#6366f1,#8b5cf6)',
+                          background: isCompleted ? '#10b981' : prog >= 60 ? `linear-gradient(90deg,${cat.color},#fbbf24)` : cat.color,
                         }} />
                       </div>
                     </>
                   )}
                 </div>
 
-                {/* Actions */}
+                {/* Action buttons */}
                 {!isEditing && (
-                  <div className="flex flex-col gap-1.5 flex-shrink-0">
-                    <button onClick={() => startEdit(g)} className="text-gray-500 hover:text-white transition"><Edit3 size={14}/></button>
-                    <button onClick={() => setExpandedId(isExpanded ? null : g.id)} className="text-gray-500 hover:text-white transition">
-                      {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
+                    <button onClick={() => startEdit(g)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={13} /></button>
+                    <button onClick={() => setExpandedId(isExpanded ? null : g.id)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}>
+                      {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     </button>
-                    <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-400 transition"><Trash2 size={14}/></button>
+                    <button onClick={() => handleDelete(g.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.6)', cursor: 'pointer', padding: '3px' }}><Trash2 size={13} /></button>
                   </div>
                 )}
               </div>
 
-              {/* Expanded panel ─ Log Progress + history chart */}
+              {/* Expanded panel */}
               {isExpanded && !isEditing && (
-                <div className="px-4 pb-4 border-t border-white/10 pt-3 space-y-3">
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '1rem', marginTop: '0.75rem' }}>
 
-                  {/* Log Progress form */}
-                  <p className="text-xs text-gray-400 flex items-center gap-1 font-semibold">
-                    <BarChart2 size={12} color="var(--accent)" /> Log Progress
+                  {/* Log Progress */}
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <BarChart2 size={11} color="var(--accent)" /> Log Progress
                   </p>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '1rem' }}>
                     <div>
-                      <label className="block" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '3px' }}>Value {g.unit ? `(${g.unit})` : ''}</label>
-                      <input
-                        type="number"
-                        placeholder={`e.g. ${g.current_value || 0}`}
-                        value={lf.value || ''}
-                        onChange={e => setLogForm(f => ({ ...f, [g.id]: { ...lf, value: e.target.value } }))}
-                        style={{ width: '100px' }}
-                        className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-amber-500"
-                      />
+                      <label style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Value {g.unit ? `(${g.unit})` : ''}</label>
+                      <input type="number" placeholder={`e.g. ${g.current_value || 0}`}
+                        value={lf.value || ''} onChange={e => setLogForm(f => ({ ...f, [g.id]: { ...lf, value: e.target.value } }))}
+                        style={{ width: '100px' }} className="form-input" />
                     </div>
                     <div>
-                      <label className="block" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '3px' }}>Date</label>
-                      <input
-                        type="date"
-                        value={lf.date || new Date().toISOString().slice(0, 10)}
+                      <label style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Date</label>
+                      <input type="date" value={lf.date || new Date().toISOString().slice(0, 10)}
                         onChange={e => setLogForm(f => ({ ...f, [g.id]: { ...lf, date: e.target.value } }))}
-                        className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-amber-500"
-                      />
+                        className="form-input" />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label className="block" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '3px' }}>Note (optional)</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Post-workout, fasted"
-                        value={lf.note || ''}
+                      <label style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Note</label>
+                      <input type="text" placeholder="Optional note" value={lf.note || ''}
                         onChange={e => setLogForm(f => ({ ...f, [g.id]: { ...lf, note: e.target.value } }))}
-                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-amber-500"
-                      />
+                        className="form-input" style={{ width: '100%' }} />
                     </div>
-                    <button
-                      onClick={() => handleLogProgress(g)}
-                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold rounded-lg transition flex items-center gap-1"
-                    >
+                    <button onClick={() => handleLogProgress(g)} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.75rem' }}>
                       <Plus size={12} /> Log
                     </button>
                     {g.status !== 'completed' && (
-                      <button
-                        onClick={() => updateGoal(g.id, { status: 'completed', current_value: g.target_value })}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1"
-                      ><Check size={12}/> Mark Done</button>
+                      <button onClick={() => handleMarkDone(g)}
+                        style={{ padding: '0.45rem 0.9rem', fontSize: '0.75rem', background: '#10b981', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
+                        <Check size={12} /> Mark Done 🎉
+                      </button>
                     )}
                   </div>
 
-                  {/* Progress history mini-chart */}
+                  {/* Progress chart */}
                   {loadingLog[g.id] ? (
                     <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Loading history…</p>
                   ) : chartData.length >= 2 ? (
-                    <div>
-                      <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px' }}>Progress history</p>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Progress history</p>
                       <ResponsiveContainer width="100%" height={60}>
                         <LineChart data={chartData}>
-                          <XAxis dataKey="date" tick={{ fontSize: '0.55rem', fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                          <XAxis dataKey="date" tick={{ fontSize: '0.52rem', fill: '#6b7280' }} axisLine={false} tickLine={false} />
                           <Line type="monotone" dataKey="v" stroke={cat.color} strokeWidth={2} dot={{ r: 3, fill: cat.color }} />
-                          <Tooltip
-                            formatter={v => [`${v} ${g.unit || ''}`, 'Value']}
-                            contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.7rem' }}
-                          />
+                          <Tooltip formatter={v => [`${v} ${g.unit || ''}`, 'Value']}
+                            contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.68rem' }} />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
                   ) : history.length === 1 ? (
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>1 log entry — log more to see chart.</p>
-                  ) : (
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>No logs yet.</p>
-                  )}
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '0.75rem' }}>1 log entry — log more to see chart.</p>
+                  ) : null}
 
-                  {/* Timeline View */}
+                  {/* Milestone sub-tasks */}
+                  <MilestoneSubtasks goal={g} updateGoal={updateGoal} cat={cat} />
+
+                  {/* Milestone timeline */}
                   {g.target_value && (
-                    <div className="mt-4 pt-4 border-t border-white/10">
-                      <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '16px' }}>Milestone Timeline</p>
-                      <div className="flex justify-between relative px-2">
-                        <div className="absolute top-1.5 left-2 right-2 h-1 bg-white/10 -translate-y-1/2 z-0 rounded-full" />
-                        <div className="absolute top-1.5 left-2 h-1 -translate-y-1/2 z-0 transition-all rounded-full" style={{ width: `calc(${prog}% - 16px)`, background: cat.color }} />
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                      <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Milestone Timeline</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '0 4px' }}>
+                        <div style={{ position: 'absolute', top: '6px', left: '4px', right: '4px', height: '2px', background: 'rgba(255,255,255,0.08)', borderRadius: '99px' }} />
+                        <div style={{ position: 'absolute', top: '6px', left: '4px', height: '2px', borderRadius: '99px', transition: 'width 0.5s ease', background: cat.color,
+                                      width: `calc(${Math.min(100, prog)}% - 8px)` }} />
                         {generateMilestones(g).map(m => (
-                          <div key={m.pct} className="relative z-10 flex flex-col items-center group">
-                            <div className={`w-3 h-3 rounded-full border-2 transition-transform group-hover:scale-125 ${m.achieved ? 'bg-emerald-500 border-emerald-400' : 'bg-gray-800 border-gray-600'}`} style={{ boxShadow: m.achieved ? `0 0 8px ${cat.color}` : 'none' }} />
-                            <span className="text-[0.55rem] text-gray-400 mt-1 font-bold">{m.pct}%</span>
-                            <span className="text-[0.55rem] text-gray-500">{m.targetVal} {g.unit}</span>
+                          <div key={m.pct} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <div style={{
+                              width: '14px', height: '14px', borderRadius: '50%', zIndex: 1,
+                              background: m.achieved ? cat.color : 'var(--bg-elevated)',
+                              border: `2px solid ${m.achieved ? cat.color : 'rgba(255,255,255,0.2)'}`,
+                              boxShadow: m.achieved ? `0 0 10px ${cat.color}66` : 'none',
+                            }} />
+                            <span style={{ fontSize: '0.55rem', color: m.achieved ? cat.color : 'var(--text-3)', fontWeight: 700 }}>{m.pct}%</span>
+                            <span style={{ fontSize: '0.52rem', color: 'var(--text-3)' }}>{m.targetVal} {g.unit}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-
                 </div>
               )}
             </div>

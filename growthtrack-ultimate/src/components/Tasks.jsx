@@ -447,9 +447,10 @@ export default function Tasks() {
   const filteredPending = useMemo(() => {
     let list = [...pending];
     if (filter === 'overdue') list = list.filter(t => (t.dueDate || t.due_date) && (t.dueDate || t.due_date) < today);
-    if (filter === 'today')   list = list.filter(t => (t.dueDate || t.due_date) === today);
-    if (filter === 'p1')      list = list.filter(t => normPriority(t.priority) === 'p1');
-    if (filter === 'p2')      list = list.filter(t => normPriority(t.priority) === 'p2');
+    else if (filter === 'today')   list = list.filter(t => (t.dueDate || t.due_date) === today);
+    else if (filter === 'p1')      list = list.filter(t => normPriority(t.priority) === 'p1');
+    else if (filter === 'p2')      list = list.filter(t => normPriority(t.priority) === 'p2');
+    else if (CATEGORIES.includes(filter)) list = list.filter(t => t.category === filter);
     const prioOrder = ['p1','p2','p3','p4'];
     if (sortBy === 'priority') list.sort((a, b) => prioOrder.indexOf(normPriority(a.priority)) - prioOrder.indexOf(normPriority(b.priority)));
     if (sortBy === 'due')      list.sort((a, b) => ((a.dueDate||a.due_date||'9999') < (b.dueDate||b.due_date||'9999') ? -1 : 1));

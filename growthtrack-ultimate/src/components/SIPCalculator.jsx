@@ -1,207 +1,268 @@
-import React, { useState, useMemo } from 'react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { TrendingUp, IndianRupee } from 'lucide-react';
-
-const fmt = (n) =>
-  n >= 1e7
-    ? `₹${(n / 1e7).toFixed(2)} Cr`
-    : n >= 1e5
-    ? `₹${(n / 1e5).toFixed(1)} L`
-    : `₹${Math.round(n).toLocaleString('en-IN')}`;
+import React, { useMemo, useState, useCallback } from 'react';
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+  ReferenceLine,
+} from 'recharts';
+import { TrendingUp, DollarSign, PiggyBank, Info } from 'lucide-react';
 
 const TOOLTIP_STYLE = {
-  background: 'var(--bg-glass)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-sm)',
-  backdropFilter: 'blur(12px)',
-  color: 'var(--text-1)',
-  fontSize: '0.8rem',
+  background: 'var(--bg-glass)', border: '1px solid var(--border)',
+  borderRadius: '8px', color: 'var(--text-1)',
+  backdropFilter: 'blur(12px)', fontSize: '0.8rem',
 };
 
-export default function SIPCalculator() {
-  const [monthly, setMonthly] = useState(5000);
-  const [rate, setRate] = useState(12);
-  const [years, setYears] = useState(15);
-  const [inflation, setInflation] = useState(6);
+function formatINR(val) {
+  if (!val || isNaN(val)) return '₹0';
+  if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
+  if (val >= 100000)   return `₹${(val / 100000).toFixed(2)}L`;
+  return `₹${Math.round(val).toLocaleString('en-IN')}`;
+}
 
-  const { corpus, invested, gains, realCorpus, chartData } = useMemo(() => {
-    const r = rate / 100 / 12;
-    const n = years * 12;
-    const corpus = monthly * (((Math.pow(1 + r, n) - 1) / r) * (1 + r));
-    const invested = monthly * n;
-    const gains = corpus - invested;
-    const realCorpus = corpus / Math.pow(1 + inflation / 100, years);
+function Slider({ label, min, max, step, value, onChange, format, color = 'var(--accent)' }) {
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div style={{ marginBottom: '1.1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 700 }}>{label}</label>
+        <span style={{ fontSize: '0.88rem', fontWeight: 900, color, fontFamily: 'var(--font-mono, monospace)' }}>{format(value)}</span>
+      </div>
+      <div style={{ position: 'relative', height: '6px' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.08)', borderRadius: '99px' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`, background: color, borderRadius: '99px', transition: 'width 0.1s' }} />
+        <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))}
+          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', cursor: 'pointer', height: '100%' }} />
+        <div style={{ position: 'absolute', top: '50%', left: `${pct}%`, transform: 'translate(-50%, -50%)', width: '14px', height: '14px', borderRadius: '50%', background: color, border: '2px solid var(--bg-card)', boxShadow: `0 0 8px ${color}66`, pointerEvents: 'none' }} />
+      </div>
+    </div>
+  );
+}
 
-    const chartData = Array.from({ length: years }, (_, i) => {
-      const months = (i + 1) * 12;
-      const c = monthly * (((Math.pow(1 + r, months) - 1) / r) * (1 + r));
-      const rc = c / Math.pow(1 + inflation / 100, i + 1);
-      return {
-        year: `Yr ${i + 1}`,
-        invested: Math.round(monthly * months),
-        corpus: Math.round(c),
-        realCorpus: Math.round(rc),
-      };
+function buildSIPData({ monthly, rate, years, inflation, lumpsum, lumpsumRate }) {
+  const monthlyRate   = rate / 12 / 100;
+  const inflationRate = inflation / 12 / 100;
+  const data = [];
+  let corpus     = lumpsum  || 0;
+  let lumpsumVal = lumpsum  || 0;
+  let sipInvested = 0;
+
+  for (let yr = 0; yr <= years; yr++) {
+    if (yr > 0) {
+      for (let m = 0; m < 12; m++) {
+        corpus     = (corpus + monthly) * (1 + monthlyRate);
+        lumpsumVal =  lumpsumVal         * (1 + (lumpsumRate || rate) / 12 / 100);
+        sipInvested += monthly;
+      }
+    }
+    const totalInvested = sipInvested + (lumpsum || 0);
+    const realValue     = corpus / Math.pow(1 + inflation / 100, yr);
+    data.push({
+      year:        yr,
+      label:       `Yr ${yr}`,
+      corpus:      Math.round(corpus),
+      invested:    Math.round(totalInvested),
+      gains:       Math.round(corpus - totalInvested),
+      realValue:   Math.round(realValue),
+      lumpsum:     Math.round(lumpsumVal),
     });
+  }
+  return data;
+}
 
-    return { corpus, invested, gains, realCorpus, chartData };
-  }, [monthly, rate, years, inflation]);
+// Estimate XIRR simply via annualized return formula
+function estimateXIRR(data, monthly, years, lumpsum) {
+  if (!data.length || years === 0) return 0;
+  const totalInvested = monthly * 12 * years + (lumpsum || 0);
+  const finalCorpus   = data[data.length - 1].corpus;
+  if (totalInvested === 0) return 0;
+  return ((Math.pow(finalCorpus / totalInvested, 1 / years) - 1) * 100).toFixed(2);
+}
 
-  const xirr = ((corpus / invested - 1) * 100).toFixed(1);
+export default function SIPCalculator() {
+  const [monthly,     setMonthly]     = useState(10000);
+  const [rate,        setRate]        = useState(12);
+  const [years,       setYears]       = useState(20);
+  const [inflation,   setInflation]   = useState(6);
+  const [lumpsum,     setLumpsum]     = useState(0);
+  const [lumpsumRate, setLumpsumRate] = useState(8);
+  const [showReal,    setShowReal]    = useState(true);
+  const [showLumpsum, setShowLumpsum] = useState(false);
+  const [view, setView] = useState('area');
+
+  const data = useMemo(
+    () => buildSIPData({ monthly, rate, years, inflation, lumpsum, lumpsumRate }),
+    [monthly, rate, years, inflation, lumpsum, lumpsumRate]
+  );
+
+  const final       = data[data.length - 1] || {};
+  const xirr        = estimateXIRR(data, monthly, years, lumpsum);
+  const totalInvested = monthly * 12 * years + lumpsum;
+  const realGain    = (final.corpus || 0) - totalInvested;
+  const realValue   = final.realValue || 0;
+  const lumpOnlyFinal = lumpsum ? final.lumpsum : null;
+
+  const stepSize = (v) => v > 1000000 ? 10000 : v > 100000 ? 5000 : v > 10000 ? 1000 : 500;
 
   return (
-    <div className="glass-card" style={{ padding: '2rem', marginTop: '2rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2rem' }}>
-        <div style={{ background: 'var(--accent-soft)', padding: '10px', borderRadius: '12px', color: 'var(--accent)' }}>
-          <TrendingUp size={22} />
+    <div style={{ padding: '0.5rem 0' }}>
+      <div style={{ marginBottom: '1.75rem' }}>
+        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Finance</p>
+        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>SIP Calculator</h2>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Systematic Investment Plan · Inflation-adjusted projections</p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 380px) 1fr', gap: '1.5rem', flexWrap: 'wrap' }}>
+        {/* Controls */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="glass-card">
+            <p style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-2)', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>SIP Parameters</p>
+            <Slider label="Monthly SIP Amount" min={500} max={500000} step={500} value={monthly}
+              onChange={setMonthly} format={v => formatINR(v)} color="var(--accent)" />
+            <Slider label="Expected Return Rate (p.a.)" min={1} max={30} step={0.5} value={rate}
+              onChange={setRate} format={v => `${v}%`} color="#10b981" />
+            <Slider label="Investment Duration" min={1} max={40} step={1} value={years}
+              onChange={setYears} format={v => `${v} yr`} color="#0ea5e9" />
+            <Slider label="Inflation Rate (p.a.)" min={0} max={15} step={0.5} value={inflation}
+              onChange={setInflation} format={v => `${v}%`} color="#f59e0b" />
+          </div>
+
+          <div className="glass-card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <p style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Lump Sum (Optional)</p>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <div onClick={() => setShowLumpsum(v => !v)} style={{ width: '32px', height: '18px', borderRadius: '99px', background: showLumpsum ? 'var(--accent)' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
+                  <div style={{ position: 'absolute', top: '2px', left: showLumpsum ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{showLumpsum ? 'On' : 'Off'}</span>
+              </label>
+            </div>
+            {showLumpsum && (
+              <>
+                <Slider label="Lump Sum Investment" min={0} max={10000000} step={10000} value={lumpsum}
+                  onChange={setLumpsum} format={formatINR} color="#8b5cf6" />
+                <Slider label="Lump Sum Return Rate" min={1} max={20} step={0.5} value={lumpsumRate}
+                  onChange={setLumpsumRate} format={v => `${v}%`} color="#a78bfa" />
+              </>
+            )}
+            {!showLumpsum && <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Enable to combine a one-time lump sum investment with your monthly SIP.</p>}
+          </div>
+
+          {/* Chart toggles */}
+          <div className="glass-card" style={{ padding: '0.75rem 1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <div onClick={() => setShowReal(v => !v)} style={{ width: '32px', height: '18px', borderRadius: '99px', background: showReal ? '#f59e0b' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
+                <div style={{ position: 'absolute', top: '2px', left: showReal ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', fontWeight: 600 }}>Show inflation-adjusted real value</span>
+            </label>
+          </div>
         </div>
-        <div>
-          <h3 className="card-title" style={{ margin: 0 }}>SIP Compound Growth Projector</h3>
-          <p className="text-secondary" style={{ fontSize: '0.78rem', marginTop: '2px' }}>See how your monthly SIP grows over time</p>
+
+        {/* Results + Chart */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+            {[
+              { label: 'Projected Corpus',    val: formatINR(final.corpus),     icon: <TrendingUp size={16} color="var(--accent)" />,  color: 'var(--accent)' },
+              { label: 'Total Invested',      val: formatINR(totalInvested),    icon: <PiggyBank  size={16} color="#10b981" />,         color: '#10b981'       },
+              { label: 'Estimated Gains',     val: formatINR(realGain),         icon: <DollarSign size={16} color="#f59e0b" />,         color: '#f59e0b'       },
+              { label: `Real Value (${inflation}% inf.)`, val: formatINR(realValue), icon: <Info size={16} color="#f97316" />,          color: '#f97316'       },
+            ].map(m => (
+              <div key={m.label} className="glass-card" style={{ padding: '1rem', textAlign: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.35rem' }}>{m.icon}</div>
+                <p style={{ fontSize: '1.35rem', fontWeight: 900, color: m.color, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>{m.val}</p>
+                <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>{m.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* XIRR + summary */}
+          <div className="glass-card" style={{ padding: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '1rem' }}>
+              {[
+                { label: 'Annualized Return (XIRR est.)', val: `${xirr}%` },
+                { label: 'Wealth Multiplier', val: totalInvested > 0 ? `${((final.corpus || 0) / totalInvested).toFixed(2)}×` : '—' },
+                { label: 'Inflation Erosion', val: formatINR((final.corpus || 0) - realValue) },
+                ...(lumpOnlyFinal ? [{ label: 'Lump Sum Only Final', val: formatINR(lumpOnlyFinal) }] : []),
+              ].map(m => (
+                <div key={m.label} style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-1)', fontFamily: 'var(--font-mono, monospace)' }}>{m.val}</p>
+                  <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '2px' }}>{m.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Chart */}
+          <div className="glass-card" style={{ flexGrow: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span className="card-title" style={{ margin: 0 }}>Growth Projection</span>
+              <div style={{ display: 'flex', gap: '0.3rem' }}>
+                {['area', 'bar'].map(v => (
+                  <button key={v} onClick={() => setView(v)} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', background: view === v ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === v ? '#000' : 'var(--text-3)', border: 'none' }}>{v}</button>
+                ))}
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+                <defs>
+                  <linearGradient id="gCorpus" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="gInvested" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="gReal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.01} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={Math.floor(years / 8)} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => formatINR(v)} width={68} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => [formatINR(v), name]} />
+                <Legend wrapperStyle={{ fontSize: '0.72rem', paddingTop: '8px' }} />
+                <Area type="monotone" dataKey="corpus"   name="Corpus"    stroke="var(--accent)" fill="url(#gCorpus)"   strokeWidth={2} />
+                <Area type="monotone" dataKey="invested" name="Invested"  stroke="#10b981"       fill="url(#gInvested)" strokeWidth={2} />
+                {showReal  && <Area type="monotone" dataKey="realValue" name="Real Value (inf-adj)" stroke="#f59e0b" fill="url(#gReal)" strokeWidth={1.5} strokeDasharray="5 3" />}
+                {lumpOnlyFinal && <Area type="monotone" dataKey="lumpsum"  name="Lump Sum Only"  stroke="#8b5cf6" fill="none" strokeWidth={1.5} strokeDasharray="4 2" />}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* Controls */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        {/* Monthly SIP */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <label className="label-caps">Monthly SIP</label>
-            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '0.9rem' }}>{fmt(monthly)}</span>
-          </div>
-          <input
-            type="range" min={500} max={100000} step={500}
-            value={monthly}
-            onChange={e => setMonthly(Number(e.target.value))}
-            style={{ width: '100%', accentColor: 'var(--accent)' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>
-            <span>₹500</span><span>₹1L</span>
-          </div>
-        </div>
-
-        {/* Return Rate */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <label className="label-caps">Expected Return</label>
-            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '0.9rem' }}>{rate}% p.a.</span>
-          </div>
-          <input
-            type="range" min={6} max={30} step={0.5}
-            value={rate}
-            onChange={e => setRate(Number(e.target.value))}
-            style={{ width: '100%', accentColor: 'var(--accent)' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>
-            <span>6%</span><span>30%</span>
-          </div>
-        </div>
-
-        {/* Inflation Rate */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <label className="label-caps">Inflation Rate</label>
-            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '0.9rem' }}>{inflation}% p.a.</span>
-          </div>
-          <input
-            type="range" min={0} max={15} step={0.5}
-            value={inflation}
-            onChange={e => setInflation(Number(e.target.value))}
-            style={{ width: '100%', accentColor: 'var(--accent)' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>
-            <span>0%</span><span>15%</span>
-          </div>
-        </div>
-
-        {/* Duration */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <label className="label-caps">Duration</label>
-            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '0.9rem' }}>{years} yrs</span>
-          </div>
-          <input
-            type="range" min={1} max={40} step={1}
-            value={years}
-            onChange={e => setYears(Number(e.target.value))}
-            style={{ width: '100%', accentColor: 'var(--accent)' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>
-            <span>1yr</span><span>40yrs</span>
-          </div>
-        </div>
+      {/* Milestone table */}
+      <div className="glass-card" style={{ marginTop: '1rem', overflowX: 'auto' }}>
+        <span className="card-title">Year-by-Year Milestones</span>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', marginTop: '0.75rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              {['Year', 'Invested', 'Corpus', 'Gains', 'Real Value (inf-adj)', 'Wealth ×'].map(h => (
+                <th key={h} style={{ padding: '0.5rem 0.6rem', textAlign: h === 'Year' ? 'center' : 'right', color: 'var(--text-3)', fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.filter((_, i) => i % Math.max(1, Math.floor(years / 10)) === 0 || i === years).map(row => (
+              <tr key={row.year} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'center', fontWeight: 800, color: 'var(--accent)' }}>{row.year}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)' }}>{formatINR(row.invested)}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', fontWeight: 700, color: 'var(--accent)' }}>{formatINR(row.corpus)}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', color: '#10b981' }}>{formatINR(row.gains)}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', color: '#f59e0b' }}>{formatINR(row.realValue)}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontWeight: 700 }}>{row.invested > 0 ? `${(row.corpus / row.invested).toFixed(2)}×` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-        {[
-          { label: 'Total Invested', value: fmt(invested), color: 'var(--info)' },
-          { label: 'Projected Corpus', value: fmt(corpus), color: 'var(--accent)' },
-          { label: 'Real Value (Infl. Adj)', value: fmt(realCorpus), color: 'var(--warning)' },
-        ].map(s => (
-          <div key={s.label} style={{
-            background: 'var(--bg-elevated)', padding: '1.25rem', borderRadius: '16px',
-            border: `1px solid ${s.color}33`, textAlign: 'center'
-          }}>
-            <p className="label-caps" style={{ marginBottom: '6px', fontSize: '0.6rem' }}>{s.label}</p>
-            <p style={{ fontSize: '1.25rem', fontWeight: 900, color: s.color, fontFamily: 'var(--font-display)' }}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Gain multiplier badge */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-        <span style={{
-          padding: '6px 18px', borderRadius: '999px',
-          background: 'var(--accent-soft)', color: 'var(--accent)',
-          fontWeight: 900, fontSize: '0.85rem'
-        }}>
-          💰 Your money grows {(corpus / invested).toFixed(1)}× in {years} years
-        </span>
-      </div>
-
-      {/* Chart */}
-      <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-          <defs>
-            <linearGradient id="sipInvested" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--info)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="var(--info)" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="sipCorpus" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.4} />
-              <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis dataKey="year" tick={{ fontSize: 10, fill: 'var(--text-3)' }} />
-          <YAxis
-            tick={{ fontSize: 10, fill: 'var(--text-3)' }}
-            tickFormatter={v => v >= 1e7 ? `${(v / 1e7).toFixed(0)}Cr` : v >= 1e5 ? `${(v / 1e5).toFixed(0)}L` : v}
-          />
-          <Tooltip
-            contentStyle={TOOLTIP_STYLE}
-            formatter={(value, name) => [fmt(value), name === 'corpus' ? 'Corpus' : name === 'realCorpus' ? 'Real Value' : 'Invested']}
-          />
-          <Area type="monotone" dataKey="invested" stroke="var(--info)" fill="url(#sipInvested)" strokeWidth={2} />
-          <Area type="monotone" dataKey="corpus" stroke="var(--accent)" fill="url(#sipCorpus)" strokeWidth={2} />
-          <Area type="monotone" dataKey="realCorpus" stroke="var(--warning)" fill="none" strokeWidth={2} strokeDasharray="5 5" />
-        </AreaChart>
-      </ResponsiveContainer>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '0.75rem', fontSize: '0.72rem', color: 'var(--text-3)' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '12px', height: '3px', background: 'var(--info)', display: 'inline-block', borderRadius: '2px' }} />
-          Total Invested
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '12px', height: '3px', background: 'var(--accent)', display: 'inline-block', borderRadius: '2px' }} />
-          Projected Corpus
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '12px', height: '3px', borderTop: '2px dashed var(--warning)', display: 'inline-block' }} />
-          Real Value (Inflation Adjusted)
-        </span>
-      </div>
+      {/* Disclaimer */}
+      <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '1rem', textAlign: 'center', opacity: 0.6 }}>
+        * Projections are hypothetical. Actual returns vary. Consult a qualified financial advisor before investing.
+      </p>
     </div>
   );
 }

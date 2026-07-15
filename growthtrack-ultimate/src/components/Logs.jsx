@@ -1,439 +1,323 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Shield, Search, Filter, ArrowUpDown, Clock, Globe, AlertCircle, CheckCircle2, 
-         Trash2, Plus, RefreshCw, Download, X, FileText, Send, Activity } from 'lucide-react';
-import useStore, { apiSync } from '../store/useStore';
-import PageHeader from './ui/PageHeader';
-import ReactMarkdown from 'react-markdown';
+import { Search, Filter, Download, Plus, Trash2, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock } from 'lucide-react';
+import useStore from '../store/useStore';
+import { useToast } from '../hooks/useToast';
+import EmptyState from './ui/EmptyState';
 
-const getSentiment = (text) => {
+const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error'];
+const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];
+const TABLES     = ['all', 'users', 'goals', 'habits', 'tasks', 'finance', 'training', 'nutrition', 'notes', 'projects'];
+
+const SENTIMENT_COLORS = {
+  positive: { text: '#10b981', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)',  icon: <CheckCircle size={12} /> },
+  neutral:  { text: '#60a5fa', bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.3)',  icon: <Info size={12} /> },
+  negative: { text: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.3)', icon: <AlertTriangle size={12} /> },
+};
+
+const ACTION_COLORS = {
+  create: '#10b981', update: '#0ea5e9', delete: '#f87171', login: '#8b5cf6',
+  export: '#f59e0b', import: '#6366f1', error: '#ef4444', other: '#6b7280',
+};
+
+function getSentiment(text = '') {
   const t = (text || '').toLowerCase();
-  const positive = ['success', 'completed', 'added', 'resolved', 'fixed', 'improved', 'achieved', 'won', 'great', 'good'];
-  const negative = ['error', 'failed', 'deleted', 'removed', 'crash', 'issue', 'bad', 'warn', 'critical', 'fatal', 'down'];
-  let score = 0;
-  positive.forEach(w => { if (t.includes(w)) score++; });
-  negative.forEach(w => { if (t.includes(w)) score--; });
-  if (score > 0) return 'Positive';
-  if (score < 0) return 'Negative';
-  return 'Neutral';
-};
-
-const ACTION_OPTS  = ['All', 'INSERT', 'UPDATE', 'DELETE', 'NOTE'];
-const ACTION_COLOR = {
-  INSERT: { bg: 'rgba(52,211,153,0.12)',  color: '#34d399' },
-  UPDATE: { bg: 'rgba(96,165,250,0.12)',  color: '#60a5fa' },
-  DELETE: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
-  NOTE:   { bg: 'rgba(251,191,36,0.12)',  color: '#fbbf24' },
-};
-
-// ── Manual Log Entry Modal ──────────────────────────────────────────────────
-function AddLogModal({ user, onClose, onSaved }) {
-  const [table, setTable]   = useState('manual');
-  const [action, setAction] = useState('NOTE');
-  const [details, setDetails] = useState('');
-  const [saving, setSaving]  = useState(false);
-
-  const handleSave = async () => {
-    if (!details.trim()) return;
-    setSaving(true);
-    const entry = {
-      table_name: table || 'manual',
-      action,
-      details: details.trim(),
-      actor_name: user?.name || 'User',
-      actor_email: user?.email || '',
-      actor_ip: '127.0.0.1',
-      timestamp: new Date().toISOString(),
-    };
-    await apiSync('/logs', 'POST', entry);
-    setSaving(false);
-    onSaved(entry);
-    onClose();
-  };
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9000,
-      background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
-    }}>
-      <div className="glass-card fade-in" style={{ width: '100%', maxWidth: '480px', padding: '2rem', position: 'relative' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}>
-          <X size={18} />
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <FileText size={20} color="var(--accent)" />
-          </div>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Add Manual Log Entry</h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '2px' }}>Annotate an event or action</p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div>
-              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>
-                Module / Table
-              </label>
-              <input
-                className="form-input"
-                placeholder="e.g. training, nutrition…"
-                value={table}
-                onChange={e => setTable(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>
-                Action Type
-              </label>
-              <select className="form-input" value={action} onChange={e => setAction(e.target.value)}>
-                {['NOTE', 'INSERT', 'UPDATE', 'DELETE'].map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '6px' }}>
-              Details / Notes
-            </label>
-            <textarea
-              className="form-input"
-              placeholder="Describe the event, change, or observation…"
-              value={details}
-              onChange={e => setDetails(e.target.value)}
-              rows={4}
-              style={{ resize: 'vertical', fontFamily: 'var(--font-body)', lineHeight: 1.6 }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
-            <button onClick={onClose} className="btn-secondary" style={{ fontSize: '0.82rem' }}>Cancel</button>
-            <button onClick={handleSave} disabled={!details.trim() || saving} className="btn-primary" style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Send size={14} />
-              {saving ? 'Saving…' : 'Save Entry'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const pos = ['success', 'created', 'completed', 'done', 'added', 'achieved', 'won', 'ok', 'saved', 'activated'];
+  const neg = ['error', 'failed', 'deleted', 'removed', 'denied', 'expired', 'invalid', 'crash', 'exception'];
+  if (pos.some(w => t.includes(w))) return 'positive';
+  if (neg.some(w => t.includes(w))) return 'negative';
+  return 'neutral';
 }
 
-// ── Export helper ──────────────────────────────────────────────────────────
-function exportLogs(logs, format = 'json') {
-  let content, mime, ext;
-  if (format === 'csv') {
-    const headers = ['timestamp', 'actor_name', 'actor_email', 'actor_ip', 'action', 'table_name', 'details'];
-    const rows = logs.map(l => headers.map(h => `"${(l[h] || '').toString().replace(/"/g, '""')}"`).join(','));
-    content = [headers.join(','), ...rows].join('\n');
-    mime = 'text/csv';
-    ext = 'csv';
-  } else {
-    content = JSON.stringify(logs, null, 2);
-    mime = 'application/json';
-    ext = 'json';
-  }
-  const blob = new Blob([content], { type: mime });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.${ext}`;
-  a.click();
-  URL.revokeObjectURL(url);
+function formatTimestamp(ts) {
+  if (!ts) return '—';
+  try {
+    const d = new Date(ts);
+    return d.toLocaleString();
+  } catch { return String(ts); }
+}
+
+function renderMarkdown(text = '') {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:4px;font-size:0.85em;font-family:monospace">$1</code>')
+    .replace(/\n/g, '<br/>');
 }
 
 export default function Logs() {
-  const user = useStore(s => s.user);
-  const [logs, setLogs]           = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch]       = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
-  const [filterTable, setFilterTable]   = useState('All');
-  const [filterAction, setFilterAction] = useState('All');
-  const [filterSentiment, setFilterSentiment] = useState('All');
-  const [dateFrom, setDateFrom]         = useState('');
-  const [dateTo, setDateTo]             = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const toast = useToast();
+  const user  = useStore(s => s.user);
 
-  const fetchLogs = useCallback(async (quiet = false) => {
-    if (!quiet) setLoading(true);
-    else setRefreshing(true);
+  const [logs,     setLogs]     = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [search,   setSearch]   = useState('');
+  const [actionF,  setActionF]  = useState('all');
+  const [tableF,   setTableF]   = useState('all');
+  const [sentimentF, setSentimentF] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo,   setDateTo]   = useState('');
+  const [sortKey,  setSortKey]  = useState('timestamp');
+  const [sortDir,  setSortDir]  = useState('desc');
+  const [expandedId, setExpandedId] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [manualForm, setManualForm] = useState({ action: 'create', table_name: 'users', details: '' });
+
+  const apiSync = useStore(s => s.apiSync);
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await apiSync('/logs', 'GET');
-      setLogs(data || []);
+      const res = await fetch('/api/logs');
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setLogs(Array.isArray(data) ? data : (data.logs || []));
     } catch {
-      // keep current logs on error
+      // Fallback to empty or cached
+      setLogs([]);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  useEffect(() => { fetchLogs(); }, []);
 
-  const tables = useMemo(() => ['All', ...new Set((logs || []).map(l => l.table_name))], [logs]);
+  const enriched = useMemo(() => logs.map(l => ({
+    ...l,
+    _sentiment: getSentiment(l.details || l.description || ''),
+    _ts: l.timestamp ? new Date(l.timestamp).getTime() : 0,
+  })), [logs]);
 
-  const filteredLogs = useMemo(() => {
-    return logs
-      .filter(log => {
-        const matchSearch =
-          log.action?.toLowerCase().includes(search.toLowerCase()) ||
-          log.table_name?.toLowerCase().includes(search.toLowerCase()) ||
-          log.details?.toLowerCase().includes(search.toLowerCase()) ||
-          log.actor_name?.toLowerCase().includes(search.toLowerCase()) ||
-          log.actor_ip?.toLowerCase().includes(search.toLowerCase());
+  const filtered = useMemo(() => {
+    let list = enriched;
+    if (actionF   !== 'all') list = list.filter(l => (l.action || '').toLowerCase().includes(actionF));
+    if (tableF    !== 'all') list = list.filter(l => (l.table_name || '') === tableF);
+    if (sentimentF !== 'all') list = list.filter(l => l._sentiment === sentimentF);
+    if (dateFrom)            list = list.filter(l => l._ts >= new Date(dateFrom).getTime());
+    if (dateTo)              list = list.filter(l => l._ts <= new Date(dateTo + 'T23:59:59').getTime());
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(l =>
+        (l.details || '').toLowerCase().includes(q) ||
+        (l.action  || '').toLowerCase().includes(q) ||
+        (l.table_name || '').toLowerCase().includes(q) ||
+        String(l.item_id || '').includes(q)
+      );
+    }
+    list = [...list].sort((a, b) => {
+      let va = a[sortKey], vb = b[sortKey];
+      if (sortKey === 'timestamp') { va = a._ts; vb = b._ts; }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return list;
+  }, [enriched, actionF, tableF, sentimentF, dateFrom, dateTo, search, sortKey, sortDir]);
 
-        const matchTable  = filterTable  === 'All' || log.table_name === filterTable;
-        const matchAction = filterAction === 'All' || log.action === filterAction;
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
+  };
 
-        const ts = log.timestamp ? new Date(log.timestamp) : null;
-        const matchFrom = !dateFrom || (ts && ts >= new Date(dateFrom));
-        const matchTo   = !dateTo   || (ts && ts <= new Date(dateTo + 'T23:59:59'));
+  const exportLogs = useCallback((format = 'json') => {
+    const data = filtered.map(({ _sentiment, _ts, ...l }) => l);
+    let content, type, ext;
+    if (format === 'json') {
+      content = JSON.stringify(data, null, 2);
+      type = 'application/json';
+      ext = 'json';
+    } else {
+      const headers = Object.keys(data[0] || {});
+      const rows = [headers.join(','), ...data.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))];
+      content = rows.join('\n');
+      type = 'text/csv';
+      ext = 'csv';
+    }
+    const blob = new Blob([content], { type });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `logs-${new Date().toISOString().slice(0, 10)}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${data.length} logs as ${ext.toUpperCase()}`);
+  }, [filtered, toast]);
 
-        const matchSentiment = filterSentiment === 'All' || getSentiment(log.details) === filterSentiment;
-
-        return matchSearch && matchTable && matchAction && matchFrom && matchTo && matchSentiment;
-      })
-      .sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ?  1 : -1;
-        return 0;
+  const handleAddLog = async () => {
+    if (!manualForm.details) { toast.error('Details required.'); return; }
+    try {
+      await fetch('/api/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...manualForm, user_id: user?.id, timestamp: new Date().toISOString() }),
       });
-  }, [logs, search, sortConfig, filterTable, filterAction, filterSentiment, dateFrom, dateTo]);
-
-  const requestSort = (key) => {
-    setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
+      toast.success('Log entry added');
+      setShowAddModal(false);
+      setManualForm({ action: 'create', table_name: 'users', details: '' });
+      fetchLogs();
+    } catch { toast.error('Failed to add log entry.'); }
   };
 
-  const clearFilters = () => { setFilterTable('All'); setFilterAction('All'); setFilterSentiment('All'); setDateFrom(''); setDateTo(''); setSearch(''); };
-  const hasFilters = filterTable !== 'All' || filterAction !== 'All' || filterSentiment !== 'All' || dateFrom || dateTo || search;
+  const SortIcon = ({ k }) => sortKey !== k ? null : sortDir === 'asc' ? <ChevronUp size={11} style={{ display: 'inline' }} /> : <ChevronDown size={11} style={{ display: 'inline' }} />;
 
-  const handleLogSaved = (entry) => {
-    setLogs(prev => [{ ...entry, id: Date.now().toString() }, ...prev]);
-  };
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-        <div className="spin-ring" />
-        <p style={{ marginTop: '1rem', color: 'var(--text-3)' }}>RETRIEVING AUDIT TRAIL...</p>
-      </div>
-    );
-  }
+  const sentimentStats = useMemo(() => ({
+    positive: enriched.filter(l => l._sentiment === 'positive').length,
+    neutral:  enriched.filter(l => l._sentiment === 'neutral').length,
+    negative: enriched.filter(l => l._sentiment === 'negative').length,
+  }), [enriched]);
 
   return (
-    <div className="fade-in module-page">
-      {showAddModal && (
-        <AddLogModal
-          user={user}
-          onClose={() => setShowAddModal(false)}
-          onSaved={handleLogSaved}
-        />
-      )}
-
-      <PageHeader
-        accent="Security & Audit"
-        icon={<Shield size={24} />}
-        title="System Logs"
-        subtitle="Real-time audit trail of all database mutations and system actions."
-        actions={
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              onClick={() => fetchLogs(true)}
-              disabled={refreshing}
-              className="btn-icon"
-              title="Refresh logs"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.45rem 0.85rem', fontSize: '0.78rem', borderRadius: 'var(--radius-md)' }}
-            >
-              <RefreshCw size={14} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-              {refreshing ? 'Refreshing…' : 'Refresh'}
-            </button>
-            <div style={{ display: 'flex', gap: '0' }}>
-              <button
-                onClick={() => exportLogs(filteredLogs, 'csv')}
-                className="btn-icon"
-                title="Export as CSV"
-                style={{ borderRadius: 'var(--radius-md) 0 0 var(--radius-md)', borderRight: '1px solid var(--border)', padding: '0.45rem 0.85rem', fontSize: '0.78rem' }}
-              >
-                <Download size={14} /> CSV
-              </button>
-              <button
-                onClick={() => exportLogs(filteredLogs, 'json')}
-                className="btn-icon"
-                title="Export as JSON"
-                style={{ borderRadius: '0 var(--radius-md) var(--radius-md) 0', padding: '0.45rem 0.85rem', fontSize: '0.78rem' }}
-              >
-                JSON
-              </button>
-            </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '0.45rem 1rem' }}
-            >
-              <Plus size={14} /> Add Entry
-            </button>
-          </div>
-        }
-      />
-
-      {/* Filter panel */}
-      <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-        {/* Row 1: search + module + action */}
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-            <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
-            <input type="text" placeholder="Search action, table, actor, IP…"
-              className="form-input" style={{ paddingLeft: '34px' }}
-              value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-
-          {/* Module / table filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Filter size={14} style={{ color: 'var(--text-3)' }} />
-            <select className="form-input" style={{ width: 'auto' }}
-              value={filterTable} onChange={e => setFilterTable(e.target.value)}>
-              {tables.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          
-          {/* Sentiment filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Activity size={14} style={{ color: 'var(--text-3)' }} />
-            <select className="form-input" style={{ width: 'auto' }}
-              value={filterSentiment} onChange={e => setFilterSentiment(e.target.value)}>
-              {['All', 'Positive', 'Negative', 'Neutral'].map(s => <option key={s} value={s}>{s} Sentiment</option>)}
-            </select>
-          </div>
-
-          {/* Action filter buttons */}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            {ACTION_OPTS.map(a => {
-              const col = ACTION_COLOR[a];
-              const active = filterAction === a;
-              return (
-                <button key={a} onClick={() => setFilterAction(a)}
-                  style={{
-                    padding: '4px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800,
-                    cursor: 'pointer', transition: '0.15s',
-                    background: active ? (col?.bg || 'rgba(255,255,255,0.12)') : 'rgba(255,255,255,0.04)',
-                    color: active ? (col?.color || '#fff') : 'var(--text-3)',
-                    border: active ? `1px solid ${col?.color || 'rgba(255,255,255,0.3)'}` : '1px solid rgba(255,255,255,0.08)',
-                  }}>{a}</button>
-              );
-            })}
-          </div>
+    <div style={{ padding: '0.5rem 0' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>System</p>
+          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Audit Logs</h2>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{enriched.length} total · {filtered.length} shown</p>
         </div>
-
-        {/* Row 2: date range */}
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <Clock size={14} style={{ color: 'var(--text-3)' }} />
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 700 }}>DATE RANGE:</span>
-          <input type="date" className="form-input" style={{ width: 'auto', fontSize: '0.8rem' }}
-            value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-          <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>to</span>
-          <input type="date" className="form-input" style={{ width: 'auto', fontSize: '0.8rem' }}
-            value={dateTo} onChange={e => setDateTo(e.target.value)} />
-          {hasFilters && (
-            <button onClick={clearFilters}
-              style={{ fontSize: '0.72rem', padding: '4px 12px', borderRadius: '8px', background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer', fontWeight: 700 }}>
-              Clear Filters
-            </button>
-          )}
-          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-3)' }}>
-            {filteredLogs.length} / {logs.length} entries
-          </span>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button onClick={fetchLogs} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+            <RefreshCw size={12} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} /> Refresh
+          </button>
+          <button onClick={() => exportLogs('csv')} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+            <Download size={12} /> CSV
+          </button>
+          <button onClick={() => exportLogs('json')} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+            <Download size={12} /> JSON
+          </button>
+          <button onClick={() => setShowAddModal(true)} className="btn-primary"><Plus size={14} /> Add Entry</button>
         </div>
       </div>
 
-      {/* Empty state */}
-      {filteredLogs.length === 0 && (
-        <div className="glass-card" style={{ padding: '4rem', textAlign: 'center' }}>
-          <Shield size={48} color="var(--text-3)" style={{ margin: '0 auto 1rem', display: 'block', opacity: 0.4 }} />
-          <p style={{ color: 'var(--text-3)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-            {logs.length === 0 ? 'No audit logs yet. Server logs will appear here automatically.' : 'No entries match your current filters.'}
-          </p>
-          {logs.length === 0 && (
-            <button onClick={() => setShowAddModal(true)} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <Plus size={14} /> Add Manual Entry
+      {/* Sentiment summary */}
+      <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        {Object.entries(sentimentStats).map(([s, count]) => {
+          const sc = SENTIMENT_COLORS[s];
+          return (
+            <button key={s} onClick={() => setSentimentF(sentimentF === s ? 'all' : s)} style={{
+              display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '99px',
+              background: sentimentF === s ? sc.bg : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${sentimentF === s ? sc.border : 'rgba(255,255,255,0.08)'}`,
+              color: sc.text, cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem',
+            }}>
+              {sc.icon} {s.charAt(0).toUpperCase() + s.slice(1)}
+              <span style={{ background: sc.bg, padding: '0px 6px', borderRadius: '99px', fontSize: '0.65rem' }}>{count}</span>
             </button>
-          )}
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+          <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search logs…" className="form-input" style={{ paddingLeft: '30px' }} />
         </div>
-      )}
+        <select value={actionF}  onChange={e => setActionF(e.target.value)}  className="form-input" style={{ width: 'auto' }}>
+          {ACTIONS.map(a => <option key={a} value={a}>{a === 'all' ? 'All Actions' : a}</option>)}
+        </select>
+        <select value={tableF}   onChange={e => setTableF(e.target.value)}   className="form-input" style={{ width: 'auto' }}>
+          {TABLES.map(t => <option key={t} value={t}>{t === 'all' ? 'All Tables' : t}</option>)}
+        </select>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="form-input" style={{ width: '140px' }} />
+        <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>→</span>
+        <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   className="form-input" style={{ width: '140px' }} />
+        {(search || actionF !== 'all' || tableF !== 'all' || sentimentF !== 'all' || dateFrom || dateTo) && (
+          <button onClick={() => { setSearch(''); setActionF('all'); setTableF('all'); setSentimentF('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '0.72rem' }}>
+            ✕ Clear
+          </button>
+        )}
+      </div>
 
       {/* Table */}
-      {filteredLogs.length > 0 && (
-        <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-                  <th onClick={() => requestSort('timestamp')} style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <Clock size={14} /> Time <ArrowUpDown size={12} />
-                    </span>
-                  </th>
-                  <th style={{ padding: '1rem' }}>Actor</th>
-                  <th style={{ padding: '1rem' }}><Globe size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> IP</th>
-                  <th onClick={() => requestSort('action')} style={{ padding: '1rem', cursor: 'pointer' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>Action <ArrowUpDown size={12} /></span>
-                  </th>
-                  <th onClick={() => requestSort('table_name')} style={{ padding: '1rem', cursor: 'pointer' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>Module <ArrowUpDown size={12} /></span>
-                  </th>
-                  <th style={{ padding: '1rem' }}>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((log, idx) => {
-                  const ac = ACTION_COLOR[log.action] || { bg: 'rgba(255,255,255,0.08)', color: 'var(--text-2)' };
-                  return (
-                    <tr key={log.id || idx} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} className="log-row-hover">
-                      <td style={{ padding: '1rem', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                        {new Date(log.timestamp).toLocaleString()}
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-1)', display: 'block' }}>{log.actor_name || 'Unknown'}</span>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{log.actor_email || '—'}</span>
-                      </td>
-                      <td style={{ padding: '1rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                        {log.actor_ip || '127.0.0.1'}
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, background: ac.bg, color: ac.color }}>
-                          {log.action}
-                        </span>
-                      </td>
-                      <td style={{ padding: '1rem', color: 'var(--text-2)' }}>
-                        <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--accent)' }}>{log.table_name}</span>
-                      </td>
-                      <td style={{ padding: '1rem', maxWidth: '300px' }}>
-                        <div className="log-markdown" style={{ fontSize: '0.75rem', color: 'var(--text-3)', background: 'var(--bg-input)', padding: '0.5rem', borderRadius: '4px', maxHeight: '100px', overflowY: 'auto' }}>
-                          <ReactMarkdown>{log.details || '—'}</ReactMarkdown>
+      <div className="glass-card" style={{ overflowX: 'auto' }}>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem', color: 'var(--text-3)' }}>
+            <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} />
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState icon={Filter} title="No logs found" description={enriched.length === 0 ? 'No audit logs recorded yet.' : 'No logs match your current filters.'} />
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {[['timestamp', 'Time'], ['action', 'Action'], ['table_name', 'Table'], ['item_id', 'Item ID'], ['', 'Sentiment'], ['', 'Details']].map(([k, h]) => (
+                  <th key={h} onClick={() => k && toggleSort(k)} style={{
+                    padding: '0.5rem 0.75rem', textAlign: 'left', color: 'var(--text-3)', fontWeight: 700,
+                    fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em',
+                    cursor: k ? 'pointer' : 'default', userSelect: 'none', whiteSpace: 'nowrap',
+                  }}>{h} {k && <SortIcon k={k} />}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.slice(0, 200).map(log => {
+                const sc      = SENTIMENT_COLORS[log._sentiment] || SENTIMENT_COLORS.neutral;
+                const ac      = ACTION_COLORS[(log.action || '').toLowerCase()] || ACTION_COLORS.other;
+                const isOpen  = expandedId === log.id;
+                const details = log.details || log.description || '';
+                return (
+                  <React.Fragment key={log.id || log._ts}>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
+                      onClick={() => setExpandedId(isOpen ? null : log.id)}>
+                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-3)', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={10} />
+                          {formatTimestamp(log.timestamp)}
                         </div>
                       </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700, background: `${ac}20`, color: ac, textTransform: 'capitalize' }}>
+                          {log.action || '—'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{log.table_name || '—'}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.68rem' }}>{log.item_id || '—'}</td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: sc.text, fontSize: '0.68rem', fontWeight: 700, background: sc.bg, padding: '2px 8px', borderRadius: '99px', border: `1px solid ${sc.border}` }}>
+                          {sc.icon}{log._sentiment}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-2)', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>
+                        <span dangerouslySetInnerHTML={{ __html: renderMarkdown(details.slice(0, isOpen ? 10000 : 200)) }} />
+                      </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    {isOpen && details.length > 200 && (
+                      <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                        <td colSpan={6} style={{ padding: '0.5rem 0.75rem 0.75rem 0.75rem' }}>
+                          <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                            dangerouslySetInnerHTML={{ __html: renderMarkdown(details) }} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+        {filtered.length > 200 && <p style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.72rem' }}>Showing first 200 of {filtered.length} results. Apply filters to narrow down.</p>}
+      </div>
+
+      {/* Add manual log modal */}
+      {showAddModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+          <div className="glass-card" style={{ width: '420px', maxWidth: '95vw' }}>
+            <p style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--text-1)' }}>Add Manual Log Entry</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
+              <select value={manualForm.action} onChange={e => setManualForm(f => ({ ...f, action: e.target.value }))} className="form-input">
+                {ACTIONS.filter(a => a !== 'all').map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <select value={manualForm.table_name} onChange={e => setManualForm(f => ({ ...f, table_name: e.target.value }))} className="form-input">
+                {TABLES.filter(t => t !== 'all').map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <textarea value={manualForm.details} onChange={e => setManualForm(f => ({ ...f, details: e.target.value }))}
+                placeholder="Log details (markdown supported)…" rows={4} className="form-input" style={{ resize: 'vertical' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button onClick={() => setShowAddModal(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+              <button onClick={handleAddLog} className="btn-primary">Save Entry</button>
+            </div>
           </div>
         </div>
       )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .log-row-hover:hover { background: var(--bg-elevated) !important; }
-        th:hover { color: var(--accent); }
-        .log-markdown p { margin-bottom: 0.5rem; }
-        .log-markdown p:last-child { margin-bottom: 0; }
-        .log-markdown ul, .log-markdown ol { padding-left: 1.25rem; margin-bottom: 0.5rem; }
-        .log-markdown a { color: var(--accent); text-decoration: underline; }
-        .log-markdown code { background: rgba(0,0,0,0.2); padding: 0.1rem 0.3rem; border-radius: 4px; font-family: monospace; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}} />
     </div>
   );
 }

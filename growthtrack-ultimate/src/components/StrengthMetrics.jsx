@@ -1,481 +1,449 @@
-import { Z_INDEX } from '../constants';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Dumbbell, Plus, Trash2, TrendingUp, TrendingDown, Minus, Award, Activity } from 'lucide-react';
 import {
-  Dumbbell, Plus, Trash2, Save, Trophy, TrendingUp, Activity, Target, Zap, BarChart2, X
-} from 'lucide-react';
-import { LineChart, Line, Tooltip, ResponsiveContainer } from 'recharts';
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
+  BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, Radar,
+} from 'recharts';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import EmptyState from './ui/EmptyState';
 
-const DEFAULT_GOALS = {
-  'Bench Press': 100,
-  'Squat': 150,
-  'Deadlift': 180,
-  'Overhead Press': 65,
-  'Pull-ups': 20,
+const TOOLTIP_STYLE = {
+  background: 'var(--bg-glass)', border: '1px solid var(--border)',
+  borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem',
 };
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// ── Exercise library with muscle-group mapping ────────────────────────────
+const EXERCISE_LIBRARY = [
+  { name: 'Bench Press',        muscles: ['Chest', 'Triceps', 'Shoulders'] },
+  { name: 'Squat',              muscles: ['Quads', 'Glutes', 'Hamstrings'] },
+  { name: 'Deadlift',           muscles: ['Back', 'Glutes', 'Hamstrings'] },
+  { name: 'Overhead Press',     muscles: ['Shoulders', 'Triceps'] },
+  { name: 'Pull-ups',           muscles: ['Back', 'Biceps'] },
+  { name: 'Rows',               muscles: ['Back', 'Biceps'] },
+  { name: 'Dips',               muscles: ['Chest', 'Triceps'] },
+  { name: 'Leg Press',          muscles: ['Quads', 'Glutes'] },
+  { name: 'Romanian Deadlift',  muscles: ['Hamstrings', 'Glutes'] },
+  { name: 'Lateral Raises',     muscles: ['Shoulders'] },
+  { name: 'Bicep Curls',        muscles: ['Biceps'] },
+  { name: 'Tricep Pushdowns',   muscles: ['Triceps'] },
+  { name: 'Face Pulls',         muscles: ['Shoulders', 'Back'] },
+  { name: 'Cable Fly',          muscles: ['Chest'] },
+  { name: 'Leg Extension',      muscles: ['Quads'] },
+  { name: 'Leg Curl',           muscles: ['Hamstrings'] },
+  { name: 'Calf Raises',        muscles: ['Calves'] },
+  { name: 'Hip Thrust',         muscles: ['Glutes'] },
+  { name: 'Plank',              muscles: ['Core'] },
+  { name: 'Ab Crunches',        muscles: ['Core'] },
+];
 
-const MUSCLE_GROUPS = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
-const EXERCISE_TYPES = ['Compound', 'Isolation', 'Cardio', 'Plyometric'];
-
-const EXERCISE_MUSCLE_MAP = {
-  'Bench Press': 'Chest',
-  'Squat': 'Legs',
-  'Deadlift': 'Back',
-  'Overhead Press': 'Shoulders',
-  'Pull-ups': 'Back',
+const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core'];
+const MUSCLE_COLORS = {
+  Chest: '#f43f5e', Back: '#0ea5e9', Shoulders: '#8b5cf6', Biceps: '#f59e0b',
+  Triceps: '#f97316', Quads: '#10b981', Hamstrings: '#34d399', Glutes: '#22c55e',
+  Calves: '#06b6d4', Core: '#fbbf24',
 };
 
-export default function StrengthMetrics({ user }) {
-  const toast = useToast();
-  const metric_logs = useStore(s => s.metric_logs);
-  const saveMetricLog = useStore(s => s.saveMetricLog);
+// ── 1RM Formulas ──────────────────────────────────────────────────────────
+const oneRMFormulas = {
+  epley:   (w, r) => r === 1 ? w : +(w * (1 + r / 30)).toFixed(1),
+  brzycki: (w, r) => r === 1 ? w : +(w * (36 / (37 - r))).toFixed(1),
+  lander:  (w, r) => r === 1 ? w : +(w * 100 / (101.3 - 2.67123 * r)).toFixed(1),
+};
 
-  const [form, setForm] = useState({ exercise: 'Bench Press', weight: '', reps: '', sets: '' });
-  const [goals, setGoals] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('gt_strength_goals') || 'null') || DEFAULT_GOALS; }
-    catch { return DEFAULT_GOALS; }
-  });
-  const [editingGoal, setEditingGoal] = useState(null);
+function OneRMCalculator() {
+  const [weight, setWeight] = useState('');
+  const [reps,   setReps]   = useState('');
+  const [unit,   setUnit]   = useState('kg');
 
-  // ── Custom exercise modal state
-  const [showAddExercise, setShowAddExercise] = useState(false);
-  const [customExForm, setCustomExForm] = useState({ name: '', muscleGroup: 'Chest', type: 'Compound', goalWeight: '' });
-
-  const strengthLogs = useMemo(() => {
-    if (!metric_logs?.length) return [];
-    return metric_logs.filter(l => l.type === 'strength' || l.exercise);
-  }, [metric_logs]);
-
-  const exerciseBests = useMemo(() => {
-    const bests = {};
-    strengthLogs.forEach(l => {
-      if (!l.exercise) return;
-      const prev = bests[l.exercise];
-      if (!prev || l.weight > prev.weight) bests[l.exercise] = l;
-    });
-    return bests;
-  }, [strengthLogs]);
-
-  // ── Per-exercise trend data (last 8 sessions, max weight per session)
-  const exerciseTrends = useMemo(() => {
-    const trends = {};
-    const exercises = Object.keys(goals);
-    exercises.forEach(ex => {
-      const exLogs = strengthLogs
-        .filter(l => l.exercise === ex)
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-      // group by date, take max weight per date
-      const byDate = {};
-      exLogs.forEach(l => {
-        if (!byDate[l.date] || l.weight > byDate[l.date]) byDate[l.date] = l.weight;
-      });
-      trends[ex] = Object.entries(byDate)
-        .slice(-8)
-        .map(([date, w]) => ({ date, w }));
-    });
-    return trends;
-  }, [strengthLogs, goals]);
-
-  const weeklyVolume = useMemo(() => {
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
-    startOfWeek.setHours(0, 0, 0, 0);
-    const dayVols = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    strengthLogs.forEach(l => {
-      const d = new Date(l.date);
-      if (d >= startOfWeek) {
-        const day = dayNames[d.getDay()];
-        dayVols[day] = (dayVols[day] || 0) + ((l.weight || 0) * (l.reps || 1) * (l.sets || 1));
-      }
-    });
-    return DAYS.map(day => ({ day, volume: dayVols[day] || 0 }));
-  }, [strengthLogs]);
-
-  const totalVolume  = weeklyVolume.reduce((a, d) => a + d.volume, 0);
-  const trainingDays = weeklyVolume.filter(d => d.volume > 0).length;
-  const maxVolume    = Math.max(...weeklyVolume.map(d => d.volume), 1);
-
-  // ── 1RM Calculator State
-  const [calcForm, setCalcForm] = useState({ weight: '', reps: '' });
-  const oneRM = useMemo(() => {
-    if (!calcForm.weight || !calcForm.reps) return null;
-    const w = parseFloat(calcForm.weight);
-    const r = parseInt(calcForm.reps);
-    if (isNaN(w) || isNaN(r) || r <= 0 || w <= 0) return null;
-    if (r === 1) return w;
-    // Epley Formula
-    return Math.round(w * (1 + r / 30));
-  }, [calcForm]);
-
-  // ── Muscle Fatigue Heatmap
-  const fatigueHeatmap = useMemo(() => {
-    const fatigue = { Chest: 0, Back: 0, Legs: 0, Shoulders: 0, Arms: 0, Core: 0 };
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    
-    strengthLogs.forEach(l => {
-      const d = new Date(l.date);
-      if (d >= threeDaysAgo) {
-        const muscle = EXERCISE_MUSCLE_MAP[l.exercise] || 'Arms'; // Fallback
-        if (fatigue[muscle] !== undefined) {
-           fatigue[muscle] += (l.weight * l.reps * (l.sets || 1));
-        }
-      }
-    });
-
-    const maxFatigue = Math.max(...Object.values(fatigue), 1000);
-    return Object.keys(fatigue).map(m => {
-       const ratio = fatigue[m] / maxFatigue;
-       return { muscle: m, value: fatigue[m], intensity: Math.min(ratio, 1) };
-    });
-  }, [strengthLogs]);
-
-  const handleLogSet = async () => {
-    if (!form.exercise || !form.weight || !form.reps) {
-      toast.error('Exercise, weight, and reps are required.');
-      return;
-    }
-    const log = {
-      type: 'strength',
-      exercise: form.exercise,
-      weight: parseFloat(form.weight),
-      reps: parseInt(form.reps),
-      sets: parseInt(form.sets) || 1,
-      date: new Date().toISOString().slice(0, 10),
+  const results = useMemo(() => {
+    const w = Number(weight), r = Number(reps);
+    if (!w || !r || r > 30) return null;
+    return {
+      epley:   oneRMFormulas.epley(w, r),
+      brzycki: oneRMFormulas.brzycki(w, r),
+      lander:  oneRMFormulas.lander(w, r),
+      avg:     +((oneRMFormulas.epley(w, r) + oneRMFormulas.brzycki(w, r) + oneRMFormulas.lander(w, r)) / 3).toFixed(1),
     };
-    await saveMetricLog(log);
-    toast.success(`Logged: ${form.exercise} ${form.weight}kg × ${form.reps}`);
-    setForm(f => ({ ...f, weight: '', reps: '', sets: '' }));
-  };
+  }, [weight, reps]);
 
-  const handleSaveGoal = (exercise, value) => {
-    const updated = { ...goals, [exercise]: parseFloat(value) || goals[exercise] };
-    setGoals(updated);
-    localStorage.setItem('gt_strength_goals', JSON.stringify(updated));
-    setEditingGoal(null);
-    toast.success(`Goal updated: ${exercise} → ${value}kg`);
-  };
-
-  const handleAddCustomExercise = () => {
-    if (!customExForm.name.trim()) { toast.error('Exercise name is required.'); return; }
-    const goalVal = parseFloat(customExForm.goalWeight) || 60;
-    const updated = { ...goals, [customExForm.name.trim()]: goalVal };
-    setGoals(updated);
-    localStorage.setItem('gt_strength_goals', JSON.stringify(updated));
-    setForm(f => ({ ...f, exercise: customExForm.name.trim() }));
-    toast.success(`${customExForm.name} added (${customExForm.muscleGroup} · ${customExForm.type})`);
-    setCustomExForm({ name: '', muscleGroup: 'Chest', type: 'Compound', goalWeight: '' });
-    setShowAddExercise(false);
-  };
-
-  const handleRemoveExercise = (ex) => {
-    if (DEFAULT_GOALS[ex]) { toast.error('Cannot remove a default exercise.'); return; }
-    const updated = { ...goals };
-    delete updated[ex];
-    setGoals(updated);
-    localStorage.setItem('gt_strength_goals', JSON.stringify(updated));
-    toast.info(`${ex} removed.`);
-  };
-
-  const exercises = Object.keys(goals);
+  // % RM table
+  const rmTable = results ? [
+    { pct: 100, rm: 1,    weight: results.avg },
+    { pct: 95,  rm: 2,    weight: +(results.avg * 0.95).toFixed(1) },
+    { pct: 90,  rm: 4,    weight: +(results.avg * 0.90).toFixed(1) },
+    { pct: 85,  rm: 6,    weight: +(results.avg * 0.85).toFixed(1) },
+    { pct: 80,  rm: 8,    weight: +(results.avg * 0.80).toFixed(1) },
+    { pct: 75,  rm: 10,   weight: +(results.avg * 0.75).toFixed(1) },
+    { pct: 70,  rm: 12,   weight: +(results.avg * 0.70).toFixed(1) },
+    { pct: 65,  rm: 15,   weight: +(results.avg * 0.65).toFixed(1) },
+  ] : [];
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Performance Engine</p>
-        <h2 className="text-display" style={{ fontSize: '2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Dumbbell size={28} color="var(--accent)" /> Strength Metrics
-        </h2>
-        <p className="text-secondary">Live personal records from your logged sessions.</p>
+    <div className="glass-card">
+      <span className="card-title">1RM Calculator</span>
+      <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Calculate estimated 1-Rep Max using Epley, Brzycki & Lander formulas.</p>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'flex-end' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Weight</label>
+          <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="100" className="form-input" style={{ width: '100px' }} />
+        </div>
+        <select value={unit} onChange={e => setUnit(e.target.value)} className="form-input" style={{ width: '60px' }}>
+          <option>kg</option><option>lb</option>
+        </select>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Reps (1–30)</label>
+          <input type="number" value={reps} onChange={e => setReps(e.target.value)} placeholder="5" min="1" max="30" className="form-input" style={{ width: '80px' }} />
+        </div>
+        {results && (
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            {Object.entries({ Epley: results.epley, Brzycki: results.brzycki, Lander: results.lander, Average: results.avg }).map(([k, v]) => (
+              <div key={k} style={{ textAlign: 'center', padding: '0.5rem 0.75rem', background: k === 'Average' ? 'rgba(99,102,241,0.15)' : 'var(--bg-elevated)', borderRadius: '8px', border: k === 'Average' ? '1px solid rgba(99,102,241,0.4)' : '1px solid var(--border)' }}>
+                <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '2px', fontWeight: 700 }}>{k}</p>
+                <p style={{ fontSize: '1.1rem', fontWeight: 900, color: k === 'Average' ? 'var(--accent)' : 'var(--text-1)', fontFamily: 'monospace' }}>{v} {unit}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        {[
-          { label: 'Weekly Volume',  value: totalVolume > 0 ? `${(totalVolume / 1000).toFixed(1)}t` : '—', icon: BarChart2, color: '#3b82f6' },
-          { label: 'Training Days',  value: `${trainingDays}/7`, icon: Activity, color: '#10b981' },
-          { label: 'Total Sessions', value: strengthLogs.length, icon: Trophy, color: '#f59e0b' },
-          { label: 'PRs Tracked',    value: Object.keys(exerciseBests).length, icon: Zap, color: 'var(--accent)' },
-        ].map((k, i) => (
-          <div key={i} className="glass-card" style={{ padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-              <k.icon size={20} color={k.color} />
+      {rmTable.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Rep Max Table (based on avg 1RM: {results.avg} {unit})</p>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {rmTable.map(r => (
+              <div key={r.pct} style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-elevated)', borderRadius: '8px', textAlign: 'center', minWidth: '70px' }}>
+                <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700 }}>{r.pct}% · {r.rm}RM</p>
+                <p style={{ fontSize: '0.88rem', fontWeight: 900, color: 'var(--text-1)', fontFamily: 'monospace' }}>{r.weight}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Muscle Fatigue Heatmap ────────────────────────────────────────────────
+function MuscleFatigueHeatmap({ recentLogs }) {
+  const fatigue = useMemo(() => {
+    const map = {};
+    MUSCLE_GROUPS.forEach(m => { map[m] = 0; });
+
+    const now = Date.now();
+    recentLogs.forEach(log => {
+      const daysAgo = (now - new Date(log.date).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysAgo > 7) return;
+
+      const exName = log.exercise || log.name || '';
+      const ex = EXERCISE_LIBRARY.find(e => e.name.toLowerCase() === exName.toLowerCase());
+      const muscles = ex?.muscles || ['Core'];
+
+      // Fatigue decays over days: 100% → 0% linearly over 3 days
+      const fatigueScore = Math.max(0, 1 - daysAgo / 3);
+      const sets   = Number(log.sets) || 3;
+      const volume = (Number(log.weight) || 50) * (Number(log.reps) || 8) * sets;
+      const score  = fatigueScore * Math.log1p(volume / 1000);
+
+      muscles.forEach(m => { if (map[m] !== undefined) map[m] += score; });
+    });
+
+    // Normalize to 0-100
+    const max = Math.max(...Object.values(map), 0.001);
+    const normalized = {};
+    MUSCLE_GROUPS.forEach(m => { normalized[m] = Math.min(100, Math.round((map[m] / max) * 100)); });
+    return normalized;
+  }, [recentLogs]);
+
+  const muscleStatus = (pct) => {
+    if (pct >= 75) return { label: 'Fatigued',   color: '#f43f5e', bg: 'rgba(244,63,94,0.2)' };
+    if (pct >= 40) return { label: 'Moderate',   color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' };
+    if (pct >= 15) return { label: 'Light',      color: '#10b981', bg: 'rgba(16,185,129,0.12)' };
+    return               { label: 'Recovered',   color: '#6b7280', bg: 'rgba(107,114,128,0.08)' };
+  };
+
+  return (
+    <div className="glass-card">
+      <span className="card-title">Muscle Fatigue Heatmap</span>
+      <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Based on recent 7-day training logs. Fatigue decays 33% per day.</p>
+
+      {/* Body diagram (simplified grid) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}>
+        {MUSCLE_GROUPS.map(m => {
+          const pct    = fatigue[m] || 0;
+          const status = muscleStatus(pct);
+          return (
+            <div key={m} style={{ padding: '0.6rem 0.75rem', borderRadius: '8px', background: status.bg, border: `1px solid ${status.color}44` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-1)' }}>{m}</span>
+                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: status.color, background: `${status.color}18`, padding: '1px 5px', borderRadius: '99px' }}>{status.label}</span>
+              </div>
+              <div style={{ height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: status.color, borderRadius: '99px', transition: 'width 0.5s' }} />
+              </div>
+              <p style={{ fontSize: '0.58rem', color: status.color, marginTop: '2px', fontWeight: 700 }}>{pct}% fatigued</p>
             </div>
-            <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '4px' }}>{k.label}</p>
-            <span className="text-display" style={{ fontSize: '2rem' }}>{k.value}</span>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+        {[
+          { label: 'Recovered (0–14%)',  color: '#6b7280' },
+          { label: 'Light (15–39%)',      color: '#10b981' },
+          { label: 'Moderate (40–74%)',   color: '#f59e0b' },
+          { label: 'Fatigued (75–100%)', color: '#f43f5e' },
+        ].map(l => (
+          <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: l.color }} />
+            <span style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>{l.label}</span>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
 
-      {/* Log a Set */}
-      <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '2rem', borderTop: '2px solid var(--accent)' }}>
-        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '1rem' }}>Log a Working Set</p>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 160px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Exercise</label>
-            <select className="form-input" value={form.exercise} onChange={e => setForm(f => ({ ...f, exercise: e.target.value }))}>
-              {exercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
-            </select>
-          </div>
-          <div style={{ flex: '1 1 100px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Weight (kg)</label>
-            <input className="form-input" type="number" min={0} step={0.5} placeholder="80"
-              value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} />
-          </div>
-          <div style={{ flex: '1 1 80px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Reps</label>
-            <input className="form-input" type="number" min={1} max={100} placeholder="8"
-              value={form.reps} onChange={e => setForm(f => ({ ...f, reps: e.target.value }))} />
-          </div>
-          <div style={{ flex: '1 1 80px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Sets</label>
-            <input className="form-input" type="number" min={1} max={20} placeholder="3"
-              value={form.sets} onChange={e => setForm(f => ({ ...f, sets: e.target.value }))} />
-          </div>
-          <button className="btn-primary" onClick={handleLogSet} style={{ height: '44px' }}>
-            <Plus size={16} /> LOG SET
-          </button>
-          <button className="btn-secondary" onClick={() => setShowAddExercise(true)} style={{ height: '44px' }} title="Add custom exercise">
-            <Plus size={14} /> Add Exercise
-          </button>
+// ── Main Component ─────────────────────────────────────────────────────────
+export default function StrengthMetrics() {
+  const toast = useToast();
+  const metric_logs = useStore(s => s.metric_logs) || [];
+  const saveMetricLog = useStore(s => s.saveMetricLog);
+
+  const [tab,     setTab]     = useState('log');
+  const [showAdd, setShowAdd] = useState(false);
+  const [exFilter, setExFilter] = useState('');
+  const [form, setForm] = useState({
+    exercise: '', date: new Date().toISOString().slice(0, 10),
+    weight: '', reps: '', sets: '', notes: '',
+  });
+
+  const strengthLogs = useMemo(() =>
+    metric_logs.filter(l => l.type === 'strength' || l.exercise)
+               .map(l => ({
+                 ...l,
+                 exercise: l.exercise || l.name || 'Exercise',
+                 weight: Number(l.weight || l.value || 0),
+                 reps:   Number(l.reps || 0),
+                 sets:   Number(l.sets || 0),
+               }))
+               .sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+  [metric_logs]);
+
+  // PRs per exercise
+  const PRs = useMemo(() => {
+    const map = {};
+    strengthLogs.forEach(l => {
+      if (!map[l.exercise] || l.weight > map[l.exercise].weight) {
+        map[l.exercise] = { weight: l.weight, date: l.date };
+      }
+    });
+    return map;
+  }, [strengthLogs]);
+
+  // Chart data per exercise
+  const exercises = useMemo(() => [...new Set(strengthLogs.map(l => l.exercise))], [strengthLogs]);
+  const [activeEx, setActiveEx] = useState('');
+  const exLogs = useMemo(() => {
+    const ex = activeEx || exercises[0] || '';
+    return strengthLogs.filter(l => l.exercise === ex).slice(0, 30).reverse().map(l => ({
+      date: l.date?.slice(5), weight: l.weight, volume: l.weight * l.reps * l.sets,
+    }));
+  }, [activeEx, exercises, strengthLogs]);
+
+  // Weekly volume by muscle
+  const weeklyVolume = useMemo(() => {
+    const now = Date.now();
+    const map = {};
+    MUSCLE_GROUPS.forEach(m => { map[m] = 0; });
+
+    strengthLogs.filter(l => (now - new Date(l.date).getTime()) <= 7 * 86400000).forEach(l => {
+      const ex = EXERCISE_LIBRARY.find(e => e.name.toLowerCase() === (l.exercise || '').toLowerCase());
+      const muscles = ex?.muscles || ['Core'];
+      const volume = l.weight * l.reps * l.sets;
+      muscles.forEach(m => { if (map[m] !== undefined) map[m] += volume; });
+    });
+
+    return MUSCLE_GROUPS.map(m => ({ muscle: m, volume: Math.round(map[m]) }));
+  }, [strengthLogs]);
+
+  const doAdd = async () => {
+    if (!form.exercise || !form.weight) { toast.error('Exercise and weight required'); return; }
+    const log = {
+      type: 'strength', exercise: form.exercise, date: form.date,
+      weight: Number(form.weight), reps: Number(form.reps) || 1, sets: Number(form.sets) || 1,
+      value: Number(form.weight), unit: 'kg', notes: form.notes,
+    };
+    if (typeof saveMetricLog === 'function') await saveMetricLog(log);
+    setForm(f => ({ ...f, exercise: '', weight: '', reps: '', sets: '', notes: '' }));
+    setShowAdd(false);
+    toast.success(`✅ ${log.exercise} — ${log.weight}kg logged`);
+  };
+
+  const recentLogs7Days = useMemo(() => {
+    const cutoff = Date.now() - 7 * 86400000;
+    return strengthLogs.filter(l => new Date(l.date).getTime() >= cutoff);
+  }, [strengthLogs]);
+
+  const filteredLogs = useMemo(() => {
+    if (!exFilter) return strengthLogs;
+    return strengthLogs.filter(l => l.exercise.toLowerCase().includes(exFilter.toLowerCase()));
+  }, [strengthLogs, exFilter]);
+
+  return (
+    <div style={{ padding: '0.5rem 0' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Training</p>
+          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Strength Metrics</h2>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{strengthLogs.length} logs · {Object.keys(PRs).length} exercises tracked</p>
         </div>
+        <button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Log Set</button>
       </div>
 
-      {/* Custom Exercise Modal */}
-      {showAddExercise && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: Z_INDEX.MODAL_BACKDROP, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-card" style={{ padding: '2rem', width: '100%', maxWidth: '440px', position: 'relative' }}>
-            <button onClick={() => setShowAddExercise(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}>
-              <X size={18} />
-            </button>
-            <h3 className="card-title" style={{ marginBottom: '1.25rem' }}>Add Custom Exercise</h3>
-            <div className="form-stack">
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Exercise Name</label>
-                <input className="form-input" placeholder="e.g. Romanian Deadlift" value={customExForm.name}
-                  onChange={e => setCustomExForm(f => ({ ...f, name: e.target.value }))} />
-              </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Muscle Group</label>
-                  <select className="form-input" value={customExForm.muscleGroup} onChange={e => setCustomExForm(f => ({ ...f, muscleGroup: e.target.value }))}>
-                    {MUSCLE_GROUPS.map(g => <option key={g}>{g}</option>)}
-                  </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Type</label>
-                  <select className="form-input" value={customExForm.type} onChange={e => setCustomExForm(f => ({ ...f, type: e.target.value }))}>
-                    {EXERCISE_TYPES.map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Goal Weight (kg)</label>
-                <input className="form-input" type="number" min={0} placeholder="e.g. 80" value={customExForm.goalWeight}
-                  onChange={e => setCustomExForm(f => ({ ...f, goalWeight: e.target.value }))} />
-              </div>
-              <button className="btn-primary btn-full" onClick={handleAddCustomExercise}>
-                <Save size={14} /> Save Exercise
-              </button>
+      {/* PR Summary */}
+      {Object.keys(PRs).length > 0 && (
+        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+          {Object.entries(PRs).slice(0, 6).map(([ex, pr]) => (
+            <div key={ex} style={{ padding: '0.65rem 0.85rem', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: '10px', minWidth: '100px', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, marginBottom: '2px' }}>🏆 PR</p>
+              <p style={{ fontSize: '1rem', fontWeight: 900, color: '#fbbf24', fontFamily: 'monospace' }}>{pr.weight} kg</p>
+              <p style={{ fontSize: '0.65rem', color: 'var(--text-2)', fontWeight: 700 }}>{ex}</p>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        {['log', 'progression', '1rm', 'fatigue', 'volume'].map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === t ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{t}</button>
+        ))}
+      </div>
+
+      {/* Add form */}
+      {showAdd && (
+        <div className="glass-card mb-lg">
+          <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>Log Set</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
+            <div style={{ position: 'relative' }}>
+              <input list="ex-list" placeholder="Exercise *" value={form.exercise} onChange={e => setForm(f => ({ ...f, exercise: e.target.value }))} className="form-input" />
+              <datalist id="ex-list">{EXERCISE_LIBRARY.map(e => <option key={e.name} value={e.name} />)}</datalist>
+            </div>
+            <input type="number" placeholder="Weight (kg) *" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} className="form-input" />
+            <input type="number" placeholder="Reps" value={form.reps} onChange={e => setForm(f => ({ ...f, reps: e.target.value }))} className="form-input" />
+            <input type="number" placeholder="Sets" value={form.sets} onChange={e => setForm(f => ({ ...f, sets: e.target.value }))} className="form-input" />
+            <div>
+              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Date</label>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="form-input" />
+            </div>
+            <input placeholder="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="form-input" />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+            <button onClick={doAdd} className="btn-primary">Log</button>
           </div>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-        {/* PR Cards with Sparklines */}
-        <div className="glass-card" style={{ padding: '1.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Target size={20} color="var(--accent)" />
-              <h3 className="card-title" style={{ margin: 0 }}>Personal Records</h3>
-            </div>
+      {/* Log tab */}
+      {tab === 'log' && (
+        <div className="glass-card" style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <input value={exFilter} onChange={e => setExFilter(e.target.value)} placeholder="Filter by exercise…" className="form-input" style={{ maxWidth: '250px' }} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {exercises.map(ex => {
-              const best     = exerciseBests[ex];
-              const goal     = goals[ex];
-              const progress = best ? Math.min(100, Math.round((best.weight / goal) * 100)) : 0;
-              const trend    = exerciseTrends[ex] || [];
-              const isPR     = progress >= 100;
-              const isCustom = !DEFAULT_GOALS[ex];
-              return (
-                <div key={ex} style={{
-                  padding: '0.875rem 1rem',
-                  background: isPR ? 'rgba(16,185,129,0.07)' : 'var(--bg-elevated)',
-                  borderRadius: 'var(--radius-sm)',
-                  border: isPR ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--border)',
-                  position: 'relative',
-                }}>
-                  {isPR && (
-                    <span style={{ position: 'absolute', top: '8px', right: '8px', background: '#10b981', color: '#fff', fontSize: '0.55rem', fontWeight: 800, padding: '2px 6px', borderRadius: '20px', letterSpacing: '0.05em' }}>PR ✓</span>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>{ex}</span>
-                        {isCustom && <span style={{ fontSize: '0.55rem', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '10px', padding: '1px 5px' }}>custom</span>}
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: best ? '#10b981' : 'var(--text-3)', fontWeight: 800 }}>
-                        {best ? `${best.weight}kg × ${best.reps}r` : 'No data'}
-                      </span>
-                      {best && <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginLeft: '6px' }}>{best.date}</span>}
-                    </div>
-                    {/* Sparkline */}
-                    {trend.length >= 2 && (
-                      <div style={{ width: '90px', height: '36px', flexShrink: 0 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={trend}>
-                            <Line type="monotone" dataKey="w" stroke={isPR ? '#10b981' : 'var(--accent)'} strokeWidth={1.5} dot={false} />
-                            <Tooltip formatter={v => [`${v}kg`]} contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.65rem', padding: '2px 6px' }} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </div>
-                  {/* Progress bar + goal */}
-                  <div style={{ marginTop: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                      <span style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>{progress}% to goal</span>
-                      {editingGoal === ex ? (
-                        <input autoFocus type="number" defaultValue={goal}
-                          style={{ width: '56px', fontSize: '0.7rem', padding: '1px 4px', borderRadius: '4px', border: '1px solid var(--accent)', background: 'var(--bg-dark)', color: 'var(--text-1)' }}
-                          onBlur={e => handleSaveGoal(ex, e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleSaveGoal(ex, e.target.value); if (e.key === 'Escape') setEditingGoal(null); }} />
-                      ) : (
-                        <span style={{ fontSize: '0.65rem', color: 'var(--accent)', cursor: 'pointer' }} onClick={() => setEditingGoal(ex)} title="Edit goal">{goal}kg goal</span>
-                      )}
-                    </div>
-                    <div style={{ height: '4px', background: 'var(--bg-dark)', borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ width: `${progress}%`, height: '100%', background: isPR ? '#10b981' : 'var(--accent)', transition: 'width 0.5s ease' }} />
-                    </div>
-                  </div>
-                  {isCustom && (
-                    <button onClick={() => handleRemoveExercise(ex)}
-                      style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}
-                      title="Remove exercise">
-                      <Trash2 size={11} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '1rem' }}>
-            Click a goal to edit. Sparklines show last 8 sessions.
-          </p>
-        </div>
-
-        {/* Weekly Volume Chart */}
-        <div className="glass-card" style={{ padding: '1.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-            <TrendingUp size={20} color="#3b82f6" />
-            <h3 className="card-title" style={{ margin: 0 }}>Weekly Volume</h3>
-          </div>
-          {totalVolume === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '160px', color: 'var(--text-3)' }}>
-              <Dumbbell size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
-              <p style={{ fontSize: '0.82rem' }}>No sessions logged this week</p>
-            </div>
+          {filteredLogs.length === 0 ? (
+            <EmptyState icon={Dumbbell} title="No strength logs" description="Log your first set above." ctaLabel="Log Set" onAction={() => setShowAdd(true)} />
           ) : (
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', height: '160px' }}>
-              {weeklyVolume.map(d => (
-                <div key={d.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                  <div style={{
-                    width: '100%',
-                    height: `${Math.round((d.volume / maxVolume) * 120)}px`,
-                    background: d.volume > 0 ? 'var(--accent)' : 'var(--bg-elevated)',
-                    borderRadius: '4px 4px 0 0',
-                    transition: 'height 0.4s ease',
-                    minHeight: '4px',
-                  }} title={d.volume > 0 ? `${d.volume}kg total volume` : 'Rest day'} />
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>{d.day}</span>
-                </div>
-              ))}
-            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Date', 'Exercise', 'Sets × Reps', 'Weight', 'Volume', 'Notes'].map(h => (
+                    <th key={h} style={{ padding: '0.5rem 0.6rem', textAlign: 'left', color: 'var(--text-3)', fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLogs.slice(0, 40).map(l => {
+                  const isPR = PRs[l.exercise]?.weight === l.weight && PRs[l.exercise]?.date === l.date;
+                  return (
+                    <tr key={l.id || l.date + l.exercise} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isPR ? 'rgba(251,191,36,0.05)' : 'transparent' }}>
+                      <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{l.date}</td>
+                      <td style={{ padding: '0.5rem 0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {isPR && <span title="Personal Record">🏆</span>} {l.exercise}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace' }}>{l.sets}×{l.reps}</td>
+                      <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace', fontWeight: 800, color: 'var(--accent)' }}>{l.weight} kg</td>
+                      <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace', color: 'var(--text-2)' }}>{(l.weight * l.reps * l.sets).toLocaleString()} kg</td>
+                      <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-3)', fontSize: '0.7rem' }}>{l.notes || '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
-      </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-        {/* 1RM Calculator */}
-        <div className="glass-card" style={{ padding: '1.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
-            <Zap size={20} color="#f59e0b" />
-            <h3 className="card-title" style={{ margin: 0 }}>1RM Calculator</h3>
-          </div>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: '1.25rem' }}>Calculate your one-rep max using the Epley formula.</p>
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ flex: 1 }}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Weight (kg)</label>
-              <input className="form-input" type="number" min={1} placeholder="100"
-                value={calcForm.weight} onChange={e => setCalcForm(f => ({ ...f, weight: e.target.value }))} />
+      {/* Progression tab */}
+      {tab === 'progression' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="glass-card">
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>
+              <span className="card-title" style={{ margin: 0, marginRight: '0.5rem' }}>Max Weight Progression</span>
+              {exercises.slice(0, 10).map(ex => (
+                <button key={ex} onClick={() => setActiveEx(ex)} style={{ padding: '3px 10px', borderRadius: '99px', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', background: (activeEx || exercises[0]) === ex ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: (activeEx || exercises[0]) === ex ? '#000' : 'var(--text-3)', border: 'none' }}>{ex}</button>
+              ))}
             </div>
-            <div style={{ flex: 1 }}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Reps</label>
-              <input className="form-input" type="number" min={1} placeholder="5"
-                value={calcForm.reps} onChange={e => setCalcForm(f => ({ ...f, reps: e.target.value }))} />
-            </div>
-          </div>
-          <div style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center' }}>
-            <p className="label-caps" style={{ color: 'var(--text-3)', marginBottom: '4px' }}>Estimated 1RM</p>
-            <p style={{ fontSize: '2.5rem', fontWeight: 900, color: oneRM ? 'var(--accent)' : 'var(--text-3)' }}>
-              {oneRM ? `${oneRM}kg` : '—'}
-            </p>
+            {exLogs.length < 2 ? (
+              <p style={{ color: 'var(--text-3)', fontSize: '0.78rem', padding: '1.5rem 0', textAlign: 'center' }}>Log 2+ sessions for this exercise to see progression.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={exLogs} margin={{ top: 8, right: 8, bottom: 4, left: -10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} unit="kg" />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Line type="monotone" dataKey="weight" name="Max Weight" stroke="var(--accent)" strokeWidth={2.5} dot={{ r: 5, fill: 'var(--accent)' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
+      )}
 
-        {/* Muscle Fatigue Heatmap */}
-        <div className="glass-card" style={{ padding: '1.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
-            <Activity size={20} color="#ef4444" />
-            <h3 className="card-title" style={{ margin: 0 }}>Muscle Fatigue Heatmap</h3>
-          </div>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: '1.5rem' }}>Relative fatigue based on volume over the last 3 days.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-            {fatigueHeatmap.map(group => {
-              // Color scales from green (rested) to red (fatigued)
-              const hue = Math.max(0, 120 - (group.intensity * 120)); // 120 is green, 0 is red
-              return (
-                <div key={group.muscle} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-2)' }}>{group.muscle}</span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>{Math.round(group.intensity * 100)}%</span>
-                  </div>
-                  <div style={{ height: '8px', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: '100%', height: '100%', background: `hsl(${hue}, 80%, 50%)`, opacity: group.intensity < 0.1 ? 0.3 : 1, transform: `scaleX(${Math.max(group.intensity, 0.05)})`, transformOrigin: 'left', transition: 'transform 0.5s ease, background 0.5s ease' }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      {/* 1RM tab */}
+      {tab === '1rm' && <OneRMCalculator />}
 
-      {/* Recent Sessions */}
-      {strengthLogs.length > 0 && (
-        <div className="glass-card" style={{ padding: '1.75rem' }}>
-          <h3 className="card-title" style={{ marginBottom: '1rem' }}>Recent Sessions</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '240px', overflowY: 'auto' }}>
-            {[...strengthLogs].reverse().slice(0, 15).map((l, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--bg-dark)', borderRadius: '10px' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <Dumbbell size={14} color="var(--accent)" />
-                  <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{l.exercise}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.82rem', color: '#10b981', fontWeight: 800 }}>{l.weight}kg × {l.reps} reps × {l.sets || 1} sets</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{l.date}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Fatigue tab */}
+      {tab === 'fatigue' && <MuscleFatigueHeatmap recentLogs={recentLogs7Days} />}
+
+      {/* Volume tab */}
+      {tab === 'volume' && (
+        <div className="glass-card">
+          <span className="card-title">Weekly Volume by Muscle Group</span>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Total volume (sets × reps × weight) for each muscle group this week.</p>
+          {weeklyVolume.every(m => m.volume === 0) ? (
+            <p style={{ color: 'var(--text-3)', fontSize: '0.78rem', padding: '1.5rem 0', textAlign: 'center' }}>No training logs from the past 7 days.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={weeklyVolume} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 50 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
+                <YAxis type="category" dataKey="muscle" tick={{ fontSize: 11, fill: 'var(--text-2)' }} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v.toLocaleString()} kg`, 'Volume']} />
+                <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
+                  {weeklyVolume.map((entry, idx) => (
+                    <React.Fragment key={entry.muscle}>
+                      <rect fill={MUSCLE_COLORS[entry.muscle] || 'var(--accent)'} />
+                    </React.Fragment>
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       )}
     </div>

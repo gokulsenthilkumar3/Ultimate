@@ -1,270 +1,296 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Newspaper, Rss, Globe, Radio, Bookmark, ExternalLink, TrendingUp, Cpu, Activity, Briefcase, CloudRain, Sun, Moon } from 'lucide-react';
+import { Cloud, Sun, Droplets, Wind, Eye, Thermometer, Newspaper, RefreshCw, MapPin, AlertTriangle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 
-const CATEGORIES = [
-  { id: 'general', label: 'Global News', icon: Globe, color: '#0ea5e9' },
-  { id: 'technology', label: 'Technology', icon: Cpu, color: '#8b5cf6' },
-  { id: 'business', label: 'Business', icon: Briefcase, color: '#f59e0b' },
-  { id: 'health', label: 'Health & Science', icon: Activity, color: '#10b981' },
-  { id: 'entertainment', label: 'Pulse', icon: Radio, color: '#ec4899' }
+const WMO_CODES = {
+  0: { label: 'Clear sky',       icon: '☀️' },
+  1: { label: 'Mainly clear',    icon: '🌤️' },
+  2: { label: 'Partly cloudy',   icon: '⛅' },
+  3: { label: 'Overcast',        icon: '☁️' },
+  45: { label: 'Foggy',          icon: '🌫️' },
+  48: { label: 'Icy fog',        icon: '🌫️' },
+  51: { label: 'Light drizzle',  icon: '🌦️' },
+  53: { label: 'Drizzle',        icon: '🌦️' },
+  55: { label: 'Heavy drizzle',  icon: '🌧️' },
+  61: { label: 'Light rain',     icon: '🌧️' },
+  63: { label: 'Rain',           icon: '🌧️' },
+  65: { label: 'Heavy rain',     icon: '🌧️' },
+  71: { label: 'Light snow',     icon: '🌨️' },
+  73: { label: 'Snow',           icon: '🌨️' },
+  75: { label: 'Heavy snow',     icon: '❄️' },
+  80: { label: 'Showers',        icon: '🌦️' },
+  81: { label: 'Rain showers',   icon: '🌧️' },
+  82: { label: 'Violent showers',icon: '⛈️' },
+  95: { label: 'Thunderstorm',   icon: '⛈️' },
+  96: { label: 'Thunderstorm',   icon: '⛈️' },
+  99: { label: 'Thunderstorm',   icon: '⛈️' },
+};
+
+// Time-of-day gradient based on current hour
+function getTimeGradient(hour) {
+  if (hour >= 5  && hour < 7)  return { from: '#1a1035', to: '#f97316', label: 'Dawn',      emoji: '🌅' };
+  if (hour >= 7  && hour < 11) return { from: '#1e3a5f', to: '#f59e0b', label: 'Morning',   emoji: '🌄' };
+  if (hour >= 11 && hour < 14) return { from: '#0c4a6e', to: '#38bdf8', label: 'Midday',    emoji: '☀️' };
+  if (hour >= 14 && hour < 17) return { from: '#1e3a5f', to: '#6366f1', label: 'Afternoon', emoji: '🌇' };
+  if (hour >= 17 && hour < 20) return { from: '#1a1035', to: '#f43f5e', label: 'Evening',   emoji: '🌆' };
+  if (hour >= 20 && hour < 22) return { from: '#0f0a2a', to: '#7c3aed', label: 'Night',     emoji: '🌃' };
+  return { from: '#030712',  to: '#1e1b4b', label: 'Late Night', emoji: '🌙' };
+}
+
+const NEWS_CATS = ['tech', 'science', 'world', 'finance', 'health'];
+const NEWS_SOURCES = [
+  { label: 'HN Top',      url: 'https://hacker-news.firebaseio.com/v0/topstories.json' },
 ];
+
+function timeAgo(ms) {
+  if (!ms) return '';
+  const s = Math.floor((Date.now() - ms) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  return `${Math.floor(s / 3600)}h ago`;
+}
 
 export default function Current() {
   const toast = useToast();
-  const [activeCat, setActiveCat] = useState('general');
-  const [articles, setArticles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [weather, setWeather] = useState({ temp: '--', condition: 'Syncing Location...', icon: Sun });
 
-  const timeGradient = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'linear-gradient(135deg, rgba(251,191,36,0.08) 0%, transparent 100%)'; // Morning (Amber)
-    if (hour >= 12 && hour < 17) return 'linear-gradient(135deg, rgba(56,189,248,0.08) 0%, transparent 100%)'; // Afternoon (Sky)
-    if (hour >= 17 && hour < 20) return 'linear-gradient(135deg, rgba(244,63,94,0.08) 0%, transparent 100%)'; // Evening (Rose)
-    return 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, transparent 100%)'; // Night (Indigo)
-  }, []);
+  const [weather,      setWeather]      = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState(null);
+  const [location,     setLocation]     = useState(null);
+  const [city,         setCity]         = useState('');
+  const [news,         setNews]         = useState([]);
+  const [newsLoading,  setNewsLoading]  = useState(false);
+  const [activeCat,    setActiveCat]    = useState('tech');
+  const [lastUpdated,  setLastUpdated]  = useState(null);
 
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        try {
-          const { latitude, longitude } = pos.coords;
-          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation`);
-          const data = await res.json();
-          if (data?.current) {
-             const t = data.current.temperature_2m;
-             const p = data.current.precipitation;
-             const hour = new Date().getHours();
-             let cond = 'Clear';
-             let Icon = (hour > 18 || hour < 6) ? Moon : Sun;
-             
-             if (p > 1) { cond = 'Rainy'; Icon = CloudRain; }
-             else if (p > 0) { cond = 'Drizzle'; Icon = CloudRain; }
-             else if (t > 28) { cond = 'Hot'; }
-             else if (t < 15) { cond = 'Cold'; }
-             
-             setWeather({ temp: `${Math.round(t)}°C`, condition: cond, icon: Icon });
-          }
-        } catch (e) { 
-          setWeather({ temp: '--', condition: 'Offline', icon: Activity });
-        }
-      }, () => {
-        setWeather({ temp: '--', condition: 'Location Denied', icon: Globe });
-      });
-    }
-  }, []);
+  const now     = new Date();
+  const hour    = now.getHours();
+  const tg      = getTimeGradient(hour);
 
-  const fetchNews = useCallback(async (cat = activeCat) => {
-    setLoading(true);
+  // ── Geolocation + weather ──────────────────────────────────────────────
+  const fetchWeather = useCallback(async (lat, lon) => {
+    setWeatherLoading(true);
+    setWeatherError(null);
     try {
-      // Using a reliable free news aggregator proxy for the demo
-      // In production, this would be a secure backend proxy to NewsAPI or similar
-      const res = await fetch(`https://ok.surf/api/v1/cors/news-feed`);
+      const params = [
+        'temperature_2m', 'weathercode', 'relativehumidity_2m', 'windspeed_10m',
+        'apparent_temperature', 'visibility', 'precipitation_probability',
+        'uv_index', 'is_day',
+      ].join(',');
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&current=${params}&hourly=temperature_2m&timezone=auto&forecast_days=1`;
+      const res  = await fetch(url);
+      if (!res.ok) throw new Error('Weather fetch failed');
       const data = await res.json();
-      
-      // ok.surf returns an object with keys for each category
-      const map = {
-        general: 'World',
-        technology: 'Technology',
-        business: 'Business',
-        health: 'Health',
-        entertainment: 'Entertainment'
-      };
-      
-      const raw = data[map[cat]] || data['World'] || [];
-      
-      setArticles(raw.map((a, i) => ({
-        id: i,
-        title: a.title,
-        source: a.source,
-        url: a.link,
-        image: a.og || `https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80`,
-        time: 'Just now',
-        category: cat.toUpperCase()
-      })));
+      setWeather(data);
+      setLastUpdated(Date.now());
     } catch (err) {
-      // Fallback to Hacker News if the aggregator fails
-      try {
-        const hnRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
-        const ids = await hnRes.json();
-        const stories = await Promise.all(ids.slice(0, 12).map(id => fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json())));
-        setArticles(stories.map(s => ({
-          id: s.id,
-          title: s.title,
-          source: 'Hacker News',
-          url: s.url || `https://news.ycombinator.com/item?id=${s.id}`,
-          image: `https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80`,
-          time: new Date(s.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          category: 'TECH'
-        })));
-      } catch (e) {
-        toast.error('Failed to synchronize news feeds.');
-      }
+      setWeatherError('Could not fetch weather. Check network connection.');
+    } finally {
+      setWeatherLoading(false);
     }
-    setLoading(false);
-  }, [activeCat, toast]);
+  }, []);
+
+  const fetchReverseGeo = useCallback(async (lat, lon) => {
+    try {
+      const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const data = await res.json();
+      const addr = data.address;
+      setCity([addr.city || addr.town || addr.village || addr.county, addr.country].filter(Boolean).join(', '));
+    } catch { setCity(`${lat.toFixed(2)}, ${lon.toFixed(2)}`); }
+  }, []);
 
   useEffect(() => {
-    fetchNews(activeCat);
-  }, [activeCat, fetchNews]);
+    navigator.geolocation?.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        setLocation({ lat, lon });
+        fetchWeather(lat, lon);
+        fetchReverseGeo(lat, lon);
+      },
+      () => {
+        // fallback: London
+        setLocation({ lat: 51.5074, lon: -0.1278 });
+        fetchWeather(51.5074, -0.1278);
+        setCity('London (default)');
+        toast.info('Using default location (London). Enable location for accurate weather.');
+      }
+    );
+  }, []);
+
+  // ── News ──────────────────────────────────────────────────────────────
+  const fetchNews = useCallback(async () => {
+    setNewsLoading(true);
+    try {
+      // Hacker News top stories (no CORS issues)
+      const ids = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json').then(r => r.json());
+      const top = ids.slice(0, 12);
+      const stories = await Promise.all(top.map(id =>
+        fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json())
+      ));
+      setNews(stories.filter(s => s && s.title).map(s => ({
+        id: s.id, title: s.title, url: s.url, score: s.score, comments: s.descendants || 0,
+        by: s.by, time: s.time ? s.time * 1000 : null, source: 'Hacker News',
+      })));
+    } catch {
+      setNews([]);
+      toast.error('Could not fetch news. Check network connection.');
+    } finally {
+      setNewsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { fetchNews(); }, []);
+
+  // ── Derived weather values ──────────────────────────────────────────────
+  const cur = weather?.current;
+  const wmo = WMO_CODES[cur?.weathercode] || { label: 'Unknown', icon: '🌡️' };
+
+  const weatherCards = cur ? [
+    { label: 'Feels Like',  val: `${Math.round(cur.apparent_temperature)}°C`, icon: <Thermometer size={16} color="#f43f5e" /> },
+    { label: 'Humidity',    val: `${cur.relativehumidity_2m}%`,               icon: <Droplets size={16} color="#0ea5e9" /> },
+    { label: 'Wind',        val: `${Math.round(cur.windspeed_10m)} km/h`,     icon: <Wind size={16} color="#8b5cf6" /> },
+    { label: 'Visibility',  val: `${Math.round((cur.visibility || 0) / 1000)} km`, icon: <Eye size={16} color="#10b981" /> },
+    { label: 'UV Index',    val: String(cur.uv_index || '—'),                 icon: <Sun size={16} color="#f59e0b" /> },
+    { label: 'Rain Prob.',  val: `${cur.precipitation_probability || 0}%`,    icon: <Cloud size={16} color="#60a5fa" /> },
+  ] : [];
 
   return (
-    <div className="fade-in module-page" style={{ padding: '0.5rem 0', background: timeGradient, borderRadius: '24px' }}>
-      {/* Header Area */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem', flexWrap: 'wrap', gap: '1.5rem', padding: '0 1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Global Signal Hub</p>
-          <h2 className="text-display" style={{ fontSize: '3rem', letterSpacing: '-0.03em' }}>Pulse Stream</h2>
-          <p className="text-secondary" style={{ fontSize: '1.1rem' }}>Aggregating real-time telemetry from 500+ verified global sources.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-           <div className="glass-card" style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid var(--border)' }}>
-              <weather.icon size={16} color="var(--accent)" />
-              <span className="label-caps" style={{ fontSize: '0.7rem', color: 'var(--text-1)' }}>{weather.temp} · {weather.condition}</span>
-           </div>
-           <div className="glass-card" style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid var(--success-soft)' }}>
-              <div className="pulse-dot" style={{ background: 'var(--success)' }} />
-              <span className="label-caps" style={{ fontSize: '0.7rem', color: 'var(--success)' }}>Feed Live</span>
-           </div>
-           <button className="btn-primary" onClick={() => fetchNews()} disabled={loading}>
-             <Rss size={18} className={loading ? 'spin' : ''} /> REFRESH
-           </button>
-        </div>
-      </div>
-
-      {/* Category Navigation */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '1rem', 
-        overflowX: 'auto', 
-        marginBottom: '3rem', 
-        paddingBottom: '1rem',
-        scrollbarWidth: 'none'
+    <div style={{ padding: '0.5rem 0' }}>
+      {/* Hero: Time-of-day gradient */}
+      <div style={{
+        borderRadius: '20px', overflow: 'hidden', marginBottom: '1.5rem',
+        background: `linear-gradient(135deg, ${tg.from}, ${tg.to})`,
+        position: 'relative', padding: '2.5rem 2rem',
+        boxShadow: `0 8px 40px ${tg.to}33`,
       }}>
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCat(cat.id)}
-            style={{ 
-              whiteSpace: 'nowrap', 
-              padding: '0.85rem 1.75rem',
-              borderRadius: '30px',
-              border: `1px solid ${activeCat === cat.id ? cat.color : 'var(--border)'}`,
-              background: activeCat === cat.id ? `${cat.color}15` : 'transparent',
-              color: activeCat === cat.id ? cat.color : 'var(--text-3)',
-              fontWeight: 800,
-              fontSize: '0.85rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={e => { if (activeCat !== cat.id) e.currentTarget.style.borderColor = cat.color; }}
-            onMouseLeave={e => { if (activeCat !== cat.id) e.currentTarget.style.borderColor = 'var(--border)'; }}
-          >
-            <cat.icon size={16} />
-            {cat.label}
-          </button>
-        ))}
+        {/* Stars / ambient dots */}
+        {hour < 6 || hour >= 20 ? (
+          <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute', width: '2px', height: '2px', borderRadius: '50%', background: '#fff',
+                left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`, opacity: Math.random() * 0.6 + 0.2,
+              }} />
+            ))}
+          </div>
+        ) : null}
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <p style={{ fontSize: '0.72rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                {tg.emoji} {tg.label} · {now.toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+              <p style={{ fontSize: '3rem', fontWeight: 900, color: '#fff', lineHeight: 1, fontFamily: 'var(--font-display, system-ui)', marginBottom: '0.25rem' }}>
+                {now.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+              {city && (
+                <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <MapPin size={13} /> {city}
+                </p>
+              )}
+            </div>
+
+            {/* Weather summary */}
+            {weatherLoading ? (
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>Loading weather…</div>
+            ) : weatherError ? (
+              <div style={{ color: 'rgba(255,100,100,0.9)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <AlertTriangle size={14} /> {weatherError}
+              </div>
+            ) : cur && (
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '3rem', lineHeight: 1 }}>{wmo.icon}</p>
+                <p style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{Math.round(cur.temperature_2m)}°C</p>
+                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.8)', marginTop: '4px' }}>{wmo.label}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Hour progress bar */}
+          <div style={{ marginTop: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.6)' }}>00:00</span>
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.6)' }}>Day {Math.round((hour / 24) * 100)}%</span>
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.6)' }}>24:00</span>
+            </div>
+            <div style={{ height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '99px' }}>
+              <div style={{ height: '100%', width: `${(hour / 24) * 100}%`, background: 'rgba(255,255,255,0.7)', borderRadius: '99px', transition: 'width 1s ease' }} />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* News Grid */}
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10rem 0', gap: '1.5rem' }}>
-          <div className="spin-ring" style={{ width: '50px', height: '50px', borderTopColor: 'var(--accent)' }} />
-          <p className="label-caps" style={{ color: 'var(--text-3)' }}>Synchronizing encrypted news stream...</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '2rem' }}>
-          {articles.map((article) => (
-            <div key={article.id} className="news-card glass-card" style={{ 
-              padding: 0, 
-              overflow: 'hidden', 
-              display: 'flex', 
-              flexDirection: 'column',
-              transition: 'transform 0.4s ease, box-shadow 0.4s ease'
-            }}>
-              {/* Image Header */}
-              <div style={{ width: '100%', height: '200px', overflow: 'hidden', position: 'relative' }}>
-                <img 
-                  src={article.image} 
-                  alt="" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s ease' }} 
-                  className="hover-scale-11"
-                />
-                <div style={{ position: 'absolute', top: '15px', left: '15px' }}>
-                   <span style={{ 
-                     background: 'rgba(0,0,0,0.6)', 
-                     backdropFilter: 'blur(8px)', 
-                     color: '#fff', 
-                     padding: '4px 10px', 
-                     borderRadius: '6px', 
-                     fontSize: '0.65rem', 
-                     fontWeight: 900,
-                     letterSpacing: '0.05em',
-                     border: '1px solid rgba(255,255,255,0.1)'
-                   }}>
-                     {article.category}
-                   </span>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                  <span className="label-caps" style={{ color: 'var(--accent)', fontSize: '0.7rem' }}>{article.source}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{article.time}</span>
-                </div>
-                <h3 style={{ 
-                  fontSize: '1.3rem', 
-                  fontWeight: 800, 
-                  color: 'var(--text-1)', 
-                  marginBottom: '1.5rem', 
-                  lineHeight: 1.3,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden'
-                }}>
-                  {article.title}
-                </h3>
-                
-                <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn-icon" style={{ width: '36px', height: '36px' }} onClick={() => toast.success('Added to Intelligence Vault')} title="Save to Vault">
-                      <Bookmark size={16} />
-                    </button>
-                  </div>
-                  <a href={article.url} target="_blank" rel="noopener noreferrer" className="btn-primary btn-sm" style={{ textDecoration: 'none', padding: '8px 20px', borderRadius: '12px' }}>
-                    <ExternalLink size={14} style={{ marginRight: '8px' }} /> READ ARTICLE
-                  </a>
-                </div>
-              </div>
+      {/* Weather detail cards */}
+      {!weatherLoading && !weatherError && weatherCards.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.65rem', marginBottom: '1.5rem' }}>
+          {weatherCards.map(w => (
+            <div key={w.label} className="glass-card" style={{ textAlign: 'center', padding: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.3rem' }}>{w.icon}</div>
+              <p style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-1)', lineHeight: 1 }}>{w.val}</p>
+              <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '3px' }}>{w.label}</p>
             </div>
           ))}
         </div>
       )}
 
-      <style>{`
-        .news-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-          border-color: var(--accent-soft);
-        }
-        .pulse-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-          0% { box-shadow: 0 0 0 0 rgba(16,185,129, 0.4); }
-          70% { box-shadow: 0 0 0 10px rgba(16,185,129, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(16,185,129, 0); }
-        }
-      `}</style>
+      {/* Refresh bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div>
+          <p className="label-caps" style={{ color: 'var(--accent)' }}>Live Feed</p>
+          {lastUpdated && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Weather updated {timeAgo(lastUpdated)}</p>}
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button onClick={() => location && fetchWeather(location.lat, location.lon)} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>
+            <RefreshCw size={12} /> Weather
+          </button>
+          <button onClick={fetchNews} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>
+            <RefreshCw size={12} /> News
+          </button>
+        </div>
+      </div>
+
+      {/* News */}
+      <div className="glass-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <Newspaper size={16} color="var(--accent)" />
+          <span className="card-title" style={{ margin: 0 }}>Hacker News — Top Stories</span>
+          {newsLoading && <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginLeft: 'auto' }}>Loading…</span>}
+        </div>
+
+        {news.length === 0 && !newsLoading && (
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', textAlign: 'center', padding: '2rem 0' }}>No stories loaded. Click Refresh to retry.</p>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          {news.map((story, idx) => (
+            <a key={story.id} href={story.url || `https://news.ycombinator.com/item?id=${story.id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem 0.85rem', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', transition: 'background 0.12s', alignItems: 'flex-start' }}
+                className="hover-lift">
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 800, width: '20px', flexShrink: 0, paddingTop: '2px' }}>{idx + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.4, marginBottom: '3px' }}>{story.title}</p>
+                  <p style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>
+                    ▲ {story.score} · {story.comments} comments · by {story.by} · {timeAgo(story.time)}
+                  </p>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* Environmental context */}
+      {cur && (
+        <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>🌍 Environmental Context</p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-2)', lineHeight: 1.65 }}>
+            {cur.temperature_2m < 10 ? '🧥 Cold — consider layering up.' : cur.temperature_2m < 18 ? '😌 Cool — comfortable outdoors.' : cur.temperature_2m < 27 ? '☀️ Warm — ideal conditions.' : '🥵 Hot — stay hydrated!'}
+            {' '}{(cur.precipitation_probability || 0) > 60 ? '🌧️ Rain likely — bring an umbrella.' : ''}
+            {' '}{(cur.uv_index || 0) >= 6 ? `☀️ UV Index ${cur.uv_index} — sunscreen recommended.` : ''}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
