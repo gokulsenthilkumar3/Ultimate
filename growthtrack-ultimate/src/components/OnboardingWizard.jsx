@@ -72,12 +72,17 @@ export default function OnboardingWizard() {
   ) : null;
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: Z_INDEX.WIZARD,
-      background: 'var(--bg-base)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '20px'
-    }}>
+    <div 
+      role="dialog"
+      aria-modal="true"
+      aria-label="Onboarding Wizard"
+      style={{
+        position: 'fixed', inset: 0, zIndex: Z_INDEX.WIZARD,
+        background: 'var(--bg-base)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '20px'
+      }}
+    >
       <div className="mesh-bg" />
 
       <div className="glass-card fade-in" style={{

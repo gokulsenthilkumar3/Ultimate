@@ -3,6 +3,7 @@ import { Search, Filter, Download, Plus, Trash2, RefreshCw, ChevronDown, Chevron
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import { FixedSizeList as List } from 'react-window';
 
 const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error'];
 const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];
@@ -247,54 +248,69 @@ export default function Logs() {
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {filtered.slice(0, 200).map(log => {
-                const sc      = SENTIMENT_COLORS[log._sentiment] || SENTIMENT_COLORS.neutral;
-                const ac      = ACTION_COLORS[(log.action || '').toLowerCase()] || ACTION_COLORS.other;
-                const isOpen  = expandedId === log.id;
+          </table>
+          <div style={{ flex: 1, minHeight: '400px' }}>
+            <List
+              height={400}
+              itemCount={filtered.length}
+              itemSize={42}
+              width="100%"
+              itemData={filtered}
+            >
+              {({ index, style, data }) => {
+                const log = data[index];
+                const sc = SENTIMENT_COLORS[log._sentiment] || SENTIMENT_COLORS.neutral;
+                const ac = ACTION_COLORS[(log.action || '').toLowerCase()] || ACTION_COLORS.other;
                 const details = log.details || log.description || '';
                 return (
-                  <React.Fragment key={log.id || log._ts}>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
-                      onClick={() => setExpandedId(isOpen ? null : log.id)}>
-                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-3)', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Clock size={10} />
-                          {formatTimestamp(log.timestamp)}
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.5rem 0.75rem' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700, background: `${ac}20`, color: ac, textTransform: 'capitalize' }}>
-                          {log.action || '—'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{log.table_name || '—'}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.68rem' }}>{log.item_id || '—'}</td>
-                      <td style={{ padding: '0.5rem 0.75rem' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: sc.text, fontSize: '0.68rem', fontWeight: 700, background: sc.bg, padding: '2px 8px', borderRadius: '99px', border: `1px solid ${sc.border}` }}>
-                          {sc.icon}{log._sentiment}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-2)', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>
-                        <span dangerouslySetInnerHTML={{ __html: renderMarkdown(details.slice(0, isOpen ? 10000 : 200)) }} />
-                      </td>
-                    </tr>
-                    {isOpen && details.length > 200 && (
-                      <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                        <td colSpan={6} style={{ padding: '0.5rem 0.75rem 0.75rem 0.75rem' }}>
-                          <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                            dangerouslySetInnerHTML={{ __html: renderMarkdown(details) }} />
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
+                  <div style={{ ...style, display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
+                    onClick={() => setExpandedId(log.id)}>
+                    <div style={{ width: '150px', padding: '0 0.75rem', color: 'var(--text-3)', whiteSpace: 'nowrap', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Clock size={10} /> {formatTimestamp(log.timestamp)}
+                    </div>
+                    <div style={{ width: '100px', padding: '0 0.75rem' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700, background: `${ac}20`, color: ac, textTransform: 'capitalize' }}>
+                        {log.action || '—'}
+                      </span>
+                    </div>
+                    <div style={{ width: '120px', padding: '0 0.75rem', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{log.table_name || '—'}</div>
+                    <div style={{ width: '120px', padding: '0 0.75rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.68rem' }}>{log.item_id || '—'}</div>
+                    <div style={{ width: '120px', padding: '0 0.75rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: sc.text, fontSize: '0.68rem', fontWeight: 700, background: sc.bg, padding: '2px 8px', borderRadius: '99px', border: `1px solid ${sc.border}` }}>
+                        {sc.icon}{log._sentiment}
+                      </span>
+                    </div>
+                    <div style={{ flex: 1, padding: '0 0.75rem', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
+                      <span dangerouslySetInnerHTML={{ __html: renderMarkdown(details.slice(0, 150)) }} />
+                    </div>
+                  </div>
                 );
-              })}
-            </tbody>
-          </table>
+              }}
+            </List>
+          </div>
         )}
-        {filtered.length > 200 && <p style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.72rem' }}>Showing first 200 of {filtered.length} results. Apply filters to narrow down.</p>}
       </div>
+
+      {/* Expanded details modal */}
+      {expandedId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }} onClick={() => setExpandedId(null)}>
+          <div className="glass-card" style={{ width: '600px', maxWidth: '95vw', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <p style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--text-1)' }}>Log Details</p>
+            {(() => {
+              const log = logs.find(l => l.id === expandedId);
+              if (!log) return null;
+              const details = log.details || log.description || '';
+              return (
+                <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(details) }} />
+              );
+            })()}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+              <button onClick={() => setExpandedId(null)} className="btn-primary">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add manual log modal */}
       {showAddModal && (

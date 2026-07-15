@@ -25,6 +25,7 @@ export default function DailyCheckIn({ onClose }) {
   const [data, setData]   = useState({
     sleep: 7, energy: 2, mood: 2, weight: user?.weight || '', note: '',
   });
+  const [isSaving, setIsSaving] = useState(false);
   const [done, setDone]   = useState(false);
 
   // ── Streak protection: alert if any habits not done today & hour ≥ 20 ──
@@ -125,6 +126,7 @@ export default function DailyCheckIn({ onClose }) {
   ];
 
   const handleSubmit = async () => {
+    setIsSaving(true);
     const checkInDate = todayStr();
     const updatedUser = { ...user };
 
@@ -188,19 +190,24 @@ export default function DailyCheckIn({ onClose }) {
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY,
-      background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '1rem',
-    }}>
+    <div 
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="checkin-title"
+      style={{
+        position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY,
+        background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1rem',
+      }}
+    >
       <div className="glass-card fade-in" style={{
         width: '100%', maxWidth: '480px',
         padding: '2.5rem', position: 'relative',
         border: '1px solid var(--border-strong)',
         boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
       }}>
-        <button onClick={onClose} style={{
+        <button aria-label="Close check-in" onClick={onClose} style={{
           position: 'absolute', top: '1rem', right: '1rem',
           background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)',
           display: 'flex', padding: '4px', borderRadius: '8px', transition: 'color 0.2s',
@@ -238,7 +245,7 @@ export default function DailyCheckIn({ onClose }) {
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '0.75rem' }}>
                 {steps[step].icon}
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-1)' }}>
+                <h2 id="checkin-title" style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-1)' }}>
                   {steps[step].title}
                 </h2>
               </div>
@@ -266,8 +273,8 @@ export default function DailyCheckIn({ onClose }) {
               {step < steps.length - 1 ? (
                 <button onClick={() => setStep(s => s + 1)} className="btn-primary" style={{ flex: 1 }}>Next \u2192</button>
               ) : (
-                <button onClick={handleSubmit} className="btn-primary" style={{ flex: 1, background: 'var(--success)' }}>
-                  <CheckCircle2 size={16} /> Complete Check-In
+                <button onClick={handleSubmit} disabled={isSaving} className="btn-primary" style={{ flex: 1, background: 'var(--success)' }}>
+                  <CheckCircle2 size={16} /> {isSaving ? 'Saving…' : 'Complete Check-In'}
                 </button>
               )}
             </div>

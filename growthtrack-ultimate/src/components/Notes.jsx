@@ -3,6 +3,7 @@ import { Plus, Trash2, Edit3, Tag, Search, Star, StarOff, Pin, PinOff, Copy, Che
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import { FixedSizeList as List } from 'react-window';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280'];
 
@@ -39,11 +40,13 @@ function NoteCard({ note, onEdit, onDelete, onToggleStar, onTogglePin, onCopy, i
 
   return (
     <div onClick={onClick} style={{
-      borderRadius: '14px', padding: '1rem', cursor: 'pointer',
+      borderRadius: '14px', padding: '0.75rem 1rem', cursor: 'pointer',
       background: isActive ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.03)',
       border: `1px solid ${isActive ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.07)'}`,
       borderLeft: `3px solid ${note.color || 'var(--accent)'}`,
       transition: 'all 0.15s',
+      height: '115px',
+      display: 'flex', flexDirection: 'column'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.35rem' }}>
         <p style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-1)', flex: 1, marginRight: '0.5rem', lineHeight: 1.3 }}>{note.title || 'Untitled'}</p>
@@ -60,7 +63,7 @@ function NoteCard({ note, onEdit, onDelete, onToggleStar, onTogglePin, onCopy, i
           ))}
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '0.58rem', color: 'var(--text-3)' }}>{wordCount}w · {note.updatedAt?.slice(0, 10) || '—'}</span>
         <div style={{ display: 'flex', gap: '2px' }} onClick={e => e.stopPropagation()}>
           <button onClick={() => onTogglePin(note.id)} title={note.pinned ? 'Unpin' : 'Pin'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: note.pinned ? '#f59e0b' : 'rgba(255,255,255,0.2)', padding: '2px' }}><Pin size={12} /></button>
@@ -255,16 +258,29 @@ export default function Notes() {
             <p style={{ fontSize: '0.78rem' }}>{notes.length === 0 ? 'Create your first note' : 'No notes match'}</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            {filtered.map(n => (
-              <NoteCard key={n.id} note={n} isActive={activeId === n.id}
-                onClick={() => openNote(n)}
-                onEdit={n => { openNote(n); setEditMode(true); }}
-                onDelete={handleDelete}
-                onToggleStar={toggleStar}
-                onTogglePin={togglePin}
-                onCopy={copyNote} />
-            ))}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <List
+              height={500}
+              itemCount={filtered.length}
+              itemSize={130}
+              width="100%"
+              itemData={filtered}
+            >
+              {({ index, style, data }) => {
+                const n = data[index];
+                return (
+                  <div style={{ ...style, paddingBottom: '0.4rem' }}>
+                    <NoteCard note={n} isActive={activeId === n.id}
+                      onClick={() => openNote(n)}
+                      onEdit={n => { openNote(n); setEditMode(true); }}
+                      onDelete={handleDelete}
+                      onToggleStar={toggleStar}
+                      onTogglePin={togglePin}
+                      onCopy={copyNote} />
+                  </div>
+                );
+              }}
+            </List>
           </div>
         )}
       </div>

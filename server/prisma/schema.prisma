@@ -1,0 +1,415 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password_hash String
+  created_at    DateTime @default(now())
+
+  @@map("users")
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  priority    String?
+  tag         String?
+  dueDate     String?
+  done        Boolean  @default(false)
+  recurring   Boolean  @default(false)
+  frequency   String?
+  lastDone    String?
+  completedAt String?
+  created_at  DateTime @default(now())
+  created_by  String   @default("user")
+  modified_at DateTime @default(now())
+  modified_by String   @default("user")
+
+  @@map("tasks")
+}
+
+model ShoppingItem {
+  id            Int      @id @default(autoincrement())
+  name          String
+  category      String?
+  priority      String?
+  estimatedCost Float?
+  quantity      Int      @default(1)
+  purchased     Boolean  @default(false)
+  created_at    DateTime @default(now())
+  created_by    String   @default("user")
+  modified_at   DateTime @default(now())
+  modified_by   String   @default("user")
+
+  @@map("shopping")
+}
+
+model Timesheet {
+  id          Int       @id @default(autoincrement())
+  task        String?
+  duration    Int?
+  date        DateTime?
+  created_at  DateTime  @default(now())
+  created_by  String    @default("user")
+  modified_at DateTime  @default(now())
+  modified_by String    @default("user")
+
+  @@map("timesheet")
+}
+
+model Finance {
+  id         String    @id @default(uuid())
+  type       String
+  category   String?
+  amount     Float
+  note       String?
+  method     String?
+  date       DateTime?
+  created_at DateTime  @default(now())
+
+  @@map("finance")
+}
+
+model Budget {
+  id           String   @id @default(uuid())
+  category     String
+  limit_amount Float
+  period       String   @default("monthly")
+  created_at   DateTime @default(now())
+
+  @@map("budgets")
+}
+
+model MetricLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  metric     String
+  value      Float
+  unit       String?
+  source     String?
+  date       String
+  created_at DateTime @default(now())
+
+  @@map("metric_logs")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  action      String?
+  table_name  String?
+  item_id     String?
+  details     String?
+  timestamp   DateTime @default(now())
+  actor_name  String   @default("System")
+  actor_email String   @default("admin@growthtrack.ultimate")
+  actor_ip    String?
+
+  @@map("audit_log")
+}
+
+model UserProfile {
+  id          Int      @id @default(autoincrement())
+  data        String
+  created_at  DateTime @default(now())
+  created_by  String   @default("system")
+  modified_at DateTime @default(now())
+  modified_by String   @default("system")
+
+  @@map("user_profile")
+}
+
+model TrainingPlan {
+  id   Int    @id @default(autoincrement())
+  data String
+
+  @@map("training_plan")
+}
+
+model NutritionStrategy {
+  id   Int    @id @default(autoincrement())
+  data String
+
+  @@map("nutrition_strategy")
+}
+
+model LifestyleTips {
+  id   Int    @id @default(autoincrement())
+  data String
+
+  @@map("lifestyle_tips")
+}
+
+model MedicalData {
+  id   Int    @id @default(autoincrement())
+  data String
+
+  @@map("medical_data")
+}
+
+model PhysiqueTargets {
+  id   Int    @id @default(autoincrement())
+  data String
+
+  @@map("physique_targets")
+}
+
+model AssessmentQA {
+  id   Int    @id @default(autoincrement())
+  data String
+
+  @@map("assessment_qa")
+}
+
+model Skills {
+  id   Int    @id @default(autoincrement())
+  data String
+
+  @@map("skills")
+}
+
+model CalendarEvents {
+  id   Int    @id @default(autoincrement())
+  data String
+
+  @@map("calendar_events")
+}
+
+model Note {
+  id          Int      @id @default(autoincrement())
+  title       String   @default("Untitled")
+  content     String?  @default("")
+  color       String?  @default("#e5a50a")
+  pinned      Boolean? @default(false)
+  created_at  DateTime @default(now())
+  modified_at DateTime @default(now())
+
+  @@map("notes")
+}
+
+model Goal {
+  id            Int               @id @default(autoincrement())
+  title         String
+  category      String?           @default("General")
+  target_value  Float?
+  current_value Float?            @default(0)
+  unit          String?
+  deadline      DateTime?
+  done          Boolean?          @default(false)
+  created_at    DateTime          @default(now())
+  modified_at   DateTime          @default(now())
+  progressLogs  GoalProgressLog[]
+
+  @@map("goals")
+}
+
+model SleepLog {
+  id         Int      @id @default(autoincrement())
+  date       DateTime @unique
+  bed_time   String?
+  wake_time  String?
+  duration   Float?
+  quality    Int?
+  notes      String?
+  created_at DateTime @default(now())
+
+  @@map("sleep_logs")
+}
+
+model Document {
+  id         Int      @id @default(autoincrement())
+  name       String
+  size       String?
+  date       String?
+  type       String?  @default("Private")
+  url        String?
+  created_at DateTime @default(now())
+
+  @@map("documents")
+}
+
+model Subscription {
+  id         Int       @id @default(autoincrement())
+  name       String
+  cost       Float
+  category   String?   @default("General")
+  next_date  DateTime?
+  auto_renew Boolean?  @default(true)
+  icon       String?   @default("📦")
+  active     Boolean?  @default(true)
+  created_at DateTime  @default(now())
+
+  @@map("subscriptions")
+}
+
+model Habit {
+  id              Int        @id @default(autoincrement())
+  name            String
+  icon            String?    @default("🏃")
+  streak          Int?       @default(0)
+  completed_dates String?    @default("[]")
+  created_at      DateTime   @default(now())
+  logs            HabitLog[]
+
+  @@map("habits")
+}
+
+model Entertainment {
+  id          Int      @id @default(autoincrement())
+  title       String
+  type        String?
+  category    String?
+  status      String?
+  rating      Int?
+  progress    Int?     @default(0)
+  poster      String?
+  created_at  DateTime @default(now())
+  modified_at DateTime @default(now())
+
+  @@map("entertainment")
+}
+
+model HealthExtras {
+  id                   Int      @id @default(autoincrement())
+  vision_score         Int?
+  hearing_score        Int?
+  smell_score          Int?
+  taste_score          Int?
+  touch_score          Int?
+  gut_biome_score      Int?
+  dermatology_score    Int?
+  hair_vitality_score  Int?
+  bronco_level         Float?
+  posture_status       String?
+  active_diets         String?  @default("[]")
+  hobbies              String?  @default("[]")
+  hrv_score            Int?
+  stress_load_score    Int?
+  recovery_index_score Int?
+  modified_at          DateTime @default(now())
+
+  @@map("health_extras")
+}
+
+model MoodLog {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  mood       Int?
+  energy     Int?
+  note       String?
+  created_at DateTime @default(now())
+
+  @@map("mood_logs")
+}
+
+model HabitLog {
+  id         Int      @id @default(autoincrement())
+  habit_id   Int
+  date       DateTime
+  created_at DateTime @default(now())
+  habit      Habit    @relation(fields: [habit_id], references: [id], onDelete: Cascade)
+
+  @@unique([habit_id, date])
+  @@map("habit_logs")
+}
+
+model GoalProgressLog {
+  id         Int      @id @default(autoincrement())
+  goal_id    Int
+  value      Float
+  note       String?
+  date       DateTime
+  created_at DateTime @default(now())
+  goal       Goal     @relation(fields: [goal_id], references: [id], onDelete: Cascade)
+
+  @@map("goal_progress_logs")
+}
+
+model NutritionLog {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  meal_type  String?
+  food_name  String?
+  calories   Float?
+  protein    Float?
+  carbs      Float?
+  fat        Float?
+  created_at DateTime @default(now())
+
+  @@map("nutrition_logs")
+}
+
+model WorkoutSession {
+  id               Int               @id @default(autoincrement())
+  date             DateTime
+  notes            String?
+  duration_minutes Int?
+  created_at       DateTime          @default(now())
+  exercises        WorkoutExercise[]
+
+  @@map("workout_sessions")
+}
+
+model WorkoutExercise {
+  id            Int            @id @default(autoincrement())
+  session_id    Int
+  exercise_name String
+  sets          Int?
+  reps          Int?
+  weight_kg     Float?
+  notes         String?
+  created_at    DateTime       @default(now())
+  session       WorkoutSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@map("workout_exercises")
+}
+
+model ProgressPhoto {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  url        String
+  notes      String?
+  created_at DateTime @default(now())
+
+  @@map("progress_photos")
+}
+
+model VitalsLog {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  type       String
+  value      Float?
+  unit       String?
+  created_at DateTime @default(now())
+
+  @@map("vitals_logs")
+}
+
+model Medication {
+  id         Int       @id @default(autoincrement())
+  name       String
+  dose       String?
+  frequency  String?
+  start_date DateTime?
+  end_date   DateTime?
+  created_at DateTime  @default(now())
+
+  @@map("medications")
+}
+
+model SavedArticle {
+  id         Int      @id @default(autoincrement())
+  url        String
+  title      String?
+  source     String?
+  date_saved DateTime @default(now())
+
+  @@map("saved_articles")
+}

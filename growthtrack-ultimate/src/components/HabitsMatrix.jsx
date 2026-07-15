@@ -534,6 +534,7 @@ export default React.memo(function HabitsMatrix() {
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'all 0.25s',
                           transform: justCompleted.has(habit.id) ? 'scale(1.35)' : 'scale(1)',
+                          boxShadow: justCompleted.has(habit.id) ? `0 0 15px ${cat.color}` : 'none',
                         }}>
                           {isLogged(habit.id, today) && <Check size={13} color="#fff" />}
                         </button>
@@ -650,11 +651,14 @@ export default React.memo(function HabitsMatrix() {
                     <td style={{ padding: '0.5rem 0.6rem', fontWeight: 600, color: 'var(--text-1)' }}>{h.name}</td>
                     <td style={{ padding: '0.5rem 0.6rem', color: cat.color, textAlign: 'center' }}>{cat.emoji} {cat.label}</td>
                     <td style={{ padding: '0.5rem 0.6rem', textAlign: 'center' }}>
-                      <button onClick={() => toggleHabitForDate(h.id, today)} style={{
+                      <button onClick={() => handleToggleToday(h.id)} style={{
                         width: '24px', height: '24px', margin: '0 auto',
                         borderRadius: '50%', border: `2px solid ${isLogged(h.id, today) ? cat.color : 'rgba(255,255,255,0.2)'}`,
                         background: isLogged(h.id, today) ? cat.color : 'transparent',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                        transition: 'all 0.25s',
+                        transform: justCompleted.has(h.id) ? 'scale(1.35)' : 'scale(1)',
+                        boxShadow: justCompleted.has(h.id) ? `0 0 15px ${cat.color}` : 'none',
                       }}>
                         {isLogged(h.id, today) && <Check size={12} color="#fff" />}
                       </button>
