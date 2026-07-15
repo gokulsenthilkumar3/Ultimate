@@ -11,6 +11,7 @@ const PHOTO_BUCKET = 'progress-photos';
 export default function MetricLogger({ onClose, onSave }) {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('body');
+  const [isSaved, setIsSaved] = useState(false);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -93,38 +94,46 @@ export default function MetricLogger({ onClose, onSave }) {
       finalPhotoUrl = await uploadPhoto();
     }
 
-    // Save metric log (existing behaviour)
-    await onSave({ ...formData });
+    try {
+      // Save metric log (existing behaviour)
+      await onSave({ ...formData });
 
-    // If we have body measurements or photo, also POST to /api/progress_entries
-    const hasBodyData = formData.weight || formData.chest || formData.waist || formData.hips || finalPhotoUrl;
-    if (hasBodyData) {
-      try {
-        await fetch('/api/progress_entries', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date:      formData.date,
-            weight:    formData.weight    || null,
-            body_fat:  formData.body_fat  || null,
-            chest:     formData.chest     || null,
-            waist:     formData.waist     || null,
-            hips:      formData.hips      || null,
-            note:      formData.note      || null,
-            photo_url: finalPhotoUrl      || null,
-          }),
-        });
-      } catch (err) {
-        console.error('progress_entries POST error', err);
+      // If we have body measurements or photo, also POST to /api/progress_entries
+      const hasBodyData = formData.weight || formData.chest || formData.waist || formData.hips || finalPhotoUrl;
+      if (hasBodyData) {
+        try {
+          await fetch('/api/progress_entries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date:      formData.date,
+              weight:    formData.weight    || null,
+              body_fat:  formData.body_fat  || null,
+              chest:     formData.chest     || null,
+              waist:     formData.waist     || null,
+              hips:      formData.hips      || null,
+              note:      formData.note      || null,
+              photo_url: finalPhotoUrl      || null,
+            }),
+          });
+        } catch (err) {
+          console.error('progress_entries POST error', err);
+        }
       }
-    }
 
-    // Update main user profile if weight changed
-    if (formData.weight && formData.weight !== storeUser?.weight) {
-      storeSetUser({ ...storeUser, weight: formData.weight });
-    }
+      // Update main user profile if weight changed
+      if (formData.weight && formData.weight !== storeUser?.weight) {
+        storeSetUser({ ...storeUser, weight: formData.weight });
+      }
 
-    onClose();
+      setIsSaved(true);
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save metrics.');
+    }
   };
 
   const inputStyle = {
@@ -277,13 +286,17 @@ export default function MetricLogger({ onClose, onSave }) {
           {/* Footer */}
           <div style={{ marginTop: 'auto', paddingTop: '1.5rem', display: 'flex', gap: '1rem', borderTop: '1px solid var(--border)' }}>
             <button type="button" onClick={onClose} className="btn-ghost" style={{ flex: 1, padding: '14px' }}>Discard</button>
-            <button type="submit" className="btn-ghost" disabled={uploadingPhoto} style={{
-              flex: 1, background: 'var(--accent)', color: 'var(--bg-base)',
-              borderColor: 'var(--accent)', padding: '14px',
-              boxShadow: '0 0 20px var(--accent-glow)', opacity: uploadingPhoto ? 0.6 : 1,
+            <button type="submit" className="btn-ghost" disabled={uploadingPhoto || isSaved} style={{
+              flex: 1, background: isSaved ? '#10b981' : 'var(--accent)', color: 'var(--bg-base)',
+              borderColor: isSaved ? '#10b981' : 'var(--accent)', padding: '14px',
+              boxShadow: isSaved ? '0 0 20px rgba(16,185,129,0.5)' : '0 0 20px var(--accent-glow)', opacity: uploadingPhoto ? 0.6 : 1,
+              transition: 'all 0.3s'
             }}>
-              <Save size={18} style={{ marginRight: '8px' }} />
-              {uploadingPhoto ? 'Uploading…' : 'Commit Data'}
+              {isSaved ? (
+                <><CheckCircle size={18} style={{ marginRight: '8px' }} /> Saved!</>
+              ) : (
+                <><Save size={18} style={{ marginRight: '8px' }} /> {uploadingPhoto ? 'Uploading…' : 'Commit Data'}</>
+              )}
             </button>
           </div>
         </form>

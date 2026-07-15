@@ -5,22 +5,14 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
-const { createClient } = require('@supabase/supabase-js');
 
 const phase4aRoutes = require('./routes/phase4a');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// --- Supabase ---
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.warn('\n⚠️  SUPABASE_URL or SUPABASE_SERVICE_KEY not set.');
-}
-const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-  : null;
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient({});
 
 // --- Middleware ---
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -58,37 +50,7 @@ function safeError(res, err, statusCode = 500) {
   res.status(statusCode).json({ error: isProd ? 'Internal server error' : (err?.message || String(err)) });
 }
 
-// ── In-memory store ──────────────────────────────────────────────────────────
-//
-// Problem: Vitest's beforeEach does `globalThis.__db__ = { tasks:[], shopping:[] }`
-// which REPLACES the reference each time. Routes that cached the old reference
-// keep writing to a stale object while GET reads the fresh empty one.
-//
-// Fix: install a property setter on globalThis at module load time.
-// When beforeEach assigns a new object, the setter intercepts it and mutates
-// the stable _store in-place — so routes always read from the same object.
-
-const _store = { tasks: [], shopping: [] };
-let   _nextId = 1;
-
-Object.defineProperty(globalThis, '__db__', {
-  configurable: true,
-  enumerable:   true,
-  get: () => _store,
-  set: (v) => {
-    _store.tasks    = Array.isArray(v && v.tasks)    ? v.tasks    : [];
-    _store.shopping = Array.isArray(v && v.shopping) ? v.shopping : [];
-  },
-});
-
-Object.defineProperty(globalThis, '__nextId__', {
-  configurable: true,
-  enumerable:   true,
-  get: () => _nextId,
-  set: (v) => { _nextId = (typeof v === 'number') ? v : 1; },
-});
-
-function nextId() { return _nextId++; }
+// Prisma takes care of db connection
 
 // ── Zod schemas ────────────────────────────────────────────────────────────────
 const taskCreateSchema = z.object({
@@ -111,46 +73,81 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Tasks
-app.post('/api/tasks', (req, res) => {
+app.post('/api/tasks', async (req, res) => {
   const r = taskCreateSchema.safeParse(req.body);
   if (!r.success) return res.status(422).json({ error: 'Validation failed', issues: r.error.issues });
-  const task = { id: nextId(), ...r.data, done: false, completedAt: null, createdAt: new Date().toISOString() };
-  _store.tasks.push(task);
-  res.json(task);
+  try {
+    const task = await prisma.task.create({
+      data: {
+        ...r.data,
+        done: false,
+        created_at: new Date(),
+      }
+    });
+    res.json(task);
+  } catch (err) {
+    safeError(res, err);
+  }
 });
 
-app.get('/api/tasks', (_req, res) => res.json(_store.tasks));
-
-app.put('/api/tasks/:id', (req, res) => {
-  const id  = Number(req.params.id);
-  const idx = _store.tasks.findIndex(t => t.id === id);
-  if (idx === -1) return res.status(404).json({ error: 'Task not found' });
-  _store.tasks[idx] = { ..._store.tasks[idx], ...req.body };
-  res.json({ success: true });
+app.get('/api/tasks', async (_req, res) => {
+  try {
+    const tasks = await prisma.task.findMany();
+    res.json(tasks);
+  } catch (err) {
+    safeError(res, err);
+  }
 });
 
-app.delete('/api/tasks/:id', (req, res) => {
-  const id  = Number(req.params.id);
-  const idx = _store.tasks.findIndex(t => t.id === id);
-  if (idx !== -1) _store.tasks.splice(idx, 1);
+app.put('/api/tasks/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await prisma.task.update({ where: { id }, data: req.body });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(404).json({ error: 'Task not found' });
+  }
+});
+
+app.delete('/api/tasks/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await prisma.task.delete({ where: { id } });
+  } catch (err) {}
   res.json({ success: true });
 });
 
 // Shopping
-app.post('/api/shopping', (req, res) => {
+app.post('/api/shopping', async (req, res) => {
   const r = shoppingCreateSchema.safeParse(req.body);
   if (!r.success) return res.status(422).json({ error: 'Validation failed', issues: r.error.issues });
-  const item = { id: nextId(), ...r.data, createdAt: new Date().toISOString() };
-  _store.shopping.push(item);
-  res.json(item);
+  try {
+    const item = await prisma.shoppingItem.create({
+      data: {
+        ...r.data,
+        created_at: new Date(),
+      }
+    });
+    res.json(item);
+  } catch (err) {
+    safeError(res, err);
+  }
 });
 
-app.get('/api/shopping', (_req, res) => res.json(_store.shopping));
+app.get('/api/shopping', async (_req, res) => {
+  try {
+    const items = await prisma.shoppingItem.findMany();
+    res.json(items);
+  } catch (err) {
+    safeError(res, err);
+  }
+});
 
-app.delete('/api/shopping/:id', (req, res) => {
-  const id  = Number(req.params.id);
-  const idx = _store.shopping.findIndex(i => i.id === id);
-  if (idx !== -1) _store.shopping.splice(idx, 1);
+app.delete('/api/shopping/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await prisma.shoppingItem.delete({ where: { id } });
+  } catch (err) {}
   res.json({ success: true });
 });
 
@@ -158,7 +155,69 @@ app.delete('/api/shopping/:id', (req, res) => {
 app.post('/api/user', (_req, res) => res.json({ ok: true }));
 
 // Phase 4A routes
-app.use('/', phase4aRoutes(supabase, requireSecret, safeError, queryLimiter));
+app.use('/', phase4aRoutes(prisma, requireSecret, safeError, queryLimiter));
+
+// Auth routes
+const { router: authRouter } = require('./routes/auth')(prisma);
+app.use('/api/auth', authRouter);
+
+// Metric Logs
+app.get('/api/metric_logs', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+    const token = authHeader.split(' ')[1];
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const userId = decoded.userId;
+
+    const logs = await prisma.metricLog.findMany({ where: { userId } });
+    res.json(logs);
+  } catch (err) {
+    safeError(res, err);
+  }
+});
+
+// --- Apple Health Sync Simulation ---
+app.post('/api/health/sync/apple', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+    const token = authHeader.split(' ')[1];
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const userId = decoded.userId;
+
+    const today = new Date();
+    // Simulate weight drop over 14 days
+    for (let i = 14; i >= 0; i--) {
+      const dateStr = new Date(today.getTime() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+      const weight = 80 - ((14 - i) * 0.1); // Weight goes from 80kg to 78.6kg
+      const log = await prisma.metricLog.findFirst({ where: { userId, date: dateStr, metric: 'weight' } });
+      if (!log) {
+        await prisma.metricLog.create({
+          data: {
+            userId,
+            date: dateStr,
+            metric: 'weight',
+            value: weight,
+            unit: 'kg',
+            source: 'Apple Health',
+          }
+        });
+      } else {
+        await prisma.metricLog.update({
+          where: { id: log.id },
+          data: { value: weight, source: 'Apple Health' }
+        });
+      }
+    }
+    res.json({ success: true, message: 'Synced 14 days of Apple Health data' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to sync Apple Health' });
+  }
+});
 
 // --- Finance Sync Simulation (Mock AA Webhook) ---
 app.post('/api/finance/sync/bank', (req, res) => {

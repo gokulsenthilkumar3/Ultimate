@@ -12,6 +12,9 @@ import './index.css';
 import './styles/chamber.css';
 import './styles/premium.css';
 
+import Landing from './components/Landing';
+import AuthForms from './components/AuthForms';
+
 import OnboardingWizard    from './components/OnboardingWizard';
 import CommandPalette      from './components/CommandPalette';
 import DailyCheckIn        from './components/DailyCheckIn';
@@ -24,11 +27,8 @@ import NotFound            from './components/NotFound';
 import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
 import { useVascularitySync }    from './store/use3DStore.usage';
 import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
-import { initRemoteConfig, trackTabSwitch, trackPageView } from './lib/firebase';
 import { GLOBAL_MODULES } from './constants/modules';
 import { TAB_GROUP_MAP, GROUPS } from './components/BottomNavBar';
-initRemoteConfig();
-trackPageView('App');
 
 // ── Unread notification count ──────────────────────────────────────────────
 function countUnreadNotifs(user) {
@@ -298,6 +298,9 @@ export default function App() {
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
   const [isNotFound,        setIsNotFound]        = React.useState(false);
 
+  const [isAuthenticated, setIsAuthenticated] = React.useState(!!localStorage.getItem('token'));
+  const [authView, setAuthView] = React.useState('landing'); // 'landing', 'login', 'signup'
+
   const todayStr = new Date().toISOString().slice(0, 10);
   const navigate = useNavigate();
   const location = useLocation();
@@ -436,6 +439,23 @@ export default function App() {
     document.documentElement.setAttribute('data-palette', palette);
   }, [theme, palette]);
 
+  if (!isAuthenticated) {
+    if (authView === 'landing') {
+      return <Landing onJoinBeta={() => setAuthView('signup')} onLogin={() => setAuthView('login')} />;
+    }
+    return (
+      <ToastProvider>
+        <AuthForms 
+          mode={authView} 
+          onAuthSuccess={(userPayload) => {
+            setIsAuthenticated(true);
+            setUser(userPayload);
+          }} 
+        />
+      </ToastProvider>
+    );
+  }
+
   return (
     <ErrorBoundary resetKey="root">
       <ToastProvider>
@@ -535,12 +555,12 @@ export default function App() {
             {/* ── Navigation: FloatingNav on desktop, BottomNavBar on mobile ── */}
             <FloatingNav
               activeTab={activeTab}
-              setActiveTab={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
+              setActiveTab={(tab) => { setActiveTab(tab); }}
               navItems={navItems}
             />
             <BottomNavBar
               activeTab={activeTab}
-              onTabChange={(tab) => { setActiveTab(tab); trackTabSwitch(tab); }}
+              onTabChange={(tab) => { setActiveTab(tab); }}
             />
           </div>
         </div>

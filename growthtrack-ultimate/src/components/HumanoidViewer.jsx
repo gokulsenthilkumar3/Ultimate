@@ -12,7 +12,7 @@
  * - VFX toggles (heatmap, vascularity, delta, aura)
  */
 
-import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
 import ErrorBoundary from './ErrorBoundary';
 import {
   Rotate3D, Eye, Layers, Zap, Shirt, Ruler, Camera, Download,
@@ -21,6 +21,7 @@ import {
   Activity, Heart, Dumbbell, ArrowRight, Star, Flag,
 } from 'lucide-react';
 import use3DStore from '../store/use3DStore';
+import useStore from '../store/useStore';
 import { USER, BODY_PARTS, STATUS } from '../data/userData';
 import { useToast } from '../hooks/useToast';
 
@@ -138,6 +139,23 @@ export default function HumanoidViewer() {
 
   const [showEditor, setShowEditor] = useState(true);
   const [editorTab, setEditorTab] = useState('metrics'); // metrics | morphs | wardrobe | vfx
+
+  // ── Sync with Global DB Store
+  const globalMetricLogs = useStore((s) => s.metric_logs || []);
+  useEffect(() => {
+    if (globalMetricLogs && globalMetricLogs.length > 0) {
+      // Find the latest weight log
+      const weightLogs = globalMetricLogs.filter(log => log.metric === 'weight');
+      if (weightLogs.length > 0) {
+        // Sort by date descending
+        weightLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+        const latestWeight = parseFloat(weightLogs[0].value);
+        if (!isNaN(latestWeight) && latestWeight !== currentMetrics.weight) {
+          updateCurrentMetric('weight', latestWeight);
+        }
+      }
+    }
+  }, [globalMetricLogs, updateCurrentMetric, currentMetrics.weight]);
 
   // ── Computed deltas
   const deltas = useMemo(() => {

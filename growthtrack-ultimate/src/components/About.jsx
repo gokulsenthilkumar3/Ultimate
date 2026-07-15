@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { Info, Server, Globe, Clock, GitBranch, Zap, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { fetchIpInfo } from '../hooks/useGeolocation';
 
 const CHANGELOG = [
   { version: '2.0.0', date: '2025-07', type: 'major',   emoji: '🚀', title: 'v2.0 — Digital Twin Engine',
@@ -82,7 +83,7 @@ export default function About() {
     const start = Date.now();
     Promise.all([
       fetch('/api/user_profile').then(r => r.ok).catch(() => false),
-      fetch('https://ipapi.co/json/').then(r => r.json()).catch(() => null),
+      fetchIpInfo(),
     ]).then(([ok, ip]) => {
       if (cancelled) return;
       setServerOk(ok);

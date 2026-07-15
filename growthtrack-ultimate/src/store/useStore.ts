@@ -5,7 +5,7 @@ import { createTaskSlice } from './slices/taskSlice';
 import { createHealthSlice } from './slices/healthSlice';
 
 // @ts-ignore
-const API_BASE = import.meta.env?.VITE_API_BASE || '';
+const API_BASE = import.meta.env?.VITE_API_BASE || 'http://localhost:3001/api';
 let isOffline = false;
 
 export async function apiSync(endpoint: string, method: string = 'POST', data: any = null): Promise<any> {
@@ -23,6 +23,7 @@ export async function apiSync(endpoint: string, method: string = 'POST', data: a
         'Content-Type': 'application/json',
         'x-user-id': state.user?.id,
         'x-actor-name': state.user?.name || 'System',
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
       },
     };
     if (data) options.body = JSON.stringify(data);

@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import { FixedSizeList as List } from 'react-window';
 
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
 const PROJECTS_LIST = ['General', 'Development', 'Design', 'Research', 'Meetings', 'Admin', 'Marketing', 'Other'];
@@ -157,7 +158,7 @@ export default function Timesheet() {
     toast.success('Timesheet exported');
   }, [timesheetEntries, today]);
 
-  const recentEntries = useMemo(() => [...timesheetEntries].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 50), [timesheetEntries]);
+  const recentEntries = useMemo(() => [...timesheetEntries].sort((a, b) => (b.date || '').localeCompare(a.date || '')), [timesheetEntries]);
 
   // Block timeline (today's entries as horizontal blocks)
   const todayTimeline = useMemo(() => {
@@ -356,25 +357,37 @@ export default function Timesheet() {
                     <th key={h} style={{ padding: '0.5rem 0.6rem', textAlign: 'left', color: 'var(--text-3)', fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {recentEntries.map(e => (
-                  <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{e.date}</td>
-                    <td style={{ padding: '0.5rem 0.6rem', fontWeight: 700 }}>{e.project}</td>
-                    <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-2)' }}>{e.task || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace', fontWeight: 800, color: 'var(--accent)' }}>{formatDuration(e.seconds || 0)}</td>
-                    <td style={{ padding: '0.5rem 0.6rem', textAlign: 'center' }}>
+            </thead>
+          </table>
+          <div style={{ flex: 1, minHeight: '400px' }}>
+            <List
+              height={400}
+              itemCount={recentEntries.length}
+              itemSize={36}
+              width="100%"
+              itemData={recentEntries}
+            >
+              {({ index, style, data }) => {
+                const e = data[index];
+                return (
+                  <div style={{ ...style, display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ width: '15%', padding: '0 0.6rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{e.date}</div>
+                    <div style={{ width: '15%', padding: '0 0.6rem', fontWeight: 700, fontSize: '0.78rem' }}>{e.project}</div>
+                    <div style={{ width: '25%', padding: '0 0.6rem', color: 'var(--text-2)', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.task || '—'}</div>
+                    <div style={{ width: '15%', padding: '0 0.6rem', fontFamily: 'monospace', fontWeight: 800, color: 'var(--accent)', fontSize: '0.78rem' }}>{formatDuration(e.seconds || 0)}</div>
+                    <div style={{ width: '15%', padding: '0 0.6rem', textAlign: 'center' }}>
                       <span style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: '99px', fontWeight: 700, background: e.billable ? 'rgba(16,185,129,0.12)' : 'rgba(107,114,128,0.12)', color: e.billable ? '#10b981' : '#6b7280' }}>{e.billable ? 'Billable' : 'Non-bill.'}</span>
-                    </td>
-                    <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace', color: '#fbbf24', fontWeight: 700 }}>{e.earnings ? `$${e.earnings.toFixed(2)}` : '—'}</td>
-                    <td style={{ padding: '0.5rem 0.6rem' }}>
+                    </div>
+                    <div style={{ width: '10%', padding: '0 0.6rem', fontFamily: 'monospace', color: '#fbbf24', fontWeight: 700, fontSize: '0.78rem' }}>{e.earnings ? `$${e.earnings.toFixed(2)}` : '—'}</div>
+                    <div style={{ width: '5%', padding: '0 0.6rem', display: 'flex', justifyContent: 'center' }}>
                       <button onClick={() => { if (typeof deleteTimesheetEntry === 'function') deleteTimesheetEntry(e.id); }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} /></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                );
+              }}
+            </List>
+          </div>
+        </div>
           )}
         </div>
       )}

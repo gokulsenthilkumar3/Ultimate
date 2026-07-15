@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Activity, Sun, Moon, Droplets, Target, CheckSquare, Flame, Zap,
   TrendingUp, Award, Clock, RefreshCw, ChevronRight,
@@ -143,8 +144,6 @@ export default function Overview({ setActiveTab }) {
 
   const [quote,       setQuote]       = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
   const [hydration,   setHydration]   = useState(0);
-  const [weather,     setWeather]     = useState(null);
-  const [weatherLoading, setWeatherLoading] = useState(true);
 
   // Rotate quote every 30s
   useEffect(() => {
@@ -152,16 +151,22 @@ export default function Overview({ setActiveTab }) {
     return () => clearInterval(t);
   }, []);
 
-  // Fetch weather
-  useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(pos => {
-      const { latitude, longitude } = pos.coords;
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode,relativehumidity_2m&timezone=auto`)
-        .then(r => r.json())
-        .then(data => { setWeather(data.current); setWeatherLoading(false); })
-        .catch(() => setWeatherLoading(false));
-    }, () => setWeatherLoading(false));
-  }, []);
+  // Fetch weather with React Query caching
+  const { data: weather, isLoading: weatherLoading } = useQuery({
+    queryKey: ['weather'],
+    queryFn: () => new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode,relativehumidity_2m&timezone=auto`)
+          .then(r => r.json())
+          .then(data => resolve(data.current))
+          .catch(() => resolve(null));
+      }, () => resolve(null));
+    }),
+    staleTime: 1000 * 60 * 15, // Cache for 15 minutes
+    retry: false
+  });
 
   // Compute health score from various factors
   const healthScore = useMemo(() => {

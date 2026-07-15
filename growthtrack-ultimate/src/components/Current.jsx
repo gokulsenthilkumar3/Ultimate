@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Cloud, Sun, Droplets, Wind, Eye, Thermometer, Newspaper, RefreshCw, MapPin, AlertTriangle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 
@@ -53,14 +54,6 @@ function timeAgo(ms) {
 export default function Current() {
   const toast = useToast();
 
-  const [weather,      setWeather]      = useState(null);
-  const [weatherLoading, setWeatherLoading] = useState(true);
-  const [weatherError, setWeatherError] = useState(null);
-  const [location,     setLocation]     = useState(null);
-  const [city,         setCity]         = useState('');
-  const [news,         setNews]         = useState([]);
-  const [newsLoading,  setNewsLoading]  = useState(false);
-  const [activeCat,    setActiveCat]    = useState('tech');
   const [lastUpdated,  setLastUpdated]  = useState(null);
 
   const now     = new Date();
@@ -68,78 +61,77 @@ export default function Current() {
   const tg      = getTimeGradient(hour);
 
   // ── Geolocation + weather ──────────────────────────────────────────────
-  const fetchWeather = useCallback(async (lat, lon) => {
-    setWeatherLoading(true);
-    setWeatherError(null);
-    try {
+  const { data: location } = useQuery({
+    queryKey: ['location'],
+    queryFn: () => new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        toast.info('Using default location (London). Enable location for accurate weather.');
+        resolve({ lat: 51.5074, lon: -0.1278, default: true });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, default: false }),
+        () => {
+          toast.info('Using default location (London). Enable location for accurate weather.');
+          resolve({ lat: 51.5074, lon: -0.1278, default: true });
+        }
+      );
+    }),
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+
+  const { data: weather, isLoading: weatherLoading, error: weatherError, refetch: fetchWeather } = useQuery({
+    queryKey: ['current-weather', location?.lat, location?.lon],
+    enabled: !!location,
+    queryFn: async () => {
       const params = [
         'temperature_2m', 'weathercode', 'relativehumidity_2m', 'windspeed_10m',
         'apparent_temperature', 'visibility', 'precipitation_probability',
         'uv_index', 'is_day',
       ].join(',');
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&current=${params}&hourly=temperature_2m&timezone=auto&forecast_days=1`;
-      const res  = await fetch(url);
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&current_weather=true&current=${params}&hourly=temperature_2m&timezone=auto&forecast_days=1`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Weather fetch failed');
       const data = await res.json();
-      setWeather(data);
       setLastUpdated(Date.now());
-    } catch (err) {
-      setWeatherError('Could not fetch weather. Check network connection.');
-    } finally {
-      setWeatherLoading(false);
-    }
-  }, []);
+      return data;
+    },
+    staleTime: 1000 * 60 * 15,
+  });
 
-  const fetchReverseGeo = useCallback(async (lat, lon) => {
-    try {
-      const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
-      const data = await res.json();
-      const addr = data.address;
-      setCity([addr.city || addr.town || addr.village || addr.county, addr.country].filter(Boolean).join(', '));
-    } catch { setCity(`${lat.toFixed(2)}, ${lon.toFixed(2)}`); }
-  }, []);
-
-  useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      pos => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        setLocation({ lat, lon });
-        fetchWeather(lat, lon);
-        fetchReverseGeo(lat, lon);
-      },
-      () => {
-        // fallback: London
-        setLocation({ lat: 51.5074, lon: -0.1278 });
-        fetchWeather(51.5074, -0.1278);
-        setCity('London (default)');
-        toast.info('Using default location (London). Enable location for accurate weather.');
+  const { data: city } = useQuery({
+    queryKey: ['reverse-geo', location?.lat, location?.lon],
+    enabled: !!location,
+    queryFn: async () => {
+      if (location.default) return 'London (default)';
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.lon}&format=json`);
+        const data = await res.json();
+        const addr = data.address;
+        return [addr.city || addr.town || addr.village || addr.county, addr.country].filter(Boolean).join(', ');
+      } catch {
+        return `${location.lat.toFixed(2)}, ${location.lon.toFixed(2)}`;
       }
-    );
-  }, []);
+    },
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
 
   // ── News ──────────────────────────────────────────────────────────────
-  const fetchNews = useCallback(async () => {
-    setNewsLoading(true);
-    try {
-      // Hacker News top stories (no CORS issues)
+  const { data: news = [], isLoading: newsLoading, refetch: fetchNews } = useQuery({
+    queryKey: ['hackernews'],
+    queryFn: async () => {
       const ids = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json').then(r => r.json());
       const top = ids.slice(0, 12);
       const stories = await Promise.all(top.map(id =>
         fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json())
       ));
-      setNews(stories.filter(s => s && s.title).map(s => ({
+      return stories.filter(s => s && s.title).map(s => ({
         id: s.id, title: s.title, url: s.url, score: s.score, comments: s.descendants || 0,
         by: s.by, time: s.time ? s.time * 1000 : null, source: 'Hacker News',
-      })));
-    } catch {
-      setNews([]);
-      toast.error('Could not fetch news. Check network connection.');
-    } finally {
-      setNewsLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => { fetchNews(); }, []);
+      }));
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes
+  });
 
   // ── Derived weather values ──────────────────────────────────────────────
   const cur = weather?.current;
@@ -241,7 +233,7 @@ export default function Current() {
           {lastUpdated && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Weather updated {timeAgo(lastUpdated)}</p>}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => location && fetchWeather(location.lat, location.lon)} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>
+          <button onClick={() => fetchWeather()} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>
             <RefreshCw size={12} /> Weather
           </button>
           <button onClick={fetchNews} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>

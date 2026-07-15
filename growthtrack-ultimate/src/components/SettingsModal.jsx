@@ -8,6 +8,8 @@ import {
 import useStore from '../store/useStore';
 import { apiSync } from '../store/useStore';
 import ConfirmDialog from './ui/ConfirmDialog';
+import { fetchIpInfo } from '../hooks/useGeolocation';
+import DeviceSyncModal from './DeviceSyncModal';
 
 export default function SettingsModal({ onClose }) {
   const [activeTab, setActiveTab] = useState('Profile');
@@ -21,6 +23,7 @@ export default function SettingsModal({ onClose }) {
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [networkInfo, setNetworkInfo] = useState({ ip: 'Detecting...', location: '' });
   const [confirmReset, setConfirmReset] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
 
   const fetchNetworkInfo = async () => {
     try {
@@ -31,23 +34,19 @@ export default function SettingsModal({ onClose }) {
             // Mock Reverse geocode to avoid 429 Too Many Requests
             const loc = 'Local';
             const country = 'Network';
-            const ipRes = await fetch('https://ipapi.co/json/');
-            const ipData = await ipRes.json();
-            setNetworkInfo({ ip: ipData.ip, location: `${loc}, ${country} (GPS)` });
+            const ipData = await fetchIpInfo();
+            setNetworkInfo({ ip: ipData?.ip || 'Unknown', location: `${loc}, ${country} (GPS)` });
           } catch (e) {
-            const ipRes = await fetch('https://ipapi.co/json/');
-            const ipData = await ipRes.json();
-            setNetworkInfo({ ip: ipData.ip, location: `${ipData.city}, ${ipData.country_name} (IP)` });
+            const ipData = await fetchIpInfo();
+            setNetworkInfo({ ip: ipData?.ip || 'Unknown', location: ipData ? `${ipData.city}, ${ipData.country_name} (IP)` : 'Offline' });
           }
         }, async () => {
-          const res = await fetch('https://ipapi.co/json/');
-          const data = await res.json();
-          setNetworkInfo({ ip: data.ip, location: `${data.city}, ${data.country_name} (IP)` });
+          const data = await fetchIpInfo();
+          setNetworkInfo({ ip: data?.ip || 'Unknown', location: data ? `${data.city}, ${data.country_name} (IP)` : 'Offline' });
         });
       } else {
-        const res = await fetch('https://ipapi.co/json/');
-        const data = await res.json();
-        setNetworkInfo({ ip: data.ip, location: `${data.city}, ${data.country_name}` });
+        const data = await fetchIpInfo();
+        setNetworkInfo({ ip: data?.ip || 'Unknown', location: data ? `${data.city}, ${data.country_name}` : 'Offline' });
       }
     } catch (err) {
       setNetworkInfo({ ip: 'Unavailable', location: 'Offline' });
@@ -115,11 +114,16 @@ export default function SettingsModal({ onClose }) {
   ];
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '1.5rem', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)'
-    }}>
+    <div 
+      role="dialog" 
+      aria-modal="true" 
+      aria-labelledby="settings-title"
+      style={{
+        position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1.5rem', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)'
+      }}
+    >
       <ConfirmDialog
         open={confirmReset}
         title="Reset Onboarding?"
@@ -140,8 +144,8 @@ export default function SettingsModal({ onClose }) {
           background: 'rgba(255,255,255,0.02)', padding: '2rem 1rem',
           display: 'flex', flexDirection: 'column', gap: '0.5rem'
         }}>
-          <h2 className="text-display" style={{ fontSize: '1.2rem', marginBottom: '1.5rem', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Settings size={20} /> Settings
+          <h2 id="settings-title" className="text-display" style={{ fontSize: '1.2rem', marginBottom: '1.5rem', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Settings size={20} aria-hidden="true" /> Settings
           </h2>
           
           {tabs.map(tab => (
@@ -215,6 +219,20 @@ export default function SettingsModal({ onClose }) {
                   ))}
                 </div>
 
+                <div style={{ marginBottom: '2rem' }}>
+                  <button 
+                    onClick={() => setShowSyncModal(true)}
+                    style={{
+                      width: '100%', padding: '12px', borderRadius: '12px',
+                      background: 'var(--accent)', color: '#fff',
+                      border: 'none', fontWeight: 700, fontSize: '0.9rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer'
+                    }}
+                  >
+                    <Zap size={16} /> Connect Devices & Apps
+                  </button>
+                </div>
+
                 <div className="glass-card" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)' }}>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', lineHeight: 1.6 }}>
                     Ultimate Digital Twin Engine v2.1<br />
@@ -271,6 +289,7 @@ export default function SettingsModal({ onClose }) {
           </div>
         </div>
       </div>
+      {showSyncModal && <DeviceSyncModal onClose={() => setShowSyncModal(false)} />}
     </div>
   );
 }
