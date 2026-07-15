@@ -68,6 +68,7 @@ const useStore = create<any>()(
       user: null,
       skills: [],
       calendar_events: [],
+      databases: [],
 
       shopping: { items: [] },
 
@@ -529,6 +530,7 @@ const useStore = create<any>()(
       updateAssessmentQA: async (data: any) => { set({ assessmentQA: data }); apiSync('/assessment_qa', 'POST', data); },
       updateSkills: async (data: any) => { set({ skills: data }); apiSync('/skills', 'POST', data); },
       updateCalendarEvents: async (data: any) => { set({ calendar_events: data }); apiSync('/calendar_events', 'POST', data); },
+      setDatabases: (data: any[]) => set({ databases: data }),
       updateWellnessData: async (data: any) => { set({ wellnessData: data }); apiSync('/wellness_data', 'POST', data); },
 
       addMoodLog: async (log: any) => {

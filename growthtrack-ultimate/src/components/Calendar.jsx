@@ -1,500 +1,413 @@
-import { Z_INDEX } from '../constants';
-import React, { useState, useMemo } from 'react';
-import {
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight,
-  Plus, CheckCircle2, Circle, Clock, X, Save, Pencil, Trash2, Repeat, Download
-} from 'lucide-react';
-import useStore, { apiSync } from '../store/useStore';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Plus, Trash2, Edit3, Check, X, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import EmptyState from './ui/EmptyState';
 
-const EVENT_TYPES = ['task', 'fitness', 'work', 'health'];
-const TYPE_COLOR  = { task: 'var(--accent)', fitness: '#f43f5e', work: '#3b82f6', health: '#10b981' };
-
-/** Palette of quick-pick event accent colours */
-const EVENT_COLORS = [
-  'var(--accent)', '#f43f5e', '#3b82f6', '#10b981',
-  '#f59e0b',       '#8b5cf6', '#ec4899', '#06b6d4',
+const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const EVENT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280', '#22c55e', '#fb923c'];
+const RECUR_OPTIONS = [
+  { value: 'none',    label: 'No recurrence' },
+  { value: 'daily',   label: 'Daily' },
+  { value: 'weekly',  label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly',  label: 'Yearly' },
 ];
+const EVENT_TYPES = ['Event', 'Meeting', 'Reminder', 'Task', 'Birthday', 'Holiday', 'Personal', 'Work'];
 
-const RECURRENCE_OPTIONS = ['none', 'daily', 'weekly', 'monthly'];
+function isSameDay(d1, d2) {
+  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+}
 
-const EMPTY_EVENT = { title: '', type: 'task', time: '09:00', notes: '', color: '', recurrence: 'none' };
+function expandRecurring(event, viewStart, viewEnd) {
+  const start = new Date(event.date);
+  const dates = [];
+
+  if (!event.recurrence || event.recurrence === 'none') {
+    if (start >= viewStart && start <= viewEnd) dates.push(event.date);
+    return dates;
+  }
+
+  let cur = new Date(start);
+  const end = new Date(viewEnd);
+  let safety = 0;
+
+  while (cur <= end && safety < 400) {
+    safety++;
+    if (cur >= viewStart) dates.push(cur.toISOString().slice(0, 10));
+
+    if (event.recurrence === 'daily')   cur.setDate(cur.getDate() + 1);
+    else if (event.recurrence === 'weekly') cur.setDate(cur.getDate() + 7);
+    else if (event.recurrence === 'monthly') cur.setMonth(cur.getMonth() + 1);
+    else if (event.recurrence === 'yearly') cur.setFullYear(cur.getFullYear() + 1);
+    else break;
+  }
+
+  return dates;
+}
 
 export default function Calendar() {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState(null);
-  const [formData, setFormData] = useState(EMPTY_EVENT);
+  const toast = useToast();
+  const events              = useStore(s => s.calendar_events) || [];
+  const _updateAll          = useStore(s => s.updateCalendarEvents);
+  const addEvent            = (ev) => _updateAll && _updateAll([...events, ev]);
+  const updateEvent         = (id, updates) => _updateAll && _updateAll(events.map(e => e.id === id ? { ...e, ...updates } : e));
+  const deleteEvent         = (id) => _updateAll && _updateAll(events.filter(e => e.id !== id));
 
-  const events = useStore(state => state.calendar_events) || [];
-  const tasks  = useStore(state => state.tasks) || [];
-  const toast  = useToast();
-  const fetchInitialData = useStore(state => state.fetchInitialData);
+  const today = new Date();
+  const [year,  setYear]  = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+  const [view,  setView]  = useState('month');
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editId,  setEditId]  = useState(null);
+  const [editForm, setEditForm] = useState({});
 
-  const year  = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  const [form, setForm] = useState({
+    title: '', date: today.toISOString().slice(0, 10), endDate: '',
+    startTime: '', endTime: '', type: 'Event', color: EVENT_COLORS[0],
+    description: '', location: '', recurrence: 'none', allDay: true,
+  });
 
-  const daysInMonth     = new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  // Build visible range for month view
+  const { calDays, viewStart, viewEnd } = useMemo(() => {
+    const firstDay = new Date(year, month, 1);
+    const lastDay  = new Date(year, month + 1, 0);
+    const startDow = firstDay.getDay();
+    const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
 
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const days = [];
+    const vs = new Date(firstDay); vs.setDate(vs.getDate() - startDow);
+    for (let i = 0; i < totalCells; i++) {
+      const d = new Date(vs); d.setDate(vs.getDate() + i);
+      days.push(d);
+    }
 
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+    const ve = new Date(vs); ve.setDate(vs.getDate() + totalCells);
+    return { calDays: days, viewStart: vs, viewEnd: ve };
+  }, [year, month]);
 
-  const isToday = (day) => {
-    const today = new Date();
-    return today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
-  };
-
-  const toDateStr = (day) =>
-    `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-  const getEventsForDay = (day) => {
-    const dateStr = toDateStr(day);
-    const dateObj = new Date(year, month, day);
-    const dayOfWeek = dateObj.getDay();
-    
-    return events.filter(e => {
-      if (e.date === dateStr) return true;
-      if (!e.recurrence || e.recurrence === 'none') return false;
-      
-      const eDateObj = new Date(e.date);
-      if (isNaN(eDateObj.getTime()) || eDateObj > dateObj) return false;
-      
-      if (e.recurrence === 'daily') return true;
-      if (e.recurrence === 'weekly') return eDateObj.getDay() === dayOfWeek;
-      if (e.recurrence === 'monthly') return eDateObj.getDate() === day;
-      return false;
+  // Expand recurring events across the visible range
+  const expandedEvents = useMemo(() => {
+    const result = [];
+    events.forEach(ev => {
+      const dates = expandRecurring(ev, viewStart, viewEnd);
+      dates.forEach(d => result.push({ ...ev, date: d, _recurring: ev.recurrence !== 'none' }));
     });
+    return result;
+  }, [events, viewStart, viewEnd]);
+
+  const eventsOnDay = useCallback((day) => {
+    const key = day.toISOString().slice(0, 10);
+    return expandedEvents.filter(e => e.date === key);
+  }, [expandedEvents]);
+
+  const doAdd = () => {
+    if (!form.title.trim()) { toast.error('Title required'); return; }
+    const ev = { ...form, id: Date.now() };
+    if (typeof addEvent === 'function') addEvent(ev);
+    setForm({ title: '', date: today.toISOString().slice(0, 10), endDate: '', startTime: '', endTime: '', type: 'Event', color: EVENT_COLORS[0], description: '', location: '', recurrence: 'none', allDay: true });
+    setShowAdd(false);
+    toast.success(`📅 "${ev.title}" added`);
   };
 
-  const exportICal = () => {
-    let icsContent = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//GrowthTrack//EN\r\n";
-    events.forEach(e => {
-      if(!e.date) return;
-      const dateParts = e.date.split('-');
-      if(dateParts.length !== 3) return;
-      const y = dateParts[0], m = dateParts[1], d = dateParts[2];
-      const time = (e.time || '09:00').replace(':', '') + '00';
-      const dtstart = `${y}${m}${d}T${time}`;
-      let rrule = '';
-      if(e.recurrence === 'daily') rrule = "RRULE:FREQ=DAILY\r\n";
-      else if(e.recurrence === 'weekly') rrule = "RRULE:FREQ=WEEKLY\r\n";
-      else if(e.recurrence === 'monthly') rrule = "RRULE:FREQ=MONTHLY\r\n";
-
-      icsContent += `BEGIN:VEVENT\r\nSUMMARY:${e.title}\r\nDTSTART:${dtstart}\r\nDTEND:${dtstart}\r\n${rrule}END:VEVENT\r\n`;
-    });
-    icsContent += "END:VCALENDAR";
-    const blob = new Blob([icsContent], { type: 'text/calendar' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'growthtrack-calendar.ics';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Calendar exported to iCal');
+  const doDelete = (id) => {
+    const ev = events.find(e => e.id === id);
+    if (typeof deleteEvent === 'function') deleteEvent(id);
+    toast.info(`${ev?.title} deleted`);
   };
 
-  const taskDueDates = useMemo(() => {
-    const map = {};
-    (tasks || []).forEach(t => {
-      if (!t.due_date) return;
-      const d = t.due_date.slice(0, 10);
-      const [y, m] = d.split('-').map(Number);
-      if (y === year && m === month + 1) {
-        map[d] = (map[d] || 0) + 1;
-      }
-    });
-    return map;
-  }, [tasks, year, month]);
-
-  const openAddModal = (day) => {
-    setSelectedDay(day);
-    setEditingEvent(null);
-    setFormData(EMPTY_EVENT);
-    setIsModalOpen(true);
+  const saveEdit = () => {
+    if (typeof updateEvent === 'function') updateEvent(editId, editForm);
+    setEditId(null); toast.success('Event updated');
   };
 
-  const openEditModal = (ev, e) => {
-    e.stopPropagation();
-    setEditingEvent(ev);
-    setFormData({
-      title:      ev.title,
-      type:       ev.type,
-      time:       ev.time || '09:00',
-      notes:      ev.notes || '',
-      color:      ev.color || '',
-      recurrence: ev.recurrence || 'none',
-    });
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingEvent(null);
-    setFormData(EMPTY_EVENT);
-  };
-
-  const handleAddEvent = async () => {
-    if (!formData.title.trim()) { toast.error('Event title is required'); return; }
-    if (!selectedDay) return;
-    const dateStr = toDateStr(selectedDay);
-    const event = {
-      id: Date.now().toString(),
-      ...formData,
-      title: formData.title.trim(),
-      date: dateStr,
-      completed: false,
+  // iCal export
+  const exportICal = useCallback(() => {
+    const esc = (s = '') => s.replace(/[,;\\]/g, c => '\\' + c).replace(/\n/g, '\\n');
+    const dtStr = (dateStr, timeStr = '') => {
+      if (!dateStr) return '';
+      const dt = new Date(dateStr + (timeStr ? 'T' + timeStr : 'T00:00:00'));
+      return dt.toISOString().replace(/[-:]/g, '').replace('.000', '');
     };
-    try {
-      await apiSync('/calendar_events/single', 'POST', event);
-      toast.success('Event added to calendar');
-      fetchInitialData();
-      closeModal();
-    } catch {
-      const updatedEvents = [...events, event];
-      try {
-        await apiSync('/calendar_events', 'POST', updatedEvents);
-        fetchInitialData();
-        closeModal();
-        toast.success('Event added');
-      } catch { toast.error('Failed to save event'); }
-    }
-  };
+    const lines = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GrowthTrack//Digital Twin//EN', 'CALSCALE:GREGORIAN',
+    ];
+    events.forEach(ev => {
+      const uid = `${ev.id}@growthtrack`;
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${uid}`);
+      lines.push(`SUMMARY:${esc(ev.title)}`);
+      lines.push(`DTSTART:${dtStr(ev.date, ev.startTime)}`);
+      if (ev.endDate || ev.endTime) lines.push(`DTEND:${dtStr(ev.endDate || ev.date, ev.endTime || '23:59')}`);
+      if (ev.description) lines.push(`DESCRIPTION:${esc(ev.description)}`);
+      if (ev.location)    lines.push(`LOCATION:${esc(ev.location)}`);
+      if (ev.recurrence && ev.recurrence !== 'none') {
+        const rmap = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY', yearly: 'YEARLY' };
+        lines.push(`RRULE:FREQ=${rmap[ev.recurrence]}`);
+      }
+      lines.push('END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    const ical = lines.join('\r\n');
+    const url = URL.createObjectURL(new Blob([ical], { type: 'text/calendar;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'growthtrack-calendar.ics'; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${events.length} events as .ics`);
+  }, [events, toast]);
 
-  const handleEditEvent = async () => {
-    if (!formData.title.trim()) { toast.error('Event title is required'); return; }
-    const updated = { ...editingEvent, ...formData, title: formData.title.trim() };
-    try {
-      await apiSync(`/calendar_events/${editingEvent.id}`, 'PATCH', updated);
-      toast.success('Event updated');
-      fetchInitialData();
-      closeModal();
-    } catch {
-      const updatedEvents = events.map(e => e.id === editingEvent.id ? updated : e);
-      try {
-        await apiSync('/calendar_events', 'POST', updatedEvents);
-        fetchInitialData();
-        closeModal();
-        toast.success('Event updated');
-      } catch { toast.error('Failed to update event'); }
-    }
-  };
+  const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); };
+  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); };
+  const goToday   = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); };
 
-  const handleDeleteEvent = async (eventId, e) => {
-    e.stopPropagation();
-    try {
-      await apiSync(`/calendar_events/${eventId}`, 'DELETE');
-      toast.success('Event removed');
-      fetchInitialData();
-    } catch {
-      const updatedEvents = events.filter(ev => ev.id !== eventId);
-      try {
-        await apiSync('/calendar_events', 'POST', updatedEvents);
-        fetchInitialData();
-        toast.success('Event removed');
-      } catch { toast.error('Failed to remove event'); }
-    }
-  };
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDate) return [];
+    const key = selectedDate.toISOString().slice(0, 10);
+    return expandedEvents.filter(e => e.date === key).sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+  }, [selectedDate, expandedEvents]);
 
-  const toggleComplete = async (eventId) => {
-    const ev = events.find(e => e.id === eventId);
-    if (!ev) return;
-    try {
-      await apiSync(`/calendar_events/${eventId}`, 'PATCH', { completed: !ev.completed });
-      fetchInitialData();
-    } catch {
-      const updatedEvents = events.map(e => e.id === eventId ? { ...e, completed: !e.completed } : e);
-      try { await apiSync('/calendar_events', 'POST', updatedEvents); fetchInitialData(); } catch {}
-    }
-  };
-
-  const handleDayClick = (day) => openAddModal(day);
-  const handleSubmit   = () => editingEvent ? handleEditEvent() : handleAddEvent();
-
-  // Derive effective accent for an event
-  const eventAccent = (e) => e.color || TYPE_COLOR[e.type] || 'var(--accent)';
+  const upcomingEvents = useMemo(() => {
+    const todayKey = today.toISOString().slice(0, 10);
+    return expandedEvents.filter(e => e.date >= todayKey).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
+  }, [expandedEvents, today]);
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
+    <div style={{ padding: '0.5rem 0' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Schedule & Planning</p>
-          <h2 className="text-display" style={{ fontSize: '2.2rem' }}>Personal Calendar</h2>
-          <p className="text-secondary">Track your habits, events, and performance plans.</p>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Schedule</p>
+          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Calendar</h2>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{events.length} events · Recurring support · iCal export</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button onClick={exportICal} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)' }}>
-            <Download size={16} /> EXPORT
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button onClick={exportICal} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+            <Download size={12} /> Export .ics
           </button>
-          <button onClick={() => openAddModal(new Date().getDate())} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={18} /> ADD EVENT
-          </button>
+          <button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Add Event</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
-        {/* Calendar Body */}
-        <div className="glass-card" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>{monthNames[month]} <span style={{ color: 'var(--accent)' }}>{year}</span></h3>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={prevMonth} className="btn-icon"><ChevronLeft size={20} /></button>
-              <button onClick={nextMonth} className="btn-icon"><ChevronRight size={20} /></button>
+      {/* Add form */}
+      {showAdd && (
+        <div className="glass-card mb-lg">
+          <p style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>New Event</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
+            <input placeholder="Title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="form-input" style={{ gridColumn: 'span 2' }} />
+            <div>
+              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Start Date *</label>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="form-input" />
             </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>End Date</label>
+              <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className="form-input" />
+            </div>
+            {!form.allDay && (
+              <>
+                <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} className="form-input" placeholder="Start time" />
+                <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} className="form-input" placeholder="End time" />
+              </>
+            )}
+            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="form-input">
+              {EVENT_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+            <select value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))} className="form-input">
+              {RECUR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <input placeholder="Location (optional)" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="form-input" />
+            <input placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '1rem' }}>
-            {['SUN','MON','TUE','WED','THU','FRI','SAT'].map(day => (
-              <div key={day} style={{ fontWeight: 900, color: 'var(--text-3)', fontSize: '0.7rem', letterSpacing: '0.1em' }}>{day}</div>
-            ))}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: 'minmax(110px, auto)', gap: '4px' }}>
-            {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-              <div key={`empty-${i}`} style={{ background: 'rgba(255,255,255,0.01)', borderRadius: '4px' }} />
-            ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day       = i + 1;
-              const dayEvents = getEventsForDay(day);
-              const dateStr   = toDateStr(day);
-              const dueTasks  = taskDueDates[dateStr] || 0;
-              const active    = isToday(day);
-              const isSelected = selectedDay === day;
-
-              return (
-                <div
-                  key={day}
-                  onClick={() => handleDayClick(day)}
-                  style={{
-                    padding: '0.6rem',
-                    background: active ? 'rgba(6,182,212,0.05)' : 'var(--bg-elevated)',
-                    border: isSelected ? '1px solid var(--accent)' : active ? '1px solid var(--accent)' : '1px solid var(--border)',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    transition: '0.2s',
-                    position: 'relative',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onMouseLeave={e => { if (!active && !isSelected) e.currentTarget.style.borderColor = 'var(--border)'; }}
-                >
-                  <span style={{ fontWeight: 900, fontSize: '0.95rem', color: active ? '#fff' : 'var(--text-2)', display: 'block', marginBottom: '6px', background: active ? 'var(--accent)' : 'transparent', width: active ? '24px' : 'auto', height: active ? '24px' : 'auto', lineHeight: active ? '24px' : 'auto', textAlign: 'center', borderRadius: active ? '50%' : '0' }}>{day}</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    {dayEvents.slice(0, 2).map(e => (
-                      <div key={e.id} style={{
-                        fontSize: '0.6rem', padding: '2px 5px', borderRadius: '3px',
-                        background: e.completed ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)',
-                        color: e.completed ? 'var(--success)' : 'var(--text-2)',
-                        borderLeft: `2px solid ${eventAccent(e)}`,
-                        textDecoration: e.completed ? 'line-through' : 'none',
-                        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                      }}>{e.recurrence && e.recurrence !== 'none' && <Repeat size={8} style={{ marginRight: 3, verticalAlign: 'middle' }} />}{e.title}</div>
-                    ))}
-                    {dayEvents.length > 2 && (
-                      <span style={{ fontSize: '0.55rem', color: 'var(--text-3)', fontWeight: 800 }}>+{dayEvents.length - 2} more</span>
-                    )}
-                    {dueTasks > 0 && (
-                      <div style={{
-                        fontSize: '0.55rem', padding: '1px 5px', borderRadius: '3px',
-                        background: 'rgba(139,92,246,0.12)', color: '#a78bfa',
-                        borderLeft: '2px solid #8b5cf6', fontWeight: 700,
-                        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                      }}>📌 {dueTasks} task{dueTasks !== 1 ? 's' : ''} due</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Day Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="glass-card" style={{ padding: '1.5rem' }}>
-            <h4 className="label-caps" style={{ color: 'var(--accent)', marginBottom: '1.25rem' }}>
-              {selectedDay ? `${monthNames[month]} ${selectedDay}` : 'Today'}
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {getEventsForDay(selectedDay || new Date().getDate()).length === 0 && (
-                <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-                  <CalendarIcon size={32} style={{ color: 'var(--text-3)', margin: '0 auto 0.5rem' }} />
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontStyle: 'italic' }}>No events scheduled.</p>
-                  <button
-                    onClick={() => openAddModal(selectedDay || new Date().getDate())}
-                    className="btn-ghost"
-                    style={{ marginTop: '0.75rem', fontSize: '0.75rem', fontWeight: 800 }}
-                  >
-                    <Plus size={12} /> ADD FIRST EVENT
-                  </button>
-                </div>
-              )}
-              {getEventsForDay(selectedDay || new Date().getDate()).map(e => (
-                <div key={e.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
-                  <button onClick={() => toggleComplete(e.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '2px' }}>
-                    {e.completed ? <CheckCircle2 size={18} color="var(--success)" /> : <Circle size={18} color="var(--text-3)" />}
-                  </button>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '0.85rem', fontWeight: 700, color: e.completed ? 'var(--text-3)' : 'var(--text-1)', textDecoration: e.completed ? 'line-through' : 'none' }}>
-                      {e.recurrence && e.recurrence !== 'none' && <Repeat size={11} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--text-3)' }} />}
-                      {e.title}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={10} /> {e.time || 'All day'}</span>
-                      <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: eventAccent(e), textTransform: 'uppercase' }}>{e.type}</span>
-                      {e.recurrence && e.recurrence !== 'none' && (
-                        <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', textTransform: 'capitalize' }}>{e.recurrence}</span>
-                      )}
-                    </div>
-                    {e.notes && <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '4px', fontStyle: 'italic' }}>{e.notes}</p>}
-                  </div>
-                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                    <button
-                      onClick={(ev) => openEditModal(e, ev)}
-                      title="Edit event"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-3)', borderRadius: '4px' }}
-                      onMouseEnter={ev => ev.currentTarget.style.color = 'var(--accent)'}
-                      onMouseLeave={ev => ev.currentTarget.style.color = 'var(--text-3)'}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={(ev) => handleDeleteEvent(e.id, ev)}
-                      title="Delete event"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-3)', borderRadius: '4px' }}
-                      onMouseEnter={ev => ev.currentTarget.style.color = '#f43f5e'}
-                      onMouseLeave={ev => ev.currentTarget.style.color = 'var(--text-3)'}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+              <div onClick={() => setForm(f => ({ ...f, allDay: !f.allDay }))} style={{ width: '32px', height: '18px', borderRadius: '99px', background: form.allDay ? 'var(--accent)' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
+                <div style={{ position: 'absolute', top: '2px', left: form.allDay ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+              </div>
+              All day
+            </label>
+            <div style={{ display: 'flex', gap: '4px', marginLeft: '0.5rem' }}>
+              {EVENT_COLORS.map(c => (
+                <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))} style={{ width: '18px', height: '18px', borderRadius: '50%', background: c, border: form.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0 }} />
               ))}
             </div>
-            {getEventsForDay(selectedDay || new Date().getDate()).length > 0 && (
-              <button onClick={() => openAddModal(selectedDay || new Date().getDate())} className="btn-ghost" style={{ width: '100%', marginTop: '1rem', fontSize: '0.75rem', fontWeight: 800 }}>
-                <Plus size={14} /> ADD NEW ITEM
-              </button>
-            )}
           </div>
 
-          <div className="glass-card" style={{ padding: '1.5rem', background: 'var(--accent-gradient)', color: 'white' }}>
-            <h4 className="label-caps" style={{ color: 'white', opacity: 0.8, marginBottom: '1rem' }}>Monthly Goal</h4>
-            <p style={{ fontSize: '1.2rem', fontWeight: 800, lineHeight: 1.3 }}>Consistent 5AM Wake-up & Fasted Cardio</p>
-            <div style={{ marginTop: '1.5rem', background: 'rgba(255,255,255,0.2)', height: '4px', borderRadius: '2px' }}>
-              <div style={{ width: '65%', height: '100%', background: 'white', borderRadius: '2px' }} />
-            </div>
-            <p style={{ fontSize: '0.7rem', marginTop: '8px', fontWeight: 700 }}>PROGRESS: 18/30 DAYS</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Add / Edit Event Modal */}
-      {isModalOpen && (
-        <div
-          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_INDEX.HEADER }}
-          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
-        >
-          <div className="glass-card" style={{ width: '100%', maxWidth: '460px', padding: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ fontWeight: 800, fontSize: '1.2rem' }}>
-                {editingEvent ? 'Edit Event' : `New Event — ${selectedDay} ${monthNames[month]}`}
-              </h3>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }}><X size={20} /></button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Title */}
-              <div>
-                <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Event Title *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.title}
-                  onChange={e => setFormData({ ...formData, title: e.target.value })}
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                  placeholder="e.g. Back Day Workout"
-                  style={{ width: '100%' }}
-                  autoFocus
-                />
-              </div>
-
-              {/* Type + Time */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Type</label>
-                  <select className="form-input" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} style={{ width: '100%' }}>
-                    {EVENT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Time</label>
-                  <input type="time" className="form-input" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} style={{ width: '100%' }} />
-                </div>
-              </div>
-
-              {/* Recurrence */}
-              <div>
-                <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Recurrence</label>
-                <select className="form-input" value={formData.recurrence} onChange={e => setFormData({ ...formData, recurrence: e.target.value })} style={{ width: '100%' }}>
-                  {RECURRENCE_OPTIONS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                </select>
-              </div>
-
-              {/* Colour picker */}
-              <div>
-                <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Accent Colour (optional)</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {EVENT_COLORS.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, color: formData.color === c ? '' : c })}
-                      style={{
-                        width: '24px', height: '24px', borderRadius: '50%',
-                        background: c, border: formData.color === c ? '2px solid white' : '2px solid transparent',
-                        cursor: 'pointer', outline: formData.color === c ? `2px solid ${c}` : 'none',
-                        outlineOffset: '2px', transition: 'all 0.15s',
-                      }}
-                      aria-label={`Color ${c}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="label-caps" style={{ fontSize: '0.7rem', marginBottom: '8px', display: 'block' }}>Notes (optional)</label>
-                <textarea
-                  className="form-input"
-                  value={formData.notes}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Add any additional details..."
-                  style={{ width: '100%', resize: 'vertical', minHeight: '70px' }}
-                  rows={3}
-                />
-              </div>
-
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                {editingEvent && (
-                  <button
-                    onClick={() => { handleDeleteEvent(editingEvent.id, { stopPropagation: () => {} }); closeModal(); }}
-                    className="btn-ghost"
-                    style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '6px', color: '#f43f5e', borderColor: 'rgba(244,63,94,0.3)' }}
-                  >
-                    <Trash2 size={16} /> DELETE
-                  </button>
-                )}
-                <button onClick={handleSubmit} className="btn-primary" style={{ flex: 1, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <Save size={18} /> {editingEvent ? 'UPDATE EVENT' : 'SAVE EVENT'}
-                </button>
-              </div>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+            <button onClick={doAdd} className="btn-primary">Add Event</button>
           </div>
         </div>
       )}
+
+      {/* Nav + view toggle */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button onClick={prevMonth} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: 'var(--text-2)' }}><ChevronLeft size={14} /></button>
+          <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-1)', minWidth: '160px', textAlign: 'center' }}>{MONTHS[month]} {year}</span>
+          <button onClick={nextMonth} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: 'var(--text-2)' }}><ChevronRight size={14} /></button>
+          <button onClick={goToday} style={{ padding: '5px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>Today</button>
+        </div>
+        <div style={{ display: 'flex', gap: '0.3rem' }}>
+          {['month', 'list'].map(v => (
+            <button key={v} onClick={() => setView(v)} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', background: view === v ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === v ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{v}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: selectedDate ? '1fr 280px' : '1fr', gap: '1rem' }}>
+        {/* Month grid */}
+        {view === 'month' && (
+          <div>
+            {/* Days of week header */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '2px' }}>
+              {DAYS_OF_WEEK.map(d => (
+                <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-3)', padding: '4px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d}</div>
+              ))}
+            </div>
+
+            {/* Calendar cells */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+              {calDays.map((day, idx) => {
+                const dayEvents = eventsOnDay(day);
+                const isToday   = isSameDay(day, today);
+                const isThisMonth = day.getMonth() === month;
+                const isSelected  = selectedDate && isSameDay(day, selectedDate);
+                const hasBirthday = dayEvents.some(e => e.type === 'Birthday');
+
+                return (
+                  <div key={idx} onClick={() => setSelectedDate(isSameDay(day, selectedDate || new Date(0)) ? null : day)}
+                    style={{
+                      minHeight: '80px', borderRadius: '8px', padding: '4px', cursor: 'pointer',
+                      background: isSelected ? 'rgba(99,102,241,0.15)' : isToday ? 'rgba(99,102,241,0.07)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${isSelected ? 'rgba(99,102,241,0.5)' : isToday ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                      opacity: isThisMonth ? 1 : 0.35,
+                      transition: 'background 0.1s',
+                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                      <span style={{
+                        fontSize: '0.75rem', fontWeight: isToday ? 900 : 600,
+                        color: isToday ? 'var(--accent)' : 'var(--text-2)',
+                        width: '22px', height: '22px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: isToday ? 'var(--accent)' : 'transparent',
+                        color: isToday ? '#000' : isThisMonth ? 'var(--text-1)' : 'var(--text-3)',
+                      }}>{day.getDate()}</span>
+                      {hasBirthday && <span style={{ fontSize: '0.65rem' }}>🎂</span>}
+                    </div>
+                    {dayEvents.slice(0, 3).map(e => (
+                      <div key={e.id + e.date} style={{
+                        fontSize: '0.58rem', fontWeight: 700, padding: '1px 4px', borderRadius: '3px', marginBottom: '1px',
+                        background: `${e.color || '#6366f1'}25`, color: e.color || '#6366f1',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        display: 'flex', alignItems: 'center', gap: '2px',
+                      }}>
+                        {e._recurring && <RefreshCw size={7} style={{ flexShrink: 0 }} />}
+                        {e.startTime && <span style={{ opacity: 0.8 }}>{e.startTime.slice(0, 5)}</span>}
+                        {e.title}
+                      </div>
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <div style={{ fontSize: '0.55rem', color: 'var(--text-3)', paddingLeft: '4px' }}>+{dayEvents.length - 3} more</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* List view */}
+        {view === 'list' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {upcomingEvents.length === 0 ? (
+              <EmptyState icon={RefreshCw} title="No upcoming events" description="Add events using the button above." />
+            ) : (
+              upcomingEvents.map((e, idx) => {
+                const isEditingThis = editId === e.id;
+                return (
+                  <div key={e.id + e.date} style={{ display: 'flex', gap: '0.75rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${e.color || '#6366f1'}33`, borderLeft: `3px solid ${e.color || '#6366f1'}` }}>
+                    {isEditingThis ? (
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <input value={editForm.title || ''} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} className="form-input" style={{ fontSize: '0.85rem' }} />
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <input type="date" value={editForm.date || ''} onChange={ev => setEditForm(f => ({ ...f, date: ev.target.value }))} className="form-input" />
+                          <select value={editForm.recurrence || 'none'} onChange={ev => setEditForm(f => ({ ...f, recurrence: ev.target.value }))} className="form-input">
+                            {RECUR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button onClick={saveEdit} className="btn-primary" style={{ padding: '3px 10px', fontSize: '0.72rem' }}><Check size={11} /> Save</button>
+                          <button onClick={() => setEditId(null)} style={{ padding: '3px 10px', fontSize: '0.72rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ width: '42px', textAlign: 'center', flexShrink: 0, borderRight: `1px solid ${e.color}44`, paddingRight: '0.6rem' }}>
+                          <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{new Date(e.date + 'T00:00:00').toLocaleDateString('en', { month: 'short' })}</p>
+                          <p style={{ fontSize: '1.4rem', fontWeight: 900, color: e.color, lineHeight: 1 }}>{new Date(e.date + 'T00:00:00').getDate()}</p>
+                          <p style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>{new Date(e.date + 'T00:00:00').toLocaleDateString('en', { weekday: 'short' })}</p>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <p style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-1)' }}>{e.title}</p>
+                            {e._recurring && <span style={{ fontSize: '0.6rem', color: e.color, display: 'flex', alignItems: 'center', gap: '2px' }}><RefreshCw size={9} /> {e.recurrence}</span>}
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '3px' }}>
+                            {e.startTime && <span>⏰ {e.startTime}{e.endTime ? ` – ${e.endTime}` : ''}</span>}
+                            {e.location && <span>📍 {e.location}</span>}
+                            <span style={{ padding: '1px 7px', borderRadius: '99px', background: `${e.color}15`, color: e.color, fontWeight: 700 }}>{e.type}</span>
+                          </div>
+                          {e.description && <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '3px' }}>{e.description}</p>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                          <button onClick={() => { setEditId(e.id); setEditForm({ ...events.find(ev => ev.id === e.id) }); }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={12} /></button>
+                          <button onClick={() => doDelete(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '3px' }}><Trash2 size={12} /></button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* Day detail sidebar */}
+        {selectedDate && view === 'month' && (
+          <div>
+            <div className="glass-card" style={{ position: 'sticky', top: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{DAYS_OF_WEEK[selectedDate.getDay()]}</p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-1)', lineHeight: 1 }}>{selectedDate.getDate()}</p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}</p>
+                </div>
+                <button onClick={() => setSelectedDate(null)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', alignSelf: 'flex-start', padding: '3px' }}><X size={15} /></button>
+              </div>
+
+              {selectedDayEvents.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-3)' }}>
+                  <p style={{ fontSize: '0.78rem' }}>No events</p>
+                  <button onClick={() => { setForm(f => ({ ...f, date: selectedDate.toISOString().slice(0, 10) })); setShowAdd(true); }} className="btn-primary" style={{ marginTop: '0.75rem', padding: '5px 12px', fontSize: '0.72rem' }}><Plus size={11} /> Add</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {selectedDayEvents.map(e => (
+                    <div key={e.id + e.date} style={{ padding: '0.65rem 0.75rem', borderRadius: '8px', background: `${e.color || '#6366f1'}12`, borderLeft: `3px solid ${e.color || '#6366f1'}` }}>
+                      <p style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-1)' }}>{e.title}</p>
+                      {e.startTime && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>⏰ {e.startTime}{e.endTime ? ` – ${e.endTime}` : ''}</p>}
+                      {e.location && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>📍 {e.location}</p>}
+                      {e._recurring && <p style={{ fontSize: '0.58rem', color: e.color, display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px' }}><RefreshCw size={8} /> Recurring: {e.recurrence}</p>}
+                      <button onClick={() => doDelete(e.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.5)', cursor: 'pointer', padding: '2px', marginTop: '4px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '3px' }}><Trash2 size={10} /> Delete</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
