@@ -235,7 +235,7 @@ export default function Logs() {
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState icon={Filter} title="No logs found" description={enriched.length === 0 ? 'No audit logs recorded yet.' : 'No logs match your current filters.'} />
-        ) : (
+        ) : (<>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -288,7 +288,7 @@ export default function Logs() {
               }}
             </List>
           </div>
-        )}
+          </>)}
       </div>
 
       {/* Expanded details modal */}

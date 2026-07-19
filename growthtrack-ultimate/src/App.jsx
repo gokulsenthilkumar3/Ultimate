@@ -298,7 +298,7 @@ export default function App() {
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
   const [isNotFound,        setIsNotFound]        = React.useState(false);
 
-  const [isAuthenticated, setIsAuthenticated] = React.useState(!!localStorage.getItem('token'));
+  const [isAuthenticated, setIsAuthenticated] = React.useState(true); // Temp bypass for local dev
   const [authView, setAuthView] = React.useState('landing'); // 'landing', 'login', 'signup'
 
   const todayStr = new Date().toISOString().slice(0, 10);

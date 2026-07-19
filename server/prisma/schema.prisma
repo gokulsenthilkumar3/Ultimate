@@ -1,10 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "binary"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -12,6 +13,9 @@ model User {
   email         String   @unique
   password_hash String
   created_at    DateTime @default(now())
+  source        String   @default("manual")
+  confidence    Float    @default(1.0)
+  updated_at    DateTime @default(now()) @updatedAt
 
   @@map("users")
 }
@@ -32,6 +36,9 @@ model Task {
   created_by  String   @default("user")
   modified_at DateTime @default(now())
   modified_by String   @default("user")
+  source      String   @default("manual")
+  confidence  Float    @default(1.0)
+  updated_at  DateTime @default(now()) @updatedAt
 
   @@map("tasks")
 }
@@ -48,6 +55,9 @@ model ShoppingItem {
   created_by    String   @default("user")
   modified_at   DateTime @default(now())
   modified_by   String   @default("user")
+  source        String   @default("manual")
+  confidence    Float    @default(1.0)
+  updated_at    DateTime @default(now()) @updatedAt
 
   @@map("shopping")
 }
@@ -61,6 +71,9 @@ model Timesheet {
   created_by  String    @default("user")
   modified_at DateTime  @default(now())
   modified_by String    @default("user")
+  source      String    @default("manual")
+  confidence  Float     @default(1.0)
+  updated_at  DateTime  @default(now()) @updatedAt
 
   @@map("timesheet")
 }
@@ -74,6 +87,9 @@ model Finance {
   method     String?
   date       DateTime?
   created_at DateTime  @default(now())
+  source     String    @default("manual")
+  confidence Float     @default(1.0)
+  updated_at DateTime  @default(now()) @updatedAt
 
   @@map("finance")
 }
@@ -84,6 +100,9 @@ model Budget {
   limit_amount Float
   period       String   @default("monthly")
   created_at   DateTime @default(now())
+  source       String   @default("manual")
+  confidence   Float    @default(1.0)
+  updated_at   DateTime @default(now()) @updatedAt
 
   @@map("budgets")
 }
@@ -97,6 +116,8 @@ model MetricLog {
   source     String?
   date       String
   created_at DateTime @default(now())
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("metric_logs")
 }
@@ -111,6 +132,9 @@ model AuditLog {
   actor_name  String   @default("System")
   actor_email String   @default("admin@growthtrack.ultimate")
   actor_ip    String?
+  source      String   @default("manual")
+  confidence  Float    @default(1.0)
+  updated_at  DateTime @default(now()) @updatedAt
 
   @@map("audit_log")
 }
@@ -122,62 +146,89 @@ model UserProfile {
   created_by  String   @default("system")
   modified_at DateTime @default(now())
   modified_by String   @default("system")
+  source      String   @default("manual")
+  confidence  Float    @default(1.0)
+  updated_at  DateTime @default(now()) @updatedAt
 
   @@map("user_profile")
 }
 
 model TrainingPlan {
-  id   Int    @id @default(autoincrement())
-  data String
+  id         Int      @id @default(autoincrement())
+  data       String
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("training_plan")
 }
 
 model NutritionStrategy {
-  id   Int    @id @default(autoincrement())
-  data String
+  id         Int      @id @default(autoincrement())
+  data       String
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("nutrition_strategy")
 }
 
 model LifestyleTips {
-  id   Int    @id @default(autoincrement())
-  data String
+  id         Int      @id @default(autoincrement())
+  data       String
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("lifestyle_tips")
 }
 
 model MedicalData {
-  id   Int    @id @default(autoincrement())
-  data String
+  id         Int      @id @default(autoincrement())
+  data       String
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("medical_data")
 }
 
 model PhysiqueTargets {
-  id   Int    @id @default(autoincrement())
-  data String
+  id         Int      @id @default(autoincrement())
+  data       String
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("physique_targets")
 }
 
 model AssessmentQA {
-  id   Int    @id @default(autoincrement())
-  data String
+  id         Int      @id @default(autoincrement())
+  data       String
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("assessment_qa")
 }
 
 model Skills {
-  id   Int    @id @default(autoincrement())
-  data String
+  id         Int      @id @default(autoincrement())
+  data       String
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("skills")
 }
 
 model CalendarEvents {
-  id   Int    @id @default(autoincrement())
-  data String
+  id         Int      @id @default(autoincrement())
+  data       String
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("calendar_events")
 }
@@ -190,6 +241,9 @@ model Note {
   pinned      Boolean? @default(false)
   created_at  DateTime @default(now())
   modified_at DateTime @default(now())
+  source      String   @default("manual")
+  confidence  Float    @default(1.0)
+  updated_at  DateTime @default(now()) @updatedAt
 
   @@map("notes")
 }
@@ -206,6 +260,9 @@ model Goal {
   created_at    DateTime          @default(now())
   modified_at   DateTime          @default(now())
   progressLogs  GoalProgressLog[]
+  source        String            @default("manual")
+  confidence    Float             @default(1.0)
+  updated_at    DateTime          @default(now()) @updatedAt
 
   @@map("goals")
 }
@@ -219,6 +276,9 @@ model SleepLog {
   quality    Int?
   notes      String?
   created_at DateTime @default(now())
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("sleep_logs")
 }
@@ -231,6 +291,9 @@ model Document {
   type       String?  @default("Private")
   url        String?
   created_at DateTime @default(now())
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("documents")
 }
@@ -245,6 +308,9 @@ model Subscription {
   icon       String?   @default("📦")
   active     Boolean?  @default(true)
   created_at DateTime  @default(now())
+  source     String    @default("manual")
+  confidence Float     @default(1.0)
+  updated_at DateTime  @default(now()) @updatedAt
 
   @@map("subscriptions")
 }
@@ -257,6 +323,9 @@ model Habit {
   completed_dates String?    @default("[]")
   created_at      DateTime   @default(now())
   logs            HabitLog[]
+  source          String     @default("manual")
+  confidence      Float      @default(1.0)
+  updated_at      DateTime   @default(now()) @updatedAt
 
   @@map("habits")
 }
@@ -272,6 +341,9 @@ model Entertainment {
   poster      String?
   created_at  DateTime @default(now())
   modified_at DateTime @default(now())
+  source      String   @default("manual")
+  confidence  Float    @default(1.0)
+  updated_at  DateTime @default(now()) @updatedAt
 
   @@map("entertainment")
 }
@@ -294,6 +366,9 @@ model HealthExtras {
   stress_load_score    Int?
   recovery_index_score Int?
   modified_at          DateTime @default(now())
+  source               String   @default("manual")
+  confidence           Float    @default(1.0)
+  updated_at           DateTime @default(now()) @updatedAt
 
   @@map("health_extras")
 }
@@ -305,6 +380,9 @@ model MoodLog {
   energy     Int?
   note       String?
   created_at DateTime @default(now())
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("mood_logs")
 }
@@ -315,6 +393,9 @@ model HabitLog {
   date       DateTime
   created_at DateTime @default(now())
   habit      Habit    @relation(fields: [habit_id], references: [id], onDelete: Cascade)
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@unique([habit_id, date])
   @@map("habit_logs")
@@ -328,6 +409,9 @@ model GoalProgressLog {
   date       DateTime
   created_at DateTime @default(now())
   goal       Goal     @relation(fields: [goal_id], references: [id], onDelete: Cascade)
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("goal_progress_logs")
 }
@@ -342,6 +426,9 @@ model NutritionLog {
   carbs      Float?
   fat        Float?
   created_at DateTime @default(now())
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("nutrition_logs")
 }
@@ -353,6 +440,9 @@ model WorkoutSession {
   duration_minutes Int?
   created_at       DateTime          @default(now())
   exercises        WorkoutExercise[]
+  source           String            @default("manual")
+  confidence       Float             @default(1.0)
+  updated_at       DateTime          @default(now()) @updatedAt
 
   @@map("workout_sessions")
 }
@@ -367,6 +457,9 @@ model WorkoutExercise {
   notes         String?
   created_at    DateTime       @default(now())
   session       WorkoutSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  source        String         @default("manual")
+  confidence    Float          @default(1.0)
+  updated_at    DateTime       @default(now()) @updatedAt
 
   @@map("workout_exercises")
 }
@@ -377,6 +470,9 @@ model ProgressPhoto {
   url        String
   notes      String?
   created_at DateTime @default(now())
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("progress_photos")
 }
@@ -388,6 +484,9 @@ model VitalsLog {
   value      Float?
   unit       String?
   created_at DateTime @default(now())
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("vitals_logs")
 }
@@ -400,6 +499,9 @@ model Medication {
   start_date DateTime?
   end_date   DateTime?
   created_at DateTime  @default(now())
+  source     String    @default("manual")
+  confidence Float     @default(1.0)
+  updated_at DateTime  @default(now()) @updatedAt
 
   @@map("medications")
 }
@@ -410,6 +512,66 @@ model SavedArticle {
   title      String?
   source     String?
   date_saved DateTime @default(now())
+  confidence Float    @default(1.0)
+  updated_at DateTime @default(now()) @updatedAt
 
   @@map("saved_articles")
+}
+
+// --- Phase 1: Core Personal OS Entities ---
+
+model Project {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  repository  String?
+  commits     Int      @default(0)
+  stars       Int      @default(0)
+  source      String   @default("manual")
+  confidence  Float    @default(1.0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
+
+  @@map("projects")
+}
+
+model SkillEntity {
+  id         Int      @id @default(autoincrement())
+  name       String
+  knowledge  Float    @default(0)
+  retention  Float    @default(0)
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@map("skill_entities")
+}
+
+model LearningEvent {
+  id         Int      @id @default(autoincrement())
+  title      String
+  type       String   @default("Course")
+  hours      Float    @default(0)
+  source     String   @default("manual")
+  confidence Float    @default(1.0)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@map("learning_events")
+}
+
+model HealthMetric {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @default(now())
+  metric_type String
+  value       Float
+  unit        String?
+  notes       String?
+  source      String   @default("manual")
+  confidence  Float    @default(1.0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
+
+  @@map("health_metrics")
 }

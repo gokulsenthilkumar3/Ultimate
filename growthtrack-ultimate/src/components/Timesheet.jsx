@@ -349,7 +349,7 @@ export default function Timesheet() {
         <div className="glass-card" style={{ overflowX: 'auto' }}>
           {recentEntries.length === 0 ? (
             <EmptyState icon={Clock} title="No Entries" description="Start the timer to log your first session." />
-          ) : (
+          ) : (<>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -386,9 +386,7 @@ export default function Timesheet() {
                 );
               }}
             </List>
-          </div>
-        </div>
-          )}
+          </>)}
         </div>
       )}
 
