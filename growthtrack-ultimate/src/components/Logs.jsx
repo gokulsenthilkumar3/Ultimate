@@ -3,7 +3,7 @@ import { Search, Filter, Download, Plus, Trash2, RefreshCw, ChevronDown, Chevron
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
-import { FixedSizeList as List } from 'react-window';
+import { FixedSizeList as List } from '../lib/FixedSizeList';
 
 const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error'];
 const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];

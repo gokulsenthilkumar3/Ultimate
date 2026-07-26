@@ -3,7 +3,7 @@ import { Plus, Trash2, Edit3, Tag, Search, Star, StarOff, Pin, PinOff, Copy, Che
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
-import { FixedSizeList as List } from 'react-window';
+import { FixedSizeList as List } from '../lib/FixedSizeList';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280'];
 
