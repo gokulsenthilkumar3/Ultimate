@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
-import { FixedSizeList as List } from 'react-window';
+import { FixedSizeList as List } from '../lib/FixedSizeList';
 
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
 const PROJECTS_LIST = ['General', 'Development', 'Design', 'Research', 'Meetings', 'Admin', 'Marketing', 'Other'];
@@ -386,7 +386,9 @@ export default function Timesheet() {
                 );
               }}
             </List>
-          </>)}
+          </div>
+          </>
+          )}
         </div>
       )}
 

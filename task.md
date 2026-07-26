@@ -13,30 +13,30 @@
 ## Phase 3: Health & Fitness
 - [x] `HydrationTracker.jsx` — animated wave container with fill percentage, goal markers, goal-reached badge
 - [x] `MindWellness.jsx` — rewritten in design system, box breathing exercise with animated circle, mood/sleep correlation, trends tab, design system compliant
-- [ ] `Nutrition.jsx` — 3-part macro ring chart, BMR dynamic tracking
-- [ ] `Physique.jsx` — body fat % calculation from measurements
-- [ ] `Medical.jsx` — health timeline visualizer
-- [ ] `HabitsMatrix.jsx` — 365-day GitHub heatmap improvements
-- [ ] `GoalsDashboard.jsx` — milestone sub-tasks, confetti on goal completion
-- [/] `Training.jsx` — progressive overload tracking (in progress)
+- [x] `Nutrition.jsx` — 3-part macro ring chart (animated SVG), BMR dynamic tracking with gender-specific equations
+- [x] `Physique.jsx` — body fat % calculation (Navy formula) from measurements, BF% gauge, BMI, gender-specific categorisation
+- [x] `Medical.jsx` — health timeline visualizer (VitalsTimeline + EventTimeline), vitals chart with reference lines
+- [x] `HabitsMatrix.jsx` — 364-day GitHub-style heatmap with month labels, streak milestones, category breakdown
+- [x] `GoalsDashboard.jsx` — milestone sub-tasks (25/50/75/100%), confetti on goal completion, progress rings
+- [x] `Training.jsx` — progressive overload tracking, live session logger with rest timer, per-exercise PR tracking
 
 ## Phase 4: Finance & Specialty
-- [ ] `Finance.tsx` — budget thresholds, monospaced typography, interactive donut
-- [ ] `SIPCalculator.jsx` — inflation-adjusted returns, interactive sliders
-- [ ] `Projects.jsx` — Gantt chart logic, Kanban toggle view
-- [ ] `AiDashboard.jsx` — typing effect, semantic search, prompt caching
-- [ ] `Tasks.jsx` — Eisenhower Matrix 4-quadrant view
-- [ ] `Notes.jsx` — Markdown parsing, tag filtering, auto-save
-- [ ] `Skills.jsx` — RPG-style skill trees, XP curves, particle level-up
-- [ ] `Timesheet.jsx` — stopwatch, billable hour calculation, block timeline
-- [ ] `Calendar.jsx` — recurring events, iCal export, premium grid view
-- [ ] `Analytics.jsx` — cross-domain correlation (Sleep vs Productivity)
-- [ ] `Portfolio.jsx` — sparklines, ROI calculations, mocked ticker
-- [ ] `Shopping.jsx` — price-drop tracking, visual priority tags
-- [ ] `Logs.jsx` — markdown rendering, sentiment filtering
-- [ ] `Databases.jsx` — Notion-style sortable table, CSV import/export
-- [ ] `AppLauncher.jsx` — frequent-app sorting, dock magnification hover
-- [ ] `Overview.jsx` — optimized aggregation, hero "day at a glance" section
-- [ ] `About.jsx` — changelog timeline, staggered version history
-- [ ] `StrengthMetrics.jsx` — 1RM calculators, muscle fatigue heatmap
-- [ ] `Current.jsx` — time-of-day gradients, location/weather syncing
+- [x] `Finance.tsx` — budget thresholds with color-coded alerts, monospaced typography, interactive active-sector donut (Recharts Sector)
+- [x] `SIPCalculator.jsx` — inflation-adjusted returns, interactive sliders, XIRR projection, step-up SIP
+- [x] `Projects.jsx` — Gantt chart (6-month timeline view), Kanban toggle view, status color-coding
+- [x] `AiDashboard.jsx` — typing effect (TypedMessage component), prompt caching (sessionStorage), safe React markdown renderer
+- [x] `Tasks.jsx` — Eisenhower Matrix 4-quadrant view (Urgent/Important matrix)
+- [x] `Notes.jsx` — Markdown parsing (custom renderer), tag filtering, auto-save with debounce
+- [x] `Skills.jsx` — RPG-style skill trees with XP curves (non-linear 1.4x growth), particle level-up burst effect
+- [x] `Timesheet.jsx` — stopwatch (play/pause/stop), billable hour calculation with earnings, block timeline for day view
+- [x] `Calendar.jsx` — recurring events (daily/weekly/monthly/yearly), iCal export (.ics), month/week/agenda views
+- [x] `Analytics.jsx` — cross-domain Pearson correlation (Sleep vs Productivity, Sleep vs Weight, Habits vs Sleep)
+- [x] `Portfolio.jsx` — sparklines (Recharts LineChart), ROI calculations with ROIBadge, seeded price history simulation
+- [x] `Shopping.jsx` — price-drop tracking with history log + target alert, visual priority tags (color-coded)
+- [x] `Logs.jsx` — markdown rendering (renderMarkdown helper), sentiment filtering (positive/neutral/negative)
+- [x] `Databases.jsx` — Notion-style sortable table with inline editing, CSV import/export
+- [x] `AppLauncher.jsx` — frequent-app sorting (localStorage click counts), dock magnification hover effect
+- [x] `Overview.jsx` — optimized aggregation, hero "Day at a Glance" section with health score ring
+- [x] `About.jsx` — changelog timeline with spine, staggered version history with expand/collapse
+- [x] `StrengthMetrics.jsx` — 1RM calculators (Epley/Brzycki/Lander), muscle fatigue heatmap (7-day decay)
+- [x] `Current.jsx` — time-of-day gradients (dawn/morning/midday/afternoon/evening/night), location/weather syncing via Open-Meteo
