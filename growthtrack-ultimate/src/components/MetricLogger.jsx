@@ -236,7 +236,7 @@ export default function MetricLogger({ onClose, onSave }) {
                 }}
               >
                 {photoPreview ? (
-                  <img src={photoPreview} alt="preview"
+                  <img src={photoPreview} alt="preview" loading="lazy"
                     style={{ maxHeight: '220px', maxWidth: '100%', borderRadius: '12px', objectFit: 'contain', margin: '0 auto', display: 'block' }} />
                 ) : (
                   <>

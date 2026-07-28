@@ -212,7 +212,8 @@ export class MorphInterpolator {
   snapToTargets(weights) {
     for (let i = 0; i < this.count; i++) {
       const name       = this.morphNames[i];
-      const value      = weights[name] ?? 0;
+      const rawValue   = weights[name] ?? 0;
+      const value      = Number.isNaN(rawValue) ? 0 : rawValue;
       this.current[i]  = value;
       this.target[i]   = value;
       this._from[i]    = value;
@@ -240,7 +241,8 @@ export class MorphInterpolator {
 
       const idx = morphIndexMap[name];
       if (idx !== undefined) {
-        mesh.morphTargetInfluences[idx] = this.current[i];
+        const val = this.current[i];
+        mesh.morphTargetInfluences[idx] = Number.isNaN(val) ? 0 : val;
       }
     }
   }

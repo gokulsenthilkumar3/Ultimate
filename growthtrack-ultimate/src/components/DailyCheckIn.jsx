@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Sun, Moon, Zap, Scale, X, CheckCircle2, AlertTriangle, Flame } from 'lucide-react';
 import useStore, { selectSaveSleepLog, selectAddMoodLog } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import SavedIndicator from './ui/SavedIndicator';
 
 const MOODS = ['\ud83d\ude22', '\ud83d\ude15', '\ud83d\ude10', '\ud83d\ude0a', '\ud83d\ude01'];
 const ENERGY = ['\ud83e\udeb4', '\ud83d\ude34', '\u26a1', '\ud83d\udd25', '\ud83d\ude80'];
@@ -26,6 +27,7 @@ export default function DailyCheckIn({ onClose }) {
     sleep: 7, energy: 2, mood: 2, weight: user?.weight || '', note: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [saved,    setSaved]    = useState(false);
   const [done, setDone]   = useState(false);
 
   // ── Streak protection: alert if any habits not done today & hour ≥ 20 ──
@@ -182,6 +184,8 @@ export default function DailyCheckIn({ onClose }) {
 
     if (setUser) setUser(updatedUser);
     if (setLastCheckIn) setLastCheckIn(checkInDate);
+    setIsSaving(false);
+    setSaved(true);
     setDone(true);
     setTimeout(() => {
       toast.success(`Check-in complete! ${data.sleep}h sleep, feeling ${MOODS[data.mood]}`);
@@ -266,7 +270,7 @@ export default function DailyCheckIn({ onClose }) {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', alignItems: 'center' }}>
               {step > 0 && (
                 <button onClick={() => setStep(s => s - 1)} className="btn-ghost" style={{ flex: 1 }}>Back</button>
               )}
@@ -274,9 +278,10 @@ export default function DailyCheckIn({ onClose }) {
                 <button onClick={() => setStep(s => s + 1)} className="btn-primary" style={{ flex: 1 }}>Next \u2192</button>
               ) : (
                 <button onClick={handleSubmit} disabled={isSaving} className="btn-primary" style={{ flex: 1, background: 'var(--success)' }}>
-                  <CheckCircle2 size={16} /> {isSaving ? 'Saving…' : 'Complete Check-In'}
+                  <CheckCircle2 size={16} /> {isSaving ? 'Saving\u2026' : 'Complete Check-In'}
                 </button>
               )}
+              <SavedIndicator visible={saved} onHide={() => setSaved(false)} label="Saved!" />
             </div>
           </>
         )}
