@@ -183,7 +183,8 @@ export default function SettingsModal({ onClose }) {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
             <h3 style={{ fontWeight: 800, fontSize: '1.1rem' }}>{activeTab} Settings</h3>
-            <button onClick={onClose} style={{ 
+            {/* aria-label added: icon-only button needs explicit accessible name */}
+            <button onClick={onClose} aria-label="Close settings" style={{ 
               background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' 
             }} className="hover-text-1">
               <X size={20} />
@@ -229,7 +230,7 @@ export default function SettingsModal({ onClose }) {
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer'
                     }}
                   >
-                    <Zap size={16} /> Connect Devices & Apps
+                    <Zap size={16} /> Connect Devices &amp; Apps
                   </button>
                 </div>
 

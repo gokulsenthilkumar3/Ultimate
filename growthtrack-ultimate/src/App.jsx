@@ -421,6 +421,11 @@ export default function App() {
   // ── Keyboard shortcuts: Ctrl+1–9 navigate to real nav tabs (skip dividers) ──
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't intercept when typing inside an input/textarea/select/contenteditable
+      const tag = document.activeElement?.tagName;
+      const isEditable = document.activeElement?.isContentEditable;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || isEditable) return;
+
       if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
         const tabItems = navItems.filter(item => !item.isDivider);
         const index = parseInt(e.key, 10) - 1;

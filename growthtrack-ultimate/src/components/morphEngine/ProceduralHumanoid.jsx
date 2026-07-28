@@ -1,179 +1,234 @@
 /**
- * ProceduralHumanoid.jsx — Enhanced Real-time Parametric 3D Body
+ * ProceduralHumanoid.jsx — High-fidelity Parametric 3D Body
  *
- * Rebuilt with smooth LatheGeometry for torso, CapsuleGeometry for limbs,
- * and SphereGeometry for joints. Live morph weights drive all dimensions
- * every frame via useFrame — no re-mount needed.
+ * Fully procedural humanoid model with realistic proportions, smooth morphing,
+ * SSS-style skin material, and support for all 6 render modes.
  *
- * All 6 view modes (normal / ghost / delta / xray) are fully supported.
- * Feet anchored at y = 0. Entire model scales with morph weights from use3DStore.
+ * Body is composed of smooth lathe geometry segments with sphere joints.
+ * Every dimension is driven by morph weights from use3DStore.
+ * The model is anchored with feet at y=0, head at ~y=1.82.
  */
 
-import React, { useMemo, useRef, useEffect } from 'react';
-import { useShallow } from 'zustand/react/shallow';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
-import use3DStore from '../../store/use3DStore';
+import React, { useMemo, useRef } from 'react';
+import { useShallow }             from 'zustand/react/shallow';
+import { useFrame }               from '@react-three/fiber';
+import * as THREE                 from 'three';
+import use3DStore                 from '../../store/use3DStore';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────────
 
-const PI2 = Math.PI * 2;
-const LATHE_SEGS = 14;   // circumferential segments for lathe bodies
-const LATHE_RINGS = 8;   // longitudinal rings for lathe bodies
-const CAP_SEGS = 10;     // capsule radial segments
+const LATHE_SEGS = 20;   // circumferential segments
+const CAP_SEGS   = 12;   // capsule radial segments
 
-// ── Material factory ──────────────────────────────────────────────────────────
+// ── Material factory ───────────────────────────────────────────────────────────
 
-const MAT_DEFS = {
-  normal:    { color: '#C68642', roughness: 0.72, metalness: 0.0, emissive: '#3d1a08', emissiveIntensity: 0.04 },
-  ghost:     { color: '#22D3EE', roughness: 0.15, metalness: 0.3,  transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide, emissive: '#22D3EE', emissiveIntensity: 0.3 },
-  delta:     { color: '#F59E0B', roughness: 0.5,  metalness: 0.1,  emissive: '#7a4800', emissiveIntensity: 0.1 },
-  xray:      { color: '#818CF8', roughness: 0.1,  metalness: 0.6,  transparent: true, opacity: 0.45, wireframe: true },
-  dark_skin: { color: '#8d5524', roughness: 0.72, metalness: 0.0,  emissive: '#2d0c00', emissiveIntensity: 0.04 },
+const FITZPATRICK_COLORS = {
+  I:   '#FFF0E0',
+  II:  '#F5D5B0',
+  III: '#E8B88A',
+  IV:  '#C68642',
+  V:   '#8D5524',
+  VI:  '#4A2912',
 };
 
-function makeMat(renderMode = 'normal', opacity = 1) {
-  const def = { ...MAT_DEFS[renderMode] ?? MAT_DEFS.normal };
-  if (opacity < 1 && !def.transparent) {
-    def.transparent = true;
-    def.opacity = opacity;
-    def.depthWrite = false;
+function makeMat(renderMode = 'normal', opacity = 1, skinTone = 'IV') {
+  const skinColor = FITZPATRICK_COLORS[skinTone] ?? FITZPATRICK_COLORS.IV;
+
+  if (renderMode === 'ghost') {
+    return new THREE.MeshStandardMaterial({
+      color:             '#22D3EE',
+      emissive:          '#22D3EE',
+      emissiveIntensity: 0.35,
+      roughness:         0.1,
+      metalness:         0.2,
+      transparent:       true,
+      opacity:           Math.min(opacity, 0.32),
+      depthWrite:        false,
+      side:              THREE.DoubleSide,
+    });
   }
-  return new THREE.MeshStandardMaterial(def);
+
+  if (renderMode === 'xray') {
+    return new THREE.MeshStandardMaterial({
+      color:       '#818CF8',
+      roughness:   0.05,
+      metalness:   0.8,
+      transparent: true,
+      opacity:     0.4,
+      wireframe:   false,
+      depthWrite:  false,
+    });
+  }
+
+  if (renderMode === 'delta') {
+    return new THREE.MeshStandardMaterial({
+      color:             '#F59E0B',
+      emissive:          '#7A4800',
+      emissiveIntensity: 0.12,
+      roughness:         0.55,
+      metalness:         0.1,
+    });
+  }
+
+  // Normal / default — warm SSS-style skin
+  const mat = new THREE.MeshStandardMaterial({
+    color:             new THREE.Color(skinColor),
+    roughness:         0.72,
+    metalness:         0.0,
+    emissive:          new THREE.Color(skinColor).multiplyScalar(0.12),
+    emissiveIntensity: 1.0,
+  });
+
+  if (opacity < 1) {
+    mat.transparent = true;
+    mat.opacity     = opacity;
+    mat.depthWrite  = false;
+  }
+
+  return mat;
 }
 
-// ── Lathe profile helpers ─────────────────────────────────────────────────────
+// ── Lathe profile builder ──────────────────────────────────────────────────────
 
-/**
- * Build a smooth lathe surface from a list of [radius, y] profile points.
- * Returns a LatheGeometry.
- */
 function buildLathe(profile, segs = LATHE_SEGS) {
-  const pts = profile.map(([r, y]) => new THREE.Vector2(r, y));
-  return new THREE.LatheGeometry(pts, segs);
+  const pts = profile.map(([r, y]) => new THREE.Vector2(Math.max(0.001, r), y));
+  const geo = new THREE.LatheGeometry(pts, segs);
+  geo.computeVertexNormals();
+  return geo;
 }
 
-/**
- * Torso profile: shoulder → armpit → chest → waist → belly → hips.
- * All dimensions are passed as floats (world units).
- */
-function buildTorsoGeometry({ shoulderW, chestW, waistW, bellyW, hipW, chestD, torsoH }) {
-  // Profile runs bottom (hips) → top (shoulder)
-  // LatheGeometry sweeps around Y axis, so radius values set the silhouette
-  const h = torsoH;
-  const profile = [
-    [hipW * 0.85,    0.00],       // hip outer
-    [hipW,           h * 0.08],   // hip flare
-    [bellyW,         h * 0.22],   // belly
-    [waistW,         h * 0.38],   // waist (narrow)
-    [chestW * 0.88,  h * 0.56],   // lower chest
-    [chestW,         h * 0.72],   // chest peak
-    [chestW * 0.90,  h * 0.82],   // upper chest
-    [shoulderW,      h * 0.92],   // shoulder plateau
-    [shoulderW * 0.88, h],        // top shoulder
-  ];
-  return buildLathe(profile);
+// ── Body segment geometry builders ────────────────────────────────────────────
+
+function buildTorso({ shoulderW, chestW, waistW, bellyW, hipW, h }) {
+  return buildLathe([
+    [hipW * 0.80,      0],
+    [hipW,             h * 0.06],
+    [hipW * 0.95,      h * 0.14],
+    [bellyW,           h * 0.26],
+    [waistW,           h * 0.40],
+    [waistW * 1.05,    h * 0.50],
+    [chestW * 0.88,    h * 0.60],
+    [chestW,           h * 0.74],
+    [chestW * 0.92,    h * 0.84],
+    [shoulderW,        h * 0.93],
+    [shoulderW * 0.88, h],
+  ]);
 }
 
-/**
- * Limb segment profile: tapers from topR → botR over height h.
- */
-function buildLimbGeometry({ topR, botR, h, segs = CAP_SEGS }) {
-  const profile = [
-    [botR * 0.8,  0],
-    [botR,        h * 0.15],
-    [topR * 1.05, h * 0.45],  // slight bicep/quad bulge
-    [topR,        h * 0.75],
-    [topR * 0.92, h],
-  ];
-  return buildLathe(profile, segs);
+function buildLimb({ topR, botR, h, bulge = 1.05 }) {
+  return buildLathe([
+    [botR * 0.78,       0],
+    [botR,              h * 0.12],
+    [topR * bulge,      h * 0.42],
+    [topR * 0.98,       h * 0.72],
+    [topR * 0.90,       h],
+  ], CAP_SEGS);
 }
 
-// ── Dimension computer ────────────────────────────────────────────────────────
+function buildHip({ w, h }) {
+  return buildLathe([
+    [w * 0.82, 0],
+    [w,        h * 0.35],
+    [w * 0.96, h * 0.70],
+    [w * 0.88, h],
+  ], CAP_SEGS);
+}
 
-/**
- * Computes all body segment dimensions from the Zustand morph weights.
- * All values are in Three.js world units (roughly 1 unit = 1m at body height).
- */
+// ── Dimension computation ──────────────────────────────────────────────────────
+
 function computeDimensions(weights = {}) {
-  const mass  = weights.overall_mass   ?? 0.3;
-  const gut   = weights.gut_volume     ?? 0.2;
-  const fat   = weights.face_roundness ?? 0.2;
-  const chD   = weights.chest_depth    ?? 0.4;
-  const delt  = weights.deltoid_width  ?? 0.4;
-  const wst   = weights.waist_narrow   ?? 0.7;   // high = narrow
-  const hip   = weights.hip_width      ?? 0.4;
-  const glut  = weights.glute_volume   ?? 0.4;
-  const bic   = weights.bicep_peak     ?? 0.3;
-  const fore  = weights.forearm_girth  ?? 0.3;
-  const quad  = weights.quad_sweep     ?? 0.3;
-  const cal   = weights.calf_diamond   ?? 0.3;
-  const neck  = weights.neck_thickness ?? 0.3;
+  const mass  = weights.overall_mass   ?? 0.28;
+  const gut   = weights.gut_volume     ?? 0.18;
+  const fat   = weights.face_roundness ?? 0.20;
+  const chD   = weights.chest_depth    ?? 0.40;
+  const delt  = weights.deltoid_width  ?? 0.40;
+  const wst   = weights.waist_narrow   ?? 0.70;
+  const hip   = weights.hip_width      ?? 0.40;
+  const glut  = weights.glute_volume   ?? 0.40;
+  const bic   = weights.bicep_peak     ?? 0.28;
+  const fore  = weights.forearm_girth  ?? 0.28;
+  const quad  = weights.quad_sweep     ?? 0.28;
+  const cal   = weights.calf_diamond   ?? 0.28;
+  const neck  = weights.neck_thickness ?? 0.28;
 
-  // ── Heights (segments, bottom to top) ─────────
-  const footH  = 0.05;
-  const calfH  = 0.33;
-  const thighH = 0.36;
-  const hipH   = 0.18;
-  const torsoH = 0.42;
-  const neckH  = 0.11;
-  const headR  = 0.105 + fat * 0.022 + mass * 0.008;
+  // Segment heights (world units ≈ metres)
+  const footH  = 0.055;
+  const calfH  = 0.335;
+  const thighH = 0.370;
+  const hipH   = 0.175;
+  const torsoH = 0.440;
+  const neckH  = 0.110;
 
-  // ── Y anchors (feet at y=0) ────────────────────
-  const footY  = footH / 2;
-  const calfY  = footH + calfH / 2;
-  const thighY = footH + calfH + thighH / 2;
-  const hipY   = footH + calfH + thighH + hipH / 2;
-  const torsoMidY = footH + calfH + thighH + hipH + torsoH / 2;
-  const neckY  = footH + calfH + thighH + hipH + torsoH + neckH / 2;
-  const headY  = footH + calfH + thighH + hipH + torsoH + neckH + headR;
+  // Head radius grows slightly with face fat / mass
+  const headR = 0.100 + fat * 0.024 + mass * 0.008;
 
-  // ── Widths / radii ─────────────────────────────
-  const shoulderW = 0.14 + delt * 0.09;
-  const chestW    = 0.12 + chD  * 0.06 + mass * 0.02;
-  const waistW    = 0.09 - wst  * 0.03 + gut  * 0.035 + mass * 0.015;
-  const bellyW    = 0.10 + gut  * 0.04 + mass * 0.02;
-  const hipW      = 0.12 + hip  * 0.05 + glut * 0.025;
-  const neckR     = 0.042 + neck * 0.016;
-  const uArmR     = 0.044 + bic  * 0.028;
-  const fArmR     = 0.034 + fore * 0.016;
-  const thighR    = 0.068 + quad * 0.030;
-  const calfR     = 0.044 + cal  * 0.020;
-  const thighX    = hipW * 0.82;
-  const shoulderX = shoulderW + 0.055;
-  const uArmH     = 0.30;
-  const fArmH     = 0.26;
-  const uArmY     = footH + calfH + thighH + hipH + torsoH - 0.04 - uArmH / 2;
+  // Cumulative Y anchors (feet at y = 0)
+  const footY    = footH / 2;
+  const calfY    = footH + calfH / 2;
+  const thighY   = footH + calfH + thighH / 2;
+  const hipY     = footH + calfH + thighH + hipH / 2;
+  const torsoY   = footH + calfH + thighH + hipH;           // torso base
+  const torsoMidY = torsoY + torsoH / 2;
+  const neckY    = torsoY + torsoH + neckH / 2;
+  const headY    = torsoY + torsoH + neckH + headR;
+
+  // Radii / widths
+  const shoulderW = 0.140 + delt * 0.095;
+  const chestW    = 0.118 + chD  * 0.065 + mass * 0.018;
+  const waistW    = 0.092 - wst  * 0.032 + gut  * 0.038 + mass * 0.016;
+  const bellyW    = 0.100 + gut  * 0.042 + mass * 0.022;
+  const hipW      = 0.118 + hip  * 0.055 + glut * 0.028;
+  const neckR     = 0.040 + neck * 0.018;
+  const uArmR     = 0.042 + bic  * 0.030;
+  const fArmR     = 0.032 + fore * 0.018;
+  const thighR    = 0.065 + quad * 0.032;
+  const calfR     = 0.042 + cal  * 0.022;
+
+  // Derived positions
+  const thighX    = hipW * 0.80;
+  const shoulderX = shoulderW + 0.060;
+  const uArmH     = 0.300;
+  const fArmH     = 0.265;
+  const uArmY     = torsoY + torsoH * 0.94 - uArmH / 2;
   const fArmY     = uArmY - uArmH / 2 - fArmH / 2;
-  const handY     = fArmY - fArmH / 2 - 0.04;
+  const handY     = fArmY - fArmH / 2 - 0.038;
 
   return {
-    // Head / neck
     headR, headY, neckH, neckY, neckR,
-    // Torso
-    shoulderW, chestW, waistW, bellyW, hipW, chestD: chD * 0.10, torsoH, torsoMidY,
-    // Hips
-    hipH, hipY,
-    // Arms
+    shoulderW, chestW, waistW, bellyW, hipW, torsoH, torsoY, torsoMidY,
+    hipH, hipY, hipW,
     shoulderX, uArmR, uArmH, uArmY, fArmR, fArmH, fArmY, handY,
-    // Legs
     thighX, thighR, thighH, thighY, calfR, calfH, calfY,
-    // Feet
-    footH, footY,
-    footX: thighX * 0.88,
+    footH, footY, footX: thighX * 0.88,
   };
 }
 
-// ── Single mesh segment helper ─────────────────────────────────────────────────
+// ── Aura ring component (goal clone glow) ─────────────────────────────────────
 
-function BodySeg({ geoFn, position, mat, name }) {
-  const meshRef = useRef();
+function AuraRing({ radius, y, scale = 1.0 }) {
+  const meshRef  = useRef();
+  const timeRef  = useRef(0);
 
-  // Store the geo factory function so we can rebuild in useFrame if needed
-  const geo = useMemo(() => geoFn(), []);     // initial build — updated in parent useFrame
+  const geo = useMemo(() => new THREE.TorusGeometry(radius, 0.004, 8, 64), [radius]);
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({
+    color:       '#22D3EE',
+    transparent: true,
+    opacity:     0.55,
+    depthWrite:  false,
+  }), []);
+
+  useFrame((_, delta) => {
+    timeRef.current += delta;
+    if (meshRef.current) {
+      // Pulsing opacity
+      meshRef.current.material.opacity = 0.35 + Math.sin(timeRef.current * 2.4) * 0.20;
+      // Slow rotation
+      meshRef.current.rotation.y += delta * 0.3;
+    }
+  });
 
   return (
-    <mesh ref={meshRef} position={position} geometry={geo} material={mat} name={name} castShadow={false} />
+    <mesh ref={meshRef} position={[0, y, 0]} geometry={geo} material={mat} />
   );
 }
 
@@ -185,6 +240,8 @@ export default function ProceduralHumanoid({
   renderMode = 'normal',
   opacity    = 1,
   visible    = true,
+  showAura   = false,
+  skinTone   = 'IV',
 }) {
   if (!visible) return null;
 
@@ -192,69 +249,80 @@ export default function ProceduralHumanoid({
     useShallow((s) => (cloneKey === 'B' ? s.cloneB : s.cloneA).weights)
   );
 
-  // ── Shared material (updated when renderMode/opacity changes) ──────────────
-  const mat = useMemo(() => makeMat(renderMode, opacity), [renderMode, opacity]);
+  // ── Material ─────────────────────────────────────────────────────────────────
+  const mat = useMemo(
+    () => makeMat(renderMode, opacity, skinTone),
+    [renderMode, opacity, skinTone]
+  );
 
-  // ── Geometry refs for live dimension updates ──────────────────────────────
+  // ── Geometry refs for live updates ───────────────────────────────────────────
   const groupRef    = useRef();
   const torsoRef    = useRef();
+  const hipRef      = useRef();
   const headRef     = useRef();
   const neckRef     = useRef();
-  const hipRef      = useRef();
   const uArmRefs    = [useRef(), useRef()];
   const fArmRefs    = [useRef(), useRef()];
+  const handRefs    = [useRef(), useRef()];
   const thighRefs   = [useRef(), useRef()];
   const calfRefs    = [useRef(), useRef()];
+  const shoulderRefs = [useRef(), useRef()];
 
-  // ── Dimension state (computed from weights on first render) ────────────────
-  const initD = useMemo(() => computeDimensions(weights), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Track last weights ref for change detection
+  // ── Initial dimensions ────────────────────────────────────────────────────────
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initD = useMemo(() => computeDimensions(weights), []);
   const prevWeightsRef = useRef(weights);
 
-  // ── useFrame: rebuild geometries when weights change ───────────────────────
+  // ── Per-frame: update geometry when weights change ────────────────────────────
   useFrame(() => {
     if (!groupRef.current) return;
     const w = use3DStore.getState();
-    const currentW = (cloneKey === 'B' ? w.cloneB : w.cloneA).weights;
+    const curW = (cloneKey === 'B' ? w.cloneB : w.cloneA).weights;
+    if (curW === prevWeightsRef.current) return;
+    prevWeightsRef.current = curW;
 
-    // Cheap change detection by checking a key value
-    if (currentW === prevWeightsRef.current) return;
-    prevWeightsRef.current = currentW;
+    const d = computeDimensions(curW);
 
-    const d = computeDimensions(currentW);
-
-    // Update torso geometry
+    // Torso
     if (torsoRef.current) {
       torsoRef.current.geometry.dispose();
-      torsoRef.current.geometry = buildTorsoGeometry({
+      torsoRef.current.geometry = buildTorso({
         shoulderW: d.shoulderW, chestW: d.chestW, waistW: d.waistW,
-        bellyW: d.bellyW, hipW: d.hipW, chestD: d.chestD, torsoH: d.torsoH,
+        bellyW: d.bellyW, hipW: d.hipW, h: d.torsoH,
       });
-      torsoRef.current.position.y = d.torsoMidY - d.torsoH / 2;
+      torsoRef.current.position.y = d.torsoY;
     }
 
-    // Update hip geometry
+    // Hip block
     if (hipRef.current) {
       hipRef.current.geometry.dispose();
-      hipRef.current.geometry = buildLimbGeometry({ topR: d.hipW, botR: d.hipW * 0.88, h: d.hipH });
+      hipRef.current.geometry = buildHip({ w: d.hipW, h: d.hipH });
       hipRef.current.position.y = d.hipY - d.hipH / 2;
     }
 
-    // Update head
+    // Head
     if (headRef.current) {
-      headRef.current.scale.set(d.headR / initD.headR, d.headR / initD.headR, d.headR / initD.headR);
+      const s = d.headR / initD.headR;
+      headRef.current.scale.setScalar(s);
       headRef.current.position.y = d.headY;
     }
 
-    // Update neck
+    // Neck
     if (neckRef.current) {
       neckRef.current.scale.set(d.neckR / initD.neckR, 1, d.neckR / initD.neckR);
       neckRef.current.position.y = d.neckY - d.neckH / 2;
     }
 
-    // Update arms
+    // Arms
     [-1, 1].forEach((side, si) => {
+      if (shoulderRefs[si].current) {
+        shoulderRefs[si].current.position.set(
+          side * (d.shoulderX - 0.01),
+          d.torsoY + d.torsoH * 0.92,
+          0
+        );
+        shoulderRefs[si].current.scale.setScalar(d.uArmR / initD.uArmR * 1.1);
+      }
       if (uArmRefs[si].current) {
         uArmRefs[si].current.scale.set(d.uArmR / initD.uArmR, 1, d.uArmR / initD.uArmR);
         uArmRefs[si].current.position.set(side * d.shoulderX, d.uArmY - d.uArmH / 2, 0);
@@ -263,9 +331,12 @@ export default function ProceduralHumanoid({
         fArmRefs[si].current.scale.set(d.fArmR / initD.fArmR, 1, d.fArmR / initD.fArmR);
         fArmRefs[si].current.position.set(side * d.shoulderX, d.fArmY - d.fArmH / 2, 0);
       }
+      if (handRefs[si].current) {
+        handRefs[si].current.position.set(side * d.shoulderX, d.handY, 0.01);
+      }
     });
 
-    // Update legs
+    // Legs
     [-1, 1].forEach((side, si) => {
       if (thighRefs[si].current) {
         thighRefs[si].current.scale.set(d.thighR / initD.thighR, 1, d.thighR / initD.thighR);
@@ -278,84 +349,64 @@ export default function ProceduralHumanoid({
     });
   });
 
-  // ── Initial geometries (built once, updated in useFrame) ──────────────────
-  const torsoGeo = useMemo(() => buildTorsoGeometry({
-    shoulderW: initD.shoulderW, chestW: initD.chestW, waistW: initD.waistW,
-    bellyW: initD.bellyW, hipW: initD.hipW, chestD: initD.chestD, torsoH: initD.torsoH,
-  }), []);
-
-  const hipGeo = useMemo(() => buildLimbGeometry({
-    topR: initD.hipW, botR: initD.hipW * 0.88, h: initD.hipH,
-  }), []);
-
-  const uArmGeo = useMemo(() => buildLimbGeometry({
-    topR: initD.uArmR, botR: initD.uArmR * 0.8, h: initD.uArmH,
-  }), []);
-
-  const fArmGeo = useMemo(() => buildLimbGeometry({
-    topR: initD.fArmR, botR: initD.fArmR * 0.7, h: initD.fArmH,
-  }), []);
-
-  const thighGeo = useMemo(() => buildLimbGeometry({
-    topR: initD.thighR, botR: initD.thighR * 0.72, h: initD.thighH,
-  }), []);
-
-  const calfGeo = useMemo(() => buildLimbGeometry({
-    topR: initD.calfR, botR: initD.calfR * 0.62, h: initD.calfH,
-  }), []);
-
+  // ── Initial geometry (useMemo) ────────────────────────────────────────────────
   const d = initD;
+
+  const torsoGeo = useMemo(() => buildTorso({
+    shoulderW: d.shoulderW, chestW: d.chestW, waistW: d.waistW,
+    bellyW: d.bellyW, hipW: d.hipW, h: d.torsoH,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+
+  const hipGeo = useMemo(() => buildHip({ w: d.hipW, h: d.hipH }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const uArmGeo = useMemo(() => buildLimb({
+    topR: d.uArmR, botR: d.uArmR * 0.78, h: d.uArmH, bulge: 1.08,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fArmGeo = useMemo(() => buildLimb({
+    topR: d.fArmR, botR: d.fArmR * 0.72, h: d.fArmH, bulge: 1.03,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const thighGeo = useMemo(() => buildLimb({
+    topR: d.thighR, botR: d.thighR * 0.70, h: d.thighH, bulge: 1.06,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const calfGeo = useMemo(() => buildLimb({
+    topR: d.calfR, botR: d.calfR * 0.60, h: d.calfH, bulge: 1.04,
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Wireframe for goal clone aura highlight
+  const isGoal = cloneKey === 'B';
 
   return (
     <group ref={groupRef} position={position} name={`procedural-${cloneKey}`}>
 
       {/* ── HEAD ── */}
-      <mesh
-        ref={headRef}
-        position={[0, d.headY, 0]}
-        material={mat}
-        castShadow={false}
-      >
-        <sphereGeometry args={[d.headR, 18, 14]} />
+      <mesh ref={headRef} position={[0, d.headY, 0]} material={mat}>
+        <sphereGeometry args={[d.headR, 22, 16]} />
       </mesh>
 
       {/* ── NECK ── */}
-      <mesh
-        ref={neckRef}
-        position={[0, d.neckY - d.neckH / 2, 0]}
-        material={mat}
-        castShadow={false}
-      >
-        <cylinderGeometry args={[d.neckR * 0.9, d.neckR, d.neckH, 10, 1]} />
+      <mesh ref={neckRef} position={[0, d.neckY - d.neckH / 2, 0]} material={mat}>
+        <cylinderGeometry args={[d.neckR * 0.88, d.neckR, d.neckH, 12, 1]} />
       </mesh>
 
-      {/* ── TORSO (smooth lathe) ── */}
-      <mesh
-        ref={torsoRef}
-        position={[0, d.torsoMidY - d.torsoH / 2, 0]}
-        geometry={torsoGeo}
-        material={mat}
-        castShadow={false}
-      />
+      {/* ── TORSO (lathe) ── */}
+      <mesh ref={torsoRef} position={[0, d.torsoY, 0]} geometry={torsoGeo} material={mat} />
 
       {/* ── HIP BLOCK ── */}
-      <mesh
-        ref={hipRef}
-        position={[0, d.hipY - d.hipH / 2, 0]}
-        geometry={hipGeo}
-        material={mat}
-        castShadow={false}
-      />
+      <mesh ref={hipRef} position={[0, d.hipY - d.hipH / 2, 0]} geometry={hipGeo} material={mat} />
 
       {/* ── SHOULDER CAPS ── */}
-      {[-1, 1].map((s) => (
+      {[-1, 1].map((s, si) => (
         <mesh
           key={s}
-          position={[s * (d.shoulderX - 0.01), d.torsoMidY - d.torsoH / 2 + d.torsoH * 0.92, 0]}
+          ref={shoulderRefs[si]}
+          position={[s * (d.shoulderX - 0.01), d.torsoY + d.torsoH * 0.92, 0]}
           material={mat}
-          castShadow={false}
         >
-          <sphereGeometry args={[d.uArmR * 1.12, 11, 9]} />
+          <sphereGeometry args={[d.uArmR * 1.12, 12, 10]} />
         </mesh>
       ))}
 
@@ -367,8 +418,18 @@ export default function ProceduralHumanoid({
           position={[s * d.shoulderX, d.uArmY - d.uArmH / 2, 0]}
           geometry={uArmGeo}
           material={mat}
-          castShadow={false}
         />
+      ))}
+
+      {/* ── ELBOW CAPS ── */}
+      {[-1, 1].map((s) => (
+        <mesh
+          key={s}
+          position={[s * d.shoulderX, d.uArmY - d.uArmH / 2 - 0.012, 0]}
+          material={mat}
+        >
+          <sphereGeometry args={[d.fArmR * 0.92, 10, 8]} />
+        </mesh>
       ))}
 
       {/* ── FOREARMS ── */}
@@ -379,31 +440,29 @@ export default function ProceduralHumanoid({
           position={[s * d.shoulderX, d.fArmY - d.fArmH / 2, 0]}
           geometry={fArmGeo}
           material={mat}
-          castShadow={false}
         />
       ))}
 
       {/* ── HANDS ── */}
-      {[-1, 1].map((s) => (
+      {[-1, 1].map((s, si) => (
         <mesh
           key={s}
+          ref={handRefs[si]}
           position={[s * d.shoulderX, d.handY, 0.01]}
           material={mat}
-          castShadow={false}
         >
-          <boxGeometry args={[0.068, 0.092, 0.032]} />
+          <boxGeometry args={[d.fArmR * 1.6, d.fArmR * 2.1, d.fArmR * 0.8]} />
         </mesh>
       ))}
 
-      {/* ── HIP JOINT SPHERES (smooth transition) ── */}
+      {/* ── HIP JOINT SPHERES ── */}
       {[-1, 1].map((s) => (
         <mesh
           key={s}
-          position={[s * d.thighX, d.hipY + d.hipH * 0.05, 0]}
+          position={[s * d.thighX, d.hipY + d.hipH * 0.08, 0]}
           material={mat}
-          castShadow={false}
         >
-          <sphereGeometry args={[d.thighR * 0.9, 10, 8]} />
+          <sphereGeometry args={[d.thighR * 0.88, 12, 9]} />
         </mesh>
       ))}
 
@@ -415,7 +474,6 @@ export default function ProceduralHumanoid({
           position={[s * d.thighX, d.thighY - d.thighH / 2, 0]}
           geometry={thighGeo}
           material={mat}
-          castShadow={false}
         />
       ))}
 
@@ -423,11 +481,10 @@ export default function ProceduralHumanoid({
       {[-1, 1].map((s) => (
         <mesh
           key={s}
-          position={[s * d.thighX * 0.92, d.calfY + d.calfH / 2 + 0.005, 0.03]}
+          position={[s * d.thighX * 0.92, d.calfY + d.calfH / 2 + 0.008, 0.032]}
           material={mat}
-          castShadow={false}
         >
-          <sphereGeometry args={[d.calfR * 0.78, 9, 7]} />
+          <sphereGeometry args={[d.calfR * 0.76, 10, 8]} />
         </mesh>
       ))}
 
@@ -439,21 +496,40 @@ export default function ProceduralHumanoid({
           position={[s * d.thighX * 0.88, d.calfY - d.calfH / 2, 0.01]}
           geometry={calfGeo}
           material={mat}
-          castShadow={false}
         />
+      ))}
+
+      {/* ── ANKLE / HEEL SPHERES ── */}
+      {[-1, 1].map((s) => (
+        <mesh
+          key={s}
+          position={[s * d.footX, d.footH, 0.008]}
+          material={mat}
+        >
+          <sphereGeometry args={[d.calfR * 0.62, 9, 7]} />
+        </mesh>
       ))}
 
       {/* ── FEET ── */}
       {[-1, 1].map((s) => (
         <mesh
           key={s}
-          position={[s * d.footX, d.footY, 0.045]}
+          position={[s * d.footX, d.footH / 2, 0.052]}
           material={mat}
-          castShadow={false}
         >
-          <boxGeometry args={[0.075, d.footH, 0.18]} />
+          <boxGeometry args={[d.footX * 0.70, d.footH, 0.188]} />
         </mesh>
       ))}
+
+      {/* ── AURA RINGS (goal clone only) ── */}
+      {showAura && (
+        <>
+          <AuraRing radius={d.chestW * 1.15}  y={d.torsoY + d.torsoH * 0.72} />
+          <AuraRing radius={d.waistW * 1.18}  y={d.torsoY + d.torsoH * 0.40} />
+          <AuraRing radius={d.hipW * 1.12}    y={d.hipY + d.hipH * 0.5} />
+          <AuraRing radius={d.headR * 1.20}   y={d.headY} />
+        </>
+      )}
 
     </group>
   );

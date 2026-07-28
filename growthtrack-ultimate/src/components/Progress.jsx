@@ -347,7 +347,7 @@ export default function Progress() {
                 onClick={() => { setGalleryOpen(true); setLightboxIdx(i); }}
                 style={{ flexShrink: 0, width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
               >
-                <img src={entry.photo_url} alt={entry.date} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={entry.photo_url} alt={entry.date} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             ))}
             {photoEntries.length > 5 && (
@@ -403,7 +403,7 @@ export default function Progress() {
                   </td>
                   <td style={{ padding: '1rem' }}>
                     {entry.photo_url ? (
-                      <img src={entry.photo_url} alt="progress" style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', cursor: 'pointer' }}
+                      <img src={entry.photo_url} alt="progress" loading="lazy" style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', cursor: 'pointer' }}
                         onClick={() => { const idx = photoEntries.findIndex(p => p.id === entry.id); if (idx !== -1) { setGalleryOpen(true); setLightboxIdx(idx); } }} />
                     ) : '—'}
                   </td>

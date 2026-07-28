@@ -273,7 +273,7 @@ export default function ProfileEditor() {
                 {avatarUploading ? (
                   <div className="spinner" style={{ width: 24, height: 24, border: '3px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                 ) : avatarPreview ? (
-                  <img src={avatarPreview} alt={user?.name || 'Profile'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={avatarPreview} alt={user?.name || 'Profile'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <User size={36} color="white" />
                 )}

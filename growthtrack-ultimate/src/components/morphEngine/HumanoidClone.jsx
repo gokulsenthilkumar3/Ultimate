@@ -3,12 +3,7 @@
  * HumanoidClone.jsx
  *
  * A single rendered clone of the humanoid model.
- * Each clone:
- *   1. Loads a cloned GLB mesh (independent morphTargetInfluences)
- *   2. Runs MorphInterpolator in useFrame to animate blend shapes
- *   3. Applies PostureRig for bone-level posture corrections
- *   4. Receives shader uniforms for skin tone + vascularity (Layer 4 materials)
- *   5. Accepts position, opacity, and renderMode props from CloneEngine
+ * Falls back to ProceduralHumanoid when no GLB is available.
  *
  * Props:
  *   cloneKey        "A" | "B"        — which store slice to read
@@ -17,6 +12,7 @@
  *   snapWeights     boolean          — true = no lerp (goal clone)
  *   renderMode      "normal" | "ghost" | "delta" | "xray"
  *   visible         boolean
+ *   showAura        boolean          — goal clone rim glow
  */
 
 import React, { useRef, useEffect, useMemo } from "react";
@@ -24,101 +20,60 @@ import { useFrame }                           from "@react-three/fiber";
 import { useShallow }                         from "zustand/react/shallow";
 import * as THREE                             from "three";
 
-import { useModelLoader }                  from "./useModelLoader";
-import { useMorphInterpolator }            from "./MorphInterpolator";
-import PostureRig                          from "./PostureRig";
-import ProceduralHumanoid                  from "./ProceduralHumanoid";
-import use3DStore                          from "../../store/use3DStore";
+import { useModelLoader }       from "./useModelLoader";
+import { useMorphInterpolator } from "./MorphInterpolator";
+import PostureRig               from "./PostureRig";
+import ProceduralHumanoid       from "./ProceduralHumanoid";
+import use3DStore               from "../../store/use3DStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SKIN MATERIAL FACTORY
-// Creates the base skin material. Custom SSS shader replaces this in Layer 4.
-// This placeholder gives correct Fitzpatrick-scale skin tones using PBR.
+// MATERIAL FACTORY
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FITZPATRICK_COLORS = {
-  I:   new THREE.Color(0xfff0e0),   // very fair
-  II:  new THREE.Color(0xf5d5b0),   // fair
-  III: new THREE.Color(0xe8b88a),   // medium
-  IV:  new THREE.Color(0xc68642),   // olive/brown (Gokul's tone)
-  V:   new THREE.Color(0x8d5524),   // brown
-  VI:  new THREE.Color(0x4a2912),   // deep
+  I:   new THREE.Color(0xfff0e0),
+  II:  new THREE.Color(0xf5d5b0),
+  III: new THREE.Color(0xe8b88a),
+  IV:  new THREE.Color(0xc68642),
+  V:   new THREE.Color(0x8d5524),
+  VI:  new THREE.Color(0x4a2912),
 };
 
 function createSkinMaterial(skinTone = "IV") {
   const color = FITZPATRICK_COLORS[skinTone] ?? FITZPATRICK_COLORS.IV;
-
   return new THREE.MeshStandardMaterial({
     color,
-    roughness:    0.72,
-    metalness:    0.0,
-    // SSS placeholder — Layer 4 replaces this with custom GLSL
-    // emissive: warm back-light bleed placeholder
-    emissive:     new THREE.Color(0x3d1a08),
-    emissiveIntensity: 0.04,
-    side:         THREE.FrontSide,
-    transparent:  false,
-    depthWrite:   true,
+    roughness:         0.72,
+    metalness:         0.0,
+    emissive:          color.clone().multiplyScalar(0.08),
+    emissiveIntensity: 1.0,
+    side:              THREE.FrontSide,
+    depthWrite:        true,
   });
 }
 
-function createGhostMaterial(skinTone = "IV") {
+function createGhostMaterial() {
   return new THREE.MeshStandardMaterial({
-    color:       new THREE.Color("#22D3EE"),
-    emissive:    new THREE.Color("#22D3EE"),
-    emissiveIntensity: 0.3,
-    roughness:   0.2,
-    metalness:   0.1,
-    transparent: true,
-    opacity:     0.3,
-    depthWrite:  false,
-    side:        THREE.DoubleSide,
+    color:             new THREE.Color("#22D3EE"),
+    emissive:          new THREE.Color("#22D3EE"),
+    emissiveIntensity: 0.35,
+    roughness:         0.15,
+    metalness:         0.2,
+    transparent:       true,
+    opacity:           0.30,
+    depthWrite:        false,
+    side:              THREE.DoubleSide,
   });
 }
 
 function createDeltaMaterial() {
-  // Delta mode uses a custom shader in Layer 4.
-  // Placeholder: wireframe to suggest "analysis mode"
   return new THREE.MeshStandardMaterial({
-    color:       0x888888,
-    roughness:   1.0,
-    metalness:   0.0,
-    wireframe:   false,
-    transparent: false,
+    color:             new THREE.Color("#F59E0B"),
+    emissive:          new THREE.Color("#7A4800"),
+    emissiveIntensity: 0.12,
+    roughness:         0.55,
+    metalness:         0.1,
   });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AURA MESH — goal clone outer glow ring (rendered as a slightly inflated clone)
-// Full volumetric god-ray aura is Layer 4 shader territory.
-// This provides the rim glow on the goal clone.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function AuraMesh({ bodyMesh, visible }) {
-  const auraMaterial = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color:       new THREE.Color("#22D3EE"),
-        side:        THREE.BackSide, // renders on the inside of the inflated mesh
-        transparent: true,
-        opacity:     0.18,
-        depthWrite:  false,
-      }),
-    []
-  );
-
-  if (!bodyMesh || !visible) return null;
-
-  return (
-    <mesh
-      geometry={bodyMesh.geometry}
-      material={auraMaterial}
-      morphTargetDictionary={bodyMesh.morphTargetDictionary}
-      morphTargetInfluences={bodyMesh.morphTargetInfluences}
-      scale={1.018} // slightly inflated for rim
-      castShadow={false}
-    />
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,17 +85,16 @@ export default function HumanoidClone({
   position    = [0, 0, 0],
   opacity     = 1,
   snapWeights = false,
-  renderMode  = "normal",   // "normal" | "ghost" | "delta" | "xray"
+  renderMode  = "normal",
   visible     = true,
   showAura    = false,
 }) {
-  const groupRef  = useRef();
-  const meshRef   = useRef();
+  const groupRef = useRef();
 
-  // ── Load model ─────────────────────────────────────────────────────────────
+  // ── Load model ──────────────────────────────────────────────────────────────
   const { bodyMesh, morphIndexMap, skeleton, scene, isDev } = useModelLoader();
 
-  // ── Store slice ────────────────────────────────────────────────────────────
+  // ── Store slice ─────────────────────────────────────────────────────────────
   const { weights, metrics, posture } = use3DStore(
     useShallow((s) => {
       const clone = cloneKey === "B" ? s.cloneB : s.cloneA;
@@ -152,60 +106,55 @@ export default function HumanoidClone({
     })
   );
 
-  // ── Morph interpolator ─────────────────────────────────────────────────────
+  // ── Morph interpolator ──────────────────────────────────────────────────────
   const { interpolator, updateWeights } = useMorphInterpolator(snapWeights);
 
-  // Sync weights from store into interpolator whenever they change
   useEffect(() => {
     updateWeights(weights);
   }, [weights, updateWeights]);
 
-  // ── Material management ────────────────────────────────────────────────────
+  // ── Material ────────────────────────────────────────────────────────────────
   const material = useMemo(() => {
     switch (renderMode) {
-      case "ghost": return createGhostMaterial(metrics.skinTone);
+      case "ghost": return createGhostMaterial();
       case "delta": return createDeltaMaterial();
-      default:      return createSkinMaterial(metrics.skinTone);
+      default:      return createSkinMaterial(metrics?.skinTone ?? "IV");
     }
-  }, [renderMode, metrics.skinTone]);
+  }, [renderMode, metrics?.skinTone]);
 
-  // Update material opacity (GHOST mode driven by parent)
+  // Sync opacity into material
   useEffect(() => {
     if (!material) return;
-    if (material.transparent) {
-      material.opacity = opacity;
-    }
+    if (material.transparent) material.opacity = opacity;
   }, [material, opacity]);
 
-  // ── Attach cloned mesh to ref ──────────────────────────────────────────────
+  // Apply material to GLB mesh when available
   useEffect(() => {
-    if (meshRef.current && bodyMesh) {
-      meshRef.current.morphTargetDictionary  = bodyMesh.morphTargetDictionary;
-      meshRef.current.morphTargetInfluences  = [...(bodyMesh.morphTargetInfluences ?? [])];
+    if (bodyMesh) {
+      bodyMesh.material = material;
+      bodyMesh.castShadow    = renderMode === "normal";
+      bodyMesh.receiveShadow = false;
     }
-  }, [bodyMesh]);
+  }, [bodyMesh, material, renderMode]);
 
-  // ── Per-frame: advance interpolator and apply to mesh ─────────────────────
+  // ── Per-frame morph application ─────────────────────────────────────────────
   useFrame((_, delta) => {
-    if (!meshRef.current || !bodyMesh) return;
-
+    if (!bodyMesh) return;
     interpolator.tick(delta);
-    interpolator.applyToMesh(meshRef.current, morphIndexMap);
+    interpolator.applyToMesh(bodyMesh, morphIndexMap);
 
-    // Pass shader-only uniforms to material (Layer 4 will read these)
-    if (meshRef.current.material?.userData) {
-      meshRef.current.material.userData.fitzpatrickIndex =
-        interpolator.getWeight("fitzpatrick_index");
-      meshRef.current.material.userData.vascularityIntensity =
-        interpolator.getWeight("vascularity_intensity");
+    // Shader uniforms for Layer 4 materials
+    if (bodyMesh.material?.userData) {
+      bodyMesh.material.userData.fitzpatrickIndex    = interpolator.getWeight("fitzpatrick_index");
+      bodyMesh.material.userData.vascularityIntensity = interpolator.getWeight("vascularity_intensity");
     }
   });
 
-  // ── Dev fallback — use procedural humanoid when no GLB is loaded ─────────
-  // NOTE: visible check MUST come first to avoid rendering invisible clones
+  // ── Visibility guard ────────────────────────────────────────────────────────
   if (!visible) return null;
 
-  if (isDev) {
+  // ── Dev fallback: no GLB → use procedural model ─────────────────────────────
+  if (isDev || !bodyMesh) {
     return (
       <ProceduralHumanoid
         cloneKey={cloneKey}
@@ -213,42 +162,35 @@ export default function HumanoidClone({
         renderMode={renderMode}
         opacity={opacity}
         visible={visible}
+        showAura={showAura}
+        skinTone={metrics?.skinTone ?? "IV"}
       />
     );
   }
 
-  if (!bodyMesh) return <ProceduralHumanoid cloneKey={cloneKey} position={position} renderMode={renderMode} opacity={opacity} visible={visible} />;
-
+  // ── GLB path ─────────────────────────────────────────────────────────────────
   return (
-    <group
-      ref={groupRef}
-      position={position}
-      name={`clone-${cloneKey}`}
-    >
-      {/* ── Primary body mesh ── */}
-      {skeleton ? (
-        <skinnedMesh
-          ref={meshRef}
-          geometry={bodyMesh.geometry}
-          material={material}
-          skeleton={skeleton}
-          castShadow={renderMode === "normal"}
-          receiveShadow={false}
-        />
-      ) : (
+    <group ref={groupRef} position={position} name={`clone-${cloneKey}`}>
+      {scene && <primitive object={scene} />}
+
+      {/* Aura rim — goal clone only */}
+      {showAura && bodyMesh && (
         <mesh
-          ref={meshRef}
           geometry={bodyMesh.geometry}
-          material={material}
-          castShadow={renderMode === "normal"}
-          receiveShadow={false}
+          material={new THREE.MeshBasicMaterial({
+            color:       "#22D3EE",
+            side:        THREE.BackSide,
+            transparent: true,
+            opacity:     0.16,
+            depthWrite:  false,
+          })}
+          morphTargetDictionary={bodyMesh.morphTargetDictionary}
+          morphTargetInfluences={bodyMesh.morphTargetInfluences || []}
+          scale={1.018}
         />
       )}
 
-      {/* ── Aura rim (goal clone only) ── */}
-      <AuraMesh bodyMesh={bodyMesh} visible={showAura} />
-
-      {/* ── Posture rig (bone rotations) ── */}
+      {/* Posture bone rig */}
       <PostureRig skeleton={skeleton} posture={posture} />
     </group>
   );

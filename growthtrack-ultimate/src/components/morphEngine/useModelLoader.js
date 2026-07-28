@@ -26,6 +26,7 @@
 import { useMemo }       from "react";
 import { useGLTF }       from "@react-three/drei";
 import * as THREE        from "three";
+import { SkeletonUtils } from "three-stdlib";
 import { computeMorphWeights } from "../../store/use3DStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,8 +85,7 @@ function buildFallbackMesh() {
   });
 
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.morphTargetDictionary  = {};
-  mesh.morphTargetInfluences  = [];
+  mesh.name = "Body_Fallback_Box";
   mesh.name = "Body_Fallback_Box";
 
   return mesh;
@@ -124,11 +124,13 @@ export function useModelLoader() {
   }
 
   return useMemo(() => {
-    // ── REAL GLB path ────────────────────────────────────────────────────────
-    if (gltf?.scene) {
-      const clonedScene = gltf.scene.clone(true);
+    if (!gltf || !gltf.scene) return { isDev: true };
 
-      let bodyMesh     = null;
+    try {
+      // Temporarily use the raw scene to see if cloning is the issue
+      const clonedScene = gltf.scene;
+
+      let bodyMesh = null;
       let morphIndexMap = {};
       let skeleton     = null;
 
@@ -154,6 +156,8 @@ export function useModelLoader() {
       }
 
       return { bodyMesh, morphIndexMap, skeleton, scene: clonedScene, isDev: false };
+    } catch (err) {
+      console.error("[useModelLoader] Error processing GLB:", err);
     }
 
     // ── DEV FALLBACK ─────────────────────────────────────────────────────────
