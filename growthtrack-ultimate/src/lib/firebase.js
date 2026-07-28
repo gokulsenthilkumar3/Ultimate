@@ -1,6 +1,8 @@
 // Firebase / Gemini stub — provides a safe fallback when Firebase is not configured.
 // AiDashboard.jsx imports { askGemini } from '../lib/firebase'
 
+import { fetchWithRetry, retryConfig } from '../utils/apiRetry';
+
 /**
  * askGemini — calls Gemini via Firebase Cloud Function (if configured),
  * otherwise throws so AiDashboard can display its offline fallback message.
@@ -18,14 +20,14 @@ export async function askGemini(prompt, model = 'gemini-1.5-flash') {
 
   // Direct Gemini REST API via Firebase API key
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { maxOutputTokens: 2048, temperature: 0.7 },
     }),
-  });
+  }, retryConfig.standard);
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

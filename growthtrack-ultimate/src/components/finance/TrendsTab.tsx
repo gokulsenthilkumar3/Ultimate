@@ -5,7 +5,7 @@ import StatCard from '../ui/StatCard';
 import EmptyState from '../ui/EmptyState';
 
 
-export default function TrendsTab({ fmtINR, form, TOOLTIP_STYLE, trendWindow, setTrendWindow, trendData, expenses }) {
+const TrendsTab = React.memo(function TrendsTab({ fmtINR, form, TOOLTIP_STYLE, trendWindow, setTrendWindow, trendData, expenses }: any) {
   {/* ── TRENDS (new tab) ── */}
       return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -90,3 +90,5 @@ export default function TrendsTab({ fmtINR, form, TOOLTIP_STYLE, trendWindow, se
         </div>
   );
 }
+
+export default TrendsTab;

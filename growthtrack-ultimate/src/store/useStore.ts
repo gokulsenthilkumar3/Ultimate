@@ -72,6 +72,9 @@ const useStore = create<any>()(
       databases: [],
 
       shopping: { items: [] },
+      timesheetEntries: [],
+      addTimesheetEntry: (entry: any) => set((state: any) => ({ timesheetEntries: [entry, ...state.timesheetEntries] })),
+      deleteTimesheetEntry: (id: string) => set((state: any) => ({ timesheetEntries: state.timesheetEntries.filter((e: any) => e.id !== id) })),
 
 
       trainingPlan: null,
@@ -208,8 +211,8 @@ const useStore = create<any>()(
           if (user) newState.user = user;
           if (financeData) {
             newState.finance = {
-              transactions: financeData.transactions || [],
-              budgets: financeData.budgets || []
+              transactions: (financeData.transactions || []).reduce((acc: any, tx: any) => { acc[tx.id] = tx; return acc; }, {}),
+              budgets: (financeData.budgets || []).reduce((acc: any, b: any) => { acc[b.id] = b; return acc; }, {})
             };
           }
 
@@ -607,7 +610,11 @@ export const selectTogglePinnedTab = (s: any) => s.togglePinnedTab;
 export const selectOnboardingComplete = (s: any) => s.onboardingComplete;
 export const selectSetOnboardingComplete = (s: any) => s.setOnboardingComplete;
 
-export const selectFinance = (s: any) => s.finance;
+export const selectFinance = (s: any) => ({
+  ...s.finance,
+  transactions: Object.values(s.finance?.transactions || {}),
+  budgets: Object.values(s.finance?.budgets || {})
+});
 export const selectAddTransaction = (s: any) => s.addTransaction;
 export const selectDeleteTransaction = (s: any) => s.deleteTransaction;
 

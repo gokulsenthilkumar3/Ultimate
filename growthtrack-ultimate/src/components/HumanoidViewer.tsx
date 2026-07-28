@@ -13,7 +13,7 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
-import ErrorBoundary from './ErrorBoundary';
+import TabErrorBoundary from './TabErrorBoundary';
 import {
   Rotate3D, Eye, Layers, Zap, Shirt, Ruler, Camera, Download,
   ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle,
@@ -262,7 +262,8 @@ export default function HumanoidViewer() {
           </div>
 
           {/* 3D Canvas or Sprite fallback */}
-          <ErrorBoundary
+          <TabErrorBoundary
+            tabName="Digital Twin 3D Engine"
             fallback={
               <div className="chamber-spinner">
                 <div style={{ color: '#f87171', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>
@@ -278,7 +279,7 @@ export default function HumanoidViewer() {
                 ? <Sprite3DViewer />
                 : <ChamberCanvas />}
             </Suspense>
-          </ErrorBoundary>
+          </TabErrorBoundary>
 
 
           {/* Bottom labels */}
