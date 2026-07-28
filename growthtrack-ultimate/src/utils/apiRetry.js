@@ -36,6 +36,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  */
 function shouldRetry(res) {
   if (!res) return true;               // network / timeout error
+  if (res.status === 429) return true; // rate limited
   return res.status >= 500;            // server error — retry
 }
 
@@ -84,8 +85,10 @@ export async function fetchWithRetry(url, options = {}, retryOptions = {}) {
 
     if (attempt < retries) {
       const delay = baseDelay * Math.pow(factor, attempt);
-      console.warn(`[apiRetry] Attempt ${attempt + 1} failed for ${url}. Retrying in ${delay}ms...`);
-      await sleep(delay);
+      const jitter = delay * 0.2 * Math.random(); // 20% jitter
+      const finalDelay = delay + jitter;
+      console.warn(`[apiRetry] Attempt ${attempt + 1} failed for ${url}. Retrying in ${Math.round(finalDelay)}ms...`);
+      await sleep(finalDelay);
     }
   }
 

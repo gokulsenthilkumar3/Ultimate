@@ -25,32 +25,13 @@ import { useMorphInterpolator } from "./MorphInterpolator";
 import PostureRig               from "./PostureRig";
 import ProceduralHumanoid       from "./ProceduralHumanoid";
 import use3DStore               from "../../store/use3DStore";
+import { createSkinMaterial, updateSkinUniforms, createRimAuraMaterial, updateAuraUniforms } from "./UberShader";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MATERIAL FACTORY
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FITZPATRICK_COLORS = {
-  I:   new THREE.Color(0xfff0e0),
-  II:  new THREE.Color(0xf5d5b0),
-  III: new THREE.Color(0xe8b88a),
-  IV:  new THREE.Color(0xc68642),
-  V:   new THREE.Color(0x8d5524),
-  VI:  new THREE.Color(0x4a2912),
-};
-
-function createSkinMaterial(skinTone = "IV") {
-  const color = FITZPATRICK_COLORS[skinTone] ?? FITZPATRICK_COLORS.IV;
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness:         0.72,
-    metalness:         0.0,
-    emissive:          color.clone().multiplyScalar(0.08),
-    emissiveIntensity: 1.0,
-    side:              THREE.FrontSide,
-    depthWrite:        true,
-  });
-}
+// We'll use createSkinMaterial from UberShader directly.
 
 function createGhostMaterial() {
   return new THREE.MeshStandardMaterial({
@@ -90,6 +71,7 @@ export default function HumanoidClone({
   showAura    = false,
 }) {
   const groupRef = useRef();
+  const auraRef = useRef();
 
   // ── Load model ──────────────────────────────────────────────────────────────
   const { bodyMesh, morphIndexMap, skeleton, scene, isDev } = useModelLoader();
@@ -118,7 +100,10 @@ export default function HumanoidClone({
     switch (renderMode) {
       case "ghost": return createGhostMaterial();
       case "delta": return createDeltaMaterial();
-      default:      return createSkinMaterial(metrics?.skinTone ?? "IV");
+      default: {
+        const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[metrics?.skinTone] ?? 3;
+        return createSkinMaterial(toneIndex);
+      }
     }
   }, [renderMode, metrics?.skinTone]);
 
@@ -144,9 +129,20 @@ export default function HumanoidClone({
     interpolator.applyToMesh(bodyMesh, morphIndexMap);
 
     // Shader uniforms for Layer 4 materials
-    if (bodyMesh.material?.userData) {
-      bodyMesh.material.userData.fitzpatrickIndex    = interpolator.getWeight("fitzpatrick_index");
-      bodyMesh.material.userData.vascularityIntensity = interpolator.getWeight("vascularity_intensity");
+    if (bodyMesh.material?.uniforms) {
+      updateSkinUniforms(bodyMesh.material, {
+        fitzpatrickIndex:     interpolator.getWeight("fitzpatrick_index"),
+        vascularityIntensity: interpolator.getWeight("vascularity_intensity"),
+        time: _.clock.elapsedTime
+      });
+    }
+    
+    // Aura uniform update
+    if (showAura && auraRef.current) {
+      updateAuraUniforms({ rimMat: auraRef.current.material }, {
+        time: _.clock.elapsedTime,
+        intensity: 1.0 // TODO: map this to ambition progress if needed
+      });
     }
   });
 
@@ -176,14 +172,9 @@ export default function HumanoidClone({
       {/* Aura rim — goal clone only */}
       {showAura && bodyMesh && (
         <mesh
+          ref={auraRef}
           geometry={bodyMesh.geometry}
-          material={new THREE.MeshBasicMaterial({
-            color:       "#22D3EE",
-            side:        THREE.BackSide,
-            transparent: true,
-            opacity:     0.16,
-            depthWrite:  false,
-          })}
+          material={createRimAuraMaterial()}
           morphTargetDictionary={bodyMesh.morphTargetDictionary}
           morphTargetInfluences={bodyMesh.morphTargetInfluences || []}
           scale={1.018}

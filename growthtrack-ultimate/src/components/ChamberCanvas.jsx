@@ -16,7 +16,7 @@ import PostProcessingStack from "./morphEngine/PostProcessingStack";
 import { CloneEngine, BodyPartInteraction } from "./morphEngine";
 import use3DStore, { GPU_TIERS }            from "../store/use3DStore";
 import { detectAndSetGpuTier }              from "../store/use3DStore.usage";
-import ErrorBoundary                        from "./ErrorBoundary";
+import TabErrorBoundary                     from "./TabErrorBoundary";
 
 const LOD_CONFIG = {
   [GPU_TIERS.HIGH]: {
@@ -73,7 +73,8 @@ function CanvasScene({ lodConfig }) {
       )}
 
       <Suspense fallback={null}>
-        <ErrorBoundary
+        <TabErrorBoundary
+          tabName="Mirror Chamber Core"
           fallback={
             <Html center style={{ pointerEvents: 'none' }}>
               <div style={{
@@ -98,7 +99,7 @@ function CanvasScene({ lodConfig }) {
           {(viewMode === 'SOLO' || viewMode === 'DUAL') && (
             <BodyPartInteraction clonePosition={[0, 0, 0]} />
           )}
-        </ErrorBoundary>
+        </TabErrorBoundary>
       </Suspense>
 
     </>

@@ -9,6 +9,7 @@ import {
 import { useToast } from '../hooks/useToast';
 import { apiSync } from '../store/useStore';
 import EmptyState from './ui/EmptyState';
+import { FixedSizeList as List } from '../lib/FixedSizeList';
 
 // ── P1-P4 priority config ─────────────────────────────────────────────────────────────
 const PRIORITIES = [
@@ -329,9 +330,10 @@ export default function Tasks() {
     }
     if (editId) {
       // PATCH to API
+      // Optimistic update
+      setDbTasks(prev => prev ? prev.map(t => t.id === editId ? { ...t, ...form } : t) : null);
       try {
         await apiSync(`/tasks/${editId}`, 'PATCH', form);
-        setDbTasks(prev => prev ? prev.map(t => t.id === editId ? { ...t, ...form } : t) : null);
         toast.success('Task updated');
       } catch {
         storeUpdateTask(editId, form);
@@ -339,13 +341,18 @@ export default function Tasks() {
       }
     } else {
       const payload = { ...form, status: 'pending', subtasks: [], created_at: new Date().toISOString() };
+      const tempId = Date.now();
+      const newTask = { ...payload, id: tempId };
+      // Optimistic update
+      setDbTasks(prev => prev ? [newTask, ...prev] : [newTask]);
       try {
         const created = await apiSync('/tasks', 'POST', payload);
-        const newTask = created?.id ? created : { ...payload, id: Date.now() };
-        setDbTasks(prev => prev ? [newTask, ...prev] : [newTask]);
+        if (created?.id) {
+          setDbTasks(prev => prev ? prev.map(t => t.id === tempId ? created : t) : null);
+        }
         toast.success('Task added');
       } catch {
-        await storeAddTask(payload);
+        await storeAddTask(newTask);
         toast.success('Task added (local)');
       }
     }
@@ -353,19 +360,22 @@ export default function Tasks() {
   };
 
   const handleComplete = useCallback(async (id) => {
+    const ts = new Date().toISOString();
+    // Optimistic UI
+    setDbTasks(prev => prev ? prev.map(t => t.id === id
+        ? { ...t, status: 'done', completed_at: ts } : t) : null);
     try {
-      await apiSync(`/tasks/${id}`, 'PATCH', { status: 'done', completed_at: new Date().toISOString() });
-      setDbTasks(prev => prev ? prev.map(t => t.id === id
-        ? { ...t, status: 'done', completed_at: new Date().toISOString() } : t) : null);
+      await apiSync(`/tasks/${id}`, 'PATCH', { status: 'done', completed_at: ts });
     } catch { storeCompleteTask(id); }
     toast.success('Task completed! ✓');
   }, [storeCompleteTask, toast]);
 
   const handleDelete = useCallback(async (id, bucket) => {
     const taskToRestore = allTasks.find(t => t.id === id);
+    // Optimistic UI
+    setDbTasks(prev => prev ? prev.filter(t => t.id !== id) : null);
     try {
       await apiSync(`/tasks/${id}`, 'DELETE');
-      setDbTasks(prev => prev ? prev.filter(t => t.id !== id) : null);
     } catch { storeDeleteTask(id, bucket); }
     
     toast.info('Task deleted', 5000, {
@@ -387,9 +397,10 @@ export default function Tasks() {
   }, [storeDeleteTask, toast, allTasks]);
 
   const handleReopen = useCallback(async (id) => {
+    // Optimistic UI
+    setDbTasks(prev => prev ? prev.map(t => t.id === id ? { ...t, status: 'pending', completed_at: null } : t) : null);
     try {
       await apiSync(`/tasks/${id}`, 'PATCH', { status: 'pending', completed_at: null });
-      setDbTasks(prev => prev ? prev.map(t => t.id === id ? { ...t, status: 'pending', completed_at: null } : t) : null);
     } catch { storeReopenTask(id); }
     toast.info('Task reopened');
   }, [storeReopenTask, toast]);
@@ -750,45 +761,61 @@ export default function Tasks() {
           </div>
         )}
 
-        {tab === 'completed' && completed.map(task => (
-          <div key={task.id}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
-                     padding: '0.75rem 1rem', borderRadius: '14px',
-                     background: 'rgba(255,255,255,0.02)',
-                     border: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ marginTop: '2px', width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                          background: 'rgba(16,185,129,0.18)', border: '2px solid rgba(16,185,129,0.5)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Check size={10} color="#10b981" />
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-3)', textDecoration: 'line-through' }}>{task.title}</p>
-              {(task.completedAt || task.completed_at) && (
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '2px', opacity: 0.6 }}>
-                  Completed {(task.completedAt || task.completed_at)?.slice(0, 10)}
-                </p>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-              <button onClick={() => handleReopen(task.id)} title="Reopen"
-                className="hover-btn-info"
-                style={{
-                  background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px',
-                  width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  color: 'var(--text-3)'
-                }}
-              ><RotateCcw size={12} /></button>
-              <button onClick={() => handleDelete(task.id, 'completed')} title="Delete Forever"
-                className="hover-btn-danger-strong"
-                style={{
-                  background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px',
-                  width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  color: 'var(--text-3)'
-                }}
-              ><Trash2 size={12} /></button>
-            </div>
-          </div>
-        ))}
+        {tab === 'completed' && completed.length > 0 && (
+          <List
+            height={600}
+            itemCount={completed.length}
+            itemSize={65}
+            width="100%"
+            itemData={completed}
+          >
+            {({ index, style, data }) => {
+              const task = data[index];
+              return (
+                <div style={{ ...style, paddingBottom: '0.6rem' }}>
+                  <div
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem',
+                             padding: '0.75rem 1rem', borderRadius: '14px',
+                             background: 'rgba(255,255,255,0.02)',
+                             border: '1px solid rgba(255,255,255,0.05)',
+                             height: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ marginTop: '2px', width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                                  background: 'rgba(16,185,129,0.18)', border: '2px solid rgba(16,185,129,0.5)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Check size={10} color="#10b981" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-3)', textDecoration: 'line-through', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</p>
+                      {(task.completedAt || task.completed_at) && (
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '2px', opacity: 0.6 }}>
+                          Completed {(task.completedAt || task.completed_at)?.slice(0, 10)}
+                        </p>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                      <button onClick={() => handleReopen(task.id)} title="Reopen"
+                        className="hover-btn-info"
+                        style={{
+                          background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px',
+                          width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                          color: 'var(--text-3)'
+                        }}
+                      ><RotateCcw size={12} /></button>
+                      <button onClick={() => handleDelete(task.id, 'completed')} title="Delete Forever"
+                        className="hover-btn-danger-strong"
+                        style={{
+                          background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px',
+                          width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                          color: 'var(--text-3)'
+                        }}
+                      ><Trash2 size={12} /></button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }}
+          </List>
+        )}
 
         {tab === 'pending' && filteredPending.length === 0 && (
           <div style={{ marginTop: '1rem' }}>

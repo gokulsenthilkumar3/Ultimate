@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  Zap, Target, Layers, Activity,
+  Zap, Target, Layers, Activity, User, Ruler, Scale, Info,
   Shield, Save, Edit3, X, ToggleLeft, ToggleRight, TrendingDown, TrendingUp,
 } from 'lucide-react';
 import useStore, { selectSetActiveTab, selectPhysiqueTargets, selectUpdatePhysiqueTargets } from '../store/useStore';
@@ -359,147 +359,179 @@ export default function Physique({ user }) {
         </div>
 
         {/* Body Fat Calculator */}
-        <div className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Activity size={24} color="var(--accent)" />
-            <h3 className="text-display" style={{ fontSize: '1.5rem', margin: 0 }}>Body Fat % Calculator</h3>
+        <div className="glass-card" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem', background: 'linear-gradient(145deg, rgba(20,20,25,0.7) 0%, rgba(10,10,15,0.9) 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }}>
+          
+          {/* Decorative background glow */}
+          <div style={{ position: 'absolute', top: '-30%', left: '-20%', width: '140%', height: '140%', background: 'radial-gradient(ellipse at 50% 0%, rgba(var(--accent-rgb), 0.1) 0%, transparent 60%)', pointerEvents: 'none', zIndex: 0 }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1 }}>
+            <div style={{ padding: '12px', borderRadius: '14px', background: 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.2) 0%, rgba(var(--accent-rgb), 0.05) 100%)', border: '1px solid rgba(var(--accent-rgb), 0.3)', boxShadow: '0 4px 20px rgba(var(--accent-rgb), 0.2)' }}>
+              <Activity size={26} color="var(--accent)" />
+            </div>
+            <div>
+              <h3 className="text-display" style={{ fontSize: '1.8rem', margin: 0, letterSpacing: '-0.02em', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Body Fat % Calculator</h3>
+              <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginTop: '4px', letterSpacing: '0.01em' }}>Precision tracking using the U.S. Navy Method</p>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap', zIndex: 1 }}>
             {/* Silhouette */}
-            <div style={{ flex: '0 0 auto', width: '110px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <SilhouetteGuide activeMeasurement={activeMeas} />
+            <div style={{ flex: '0 0 auto', width: '130px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', paddingTop: '10px' }}>
+              
+              {/* Silhouette Glowing backdrop */}
+              <div style={{ position: 'absolute', top: '15%', width: '140px', height: '140px', background: bfPercent ? bfCategory?.color : 'var(--accent)', filter: 'blur(50px)', opacity: bfPercent ? 0.25 : 0.1, borderRadius: '50%', zIndex: 0, transition: 'all 0.5s ease' }} />
+
+              <div style={{ zIndex: 1 }}>
+                <SilhouetteGuide activeMeasurement={activeMeas} />
+              </div>
+              
               {bfPercent !== null ? (
-                <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
-                  <span style={{ fontSize: '2rem', fontWeight: 900, color: bfCategory?.color, lineHeight: 1 }}>
+                <div style={{ marginTop: '1.25rem', textAlign: 'center', zIndex: 1, animation: 'fadeIn 0.4s ease' }}>
+                  <span style={{ fontSize: '2.5rem', fontWeight: 900, color: bfCategory?.color, lineHeight: 1, textShadow: `0 0 20px ${bfCategory?.color}60` }}>
                     {bfPercent.toFixed(1)}%
                   </span>
-                  <p style={{ fontSize: '0.65rem', color: bfCategory?.color, fontWeight: 700, textTransform: 'uppercase',
-                               letterSpacing: '0.06em', marginTop: '2px' }}>
-                    {bfCategory?.label}
-                  </p>
+                  <div style={{ background: `${bfCategory?.color}15`, border: `1px solid ${bfCategory?.color}40`, padding: '4px 12px', borderRadius: '99px', marginTop: '10px', display: 'inline-block', backdropFilter: 'blur(4px)' }}>
+                    <p style={{ fontSize: '0.65rem', color: bfCategory?.color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                      {bfCategory?.label}
+                    </p>
+                  </div>
                 </div>
               ) : (
-                <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
-                  <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-3)' }}>—</span>
-                  <p style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>Enter all values</p>
+                <div style={{ marginTop: '1.5rem', textAlign: 'center', zIndex: 1 }}>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-3)', opacity: 0.3 }}>—</span>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.04em', marginTop: '4px', textTransform: 'uppercase' }}>Awaiting Data</p>
                 </div>
               )}
             </div>
 
             {/* Inputs */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '5px' }}>Gender</label>
-                <select className="form-input" value={bfGender} onChange={e => setBfGender(e.target.value)}>
-                  <option value="M">Male</option><option value="F">Female</option>
-                </select>
-              </div>
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '5px' }}>Height (cm)</label>
-                <input className="form-input" type="number" value={bfHeight}
-                  onChange={e => setBfHeight(e.target.value)}
-                  onFocus={() => setActiveMeas('height')} onBlur={() => setActiveMeas('')} />
-              </div>
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '5px' }}>Weight (kg)</label>
-                <input className="form-input" type="number" value={bfWeight}
-                  onChange={e => setBfWeight(e.target.value)} placeholder="For lean mass" />
-              </div>
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '5px' }}>Neck (cm)</label>
-                <input className="form-input" type="number" value={bfNeck}
-                  onChange={e => setBfNeck(e.target.value)}
-                  onFocus={() => setActiveMeas('neck')} onBlur={() => setActiveMeas('')} />
-              </div>
-              <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '5px' }}>Waist (cm)</label>
-                <input className="form-input" type="number" value={bfWaist}
-                  onChange={e => setBfWaist(e.target.value)}
-                  onFocus={() => setActiveMeas('waist')} onBlur={() => setActiveMeas('')} />
-              </div>
-              {bfGender === 'F' && (
-                <div>
-                  <label className="label-caps" style={{ display: 'block', marginBottom: '5px' }}>Hips (cm)</label>
-                  <input className="form-input" type="number" value={bfHip}
-                    onChange={e => setBfHip(e.target.value)}
-                    onFocus={() => setActiveMeas('hip')} onBlur={() => setActiveMeas('')} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Section 1: Basic Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                    <User size={12} /> Gender
+                  </label>
+                  <select className="form-input" value={bfGender} onChange={e => setBfGender(e.target.value)} style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
+                    <option value="M">Male</option><option value="F">Female</option>
+                  </select>
                 </div>
-              )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                    <Ruler size={12} /> Height (cm)
+                  </label>
+                  <input className="form-input" type="number" value={bfHeight} placeholder="e.g., 180"
+                    onChange={e => setBfHeight(e.target.value)}
+                    onFocus={() => setActiveMeas('height')} onBlur={() => setActiveMeas('')} 
+                    style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                </div>
+              </div>
+
+              {/* Section 2: Measurements */}
+              <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: bfGender === 'F' ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                      <Scale size={12} /> Weight (kg)
+                    </label>
+                    <input className="form-input" type="number" value={bfWeight} placeholder="Optional"
+                      onChange={e => setBfWeight(e.target.value)} 
+                      style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                      Neck (cm)
+                    </label>
+                    <input className="form-input" type="number" value={bfNeck} placeholder="e.g., 40"
+                      onChange={e => setBfNeck(e.target.value)}
+                      onFocus={() => setActiveMeas('neck')} onBlur={() => setActiveMeas('')} 
+                      style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                      Waist (cm)
+                    </label>
+                    <input className="form-input" type="number" value={bfWaist} placeholder="e.g., 85"
+                      onChange={e => setBfWaist(e.target.value)}
+                      onFocus={() => setActiveMeas('waist')} onBlur={() => setActiveMeas('')} 
+                      style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  {bfGender === 'F' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                        Hips (cm)
+                      </label>
+                      <input className="form-input" type="number" value={bfHip} placeholder="e.g., 95"
+                        onChange={e => setBfHip(e.target.value)}
+                        onFocus={() => setActiveMeas('hip')} onBlur={() => setActiveMeas('')} 
+                        style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Gauge */}
-          {bfPercent !== null && (
-            <div style={{ background: 'var(--bg-elevated)', borderRadius: '12px', padding: '1rem' }}>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: '0.25rem' }}>
-                Category Scale — {bfCategory?.desc}
-              </p>
-              <BFGauge bf={bfPercent} gender={bfGender} />
-            </div>
-          )}
+          {/* Results Area */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '0.5rem', zIndex: 1 }}>
+            
+            {/* Gauge */}
+            {bfPercent !== null && (
+              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: bfCategory?.color, boxShadow: `0 0 15px ${bfCategory?.color}` }} />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '1.25rem', fontWeight: 600, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase' }}>
+                  <Info size={14} /> Category Scale: <span style={{ color: 'var(--text-2)' }}>{bfCategory?.desc}</span>
+                </p>
+                <BFGauge bf={bfPercent} gender={bfGender} />
+              </div>
+            )}
 
-          {/* Lean / Fat mass breakdown */}
-          {bfPercent !== null && leanMass && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <div style={{ padding: '0.85rem', background: 'rgba(16,185,129,0.08)', borderRadius: '10px', border: '1px solid rgba(16,185,129,0.2)', textAlign: 'center' }}>
-                <p className="label-caps" style={{ fontSize: '0.6rem', color: '#10b981', marginBottom: '4px' }}>Lean Mass</p>
-                <p style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>{leanMass} kg</p>
-                <p style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>muscle, bone, organs</p>
+            {/* Lean / Fat mass breakdown & BMI */}
+            {bfPercent !== null && leanMass && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 100%)', borderRadius: '16px', border: '1px solid rgba(16,185,129,0.15)', textAlign: 'center', boxShadow: 'inset 0 2px 10px rgba(16,185,129,0.05)' }}>
+                  <p className="label-caps" style={{ fontSize: '0.65rem', color: '#10b981', marginBottom: '8px' }}>Lean Body Mass</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#10b981', textShadow: '0 2px 15px rgba(16,185,129,0.3)' }}>{leanMass} <span style={{ fontSize: '1rem', opacity: 0.7, fontWeight: 700 }}>kg</span></p>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Muscle, bone, organs</p>
+                </div>
+                <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.02) 100%)', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.15)', textAlign: 'center', boxShadow: 'inset 0 2px 10px rgba(245,158,11,0.05)' }}>
+                  <p className="label-caps" style={{ fontSize: '0.65rem', color: '#f59e0b', marginBottom: '8px' }}>Fat Mass</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#f59e0b', textShadow: '0 2px 15px rgba(245,158,11,0.3)' }}>{fatMass} <span style={{ fontSize: '1rem', opacity: 0.7, fontWeight: 700 }}>kg</span></p>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Adipose tissue</p>
+                </div>
+                {bmi && (
+                  <div style={{ padding: '1.5rem', background: `linear-gradient(135deg, ${bmiCategory?.color}15 0%, ${bmiCategory?.color}05 100%)`, borderRadius: '16px', border: `1px solid ${bmiCategory?.color}30`, textAlign: 'center', boxShadow: `inset 0 2px 10px ${bmiCategory?.color}15` }}>
+                    <p className="label-caps" style={{ fontSize: '0.65rem', color: bmiCategory?.color, marginBottom: '8px' }}>BMI ({bmiCategory?.label})</p>
+                    <p style={{ fontSize: '1.8rem', fontWeight: 900, color: bmiCategory?.color, textShadow: `0 2px 15px ${bmiCategory?.color}40` }}>{bmi.toFixed(1)}</p>
+                    <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Body Mass Index</p>
+                  </div>
+                )}
               </div>
-              <div style={{ padding: '0.85rem', background: 'rgba(245,158,11,0.08)', borderRadius: '10px', border: '1px solid rgba(245,158,11,0.2)', textAlign: 'center' }}>
-                <p className="label-caps" style={{ fontSize: '0.6rem', color: '#f59e0b', marginBottom: '4px' }}>Fat Mass</p>
-                <p style={{ fontSize: '1.4rem', fontWeight: 900, color: '#f59e0b' }}>{fatMass} kg</p>
-                <p style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>{bfPercent.toFixed(1)}% of body weight</p>
-              </div>
-            </div>
-          )}
-
-          {/* BMI */}
-          {bmi && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.85rem', background: 'var(--bg-elevated)', borderRadius: '10px' }}>
-              <div>
-                <p className="label-caps" style={{ fontSize: '0.6rem', marginBottom: '2px' }}>BMI</p>
-                <p style={{ fontSize: '1.3rem', fontWeight: 900, color: bmiCategory?.color }}>{bmi.toFixed(1)}</p>
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '0.75rem', fontWeight: 700, color: bmiCategory?.color }}>{bmiCategory?.label}</p>
-                <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Body Mass Index (kg/m²)</p>
-              </div>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {[
-                  { label: '<18.5', color: '#a78bfa' },
-                  { label: '18.5–25', color: '#10b981' },
-                  { label: '25–30', color: '#f59e0b' },
-                  { label: '>30', color: '#ef4444' },
-                ].map(b => (
-                  <span key={b.label} style={{ fontSize: '0.55rem', color: b.color, background: `${b.color}18`,
-                    borderRadius: '4px', padding: '2px 5px', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    {b.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
+            )}
+          </div>
+          
           {/* Save to profile */}
           {bfPercent !== null && (
-            <button className="btn-primary btn-full" onClick={saveToProfile} style={{ marginTop: 'auto' }}>
-              <Save size={14} /> Save {bfPercent.toFixed(1)}% to Profile
+            <button className="btn-primary btn-full" onClick={saveToProfile} style={{ marginTop: '0.5rem', padding: '1.25rem', fontSize: '1rem', borderRadius: '14px', gap: '10px' }}>
+              <Save size={18} /> Save {bfPercent.toFixed(1)}% to Profile
             </button>
           )}
 
-          {/* Method info */}
-          <div style={{ padding: '1rem', background: 'var(--bg-dark)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-            <h4 style={{ color: 'var(--text-1)', fontWeight: 800, fontSize: '0.85rem', marginBottom: '4px' }}>U.S. Navy Method</h4>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', lineHeight: 1.5 }}>
-              Estimates body fat from neck, waist, and hip circumferences. Measure at the widest part of the waist/hips and the narrowest part of the neck.
-              Accuracy: ±3–4% for most adults.
-            </p>
+          {/* U.S. Navy Method Info */}
+          <div style={{ marginTop: bfPercent !== null ? '0.5rem' : '0.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.015)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', gap: '14px', alignItems: 'flex-start', zIndex: 1 }}>
+            <Info size={20} color="var(--text-3)" style={{ marginTop: '2px', flexShrink: 0, opacity: 0.7 }} />
+            <div>
+              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-2)', marginBottom: '6px' }}>U.S. Navy Method (DoD)</p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', lineHeight: 1.6 }}>
+                Estimates body fat from circumferences. Measure at the widest part of the waist/hips and the narrowest part of the neck. 
+                <br/><span style={{ opacity: 0.7, fontStyle: 'italic' }}>Accuracy: ±3–4% for most adults. Use for tracking trends rather than absolute clinical values.</span>
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
 
+        </div>
+        </div>
       {/* Physique Roadmap */}
       <PhysiqueRoadmap targets={targets} user={user} />
     </div>

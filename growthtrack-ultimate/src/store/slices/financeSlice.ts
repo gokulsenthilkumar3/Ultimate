@@ -4,8 +4,8 @@ import { Transaction, Budget } from '../../schemas';
 
 export interface FinanceSlice {
   finance: {
-    transactions: Transaction[];
-    budgets: Budget[];
+    transactions: Record<string, Transaction>;
+    budgets: Record<string, Budget>;
   };
   addTransaction: (tx: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
@@ -14,7 +14,7 @@ export interface FinanceSlice {
 }
 
 export const createFinanceSlice: StateCreator<any, [], [], FinanceSlice> = (set) => ({
-  finance: { transactions: [], budgets: [] },
+  finance: { transactions: {}, budgets: {} },
 
   addTransaction: async (tx) => {
     const payload: Transaction = {
@@ -26,15 +26,16 @@ export const createFinanceSlice: StateCreator<any, [], [], FinanceSlice> = (set)
       category: tx.category || 'Other'
     };
     set((state: any) => ({
-      finance: { ...state.finance, transactions: [payload, ...state.finance.transactions] },
+      finance: { ...state.finance, transactions: { ...state.finance.transactions, [payload.id]: payload } },
     }));
     apiSync('/finance', 'POST', payload).catch(e => console.warn('[Finance] sync failed', e));
   },
 
   deleteTransaction: async (id) => {
-    set((state: any) => ({
-      finance: { ...state.finance, transactions: state.finance.transactions.filter((t: Transaction) => t.id !== id) },
-    }));
+    set((state: any) => {
+      const { [id]: _, ...rest } = state.finance.transactions;
+      return { finance: { ...state.finance, transactions: rest } };
+    });
     apiSync(`/finance/${id}`, 'DELETE').catch(() => {});
   },
 
@@ -46,15 +47,16 @@ export const createFinanceSlice: StateCreator<any, [], [], FinanceSlice> = (set)
       limit_amount: budget.limit_amount || 0
     };
     set((state: any) => ({
-      finance: { ...state.finance, budgets: [...(state.finance.budgets || []), payload] },
+      finance: { ...state.finance, budgets: { ...(state.finance.budgets || {}), [payload.id]: payload } },
     }));
     apiSync('/budgets', 'POST', payload).catch(() => {});
   },
 
   deleteBudget: async (id) => {
-    set((state: any) => ({
-      finance: { ...state.finance, budgets: (state.finance.budgets || []).filter((b: Budget) => b.id !== id) },
-    }));
+    set((state: any) => {
+      const { [id]: _, ...rest } = (state.finance.budgets || {});
+      return { finance: { ...state.finance, budgets: rest } };
+    });
     apiSync(`/budgets/${id}`, 'DELETE').catch(() => {});
   },
 
@@ -63,13 +65,18 @@ export const createFinanceSlice: StateCreator<any, [], [], FinanceSlice> = (set)
       const result = await apiSync('/finance/sync/bank', 'POST', { provider });
       if (result && result.data && Array.isArray(result.data.transactions)) {
         set((state: any) => {
-          const existingTxs = state.finance?.transactions || [];
-          // Simple dedup by ID just in case
-          const newTxs = result.data.transactions.filter(nt => !existingTxs.some(et => et.id === nt.id));
+          const newTxs = { ...(state.finance?.transactions || {}) };
+          let added = 0;
+          result.data.transactions.forEach((tx: any) => {
+            if (!newTxs[tx.id]) {
+              newTxs[tx.id] = tx;
+              added++;
+            }
+          });
           return {
             finance: {
               ...state.finance,
-              transactions: [...newTxs, ...existingTxs]
+              transactions: newTxs
             }
           };
         });

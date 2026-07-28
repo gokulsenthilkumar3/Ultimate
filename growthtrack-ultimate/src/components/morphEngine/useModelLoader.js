@@ -42,7 +42,7 @@ export const MODEL_PATH = `${import.meta.env.BASE_URL}assets/models/humanoid-bas
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function preloadHumanoidModel() {
-  useGLTF.preload(MODEL_PATH);
+  useGLTF.preload(MODEL_PATH, 'https://www.gstatic.com/draco/v1/decoders/');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ export function useModelLoader() {
   let gltf = null;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    gltf = useGLTF(MODEL_PATH);
+    gltf = useGLTF(MODEL_PATH, 'https://www.gstatic.com/draco/v1/decoders/');
   } catch (err) {
     if (err && typeof err.then === 'function') throw err; // re-throw Suspense promises
     // 404 / network / parse errors → fall through, gltf stays null → dev fallback renders

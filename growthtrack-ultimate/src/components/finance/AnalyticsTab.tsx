@@ -20,7 +20,7 @@ const renderActiveShape = (props: any) => {
   );
 };
 
-export default function AnalyticsTab({ COLORS, fmtINR, form, pieData, TOOLTIP_STYLE, expenses }: any) {
+const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pieData, TOOLTIP_STYLE, expenses }: any) {
   const [activeIndex, setActiveIndex] = useState(0);
   const onPieEnter = (_: any, index: number) => setActiveIndex(index);
 
@@ -67,3 +67,5 @@ export default function AnalyticsTab({ COLORS, fmtINR, form, pieData, TOOLTIP_ST
         </div>
   );
 }
+
+export default AnalyticsTab;

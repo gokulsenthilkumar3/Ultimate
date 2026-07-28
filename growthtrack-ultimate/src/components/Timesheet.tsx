@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Clock, Play, Pause, Square, Plus, Trash2, Download, DollarSign, BarChart2, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import useStore from '../store/useStore';
+import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
@@ -23,9 +23,45 @@ function formatHours(seconds) {
 
 export default function Timesheet() {
   const toast = useToast();
-  const timesheetEntries = useStore(s => s.timesheetEntries) || [];
-  const addTimesheetEntry    = useStore(s => s.addTimesheetEntry);
-  const deleteTimesheetEntry = useStore(s => s.deleteTimesheetEntry);
+  const storeEntries = useStore(s => s.timesheetEntries) || [];
+  const storeAdd    = useStore(s => s.addTimesheetEntry);
+  const storeDelete = useStore(s => s.deleteTimesheetEntry);
+
+  const [dbEntries, setDbEntries] = useState(null);
+
+  const fetchEntries = useCallback(async () => {
+    try {
+      const rows = await apiSync('/timesheets', 'GET');
+      if (Array.isArray(rows)) setDbEntries(rows);
+    } catch {}
+  }, []);
+
+  useEffect(() => { fetchEntries(); }, [fetchEntries]);
+
+  const timesheetEntries = useMemo(() => dbEntries !== null ? dbEntries : storeEntries, [dbEntries, storeEntries]);
+
+  const addTimesheetEntry = async (entry) => {
+    // Optimistic UI
+    setDbEntries(prev => prev ? [entry, ...prev] : [entry, ...storeEntries]);
+    try {
+      const created = await apiSync('/timesheets', 'POST', entry);
+      if (created?.id) {
+        setDbEntries(prev => prev ? prev.map(e => e.id === entry.id ? created : e) : null);
+      }
+    } catch {
+      if (typeof storeAdd === 'function') storeAdd(entry);
+    }
+  };
+
+  const deleteTimesheetEntry = async (id) => {
+    // Optimistic UI
+    setDbEntries(prev => prev ? prev.filter(e => e.id !== id) : null);
+    try {
+      await apiSync(`/timesheets/${id}`, 'DELETE');
+    } catch {
+      if (typeof storeDelete === 'function') storeDelete(id);
+    }
+  };
 
   const [tab, setTab] = useState('timer');
   const [running,   setRunning]   = useState(false);
@@ -81,7 +117,7 @@ export default function Timesheet() {
       startTime,
       endTime: new Date().toISOString(),
     };
-    if (typeof addTimesheetEntry === 'function') addTimesheetEntry(entry);
+    addTimesheetEntry(entry);
     toast.success(`⏱ Session saved: ${formatHours(totalSeconds)} · ${billable ? `$${earnings.toFixed(2)}` : 'Non-billable'}`);
     setElapsed(0); setStartTime(null); setTask(''); setNotes('');
   };
@@ -98,7 +134,7 @@ export default function Timesheet() {
       billable: manualForm.billable, earnings: +earnings.toFixed(2),
       notes: manualForm.notes, startTime: null, endTime: null,
     };
-    if (typeof addTimesheetEntry === 'function') addTimesheetEntry(entry);
+    addTimesheetEntry(entry);
     toast.success('Manual entry saved');
     setManualForm({ project: 'General', task: '', date: new Date().toISOString().slice(0, 10), hours: '', minutes: '', billable: true, notes: '' });
     setShowManual(false);
@@ -380,7 +416,7 @@ export default function Timesheet() {
                     </div>
                     <div style={{ width: '10%', padding: '0 0.6rem', fontFamily: 'monospace', color: '#fbbf24', fontWeight: 700, fontSize: '0.78rem' }}>{e.earnings ? `$${e.earnings.toFixed(2)}` : '—'}</div>
                     <div style={{ width: '5%', padding: '0 0.6rem', display: 'flex', justifyContent: 'center' }}>
-                      <button onClick={() => { if (typeof deleteTimesheetEntry === 'function') deleteTimesheetEntry(e.id); }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} /></button>
+                      <button onClick={() => deleteTimesheetEntry(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} /></button>
                     </div>
                   </div>
                 );
