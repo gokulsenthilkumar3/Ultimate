@@ -1,16 +1,19 @@
 # GrowthTrack Ultimate — Upgrade Task List
 
 ## Phase 1: Foundation (CSS, Global Styles)
+
 - [x] Add premium CSS enhancements to `premium.css` (wave, radial gauge, engagement, XP, confetti, dropzone, drawer, etc.)
 - [x] Global animation keyframes: wave, confetti, slide-drawer, level-up, breathing, typing-cursor added
 
 ## Phase 2: Core Dashboards & Organization
+
 - [x] `Documents.jsx` — drag-and-drop dropzone, file-type icons, multi-select delete, sort, storage bar
 - [x] `SleepDashboard.jsx` — sleep debt badge, SVG radial gauge, stage pie chart, improved history list, log form
 - [x] `SocialMedia.jsx` — engagement rate calc, analytics tab, sparkline, per-platform metrics, aggregate stats
 - [x] `Entertainment.jsx` — Netflix-style horizontal carousel, type-grouped carousels, Stats tab, OTT icons, filter/sort
 
 ## Phase 3: Health & Fitness
+
 - [x] `HydrationTracker.jsx` — animated wave container with fill percentage, goal markers, goal-reached badge
 - [x] `MindWellness.jsx` — rewritten in design system, box breathing exercise with animated circle, mood/sleep correlation, trends tab, design system compliant
 - [x] `Nutrition.jsx` — 3-part macro ring chart (animated SVG), BMR dynamic tracking with gender-specific equations
@@ -21,6 +24,7 @@
 - [x] `Training.jsx` — progressive overload tracking, live session logger with rest timer, per-exercise PR tracking
 
 ## Phase 4: Finance & Specialty
+
 - [x] `Finance.tsx` — budget thresholds with color-coded alerts, monospaced typography, interactive active-sector donut (Recharts Sector)
 - [x] `SIPCalculator.jsx` — inflation-adjusted returns, interactive sliders, XIRR projection, step-up SIP
 - [x] `Projects.jsx` — Gantt chart (6-month timeline view), Kanban toggle view, status color-coding

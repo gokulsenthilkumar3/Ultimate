@@ -34,17 +34,20 @@ const EMPTY_ARRAY = [];
 
 // ── Metric labels
 const METRIC_LABELS = {
-  weight: { label: 'Weight', unit: 'kg', icon: Activity },
-  bodyFat: { label: 'Body Fat', unit: '%', icon: Zap },
-  chest: { label: 'Chest', unit: 'cm', icon: Dumbbell },
+  weight:    { label: 'Weight',    unit: 'kg', icon: Activity },
+  bodyFat:   { label: 'Body Fat',  unit: '%',  icon: Zap      },
+  chest:     { label: 'Chest',     unit: 'cm', icon: Dumbbell },
   shoulders: { label: 'Shoulders', unit: 'cm', icon: Dumbbell },
-  waist: { label: 'Waist', unit: 'cm', icon: Target },
-  arms: { label: 'Arms', unit: 'cm', icon: Dumbbell },
-  thighs: { label: 'Thighs', unit: 'cm', icon: Activity },
-  neck: { label: 'Neck', unit: 'cm', icon: Activity },
-  calves: { label: 'Calves', unit: 'cm', icon: Activity },
-  hips: { label: 'Hips', icon: Activity, unit: 'cm' },
-  d_size: { label: 'D Size', unit: 'in', icon: Ruler },
+  waist:     { label: 'Waist',     unit: 'cm', icon: Target   },
+  arms:      { label: 'Arms',      unit: 'cm', icon: Dumbbell },
+  thighs:    { label: 'Thighs',    unit: 'cm', icon: Activity },
+  neck:      { label: 'Neck',      unit: 'cm', icon: Activity },
+  calves:    { label: 'Calves',    unit: 'cm', icon: Activity },
+  hips:      { label: 'Hips',      unit: 'cm', icon: Activity },
+};
+// Sensitive metrics — require privacy unlock
+const SENSITIVE_METRICS = {
+  d_size:  { label: 'D Size',  unit: 'in', icon: Ruler },
   d_girth: { label: 'D Girth', unit: 'in', icon: Ruler },
 };
 
@@ -138,7 +141,12 @@ export default function HumanoidViewer() {
   }, [addTimelineSnap, currentMetrics]);
 
   const [showEditor, setShowEditor] = useState(true);
-  const [editorTab, setEditorTab] = useState('metrics'); // metrics | morphs | wardrobe | vfx
+  const [editorTab, setEditorTab] = useState('metrics'); // metrics | morphs | face | wardrobe | anatomy
+  const [sensitiveUnlocked, setSensitiveUnlocked] = useState(false);
+  const [splitDragging, setSplitDragging] = useState(false);
+  // Per-clone hair state (local — no GLB hair system exists yet)
+  const [hairA, setHairA] = useState({ style: 'short', color: 'darkbrown' });
+  const [hairB, setHairB] = useState({ style: 'short', color: 'darkbrown' });
 
   // ── Sync with Global DB Store
   const globalMetricLogs = useStore((s) => s.metric_logs || []);
@@ -298,6 +306,41 @@ export default function HumanoidViewer() {
             )}
           </div>
 
+          {/* Split drag handle overlay */}
+          {viewMode === 'SPLIT' && (
+            <div
+              style={{
+                position: 'absolute', top: 0, bottom: 0,
+                left: `${splitPos}%`,
+                transform: 'translateX(-50%)',
+                width: 28,
+                cursor: 'ew-resize',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                zIndex: 10,
+                userSelect: 'none',
+              }}
+              onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setSplitDragging(true); }}
+              onPointerUp={() => setSplitDragging(false)}
+              onPointerMove={(e) => {
+                if (!splitDragging) return;
+                const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+                if (!rect) return;
+                const pct = Math.max(10, Math.min(90, ((e.clientX - rect.left) / rect.width) * 100));
+                setSplitPos(pct);
+              }}
+            >
+              <div style={{ width: 3, height: '100%', background: 'var(--chamber-glow)', opacity: 0.7, borderRadius: 2 }} />
+              <div style={{
+                position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+                background: 'var(--surface-2)', border: '1px solid var(--chamber-glow)',
+                borderRadius: 6, padding: '4px 6px',
+                color: 'var(--chamber-glow)', fontSize: '0.6rem', fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}>⟺ {splitPos.toFixed(0)}%</div>
+            </div>
+          )}
+
           {/* Split divider slider */}
           {viewMode === 'SPLIT' && (
             <div className="chamber-split-slider">
@@ -366,10 +409,11 @@ export default function HumanoidViewer() {
             {/* Editor tabs */}
             <div className="chamber-editor__tabs">
               {[
-                { id: 'metrics', label: 'Metrics', icon: Ruler },
-                { id: 'morphs', label: 'Morphs', icon: Zap },
-                { id: 'wardrobe', label: 'Outfit', icon: Shirt },
-                { id: 'anatomy', label: 'Anatomy', icon: Layers },
+                { id: 'metrics',  label: 'Metrics', icon: Ruler   },
+                { id: 'morphs',   label: 'Morphs',  icon: Zap     },
+                { id: 'face',     label: 'Face',     icon: Eye     },
+                { id: 'wardrobe', label: 'Outfit',   icon: Shirt   },
+                { id: 'anatomy',  label: 'Anatomy',  icon: Layers  },
               ].map((tab) => (
                 <button key={tab.id}
                   className={`chamber-editor__tab${editorTab === tab.id ? ' active' : ''}`}
@@ -381,13 +425,13 @@ export default function HumanoidViewer() {
             </div>
 
             <div className="chamber-editor__body">
-              {/* ── METRICS TAB ── */}
               {editorTab === 'metrics' && (
                 <div className="chamber-editor__section">
                   <h4 className="chamber-editor__heading">
                     <Ruler size={14} /> Body Metrics
                   </h4>
                   <div className="chamber-metric-list">
+                    {/* Standard metrics */}
                     {Object.entries(METRIC_LABELS).map(([key, meta]) => (
                       <div key={key} className="chamber-metric-row">
                         <div className="chamber-metric-row__header">
@@ -401,9 +445,9 @@ export default function HumanoidViewer() {
                           </span>
                         </div>
                         <input type="range"
-                          min={key.includes('d') ? 2 : key === 'bodyFat' ? 5 : 30}
-                          max={key.includes('d') ? 10 : key === 'bodyFat' ? 40 : key === 'height' ? 210 : key === 'weight' ? 130 : 150}
-                          step={key.includes('d') ? 0.1 : 1}
+                          min={key === 'bodyFat' ? 5 : 30}
+                          max={key === 'bodyFat' ? 40 : key === 'weight' ? 130 : 150}
+                          step={1}
                           value={currentMetrics[key]}
                           onChange={(e) => updateCurrentMetric(key, parseFloat(e.target.value))}
                           className="chamber-slider" />
@@ -411,6 +455,32 @@ export default function HumanoidViewer() {
                           <Target size={10} />
                           <span>Goal: {goalMetrics[key]}{meta.unit}</span>
                         </div>
+                      </div>
+                    ))}
+                    {/* Sensitive metrics with privacy gate */}
+                    <div className="chamber-divider" />
+                    <div className="chamber-metric-row" style={{ opacity: sensitiveUnlocked ? 1 : 0.5 }}>
+                      <div className="chamber-metric-row__header">
+                        <span className="chamber-metric-row__label" style={{ color: 'var(--chamber-glow)' }}>Private Measurements</span>
+                        <button
+                          onClick={() => setSensitiveUnlocked(v => !v)}
+                          className="chamber-pill"
+                          style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                        >
+                          {sensitiveUnlocked ? '🔓 Visible' : '🔒 Hidden'}
+                        </button>
+                      </div>
+                    </div>
+                    {sensitiveUnlocked && Object.entries(SENSITIVE_METRICS).map(([key, meta]) => (
+                      <div key={key} className="chamber-metric-row">
+                        <div className="chamber-metric-row__header">
+                          <span className="chamber-metric-row__label">{meta.label}</span>
+                          <span className="chamber-metric-row__value">{(currentMetrics[key] ?? 5).toFixed(1)}{meta.unit}</span>
+                        </div>
+                        <input type="range" min={2} max={10} step={0.1}
+                          value={currentMetrics[key] ?? 5}
+                          onChange={(e) => updateCurrentMetric(key, parseFloat(e.target.value))}
+                          className="chamber-slider" style={{ accentColor: 'var(--chamber-glow)' }} />
                       </div>
                     ))}
                   </div>
@@ -467,6 +537,89 @@ export default function HumanoidViewer() {
                     </p>
                   </div>
 
+                </div>
+              )}
+
+              {/* ── FACE / ANATOMY TAB ── */}
+              {editorTab === 'face' && (
+                <div className="chamber-editor__section">
+                  <h4 className="chamber-editor__heading"><Eye size={14}/> Facial Anatomy</h4>
+                  {[
+                    { key: 'eye_size',          label: 'Eye Size',        min: 0, max: 1, step: 0.01 },
+                    { key: 'brow_depth',        label: 'Brow Ridge',      min: 0, max: 1, step: 0.01 },
+                    { key: 'nose_bridge_width', label: 'Nose Bridge',     min: 0, max: 1, step: 0.01 },
+                    { key: 'nose_tip_size',     label: 'Nose Tip',        min: 0, max: 1, step: 0.01 },
+                    { key: 'lip_fullness',      label: 'Lip Fullness',    min: 0, max: 1, step: 0.01 },
+                    { key: 'ear_prominence',    label: 'Ear Prominence',  min: 0, max: 1, step: 0.01 },
+                    { key: 'jaw_width',         label: 'Jaw Width',       min: 0, max: 1, step: 0.01 },
+                    { key: 'chin_projection',   label: 'Chin Projection', min: 0, max: 1, step: 0.01 },
+                  ].map((s) => {
+                    const val = (morphOverrides[s.key] ?? 0.35);
+                    return (
+                      <div key={s.key} className="chamber-morph-row">
+                        <div className="chamber-morph-row__header">
+                          <span>{s.label}</span>
+                          <span className="chamber-morph-row__value">{(val * 100).toFixed(0)}%</span>
+                        </div>
+                        <input type="range" min={s.min} max={s.max} step={s.step}
+                          value={val}
+                          onChange={(e) => setMorphOverride(s.key, parseFloat(e.target.value))}
+                          className="chamber-slider" />
+                      </div>
+                    );
+                  })}
+
+                  <div className="chamber-divider" />
+                  <h4 className="chamber-editor__heading"><Zap size={14}/> Hair — YOU NOW</h4>
+                  <div className="chamber-wardrobe-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+                    {['bald','buzz','short','medium','long'].map(s => (
+                      <button key={s}
+                        className={`chamber-wardrobe-card${hairA.style===s?' active':''}`}
+                        onClick={() => setHairA(h => ({...h, style: s}))}>
+                        <span className="chamber-wardrobe-card__label" style={{ fontSize: '0.65rem' }}>{s}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    {['black','darkbrown','brown','auburn','blonde','grey','white'].map(c => (
+                      <button key={c}
+                        onClick={() => setHairA(h => ({...h, color: c}))}
+                        style={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          border: hairA.color === c ? '2px solid var(--chamber-glow)' : '2px solid transparent',
+                          background: {black:'#110a05',darkbrown:'#2c1a0a',brown:'#6b3a1a',auburn:'#8b3a2a',blonde:'#c8a04a',grey:'#888880',white:'#d8d8d4'}[c],
+                          cursor: 'pointer',
+                        }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="chamber-divider" />
+                  <h4 className="chamber-editor__heading"><Zap size={14}/> Hair — YOUR GOAL</h4>
+                  <div className="chamber-wardrobe-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+                    {['bald','buzz','short','medium','long'].map(s => (
+                      <button key={s}
+                        className={`chamber-wardrobe-card${hairB.style===s?' active':''}`}
+                        onClick={() => setHairB(h => ({...h, style: s}))}>
+                        <span className="chamber-wardrobe-card__label" style={{ fontSize: '0.65rem' }}>{s}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    {['black','darkbrown','brown','auburn','blonde','grey','white'].map(c => (
+                      <button key={c}
+                        onClick={() => setHairB(h => ({...h, color: c}))}
+                        style={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          border: hairB.color === c ? '2px solid var(--chamber-gold)' : '2px solid transparent',
+                          background: {black:'#110a05',darkbrown:'#2c1a0a',brown:'#6b3a1a',auburn:'#8b3a2a',blonde:'#c8a04a',grey:'#888880',white:'#d8d8d4'}[c],
+                          cursor: 'pointer',
+                        }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 

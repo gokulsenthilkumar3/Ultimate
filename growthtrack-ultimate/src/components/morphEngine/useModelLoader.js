@@ -139,6 +139,9 @@ export function useModelLoader() {
           bodyMesh      = node;
           morphIndexMap = buildMorphIndexMap(node);
           skeleton      = node.skeleton;
+          if (skeleton && skeleton.bones) {
+            console.log("[useModelLoader] Found skeleton bones:", skeleton.bones.map(b => b.name));
+          }
           node.castShadow    = true;
           node.receiveShadow = true;
           // Enable morph normals for correct shading under deformation

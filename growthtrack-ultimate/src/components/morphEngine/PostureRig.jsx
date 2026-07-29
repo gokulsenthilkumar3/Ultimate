@@ -19,6 +19,8 @@
 import { useRef, useEffect } from "react";
 import { useFrame }          from "@react-three/fiber";
 import * as THREE            from "three";
+import use3DStore            from "../../store/use3DStore";
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BONE NAME MAP — Mixamo/ReadyPlayerMe convention
@@ -115,6 +117,24 @@ function postureToRotations(posture) {
 const POSTURE_LERP = 0.05; // slightly slower than morph for natural bone movement
 
 /**
+ * Derives automatic posture corrections from current morph weights.
+ * High belly (gut_volume) tilts the pelvis forward.
+ * High overall mass rounds the shoulders.
+ * Thick neck reduces forward head tilt.
+ */
+function computeAutoPosture(weights) {
+  if (!weights) return { headTiltAngle: 0, pelvicTilt: 0, shoulderRounding: 0 };
+  const gutV  = weights.gut_volume    ?? 0;
+  const massV = weights.overall_mass  ?? 0;
+  const neckV = weights.neck_thickness ?? 0;
+  return {
+    headTiltAngle:    Math.max(0, 8  * gutV - 4 * neckV),  // gut pulls head forward; thick neck resists
+    pelvicTilt:       12 * gutV + 4 * massV,                // belly pushes anterior pelvic tilt
+    shoulderRounding: 10 * massV + 5 * gutV,                // heavy frame → protracted shoulders
+  };
+}
+
+/**
  * Frame-rate-independent lerp factor for posture.
  */
 function adaptiveLerp(delta, base = POSTURE_LERP) {
@@ -158,7 +178,18 @@ export function usePostureRig(skeleton, posture) {
   // Per-frame: lerp bone rotations toward posture targets
   useFrame((_, delta) => {
     const bones   = bonesRef.current;
-    const targets = postureToRotations(posture);
+    // Merge manual posture from props with auto-derived posture from weights
+    const autoPose = computeAutoPosture(
+      typeof use3DStore !== 'undefined'
+        ? use3DStore.getState()?.cloneA?.weights
+        : null
+    );
+    const merged = {
+      headTiltAngle:   (posture.headTiltAngle   ?? 0) + autoPose.headTiltAngle,
+      pelvicTilt:      (posture.pelvicTilt      ?? 0) + autoPose.pelvicTilt,
+      shoulderRounding:(posture.shoulderRounding ?? 0) + autoPose.shoulderRounding,
+    };
+    const targets = postureToRotations(merged);
     const factor  = adaptiveLerp(delta);
 
     for (const [key, targetEuler] of Object.entries(targets)) {

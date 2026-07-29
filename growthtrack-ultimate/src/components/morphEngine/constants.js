@@ -3,6 +3,7 @@
  */
 
 export const MORPH_TARGET_NAMES = [
+  // Body composition
   "overall_mass",
   "gut_volume",
   "face_roundness",
@@ -23,11 +24,23 @@ export const MORPH_TARGET_NAMES = [
   "ankle_width",
   "neck_thickness",
   "trap_rise",
+  // Facial anatomy
+  "brow_depth",
+  "nose_bridge_width",
+  "nose_tip_size",
+  "ear_prominence",
+  "jaw_width",
+  "chin_projection",
+  "lip_fullness",
+  "eye_size",
+  // Genitalia
   "d_length",
   "d_girth",
+  // Shader-driven (no geometry morph, uniform only)
   "vascularity_intensity",
   "fitzpatrick_index",
 ];
+
 
 export const VIEW_MODES = {
   SOLO: "SOLO",

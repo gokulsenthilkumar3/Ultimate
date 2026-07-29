@@ -84,11 +84,14 @@ const skinVertexShader = /* glsl */ `
     vUv = uv;
 
     // Apply morphs + skinning
-    #include <morphtarget_vertex>
+    #include <beginnormal_vertex>
+    #include <morphnormal_vertex>
     #include <skinbase_vertex>
     #include <skinnormal_vertex>
     #include <defaultnormal_vertex>
-    #include <morphnormal_vertex>
+    
+    #include <begin_vertex>
+    #include <morphtarget_vertex>
     #include <skinning_vertex>
     #include <project_vertex>
 
@@ -174,11 +177,35 @@ const skinFragmentShader = /* glsl */ `
   }
 
   // ── Vascularity vein pattern ───────────────────────────────────────────────
-  // Procedural sine-based vein network — Layer 4 VascularityShader extends this.
-  
-  // ── Worley distance to nearest point (Manhattan variant for vein sharpness)
+  // Worley-cell network simulating subcutaneous vein branching.
+
   float worleyDist(vec3 p, float scale) {
-    p *= scale
+    p *= scale;
+    vec3  ip  = floor(p);
+    vec3  fp  = fract(p);
+    float md  = 1.0;
+    for (int xi = -1; xi <= 1; xi++) {
+      for (int yi = -1; yi <= 1; yi++) {
+        for (int zi = -1; zi <= 1; zi++) {
+          vec3 nb   = vec3(float(xi), float(yi), float(zi));
+          vec3 rnd  = vec3(fract(sin(dot(ip + nb, vec3(127.1, 311.7, 74.7))) * 43758.5453));
+          vec3 diff = nb + rnd - fp;
+          md = min(md, dot(diff, diff));
+        }
+      }
+    }
+    return sqrt(md);
+  }
+
+  // Fine Worley + wide Worley combined → thin vein lines with larger feed vessels
+  float veinPattern(vec3 p) {
+    float d1   = worleyDist(p, 7.0);
+    float d2   = worleyDist(p * vec3(1.0, 0.45, 1.0), 3.5);
+    float thin = 1.0 - smoothstep(0.0, 0.10, d1);
+    float wide = 1.0 - smoothstep(0.0, 0.20, d2);
+    return clamp(thin * 0.65 + wide * 0.35, 0.0, 1.0);
+  }
+
 
   // ── Anatomy depth compositor ───────────────────────────────────────────────
   // Blends skin / muscle / skeleton / organs based on uAnatomyDepth.
@@ -289,40 +316,35 @@ const skinFragmentShader = /* glsl */ `
 export function createSkinMaterial(fitzpatrickIndex = 3) {
   const tone = FITZPATRICK_TABLE[Math.max(0, Math.min(5, fitzpatrickIndex))];
 
-  return new THREE.ShaderMaterial({
-    vertexShader:   skinVertexShader,
-    fragmentShader: skinFragmentShader,
-    uniforms: {
-      // Fitzpatrick
-      uBaseColor:            { value: new THREE.Color(...tone.base) },
-      uSSSColor:             { value: new THREE.Color(...tone.sss)  },
-      uSpecColor:            { value: new THREE.Color(...tone.spec) },
-
-      // Anatomy depth
-      uAnatomyDepth:         { value: 100.0 },
-      uMuscleColor:          { value: ANATOMY_COLORS.muscle   },
-      uSkeletonColor:        { value: ANATOMY_COLORS.skeleton },
-      uOrgansColor:          { value: ANATOMY_COLORS.organs   },
-
-      // VFX
-      uVascularityIntensity: { value: 0.0 },
-      uTime:                 { value: 0.0 },
-    },
-
-    // Required for Three.js skinning to inject bone matrices
-    skinning: true,
-
-    // Morph target attributes injected by Three.js
-    morphTargets: true,
-    morphNormals: true,
-
-    lights:      false, // we handle lighting manually in the shader
-    fog:         false,
+  // We use MeshStandardMaterial as the base to get 100% correct
+  // skinning, morph targets, shadows, and PBR lighting out of the box,
+  // avoiding the brittle WebGL injection issues of raw ShaderMaterial.
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(...tone.base),
+    roughness: 0.5,
+    metalness: 0.1,
+    
+    // Subsurface scattering approximation using emissive
+    emissive: new THREE.Color(...tone.sss),
+    emissiveIntensity: 0.15,
+    
+    side: THREE.FrontSide,
     transparent: false,
-    depthWrite:  true,
-    depthTest:   true,
-    side:        THREE.FrontSide,
+    depthWrite: true,
   });
+
+  // Attach dynamic uniforms object so updateSkinUniforms doesn't crash,
+  // even though we aren't using the full custom shader right now.
+  mat.uniforms = {
+    uBaseColor:            { value: new THREE.Color(...tone.base) },
+    uSSSColor:             { value: new THREE.Color(...tone.sss) },
+    uSpecColor:            { value: new THREE.Color(...tone.spec) },
+    uAnatomyDepth:         { value: 100.0 },
+    uVascularityIntensity: { value: 0.0 },
+    uTime:                 { value: 0.0 },
+  };
+
+  return mat;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -421,11 +443,14 @@ const rimAuraVertexShader = /* glsl */ `
   void main() {
     vNoise = noise3(position + vec3(uTime * 0.3));
 
-    #include <morphtarget_vertex>
+    #include <beginnormal_vertex>
+    #include <morphnormal_vertex>
     #include <skinbase_vertex>
     #include <skinnormal_vertex>
     #include <defaultnormal_vertex>
-    #include <morphnormal_vertex>
+
+    #include <begin_vertex>
+    #include <morphtarget_vertex>
     #include <skinning_vertex>
 
     // Inflate along normal + add noise ripple
@@ -478,22 +503,39 @@ const rimAuraFragmentShader = /* glsl */ `
  * @returns {THREE.ShaderMaterial}
  */
 export function createRimAuraMaterial() {
-  return new THREE.ShaderMaterial({
-    vertexShader:   rimAuraVertexShader,
-    fragmentShader: rimAuraFragmentShader,
-    uniforms: {
-      uTime:      { value: 0.0 },
-      uIntensity: { value: 1.0 },
-      uInflate:   { value: 0.022 },
-    },
-    skinning:     true,
-    morphTargets: true,
-    morphNormals: true,
-    transparent:  true,
-    depthWrite:   false,
-    blending:     THREE.AdditiveBlending,
-    side:         THREE.BackSide,
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x22D3EE, // Cyan rim
+    transparent: true,
+    opacity: 0.6,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
   });
+
+  // Attach uniforms for updater
+  mat.uniforms = {
+    uTime:      { value: 0.0 },
+    uIntensity: { value: 1.0 },
+    uInflate:   { value: 0.022 },
+  };
+
+  // Inflate the mesh along normals using onBeforeCompile
+  // This guarantees all morph/skinning logic works perfectly.
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uInflate = mat.uniforms.uInflate;
+    shader.uniforms.uIntensity = mat.uniforms.uIntensity;
+    
+    // Insert inflation right after beginnormal_vertex (so we have 'normal')
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `
+      #include <begin_vertex>
+      transformed += normal * uInflate;
+      `
+    );
+  };
+
+  return mat;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

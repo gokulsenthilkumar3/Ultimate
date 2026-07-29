@@ -1,4 +1,5 @@
 # GrowthTrack Ultimate — Full-Stack & UI/UX Audit
+
 **Repo:** `gokulsenthilkumar3/Ultimate` · **Stack:** React 19 + Vite 8 + Zustand + React Router 7 + Three.js/R3F + Express 5 + Supabase/Firebase
 **Scope of analysis:** `growthtrack-ultimate/` (frontend), `server/` (backend API), plus a `files/` and `Ultimate-mirror/` directory at repo root.
 
@@ -9,7 +10,7 @@ This audit is based directly on the code in the repository (App.jsx, navigation 
 ## 0. Repo Health Snapshot
 
 | Metric | Value | Read |
-|---|---|---|
+| --- | --- | --- |
 | Tabs/modules registered | **40** (`TAB_GROUP_MAP`) | Very large single-page app |
 | Component files | 46 top-level + `body3d/`, `morphEngine/`, `comparison/`, `finance/`, `ui/` subfolders | ~19,762 lines in `src/components/*.jsx` alone |
 | Inline `style={{ }}` occurrences | **2,687** | Major perf/maintainability smell |
@@ -30,7 +31,7 @@ This audit is based directly on the code in the repository (App.jsx, navigation 
 ### 1.1 Full Tab Inventory (grouped as defined in `constants/navigation.js`)
 
 | Group | Tabs |
-|---|---|
+| --- | --- |
 | **Body** (core) | Overview, Humanoid (3D viewer), Physique, Assessment |
 | **Fitness** | Training, Strength, Nutrition, Hydration, Habits |
 | **Wellness** | Sleep, Lifestyle, Mind, Medical, Health (extras) |
@@ -47,6 +48,7 @@ That's **40 distinct tabs**, a 3D humanoid rendering subsystem (`Body3D.jsx`, `m
 ### 1.2 Core Logic & Data Flow, by category
 
 **Real external API integrations (confirmed by code):**
+
 - **Overview.jsx / Current.jsx** — Open-Meteo `forecast` + `air-quality` endpoints for live weather/AQI, geolocated via browser Geolocation API.
 - **Current.jsx** — Hacker News Firebase API (`hacker-news.firebaseio.com`) for top stories, plus `ok.surf/api/v1/cors/news-feed` for a general news feed.
 - **Projects.jsx** — GitHub REST API (`api.github.com/users/{username}/repos`) to pull real repo data.
@@ -56,6 +58,7 @@ That's **40 distinct tabs**, a 3D humanoid rendering subsystem (`Body3D.jsx`, `m
 **Local backend (`/api/*`) calls** — Assessment, GoalsDashboard, MetricLogger, Progress, Tasks/Shopping (in-memory store in `server/index.js`) — these hit your own Express server, but only one route module (`phase4a.js`) is actually mounted, meaning several of these `fetch('/api/...')` calls may be pointing at endpoints not visible in the routes directory you shipped, or are served from elsewhere (Supabase directly). Worth auditing which is the source of truth.
 
 **Static/no backend (mock or link-out only):**
+
 - **Shopping.jsx** links out to `amazon.in` / `flipkart.com` (affiliate-style links, not a live pricing API).
 - **SocialMedia.jsx** stores profile URLs the user pastes in (LinkedIn/Instagram/Twitter/Threads/GitHub/YouTube) — no live follower/engagement API, so numbers shown are self-reported/manual.
 - **Entertainment.jsx**, **Databases.jsx**, **AiDashboard.jsx**, **Documents.jsx**, **Notes.jsx**, **Portfolio.jsx** — locally-stored state via Zustand + localStorage/Supabase sync, no third-party API.
@@ -64,7 +67,7 @@ That's **40 distinct tabs**, a 3D humanoid rendering subsystem (`Body3D.jsx`, `m
 ### 1.3 Functionality Gaps (by tab)
 
 | Tab | Missing / high-value additions |
-|---|---|
+| --- | --- |
 | Overview | No customizable widget layout; weather/AQI has no caching, so it re-fetches every mount |
 | Humanoid / Body3D | No save/export of a snapshot (PNG/GLB) of the current morph state; no undo history |
 | Physique / Assessment | No photo-based progress comparison (side-by-side timeline slider exists in `comparison/` but isn't obviously wired to a camera-upload flow) |
@@ -118,7 +121,7 @@ Good news: you already have a mature design-token system (`index.css` "ULTIMATE 
 Keep your existing amber accent (`#f59e0b`) as primary since palette-switching is already built — but tighten the secondary/glass layer for a more deliberate glass-morphism + subtle-3D feel:
 
 | Role | Hex | Usage |
-|---|---|---|
+| --- | --- | --- |
 | Primary accent (existing) | `#F59E0B` | CTAs, active nav state, focus rings |
 | Primary accent — soft | `rgba(245,158,11,0.15)` | already defined as `--accent-soft` |
 | Secondary — Indigo Glass | `#6366F1` | secondary buttons, links, chart series 2 |
@@ -143,6 +146,7 @@ One concrete fix: move the Google Fonts `@import` in `index.css` to a `<link rel
 ### 3.3 Visual Effects — exactly where and how
 
 **Glass effect** — apply consistently to: card containers already using `--bg-card`/`--bg-glass` (Overview widgets, `SettingsModal`, `NotificationCenter`, `CommandPalette`). Standardize the mixin:
+
 ```css
 .glass-panel {
   background: var(--bg-glass);
@@ -152,9 +156,11 @@ One concrete fix: move the Google Fonts `@import` in `index.css` to a `<link rel
   box-shadow: var(--shadow-card);
 }
 ```
+
 Use this on the server-status pill and daily check-in alert too (both currently hardcode `backdropFilter: 'blur(8px)'` inline — pull into this shared class).
 
 **Subtle 3D card hover** — apply to dashboard cards in `Overview.jsx`, `Dashboards.jsx`, and goal/habit cards:
+
 ```css
 .card-3d {
   transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
@@ -169,6 +175,7 @@ Use this on the server-status pill and daily check-in alert too (both currently 
   .card-3d:hover { transform: none; }
 }
 ```
+
 Keep this off list-row items (Logs, Tasks) where a tilt effect would feel gimmicky on dense data.
 
 **Design system for buttons/inputs/cards** — define 3 button variants (Primary/filled-accent, Secondary/outline, Ghost/text) and 1 input style, all pulling from existing `--radius-md`, `--border`, `--bg-input` tokens, then **replace the inline-style buttons** scattered across components with these classes. This single change addresses both the visual-consistency ask and a chunk of the 2,687-inline-style performance issue below.
@@ -213,6 +220,7 @@ Keep this off list-row items (Logs, Tasks) where a tilt effect would feel gimmic
 ## 6. Prioritized Action Checklist
 
 ### 🔴 High Priority
+
 - [ ] Remove `files/` orphaned prototype directory from the repo
 - [ ] Remove `Ultimate-mirror/checkout/` (including committed `tracker.db`) from version control
 - [ ] Fix color contrast: audit all `--text-3` usage against WCAG 4.5:1 minimum
@@ -223,6 +231,7 @@ Keep this off list-row items (Logs, Tasks) where a tilt effect would feel gimmic
 - [ ] Decide on Supabase vs. Firebase and remove the redundant SDK
 
 ### 🟡 Medium Priority
+
 - [ ] Wrap the 10 heaviest components in `React.memo` + scope Zustand selectors
 - [ ] Move Google Fonts loading from CSS `@import` to preloaded `<link>` tags
 - [ ] Add `loading="lazy"` to all `<img>` tags; convert `target_blueprint.png` to WebP
@@ -234,6 +243,7 @@ Keep this off list-row items (Logs, Tasks) where a tilt effect would feel gimmic
 - [ ] Promote Command Palette as primary desktop nav (persistent ⌘K pill)
 
 ### 🟢 Low Priority
+
 - [ ] Formalize the typography scale into reusable classes/utilities
 - [ ] Add `prefers-reduced-motion` handling for GSAP/confetti/3D auto-rotation
 - [ ] Merge Databases + Logs + AI Dashboard into a "Dev Tools" tab if audience is power-users only

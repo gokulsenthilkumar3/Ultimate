@@ -89,6 +89,6 @@ const TrendsTab = React.memo(function TrendsTab({ fmtINR, form, TOOLTIP_STYLE, t
           </div>
         </div>
   );
-}
+});
 
 export default TrendsTab;
