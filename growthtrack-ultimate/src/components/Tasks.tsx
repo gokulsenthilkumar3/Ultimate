@@ -4,7 +4,7 @@ import useStore, {
 } from '../store/useStore';
 import {
   Plus, Check, Trash2, RotateCcw, Edit3, X, Clock,
-  ChevronDown, ChevronRight, ListTodo, AlertCircle, RefreshCw, LayoutGrid, List
+  ChevronDown, ChevronRight, ListTodo, AlertCircle, RefreshCw, LayoutGrid, List as ListIcon
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { apiSync } from '../store/useStore';
@@ -37,7 +37,7 @@ function dueMeta(dateStr) {
   const today = new Date().toISOString().slice(0, 10);
   if (dateStr < today) return { label: `Overdue`,        color: '#ef4444', bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.3)' };
   if (dateStr === today) return { label: 'Due today',    color: '#f97316', bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.3)' };
-  const diff = Math.ceil((new Date(dateStr) - new Date(today)) / 86400000);
+  const diff = Math.ceil((new Date(dateStr).getTime() - new Date(today).getTime()) / 86400000);
   if (diff === 1) return    { label: 'Due tomorrow',     color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' };
   if (diff <= 7) return     { label: `In ${diff} days`,  color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)' };
   return                    { label: dateStr,             color: '#4b5563', bg: 'rgba(75,85,99,0.08)',   border: 'rgba(75,85,99,0.15)' };
@@ -662,7 +662,7 @@ export default function Tasks() {
             ))}
             <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
             <button onClick={() => setViewMode('list')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : 'var(--text-3)' }}>
-              <List size={16} />
+              <ListIcon size={16} />
             </button>
             <button onClick={() => setViewMode('matrix')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: viewMode === 'matrix' ? 'var(--accent)' : 'var(--text-3)' }}>
               <LayoutGrid size={16} />
@@ -820,10 +820,10 @@ export default function Tasks() {
         {tab === 'pending' && filteredPending.length === 0 && (
           <div style={{ marginTop: '1rem' }}>
             <EmptyState 
-              icon={ListTodo} 
+              icon="CheckSquare" 
               title={filter !== 'all' ? 'No matches found' : 'No Pending Tasks'} 
               description={filter !== 'all' ? 'No tasks match your current filter criteria.' : 'You have no pending tasks. Start by adding one to keep track of your goals.'}
-              ctaLabel={filter === 'all' ? 'Add First Task' : null}
+              actionLabel={filter === 'all' ? 'Add First Task' : null}
               onAction={filter === 'all' ? () => setShowForm(true) : null}
             />
           </div>

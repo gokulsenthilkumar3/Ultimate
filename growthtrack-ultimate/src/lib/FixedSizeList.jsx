@@ -17,7 +17,7 @@ import React from 'react';
  * Renders all rows (no virtual scrolling) for simplicity when v2 API is incompatible.
  * For lists under ~500 items this performs perfectly well.
  */
-export function FixedSizeList({ children, height, itemCount, itemSize, width, itemData, style, className }) {
+export function FixedSizeList({ children, height, itemCount, itemSize, width, itemData, style = {}, className = '' }) {
   const rows = [];
   for (let index = 0; index < itemCount; index++) {
     const rowStyle = {
