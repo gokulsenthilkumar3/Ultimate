@@ -170,14 +170,14 @@ export default function HumanoidClone({
       {scene && <primitive object={scene} />}
 
       {/* Aura rim — goal clone only */}
-      {showAura && bodyMesh && (
-        <mesh
+      {showAura && bodyMesh && skeleton && (
+        <skinnedMesh
           ref={auraRef}
           geometry={bodyMesh.geometry}
           material={createRimAuraMaterial()}
+          skeleton={skeleton}
           morphTargetDictionary={bodyMesh.morphTargetDictionary}
           morphTargetInfluences={bodyMesh.morphTargetInfluences || []}
-          scale={1.018}
         />
       )}
 
