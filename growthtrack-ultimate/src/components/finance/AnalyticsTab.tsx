@@ -31,6 +31,7 @@ const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pi
             <div style={{ height: '300px', marginTop: '1rem' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <RePieChart>
+                  {/* @ts-ignore - Recharts types might be missing activeIndex depending on version */}
                   <Pie data={pieData} innerRadius={65} outerRadius={90} paddingAngle={4} dataKey="value" activeIndex={activeIndex} activeShape={renderActiveShape} onMouseEnter={onPieEnter}>
                     {pieData.map((_, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
                   </Pie>
@@ -66,6 +67,6 @@ const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pi
           </div>
         </div>
   );
-}
+});
 
 export default AnalyticsTab;
