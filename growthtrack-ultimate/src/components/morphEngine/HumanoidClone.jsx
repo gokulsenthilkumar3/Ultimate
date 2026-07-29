@@ -149,8 +149,8 @@ export default function HumanoidClone({
   // ── Visibility guard ────────────────────────────────────────────────────────
   if (!visible) return null;
 
-  // ── Dev fallback: no GLB → use procedural model ─────────────────────────────
-  if (isDev || !bodyMesh) {
+  // ── Fallback: no body mesh → use procedural model ───────────────────────────
+  if (!bodyMesh) {
     return (
       <ProceduralHumanoid
         cloneKey={cloneKey}
