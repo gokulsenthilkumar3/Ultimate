@@ -3,37 +3,33 @@
  * useModelLoader.js
  *
  * Loads the base humanoid GLB with Draco decompression.
- * Extracts and maps all 24 named morph targets from the mesh.
- * Caches the model so both CloneA and CloneB share the same geometry
- * (cloned, not referenced — so morph weights are independent).
+ * Extracts and maps all named morph targets from the mesh.
+ * Uses SkeletonUtils.clone so each HumanoidClone gets its own
+ * independent morphTargetInfluences array.
  *
  * Expected GLB structure:
  *   Scene
  *   └── Armature
- *       └── Body (SkinnedMesh)
+ *       └── Body (Mesh or SkinnedMesh)
  *             morphTargetDictionary: { overall_mass: 0, gut_volume: 1, ... }
- *             morphTargetInfluences: Float32Array[24]
+ *             morphTargetInfluences: Float32Array[N]
  *
- * Draco-compressed GLB should live at:
+ * GLB should live at:
  *   /public/assets/models/humanoid-base.glb
  *
- * For dev without a real GLB, a fallback procedural mesh is generated
- * that still exercises the full morph pipeline.
- *
- * Deps: @react-three/fiber, @react-three/drei, three
+ * Deps: @react-three/fiber, @react-three/drei, three, three-stdlib
  */
 
-import { useMemo }       from "react";
-import { useGLTF }       from "@react-three/drei";
-import * as THREE        from "three";
-import { SkeletonUtils } from "three-stdlib";
-import { computeMorphWeights } from "../../store/use3DStore";
+import { useMemo }       from 'react';
+import { useGLTF }       from '@react-three/drei';
+import * as THREE        from 'three';
+import { SkeletonUtils } from 'three-stdlib';
+
+import { MORPH_TARGET_NAMES } from './constants';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
-
-import { MORPH_TARGET_NAMES } from "./constants";
 
 export const MODEL_PATH = `${import.meta.env.BASE_URL}assets/models/humanoid-base.glb`;
 
@@ -52,7 +48,7 @@ export function preloadHumanoidModel() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * @param {THREE.SkinnedMesh} mesh
+ * @param {THREE.Mesh|THREE.SkinnedMesh} mesh
  * @returns {Object} { [morphTargetName]: influenceIndex }
  */
 export function buildMorphIndexMap(mesh) {
@@ -71,23 +67,19 @@ export function buildMorphIndexMap(mesh) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DEV FALLBACK — capsule mesh with synthetic morph targets
-// Used when the real GLB isn't available in development.
+// DEV FALLBACK — simple box mesh used when the real GLB cannot be loaded
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildFallbackMesh() {
-  // Ultra-safe box geometry as last-resort fallback
-  const geometry = new THREE.BoxGeometry(0.4, 1.8, 0.2);
+  const geometry = new THREE.CapsuleGeometry(0.2, 1.4, 8, 16);
   const material = new THREE.MeshStandardMaterial({
-    color: 0x8b7355,
+    color:     0x8b7355,
     roughness: 0.8,
     metalness: 0.0,
   });
-
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = "Body_Fallback_Box";
-  mesh.name = "Body_Fallback_Box";
-
+  const mesh      = new THREE.Mesh(geometry, material);
+  mesh.name       = 'Body_Fallback';
+  mesh.position.y = 0.9; // lift so feet are at y=0
   return mesh;
 }
 
@@ -96,11 +88,11 @@ function buildFallbackMesh() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Loads and returns a cloned humanoid mesh ready for morphing.
- * Each call returns an independent clone (separate morphTargetInfluences array).
+ * Loads and returns a cloned humanoid scene ready for morphing.
+ * Each call returns an independent clone (separate morphTargetInfluences).
  *
  * @returns {{
- *   bodyMesh:     THREE.SkinnedMesh,
+ *   bodyMesh:     THREE.Mesh | THREE.SkinnedMesh,
  *   morphIndexMap: Object,
  *   skeleton:     THREE.Skeleton | null,
  *   scene:        THREE.Group,
@@ -108,69 +100,78 @@ function buildFallbackMesh() {
  * }}
  */
 export function useModelLoader() {
-  // useGLTF is called unconditionally per Rules of Hooks.
-  // Suspense promises (loading state) must be re-thrown so Suspense handles them.
-  // Real errors (404 / parse failure) are caught and fall through to the dev fallback.
+  // useGLTF must be called unconditionally (Rules of Hooks).
+  // Suspense promises must be re-thrown so React Suspense can catch them.
+  // Network / parse errors are caught and we fall through to the dev fallback.
   let gltf = null;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     gltf = useGLTF(MODEL_PATH, 'https://www.gstatic.com/draco/v1/decoders/');
   } catch (err) {
     if (err && typeof err.then === 'function') throw err; // re-throw Suspense promises
-    // 404 / network / parse errors → fall through, gltf stays null → dev fallback renders
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[useModelLoader] GLB load failed, using fallback mesh:', err?.message ?? err);
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => {
-    if (!gltf || !gltf.scene) return { isDev: true };
+    if (!gltf || !gltf.scene) {
+      // GLB not yet available — return dev fallback
+      const mesh  = buildFallbackMesh();
+      const group = new THREE.Group();
+      group.add(mesh);
+      return { bodyMesh: mesh, morphIndexMap: {}, skeleton: null, scene: group, isDev: true };
+    }
 
     try {
-      // Temporarily use the raw scene to see if cloning is the issue
-      const clonedScene = gltf.scene;
+      // Clone the scene so each HumanoidClone gets its own morph influence array.
+      // SkeletonUtils.clone also correctly rebinds bone references for SkinnedMeshes.
+      const clonedScene = SkeletonUtils.clone(gltf.scene);
 
-      let bodyMesh = null;
+      let bodyMesh     = null;
       let morphIndexMap = {};
       let skeleton     = null;
 
       clonedScene.traverse((node) => {
-        if (node.isSkinnedMesh && node.name.toLowerCase().includes("body")) {
+        // The GLB Body node may be a plain Mesh (morph-only) or a SkinnedMesh.
+        // Accept both. The name check is case-insensitive.
+        if (!bodyMesh && (node.isMesh || node.isSkinnedMesh) && node.name.toLowerCase().includes('body')) {
           bodyMesh      = node;
           morphIndexMap = buildMorphIndexMap(node);
-          skeleton      = node.skeleton;
-          if (skeleton && skeleton.bones) {
-            console.log("[useModelLoader] Found skeleton bones:", skeleton.bones.map(b => b.name));
-          }
+          skeleton      = node.skeleton ?? null;
           node.castShadow    = true;
           node.receiveShadow = true;
-          // Enable morph normals for correct shading under deformation
-          node.geometry.computeMorphNormals?.();
+          // Pre-compute morph normals for correct lighting under deformation
+          if (node.geometry?.morphAttributes?.position) {
+            node.geometry.computeMorphNormals?.();
+          }
+          if (skeleton?.bones?.length) {
+            console.log('[useModelLoader] Found skeleton bones:', skeleton.bones.map(b => b.name));
+          } else {
+            console.log(`[useModelLoader] Body mesh "${node.name}" loaded (morph-only, no skeleton).`);
+          }
         }
       });
 
       if (!bodyMesh) {
-        // GLB loaded but no skinned mesh named "body" found — use fallback
-        console.warn("[useModelLoader] No 'body' SkinnedMesh found in GLB scene, using fallback.");
-        const mesh  = buildFallbackMesh();
-        const group = new THREE.Group();
-        group.add(mesh);
-        return { bodyMesh: mesh, morphIndexMap: {}, skeleton: null, scene: group, isDev: true };
+        // GLB loaded OK but no mesh named "body" found — log what IS there
+        const meshNames = [];
+        clonedScene.traverse(n => { if (n.isMesh || n.isSkinnedMesh) meshNames.push(n.name); });
+        console.warn('[useModelLoader] No "body" mesh found. All meshes in GLB:', meshNames);
+        // Fall through to dev fallback below
+      } else {
+        return { bodyMesh, morphIndexMap, skeleton, scene: clonedScene, isDev: false };
       }
-
-      return { bodyMesh, morphIndexMap, skeleton, scene: clonedScene, isDev: false };
     } catch (err) {
-      console.error("[useModelLoader] Error processing GLB:", err);
+      console.error('[useModelLoader] Error processing GLB:', err);
     }
 
     // ── DEV FALLBACK ─────────────────────────────────────────────────────────
-    console.info("[useModelLoader] Using fallback capsule mesh (no GLB found)");
-    const mesh        = buildFallbackMesh();
-    const morphIndexMap = buildMorphIndexMap(mesh);
-    const group       = new THREE.Group();
+    console.info('[useModelLoader] Using fallback capsule mesh.');
+    const mesh  = buildFallbackMesh();
+    const group = new THREE.Group();
     group.add(mesh);
-    return { bodyMesh: mesh, morphIndexMap, skeleton: null, scene: group, isDev: true };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return { bodyMesh: mesh, morphIndexMap: {}, skeleton: null, scene: group, isDev: true };
   }, [gltf]);
 }
-
