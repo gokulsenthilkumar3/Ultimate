@@ -578,6 +578,7 @@ const useStore = create<any>()(
         onboardingComplete: state.onboardingComplete,
         lastCheckIn: state.lastCheckIn,
         checkInAlertDismissedDate: state.checkInAlertDismissedDate,
+        databases: state.databases,
       }),
       migrate: (persistedState: any, version) => {
         try {
