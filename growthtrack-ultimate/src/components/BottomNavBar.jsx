@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Shield, Heart, Wallet, FileText } from 'lucide-react';
+import { LayoutDashboard, Shield, Heart, Wallet, FileText, Sparkles, UserRound } from 'lucide-react';
 
 // Tab → group mapping (single source of truth)
 export const TAB_GROUP_MAP = {
@@ -20,11 +20,11 @@ export const TAB_GROUP_MAP = {
 };
 
 export const GROUPS = [
-  { id: 'command',    label: 'Command',    icon: LayoutDashboard, firstTab: 'overview' },
-  { id: 'physiology', label: 'Physiology', icon: Shield,          firstTab: 'humanoid' },
-  { id: 'lifestyle',  label: 'Lifestyle',  icon: Heart,           firstTab: 'sleep'    },
-  { id: 'operations', label: 'Operations', icon: Wallet,          firstTab: 'tasks'    },
-  { id: 'library',    label: 'Library',    icon: FileText,        firstTab: 'entertainment' },
+  { id: 'command',    label: 'Today',      icon: Sparkles,        firstTab: 'overview' },
+  { id: 'physiology', label: 'Body',       icon: Shield,          firstTab: 'humanoid' },
+  { id: 'lifestyle',  label: 'Life',       icon: Heart,           firstTab: 'sleep'    },
+  { id: 'operations', label: 'Work',      icon: Wallet,          firstTab: 'tasks'    },
+  { id: 'library',    label: 'More',      icon: FileText,        firstTab: 'entertainment' },
 ];
 
 export default function BottomNavBar({ activeTab, onTabChange }) {

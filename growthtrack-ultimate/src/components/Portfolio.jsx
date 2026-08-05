@@ -151,7 +151,9 @@ export default function Portfolio() {
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Investments</p>
           <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Portfolio</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{holdings.length} holdings tracked</p>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', maxWidth: '42rem' }}>
+            Track your investments here. For your website, bio, and about-me content, open <strong style={{ color: 'var(--text-1)' }}>Profile</strong> in App Hub.
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={simulateRefresh} disabled={refreshing} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>

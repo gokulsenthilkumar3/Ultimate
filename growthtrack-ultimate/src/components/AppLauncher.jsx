@@ -33,10 +33,12 @@ const ALL_APPS = [
   { id: 'logs',        label: 'Logs',            icon: '📋', group: 'Tools',        color: '#94a3b8', description: 'Audit trail' },
   { id: 'databases',   label: 'Databases',       icon: '🗄️', group: 'Tools',        color: '#7dd3fc', description: 'Data explorer' },
   { id: 'about',       label: 'About',           icon: 'ℹ️', group: 'Tools',        color: '#c4b5fd', description: 'App info & changelog' },
+  { id: 'settings',    label: 'Profile',         icon: '🪪', group: 'Tools',        color: '#f9a8d4', description: 'Bio, about me & profile' },
 ];
 
 const GROUP_ORDER = ['Core', 'Health', 'Productivity', 'Finance', 'Tools'];
 const DOCK_APP_IDS = ['overview', 'training', 'tasks', 'finance', 'ai', 'habits', 'notes'];
+const PORTFOLIO_URL = 'https://portfolio-ten-plum-98.vercel.app/';
 const CLICK_KEY = 'gtd_app_click_counts';
 
 function getClickCounts() {
@@ -157,6 +159,21 @@ export default function AppLauncher({ setActiveTab }) {
       <div style={{ marginBottom: '1.5rem' }}>
         <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Quick Dock</p>
         <Dock dockApps={dockApps} onNavigate={onNavigate} pinnedTabs={pinnedTabs} />
+        <p style={{ marginTop: '0.65rem', color: 'var(--text-3)', fontSize: '0.78rem' }}>
+          Tip: pin your most-used apps, and use <strong style={{ color: 'var(--text-1)' }}>Profile</strong> for your website/about-me content.
+        </p>
+      </div>
+
+      <div style={{ marginBottom: '1.5rem' }}>
+        <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '1rem 1.1rem' }}>
+          <div>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Personal Portfolio</p>
+            <p style={{ color: 'var(--text-1)', fontSize: '0.9rem', marginTop: '0.25rem' }}>Your external website lives here and can be edited there directly.</p>
+          </div>
+          <a href={PORTFOLIO_URL} target="_blank" rel="noreferrer" className="btn btn--ghost">
+            Open Website
+          </a>
+        </div>
       </div>
 
       {/* Frequent apps */}

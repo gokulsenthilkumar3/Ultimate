@@ -12,8 +12,8 @@ import './index.css';
 import './styles/chamber.css';
 import './styles/premium.css';
 
-import Landing from './components/Landing';
-import AuthForms from './components/AuthForms';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
 
 import OnboardingWizard    from './components/OnboardingWizard';
 import CommandPalette      from './components/CommandPalette';
@@ -329,7 +329,7 @@ export default function App() {
       if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
         setActiveTab(pathTab);
         setIsNotFound(false);
-      } else if (location.pathname === '/') {
+      } else if (location.pathname === '/' && localStorage.getItem('token')) {
         navigate(`/${storeActiveTab}`, { replace: true });
         setIsNotFound(false);
       }
@@ -338,7 +338,7 @@ export default function App() {
       if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
         setActiveTab(pathTab);
         setIsNotFound(false);
-      } else if (location.pathname === '/') {
+      } else if (location.pathname === '/' && localStorage.getItem('token')) {
         navigate(`/${storeActiveTab}`, { replace: true });
         setIsNotFound(false);
       } else if (pathTab && !GLOBAL_MODULES[pathTab]) {
@@ -444,22 +444,8 @@ export default function App() {
     document.documentElement.setAttribute('data-palette', palette);
   }, [theme, palette]);
 
-  if (!isAuthenticated) {
-    if (authView === 'landing') {
-      return <Landing onJoinBeta={() => setAuthView('signup')} onLogin={() => setAuthView('login')} />;
-    }
-    return (
-      <ToastProvider>
-        <AuthForms 
-          mode={authView} 
-          onAuthSuccess={(userPayload) => {
-            setIsAuthenticated(true);
-            setUser(userPayload);
-          }} 
-        />
-      </ToastProvider>
-    );
-  }
+  if (location.pathname === '/login') return <LoginPage />;
+  if (location.pathname === '/' && !localStorage.getItem('token')) return <LandingPage />;
 
   return (
     <ErrorBoundary resetKey="root">
