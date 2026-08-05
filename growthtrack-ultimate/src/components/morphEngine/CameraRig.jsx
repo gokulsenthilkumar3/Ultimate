@@ -41,9 +41,6 @@ const ROTATE_SPEED = 0.7;
 /** Auto-rotate angular speed (radians per second) */
 const AUTO_ROTATE_SPEED = 0.4;
 
-/** How long after last interaction before auto-rotate resumes (ms) */
-const AUTO_ROTATE_RESUME_DELAY = 3000;
-
 /** Reverses auto-rotate direction every N full rotations */
 const DIRECTION_REVERSE_EVERY = 2;
 
@@ -94,7 +91,6 @@ export default function CameraRig() {
   const targetSpherical   = useRef(presetToSpherical("FRONT"));
   const currentSpherical  = useRef(presetToSpherical("FRONT"));
   const isAnimatingPreset = useRef(false);
-  const lastInteraction   = useRef(Date.now());
   const rotationAccum     = useRef(0);
   const autoRotateDir     = useRef(1);
 
@@ -112,13 +108,12 @@ export default function CameraRig() {
     const controls = orbitRef.current;
 
     const onStart = () => {
-      lastInteraction.current = Date.now();
       use3DStore.getState().setAutoRotate(false);
       setCameraPreset("CUSTOM");
     };
 
     const onEnd = () => {
-      lastInteraction.current = Date.now();
+      // keep manual control stable; do not auto-resume rotation
     };
 
     controls.addEventListener("start", onStart);
@@ -133,12 +128,6 @@ export default function CameraRig() {
   useFrame((_, delta) => {
     if (!orbitRef.current) return;
     const controls = orbitRef.current;
-
-    // ── Auto-rotate resume check ────────────────────────────────────────────
-    const msSinceInteraction = Date.now() - lastInteraction.current;
-    if (!autoRotate && msSinceInteraction > AUTO_ROTATE_RESUME_DELAY) {
-      use3DStore.getState().setAutoRotate(true);
-    }
 
     // ── Preset lerp animation ───────────────────────────────────────────────
     if (isAnimatingPreset.current) {

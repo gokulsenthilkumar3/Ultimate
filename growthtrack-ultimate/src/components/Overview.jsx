@@ -59,8 +59,12 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
   const today   = new Date().toISOString().slice(0, 10);
   const tod     = getTimeOfDay();
 
-  const todayTasks  = tasks.filter(t => !t.completed && (t.due_date || '').startsWith(today));
-  const doneTasks   = tasks.filter(t => t.completed && (t.completed_at || '').startsWith(today));
+  const isDone = (t) => t.completed || t.status === 'done' || t.done;
+  const dueDate = (t) => t.due_date || t.dueDate || '';
+  const completedAt = (t) => t.completed_at || t.completedAt || '';
+  const priority = (t) => (t.priority || '').toLowerCase();
+  const todayTasks  = tasks.filter(t => !isDone(t) && dueDate(t).startsWith(today));
+  const doneTasks   = tasks.filter(t => isDone(t) && completedAt(t).startsWith(today));
   const activeGoals = goals.filter(g => g.status === 'active').length;
 
   const habitsToday = habits.filter(h => {
@@ -71,7 +75,7 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
 
   const lastSleep = sleepLogs?.length > 0 ? sleepLogs[sleepLogs.length - 1] : null;
 
-  const urgentTasks = todayTasks.filter(t => t.priority === 'high' || t.priority === 'urgent');
+  const urgentTasks = todayTasks.filter(t => ['high', 'urgent', 'p1'].includes(priority(t)));
 
   return (
     <div style={{
@@ -83,7 +87,7 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
       {/* Ambient glow */}
       <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '200px', height: '200px', borderRadius: '50%', background: `${tod.color}20`, filter: 'blur(60px)', pointerEvents: 'none' }} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem', position: 'relative', zIndex: 1 }}>
         {/* Greeting */}
         <div>
           <p style={{ fontSize: '0.7rem', color: tod.color, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
@@ -98,18 +102,18 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
         </div>
 
         {/* Key metrics */}
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {[
             { icon: <CheckSquare size={16} color="#10b981" />, val: `${doneTasks.length}/${todayTasks.length + doneTasks.length}`, label: 'Tasks', color: '#10b981', action: () => setActiveTab('tasks') },
             { icon: <Flame size={16} color="#f97316" />,       val: `${habitPct}%`,         label: 'Habits',  color: '#f97316', action: () => setActiveTab('habits') },
             { icon: <Target size={16} color="#0ea5e9" />,      val: activeGoals,             label: 'Goals',   color: '#0ea5e9', action: () => setActiveTab('goals') },
             lastSleep ? { icon: <Moon size={16} color="#818cf8" />, val: `${lastSleep.duration}h`, label: 'Sleep', color: '#818cf8', action: null } : null,
           ].filter(Boolean).map(m => (
-            <div key={m.label} onClick={m.action} style={{ padding: '0.65rem 0.9rem', background: 'rgba(255,255,255,0.06)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', cursor: m.action ? 'pointer' : 'default', textAlign: 'center', minWidth: '80px', transition: 'background 0.15s' }}>
+            <button key={m.label} onClick={m.action} style={{ padding: '0.8rem 0.95rem', background: 'rgba(255,255,255,0.04)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', cursor: m.action ? 'pointer' : 'default', textAlign: 'left', minWidth: '112px', transition: 'background 0.15s', color: 'var(--text-1)' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>{m.icon}</div>
               <p style={{ fontSize: '1.1rem', fontWeight: 900, color: m.color, lineHeight: 1 }}>{m.val}</p>
               <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '2px', fontWeight: 700 }}>{m.label}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -119,7 +123,7 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
         <div style={{ marginTop: '1.25rem', padding: '0.65rem 1rem', background: 'rgba(239,68,68,0.1)', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 1 }}>
           <Zap size={14} color="#ef4444" />
           <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f87171' }}>
-            {urgentTasks.length} high-priority task{urgentTasks.length > 1 ? 's' : ''} due today:
+            {urgentTasks.length} priority task{urgentTasks.length > 1 ? 's' : ''} due today:
             <span style={{ color: 'var(--text-2)', fontWeight: 600, marginLeft: '6px' }}>
               {urgentTasks.slice(0, 2).map(t => t.title).join(', ')}{urgentTasks.length > 2 ? `…+${urgentTasks.length - 2}` : ''}
             </span>
@@ -243,15 +247,41 @@ export default function Overview({ setActiveTab }) {
   const WMO_ICONS = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 61: '🌧️', 63: '🌧️', 80: '🌦️' };
   const wIcon = weather ? (WMO_ICONS[weather.weathercode] || '🌡️') : '';
 
+  const quickLinks = [
+    { label: 'Tasks', tab: 'tasks', note: 'Action items' },
+    { label: 'Humanoid', tab: 'humanoid', note: 'Body engine' },
+    { label: 'Portfolio', tab: 'portfolio', note: 'Investments' },
+    { label: 'Profile', tab: 'settings', note: 'About me' },
+  ];
+
   return (
     <div style={{ padding: '0.5rem 0' }}>
+      <div className="glass-card" style={{ marginBottom: '1rem', padding: '1.25rem 1.25rem 1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div>
+            <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Today</p>
+            <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>One screen for the day</h2>
+            <p style={{ color: 'var(--text-3)', fontSize: '0.9rem', maxWidth: '42rem' }}>
+              A calm home surface for tasks, habits, goals, sleep, and quick jumps into the rest of the app.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {quickLinks.map((item) => (
+              <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-1)', borderRadius: '999px', padding: '0.7rem 0.95rem', cursor: 'pointer', minWidth: '110px', textAlign: 'left' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 800 }}>{item.label}</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '2px' }}>{item.note}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Day at a Glance hero */}
       <DayAtAGlance tasks={tasks} habits={habits} goals={goals} sleepLogs={sleep_logs} habitLogsByHabit={habitLogsByHabit} setActiveTab={setActiveTab} />
 
       {/* Top row: Health Score + Environmental */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {/* Health score */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1.5rem', textAlign: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1.25rem', textAlign: 'center' }}>
           <HealthScoreRing score={healthScore} />
           <div>
             <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Digital Twin Score</p>
