@@ -220,7 +220,7 @@ export default function StrengthMetrics() {
   });
 
   const strengthLogs = useMemo(() =>
-    metric_logs.filter(l => l.type === 'strength' || l.exercise)
+    (metric_logs || []).filter(l => l.type === 'strength' || l.exercise)
                .map(l => ({
                  ...l,
                  exercise: l.exercise || l.name || 'Exercise',
