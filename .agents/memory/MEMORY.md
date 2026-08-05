@@ -1,0 +1,4 @@
+- [GrowthTrack store API](growthtrack-store-api.md) — key store field names, actions, and persist slice for the Digital Twin Engine
+- [AiDashboard XSS fix](ai-dashboard-xss.md) — safe markdown rendering pattern used; askGemini import path
+- [Vite config for Replit](vite-replit-config.md) — required settings for the preview to work on Replit
+- [TransformationPredictor bug](transformation-predictor-notes.md) — totalCycleDays was undefined; now uses DEFAULT_CYCLE_DAYS=90 constant

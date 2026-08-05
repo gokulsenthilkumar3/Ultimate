@@ -192,8 +192,7 @@ export default function Overview({ setActiveTab }) {
     }
 
     // Recent exercise
-    const last3Days = Date.now() - 3 * 86400000;
-    const hasExercise = metric_logs.some(l => l.type === 'strength' || l.type === 'workout' || l.exercise);
+    const hasExercise = (metric_logs || []).some(l => l.type === 'strength' || l.type === 'workout' || l.exercise);
     if (hasExercise) score += 10;
 
     // Active goals
@@ -209,7 +208,7 @@ export default function Overview({ setActiveTab }) {
     for (let i = 29; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const key = d.toISOString().slice(0, 10);
-      const dayLogs = metric_logs.filter(l => (l.date || '').startsWith(key));
+      const dayLogs = (metric_logs || []).filter(l => (l.date || '').startsWith(key));
       data.push({ day: key.slice(5), value: dayLogs.length * 10 });
     }
     return data;
@@ -315,7 +314,7 @@ export default function Overview({ setActiveTab }) {
             <Activity size={11} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />30-Day Activity
           </p>
           <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '0.5rem' }}>
-            {metric_logs.length} metric entries
+            {(metric_logs || []).length} metric entries
           </p>
           <ResponsiveContainer width="100%" height={55}>
             <AreaChart data={volumeHistory} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
