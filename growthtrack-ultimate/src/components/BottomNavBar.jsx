@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Shield, Heart, Wallet, FileText, Sparkles, UserRound } from 'lucide-react';
+import { Shield, Heart, Wallet, FileText, Sparkles } from 'lucide-react';
 
 // Tab → group mapping (single source of truth)
 export const TAB_GROUP_MAP = {
@@ -43,26 +43,10 @@ export default function BottomNavBar({ activeTab, onTabChange }) {
             className={`bottom-nav-item ${isActive ? 'active' : ''}`}
             onClick={() => onTabChange(group.firstTab)}
           >
-            <group.icon size={20} aria-hidden="true" />
-            {/* Active label rendered below icon — always present for layout stability,
-                visible only when active via CSS opacity/transform */}
+            <span className="bottom-nav-dot" aria-hidden="true" />
             <span className="bottom-nav-label" aria-hidden={!isActive}>
               {group.label}
             </span>
-            {isActive && (
-              <span
-                className="bottom-nav-active-dot"
-                aria-hidden="true"
-                style={{
-                  display: 'block',
-                  width: '4px',
-                  height: '4px',
-                  borderRadius: '50%',
-                  background: 'var(--accent)',
-                  margin: '2px auto 0',
-                }}
-              />
-            )}
           </button>
         );
       })}

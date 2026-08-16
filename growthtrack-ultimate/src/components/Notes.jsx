@@ -4,33 +4,12 @@ import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280'];
 
 // ── Markdown parser (no deps) ──────────────────────────────────────────────
-function renderMarkdown(text = '') {
-  return text
-    .replace(/^######\s(.+)$/gm, '<h6 style="font-size:0.72rem;font-weight:700;color:var(--text-2);margin:0.5em 0 0.2em">$1</h6>')
-    .replace(/^#####\s(.+)$/gm, '<h5 style="font-size:0.78rem;font-weight:700;color:var(--text-2);margin:0.5em 0 0.2em">$1</h5>')
-    .replace(/^####\s(.+)$/gm, '<h4 style="font-size:0.85rem;font-weight:700;margin:0.6em 0 0.25em">$1</h4>')
-    .replace(/^###\s(.+)$/gm, '<h3 style="font-size:0.95rem;font-weight:800;margin:0.7em 0 0.3em;color:var(--accent)">$1</h3>')
-    .replace(/^##\s(.+)$/gm, '<h2 style="font-size:1.1rem;font-weight:800;margin:0.75em 0 0.3em">$1</h2>')
-    .replace(/^#\s(.+)$/gm, '<h1 style="font-size:1.3rem;font-weight:900;margin:0.8em 0 0.35em">$1</h1>')
-    .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/~~(.*?)~~/g, '<del>$1</del>')
-    .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.12);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.88em">$1</code>')
-    .replace(/^\s*[-*+]\s+\[x\]\s+(.+)$/gm, '<div style="display:flex;gap:6px;align-items:center"><span style="color:#10b981">☑</span><span style="text-decoration:line-through;color:var(--text-3)">$1</span></div>')
-    .replace(/^\s*[-*+]\s+\[ \]\s+(.+)$/gm, '<div style="display:flex;gap:6px;align-items:center"><span style="color:var(--text-3)">☐</span>$1</div>')
-    .replace(/^\s*[-*+]\s+(.+)$/gm, '<div style="display:flex;gap:6px;align-items:flex-start"><span style="color:var(--accent);margin-top:3px">•</span>$1</div>')
-    .replace(/^\d+\.\s+(.+)$/gm, '<div style="margin-left:1em">$1</div>')
-    .replace(/^>\s+(.+)$/gm, '<blockquote style="border-left:3px solid var(--accent);margin:0.5em 0;padding:0.35em 0.75em;color:var(--text-2);font-style:italic;background:rgba(99,102,241,0.06);border-radius:0 8px 8px 0">$1</blockquote>')
-    .replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0.75em 0"/>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:var(--accent);text-decoration:underline">$1</a>')
-    .replace(/\n/g, '<br/>');
-}
-
 const TAG_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899'];
 
 function NoteCard({ note, onEdit, onDelete, onToggleStar, onTogglePin, onCopy, isActive, onClick }) {
@@ -365,8 +344,17 @@ export default function Notes() {
                   }}
                 />
               ) : (
-                <div style={{ fontSize: '0.88rem', color: 'var(--text-1)', lineHeight: 1.75 }}
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(editMode ? draft.content : (activeNote?.content || '')) }} />
+                <div style={{ fontSize: '0.88rem', color: 'var(--text-1)', lineHeight: 1.75 }}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }} />,
+                      blockquote: ({ node, ...props }) => <blockquote {...props} style={{ borderLeft: '3px solid var(--accent)', margin: '0.5em 0', padding: '0.35em 0.75em', color: 'var(--text-2)', fontStyle: 'italic', background: 'rgba(99,102,241,0.06)', borderRadius: '0 8px 8px 0' }} />,
+                    }}
+                  >
+                    {editMode ? draft.content : (activeNote?.content || '')}
+                  </ReactMarkdown>
+                </div>
               )}
             </div>
 

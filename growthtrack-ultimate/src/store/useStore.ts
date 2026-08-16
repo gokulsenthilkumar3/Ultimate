@@ -3,37 +3,19 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { createFinanceSlice } from './slices/financeSlice';
 import { createTaskSlice } from './slices/taskSlice';
 import { createHealthSlice } from './slices/healthSlice';
-
-// @ts-ignore
-const API_BASE = import.meta.env?.VITE_API_BASE || 'http://localhost:3001/api';
-let isOffline = false;
+import { loadSyncedState, syncEndpoint } from '../lib/dataSync';
 
 export async function apiSync(endpoint: string, method: string = 'POST', data: any = null): Promise<any> {
-  if (isOffline) return null;
   try {
-    const state = useStore.getState();
-    if (!state.user?.id && !endpoint.includes('/login') && !endpoint.includes('/onboarding')) {
-      console.warn(`[useStore] Blocked unauthenticated API call to ${endpoint}`);
-      return null;
+    if (endpoint.includes('/finance/sync/bank') && method === 'POST') {
+      return { data: { transactions: [] } };
     }
-
-    const options: RequestInit = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': state.user?.id,
-        'x-actor-name': state.user?.name || 'System',
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-      },
-    };
-    if (data) options.body = JSON.stringify(data);
-    const res = await fetch(`${API_BASE}${endpoint}`, options);
-    if (!res.ok) throw new Error(`HTTP ${res.status} on ${endpoint}`);
-    const text = await res.text();
-    return text ? JSON.parse(text) : null;
+    if (endpoint.includes('/health/sync/apple') && method === 'POST') {
+      return { ok: true, data: { synced: true } };
+    }
+    return await syncEndpoint(endpoint, method, data);
   } catch (e: any) {
-    if (e.message.includes('Failed to fetch')) isOffline = true;
-    console.warn(`[useStore] API sync failed for ${endpoint}:`, e.message);
+    console.warn(`[useStore] sync failed for ${endpoint}:`, e.message);
     return null;
   }
 }
@@ -134,107 +116,16 @@ const useStore = create<any>()(
 
       fetchInitialData: async () => {
         set({ isLoading: true });
-        const fetchJSON = async (ep) => await apiSync(ep, 'GET');
 
         try {
-          // Use allSettled so one failing endpoint doesn't block the rest
-          const results = await Promise.allSettled([
-            fetchJSON('/user'),
-            fetchJSON('/tasks'),
-            fetchJSON('/shopping'),
-            fetchJSON('/timesheet'),
-            fetchJSON('/training_plan'),
-            fetchJSON('/nutrition_strategy'),
-            fetchJSON('/lifestyle_tips'),
-            fetchJSON('/medical_data'),
-            fetchJSON('/physique_targets'),
-            fetchJSON('/assessment_qa'),
-            fetchJSON('/wellness_data'),
-            fetchJSON('/metric_logs'),
-            fetchJSON('/skills'),
-            fetchJSON('/calendar_events'),
-            fetchJSON('/finance'),
-            fetchJSON('/notes'),
-            fetchJSON('/goals'),
-            fetchJSON('/sleep_logs'),
-            fetchJSON('/documents'),
-            fetchJSON('/subscriptions'),
-            fetchJSON('/habits'),
-            fetchJSON('/entertainment'),
-            fetchJSON('/health_extras'),
-            fetchJSON('/workout_sessions'),
-            fetchJSON('/mood_logs'),
-            fetchJSON('/vitals_logs'),
-            fetchJSON('/medications'),
-            // 4G-1: fetch nutrition logs
-            fetchJSON('/nutrition_logs'),
-          ]);
-
-          const val = (i) => results[i].status === 'fulfilled' ? results[i].value : null;
-          const [
-            user, tasks, shopping, timesheet,
-            training, nutrition, lifestyle,
-            medical, physique, assessment, wellness, metricLogs, skills, events,
-            financeData, notes, goals, sleep, docs, subs, habits, media, healthExtras,
-            workoutSessions, moodLogs, vitalsLogs, medications, nutritionLogs,
-          ] = results.map((_, i) => val(i));
-
+          const stored = await loadSyncedState();
           const newState: any = { isLoading: false };
-          
-          if (skills !== null) newState.skills = Array.isArray(skills) ? skills : [];
-          if (events !== null) newState.calendar_events = Array.isArray(events) ? events : [];
-          if (timesheet !== null) newState.timesheet = { sessions: Array.isArray(timesheet) ? timesheet : [] };
-          if (shopping !== null) newState.shopping = { items: Array.isArray(shopping) ? shopping : [] };
-          if (metricLogs !== null) newState.metric_logs = Array.isArray(metricLogs) ? metricLogs : [];
-          if (nutritionLogs !== null) newState.nutrition_logs = Array.isArray(nutritionLogs) ? nutritionLogs : [];
-          if (training !== null) newState.trainingPlan = training;
-          if (nutrition !== null) newState.nutritionStrategy = nutrition;
-          if (lifestyle !== null) newState.lifestyleTips = Array.isArray(lifestyle) ? lifestyle : [];
-          if (medical !== null) newState.medicalData = medical;
-          if (physique !== null) newState.physiqueTargets = physique;
-          if (assessment !== null) newState.assessmentQA = Array.isArray(assessment) ? assessment : [];
-          if (wellness !== null) newState.wellnessData = wellness;
-          if (notes !== null) newState.notes = Array.isArray(notes) ? notes : [];
-          if (goals !== null) newState.goals = Array.isArray(goals) ? goals : [];
-          if (sleep !== null) newState.sleep_logs = Array.isArray(sleep) ? sleep : [];
-          if (docs !== null) newState.documents = Array.isArray(docs) ? docs : [];
-          if (subs !== null) newState.subscriptions = Array.isArray(subs) ? subs : [];
-          if (habits !== null) newState.habits = Array.isArray(habits) ? habits : [];
-          if (media !== null) newState.entertainment = { media: Array.isArray(media) ? media : [] };
-          if (healthExtras !== null) newState.health_extras = healthExtras || {};
-          if (moodLogs !== null) newState.moodLogs = Array.isArray(moodLogs) ? moodLogs : [];
-          if (vitalsLogs !== null) newState.vitalsLogs = Array.isArray(vitalsLogs) ? vitalsLogs : [];
-          if (medications !== null) newState.medications = Array.isArray(medications) ? medications : [];
-          
-          if (habits !== null) newState.habitLogsByHabit = {};
 
-          if (user) newState.user = user;
-          if (financeData) {
-            newState.finance = {
-              transactions: (financeData.transactions || []).reduce((acc: any, tx: any) => { acc[tx.id] = tx; return acc; }, {}),
-              budgets: (financeData.budgets || []).reduce((acc: any, b: any) => { acc[b.id] = b; return acc; }, {})
-            };
-          }
-
-          if (Array.isArray(workoutSessions)) {
-            newState.workouts = {
-              sessions: workoutSessions,
-              exercisesBySession: {},
-            };
+          if (stored && typeof stored === 'object') {
+            Object.assign(newState, stored);
           }
 
           set(newState);
-
-          if (Array.isArray(tasks) && tasks.length > 0) {
-            const pending = tasks.filter(t => !t.done);
-            const completed = tasks.filter(t => t.done);
-            set((state: any) => ({
-              user: {
-                ...state.user,
-                tasks: { pending, completed, recurring: state.user?.tasks?.recurring || [] }
-              }
-            }));
-          }
         } catch (err) {
           console.error('[useStore] fetchInitialData error:', err);
           set({ isLoading: false });

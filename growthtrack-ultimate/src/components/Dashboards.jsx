@@ -16,6 +16,31 @@ const TOOLTIP_STYLE = {
   fontSize: '0.8rem'
 };
 
+function SectionMeta({ icon: Icon, title, detail }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        <div style={{
+          width: 38,
+          height: 38,
+          borderRadius: 12,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)'
+        }}>
+          <Icon size={18} color="var(--accent)" />
+        </div>
+        <div>
+          <h3 className="text-display" style={{ fontSize: '1.05rem', margin: 0, lineHeight: 1.15 }}>{title}</h3>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '0.25rem' }}>{detail}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboards() {
   const user = useStore(state => state.user);
   const logs = useStore(state => state.metric_logs) || [];
@@ -113,31 +138,40 @@ export default function Dashboards() {
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Unified Analytics</p>
-          <h2 className="text-display" style={{ fontSize: '2.5rem' }}>Strategic Dashboards</h2>
-          <p className="text-secondary">Cross-correlated telemetry and physiological modeling.</p>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        marginBottom: '2rem',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        padding: '1.25rem 1.4rem',
+        borderRadius: '24px',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+        border: '1px solid var(--border)',
+      }}>
+        <div style={{ maxWidth: '680px' }}>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Unified Analytics</p>
+          <h2 className="text-display" style={{ fontSize: '2.1rem', margin: 0 }}>Minimal dashboards for fast decisions</h2>
+          <p className="text-secondary" style={{ marginTop: '0.6rem' }}>
+            A cleaner command surface for body, habit, finance, and goal signals.
+          </p>
         </div>
         <button className="btn-primary">
            <Layout size={18} /> CUSTOMIZE VIEW
         </button>
       </div>
 
-      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
         
         {/* Bio-Balance Radar */}
-        <div id="chart-radar" className="glass-card" style={{ height: '450px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Brain size={20} color="var(--accent)" />
-                <h3 className="text-display" style={{ fontSize: '1.2rem', margin: 0 }}>Physiological Balance</h3>
-             </div>
-             <button onClick={() => handleExport('chart-radar', 'physio-balance')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }} title="Export PNG">
-               <Download size={16} />
-             </button>
-           </div>
-           <div style={{ flex: 1 }}>
+        <div id="chart-radar" className="glass-card" style={{ minHeight: '420px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+           <SectionMeta
+             icon={Brain}
+             title="Physiological Balance"
+             detail="Body signal overview across strength, recovery, mobility, and endurance."
+           />
+           <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                   <PolarGrid stroke="var(--border-strong)" />
@@ -148,29 +182,25 @@ export default function Dashboards() {
                     dataKey="A"
                     stroke="var(--accent)"
                     fill="var(--accent)"
-                    fillOpacity={0.4}
+                    fillOpacity={0.34}
                   />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </RadarChart>
               </ResponsiveContainer>
            </div>
-           <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '1rem' }}>
+           <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '0.9rem' }}>
               Systemic balance across core biological domains.
            </p>
         </div>
 
         {/* Sleep vs Stress Correlation */}
-        <div id="chart-recovery" className="glass-card" style={{ height: '450px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Activity size={20} color="var(--accent)" />
-                <h3 className="text-display" style={{ fontSize: '1.2rem', margin: 0 }}>Recovery Correlation</h3>
-             </div>
-             <button onClick={() => handleExport('chart-recovery', 'recovery-correlation')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }} title="Export PNG">
-               <Download size={16} />
-             </button>
-           </div>
-           <div style={{ flex: 1 }}>
+        <div id="chart-recovery" className="glass-card" style={{ minHeight: '420px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+           <SectionMeta
+             icon={Activity}
+             title="Recovery Correlation"
+             detail="Sleep quality tracked against stress patterns over time."
+           />
+           <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={correlationData}>
                   <defs>
@@ -188,48 +218,40 @@ export default function Dashboards() {
                 </AreaChart>
               </ResponsiveContainer>
            </div>
-           <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '1rem' }}>
-              Tracking the inverse relationship between sleep quality and cortisol markers.
+           <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '0.9rem' }}>
+              The lower the stress curve, the cleaner the recovery window.
            </p>
         </div>
 
         {/* Finance Flow */}
-        <div id="chart-finance" className="glass-card" style={{ height: '350px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <DollarSign size={20} color="var(--success)" />
-                <h3 className="text-display" style={{ fontSize: '1.2rem', margin: 0 }}>Cash Flow (6M)</h3>
-             </div>
-             <button onClick={() => handleExport('chart-finance', 'cash-flow')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }} title="Export PNG">
-               <Download size={16} />
-             </button>
-           </div>
-           <div style={{ flex: 1 }}>
+        <div id="chart-finance" className="glass-card" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+           <SectionMeta
+             icon={DollarSign}
+             title="Cash Flow"
+             detail="Income and expense rhythm across the last six months."
+           />
+           <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={financeChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="month" stroke="var(--text-3)" fontSize={10} />
                   <YAxis stroke="var(--text-3)" fontSize={10} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="income" fill="var(--success)" radius={[4, 4, 0, 0]} name="Income" />
-                  <Bar dataKey="expense" fill="var(--danger)" radius={[4, 4, 0, 0]} name="Expense" />
+                  <Bar dataKey="income" fill="var(--success)" radius={[6, 6, 0, 0]} name="Income" />
+                  <Bar dataKey="expense" fill="var(--danger)" radius={[6, 6, 0, 0]} name="Expense" />
                 </BarChart>
               </ResponsiveContainer>
            </div>
         </div>
 
         {/* Habit Consistency */}
-        <div id="chart-habit" className="glass-card" style={{ height: '350px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CheckCircle2 size={20} color="var(--info)" />
-                <h3 className="text-display" style={{ fontSize: '1.2rem', margin: 0 }}>Habit Consistency (14D)</h3>
-             </div>
-             <button onClick={() => handleExport('chart-habit', 'habit-consistency')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }} title="Export PNG">
-               <Download size={16} />
-             </button>
-           </div>
-           <div style={{ flex: 1 }}>
+        <div id="chart-habit" className="glass-card" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+           <SectionMeta
+             icon={CheckCircle2}
+             title="Habit Consistency"
+             detail="Daily completion density across the last two weeks."
+           />
+           <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={habitChartData}>
                   <defs>
@@ -249,17 +271,13 @@ export default function Dashboards() {
         </div>
 
         {/* Goal Progress velocity */}
-        <div id="chart-goal" className="glass-card" style={{ height: '350px', display: 'flex', flexDirection: 'column', gridColumn: '1 / -1', position: 'relative' }}>
-           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Target size={20} color="var(--warning)" />
-                <h3 className="text-display" style={{ fontSize: '1.2rem', margin: 0 }}>Goal Progress Velocity</h3>
-             </div>
-             <button onClick={() => handleExport('chart-goal', 'goal-velocity')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }} title="Export PNG">
-               <Download size={16} />
-             </button>
-           </div>
-           <div style={{ flex: 1 }}>
+        <div id="chart-goal" className="glass-card" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', gridColumn: '1 / -1', position: 'relative' }}>
+           <SectionMeta
+             icon={Target}
+             title="Goal Progress Velocity"
+             detail="Rolling average of goal progress additions across the recent window."
+           />
+           <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={goalChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />

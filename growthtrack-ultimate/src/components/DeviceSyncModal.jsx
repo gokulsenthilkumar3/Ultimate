@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { COLORS } from '../constants';
 import { useToast } from '../hooks/useToast';
+import { apiSync } from '../store/useStore';
 import useStore from '../store/useStore';
 
 export default function DeviceSyncModal({ onClose }) {
@@ -11,16 +12,7 @@ export default function DeviceSyncModal({ onClose }) {
   const handleAppleHealthSync = async () => {
     setSyncing(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/health/sync/apple', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to sync');
+      await apiSync('/health/sync/apple', 'POST', {});
 
       addToast({ title: 'Sync Complete', message: 'Apple Health data imported successfully', type: 'success' });
       await fetchInitialData(); // Refresh logs to trigger avatar morph

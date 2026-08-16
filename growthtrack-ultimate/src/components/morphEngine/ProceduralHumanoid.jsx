@@ -12,8 +12,13 @@ import * as THREE from "three";
 import use3DStore from "../../store/use3DStore";
 
 // == Constants =================================================================
-const LATHE_SEGS = 24;
-const HEAD_SEGS  = 36;
+// Segment counts per quality tier — passed as `quality` prop
+const SEGS_BY_QUALITY = {
+  LOW:  { lathe: 12, head: 18 },
+  MED:  { lathe: 18, head: 24 },
+  HIGH: { lathe: 24, head: 36 },
+};
+const DEFAULT_SEGS = SEGS_BY_QUALITY.HIGH;
 
 // == Fitzpatrick table =========================================================
 const FITZPATRICK = {
@@ -53,9 +58,9 @@ const makeNailMat   = () => new THREE.MeshStandardMaterial({color:"#e8d8c8",roug
 const makeHairMat   = (hex) => new THREE.MeshStandardMaterial({color:hex,roughness:0.88,metalness:0.02,side:THREE.DoubleSide,alphaTest:0.38,transparent:true});
 
 // == Geometry builders =========================================================
-function bldLathe(pts,segs=LATHE_SEGS){
+function bldLathe(pts,segs){
   const v=pts.map(p=>new THREE.Vector2(Math.max(0.001,p[0]),p[1]));
-  const g=new THREE.LatheGeometry(v,segs); g.computeVertexNormals(); return g;
+  const g=new THREE.LatheGeometry(v,segs??DEFAULT_SEGS.lathe); g.computeVertexNormals(); return g;
 }
 function bldTorso({shoulderW,chestW,waistW,bellyW,hipW,h}){
   return bldLathe([[hipW*.80,0],[hipW,h*.06],[hipW*.95,h*.14],[bellyW,h*.26],[waistW,h*.40],[waistW*1.05,h*.50],[chestW*.88,h*.60],[chestW,h*.74],[chestW*.92,h*.84],[shoulderW,h*.93],[shoulderW*.88,h]]);
@@ -77,31 +82,31 @@ function computeDimensions(w={}) {
     lipF=w.lip_fullness??0.42,eyeS=w.eye_size??0.40,
     dLen=w.d_length??0.30,dGirth=w.d_girth??0.30;
 
-  const footH=0.055,calfH=0.335,thighH=0.370,hipH=0.175,torsoH=0.440,neckH=0.110;
-  const headR=0.100+fat*0.024+mass*0.008;
+  const footH=0.061,calfH=0.372,thighH=0.438,hipH=0.190,torsoH=0.500,neckH=0.132;
+  const headR=0.091+fat*0.028+mass*0.007;
   const calfY=footH+calfH/2, thighY=footH+calfH+thighH/2, hipY=footH+calfH+thighH+hipH/2;
   const torsoY=footH+calfH+thighH+hipH, neckY=torsoY+torsoH+neckH/2, headY=torsoY+torsoH+neckH+headR;
   const crotchY=footH+calfH+thighH;
-  const shoulderW=0.140+delt*0.095, chestW=0.118+chD*0.065+mass*0.018;
-  const waistW=0.092-wst*0.032+gut*0.038+mass*0.016, bellyW=0.100+gut*0.042+mass*0.022;
-  const hipW=0.118+hip*0.055+glut*0.028, neckR=0.040+neck*0.018;
-  const uArmR=0.042+bic*0.030, fArmR=0.032+fore*0.018, thighR=0.065+quad*0.032, calfR=0.042+cal*0.022;
-  const thighX=hipW*0.80, shoulderX=shoulderW+0.060, uArmH=0.300, fArmH=0.265;
+  const shoulderW=0.150+delt*0.136+mass*0.007, chestW=0.122+chD*0.092+mass*0.016;
+  const waistW=0.082-wst*0.028+gut*0.034+mass*0.014, bellyW=0.086+gut*0.044+mass*0.018;
+  const hipW=0.126+hip*0.054+glut*0.032+mass*0.007, neckR=0.033+neck*0.018;
+  const uArmR=0.035+bic*0.034+mass*0.005, fArmR=0.025+fore*0.020, thighR=0.052+quad*0.032+mass*0.003, calfR=0.034+cal*0.022;
+  const thighX=hipW*0.86, shoulderX=shoulderW+0.066, uArmH=0.350, fArmH=0.305;
   const uArmY=torsoY+torsoH*0.94-uArmH/2, fArmY=uArmY-uArmH/2-fArmH/2, handY=fArmY-fArmH/2-0.042;
   // Face
-  const eyeR=headR*(0.125+eyeS*0.055), eyeX=headR*(0.315+jawW*0.04), eyeY=headY-headR*(0.130+fat*0.04), eyeZ=headR*0.888;
+  const eyeR=headR*(0.118+eyeS*0.050), eyeX=headR*(0.305+jawW*0.035), eyeY=headY-headR*(0.128+fat*0.036), eyeZ=headR*0.880;
   const irisR=eyeR*0.60, pupilR=irisR*0.48;
-  const browX=eyeX*0.92, browY=eyeY+eyeR*1.02, browZ=eyeZ*0.86, browR=headR*(0.110+browD*0.060);
-  const noseBW_r=headR*(0.068+noseBW*0.048), noseTipR_r=headR*(0.048+noseTR*0.038);
-  const noseRootY=headY-headR*0.095, noseLen=headR*0.380, noseTipZ=eyeZ*1.024;
+  const browX=eyeX*0.92, browY=eyeY+eyeR*1.00, browZ=eyeZ*0.86, browR=headR*(0.102+browD*0.054);
+  const noseBW_r=headR*(0.064+noseBW*0.044), noseTipR_r=headR*(0.044+noseTR*0.032);
+  const noseRootY=headY-headR*0.092, noseLen=headR*0.360, noseTipZ=eyeZ*1.020;
   const nostrilR=noseTipR_r*0.40, nostrilX=noseTipR_r*0.80, nostrilY=noseRootY-noseLen*0.82;
-  const lipY=headY-headR*0.520, lipZ=eyeZ*0.968, lipW=headR*(0.170+jawW*0.06);
-  const upperLipH=headR*(0.022+lipF*0.018), lowerLipH=headR*(0.028+lipF*0.020);
-  const earX=headR*0.968, earY=headY-headR*0.115, earH=headR*(0.28+earP*0.12);
-  const jawX=headR*(0.65+jawW*0.10), jawY=headY-headR*0.72;
-  const chinY=headY-headR*0.88, chinZ=headR*(0.80+chinP*0.13), chinR=headR*(0.048+chinP*0.030);
+  const lipY=headY-headR*0.525, lipZ=eyeZ*0.966, lipW=headR*(0.165+jawW*0.056);
+  const upperLipH=headR*(0.020+lipF*0.016), lowerLipH=headR*(0.026+lipF*0.018);
+  const earX=headR*0.950, earY=headY-headR*0.108, earH=headR*(0.26+earP*0.11);
+  const jawX=headR*(0.62+jawW*0.09), jawY=headY-headR*0.710;
+  const chinY=headY-headR*0.875, chinZ=headR*(0.78+chinP*0.11), chinR=headR*(0.045+chinP*0.026);
   // Body detail
-  const nippleY=torsoY+torsoH*0.700, nippleX=chestW*0.530, nippleZ=chestW*0.900;
+  const nippleY=torsoY+torsoH*0.690, nippleX=chestW*0.520, nippleZ=chestW*0.880;
   const nippleR=0.0065+mass*0.0025, areolaeR=nippleR*2.0;
   const navelY=torsoY+torsoH*0.270, navelZ=waistW*0.960, navelR=0.0095;
   // Genitalia
@@ -113,6 +118,7 @@ function computeDimensions(w={}) {
   const fingerR=fArmR*0.230, fingerH=fArmR*1.05, thumbR=fArmR*0.285, thumbH=fArmR*0.85;
   const nailW=fingerR*1.55, nailH=fingerR*0.50, nailD=0.0028;
   const toeR=calfR*0.18;
+  const bodyScale = 0.96 + mass * 0.028 + (chD + delt + hip + glut) * 0.008;
   return {
     headR,headY,neckH,neckY,neckR,shoulderW,chestW,waistW,bellyW,hipW,torsoH,torsoY,hipH,hipY,crotchY,
     shoulderX,uArmR,uArmH,uArmY,fArmR,fArmH,fArmY,handY,thighX,thighR,thighH,thighY,calfR,calfH,calfY,
@@ -123,6 +129,7 @@ function computeDimensions(w={}) {
     nippleY,nippleX,nippleZ,nippleR,areolaeR,navelY,navelZ,navelR,
     penisShaftR,penisLen,penisPivotY,penisPivotZ,testisR,testisX,scrotumR,
     palmW,palmH,palmD,fingerR,fingerH,thumbR,thumbH,nailW,nailH,nailD,toeR,
+    bodyScale,
   };
 }
 
@@ -280,36 +287,93 @@ function HairCards({d,hairStyle,hairColorHex}) {
 export default function ProceduralHumanoid({
   cloneKey="A", position=[0,0,0], renderMode="normal", opacity=1,
   visible=true, showAura=false, skinTone="IV", eyeColor="#3b7bd4",
-  hairStyle="short", hairColor="darkbrown",
+  hairStyle="short", hairColor="darkbrown", quality="HIGH",
 }) {
+  const segs = SEGS_BY_QUALITY[quality] || DEFAULT_SEGS;
   const weights=use3DStore(useShallow(s=>(cloneKey==="B"?s.cloneB:s.cloneA).weights));
+  // Fixed: skinTone and opacity in deps so material recomputes when they change
   const mat    =useMemo(()=>makeMat(renderMode,opacity,skinTone),[renderMode,opacity,skinTone]);
   const lipMat =useMemo(()=>makeLipMat(skinTone),[skinTone]);
   const nailMat=useMemo(makeNailMat,[]);
 
+  // Breathing animation state
+  const breathT = useRef(0);
+
   const groupRef=useRef(), torsoRef=useRef(), hipRef=useRef(), headRef=useRef(), neckRef=useRef();
   const uArmRefs=[useRef(),useRef()], fArmRefs=[useRef(),useRef()];
   const thighRefs=[useRef(),useRef()], calfRefs=[useRef(),useRef()], shoulderRefs=[useRef(),useRef()];
+  // Track previous geometries for proper disposal
+  const prevGeoRefs = useRef({ uArm:[null,null], fArm:[null,null], thigh:[null,null], calf:[null,null] });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const initD=useMemo(()=>computeDimensions(weights),[]);
   const prevW=useRef(weights);
 
-  useFrame(()=>{
+  useFrame((_,dt)=>{
     if(!groupRef.current)return;
+
+    // ── Breathing idle animation ────────────────────────────────────────────
+    breathT.current += dt;
+    const breathScale = 1 + Math.sin(breathT.current * 0.78) * 0.008;
+    if(torsoRef.current) torsoRef.current.scale.y = breathScale;
+
+    // ── Morph update ───────────────────────────────────────────────────────
     const st=use3DStore.getState(), curW=(cloneKey==="B"?st.cloneB:st.cloneA).weights;
     if(curW===prevW.current)return; prevW.current=curW;
     const d=computeDimensions(curW);
-    if(torsoRef.current){torsoRef.current.geometry.dispose();torsoRef.current.geometry=bldTorso({shoulderW:d.shoulderW,chestW:d.chestW,waistW:d.waistW,bellyW:d.bellyW,hipW:d.hipW,h:d.torsoH});torsoRef.current.position.y=d.torsoY;}
-    if(hipRef.current){hipRef.current.geometry.dispose();hipRef.current.geometry=bldHip({w:d.hipW,h:d.hipH});hipRef.current.position.y=d.hipY-d.hipH/2;}
+
+    if(torsoRef.current){
+      torsoRef.current.geometry.dispose();
+      torsoRef.current.geometry=bldTorso({shoulderW:d.shoulderW,chestW:d.chestW,waistW:d.waistW,bellyW:d.bellyW,hipW:d.hipW,h:d.torsoH});
+      torsoRef.current.position.y=d.torsoY;
+    }
+    if(hipRef.current){
+      hipRef.current.geometry.dispose();
+      hipRef.current.geometry=bldHip({w:d.hipW,h:d.hipH});
+      hipRef.current.position.y=d.hipY-d.hipH/2;
+    }
     if(headRef.current){headRef.current.scale.setScalar(d.headR/initD.headR);headRef.current.position.y=d.headY;}
     if(neckRef.current){neckRef.current.scale.set(d.neckR/initD.neckR,1,d.neckR/initD.neckR);neckRef.current.position.y=d.neckY-d.neckH/2;}
+
     [-1,1].forEach((s,si)=>{
       if(shoulderRefs[si].current){shoulderRefs[si].current.position.set(s*(d.shoulderX-.01),d.torsoY+d.torsoH*.92,0);shoulderRefs[si].current.scale.setScalar(d.uArmR/initD.uArmR*1.1);}
-      if(uArmRefs[si].current){uArmRefs[si].current.scale.set(d.uArmR/initD.uArmR,1,d.uArmR/initD.uArmR);uArmRefs[si].current.position.set(s*d.shoulderX,d.uArmY-d.uArmH/2,0);}
-      if(fArmRefs[si].current){fArmRefs[si].current.scale.set(d.fArmR/initD.fArmR,1,d.fArmR/initD.fArmR);fArmRefs[si].current.position.set(s*d.shoulderX,d.fArmY-d.fArmH/2,0);}
-      if(thighRefs[si].current){thighRefs[si].current.scale.set(d.thighR/initD.thighR,1,d.thighR/initD.thighR);thighRefs[si].current.position.set(s*d.thighX,d.thighY-d.thighH/2,0);}
-      if(calfRefs[si].current){calfRefs[si].current.scale.set(d.calfR/initD.calfR,1,d.calfR/initD.calfR);calfRefs[si].current.position.set(s*d.thighX*.88,d.calfY-d.calfH/2,0.01);}
+
+      // Upper arms — dispose old geometry before replacing
+      if(uArmRefs[si].current){
+        const prev=prevGeoRefs.current.uArm[si];
+        const newGeo=bldLimb({topR:d.uArmR,botR:d.uArmR*.78,h:d.uArmH,bulge:1.08});
+        if(prev)prev.dispose();
+        uArmRefs[si].current.geometry=newGeo;
+        prevGeoRefs.current.uArm[si]=newGeo;
+        uArmRefs[si].current.position.set(s*d.shoulderX,d.uArmY-d.uArmH/2,0);
+      }
+      // Forearms
+      if(fArmRefs[si].current){
+        const prev=prevGeoRefs.current.fArm[si];
+        const newGeo=bldLimb({topR:d.fArmR,botR:d.fArmR*.72,h:d.fArmH,bulge:1.03});
+        if(prev)prev.dispose();
+        fArmRefs[si].current.geometry=newGeo;
+        prevGeoRefs.current.fArm[si]=newGeo;
+        fArmRefs[si].current.position.set(s*d.shoulderX,d.fArmY-d.fArmH/2,0);
+      }
+      // Thighs
+      if(thighRefs[si].current){
+        const prev=prevGeoRefs.current.thigh[si];
+        const newGeo=bldLimb({topR:d.thighR,botR:d.thighR*.70,h:d.thighH,bulge:1.06});
+        if(prev)prev.dispose();
+        thighRefs[si].current.geometry=newGeo;
+        prevGeoRefs.current.thigh[si]=newGeo;
+        thighRefs[si].current.position.set(s*d.thighX,d.thighY-d.thighH/2,0);
+      }
+      // Calves
+      if(calfRefs[si].current){
+        const prev=prevGeoRefs.current.calf[si];
+        const newGeo=bldLimb({topR:d.calfR,botR:d.calfR*.60,h:d.calfH,bulge:1.04});
+        if(prev)prev.dispose();
+        calfRefs[si].current.geometry=newGeo;
+        prevGeoRefs.current.calf[si]=newGeo;
+        calfRefs[si].current.position.set(s*d.thighX*.88,d.calfY-d.calfH/2,.01);
+      }
     });
   });
 
@@ -330,11 +394,12 @@ export default function ProceduralHumanoid({
   if(!visible)return null;
   const det=renderMode==="normal";
   const hHex=HAIR_COLOR_PRESETS[hairColor]||HAIR_COLOR_PRESETS.darkbrown;
+  const hs = segs; // shorthand for segment counts
 
   return (
-    <group ref={groupRef} position={position} name={"procedural-"+cloneKey}>
+    <group ref={groupRef} position={position} scale={[d.bodyScale, d.bodyScale, d.bodyScale]} name={"procedural-"+cloneKey}>
       {/* HEAD */}
-      <mesh ref={headRef} position={[0,d.headY,0]} material={mat}><sphereGeometry args={[d.headR,HEAD_SEGS,Math.round(HEAD_SEGS*.67)]}/></mesh>
+      <mesh ref={headRef} position={[0,d.headY,0]} material={mat}><sphereGeometry args={[d.headR,hs.head,Math.round(hs.head*.67)]}/></mesh>
       {/* FACIAL ANATOMY */}
       {det&&<>
         <EyeGroup d={d} side="L" eyeColorHex={eyeColor} skinMat={mat}/>
@@ -343,8 +408,8 @@ export default function ProceduralHumanoid({
         <NoseMesh d={d} mat={mat}/>
         <LipsMesh d={d} lipMat={lipMat}/>
         <EarMesh d={d} side="L" mat={mat}/><EarMesh d={d} side="R" mat={mat}/>
-        {[-1,1].map(s=><mesh key={s} position={[s*d.jawX,d.jawY,d.headR*.44]} material={mat}><sphereGeometry args={[d.headR*.115,10,8]}/></mesh>)}
-        <mesh position={[0,d.chinY,d.chinZ]} material={mat}><sphereGeometry args={[d.chinR,10,8]}/></mesh>
+        {[-1,1].map(s=><mesh key={s} position={[s*d.jawX,d.jawY,d.headR*.44]} material={mat}><sphereGeometry args={[d.headR*.104,10,8]}/></mesh>)}
+        <mesh position={[0,d.chinY,d.chinZ]} material={mat}><sphereGeometry args={[d.chinR*0.92,10,8]}/></mesh>
       </>}
       {/* HAIR */}
       <HairCards d={d} hairStyle={hairStyle} hairColorHex={hHex}/>
@@ -373,11 +438,11 @@ export default function ProceduralHumanoid({
       {/* HANDS */}
       {[-1,1].map(s=><HandGroup key={s} d={d} side={s===-1?"L":"R"} mat={mat} nailMat={nailMat}/>)}
       {/* HIP JOINTS */}
-      {[-1,1].map(s=><mesh key={s} position={[s*d.thighX,d.hipY+d.hipH*.08,0]} material={mat}><sphereGeometry args={[d.thighR*.88,12,9]}/></mesh>)}
+      {[-1,1].map(s=><mesh key={s} position={[s*d.thighX,d.hipY+d.hipH*.08,0]} material={mat}><sphereGeometry args={[d.thighR*.82,12,9]}/></mesh>)}
       {/* THIGHS */}
       {[-1,1].map((s,si)=><mesh key={s} ref={thighRefs[si]} position={[s*d.thighX,d.thighY-d.thighH/2,0]} geometry={thighGeo} material={mat}/>)}
       {/* KNEES */}
-      {[-1,1].map(s=><mesh key={s} position={[s*d.thighX*.92,d.calfY+d.calfH/2+.008,.032]} material={mat}><sphereGeometry args={[d.calfR*.76,10,8]}/></mesh>)}
+      {[-1,1].map(s=><mesh key={s} position={[s*d.thighX*.92,d.calfY+d.calfH/2+.008,.032]} material={mat}><sphereGeometry args={[d.calfR*.70,10,8]}/></mesh>)}
       {/* CALVES */}
       {[-1,1].map((s,si)=><mesh key={s} ref={calfRefs[si]} position={[s*d.thighX*.88,d.calfY-d.calfH/2,.01]} geometry={calfGeo} material={mat}/>)}
       {/* ANKLES */}

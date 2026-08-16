@@ -302,6 +302,7 @@ export default function App() {
   const [authView, setAuthView] = React.useState('landing'); // 'landing', 'login', 'signup'
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const isAuthed = Boolean(sessionStorage.getItem('growthtrack-session-token'));
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -329,7 +330,7 @@ export default function App() {
       if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
         setActiveTab(pathTab);
         setIsNotFound(false);
-      } else if (location.pathname === '/' && localStorage.getItem('token')) {
+      } else if (location.pathname === '/' && isAuthed) {
         navigate(`/${storeActiveTab}`, { replace: true });
         setIsNotFound(false);
       }
@@ -338,7 +339,7 @@ export default function App() {
       if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
         setActiveTab(pathTab);
         setIsNotFound(false);
-      } else if (location.pathname === '/' && localStorage.getItem('token')) {
+      } else if (location.pathname === '/' && isAuthed) {
         navigate(`/${storeActiveTab}`, { replace: true });
         setIsNotFound(false);
       } else if (pathTab && !GLOBAL_MODULES[pathTab]) {
@@ -445,7 +446,7 @@ export default function App() {
   }, [theme, palette]);
 
   if (location.pathname === '/login') return <LoginPage />;
-  if (location.pathname === '/' && !localStorage.getItem('token')) return <LandingPage />;
+  if (location.pathname === '/' && !isAuthed) return <LandingPage />;
 
   return (
     <ErrorBoundary resetKey="root">

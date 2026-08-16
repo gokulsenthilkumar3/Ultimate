@@ -79,15 +79,22 @@ export const GPU_TIERS = {
  * @property {number} waist        - cm (65–110)
  * @property {number} arms         - cm (28–55)
  * @property {number} forearm      - cm
- * @property {number} thighs       - cm (45–75)
- * @property {number} hips         - cm (80–115)
- * @property {number} glutes       - cm
- * @property {number} calves       - cm (30–50)
- * @property {number} neck         - cm (32–48)
- * @property {number} d_size       - inches (3–9)
- * @property {number} d_girth      - inches
- * @property {number} ankle        - cm
- * @property {string} skinTone     - Fitzpatrick scale: "I"|"II"|"III"|"IV"|"V"|"VI"
+  * @property {number} thighs       - cm (45–75)
+  * @property {number} hips         - cm (80–115)
+  * @property {number} glutes       - cm
+  * @property {number} calves       - cm (30–50)
+  * @property {number} neck         - cm (32–48)
+ * @property {number} torsoLength   - cm
+ * @property {number} upperArm      - cm
+ * @property {number} lowerArm      - cm
+ * @property {number} handLength    - cm
+ * @property {number} legLength     - cm
+ * @property {number} footLength    - cm
+ * @property {number} headCirc      - cm
+  * @property {number} d_size       - inches (3–9)
+  * @property {number} d_girth      - inches
+  * @property {number} ankle        - cm
+  * @property {string} skinTone     - Fitzpatrick scale: "I"|"II"|"III"|"IV"|"V"|"VI"
  */
 
 /**
@@ -149,6 +156,13 @@ const MORPH_RANGES = {
   glutes:    { min: 80,  max: 120 },
   calves:    { min: 30,  max: 50  },
   neck:      { min: 32,  max: 48  },
+  torsoLength:{ min: 44,  max: 58  },
+  upperArm:  { min: 28,  max: 40  },
+  lowerArm:  { min: 24,  max: 35  },
+  handLength:{ min: 17,  max: 22  },
+  legLength: { min: 82,  max: 98  },
+  footLength:{ min: 24,  max: 31  },
+  headCirc:  { min: 52,  max: 62  },
   d_size:    { min: 3,   max: 9   },
   d_girth:   { min: 3,   max: 7   },
   ankle:     { min: 18,  max: 28  },
@@ -212,6 +226,28 @@ export const computeMorphWeights = (metrics) => ({
   // NECK
   neck_thickness:  normalise(metrics.neck,      "neck"),
   trap_rise:       normalise(metrics.neck,      "neck") * 0.5,
+  torso_length:    normalise(metrics.torsoLength ?? (metrics.height ? metrics.height * 0.28 : 50), "torsoLength"),
+  shoulder_slope:   normalise(metrics.shoulders, "shoulders") * 0.5,
+  clavicle_width:   normalise(metrics.shoulders, "shoulders") * 0.8,
+  ribcage_depth:    normalise(metrics.chest,     "chest") * 0.75,
+  pelvis_width:     normalise(metrics.hips,      "hips") * 0.85,
+  neck_length:      normalise(metrics.neck,      "neck") * 0.45,
+  upper_arm_length: normalise(metrics.upperArm ?? 34, "upperArm"),
+  forearm_length:   normalise(metrics.lowerArm ?? 29, "lowerArm"),
+  hand_length:      normalise(metrics.handLength ?? 19, "handLength"),
+  leg_length:       normalise(metrics.legLength ?? (metrics.height ? metrics.height * 0.52 : 90), "legLength"),
+  foot_length:      normalise(metrics.footLength ?? 27, "footLength"),
+  head_circumference: normalise(metrics.headCirc ?? 57, "headCirc"),
+  cheekbone_width:  normalise(metrics.bodyFat,   "bodyFat") * 0.35 + normalise(metrics.shoulders, "shoulders") * 0.15,
+  forehead_height:  normalise(metrics.headCirc ?? 57, "headCirc") * 0.25,
+  temple_narrowing: 1 - normalise(metrics.headCirc ?? 57, "headCirc") * 0.15,
+  nose_length:      normalise(metrics.bodyFat,   "bodyFat") * 0.18 + 0.15,
+  jaw_angle:        normalise(metrics.bodyFat,   "bodyFat") * 0.2,
+  shoulder_drop:    1 - normalise(metrics.shoulders, "shoulders") * 0.3,
+  knee_spacing:     normalise(metrics.hips,      "hips") * 0.22,
+  ankle_taper:      1 - normalise(metrics.ankle, "ankle") * 0.3,
+  hand_splay:       normalise(metrics.handLength ?? 19, "handLength") * 0.25,
+  foot_arch:        normalise(metrics.footLength ?? 27, "footLength") * 0.2,
 
   // PRIVATE (rendered in anatomical/underwear mode only)
   d_length:        normalise(metrics.d_size,    "d_size"),
@@ -248,6 +284,13 @@ const CURRENT_METRICS = {
   d_size:     5.5,
   d_girth:    4.5,
   ankle:      22,
+  torsoLength: 50,
+  upperArm:    34,
+  lowerArm:    29,
+  handLength:  19,
+  legLength:   91,
+  footLength:  27,
+  headCirc:    57,
   skinTone:   "IV",
 };
 
@@ -264,6 +307,13 @@ const GOAL_METRICS = {
   glutes:     104,
   calves:     40,
   neck:       41,
+  torsoLength: 54,
+  upperArm:    38,
+  lowerArm:    33,
+  handLength:  20,
+  legLength:   95,
+  footLength:  29,
+  headCirc:    58,
   d_size:     5.5,   // unchanged
   d_girth:    4.5,   // unchanged
   ankle:      23,
@@ -315,6 +365,11 @@ const INITIAL_MILESTONES = [
   { id: "m6",  label: "82kg — DESTINATION",      month: "Month 20", monthIndex: 20, achieved: false },
 ];
 
+export const computeFitCameraZoom = (radius) => {
+  const safeRadius = Math.max(Number(radius) || 0, 0.6);
+  return Math.max(0.45, Math.min(1.8, 1.72 / safeRadius));
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // STORE DEFINITION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -347,6 +402,13 @@ const use3DStore = create(
 
       /** Camera preset name key */
       cameraPreset: "FRONT",
+
+      /** Human-view framing multiplier; 1 = default fit */
+      cameraZoom: 1,
+      /** Actual model bounds from the loaded GLB / procedural fallback */
+      modelFrame: null,
+      /** Loader diagnostics for the active humanoid asset */
+      modelDiagnostics: null,
 
       /**
        * Anatomy depth: 100 = full skin, 0 = full X-ray skeleton.
@@ -561,6 +623,33 @@ const use3DStore = create(
        */
       setCameraPreset: (preset) => {
         set({ cameraPreset: preset }, false, `setCameraPreset:${preset}`);
+      },
+
+      setCameraZoom: (zoom) => {
+        const next = Math.max(0.35, Math.min(3.4, zoom));
+        set({ cameraZoom: next }, false, "setCameraZoom");
+      },
+
+      resetCameraZoom: () => {
+        set({ cameraZoom: 1 }, false, "resetCameraZoom");
+      },
+
+      fitCameraToBody: () => {
+        const frame = get().modelFrame;
+        const height = frame?.height || 1.92;
+        const radius = frame?.radius || 0.72;
+        const zoom = computeFitCameraZoom(radius);
+        const preset = height > 2.05 ? "FRONT" : "FRONT";
+        set({ cameraPreset: preset, cameraZoom: zoom }, false, "fitCameraToBody");
+      },
+
+      setModelFrame: (frame) => {
+        if (!frame) return;
+        set({ modelFrame: frame }, false, "setModelFrame");
+      },
+
+      setModelDiagnostics: (diagnostics) => {
+        set({ modelDiagnostics: diagnostics || null }, false, "setModelDiagnostics");
       },
 
       // ───────────────────────────────────────────────────────────────────────

@@ -66,6 +66,41 @@ export function buildMorphIndexMap(mesh) {
   return map;
 }
 
+function buildDiagnosticsFromScene(scene, bodyMesh, morphIndexMap, bounds) {
+  const meshNames = [];
+  const meshCount = { mesh: 0, skinnedMesh: 0 };
+  scene?.traverse?.((node) => {
+    if (node.isMesh || node.isSkinnedMesh) {
+      meshNames.push(node.name || '(unnamed)');
+      if (node.isSkinnedMesh) meshCount.skinnedMesh += 1;
+      else meshCount.mesh += 1;
+    }
+  });
+
+  const missingMorphTargets = MORPH_TARGET_NAMES.filter((name) => !(name in morphIndexMap));
+  const vertexCount = bodyMesh?.geometry?.attributes?.position?.count ?? 0;
+  const isSuspicious =
+    !bodyMesh ||
+    vertexCount < 1200 ||
+    meshNames.length > 24 ||
+    (bounds?.height ? bounds.height < 1.25 || bounds.height > 2.45 : true) ||
+    (bounds?.radius ? bounds.radius < 0.15 || bounds.radius > 1.15 : true);
+
+  return {
+    hasScene: !!scene,
+    hasBodyMesh: !!bodyMesh,
+    bodyMeshName: bodyMesh?.name ?? null,
+    meshCount,
+    meshNames,
+    vertexCount,
+    morphTargetCount: Object.keys(morphIndexMap).length,
+    missingMorphTargets,
+    bounds,
+    isSuspicious,
+    health: isSuspicious ? 'needs-repair' : 'healthy',
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DEV FALLBACK — simple box mesh used when the real GLB cannot be loaded
 // ─────────────────────────────────────────────────────────────────────────────
@@ -83,6 +118,17 @@ function buildFallbackMesh() {
   return mesh;
 }
 
+function buildFallbackBounds() {
+  const size = new THREE.Vector3(0.4, 1.8, 0.4);
+  const center = new THREE.Vector3(0, 0.9, 0);
+  return {
+    center,
+    size,
+    height: size.y,
+    radius: 0.4,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // useModelLoader — main hook
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,6 +142,8 @@ function buildFallbackMesh() {
  *   morphIndexMap: Object,
  *   skeleton:     THREE.Skeleton | null,
  *   scene:        THREE.Group,
+ *   bounds:       { center: THREE.Vector3, size: THREE.Vector3, height: number, radius: number },
+ *   diagnostics:  { health: string, ... },
  *   isDev:        boolean,
  * }}
  */
@@ -116,13 +164,22 @@ export function useModelLoader() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => {
-    if (!gltf || !gltf.scene) {
-      // GLB not yet available — return dev fallback
-      const mesh  = buildFallbackMesh();
-      const group = new THREE.Group();
-      group.add(mesh);
-      return { bodyMesh: mesh, morphIndexMap: {}, skeleton: null, scene: group, isDev: true };
-    }
+      if (!gltf || !gltf.scene) {
+        // GLB not yet available — return dev fallback
+        const mesh  = buildFallbackMesh();
+        const group = new THREE.Group();
+        group.add(mesh);
+        const bounds = buildFallbackBounds();
+        return {
+          bodyMesh: mesh,
+          morphIndexMap: {},
+          skeleton: null,
+          scene: group,
+          bounds,
+          diagnostics: buildDiagnosticsFromScene(group, mesh, {}, bounds),
+          isDev: true,
+        };
+      }
 
     try {
       // Clone the scene so each HumanoidClone gets its own morph influence array.
@@ -132,6 +189,7 @@ export function useModelLoader() {
       let bodyMesh     = null;
       let morphIndexMap = {};
       let skeleton     = null;
+      let bounds = null;
 
       clonedScene.traverse((node) => {
         // The GLB Body node may be a plain Mesh (morph-only) or a SkinnedMesh.
@@ -161,7 +219,35 @@ export function useModelLoader() {
         console.warn('[useModelLoader] No "body" mesh found. All meshes in GLB:', meshNames);
         // Fall through to dev fallback below
       } else {
-        return { bodyMesh, morphIndexMap, skeleton, scene: clonedScene, isDev: false };
+        // Normalize the model so the humanoid reads like a full body figure.
+        // Many GLBs arrive with an offset origin or inconsistent scale, which
+        // makes the human look cropped even when the mesh itself is correct.
+        const box = new THREE.Box3().setFromObject(clonedScene);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+
+        const height = Math.max(size.y, 0.001);
+        const targetHeight = 1.92;
+        const scale = targetHeight / height;
+        const radius = Math.max(size.x, size.y, size.z) * 0.5 * scale;
+
+        // Lift the model so feet rest on y=0 after centering.
+        clonedScene.scale.setScalar(scale);
+        clonedScene.position.x = -center.x * scale;
+        clonedScene.position.z = -center.z * scale;
+        clonedScene.position.y = -(box.min.y * scale);
+        bounds = { center, size, height: height * scale, radius };
+        return {
+          bodyMesh,
+          morphIndexMap,
+          skeleton,
+          scene: clonedScene,
+          bounds,
+          diagnostics: buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds),
+          isDev: false,
+        };
       }
     } catch (err) {
       console.error('[useModelLoader] Error processing GLB:', err);
@@ -172,6 +258,15 @@ export function useModelLoader() {
     const mesh  = buildFallbackMesh();
     const group = new THREE.Group();
     group.add(mesh);
-    return { bodyMesh: mesh, morphIndexMap: {}, skeleton: null, scene: group, isDev: true };
+    const bounds = buildFallbackBounds();
+    return {
+      bodyMesh: mesh,
+      morphIndexMap: {},
+      skeleton: null,
+      scene: group,
+      bounds,
+      diagnostics: buildDiagnosticsFromScene(group, mesh, {}, bounds),
+      isDev: true,
+    };
   }, [gltf]);
 }

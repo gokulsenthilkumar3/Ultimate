@@ -4,6 +4,8 @@ import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error'];
 const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];
@@ -35,13 +37,6 @@ function formatTimestamp(ts) {
     const d = new Date(ts);
     return d.toLocaleString();
   } catch { return String(ts); }
-}
-
-function renderMarkdown(text = '') {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:4px;font-size:0.85em;font-family:monospace">$1</code>')
-    .replace(/\n/g, '<br/>');
 }
 
 export default function Logs() {
@@ -281,7 +276,14 @@ export default function Logs() {
                       </span>
                     </div>
                     <div style={{ flex: 1, padding: '0 0.75rem', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
-                      <span dangerouslySetInnerHTML={{ __html: renderMarkdown(details.slice(0, 150)) }} />
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }} />,
+                        }}
+                      >
+                        {details.slice(0, 150)}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 );
@@ -301,8 +303,16 @@ export default function Logs() {
               if (!log) return null;
               const details = log.details || log.description || '';
               return (
-                <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(details) }} />
+                <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }} />,
+                    }}
+                  >
+                    {details}
+                  </ReactMarkdown>
+                </div>
               );
             })()}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>

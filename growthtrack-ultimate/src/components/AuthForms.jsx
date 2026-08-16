@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { COLORS } from '../constants';
 import { useToast } from '../hooks/useToast';
 
+const AUTH_API_BASE = import.meta.env.VITE_AUTH_API_BASE || import.meta.env.VITE_API_BASE || '/api';
+
 export default function AuthForms({ mode: initialMode, onAuthSuccess }) {
   const [mode, setMode] = useState(initialMode || 'login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
@@ -13,7 +15,7 @@ export default function AuthForms({ mode: initialMode, onAuthSuccess }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/auth/${mode}`, {
+      const res = await fetch(`${AUTH_API_BASE}/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -24,7 +26,7 @@ export default function AuthForms({ mode: initialMode, onAuthSuccess }) {
         throw new Error(data.error || 'Authentication failed');
       }
 
-      localStorage.setItem('token', data.token);
+      if (data.token) sessionStorage.setItem('growthtrack-session-token', data.token);
       addToast({ title: 'Success', message: mode === 'login' ? 'Logged in successfully' : 'Account created successfully', type: 'success' });
       onAuthSuccess(data.user);
     } catch (err) {

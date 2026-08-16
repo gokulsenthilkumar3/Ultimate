@@ -1,90 +1,16 @@
 import { Z_INDEX } from '../constants';
-import React, { useState, useRef, useEffect } from 'react';
-import { Zap, Moon, Sun, Bell, Circle, Settings, Plus, CheckSquare, Flame, Utensils, Target, FileText, DollarSign, Dumbbell } from 'lucide-react';
+import React from 'react';
+import { Zap, Moon, Sun, Bell, Circle, Settings } from 'lucide-react';
 import HealthScoreRing from './HealthScoreRing';
-import useStore from '../store/useStore';
 
-const PALETTES = [
-  { id: 'gold',   color: '#e5a50a', name: 'Gold' },
-  { id: 'ocean',  color: '#0ea5e9', name: 'Ocean' },
-  { id: 'mint',   color: '#10b981', name: 'Mint' },
-  { id: 'violet', color: '#8b5cf6', name: 'Violet' },
-  { id: 'rose',   color: '#f43f5e', name: 'Rose' },
-];
-
-// ── Quick Action Tray ──
-function QuickActionTray({ open, onClose, accentColor, setActiveTab }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  const actions = [
-    { id: 'tasks',     icon: CheckSquare, label: '+ Task',    color: '#f59e0b' },
-    { id: 'habits',    icon: Flame,       label: '+ Habit',   color: '#f97316' },
-    { id: 'nutrition', icon: Utensils,    label: '+ Meal',    color: '#84cc16' },
-    { id: 'goals',     icon: Target,      label: '+ Goal',    color: '#60a5fa' },
-    { id: 'notes',     icon: FileText,    label: '+ Note',    color: '#a78bfa' },
-    { id: 'finance',   icon: DollarSign,  label: '+ Finance', color: '#34d399' },
-    { id: 'training',  icon: Dumbbell,    label: '+ Workout', color: '#fb923c' },
-  ];
-
-  return (
-    <div ref={ref} style={{
-      position: 'absolute', top: 'calc(100% + 12px)', right: '0', zIndex: Z_INDEX.OVERLAY,
-      background: 'var(--bg-card)',
-      border: '1px solid var(--border-strong)',
-      borderRadius: '16px',
-      backdropFilter: 'blur(24px)',
-      padding: '8px',
-      display: 'flex', flexDirection: 'column', gap: '4px',
-      minWidth: '160px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-    }}>
-      <p style={{ fontSize: '0.55rem', letterSpacing: '0.15em', color: 'var(--text-3)', fontWeight: 700, padding: '4px 8px 2px', textTransform: 'uppercase' }}>Quick Add</p>
-      {actions.map(a => (
-        <button
-          key={a.id}
-          onClick={() => {
-            setActiveTab(a.id);
-            // Delay so the component mounts before receiving the open-form event
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('open-add-form', { detail: { tab: a.id } }));
-            }, 150);
-            onClose();
-          }}
-          className="hover-bg-subtle"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '8px 12px', borderRadius: '10px',
-            border: 'none', background: 'transparent',
-            color: a.color, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700
-          }}
-        >
-          <a.icon size={13} />
-          {a.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export default function Header({ user, theme, setTheme, palette, setPalette, onOpenSettings, unreadCount = 0, onOpenNotifications }) {
-  const accentColor = PALETTES.find(p => p.id === palette)?.color || '#e5a50a';
-  const setActiveTab = useStore(s => s.setActiveTab);
-
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
+export default function Header({ user, theme, setTheme, palette, onOpenSettings, unreadCount = 0, onOpenNotifications }) {
+  const accentColor = palette === 'ocean' ? '#0ea5e9' : palette === 'mint' ? '#10b981' : palette === 'violet' ? '#8b5cf6' : palette === 'rose' ? '#f43f5e' : '#e5a50a';
 
   return (
     <header style={{
-      margin: '14px 0',
-      padding: '10px 20px',
-      borderRadius: '24px',
+      margin: '12px 0',
+      padding: '10px 16px',
+      borderRadius: '18px',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -94,7 +20,7 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
       border: '1px solid var(--border-strong)',
       backdropFilter: 'blur(32px) saturate(200%)',
       WebkitBackdropFilter: 'blur(32px) saturate(200%)',
-      boxShadow: `0 4px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 0 60px -20px ${accentColor}40`,
+      boxShadow: `0 4px 22px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 42px -20px ${accentColor}40`,
       transition: 'box-shadow 0.5s ease',
     }}>
 
@@ -122,52 +48,43 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-
-        {/* Palette Dots */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        {/* Theme mode segmented control */}
         <div style={{
-          display: 'flex', gap: '6px', padding: '6px 10px',
-          background: 'rgba(255,255,255,0.04)',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '4px',
           borderRadius: '999px',
           border: '1px solid var(--border)',
+          background: 'rgba(255,255,255,0.03)'
         }}>
-          {PALETTES.map(p => (
-            <button key={p.id} onClick={() => setPalette(p.id)} aria-label={`${p.name} theme`} title={p.name}
-              style={{
-                width: '18px', height: '18px', borderRadius: '50%', background: p.color, border: 'none',
-                outline: palette === p.id ? `2.5px solid ${p.color}` : '2px solid transparent',
-                outlineOffset: '2.5px',
-                boxShadow: palette === p.id ? `0 0 12px ${p.color}70` : 'none',
-                cursor: 'pointer', padding: 0,
-                transform: palette === p.id ? 'scale(1.2)' : 'scale(1)',
-                transition: 'all 0.3s ease',
-              }}
-            />
-          ))}
-        </div>
-
-        {/* ── Quick Add tray button ── */}
-        <div style={{ position: 'relative' }}>
-          <button
-            title="Quick Add"
-            onClick={() => setShowQuickAdd(v => !v)}
-            className="hover-border-accent"
-            style={{
-              position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: '36px', height: '36px', padding: 0,
-              borderRadius: '12px', background: showQuickAdd ? `${accentColor}22` : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${showQuickAdd ? accentColor : 'var(--border)'}`,
-              cursor: 'pointer', color: showQuickAdd ? accentColor : 'var(--text-2)'
-            }}
-          >
-            <Plus size={16} />
-          </button>
-          <QuickActionTray
-            open={showQuickAdd}
-            onClose={() => setShowQuickAdd(false)}
-            accentColor={accentColor}
-            setActiveTab={setActiveTab}
-          />
+          {['dark', 'amoled', 'light'].map((mode) => {
+            const active = theme === mode;
+            const icon = mode === 'dark' ? Moon : mode === 'amoled' ? Circle : Sun;
+            return (
+              <button
+                key={mode}
+                onClick={() => setTheme(mode)}
+                aria-label={`Switch to ${mode} mode`}
+                title={mode}
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '999px',
+                  border: 'none',
+                  background: active ? accentColor : 'transparent',
+                  color: active ? '#fff' : 'var(--text-3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.25s ease',
+                }}
+              >
+                {React.createElement(icon, { size: 15, fill: mode === 'amoled' ? 'currentColor' : 'none' })}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Notification Bell with live unread count ── */}
@@ -204,8 +121,8 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
         </button>
 
         {/* Health Score Ring */}
-        <div style={{ display: 'flex', alignItems: 'center', paddingRight: '10px' }}>
-          <HealthScoreRing size={36} />
+        <div style={{ display: 'flex', alignItems: 'center', paddingRight: '4px' }}>
+          <HealthScoreRing size={32} />
         </div>
 
         {/* Settings */}
@@ -218,24 +135,6 @@ export default function Header({ user, theme, setTheme, palette, setPalette, onO
             border: '1px solid var(--border)', cursor: 'pointer'
           }}>
           <Settings size={16} />
-        </button>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={() => {
-            const nextTheme = theme === 'dark' ? 'amoled' : (theme === 'amoled' ? 'light' : 'dark');
-            setTheme(nextTheme);
-          }}
-          aria-label="Toggle theme"
-          title={`Switch to ${theme === 'dark' ? 'amoled' : (theme === 'amoled' ? 'light' : 'dark')} mode`}
-          className="hover-border-accent"
-          style={{
-            width: '36px', height: '36px', padding: 0, borderRadius: '12px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--text-2)', background: 'rgba(255,255,255,0.04)',
-            border: '1px solid var(--border)', cursor: 'pointer'
-          }}>
-          {theme === 'dark' ? <Moon size={16} /> : (theme === 'amoled' ? <Circle size={16} fill="currentColor" /> : <Sun size={16} />)}
         </button>
 
         {/* Profile */}

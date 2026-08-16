@@ -1,5 +1,7 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
+
 const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
@@ -12,7 +14,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient({});
+const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3');
+
+const dbPath = path.resolve(__dirname, 'tracker.db');
+const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` });
+const prisma = new PrismaClient({ adapter });
 
 // --- Middleware ---
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -20,10 +26,7 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { poli
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://localhost:3000')
   .split(',').map(o => o.trim());
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    cb(new Error('CORS: origin not allowed'));
-  },
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-actor-name'],
   credentials: true,
@@ -258,6 +261,12 @@ app.post('/api/finance/sync/bank', (req, res) => {
 });
 
 // ── Start ───────────────────────────────────────────────────────────────────
+const frontendPath = path.join(__dirname, '../growthtrack-ultimate/dist');
+app.use('/Ultimate', express.static(frontendPath));
+app.get(/^\/Ultimate.*/, (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 module.exports = app;

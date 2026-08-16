@@ -125,8 +125,8 @@ function useGlCreated(setLodConfig) {
     // Shadows disabled — do not enable here.
     gl.shadowMap.enabled = false;
 
-    camera.position.set(0, 1.1, 3.5);
-    camera.fov = 42;
+    camera.position.set(0, 1.25, 2.9);
+    camera.fov = 36;
     camera.updateProjectionMatrix();
 
     scene.fog = new THREE.FogExp2(0x020307, 0.018);
@@ -148,7 +148,7 @@ export default function ChamberCanvas({ className = "", style = {} }) {
         preserveDrawingBuffer: true,
       }}
       dpr={lodConfig.dpr}
-      camera={{ fov: 42, near: 0.1, far: 100 }}
+      camera={{ fov: 36, near: 0.1, far: 100 }}
       shadows={false}
       frameloop="always"
       onCreated={onCreated}
