@@ -522,10 +522,22 @@ export function createRimAuraMaterial() {
   // Inflate the mesh along normals using onBeforeCompile
   // This guarantees all morph/skinning logic works perfectly.
   mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uInflate = mat.uniforms.uInflate;
+    shader.uniforms.uInflate   = mat.uniforms.uInflate;
+    shader.uniforms.uTime      = mat.uniforms.uTime;
     shader.uniforms.uIntensity = mat.uniforms.uIntensity;
-    
-    // Insert inflation right after beginnormal_vertex (so we have 'normal')
+
+    // Declare uniforms safely using the <common> include hook
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      `
+#include <common>
+uniform float uInflate;
+uniform float uTime;
+uniform float uIntensity;
+      `
+    );
+
+    // Insert inflation right after begin_vertex (so we have 'transformed' and 'normal')
     shader.vertexShader = shader.vertexShader.replace(
       '#include <begin_vertex>',
       `

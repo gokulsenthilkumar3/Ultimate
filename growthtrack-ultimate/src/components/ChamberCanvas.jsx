@@ -14,6 +14,7 @@ import SceneEnvironment    from "./morphEngine/SceneEnvironment";
 import CameraRig           from "./morphEngine/CameraRig";
 import PostProcessingStack from "./morphEngine/PostProcessingStack";
 import { CloneEngine, BodyPartInteraction } from "./morphEngine";
+import ChamberVFX from "./morphEngine/ChamberVFX";
 import use3DStore, { GPU_TIERS }            from "../store/use3DStore";
 import { detectAndSetGpuTier }              from "../store/use3DStore.usage";
 import TabErrorBoundary                     from "./TabErrorBoundary";
@@ -61,6 +62,8 @@ function CanvasScene({ lodConfig }) {
       </Suspense>
 
       <StudioLighting lodConfig={lodConfig} />
+
+      <ChamberVFX count={lodConfig.postFx === "NONE" ? 200 : 800} />
 
       <Suspense fallback={null}>
         <ChamberFloor />
@@ -158,3 +161,4 @@ export default function ChamberCanvas({ className = "", style = {} }) {
     </Canvas>
   );
 }
+

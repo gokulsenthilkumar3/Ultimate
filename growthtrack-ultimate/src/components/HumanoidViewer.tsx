@@ -431,6 +431,19 @@ export default function HumanoidViewer() {
     { label: 'Score', value: `${overallScore}%` },
     { label: 'GLB', value: modelDiagnostics?.health === 'healthy' ? 'Healthy' : modelDiagnostics ? 'Repair' : 'Loading' },
   ];
+  const glbIssueCount = modelDiagnostics?.health === 'healthy' ? 0 : [
+    modelDiagnostics?.missingMorphTargets?.length ? 1 : 0,
+    modelDiagnostics?.isSuspicious ? 1 : 0,
+    modelDiagnostics?.bounds?.height && (modelDiagnostics.bounds.height < 1.25 || modelDiagnostics.bounds.height > 2.45) ? 1 : 0,
+    modelDiagnostics?.bounds?.radius && (modelDiagnostics.bounds.radius < 0.15 || modelDiagnostics.bounds.radius > 1.15) ? 1 : 0,
+  ].reduce((sum, v) => sum + v, 0);
+  const topPriorityFixes = [
+    'Real humanoid topology',
+    'Full rig',
+    'Authored shape keys',
+    'Y-up export',
+    'Textures + materials',
+  ];
   const focusedLabel = selectedPart ? (BODY_PARTS as any)?.[selectedPart]?.name || selectedPart : null;
 
   useEffect(() => {
@@ -446,39 +459,75 @@ export default function HumanoidViewer() {
   }, [isZoomed, setCameraZoom]);
 
   return (
-    <div className="chamber fade-in">
+    <div className="chamber fade-in chamber-fullscreen-wrap">
+      {/* ═══ SCAN BOOT EFFECT + OVERLAYS ═══ */}
+      <div className="chamber-scan-boot" />
+      <div className="chamber-scanlines" />
 
-      {/* ═══ HEADER ═══ */}
-      <div className="chamber-header">
-        <div className="chamber-header__left">
-          <p className="label-caps" style={{ color: 'var(--chamber-glow)' }}>DIGITAL TWIN</p>
-          <h2 className="chamber-title">
-            <Rotate3D size={28} /> Humanoid Masterpiece
-          </h2>
-          <p className="chamber-subtitle">
-            Minimal studio for body comparison, posture tuning, and shape-key review.
-          </p>
-          <div className="chamber-hero-strip">
-            {chamberKpis.map((item) => (
-              <div key={item.label} className="chamber-hero-kpi">
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-              </div>
-            ))}
+      {/* ═══ FLOATING HUD TOP BAR ═══ */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        padding: '14px 18px', pointerEvents: 'none',
+        background: 'linear-gradient(to bottom, rgba(3,3,6,0.85) 0%, transparent 100%)',
+      }}>
+        {/* Left: title + status chips */}
+        <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="shimmer-text" style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+              DIGITAL TWIN
+            </span>
+            <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-3)', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>v3</span>
           </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* GLB status chip */}
+            <span
+              className={`hud-chip${modelDiagnostics?.health === 'healthy' ? ' healthy' : modelDiagnostics ? ' warning' : ''}`}
+              style={{ '--hud-delay': '0.1s' } as React.CSSProperties}
+            >
+              <span className="hud-dot" />
+              {modelDiagnostics?.health === 'healthy' ? 'GLB HEALTHY' : modelDiagnostics ? 'GLB REPAIR' : 'GLB LOADING'}
+            </span>
+            <span className="hud-chip" style={{ '--hud-delay': '0.18s' } as React.CSSProperties}>
+              {modelDiagnostics?.morphTargetCount ?? 0} morphs
+            </span>
+            <span className={`hud-chip${(modelDiagnostics?.missingMorphTargets?.length ?? 0) > 0 ? ' warning' : ''}`} style={{ '--hud-delay': '0.24s' } as React.CSSProperties}>
+              {modelDiagnostics?.missingMorphTargets?.length ?? 0} missing
+            </span>
+            {glbIssueCount > 0 && (
+              <span className="hud-chip danger" style={{ '--hud-delay': '0.3s' } as React.CSSProperties}>
+                {glbIssueCount} issues
+              </span>
+            )}
+            {overallScore > 0 && (
+              <span className="hud-chip healthy" style={{ '--hud-delay': '0.36s' } as React.CSSProperties}>
+                <Star size={10} /> {overallScore}%
+              </span>
+            )}
+          </div>
+          {/* Priority fixes */}
+          {modelDiagnostics?.health !== 'healthy' && (
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.58rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Fixes:</span>
+              {topPriorityFixes.map((fix, i) => (
+                <span key={fix} className="hud-chip warning" style={{ '--hud-delay': `${0.4 + i * 0.06}s`, fontSize: '0.62rem' } as React.CSSProperties}>
+                  {fix}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="chamber-header__right">
-          <div className="chamber-pill-group">
-            <button className={`chamber-pill${quality === 'HIGH' ? ' active' : ''}`}
-              onClick={() => setQuality('HIGH')}>HQ</button>
-            <button className={`chamber-pill${renderMode === 'WEBGL' ? ' active' : ''}`}
-              onClick={() => setRenderMode('WEBGL')}>3D</button>
-          </div>
+        {/* Right: quality + render mode toggles */}
+        <div style={{ pointerEvents: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button className={`chamber-view-btn${quality === 'HIGH' ? ' active' : ''}`} style={{ padding: '5px 12px', fontSize: '0.65rem' }}
+            onClick={() => setQuality('HIGH')}>HQ</button>
+          <button className={`chamber-view-btn${renderMode === 'WEBGL' ? ' active' : ''}`} style={{ padding: '5px 12px', fontSize: '0.65rem' }}
+            onClick={() => setRenderMode('WEBGL')}>3D</button>
         </div>
       </div>
 
       {/* ═══ VIEWPORT + EDITOR LAYOUT ═══ */}
-      <div className="chamber-layout">
+      <div className="chamber-layout" style={{ flex: 1, minHeight: 0 }}>
         {/* ── VIEWPORT ── */}
         <div className="chamber-viewport">
           {/* Top overlay bar */}
@@ -1109,7 +1158,41 @@ export default function HumanoidViewer() {
                   Meshes: {(modelDiagnostics.meshCount?.mesh || 0) + (modelDiagnostics.meshCount?.skinnedMesh || 0)} | Vertices: {modelDiagnostics.vertexCount}
                 </p>
               </div>
+              <div className="chamber-metric-row">
+                <div className="chamber-metric-row__header">
+                  <span className="chamber-metric-row__label">Missing Targets</span>
+                  <span className="chamber-metric-row__value">{modelDiagnostics.missingMorphTargets?.length || 0}</span>
+                </div>
+                <p className="chamber-note" style={{ margin: 0 }}>
+                  {modelDiagnostics.missingMorphTargets?.length
+                    ? modelDiagnostics.missingMorphTargets.slice(0, 4).join(', ')
+                    : 'All declared morph names were found in the GLB.'}
+                </p>
+              </div>
             </div>
+            {modelDiagnostics.health !== 'healthy' && (
+              <div style={{
+                marginTop: 12,
+                padding: '12px 14px',
+                borderRadius: 12,
+                border: '1px solid rgba(248,113,113,0.35)',
+                background: 'rgba(127,29,29,0.18)',
+                color: '#fecaca',
+                fontSize: '0.78rem',
+                lineHeight: 1.45,
+              }}>
+                <strong style={{ display: 'block', marginBottom: 6 }}>Asset needs repair</strong>
+                <div>Fix the Blender export before expecting a human-like silhouette.</div>
+                <div style={{ marginTop: 6, opacity: 0.9 }}>
+                  Reasons: {[
+                    modelDiagnostics.bounds?.height && (modelDiagnostics.bounds.height < 1.25 || modelDiagnostics.bounds.height > 2.45) ? 'bounds height' : null,
+                    modelDiagnostics.bounds?.radius && (modelDiagnostics.bounds.radius < 0.15 || modelDiagnostics.bounds.radius > 1.15) ? 'bounds radius' : null,
+                    modelDiagnostics.missingMorphTargets?.length ? 'missing morph coverage' : null,
+                    modelDiagnostics.isSuspicious ? 'mesh / topology sanity check' : null,
+                  ].filter(Boolean).join(' · ') || 'runtime GLB validation failed'}
+                </div>
+              </div>
+            )}
           </div>
         )}
         <div className="chamber-comparison__grid">
