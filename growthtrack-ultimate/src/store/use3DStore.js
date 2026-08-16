@@ -91,6 +91,14 @@ export const GPU_TIERS = {
  * @property {number} legLength     - cm
  * @property {number} footLength    - cm
  * @property {number} headCirc      - cm
+ * @property {number} brow_depth    - facial feature morph (0–1)
+ * @property {number} nose_bridge_width - facial feature morph (0–1)
+ * @property {number} nose_tip_size  - facial feature morph (0–1)
+ * @property {number} ear_prominence - facial feature morph (0–1)
+ * @property {number} jaw_width      - facial feature morph (0–1)
+ * @property {number} chin_projection - facial feature morph (0–1)
+ * @property {number} lip_fullness   - facial feature morph (0–1)
+ * @property {number} eye_size       - facial feature morph (0–1)
   * @property {number} d_size       - inches (3–9)
   * @property {number} d_girth      - inches
   * @property {number} ankle        - cm
@@ -163,6 +171,14 @@ const MORPH_RANGES = {
   legLength: { min: 82,  max: 98  },
   footLength:{ min: 24,  max: 31  },
   headCirc:  { min: 52,  max: 62  },
+  brow_depth: { min: 0, max: 1 },
+  nose_bridge_width: { min: 0, max: 1 },
+  nose_tip_size: { min: 0, max: 1 },
+  ear_prominence: { min: 0, max: 1 },
+  jaw_width: { min: 0, max: 1 },
+  chin_projection: { min: 0, max: 1 },
+  lip_fullness: { min: 0, max: 1 },
+  eye_size: { min: 0, max: 1 },
   d_size:    { min: 3,   max: 9   },
   d_girth:   { min: 3,   max: 7   },
   ankle:     { min: 18,  max: 28  },
@@ -238,19 +254,27 @@ export const computeMorphWeights = (metrics) => ({
   leg_length:       normalise(metrics.legLength ?? (metrics.height ? metrics.height * 0.52 : 90), "legLength"),
   foot_length:      normalise(metrics.footLength ?? 27, "footLength"),
   head_circumference: normalise(metrics.headCirc ?? 57, "headCirc"),
-  cheekbone_width:  normalise(metrics.bodyFat,   "bodyFat") * 0.35 + normalise(metrics.shoulders, "shoulders") * 0.15,
-  forehead_height:  normalise(metrics.headCirc ?? 57, "headCirc") * 0.25,
-  temple_narrowing: 1 - normalise(metrics.headCirc ?? 57, "headCirc") * 0.15,
-  nose_length:      normalise(metrics.bodyFat,   "bodyFat") * 0.18 + 0.15,
-  jaw_angle:        normalise(metrics.bodyFat,   "bodyFat") * 0.2,
-  shoulder_drop:    1 - normalise(metrics.shoulders, "shoulders") * 0.3,
+  brow_depth:        normalise(metrics.brow_depth ?? 0.35, "brow_depth"),
+  nose_bridge_width: normalise(metrics.nose_bridge_width ?? 0.32, "nose_bridge_width"),
+  nose_tip_size:     normalise(metrics.nose_tip_size ?? 0.33, "nose_tip_size"),
+  ear_prominence:    normalise(metrics.ear_prominence ?? 0.38, "ear_prominence"),
+  jaw_width:         normalise(metrics.jaw_width ?? 0.36, "jaw_width"),
+  chin_projection:   normalise(metrics.chin_projection ?? 0.30, "chin_projection"),
+  lip_fullness:      normalise(metrics.lip_fullness ?? 0.42, "lip_fullness"),
+  eye_size:          normalise(metrics.eye_size ?? 0.40, "eye_size"),
+  cheekbone_width:   normalise(metrics.bodyFat,   "bodyFat") * 0.35 + normalise(metrics.shoulders, "shoulders") * 0.15,
+  forehead_height:   normalise(metrics.headCirc ?? 57, "headCirc") * 0.25,
+  temple_narrowing:  1 - normalise(metrics.headCirc ?? 57, "headCirc") * 0.15,
+  nose_length:       normalise(metrics.bodyFat,   "bodyFat") * 0.18 + 0.15,
+  jaw_angle:         normalise(metrics.bodyFat,   "bodyFat") * 0.2,
+  shoulder_drop:     1 - normalise(metrics.shoulders, "shoulders") * 0.3,
   knee_spacing:     normalise(metrics.hips,      "hips") * 0.22,
   ankle_taper:      1 - normalise(metrics.ankle, "ankle") * 0.3,
   hand_splay:       normalise(metrics.handLength ?? 19, "handLength") * 0.25,
   foot_arch:        normalise(metrics.footLength ?? 27, "footLength") * 0.2,
 
   // PRIVATE (rendered in anatomical/underwear mode only)
-  d_length:        normalise(metrics.d_size,    "d_size"),
+  d_length:        normalise(metrics.d_length ?? metrics.d_size, "d_size"),
   d_girth:         normalise(metrics.d_girth,   "d_girth"),
 
   // VASCULARITY (auto-triggered when bodyFat < 15%)
@@ -291,6 +315,14 @@ const CURRENT_METRICS = {
   legLength:   91,
   footLength:  27,
   headCirc:    57,
+  brow_depth:  0.35,
+  nose_bridge_width: 0.32,
+  nose_tip_size: 0.33,
+  ear_prominence: 0.38,
+  jaw_width: 0.36,
+  chin_projection: 0.30,
+  lip_fullness: 0.42,
+  eye_size: 0.40,
   skinTone:   "IV",
 };
 
@@ -314,6 +346,14 @@ const GOAL_METRICS = {
   legLength:   95,
   footLength:  29,
   headCirc:    58,
+  brow_depth:  0.35,
+  nose_bridge_width: 0.32,
+  nose_tip_size: 0.33,
+  ear_prominence: 0.38,
+  jaw_width: 0.36,
+  chin_projection: 0.30,
+  lip_fullness: 0.42,
+  eye_size: 0.40,
   d_size:     5.5,   // unchanged
   d_girth:    4.5,   // unchanged
   ankle:      23,

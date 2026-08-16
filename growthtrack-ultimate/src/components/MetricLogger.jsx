@@ -17,7 +17,7 @@ export default function MetricLogger({ onClose, onSave }) {
     date: new Date().toISOString().split('T')[0],
     weight: 63, chest: 34.1, shoulders: 42.3, waist: 32.3,
     arms: 11.8, neck: 14.5, biceps: 11.8, hips: 34.6,
-    thighs: 20.9, calves: 13.8, d_size: 5.9, d_girth: 4.7,
+    thighs: 20.9, calves: 13.8, headCirc: 57, d_size: 5.9, d_girth: 4.7,
     sleep: 6, water: 2, caffeine: 3, stress: 7, hr: 75,
     eyePower: -2.5, memoryPower: 65, stamina: 40, flexibility: 15,
     hairHealth: 50, skinGlow: 40, sight: 60, hearing: 85,

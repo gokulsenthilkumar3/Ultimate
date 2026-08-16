@@ -5,10 +5,38 @@ import { useGLTF } from "@react-three/drei";
 import useStore from "../../store/useStore";
 import { BODY_PARTS } from "../../data/userData";
 import { createSkinMaterial, createPeelMaterial, injectVascularity } from "./materials";
+import { MORPH_TARGET_NAMES } from "../morphEngine/constants";
 
 const BASE = import.meta.env.BASE_URL;
 const GLB_CURRENT = `${BASE}assets/models/humanoid-base.glb`;
 const GLB_GOAL    = `${BASE}assets/models/humanoid-base.glb`;
+
+const MORPH_ALIASES = {
+  chest_depth: ["chest_depth", "chest_wide"],
+  deltoid_width: ["deltoid_width", "shoulders_wide"],
+  waist_narrow: ["waist_narrow", "waist_wide"],
+  bicep_peak: ["bicep_peak", "arms_thick"],
+  tricep_horse: ["tricep_horse"],
+  overall_mass: ["overall_mass"],
+  gut_volume: ["gut_volume"],
+  glute_volume: ["glute_volume"],
+  hip_width: ["hip_width"],
+  quad_sweep: ["quad_sweep"],
+  ham_thickness: ["ham_thickness"],
+  calf_diamond: ["calf_diamond"],
+};
+
+function applyMorph(dict, influences, morphKey, value) {
+  const aliases = MORPH_ALIASES[morphKey] || [morphKey];
+  for (const name of aliases) {
+    const index = dict?.[name];
+    if (index !== undefined) {
+      influences[index] = value;
+      return true;
+    }
+  }
+  return false;
+}
 
 // ── HUMAN MODEL COMPONENT (GLB) ──
 function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, stressLevel }) {
@@ -44,10 +72,19 @@ function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, s
       if (node.morphTargetDictionary && node.morphTargetInfluences) {
         const dict = node.morphTargetDictionary;
         const inf  = node.morphTargetInfluences;
-        if (dict['chest_wide']     !== undefined) inf[dict['chest_wide']]     = Math.max(0, morphs.chest - 1);
-        if (dict['shoulders_wide'] !== undefined) inf[dict['shoulders_wide']] = Math.max(0, morphs.shoulders - 1);
-        if (dict['waist_wide']     !== undefined) inf[dict['waist_wide']]     = Math.max(0, morphs.waist - 1);
-        if (dict['arms_thick']     !== undefined) inf[dict['arms_thick']]     = Math.max(0, morphs.arms - 1);
+        applyMorph(dict, inf, 'chest_depth', Math.max(0, morphs.chest - 1));
+        applyMorph(dict, inf, 'deltoid_width', Math.max(0, morphs.shoulders - 1));
+        applyMorph(dict, inf, 'waist_narrow', Math.max(0, 1 - morphs.waist));
+        applyMorph(dict, inf, 'bicep_peak', Math.max(0, morphs.arms - 1));
+        applyMorph(dict, inf, 'overall_mass', Math.max(0, morphs.weight ? morphs.weight / 100 : 0));
+        applyMorph(dict, inf, 'gut_volume', Math.max(0, morphs.bodyFat ? morphs.bodyFat / 40 : 0));
+      }
+
+      if (process.env.NODE_ENV !== 'production' && node.morphTargetDictionary) {
+        const missing = MORPH_TARGET_NAMES.filter((name) => node.morphTargetDictionary[name] === undefined);
+        if (missing.length > 0) {
+          node.userData.missingMorphTargets = missing;
+        }
       }
 
       // Vascularity injection

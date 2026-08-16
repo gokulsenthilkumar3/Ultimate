@@ -13,7 +13,10 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "analyze": "vite build --mode analyze"
+    "analyze": "vite build --mode analyze",
+    "validate:glb": "node scripts/validate-glb.js",
+    "glb:health": "node scripts/glb-health.js",
+    "glb:priority-fixes": "node scripts/glb-priority-fixes.js"
   },
   "dependencies": {
     "@react-three/drei": "10.7.7",

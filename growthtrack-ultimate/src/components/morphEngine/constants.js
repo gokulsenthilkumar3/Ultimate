@@ -35,6 +35,7 @@ export const MORPH_TARGET_NAMES = [
   "hand_length",
   "leg_length",
   "foot_length",
+  "head_circumference",
   // Facial anatomy
   "brow_depth",
   "nose_bridge_width",

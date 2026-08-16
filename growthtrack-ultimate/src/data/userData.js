@@ -53,6 +53,7 @@ export const BODY_METRICS_LIST = [
   { id: 'arms', label: 'Arms', unit: 'in', icon: '💪' },
   { id: 'hips', label: 'Hips', unit: 'in', icon: '🍑' },
   { id: 'thighs', label: 'Thighs', unit: 'in', icon: '🦵' },
+  { id: 'headCirc', label: 'Head Circ.', unit: 'cm', icon: '🧠' },
   { id: 'd_size', label: 'D-Size', unit: 'in', icon: '🍆' },
   { id: 'd_girth', label: 'D-Girth', unit: 'in', icon: '🔴' },
 ];
