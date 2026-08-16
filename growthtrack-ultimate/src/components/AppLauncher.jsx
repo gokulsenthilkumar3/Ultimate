@@ -147,46 +147,50 @@ export default function AppLauncher({ setActiveTab }) {
   };
 
   return (
-    <div style={{ padding: '0.5rem 0' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Navigation</p>
-        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>App Hub</h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{ALL_APPS.length} modules · Click to launch</p>
+    <div className="app-hub-shell">
+      <div className="app-hub-hero">
+        <div>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Navigation</p>
+          <h2 className="text-display" style={{ fontSize: '2rem', margin: 0 }}>App Hub</h2>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.88rem', marginTop: '0.4rem' }}>
+            {ALL_APPS.length} modules, organized for quick launch.
+          </p>
+        </div>
+        <div className="app-hub-hero__meta">
+          <span className="app-hub-kpi">{pinnedApps.length} pinned</span>
+          <span className="app-hub-kpi">{frequentApps.length} frequent</span>
+        </div>
       </div>
 
-      {/* Dock */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem' }}>Quick Dock</p>
+      <div className="app-hub-panel">
+        <p className="app-hub-label">Quick Dock</p>
         <Dock dockApps={dockApps} onNavigate={onNavigate} pinnedTabs={pinnedTabs} />
-        <p style={{ marginTop: '0.65rem', color: 'var(--text-3)', fontSize: '0.78rem' }}>
-          Tip: pin your most-used apps, and use <strong style={{ color: 'var(--text-1)' }}>Profile</strong> for your website/about-me content.
+        <p className="app-hub-note">
+          Pin the tools you open most. Keep <strong>Profile</strong> for your portfolio and about-me content.
         </p>
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '1rem 1.1rem' }}>
-          <div>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Personal Portfolio</p>
-            <p style={{ color: 'var(--text-1)', fontSize: '0.9rem', marginTop: '0.25rem' }}>Your external website lives here and can be edited there directly.</p>
-          </div>
-          <a href={PORTFOLIO_URL} target="_blank" rel="noreferrer" className="btn btn--ghost">
-            Open Website
-          </a>
+      <div className="app-hub-panel app-hub-panel--split">
+        <div>
+          <p className="app-hub-label">Personal Portfolio</p>
+          <p className="app-hub-copy">Your external website lives there. Edit the site directly from the linked portfolio.</p>
         </div>
+        <a href={PORTFOLIO_URL} target="_blank" rel="noreferrer" className="btn btn--ghost">
+          Open Website
+        </a>
       </div>
 
       {/* Frequent apps */}
       {frequentApps.length > 0 && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
+          <p className="app-hub-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <Star size={11} color="#fbbf24" /> Frequently Used
           </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="chip-row">
             {frequentApps.map(app => (
               <button key={app.id} onClick={() => onNavigate(app.id)} style={{
                 display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-                borderRadius: '99px', background: `${app.color}18`, border: `1px solid ${app.color}44`,
+                borderRadius: '99px', background: 'var(--bg-elevated)', border: `1px solid ${app.color}28`,
                 cursor: 'pointer', color: 'var(--text-1)', fontSize: '0.78rem', fontWeight: 600,
                 transition: 'background 0.15s',
               }}>
@@ -200,15 +204,15 @@ export default function AppLauncher({ setActiveTab }) {
 
       {/* Pinned */}
       {pinnedApps.length > 0 && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
+          <p className="app-hub-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <Pin size={11} color="var(--accent)" /> Pinned
           </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="chip-row">
             {pinnedApps.map(app => (
               <button key={app.id} onClick={() => onNavigate(app.id)} style={{
                 display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-                borderRadius: '99px', background: `${app.color}22`, border: `1px solid ${app.color}55`,
+                borderRadius: '99px', background: `${app.color}10`, border: `1px solid ${app.color}33`,
                 cursor: 'pointer', color: 'var(--text-1)', fontSize: '0.78rem', fontWeight: 700,
               }}>
                 <span>{app.icon}</span> {app.label}
@@ -218,14 +222,13 @@ export default function AppLauncher({ setActiveTab }) {
         </div>
       )}
 
-      {/* Search + filter */}
-      <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="app-hub-toolbar">
         <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
           <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search apps…"
             className="form-input" style={{ paddingLeft: '32px', width: '100%' }} />
         </div>
-        <div style={{ display: 'flex', gap: '0.3rem' }}>
+        <div className="segmented segmented--compact">
           {['all', ...GROUP_ORDER].map(g => (
             <button key={g} onClick={() => setGroupFilter(g)} style={{
               padding: '4px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
@@ -251,22 +254,22 @@ export default function AppLauncher({ setActiveTab }) {
         const apps = grouped[group];
         if (!apps?.length) return null;
         return (
-          <div key={group} style={{ marginBottom: '1.5rem' }}>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.65rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div key={group} style={{ marginBottom: '1.25rem' }}>
+            <p className="app-hub-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ flex: 1 }}>{group}</span>
               <span style={{ opacity: 0.6 }}>{apps.length} apps</span>
             </p>
             {viewMode === 'grid' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.65rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '0.7rem' }}>
                 {apps.map(app => {
                   const isPinned = pinnedTabs.includes(app.id);
                   return (
-                    <div key={app.id} style={{ borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${app.color}33`, overflow: 'hidden', transition: 'transform 0.12s, box-shadow 0.12s', cursor: 'pointer' }}
+                    <div key={app.id} style={{ borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', transition: 'transform 0.12s, box-shadow 0.12s', cursor: 'pointer' }}
                       className="hover-lift"
                       onClick={() => onNavigate(app.id)}>
                       <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${app.color}18`, border: `1.5px solid ${app.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>{app.icon}</div>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: `${app.color}12`, border: `1px solid ${app.color}26`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem' }}>{app.icon}</div>
                           <button onClick={e => { e.stopPropagation(); togglePinnedTab(app.id); }}
                             title={isPinned ? 'Unpin' : 'Pin to dock'}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: isPinned ? app.color : 'rgba(255,255,255,0.15)', padding: '2px', transition: 'color 0.2s' }}>
@@ -274,32 +277,31 @@ export default function AppLauncher({ setActiveTab }) {
                           </button>
                         </div>
                         <div>
-                          <p style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-1)' }}>{app.label}</p>
-                          <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>{app.description}</p>
+                          <p style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-1)' }}>{app.label}</p>
+                          <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '2px', lineHeight: 1.4 }}>{app.description}</p>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.6rem', fontWeight: 700, color: app.color, background: `${app.color}18`, padding: '2px 6px', borderRadius: '99px' }}>{app.group}</span>
+                          <span style={{ fontSize: '0.58rem', fontWeight: 700, color: app.color, background: `${app.color}10`, padding: '2px 6px', borderRadius: '99px' }}>{app.group}</span>
                           {clickCounts[app.id] > 0 && <span style={{ fontSize: '0.58rem', color: 'var(--text-3)' }}>{clickCounts[app.id]} uses</span>}
                         </div>
                       </div>
-                      <div style={{ height: '2px', background: app.color, opacity: 0.4 }} />
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {apps.map(app => {
                   const isPinned = pinnedTabs.includes(app.id);
                   return (
-                    <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${app.color}22`, cursor: 'pointer', transition: 'background 0.1s' }}
+                    <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.1s' }}
                       onClick={() => onNavigate(app.id)}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: `${app.color}18`, border: `1.5px solid ${app.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>{app.icon}</div>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: `${app.color}12`, border: `1px solid ${app.color}26`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.98rem', flexShrink: 0 }}>{app.icon}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-1)' }}>{app.label}</p>
-                        <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>{app.description}</p>
+                        <p style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{app.description}</p>
                       </div>
-                      <span style={{ fontSize: '0.6rem', fontWeight: 700, color: app.color, background: `${app.color}18`, padding: '2px 6px', borderRadius: '99px', flexShrink: 0 }}>{app.group}</span>
+                      <span style={{ fontSize: '0.58rem', fontWeight: 700, color: app.color, background: `${app.color}10`, padding: '2px 6px', borderRadius: '99px', flexShrink: 0 }}>{app.group}</span>
                       <button onClick={e => { e.stopPropagation(); togglePinnedTab(app.id); }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: isPinned ? app.color : 'rgba(255,255,255,0.15)', padding: '4px' }}>
                         {isPinned ? <Pin size={12} /> : <PinOff size={12} />}

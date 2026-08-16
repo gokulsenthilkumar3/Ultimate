@@ -30,6 +30,7 @@ import { OrbitControls }                      from "@react-three/drei";
 import * as THREE                             from "three";
 
 import use3DStore, { CAMERA_PRESETS } from "../../store/use3DStore";
+import { BODY_PART_MAP } from "./BodyPartInteraction";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -52,11 +53,11 @@ const MIN_POLAR = THREE.MathUtils.degToRad(5);
 const MAX_POLAR = THREE.MathUtils.degToRad(88);
 
 /** Camera distance limits */
-const MIN_DISTANCE = 1.5;
-const MAX_DISTANCE = 6.0;
+const MIN_DISTANCE = 1.1;
+const MAX_DISTANCE = 9.5;
 
 /** Camera look-at target — model centroid */
-const MODEL_CENTER = new THREE.Vector3(0, 1.0, 0);
+const MODEL_CENTER = new THREE.Vector3(0, 1.08, 0);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PRESET → spherical coordinates mapper
@@ -65,7 +66,7 @@ const MODEL_CENTER = new THREE.Vector3(0, 1.0, 0);
 
 function presetToSpherical(presetKey) {
   const preset   = CAMERA_PRESETS[presetKey];
-  const radius   = 3.5; // comfortable viewing distance
+  const radius   = 3.4; // balanced human-framed distance
 
   const theta    = THREE.MathUtils.degToRad(preset.azimuth   ?? 0);
   const phi      = THREE.MathUtils.degToRad(90 - (preset.elevation ?? 0));
@@ -84,8 +85,12 @@ export default function CameraRig() {
   // ── Store subscriptions ───────────────────────────────────────────────────
   const cameraPreset   = use3DStore((s) => s.cameraPreset);
   const autoRotate     = use3DStore((s) => s.autoRotate);
+  const focusedBodyPart = use3DStore((s) => s.focusedBodyPart);
+  const modelFrame     = use3DStore((s) => s.modelFrame);
   const setAutoRotate  = use3DStore((s) => s.setAutoRotate);
   const setCameraPreset = use3DStore((s) => s.setCameraPreset);
+  const fitCameraToBody = use3DStore((s) => s.fitCameraToBody);
+  const [cameraZoom, setCameraZoom] = useState(() => use3DStore.getState().cameraZoom ?? 1);
 
   // ── Local animation state ─────────────────────────────────────────────────
   const targetSpherical   = useRef(presetToSpherical("FRONT"));
@@ -97,9 +102,40 @@ export default function CameraRig() {
   // ── Respond to preset changes from store ─────────────────────────────────
   useEffect(() => {
     if (cameraPreset === "CUSTOM") return; // user is free-orbiting
-    targetSpherical.current  = presetToSpherical(cameraPreset);
+    const spherical = presetToSpherical(cameraPreset);
+    spherical.radius *= (cameraZoom ?? 1) * (modelFrame?.radius ? Math.max(0.9, Math.min(1.25, modelFrame.radius / 0.72)) : 1);
+    targetSpherical.current  = spherical;
     isAnimatingPreset.current = true;
-  }, [cameraPreset]);
+  }, [cameraPreset, cameraZoom, modelFrame?.radius]);
+
+  useEffect(() => {
+    if (!modelFrame?.radius) return;
+    fitCameraToBody();
+  }, [fitCameraToBody, modelFrame?.radius]);
+
+  useEffect(() => {
+    const unsubscribe = use3DStore.subscribe(
+      (state) => state.cameraZoom,
+      (zoom) => setCameraZoom(zoom ?? 1)
+    );
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!focusedBodyPart) return;
+    const region = BODY_PART_MAP[focusedBodyPart];
+    if (!region?.cameraHint) return;
+
+    const { azimuth = 0, elevation = 5, distance = 2 } = region.cameraHint;
+    const frameScale = modelFrame?.radius ? Math.max(0.85, Math.min(1.4, modelFrame.radius / 0.72)) : 1;
+    targetSpherical.current = new THREE.Spherical(
+      Math.max(1.75, Math.min(distance, 3.8)) * (cameraZoom ?? 1) * frameScale,
+      THREE.MathUtils.degToRad(90 - elevation),
+      THREE.MathUtils.degToRad(azimuth)
+    );
+    isAnimatingPreset.current = true;
+    use3DStore.getState().setAutoRotate(false);
+  }, [focusedBodyPart, cameraZoom, modelFrame?.radius]);
 
   // ── Auto-rotate resume timer ──────────────────────────────────────────────
   useEffect(() => {
@@ -194,8 +230,8 @@ export default function CameraRig() {
       // ── Zoom ──────────────────────────────────────────────────────────────
       enableZoom={true}
       zoomSpeed={0.8}
-      minDistance={MIN_DISTANCE}
-      maxDistance={MAX_DISTANCE}
+      minDistance={0.8}
+      maxDistance={10.5}
       // ── Pan — disabled (always focus on model) ────────────────────────────
       enablePan={false}
       // ── Vertical orbit limits ─────────────────────────────────────────────
@@ -205,7 +241,7 @@ export default function CameraRig() {
       enableDamping={true}
       dampingFactor={0.05}        // three's damping: lower = more inertia (0.05 ≈ 0.95 retained)
       // ── Target — model centroid ───────────────────────────────────────────
-      target={[0, 1.0, 0]}
+      target={[0, 1.08, 0]}
       // ── Auto-rotate handled manually in useFrame (for direction reversal) ─
       autoRotate={false}
       makeDefault

@@ -255,20 +255,20 @@ export default function Overview({ setActiveTab }) {
 
   return (
     <div style={{ padding: '0.5rem 0' }}>
-      <div className="glass-card" style={{ marginBottom: '1rem', padding: '1.25rem 1.25rem 1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          <div>
+      <div className="glass-card" style={{ marginBottom: '1rem', padding: '1.1rem 1.15rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ maxWidth: '40rem' }}>
             <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Today</p>
-            <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>One screen for the day</h2>
-            <p style={{ color: 'var(--text-3)', fontSize: '0.9rem', maxWidth: '42rem' }}>
-              A calm home surface for tasks, habits, goals, sleep, and quick jumps into the rest of the app.
+            <h2 className="text-display" style={{ fontSize: '1.8rem', marginBottom: '0.3rem' }}>Your daily command center</h2>
+            <p style={{ color: 'var(--text-3)', fontSize: '0.88rem', lineHeight: 1.55 }}>
+              Minimal, fast, and focused on what matters now.
             </p>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
             {quickLinks.map((item) => (
-              <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-1)', borderRadius: '999px', padding: '0.7rem 0.95rem', cursor: 'pointer', minWidth: '110px', textAlign: 'left' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 800 }}>{item.label}</div>
-                <div style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '2px' }}>{item.note}</div>
+              <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-1)', borderRadius: '999px', padding: '0.65rem 0.9rem', cursor: 'pointer', minWidth: '102px', textAlign: 'left' }}>
+                <div style={{ fontSize: '0.76rem', fontWeight: 800 }}>{item.label}</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '2px' }}>{item.note}</div>
               </button>
             ))}
           </div>

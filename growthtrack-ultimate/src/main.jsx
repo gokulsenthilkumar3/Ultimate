@@ -8,10 +8,6 @@ import { AuthProvider } from './context/AuthContext.jsx'
 
 const queryClient = new QueryClient();
 
-if (!import.meta.env.VITE_API_BASE) {
-  console.warn('⚠️ VITE_API_BASE is missing! The application will fall back to local offline storage.');
-}
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

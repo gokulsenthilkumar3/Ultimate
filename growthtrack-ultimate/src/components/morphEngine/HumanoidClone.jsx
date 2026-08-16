@@ -74,7 +74,9 @@ export default function HumanoidClone({
   const auraRef = useRef();
 
   // ── Load model ──────────────────────────────────────────────────────────────
-  const { bodyMesh, morphIndexMap, skeleton, scene, isDev } = useModelLoader();
+  const { bodyMesh, morphIndexMap, skeleton, scene, diagnostics, isDev } = useModelLoader();
+  const setModelFrame = use3DStore((s) => s.setModelFrame);
+  const setModelDiagnostics = use3DStore((s) => s.setModelDiagnostics);
 
   // ── Store slice ─────────────────────────────────────────────────────────────
   const { weights, metrics, posture } = use3DStore(
@@ -94,6 +96,25 @@ export default function HumanoidClone({
   useEffect(() => {
     updateWeights(weights);
   }, [weights, updateWeights]);
+
+  useEffect(() => {
+    if (!scene) return;
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+    setModelFrame({
+      center,
+      size,
+      height: Math.max(size.y, 0.001),
+      radius: Math.max(size.x, size.y, size.z) * 0.5,
+    });
+  }, [scene, setModelFrame]);
+
+  useEffect(() => {
+    setModelDiagnostics(diagnostics);
+  }, [diagnostics, setModelDiagnostics]);
 
   // ── Material ────────────────────────────────────────────────────────────────
   const material = useMemo(() => {

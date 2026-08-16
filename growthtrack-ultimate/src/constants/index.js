@@ -223,6 +223,6 @@ export const NOTIFICATION = {
 
 // ─── 8. API ──────────────────────────────────────────────────────────────────
 export const API = {
-  /** Vite env — falls back to localhost in dev */
-  BASE_URL: import.meta.env.VITE_API_BASE || 'http://localhost:3001/api',
+  /** Vite env — falls back to same-origin API path */
+  BASE_URL: import.meta.env.VITE_API_BASE || '/api',
 };

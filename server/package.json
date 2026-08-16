@@ -1,18 +1,23 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
     "test": "vitest run --globals",
-    "seed": "node seed_full_migration.js"
+    "seed": "node seed_full_migration.js",
+    "start:desktop": "electron ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@libsql/client": "^0.17.4",
+    "@prisma/adapter-better-sqlite3": "^7.9.1",
+    "@prisma/adapter-libsql": "^7.9.1",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -23,6 +28,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "electron": "^43.4.0",
     "prisma": "^7.8.0",
     "supertest": "^7.2.2",
     "vitest": "^4.1.5"
