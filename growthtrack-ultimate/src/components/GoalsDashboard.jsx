@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis } from 'recharts';
 import { useToast } from '../hooks/useToast';
+import { trackEvent } from '../lib/analytics';
 import EmptyState from './ui/EmptyState';
 
 // ── Confetti helper (canvas-confetti) ────────────────────────────────────
@@ -284,6 +285,7 @@ export default function GoalsDashboard() {
     });
     setForm({ title: '', description: '', category: 'personal', status: 'active', target_value: '', current_value: '', unit: '', deadline: '' });
     setShowAdd(false);
+    trackEvent('Set Goal', { type: form.category || 'other' });
     toast.success('Goal added!');
   };
 

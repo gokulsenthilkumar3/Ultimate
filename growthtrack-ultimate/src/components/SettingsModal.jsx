@@ -3,13 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   Settings, X, User, Shield, Terminal, Globe, Server, 
   Database, Lock, CheckCircle2, XCircle, Zap, Star,
-  Trash2, RefreshCw
+  Trash2, RefreshCw, CreditCard, Gift
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { apiSync } from '../store/useStore';
 import ConfirmDialog from './ui/ConfirmDialog';
 import { fetchIpInfo } from '../hooks/useGeolocation';
 import DeviceSyncModal from './DeviceSyncModal';
+import ReferralDashboard from './ReferralDashboard';
 
 export default function SettingsModal({ onClose }) {
   const [activeTab, setActiveTab] = useState('Profile');
@@ -109,6 +110,7 @@ export default function SettingsModal({ onClose }) {
 
   const tabs = [
     { id: 'Profile', icon: User },
+    { id: 'Referrals', icon: Gift },
     { id: 'Audit', icon: Shield },
     { id: 'System', icon: Terminal },
   ];
@@ -220,17 +222,28 @@ export default function SettingsModal({ onClose }) {
                   ))}
                 </div>
 
-                <div style={{ marginBottom: '2rem' }}>
+                <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
                   <button 
                     onClick={() => setShowSyncModal(true)}
                     style={{
-                      width: '100%', padding: '12px', borderRadius: '12px',
+                      flex: 1, padding: '12px', borderRadius: '12px',
                       background: 'var(--accent)', color: '#fff',
                       border: 'none', fontWeight: 700, fontSize: '0.9rem',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer'
                     }}
                   >
-                    <Zap size={16} /> Connect Devices &amp; Apps
+                    <Zap size={16} /> Devices
+                  </button>
+                  <button 
+                    onClick={() => window.open('https://billing.stripe.com/p/login/test_YOUR_STRIPE_LINK', '_blank')}
+                    style={{
+                      flex: 1, padding: '12px', borderRadius: '12px',
+                      background: 'rgba(255,255,255,0.05)', color: 'var(--text-1)',
+                      border: '1px solid var(--border)', fontWeight: 700, fontSize: '0.9rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer'
+                    }}
+                  >
+                    <CreditCard size={16} /> Billing
                   </button>
                 </div>
 
@@ -241,6 +254,10 @@ export default function SettingsModal({ onClose }) {
                   </p>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'Referrals' && (
+              <ReferralDashboard />
             )}
 
             {activeTab === 'Audit' && (
