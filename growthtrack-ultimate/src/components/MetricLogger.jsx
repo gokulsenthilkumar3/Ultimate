@@ -5,6 +5,7 @@ import { BODY_METRICS_LIST, VITALS_METRICS_LIST, HOLISTIC_METRICS_LIST } from '.
 import useStore from '../store/useStore';
 import { supabase } from '../lib/supabase'; // adjust path if needed
 import { useToast } from '../hooks/useToast';
+import { trackEvent } from '../lib/analytics';
 
 const PHOTO_BUCKET = 'progress-photos';
 
@@ -127,6 +128,7 @@ export default function MetricLogger({ onClose, onSave }) {
       }
 
       setIsSaved(true);
+      trackEvent('Entered Manual Data', { metric: formData.weight ? 'weight' : 'other' });
       setTimeout(() => {
         onClose();
       }, 1000);

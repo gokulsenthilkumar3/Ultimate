@@ -1,16 +1,25 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 // https://vite.dev/config/
 export default defineConfig({
   base: '/Ultimate/',
-  plugins: [react()],
+  plugins: [
+    react(),
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+    })
+  ],
   server: {
     port: 5000,
     host: '0.0.0.0',
     allowedHosts: true,
   },
   build: {
+    sourcemap: true,
     chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {

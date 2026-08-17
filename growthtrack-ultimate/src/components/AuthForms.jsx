@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { COLORS } from '../constants';
 import { useToast } from '../hooks/useToast';
+import { trackEvent } from '../lib/analytics';
 
 const AUTH_API_BASE = import.meta.env.VITE_AUTH_API_BASE || import.meta.env.VITE_API_BASE || '/api';
 
@@ -8,6 +9,7 @@ export default function AuthForms({ mode: initialMode, onAuthSuccess }) {
   const [mode, setMode] = useState(initialMode || 'login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
 
@@ -15,10 +17,19 @@ export default function AuthForms({ mode: initialMode, onAuthSuccess }) {
     e.preventDefault();
     setLoading(true);
     try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const referralCode = urlParams.get('ref');
+
+      const payload = { email, password };
+      if (mode === 'signup') {
+        payload.fullName = fullName || email.split('@')[0];
+        if (referralCode) payload.referralCode = referralCode;
+      }
+
       const res = await fetch(`${AUTH_API_BASE}/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       
@@ -27,6 +38,11 @@ export default function AuthForms({ mode: initialMode, onAuthSuccess }) {
       }
 
       if (data.token) sessionStorage.setItem('growthtrack-session-token', data.token);
+      
+      if (mode === 'signup') {
+        trackEvent('Signed Up', { method: 'email' });
+      }
+
       addToast({ title: 'Success', message: mode === 'login' ? 'Logged in successfully' : 'Account created successfully', type: 'success' });
       onAuthSuccess(data.user);
     } catch (err) {
@@ -69,6 +85,23 @@ export default function AuthForms({ mode: initialMode, onAuthSuccess }) {
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {mode === 'signup' && (
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-2)' }}>Full Name</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                style={{
+                  width: '100%', padding: '12px 16px', background: 'var(--bg-1)',
+                  border: '1px solid var(--border-strong)', borderRadius: '12px',
+                  color: 'var(--text-1)', fontSize: '1rem', outline: 'none', boxSizing: 'border-box'
+                }}
+                placeholder="John Doe"
+              />
+            </div>
+          )}
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-2)' }}>Email</label>
             <input

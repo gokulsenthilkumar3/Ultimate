@@ -3,6 +3,7 @@ import { COLORS } from '../constants';
 import { useToast } from '../hooks/useToast';
 import { apiSync } from '../store/useStore';
 import useStore from '../store/useStore';
+import { trackEvent } from '../lib/analytics';
 
 export default function DeviceSyncModal({ onClose }) {
   const [syncing, setSyncing] = useState(false);
@@ -16,6 +17,7 @@ export default function DeviceSyncModal({ onClose }) {
 
       addToast({ title: 'Sync Complete', message: 'Apple Health data imported successfully', type: 'success' });
       await fetchInitialData(); // Refresh logs to trigger avatar morph
+      trackEvent('Synced First Device', { type: 'manual' });
       onClose();
     } catch (err) {
       addToast({ title: 'Sync Failed', message: err.message, type: 'error' });

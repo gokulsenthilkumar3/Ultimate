@@ -18,7 +18,7 @@ import LoginPage from './pages/LoginPage';
 import OnboardingWizard    from './components/OnboardingWizard';
 import CommandPalette      from './components/CommandPalette';
 import DailyCheckIn        from './components/DailyCheckIn';
-import PillNav             from './components/PillNav';
+import WheelNav            from './components/WheelNav';
 import SettingsModal       from './components/SettingsModal';
 import NotificationCenter  from './components/NotificationCenter';
 import LoadingSkeleton     from './components/ui/LoadingSkeleton';
@@ -28,6 +28,7 @@ import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
 import { useVascularitySync }    from './store/use3DStore.usage';
 import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
 import { GLOBAL_MODULES } from './constants/modules';
+import { trackEvent } from './lib/analytics';
 
 // ── Unread notification count ──────────────────────────────────────────────
 function countUnreadNotifs(user) {
@@ -93,6 +94,7 @@ const About              = lazy(() => import('./components/About'));
 const SIPCalculator      = lazy(() => import('./components/SIPCalculator'));
 const TransformationPredictor = lazy(() => import('./components/TransformationPredictor'));
 const HabitsMatrix       = lazy(() => import('./components/HabitsMatrix'));
+const Pricing            = lazy(() => import('./components/Pricing'));
 
 
 function TabSpinner() {
@@ -143,7 +145,8 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
     case 'finance':        return <Finance />;
     case 'entertainment':  return <Entertainment />;
     case 'social':         return <SocialMedia />;
-    case 'ai':             return <AiDashboard />;
+    case 'pricing':        return <Pricing />;
+    case 'ai':             return user?.subscriptionTier === 'pro' ? <AiDashboard /> : <Pricing />;
     case 'maps':           return <Maps />;
     case 'documents':      return <Documents />;
     case 'current':        return <Current />;
@@ -152,7 +155,7 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
     case 'dashboards':     return <Dashboards />;
     case 'about':          return <About />;
     case 'sip':            return <SIPCalculator />;
-    case 'forecast':       return <TransformationPredictor logs={metricLogs} />;
+    case 'forecast':       return user?.subscriptionTier === 'pro' ? <TransformationPredictor logs={metricLogs} /> : <Pricing />;
     case 'apps':           return <AppLauncher setActiveTab={setActiveTab} />;
     case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} />;
     default:               return <Overview {...props} />;
@@ -315,6 +318,7 @@ export default function App() {
 
 
   useEffect(() => {
+    trackEvent('App Opened');
     fetchInitialData();
     checkServerHealth();
     const interval = setInterval(checkServerHealth, TIMING.SERVER_HEALTH_POLL_MS);
@@ -430,26 +434,28 @@ export default function App() {
             <main className="content-area">
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
-                  {isNotFound
-                    ? <NotFound />
-                    : isLoading
-                    ? <LoadingSkeleton />
-                    : <TabRenderer
-                        tab={activeTab}
-                        user={user}
-                        setUser={setUser}
-                        theme={theme}
-                        setTheme={setTheme}
-                        setActiveTab={setActiveTab}
-                        metricLogs={metricLogs}
-                      />
-                  }
+                  <div key={activeTab} className="page-transition-wrapper">
+                    {isNotFound
+                      ? <NotFound />
+                      : isLoading
+                      ? <LoadingSkeleton />
+                      : <TabRenderer
+                          tab={activeTab}
+                          user={user}
+                          setUser={setUser}
+                          theme={theme}
+                          setTheme={setTheme}
+                          setActiveTab={setActiveTab}
+                          metricLogs={metricLogs}
+                        />
+                    }
+                  </div>
                 </Suspense>
               </ErrorBoundary>
             </main>
 
-            {/* ── Pill Nav: Glass/Clay UI ── */}
-            <PillNav
+            {/* ── Wheel Nav: Soft Animations UI ── */}
+            <WheelNav
               activeTab={activeTab}
               onTabChange={setActiveTab}
             />

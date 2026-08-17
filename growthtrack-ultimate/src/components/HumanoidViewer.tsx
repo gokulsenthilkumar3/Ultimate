@@ -24,13 +24,16 @@ import {
   ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle,
   Target, TrendingUp, Maximize2, Minimize2, Settings,
   Activity, Heart, Dumbbell, ArrowRight, Star, Flag,
+  Activity, Heart, Dumbbell, ArrowRight, Star, Flag,
   Play, Pause, SlidersHorizontal, Palette, Globe,
-  FlaskConical, Cpu, Monitor,
+  FlaskConical, Cpu, Monitor, Share2,
 } from 'lucide-react';
+import SocialShareModal from './SocialShareModal';
 import use3DStore from '../store/use3DStore';
 import useStore from '../store/useStore';
 import { USER, BODY_PARTS, STATUS } from '../data/userData';
 import { useToast } from '../hooks/useToast';
+import { trackEvent } from '../lib/analytics';
 
 // Lazy load the heavy 3D canvas
 const ChamberCanvas = lazy(() => import('./ChamberCanvas'));
@@ -229,6 +232,12 @@ export default function HumanoidViewer() {
   const cameraPreset      = use3DStore((s) => s.cameraPreset);
   const autoRotate        = use3DStore((s) => s.autoRotate);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareImageSrc, setShareImageSrc] = useState(null);
+  
+  useEffect(() => {
+    trackEvent('Viewed Avatar', { score: 100 }); // Score gets evaluated, we will just pass a generic or default value because calculating overallScore here creates circular dependencies
+  }, []);
   const wardrobe          = use3DStore((s) => s.wardrobeState);
   const anatomyDepth      = use3DStore((s) => s.anatomyDepth);
   const selectedPart      = use3DStore((s) => s.focusedBodyPart);
@@ -412,6 +421,16 @@ export default function HumanoidViewer() {
     toast.success('Screenshot exported.');
   }, [toast]);
 
+  const handleShareAvatar = useCallback(() => {
+    const canvas = document.querySelector('.chamber-viewport canvas') as HTMLCanvasElement | null;
+    if (canvas) {
+      setShareImageSrc(canvas.toDataURL('image/png') as any);
+    } else {
+      setShareImageSrc(null);
+    }
+    setShowShareModal(true);
+  }, []);
+
   const handleSaveSnapshot = useCallback(() => {
     saveSnapshot();
     toast.success('Timeline snapshot saved.');
@@ -459,6 +478,7 @@ export default function HumanoidViewer() {
   }, [isZoomed, setCameraZoom]);
 
   return (
+    <>
     <div className="chamber fade-in chamber-fullscreen-wrap">
       {/* ═══ SCAN BOOT EFFECT + OVERLAYS ═══ */}
       <div className="chamber-scan-boot" />
@@ -552,6 +572,9 @@ export default function HumanoidViewer() {
                 </button>
               </div>
               {/* Export */}
+              <button className="chamber-pill" onClick={handleShareAvatar} style={{ color: 'var(--chamber-gold)', borderColor: 'var(--chamber-gold)', background: 'rgba(255, 215, 0, 0.05)' }}>
+                <Share2 size={12} /> SHARE
+              </button>
               <button className="chamber-pill chamber-pill--export" onClick={captureScreenshot}>
                 <Camera size={12} /> EXPORT
               </button>
@@ -1306,5 +1329,13 @@ export default function HumanoidViewer() {
         </div>
       </div>
     </div>
+      {showShareModal && (
+        <SocialShareModal 
+          onClose={() => setShowShareModal(false)}
+          imageSrc={shareImageSrc}
+          score={overallScore}
+        />
+      )}
+    </>
   );
 }
