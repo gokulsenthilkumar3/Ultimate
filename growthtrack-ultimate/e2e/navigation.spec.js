@@ -1,13 +1,13 @@
 /**
  * navigation.spec.js
  * E2E: BottomNavBar group navigation + FloatingNav pill switching.
- * Assumes the dev server is running at http://localhost:5173/Ultimate/
+ * Assumes the dev server is running at http://localhost:5000/Ultimate/
  * and that onboarding has already been completed (or is bypassed via
  * localStorage seed — see playwright.config.js storageState).
  */
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:5173/Ultimate/';
+const BASE = 'http://localhost:5000/Ultimate/';
 
 test.describe('Navigation — BottomNavBar groups', () => {
   test.beforeEach(async ({ page }) => {

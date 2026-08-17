@@ -37,7 +37,7 @@ const useStore = create<any>()(
           const already = state.pinnedTabs.includes(tabId);
           return {
             pinnedTabs: already
-              ? state.pinnedTabs.filter((t) => t !== tabId)
+              ? state.pinnedTabs.filter((t: any) => t !== tabId)
               : [...state.pinnedTabs, tabId],
           };
         });
@@ -54,7 +54,17 @@ const useStore = create<any>()(
       databases: [],
 
       shopping: { items: [] },
+      entertainment: { media: [] },
       timesheetEntries: [],
+      
+      sleep_logs: [],
+      nutrition_logs: [],
+      notes: [],
+      goals: [],
+      documents: [],
+      habits: [],
+      subscriptions: [],
+
       addTimesheetEntry: (entry: any) => set((state: any) => ({ timesheetEntries: [entry, ...state.timesheetEntries] })),
       deleteTimesheetEntry: (id: string) => set((state: any) => ({ timesheetEntries: state.timesheetEntries.filter((e: any) => e.id !== id) })),
 
@@ -150,7 +160,7 @@ const useStore = create<any>()(
       addWorkoutFromTrainingDay: async (day: any) => {
         if (!day) return;
         const volume = (day.exercises || []).reduce(
-          (s, e) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0),
+          (s: any, e: any) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0),
           0
         );
         const today = new Date().toISOString().slice(0, 10);
@@ -162,7 +172,7 @@ const useStore = create<any>()(
         if (!sessionRes?.id) return;
 
         const exercisesPayload = {
-          exercises: (day.exercises || []).map((ex) => ({
+          exercises: (day.exercises || []).map((ex: any) => ({
             exercise_name: ex.name,
             sets: Number(ex.sets) || null,
             reps: Number(ex.reps) || null,
@@ -221,19 +231,19 @@ const useStore = create<any>()(
         set((state: any) => ({
           shopping: {
             ...state.shopping,
-            items: state.shopping.items.filter((i) => i.id !== id),
+            items: state.shopping.items.filter((i: any) => i.id !== id),
           },
         }));
       },
 
       toggleShoppingPurchased: (id: string) => {
-        const item = get().shopping.items.find(i => i.id === id);
+        const item = get().shopping.items.find((i: any) => i.id === id);
         if (item) {
           apiSync(`/shopping/${id}`, 'PUT', { purchased: !item.purchased });
           set((state: any) => ({
             shopping: {
               ...state.shopping,
-              items: state.shopping.items.map((i) =>
+              items: state.shopping.items.map((i: any) =>
                 i.id === id ? { ...i, purchased: !item.purchased } : i
               ),
             },
@@ -243,7 +253,7 @@ const useStore = create<any>()(
 
       checkServerHealth: async () => {
         try {
-          const res = await fetch(`${API_BASE}/health`, { method: 'GET', signal: AbortSignal.timeout(4000) });
+          const res = await fetch(`${((import.meta as any).env.VITE_API_URL || 'http://localhost:5000')}/health`, { method: 'GET', signal: AbortSignal.timeout(4000) });
           set({ serverStatus: res.ok ? 'online' : 'offline' });
         } catch {
           set({ serverStatus: 'offline' });
@@ -289,20 +299,20 @@ const useStore = create<any>()(
         set((state: any) => ({
           entertainment: {
             ...state.entertainment,
-            media: state.entertainment.media.filter((m) => m.id !== id),
+            media: state.entertainment.media.filter((m: any) => m.id !== id),
           },
         }));
       },
 
       updateMediaProgress: async (id: string, field: string, value: any) => {
-        const item = get().entertainment.media.find(m => m.id === id);
+        const item = get().entertainment.media.find((m: any) => m.id === id);
         if (item) {
           const updates = { ...item, [field]: value };
           apiSync('/entertainment', 'POST', updates);
           set((state: any) => ({
             entertainment: {
               ...state.entertainment,
-              media: state.entertainment.media.map((m) =>
+              media: state.entertainment.media.map((m: any) =>
                 m.id === id ? { ...m, [field]: value } : m
               ),
             },
@@ -322,11 +332,11 @@ const useStore = create<any>()(
       },
       deleteNote: (id: string) => {
         apiSync(`/notes/${id}`, 'DELETE');
-        set((state: any) => ({ notes: state.notes.filter(n => n.id !== id) }));
+        set((state: any) => ({ notes: state.notes.filter((n: any) => n.id !== id) }));
       },
       updateNote: (id: string, updates: any) => {
         apiSync(`/notes/${id}`, 'PUT', updates);
-        set((state: any) => ({ notes: state.notes.map(n => n.id === id ? { ...n, ...updates } : n) }));
+        set((state: any) => ({ notes: state.notes.map((n: any) => n.id === id ? { ...n, ...updates } : n) }));
       },
 
       addGoal: async (goal: any) => {
@@ -337,17 +347,17 @@ const useStore = create<any>()(
       },
       deleteGoal: (id: string) => {
         apiSync(`/goals/${id}`, 'DELETE');
-        set((state: any) => ({ goals: state.goals.filter(g => g.id !== id) }));
+        set((state: any) => ({ goals: state.goals.filter((g: any) => g.id !== id) }));
       },
       updateGoal: (id: string, updates: any) => {
         apiSync(`/goals/${id}`, 'PUT', updates);
-        set((state: any) => ({ goals: state.goals.map(g => g.id === id ? { ...g, ...updates } : g) }));
+        set((state: any) => ({ goals: state.goals.map((g: any) => g.id === id ? { ...g, ...updates } : g) }));
       },
 
       saveSleepLog: async (log: any) => {
         await apiSync('/sleep_logs', 'POST', log);
         set((state: any) => ({
-          sleep_logs: [log, ...state.sleep_logs.filter(l => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date))
+          sleep_logs: [log, ...state.sleep_logs.filter((l: any) => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date))
         }));
       },
 
@@ -359,7 +369,7 @@ const useStore = create<any>()(
       },
       deleteDocument: (id: string) => {
         apiSync(`/documents/${id}`, 'DELETE');
-        set((state: any) => ({ documents: state.documents.filter(d => d.id !== id) }));
+        set((state: any) => ({ documents: state.documents.filter((d: any) => d.id !== id) }));
       },
 
       addHabit: async (habit: any) => {
@@ -370,11 +380,11 @@ const useStore = create<any>()(
       },
       deleteHabit: (id: string) => {
         apiSync(`/habits/${id}`, 'DELETE');
-        set((state: any) => ({ habits: state.habits.filter(h => h.id !== id) }));
+        set((state: any) => ({ habits: state.habits.filter((h: any) => h.id !== id) }));
       },
       updateHabit: (id: string, updates: any) => {
         apiSync(`/habits/${id}`, 'PUT', updates);
-        set((state: any) => ({ habits: state.habits.map(h => h.id === id ? { ...h, ...updates } : h) }));
+        set((state: any) => ({ habits: state.habits.map((h: any) => h.id === id ? { ...h, ...updates } : h) }));
       },
 
       fetchHabitLogsForHabit: async (habitId: string) => {
@@ -393,9 +403,9 @@ const useStore = create<any>()(
         await apiSync('/habit_logs', 'POST', { habit_id: habitId, date });
         set((state: any) => {
           const existing = state.habitLogsByHabit[habitId] || [];
-          const exists = existing.some((l) => l.date === date);
+          const exists = existing.some((l: any) => l.date === date);
           const nextLogs = exists
-            ? existing.filter((l) => l.date !== date)
+            ? existing.filter((l: any) => l.date !== date)
             : [{ habit_id: habitId, date }, ...existing];
           return {
             habitLogsByHabit: {
@@ -414,7 +424,7 @@ const useStore = create<any>()(
       },
       deleteSubscription: (id: string) => {
         apiSync(`/subscriptions/${id}`, 'DELETE');
-        set((state: any) => ({ subscriptions: state.subscriptions.filter(s => s.id !== id) }));
+        set((state: any) => ({ subscriptions: state.subscriptions.filter((s: any) => s.id !== id) }));
       },
 
       updateTrainingPlan: async (data: any) => { set({ trainingPlan: data }); apiSync('/training_plan', 'POST', data); },
@@ -431,7 +441,7 @@ const useStore = create<any>()(
       addMoodLog: async (log: any) => {
         await apiSync('/mood_logs', 'POST', log);
         set((state: any) => ({
-          moodLogs: [log, ...state.moodLogs.filter(l => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date)),
+          moodLogs: [log, ...state.moodLogs.filter((l: any) => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date)),
         }));
       },
 
@@ -451,7 +461,7 @@ const useStore = create<any>()(
 
       deleteMedication: async (id: string) => {
         await apiSync(`/medications/${id}`, 'DELETE');
-        set((state: any) => ({ medications: state.medications.filter((m) => m.id !== id) }));
+        set((state: any) => ({ medications: state.medications.filter((m: any) => m.id !== id) }));
       },
     }),
     {

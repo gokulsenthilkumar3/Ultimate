@@ -66,7 +66,7 @@ function Dock({ dockApps, onNavigate, pinnedTabs }) {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '8px', padding: '16px 24px', background: 'rgba(255,255,255,0.04)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)' }}>
+    <div className="glass-card" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '8px', padding: '16px 24px' }}>
       {dockApps.map((app, idx) => {
         const scale  = getScale(idx);
         const isPinned = pinnedTabs?.includes(app.id);
@@ -264,8 +264,7 @@ export default function AppLauncher({ setActiveTab }) {
                 {apps.map(app => {
                   const isPinned = pinnedTabs.includes(app.id);
                   return (
-                    <div key={app.id} style={{ borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', transition: 'transform 0.12s, box-shadow 0.12s', cursor: 'pointer' }}
-                      className="hover-lift"
+                    <div key={app.id} className="glass-card hover-lift card-shine-wrap" style={{ borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
                       onClick={() => onNavigate(app.id)}>
                       <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -294,7 +293,7 @@ export default function AppLauncher({ setActiveTab }) {
                 {apps.map(app => {
                   const isPinned = pinnedTabs.includes(app.id);
                   return (
-                    <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.1s' }}
+                    <div key={app.id} className="glass-card hover-lift card-shine-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: '14px', cursor: 'pointer' }}
                       onClick={() => onNavigate(app.id)}>
                       <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: `${app.color}12`, border: `1px solid ${app.color}26`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.98rem', flexShrink: 0 }}>{app.icon}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>

@@ -164,7 +164,7 @@ Those are shader-driven in code, not Blender shape keys.
 Check off once each region has clean quad flow and meets the vertex budget. Budgets are targets, not hard limits - go over before going under.
 
 | Region | Budget (verts) | Loop requirements | Done |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Torso | 1,800-2,500 | loops at chest, waist, navel; spine curvature, not a straight profile | [ ] |
 | Pelvis/hips | 800-1,200 | dedicated loop density independent of torso and legs (this is where `gut_volume`/`hip_width` deform) | [ ] |
 | Each leg | 1,200-1,800 | loops at hip, mid-thigh, knee x3+, mid-calf, ankle | [ ] |

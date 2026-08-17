@@ -71,6 +71,7 @@ function bldPenis({shaftR:r,length:len}){return bldLathe([[r*.68,0],[r,len*.06],
 function bldScrotum({r}){return bldLathe([[r*.18,0],[r*.68,r*.28],[r,r*.62],[r*.96,r*.92],[r*.70,r*1.22],[r*.28,r*1.48]],14);}
 
 // == computeDimensions =========================================================
+// Based on 7.5-head artistic anatomy canon for adult male at 1.78m scale
 function computeDimensions(w={}) {
   const mass=w.overall_mass??0.28,gut=w.gut_volume??0.18,fat=w.face_roundness??0.20,
     chD=w.chest_depth??0.40,delt=w.deltoid_width??0.40,wst=w.waist_narrow??0.70,
@@ -82,47 +83,88 @@ function computeDimensions(w={}) {
     lipF=w.lip_fullness??0.42,eyeS=w.eye_size??0.40,
     dLen=w.d_length??0.30,dGirth=w.d_girth??0.30;
 
-  const footH=0.061,calfH=0.372,thighH=0.438,hipH=0.190,torsoH=0.500,neckH=0.132;
-  const headR=0.091+fat*0.028+mass*0.007;
-  const calfY=footH+calfH/2, thighY=footH+calfH+thighH/2, hipY=footH+calfH+thighH+hipH/2;
-  const torsoY=footH+calfH+thighH+hipH, neckY=torsoY+torsoH+neckH/2, headY=torsoY+torsoH+neckH+headR;
-  const crotchY=footH+calfH+thighH;
-  const shoulderW=0.150+delt*0.136+mass*0.007, chestW=0.122+chD*0.092+mass*0.016;
-  const waistW=0.082-wst*0.028+gut*0.034+mass*0.014, bellyW=0.086+gut*0.044+mass*0.018;
-  const hipW=0.126+hip*0.054+glut*0.032+mass*0.007, neckR=0.033+neck*0.018;
-  const uArmR=0.035+bic*0.034+mass*0.005, fArmR=0.025+fore*0.020, thighR=0.052+quad*0.032+mass*0.003, calfR=0.034+cal*0.022;
-  const thighX=hipW*0.86, shoulderX=shoulderW+0.066, uArmH=0.350, fArmH=0.305;
-  const uArmY=torsoY+torsoH*0.94-uArmH/2, fArmY=uArmY-uArmH/2-fArmH/2, handY=fArmY-fArmH/2-0.042;
+  // Anatomically correct segment lengths (1.78m total height in 3D units ≈ 1.78)
+  // 7.5-head canon: foot=0.5h, calf=1.0h, thigh=1.25h, hip=0.65h, torso=1.5h, neck=0.4h, head=0.5h
+  // where h = headR*2 (1 head unit)
+  const headR=0.092+fat*0.022+mass*0.006;
+  const oneHead = headR * 2; // ~0.184m per head unit
+
+  const footH   = oneHead * 0.50;  // feet to ankle
+  const calfH   = oneHead * 1.00;  // lower leg
+  const thighH  = oneHead * 1.25;  // upper leg — slightly longer for realism
+  const hipH    = oneHead * 0.65;  // pelvis/glutes
+  const torsoH  = oneHead * 1.55;  // trunk (nipple line to shoulders)
+  const neckH   = oneHead * 0.42;
+  // Arms: upper arm ~1.0h, forearm ~0.88h
+  const uArmH   = oneHead * 1.00;
+  const fArmH   = oneHead * 0.88;
+
+  const calfY  = footH + calfH/2;
+  const thighY = footH + calfH + thighH/2;
+  const hipY   = footH + calfH + thighH + hipH/2;
+  const torsoY = footH + calfH + thighH + hipH;
+  const neckY  = torsoY + torsoH + neckH/2;
+  const headY  = torsoY + torsoH + neckH + headR;
+  const crotchY= footH + calfH + thighH;
+
+  // Shoulder width: anatomically ≈ 2× hip width for athletic male
+  const shoulderW = 0.148 + delt*0.130 + mass*0.008;
+  const chestW    = 0.118 + chD*0.088 + mass*0.014;
+  const waistW    = 0.078 - wst*0.024 + gut*0.032 + mass*0.012; // narrower waist default
+  const bellyW    = 0.082 + gut*0.042 + mass*0.016;
+  const hipW      = 0.120 + hip*0.050 + glut*0.030 + mass*0.006;
+  const neckR     = 0.030 + neck*0.016;
+
+  // Limb radii — toned but not bulky by default
+  const uArmR  = 0.032 + bic*0.030 + mass*0.004;
+  const fArmR  = 0.023 + fore*0.018;
+  const thighR = 0.048 + quad*0.030 + mass*0.003;
+  const calfR  = 0.031 + cal*0.020;
+
+  // Arm positioning: shoulder is at shoulderW + clearance
+  const thighX    = hipW * 0.84;
+  const shoulderX = shoulderW + 0.058; // arm hangs just outside shoulder
+  const uArmY     = torsoY + torsoH * 0.93 - uArmH / 2;
+  const fArmY     = uArmY - uArmH/2 - fArmH/2;
+  const handY     = fArmY - fArmH/2 - 0.040;
+
   // Face
-  const eyeR=headR*(0.118+eyeS*0.050), eyeX=headR*(0.305+jawW*0.035), eyeY=headY-headR*(0.128+fat*0.036), eyeZ=headR*0.880;
+  const eyeR    = headR*(0.115+eyeS*0.048);
+  const eyeX    = headR*(0.300+jawW*0.032);
+  const eyeY    = headY - headR*(0.120+fat*0.034);
+  const eyeZ    = headR*0.875;
   const irisR=eyeR*0.60, pupilR=irisR*0.48;
-  const browX=eyeX*0.92, browY=eyeY+eyeR*1.00, browZ=eyeZ*0.86, browR=headR*(0.102+browD*0.054);
-  const noseBW_r=headR*(0.064+noseBW*0.044), noseTipR_r=headR*(0.044+noseTR*0.032);
-  const noseRootY=headY-headR*0.092, noseLen=headR*0.360, noseTipZ=eyeZ*1.020;
+  const browX=eyeX*0.92, browY=eyeY+eyeR*1.00, browZ=eyeZ*0.86, browR=headR*(0.100+browD*0.052);
+  const noseBW_r=headR*(0.062+noseBW*0.042), noseTipR_r=headR*(0.042+noseTR*0.030);
+  const noseRootY=headY-headR*0.090, noseLen=headR*0.355, noseTipZ=eyeZ*1.018;
   const nostrilR=noseTipR_r*0.40, nostrilX=noseTipR_r*0.80, nostrilY=noseRootY-noseLen*0.82;
-  const lipY=headY-headR*0.525, lipZ=eyeZ*0.966, lipW=headR*(0.165+jawW*0.056);
-  const upperLipH=headR*(0.020+lipF*0.016), lowerLipH=headR*(0.026+lipF*0.018);
-  const earX=headR*0.950, earY=headY-headR*0.108, earH=headR*(0.26+earP*0.11);
-  const jawX=headR*(0.62+jawW*0.09), jawY=headY-headR*0.710;
-  const chinY=headY-headR*0.875, chinZ=headR*(0.78+chinP*0.11), chinR=headR*(0.045+chinP*0.026);
+  const lipY=headY-headR*0.520, lipZ=eyeZ*0.964, lipW=headR*(0.162+jawW*0.054);
+  const upperLipH=headR*(0.020+lipF*0.014), lowerLipH=headR*(0.025+lipF*0.016);
+  const earX=headR*0.945, earY=headY-headR*0.105, earH=headR*(0.25+earP*0.10);
+  const jawX=headR*(0.60+jawW*0.08), jawY=headY-headR*0.700;
+  const chinY=headY-headR*0.870, chinZ=headR*(0.76+chinP*0.10), chinR=headR*(0.043+chinP*0.024);
+
   // Body detail
-  const nippleY=torsoY+torsoH*0.690, nippleX=chestW*0.520, nippleZ=chestW*0.880;
-  const nippleR=0.0065+mass*0.0025, areolaeR=nippleR*2.0;
-  const navelY=torsoY+torsoH*0.270, navelZ=waistW*0.960, navelR=0.0095;
+  const nippleY=torsoY+torsoH*0.710, nippleX=chestW*0.510, nippleZ=chestW*0.882;
+  const nippleR=0.0060+mass*0.0022, areolaeR=nippleR*2.0;
+  const navelY=torsoY+torsoH*0.265, navelZ=waistW*0.962, navelR=0.0090;
+
   // Genitalia
-  const penisShaftR=0.0115+dGirth*0.0095, penisLen=0.060+dLen*0.060;
-  const penisPivotY=crotchY+0.008, penisPivotZ=hipW*0.215;
-  const testisR=0.0175+dGirth*0.0075, testisX=0.0215, scrotumR=testisR*1.30;
+  const penisShaftR=0.0110+dGirth*0.0090, penisLen=0.058+dLen*0.058;
+  const penisPivotY=crotchY+0.007, penisPivotZ=hipW*0.210;
+  const testisR=0.0165+dGirth*0.0070, testisX=0.0210, scrotumR=testisR*1.28;
+
   // Hands/feet
-  const palmW=fArmR*1.65, palmH=fArmR*2.10, palmD=fArmR*0.68;
-  const fingerR=fArmR*0.230, fingerH=fArmR*1.05, thumbR=fArmR*0.285, thumbH=fArmR*0.85;
-  const nailW=fingerR*1.55, nailH=fingerR*0.50, nailD=0.0028;
-  const toeR=calfR*0.18;
-  const bodyScale = 0.96 + mass * 0.028 + (chD + delt + hip + glut) * 0.008;
+  const palmW=fArmR*1.60, palmH=fArmR*2.05, palmD=fArmR*0.65;
+  const fingerR=fArmR*0.225, fingerH=fArmR*1.02, thumbR=fArmR*0.278, thumbH=fArmR*0.82;
+  const nailW=fingerR*1.52, nailH=fingerR*0.48, nailD=0.0026;
+  const toeR=calfR*0.17;
+
+  const bodyScale = 0.97 + mass*0.025 + (chD+delt+hip+glut)*0.007;
   return {
     headR,headY,neckH,neckY,neckR,shoulderW,chestW,waistW,bellyW,hipW,torsoH,torsoY,hipH,hipY,crotchY,
     shoulderX,uArmR,uArmH,uArmY,fArmR,fArmH,fArmY,handY,thighX,thighR,thighH,thighY,calfR,calfH,calfY,
-    footH,footX:thighX*0.88,
+    footH,footX:thighX*0.87,
     eyeR,eyeX,eyeY,eyeZ,irisR,pupilR,browX,browY,browZ,browR,
     noseBW_r,noseTipR_r,noseRootY,noseLen,noseTipZ,nostrilR,nostrilX,nostrilY,
     lipY,lipZ,lipW,upperLipH,lowerLipH,earX,earY,earH,jawX,jawY,chinY,chinZ,chinR,
@@ -132,6 +174,7 @@ function computeDimensions(w={}) {
     bodyScale,
   };
 }
+
 
 // == Sub-components ============================================================
 

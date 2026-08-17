@@ -59,9 +59,12 @@ export function buildMorphIndexMap(mesh) {
   for (const name of MORPH_TARGET_NAMES) {
     if (name in dict) {
       map[name] = dict[name];
-    } else {
-      console.warn(`[useModelLoader] Morph target not found in GLB: "${name}"`);
     }
+    // Missing targets are handled gracefully by ProceduralHumanoid fallback
+  }
+  const missing = MORPH_TARGET_NAMES.filter((n) => !(n in map));
+  if (missing.length > 0 && import.meta.env.DEV) {
+    console.debug(`[useModelLoader] ${missing.length} morph targets not in GLB — using ProceduralHumanoid fallback`);
   }
   return map;
 }

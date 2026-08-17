@@ -179,7 +179,7 @@ export default function SleepDashboard() {
             <Moon size={24} color="var(--accent)" /> Sleep Analytics
           </h2>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{logs.length} sessions logged</p>
+            <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{(logs || []).length} sessions logged</p>
             {chartData.length > 0 && (
               <span className={`sleep-debt-badge ${debtClass}`}>
                 <BatteryCharging size={12} />
