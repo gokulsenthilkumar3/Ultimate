@@ -1,6 +1,8 @@
+<!-- markdownlint-disable MD033 MD036 MD041 MD060 -->
 <div align="center">
   
 # 🌌 GrowthTrack Ultimate
+
 **The Perfection of Universe**
 
 <br/>
@@ -39,6 +41,7 @@
 The humanoid twin relies on a carefully rigged `.glb` asset located at `public/assets/models/humanoid-base.glb`. The application engine dynamically injects custom shaders (Aura, Subsurface Scattering, God Rays) at runtime.
 
 ### 🛠️ Diagnostics Console
+
 Run these commands to validate or rebuild your 3D asset:
 
 ```bash

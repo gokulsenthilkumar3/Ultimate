@@ -1,6 +1,6 @@
 import { Z_INDEX } from '../constants';
 import React from 'react';
-import { Zap, Moon, Sun, Circle, Bell, Settings } from 'lucide-react';
+import { Zap, Moon, Sun, Bell, Settings } from 'lucide-react';
 import HealthScoreRing from './HealthScoreRing';
 
 export default function Header({ user, theme, setTheme, palette, onOpenSettings, unreadCount = 0, onOpenNotifications }) {
@@ -55,37 +55,26 @@ export default function Header({ user, theme, setTheme, palette, onOpenSettings,
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
 
-        {/* Theme mode segmented control */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          padding: '3px', borderRadius: '999px',
-          border: '1px solid var(--border)', background: 'rgba(255,255,255,0.025)'
-        }}>
-        {(['dark', 'amoled', 'light']).map((mode) => {
-            const active = theme === mode;
-            const icon = mode === 'dark' ? Moon : mode === 'amoled' ? Circle : Sun;
-
-            return (
-              <button
-                key={mode}
-                onClick={() => setTheme(mode)}
-                aria-label={`Switch to ${mode} mode`}
-                title={mode}
-                style={{
-                  width: '30px', height: '30px',
-                  borderRadius: '999px', border: 'none',
-                  background: active ? accentColor : 'transparent',
-                  color: active ? '#fff' : 'var(--text-3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', transition: 'all 0.22s ease',
-                  boxShadow: active ? `0 0 12px ${accentColor}66` : 'none',
-                }}
-              >
-                {React.createElement(icon, { size: 13, fill: mode === 'amoled' ? 'currentColor' : 'none' })}
-              </button>
-            );
-          })}
-        </div>
+        {/* Theme toggle — dark / light */}
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '5px 12px', borderRadius: '999px',
+            border: '1px solid var(--border)',
+            background: 'rgba(255,255,255,0.035)',
+            color: 'var(--text-2)', cursor: 'pointer',
+            fontSize: '0.72rem', fontWeight: 600,
+            transition: 'all 0.25s ease',
+          }}
+        >
+          {theme === 'dark'
+            ? <><Moon size={12} /><span>Dark</span></>
+            : <><Sun size={12} /><span>Light</span></>
+          }
+        </button>
 
         {/* Notification Bell */}
         <button

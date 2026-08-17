@@ -23,6 +23,13 @@
   --shadow-hover: 0 12px 40px rgba(0,0,0,0.5);
   --shadow-nav: 0 16px 48px rgba(0,0,0,0.55);
 
+  /* Soft Neumorphism / Flat 2.0 Elevations (Dark Mode) */
+  --shadow-soft-elevate: 0 4px 16px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-neu-out: var(--shadow-soft-elevate);
+  --shadow-neu-in: inset 0 2px 4px rgba(0,0,0,0.3);
+  --shadow-clay: var(--shadow-soft-elevate);
+
+
   /* Accent — overridden by palette */
   --accent: #f59e0b;
   --accent-soft: rgba(245,158,11,0.15);
@@ -68,29 +75,15 @@
 
   --shadow-card: 0 2px 12px rgba(0,0,0,0.06);
   --shadow-hover: 0 8px 30px rgba(0,0,0,0.1);
+
+  /* Soft Neumorphism / Flat 2.0 Elevations (Light Mode) */
+  --shadow-soft-elevate: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-neu-out: var(--shadow-soft-elevate);
+  --shadow-neu-in: inset 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-clay: var(--shadow-soft-elevate);
 }
 
-/* ── AMOLED Theme ── */
-[data-theme='amoled'] {
-  --bg-base: #000000;
-  --bg-surface: #0a0a0a;
-  --bg-card: rgba(10, 10, 10, 0.85);
-  --bg-glass: rgba(0, 0, 0, 0.95);
-  --bg-elevated: rgba(255,255,255,0.03);
-  --bg-input: rgba(255,255,255,0.05);
-
-  --border: rgba(255,255,255,0.04);
-  --border-strong: rgba(255,255,255,0.08);
-  --border-glow: rgba(255,255,255,0.12);
-
-  --text-1: #ffffff;
-  --text-2: #8a8a9e;
-  --text-3: #7b7ba3;
-
-  --shadow-card: none;
-  --shadow-hover: 0 4px 20px rgba(0,0,0,0.8);
-  --shadow-nav: 0 -4px 32px rgba(0,0,0,0.9);
-}
+/* AMOLED theme removed — only dark and light are supported */
 
 /* ── 5-Color Palette System ── */
 [data-palette='gold']   { --accent: #e5a50a; --accent-soft: rgba(229,165,10,0.14); --accent-secondary: #fbbf24; }
@@ -153,11 +146,35 @@ body {
 }
 
 .content-area {
-  animation: pageEnter 0.5s var(--ease) both;
+  position: relative;
+  min-height: 65vh;
+  animation: pageEnter 0.38s var(--ease) both;
 }
 @keyframes pageEnter {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(12px) scale(0.995); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Float-in animation for cards — apply .card-enter class dynamically */
+@keyframes cardFloatIn {
+  from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+.card-enter { animation: cardFloatIn 0.4s var(--ease) both; }
+
+/* Stagger helpers for lists of cards */
+.card-enter:nth-child(1) { animation-delay: 0.00s; }
+.card-enter:nth-child(2) { animation-delay: 0.04s; }
+.card-enter:nth-child(3) { animation-delay: 0.08s; }
+.card-enter:nth-child(4) { animation-delay: 0.12s; }
+.card-enter:nth-child(5) { animation-delay: 0.16s; }
+.card-enter:nth-child(6) { animation-delay: 0.20s; }
+
+/* Subtle hover lift for interactive cards */
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover), 0 0 40px -8px var(--accent-soft);
+  border-color: var(--border-strong);
 }
 
 /* ═══════════ TYPOGRAPHY ═══════════════════════ */
@@ -248,16 +265,42 @@ body {
 
 /* ═══════════ GLASS CARD ═══════════════════════ */
 .glass-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
   padding: 1.75rem;
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-  box-shadow: var(--shadow-card), 0 0 40px -10px var(--accent-soft);
+  box-shadow: var(--shadow-soft-elevate);
   position: relative;
   overflow: hidden;
+}
+
+/* ═══════════ CLAYMORPHISM & NEUMORPHISM PANELS ══════════════════════════ */
+.clay-panel {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-clay);
+  border: 1px solid var(--border);
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+.clay-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-clay), 0 12px 30px rgba(0,0,0,0.15);
+}
+
+.neu-panel {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-neu-out);
+  border: 1px solid var(--border);
+}
+.neu-panel-inset {
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-neu-in);
+  border: 1px solid var(--border);
 }
 
 .auth-shell {
@@ -483,27 +526,50 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 14px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-strong);
   padding: 0.95rem 1.2rem;
   font-weight: 800;
   cursor: pointer;
   text-decoration: none;
-  transition: transform 0.2s var(--ease), background 0.2s var(--ease), border-color 0.2s var(--ease);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--text-1);
+  transition: all 0.2s var(--ease);
 }
 
 .btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-card);
+  border-color: var(--border-glow);
 }
 
 .btn--primary {
   background: var(--accent);
   color: #111;
+  border: none;
+  box-shadow: 0 4px 12px var(--accent-soft);
+}
+.btn--primary:hover {
+  box-shadow: 0 6px 16px var(--accent-soft);
+}
+.btn--primary:active {
+  box-shadow: 0 2px 6px var(--accent-soft);
 }
 
 .btn--ghost {
   background: transparent;
   border-color: var(--border-strong);
   color: var(--text-1);
+  box-shadow: none;
+}
+.btn--ghost:hover {
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-neu-out);
 }
 
 .btn--full {
@@ -549,9 +615,11 @@ body {
   border-radius: 24px;
   border: 1px solid var(--border);
   background: var(--bg-card);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
-  box-shadow: var(--shadow-card);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: var(--shadow-soft-elevate);
+  position: relative;
+  overflow: hidden;
 }
 
 .app-hub-hero {

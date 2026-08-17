@@ -43,3 +43,5 @@ Claude.md
 
 # One-off scripts output
 *.tmp
+
+/src/generated/prisma

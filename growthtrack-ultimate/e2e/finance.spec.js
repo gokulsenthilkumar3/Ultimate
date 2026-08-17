@@ -4,7 +4,7 @@
  */
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:5173/Ultimate/';
+const BASE = 'http://localhost:5000/Ultimate/';
 
 test.describe('Finance — transaction validation', () => {
   test.beforeEach(async ({ page }) => {

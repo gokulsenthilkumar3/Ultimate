@@ -18,7 +18,7 @@ import LoginPage from './pages/LoginPage';
 import OnboardingWizard    from './components/OnboardingWizard';
 import CommandPalette      from './components/CommandPalette';
 import DailyCheckIn        from './components/DailyCheckIn';
-import BottomNavBar        from './components/BottomNavBar';
+import PillNav             from './components/PillNav';
 import SettingsModal       from './components/SettingsModal';
 import NotificationCenter  from './components/NotificationCenter';
 import LoadingSkeleton     from './components/ui/LoadingSkeleton';
@@ -28,7 +28,6 @@ import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
 import { useVascularitySync }    from './store/use3DStore.usage';
 import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
 import { GLOBAL_MODULES } from './constants/modules';
-import { TAB_GROUP_MAP, GROUPS } from './components/BottomNavBar';
 
 // ── Unread notification count ──────────────────────────────────────────────
 function countUnreadNotifs(user) {
@@ -223,55 +222,6 @@ function NavbarCheckInAlert({ onOpen, onDismiss }) {
   );
 }
 
-function FloatingNav({ activeTab, setActiveTab, navItems }) {
-  const scrollRef = React.useRef(null);
-
-  useEffect(() => {
-    const activeEl = scrollRef.current?.querySelector('.active');
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [activeTab]);
-
-  return (
-    <nav className="nav-container" role="navigation" aria-label="Main navigation">
-      <div className="nav-track" ref={scrollRef}>
-        {navItems.map((item) => {
-          if (item.isDivider) {
-            return (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '0 8px', gap: '4px', opacity: 0.6, borderLeft: '1px solid var(--border-strong)', marginLeft: '4px', paddingLeft: '12px' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</span>
-              </div>
-            );
-          }
-          return (
-          <button
-            key={item.id}
-            title={item.label}
-            className={`nav-item${activeTab === item.id ? ' active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
-            aria-current={activeTab === item.id ? 'page' : undefined}
-          >
-            <span className="nav-icon-wrap">
-              {item.badge > 0 && (
-                <span className="nav-badge" style={{
-                  background:  COLORS.NAV_BADGE_BG,
-                  boxShadow:   `0 0 6px ${COLORS.NAV_BADGE_SHADOW}`,
-                  minWidth: '16px', height: '16px', borderRadius: '99px',
-                  fontSize: '0.58rem', fontWeight: 900,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '0 3px',
-                }}>{item.badge > LAYOUT.BADGE_MAX ? `${LAYOUT.BADGE_MAX}+` : item.badge}</span>
-              )}
-            </span>
-            <span className="nav-label">{item.label}</span>
-          </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
 
 export default function App() {
   const user         = useStore(selectUser);
@@ -363,32 +313,6 @@ export default function App() {
 
   const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);
 
-  const navItems = useMemo(() => {
-    const items = [];
-    
-    GROUPS.forEach(g => {
-      const gItems = pinnedTabs.filter(id => TAB_GROUP_MAP[id] === g.id);
-      if (gItems.length > 0) {
-        items.push({ isDivider: true, id: `div-${g.id}`, label: g.label });
-        gItems.forEach(id => {
-          items.push({ id, label: GLOBAL_MODULES[id] || id });
-        });
-      }
-    });
-
-    const ungrouped = pinnedTabs.filter(id => !TAB_GROUP_MAP[id]);
-    if (ungrouped.length > 0) {
-      items.push({ isDivider: true, id: 'div-other', label: 'Other' });
-      ungrouped.forEach(id => {
-        items.push({ id, label: GLOBAL_MODULES[id] || id });
-      });
-    }
-
-    items.push({ isDivider: true, id: 'div-system', label: 'System' });
-    items.push({ id: 'apps', label: 'App Hub' });
-    items.push({ id: 'notifications', label: '🔔 Alerts', badge: unreadCount });
-    return items;
-  }, [pinnedTabs, unreadCount]);
 
   useEffect(() => {
     fetchInitialData();
@@ -419,26 +343,6 @@ export default function App() {
     }
   }, [onboardingComplete, lastCheckIn, checkInAlertDismissedDate, todayStr]);
 
-  // ── Keyboard shortcuts: Ctrl+1–9 navigate to real nav tabs (skip dividers) ──
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Don't intercept when typing inside an input/textarea/select/contenteditable
-      const tag = document.activeElement?.tagName;
-      const isEditable = document.activeElement?.isContentEditable;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || isEditable) return;
-
-      if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
-        const tabItems = navItems.filter(item => !item.isDivider);
-        const index = parseInt(e.key, 10) - 1;
-        if (index < tabItems.length) {
-          e.preventDefault();
-          setActiveTab(tabItems[index].id);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navItems, setActiveTab]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme',   theme);
@@ -544,15 +448,10 @@ export default function App() {
               </ErrorBoundary>
             </main>
 
-            {/* ── Navigation: FloatingNav on desktop, BottomNavBar on mobile ── */}
-            <FloatingNav
+            {/* ── Pill Nav: Glass/Clay UI ── */}
+            <PillNav
               activeTab={activeTab}
-              setActiveTab={(tab) => { setActiveTab(tab); }}
-              navItems={navItems}
-            />
-            <BottomNavBar
-              activeTab={activeTab}
-              onTabChange={(tab) => { setActiveTab(tab); }}
+              onTabChange={setActiveTab}
             />
           </div>
         </div>

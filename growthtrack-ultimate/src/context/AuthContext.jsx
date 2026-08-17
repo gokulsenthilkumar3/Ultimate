@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 
 const AuthContext = createContext(null);
 const TOKEN_KEY = 'growthtrack-session-token';
-const AUTH_API_BASE = import.meta.env.VITE_AUTH_API_BASE || import.meta.env.VITE_API_BASE || '/api';
+const AUTH_API_BASE = 'http://localhost:3001';
 
 const readToken = () => sessionStorage.getItem(TOKEN_KEY);
 const writeToken = (token) => sessionStorage.setItem(TOKEN_KEY, token);
