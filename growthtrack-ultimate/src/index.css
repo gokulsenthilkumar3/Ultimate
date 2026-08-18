@@ -53,6 +53,13 @@
   /* Layout sizing tokens */
   --header-height: 72px;
   --alert-banner-height: 38px;
+  
+  /* Premium Nav Tokens */
+  --nav-bg: rgba(18, 18, 20, 0.65);
+  --nav-border: rgba(255, 255, 255, 0.08);
+  --nav-highlight: rgba(255, 255, 255, 0.1);
+  --nav-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+  --sidebar-width: 280px;
 }
 
 
@@ -81,6 +88,12 @@
   --shadow-neu-out: var(--shadow-soft-elevate);
   --shadow-neu-in: inset 0 2px 4px rgba(0,0,0,0.04);
   --shadow-clay: var(--shadow-soft-elevate);
+
+  /* Premium Nav Tokens */
+  --nav-bg: rgba(255, 255, 255, 0.75);
+  --nav-border: rgba(0, 0, 0, 0.05);
+  --nav-highlight: rgba(0, 0, 0, 0.05);
+  --nav-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
 }
 
 /* AMOLED theme removed — only dark and light are supported */
@@ -830,6 +843,7 @@ body {
   z-index: 10;
   display: grid;
   place-items: center;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
 }
