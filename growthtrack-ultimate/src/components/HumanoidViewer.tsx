@@ -24,7 +24,6 @@ import {
   ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle,
   Target, TrendingUp, Maximize2, Minimize2, Settings,
   Activity, Heart, Dumbbell, ArrowRight, Star, Flag,
-  Activity, Heart, Dumbbell, ArrowRight, Star, Flag,
   Play, Pause, SlidersHorizontal, Palette, Globe,
   FlaskConical, Cpu, Monitor, Share2,
 } from 'lucide-react';
@@ -224,7 +223,7 @@ function AnatomySVG({ depth }: { depth: number }) {
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HumanoidViewer() {
-  const toast = useToast();
+  const toast: any = useToast();
 
   // ── Store
   const viewMode          = use3DStore((s) => s.viewMode);

@@ -4,10 +4,17 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createRequire } from 'module';
 import Stripe from 'stripe';
+import { createClient } from '@libsql/client';
+import { PrismaLibSql } from '@prisma/adapter-libsql';
 const require = createRequire(import.meta.url);
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+const libsql = createClient({
+  url: process.env.DATABASE_URL || 'file:./dev.db',
+});
+const adapter = new PrismaLibSql(libsql);
+const prisma = new PrismaClient({ adapter });
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock');
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_mock';
 const app = express();
@@ -253,6 +260,206 @@ app.post('/api/referrals/sync', async (req, res) => {
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
   }
+});
+
+// Middleware to authenticate requests to dynamic endpoints
+const authMiddleware = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    req.user = user;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// Update user singletons
+app.post('/user', authMiddleware, async (req, res) => {
+  try {
+    const data = req.body;
+    const updateData = {};
+    const singletonFields = ['trainingPlan', 'nutritionStrategy', 'lifestyleTips', 'medicalData', 'physiqueTargets', 'assessmentQA', 'skills', 'calendarEvents', 'wellnessData', 'healthExtras'];
+    
+    // Also support root fields if needed
+    if (data.email) updateData.email = data.email;
+    if (data.fullName) updateData.fullName = data.fullName;
+    
+    singletonFields.forEach(field => {
+      if (data[field] !== undefined) {
+        updateData[field] = typeof data[field] === 'object' ? JSON.stringify(data[field]) : data[field];
+      }
+    });
+
+    // Support separate endpoints like /training_plan mapping directly to user update
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData
+    });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Single endpoints mapping to user JSON fields
+const singletons = [
+  'training_plan', 'nutrition_strategy', 'lifestyle_tips', 'medical_data', 
+  'physique_targets', 'assessment_qa', 'skills', 'calendar_events', 'wellness_data', 'health_extras'
+];
+
+singletons.forEach(route => {
+  app.post(`/${route}`, authMiddleware, async (req, res) => {
+    try {
+      const camelCaseField = route.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+      const user = await prisma.user.update({
+        where: { id: req.user.id },
+        data: { [camelCaseField]: typeof req.body === 'object' ? JSON.stringify(req.body) : req.body }
+      });
+      res.json(user);
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+  
+  app.put(`/${route}`, authMiddleware, async (req, res) => {
+    try {
+      const camelCaseField = route.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+      const user = await prisma.user.update({
+        where: { id: req.user.id },
+        data: { [camelCaseField]: typeof req.body === 'object' ? JSON.stringify(req.body) : req.body }
+      });
+      res.json(user);
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+});
+
+// Dynamic CRUD endpoints for collections
+const collections = [
+  { name: 'tasks', model: prisma.task },
+  { name: 'finance', model: prisma.transaction },
+  { name: 'budgets', model: prisma.budget },
+  { name: 'metric_logs', model: prisma.metricLog },
+  { name: 'nutrition_logs', model: prisma.nutritionLog },
+  { name: 'workout_sessions', model: prisma.workoutSession },
+  { name: 'shopping', model: prisma.shoppingItem },
+  { name: 'timesheet', model: prisma.timesheetSession },
+  { name: 'entertainment', model: prisma.entertainmentMedia },
+  { name: 'notes', model: prisma.note },
+  { name: 'goals', model: prisma.goal },
+  { name: 'sleep_logs', model: prisma.sleepLog },
+  { name: 'documents', model: prisma.document },
+  { name: 'habits', model: prisma.habit },
+  { name: 'subscriptions', model: prisma.subscriptionItem },
+  { name: 'mood_logs', model: prisma.moodLog },
+  { name: 'vitals_logs', model: prisma.vitalsLog },
+  { name: 'medications', model: prisma.medication },
+];
+
+collections.forEach(({ name, model }) => {
+  // GET all for user
+  app.get(`/${name}`, authMiddleware, async (req, res) => {
+    try {
+      const items = await model.findMany({ where: { userId: req.user.id } });
+      res.json(items);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // POST create new
+  app.post(`/${name}`, authMiddleware, async (req, res) => {
+    try {
+      const { id, ...data } = req.body;
+      
+      // Clean up relations or arrays that might be in the payload
+      Object.keys(data).forEach(k => {
+        if (typeof data[k] === 'object' && data[k] !== null) {
+          data[k] = JSON.stringify(data[k]);
+        }
+      });
+      
+      const item = await model.create({
+        data: { ...data, userId: req.user.id, id: id || undefined }
+      });
+      res.json(item);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // PUT update
+  app.put(`/${name}/:id`, authMiddleware, async (req, res) => {
+    try {
+      const data = { ...req.body };
+      Object.keys(data).forEach(k => {
+        if (typeof data[k] === 'object' && data[k] !== null) {
+          data[k] = JSON.stringify(data[k]);
+        }
+      });
+      
+      const item = await model.updateMany({
+        where: { id: req.params.id, userId: req.user.id },
+        data
+      });
+      res.json({ success: true, count: item.count });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // DELETE 
+  app.delete(`/${name}/:id`, authMiddleware, async (req, res) => {
+    try {
+      const item = await model.deleteMany({
+        where: { id: req.params.id, userId: req.user.id }
+      });
+      res.json({ success: true, count: item.count });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+});
+
+// Nested entities overrides
+app.post('/workout_sessions/:id/exercises', authMiddleware, async (req, res) => {
+  try {
+    const data = req.body;
+    if (data.exercises) {
+       await prisma.workoutExercise.createMany({
+         data: data.exercises.map(e => ({ ...e, sessionId: req.params.id }))
+       });
+       return res.json({ success: true });
+    }
+    const item = await prisma.workoutExercise.create({
+       data: { ...data, sessionId: req.params.id }
+    });
+    res.json(item);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/workout_sessions/:id/exercises', authMiddleware, async (req, res) => {
+  try {
+    const items = await prisma.workoutExercise.findMany({ where: { sessionId: req.params.id } });
+    res.json(items);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/habit_logs', authMiddleware, async (req, res) => {
+  try {
+    const data = req.body; 
+    const habitId = data.habit_id;
+    const date = data.date;
+    const existing = await prisma.habitLog.findFirst({ where: { habitId, date }});
+    if (existing) {
+       await prisma.habitLog.delete({ where: { id: existing.id } });
+       res.json({ success: true, deleted: true });
+    } else {
+       const log = await prisma.habitLog.create({ data: { habitId, date } });
+       res.json(log);
+    }
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/habit_logs/:habitId', authMiddleware, async (req, res) => {
+  try {
+    const items = await prisma.habitLog.findMany({ where: { habitId: req.params.habitId } });
+    res.json(items);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.listen(PORT, () => {

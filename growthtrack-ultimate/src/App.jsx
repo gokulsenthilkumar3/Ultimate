@@ -18,7 +18,8 @@ import LoginPage from './pages/LoginPage';
 import OnboardingWizard    from './components/OnboardingWizard';
 import CommandPalette      from './components/CommandPalette';
 import DailyCheckIn        from './components/DailyCheckIn';
-import WheelNav            from './components/WheelNav';
+import FloatingPillDock    from './components/FloatingPillDock';
+import PremiumSidebar      from './components/PremiumSidebar';
 import SettingsModal       from './components/SettingsModal';
 import NotificationCenter  from './components/NotificationCenter';
 import LoadingSkeleton     from './components/ui/LoadingSkeleton';
@@ -454,10 +455,16 @@ export default function App() {
               </ErrorBoundary>
             </main>
 
-            {/* ── Wheel Nav: Soft Animations UI ── */}
-            <WheelNav
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
+            {/* ── Premium Navigation UI ── */}
+            <PremiumSidebar 
+              activeTab={activeTab} 
+              setActiveTab={setActiveTab} 
+              user={user} 
+              onOpenSettings={() => setShowSettings(true)} 
+            />
+            <FloatingPillDock 
+              activeTab={activeTab} 
+              onTabChange={setActiveTab} 
             />
           </div>
         </div>

@@ -1229,3 +1229,242 @@
     break-inside: avoid;
   }
 }
+
+/* ═══════════ PREMIUM NAVIGATION SYSTEM ═══════════════════════ */
+
+/* ── 1. Desktop Premium Sidebar ── */
+.premium-sidebar {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .premium-sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: var(--nav-bg);
+    border-right: 1px solid var(--nav-border);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    backdrop-filter: blur(40px) saturate(200%);
+    z-index: 4000;
+    padding: 24px 16px;
+    box-shadow: 1px 0 24px rgba(0,0,0,0.1);
+  }
+
+  .main-area {
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+  }
+}
+
+.premium-sidebar-header {
+  margin-bottom: 32px;
+  padding: 0 8px;
+}
+
+.premium-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  transition: all 0.3s var(--ease);
+}
+
+.premium-sidebar-user:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+}
+
+.premium-sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.premium-sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.premium-sidebar-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-1);
+}
+
+.premium-sidebar-plan {
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.premium-sidebar-nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.magic-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-radius: 12px;
+  background: var(--nav-highlight);
+  border: 1px solid var(--border);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.premium-sidebar-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.premium-sidebar-item:hover {
+  color: var(--text-1);
+}
+
+.premium-sidebar-item.active {
+  color: var(--text-1);
+}
+
+.premium-sidebar-icon {
+  transition: all 0.3s var(--ease);
+}
+
+.premium-sidebar-item:hover .premium-sidebar-icon {
+  transform: scale(1.1);
+}
+
+.premium-sidebar-item.active .premium-sidebar-icon {
+  color: var(--accent);
+  filter: drop-shadow(0 0 8px var(--accent-soft));
+}
+
+.premium-sidebar-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.premium-sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--nav-border);
+}
+
+.premium-sidebar-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.premium-sidebar-action:hover {
+  background: var(--bg-elevated);
+  color: var(--text-1);
+}
+
+
+/* ── 2. Mobile Floating Pill Dock ── */
+.floating-pill-dock-container {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .floating-pill-dock-container {
+    display: flex;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4000;
+    width: 90%;
+    max-width: 400px;
+    justify-content: center;
+  }
+}
+
+.floating-pill-dock {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  background: var(--bg-glass);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border-radius: 999px;
+  border: 1px solid var(--border-glow);
+  box-shadow: var(--shadow-nav), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  width: 100%;
+}
+
+.pill-dock-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  height: 48px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.pill-dock-icon {
+  flex-shrink: 0;
+}
+
+.pill-dock-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  width: 0;
+  margin-left: 0;
+}

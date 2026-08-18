@@ -18,6 +18,38 @@ model User {
   creditBalance      Int      @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  // Singletons (stored as JSON string)
+  trainingPlan       String?
+  nutritionStrategy  String?
+  lifestyleTips      String?
+  medicalData        String?
+  physiqueTargets    String?
+  assessmentQA       String?
+  skills             String?
+  calendarEvents     String?
+  wellnessData       String?
+  healthExtras       String?
+
+  // Relations
+  tasks              Task[]
+  transactions       Transaction[]
+  budgets            Budget[]
+  metricLogs         MetricLog[]
+  nutritionLogs      NutritionLog[]
+  workoutSessions    WorkoutSession[]
+  shoppingItems      ShoppingItem[]
+  timesheetSessions  TimesheetSession[]
+  entertainmentMedia EntertainmentMedia[]
+  notes              Note[]
+  goals              Goal[]
+  sleepLogs          SleepLog[]
+  documents          Document[]
+  habits             Habit[]
+  subscriptions      SubscriptionItem[]
+  moodLogs           MoodLog[]
+  vitalsLogs         VitalsLog[]
+  medications        Medication[]
 }
 
 model Referral {
@@ -27,4 +59,214 @@ model Referral {
   status       String   @default("pending")
   creditAmount Int      @default(10)
   createdAt    DateTime @default(now())
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String?
+  status      String?
+  due_date    String?
+  priority    String?
+  done        Boolean  @default(false)
+  completedAt String?
+  createdAt   DateTime @default(now())
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float?
+  type        String?
+  category    String?
+  method      String?
+  date        String?
+  note        String?
+  createdAt   DateTime @default(now())
+}
+
+model Budget {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     String?
+  limit_amount Float?
+  month        String?
+  createdAt    DateTime @default(now())
+}
+
+model MetricLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String?
+  metric    String?
+  value     Float?
+  createdAt DateTime @default(now())
+}
+
+model NutritionLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logged_at String?
+  date      String?
+  data      String?  // Storing entire payload as JSON string if dynamic fields exist
+  createdAt DateTime @default(now())
+}
+
+model WorkoutSession {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date             String?
+  notes            String?
+  duration_minutes Int?
+  volume           Float?
+  exercises        WorkoutExercise[]
+  createdAt        DateTime @default(now())
+}
+
+model WorkoutExercise {
+  id            String   @id @default(uuid())
+  sessionId     String
+  session       WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exercise_name String?
+  sets          Int?
+  reps          Int?
+  weight_kg     Float?
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model ShoppingItem {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  purchased Boolean  @default(false)
+  data      String?  // For flexible additional fields
+  createdAt DateTime @default(now())
+}
+
+model TimesheetSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String?
+  duration  Float?
+  data      String?
+  createdAt DateTime @default(now())
+}
+
+model EntertainmentMedia {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  progress  String?
+  data      String?
+  createdAt DateTime @default(now())
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  content   String?
+  createdAt DateTime @default(now())
+}
+
+model Goal {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String?
+  targetDate String?
+  data       String?
+  createdAt  DateTime @default(now())
+}
+
+model SleepLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String?
+  hours     Float?
+  quality   String?
+  data      String?
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  url       String?
+  data      String?
+  createdAt DateTime @default(now())
+}
+
+model Habit {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  streak    Int      @default(0)
+  logs      HabitLog[]
+  createdAt DateTime @default(now())
+}
+
+model HabitLog {
+  id        String   @id @default(uuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      String?
+  createdAt DateTime @default(now())
+}
+
+model SubscriptionItem {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  cost      Float?
+  active    Int      @default(1)
+  data      String?
+  createdAt DateTime @default(now())
+}
+
+model MoodLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String?
+  mood      String?
+  data      String?
+  createdAt DateTime @default(now())
+}
+
+model VitalsLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String?
+  vital     String?
+  value     Float?
+  data      String?
+  createdAt DateTime @default(now())
+}
+
+model Medication {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  dosage    String?
+  data      String?
+  createdAt DateTime @default(now())
 }
