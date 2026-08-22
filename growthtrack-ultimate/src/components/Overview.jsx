@@ -312,7 +312,7 @@ export default function Overview({ setActiveTab }) {
   const quickLinks = [
     { label: 'Tasks', tab: 'tasks', note: 'Action items', icon: <CheckSquare size={14} color="var(--accent)" /> },
     { label: 'Humanoid', tab: 'humanoid', note: 'Body engine', icon: <Activity size={14} color="var(--accent)" /> },
-    { label: 'Portfolio', tab: 'portfolio', note: 'Investments', icon: <TrendingUp size={14} color="var(--accent)" /> },
+    { label: 'Portfolio', tab: 'finance', hash: 'portfolio', note: 'Investments', icon: <TrendingUp size={14} color="var(--accent)" /> },
     { label: 'Profile', tab: 'settings', note: 'About me', icon: <User size={14} color="var(--accent)" /> },
   ];
 
@@ -330,8 +330,11 @@ export default function Overview({ setActiveTab }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
             {quickLinks.map((item) => (
               <button 
-                key={item.tab} 
-                onClick={() => setActiveTab(item.tab)} 
+                key={item.label} 
+                onClick={() => {
+                  if (item.hash) window.location.hash = item.hash;
+                  setActiveTab(item.tab);
+                }} 
                 style={{ 
                   border: '1px solid var(--border)', 
                   background: 'var(--bg-glass)', 

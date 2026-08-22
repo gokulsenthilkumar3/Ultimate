@@ -148,7 +148,7 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
     case 'entertainment':  return <Entertainment />;
     case 'social':         return <SocialMedia />;
     case 'pricing':        return <Pricing />;
-    case 'ai':             return user?.subscriptionTier === 'pro' ? <AiDashboard /> : <Pricing />;
+    case 'ai':             return <AiDashboard />;
     case 'maps':           return <Maps />;
     case 'documents':      return <Documents />;
     case 'current':        return <Current />;
@@ -157,7 +157,7 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
     case 'dashboards':     return <Dashboards />;
     case 'about':          return <About />;
     case 'sip':            return <SIPCalculator />;
-    case 'forecast':       return user?.subscriptionTier === 'pro' ? <TransformationPredictor logs={metricLogs} /> : <Pricing />;
+    case 'forecast':       return <TransformationPredictor logs={metricLogs} />;
     case 'apps':           return <AppLauncher setActiveTab={setActiveTab} />;
     case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} />;
     default:               return <Overview {...props} />;
@@ -281,6 +281,13 @@ export default function App() {
     const pathTab = location.pathname.substring(1);
     const locChanged = location.pathname !== prevLocationRef.current;
     const storeChanged = storeActiveTab !== prevStoreTabRef.current;
+
+    if (pathTab === 'portfolio' || pathTab === 'sip') {
+      setActiveTab('finance');
+      window.location.hash = pathTab;
+      navigate('/finance', { replace: true });
+      return;
+    }
 
     if (!isMounted.current) {
       isMounted.current = true;
