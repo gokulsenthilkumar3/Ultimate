@@ -5,6 +5,12 @@ import jwt from 'jsonwebtoken';
 import { createRequire } from 'module';
 import Stripe from 'stripe';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const require = createRequire(import.meta.url);
 require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
@@ -25,6 +31,10 @@ app.use(express.json());
 
 // Delay to simulate network
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'api-explorer.html'));
+});
 
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
 

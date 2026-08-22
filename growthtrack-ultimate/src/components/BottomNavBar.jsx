@@ -13,9 +13,8 @@ export const TAB_GROUP_MAP = {
   skills: 'lifestyle', analytics: 'lifestyle', forecast: 'lifestyle',
   tasks: 'operations', finance: 'operations', timesheet: 'operations',
   projects: 'operations', shopping: 'operations', calendar: 'operations',
-  sip: 'operations',
   entertainment: 'library', notes: 'library', documents: 'library',
-  databases: 'library', portfolio: 'library', social: 'library',
+  databases: 'library', social: 'library',
   ai: 'library', maps: 'library',
 };
 

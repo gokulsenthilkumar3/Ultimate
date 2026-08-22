@@ -68,6 +68,11 @@ export default function AiDashboard() {
     const metrics   = (state.metric_logs || []).slice(-10);
     const sleep     = (state.sleep_logs  || []).slice(-7);
     const finance   = state.finance || {};
+    const notes     = (state.notes       || []).slice(0, 5);
+    const subs      = (state.subscriptions || []).slice(0, 5);
+    const shopItems = (state.shopping?.items || []).slice(0, 5);
+    const meds      = (state.medications || []).slice(0, 5);
+    const timesheet = (state.timesheetEntries || []).slice(0, 5);
 
     const formatGoal = g => `${g.title} (${Math.min(100, Math.round((Number(g.current_value || 0) / Number(g.target_value || 1)) * 100))}% done, status: ${g.status})`;
     const formatHabit = h => `${h.name} (category: ${h.category})`;
@@ -75,6 +80,11 @@ export default function AiDashboard() {
     const formatMetric = m => `${m.type}: ${m.value} ${m.unit || ''} on ${m.date}`;
     const formatSleep  = s => `${s.date}: ${s.duration}h, quality ${s.quality}/10`;
     const formatFin    = () => finance.accounts ? `balance: ₹${Object.values(finance.accounts).reduce((s, a) => s + (a.balance || 0), 0).toLocaleString()}` : '';
+    const formatNote   = n => n.title || 'Untitled Note';
+    const formatSub    = s => `${s.name} (₹${s.cost})`;
+    const formatShop   = i => i.name;
+    const formatMed    = m => `${m.name} (${m.dosage})`;
+    const formatTime   = t => `${t.task} (${t.hours}h)`;
 
     return [
       `User: ${u.name || 'User'}, age ${u.age || '?'}, gender ${u.gender || '?'}`,
@@ -84,6 +94,11 @@ export default function AiDashboard() {
       metrics.length   ? `Recent metrics: ${metrics.map(formatMetric).join('; ')}` : '',
       sleep.length     ? `Sleep (last 7d): ${sleep.map(formatSleep).join('; ')}` : '',
       formatFin()      ? `Finance — ${formatFin()}`                          : '',
+      notes.length     ? `Notes: ${notes.map(formatNote).join(', ')}`         : '',
+      subs.length      ? `Subscriptions: ${subs.map(formatSub).join(', ')}`  : '',
+      shopItems.length ? `Shopping: ${shopItems.map(formatShop).join(', ')}` : '',
+      meds.length      ? `Medications: ${meds.map(formatMed).join(', ')}`    : '',
+      timesheet.length ? `Timesheet: ${timesheet.map(formatTime).join(', ')}` : '',
     ].filter(Boolean).join('\n');
   }, [state]);
 

@@ -30,7 +30,7 @@ const useStore = create<any>()(
       theme: 'dark',
       palette: 'gold',
       activeTab: 'overview',
-      pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'portfolio', 'logs'],
+      pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'logs'],
 
       togglePinnedTab: (tabId: string) => {
         set((state: any) => {

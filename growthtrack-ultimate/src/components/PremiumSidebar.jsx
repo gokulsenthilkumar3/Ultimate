@@ -13,12 +13,12 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
     // Primary / Daily Focus
     'overview', 'current', 'tasks', 'habits', 'progress', 'goals',
     // Work / Operations
-    'projects', 'calendar', 'timesheet', 'finance', 'sip', 'shopping',
+    'projects', 'calendar', 'timesheet', 'finance', 'shopping',
     // Body / Health
     'humanoid', 'physique', 'assessment', 'training', 'strength',
     'nutrition', 'hydration', 'sleep', 'medical', 'health', 'mind', 'lifestyle',
     // Knowledge / Library
-    'notes', 'documents', 'databases', 'logs', 'skills', 'portfolio',
+    'notes', 'documents', 'databases', 'logs', 'skills',
     // Tools / Extras
     'dashboards', 'analytics', 'forecast', 'ai', 'maps', 'entertainment', 'social', 'apps',
     // System

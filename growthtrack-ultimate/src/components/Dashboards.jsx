@@ -109,13 +109,16 @@ export default function Dashboards() {
     weight: l.weight
   })).reverse();
 
-  const financeState = useStore(s => s.finance) || { transactions: [] };
-  const financeTxs = financeState.transactions || [];
+  const financeState = useStore(s => s.finance) || { transactions: {} };
+  const financeTxs = Array.isArray(financeState.transactions)
+    ? financeState.transactions
+    : Object.values(financeState.transactions || {});
   const financeData = financeTxs.reduce((acc, curr) => {
-    const month = curr.date.substring(0, 7);
+    const month = curr.date ? curr.date.substring(0, 7) : '';
+    if (!month) return acc;
     if (!acc[month]) acc[month] = { month, income: 0, expense: 0 };
-    if (curr.type === 'income') acc[month].income += curr.amount;
-    else if (curr.type === 'expense') acc[month].expense += curr.amount;
+    if (curr.type === 'income' || curr.type === 'Income') acc[month].income += curr.amount;
+    else if (curr.type === 'expense' || curr.type === 'Expense') acc[month].expense += curr.amount;
     return acc;
   }, {});
   const financeChartData = Object.values(financeData).sort((a, b) => a.month.localeCompare(b.month)).slice(-6);

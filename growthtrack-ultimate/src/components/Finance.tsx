@@ -7,6 +7,7 @@ import '../styles/finance.css';
 import StatCard from './ui/StatCard';
 import SIPCalculator from './SIPCalculator';
 import EmptyState from './ui/EmptyState';
+import Portfolio from './Portfolio';
 import OverviewTab from './finance/OverviewTab';
 const AnalyticsTab = React.lazy(() => import('./finance/AnalyticsTab'));
 const TrendsTab = React.lazy(() => import('./finance/TrendsTab'));
@@ -75,7 +76,40 @@ export default function Finance() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [budgetForm, setBudgetForm] = useState({ category: '', limit_amount: '' });
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.substring(1).toLowerCase();
+    if (hash === 'portfolio') return 'Portfolio';
+    if (hash === 'sip' || hash === 'planning') return 'SIP';
+    if (hash === 'overview') return 'Overview';
+    if (hash === 'analytics') return 'Analytics';
+    if (hash === 'trends') return 'Trends';
+    if (hash === 'budgeting') return 'Budgeting';
+    if (hash === 'subscriptions') return 'Subscriptions';
+    if (hash === 'sync') return 'Sync';
+    return 'Overview';
+  });
+
+  const handleTabClick = useCallback((tab: string) => {
+    setActiveTab(tab);
+    window.location.hash = tab.toLowerCase();
+  }, []);
+
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1).toLowerCase();
+      if (hash === 'portfolio') setActiveTab('Portfolio');
+      else if (hash === 'sip' || hash === 'planning') setActiveTab('SIP');
+      else if (hash === 'overview') setActiveTab('Overview');
+      else if (hash === 'analytics') setActiveTab('Analytics');
+      else if (hash === 'trends') setActiveTab('Trends');
+      else if (hash === 'budgeting') setActiveTab('Budgeting');
+      else if (hash === 'subscriptions') setActiveTab('Subscriptions');
+      else if (hash === 'sync') setActiveTab('Sync');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const [trendWindow, setTrendWindow] = useState(6);
 
   const subs = useStore(s => s.subscriptions);
@@ -234,14 +268,15 @@ export default function Finance() {
 
       {/* Tabs */}
       <div className="finance-tabs">
-        {['Overview', 'Analytics', 'Trends', 'Budgeting', 'Subscriptions', 'Planning', 'Sync'].map(tab => (
-          <button key={tab} className={`btn-sm finance-tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+        {['Overview', 'Analytics', 'Trends', 'Budgeting', 'Subscriptions', 'Portfolio', 'SIP', 'Sync'].map(tab => (
+          <button key={tab} className={`btn-sm finance-tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => handleTabClick(tab)}>
             {tab === 'Overview' && <Wallet size={14} className="finance-tab-icon" />}
             {tab === 'Analytics' && <BarChart2 size={14} className="finance-tab-icon" />}
             {tab === 'Trends' && <LineIcon size={14} className="finance-tab-icon" />}
             {tab === 'Budgeting' && <Activity size={14} className="finance-tab-icon" />}
             {tab === 'Subscriptions' && <Calendar size={14} className="finance-tab-icon" />}
-            {tab === 'Planning' && <TrendingUp size={14} className="finance-tab-icon" />}
+            {tab === 'Portfolio' && <TrendingUp size={14} className="finance-tab-icon" />}
+            {tab === 'SIP' && <TrendingUp size={14} className="finance-tab-icon" />}
             {tab === 'Sync' && <CreditCard size={14} className="finance-tab-icon" />}
             {tab}
           </button>
@@ -255,7 +290,8 @@ export default function Finance() {
       </React.Suspense>
       {activeTab === 'Budgeting' && <BudgetingTab {...{ fmtINR, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }} />}
       {activeTab === 'Subscriptions' && <SubscriptionsTab {...{ fmtINR, form, showAddSub, setShowAddSub, subForm, setSubForm, addSubscription, subs, handleDeleteSubscription }} />}
-      {activeTab === 'Planning' && <div className="fade-in"><SIPCalculator /></div>}
+      {activeTab === 'Portfolio' && <div className="fade-in"><Portfolio /></div>}
+      {activeTab === 'SIP' && <div className="fade-in"><SIPCalculator /></div>}
       {activeTab === 'Sync' && <SyncTab {...{ axioLastSync, axioSyncing, handleAxioSync: () => {}, csvUploading, handleCsvImport: () => {} }} />}
     </div>
   );

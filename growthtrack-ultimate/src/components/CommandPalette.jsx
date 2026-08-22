@@ -130,31 +130,37 @@ export default function CommandPalette() {
     const pendingTasks = Array.isArray(tasks)
       ? tasks.filter(t => t.status !== 'done' && t.title)
       : (tasks?.pending || []);
-    pendingTasks.slice(0, 50).forEach(t => {
-      const score = Math.max(fuzzyScore(t.title || '', q), fuzzyScore(t.category || '', q));
-      if (!q || score > 0) candidates.push({ type: 'task', id: `task-${t.id}`, label: t.title, icon: '✅', score, detail: `${t.priority || 'task'} · ${t.category || ''}`, tab: 'tasks' });
-    });
+    if (Array.isArray(pendingTasks)) {
+      pendingTasks.slice(0, 50).forEach(t => {
+        const score = Math.max(fuzzyScore(t.title || '', q), fuzzyScore(t.category || '', q));
+        if (!q || score > 0) candidates.push({ type: 'task', id: `task-${t.id}`, label: t.title, icon: '✅', score, detail: `${t.priority || 'task'} · ${t.category || ''}`, tab: 'tasks' });
+      });
+    }
 
     // Goals
-    goals.slice(0, 30).forEach(g => {
+    const goalsList = Array.isArray(goals) ? goals : [];
+    goalsList.slice(0, 30).forEach(g => {
       const score = Math.max(fuzzyScore(g.title || '', q), fuzzyScore(g.category || '', q));
       if (!q || score > 0) candidates.push({ type: 'goal', id: `goal-${g.id}`, label: g.title, icon: '🎯', score, detail: `${g.status || 'goal'} · ${g.category || ''}`, tab: 'goals' });
     });
 
     // Notes
-    notes.slice(0, 30).forEach(n => {
+    const notesList = Array.isArray(notes) ? notes : [];
+    notesList.slice(0, 30).forEach(n => {
       const score = Math.max(fuzzyScore(n.title || '', q), fuzzyScore((n.tags || []).join(' '), q), fuzzyScore(n.content?.slice(0, 100) || '', q));
       if (!q || score > 0) candidates.push({ type: 'note', id: `note-${n.id}`, label: n.title || 'Untitled note', icon: '📝', score, detail: (n.tags || []).join(', ') || 'note', tab: 'notes' });
     });
 
     // Habits
-    habits.slice(0, 30).forEach(h => {
+    const habitsList = Array.isArray(habits) ? habits : [];
+    habitsList.slice(0, 30).forEach(h => {
       const score = Math.max(fuzzyScore(h.name || '', q), fuzzyScore(h.category || '', q));
       if (!q || score > 0) candidates.push({ type: 'habit', id: `habit-${h.id}`, label: h.name, icon: h.emoji || '🔥', score, detail: h.category || 'habit', tab: 'habits' });
     });
 
     // Skills
-    skills.slice(0, 30).forEach(sk => {
+    const skillsList = Array.isArray(skills) ? skills : [];
+    skillsList.slice(0, 30).forEach(sk => {
       const score = Math.max(fuzzyScore(sk.name || '', q), fuzzyScore(sk.category || '', q));
       if (!q || score > 0) candidates.push({ type: 'skill', id: `skill-${sk.id}`, label: sk.name, icon: '⚡', score, detail: `Lv ${sk.level || 1} · ${sk.category || 'skill'}`, tab: 'skills' });
     });
