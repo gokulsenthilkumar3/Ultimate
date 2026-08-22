@@ -237,7 +237,7 @@ export default function BodyPartInfoPanel() {
         borderRadius:   "12px 0 0 12px",
         padding:        "20px",
         zIndex:         40,
-        fontFamily:     "'Outfit', sans-serif",
+        fontFamily:     'var(--font-display)',
         backdropFilter: "blur(16px)",
         boxShadow:      "-8px 0 40px rgba(0,0,0,0.6)",
       }}

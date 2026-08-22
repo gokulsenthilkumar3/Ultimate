@@ -181,6 +181,88 @@ app.get('/api/metric_logs', async (req, res) => {
   }
 });
 
+// Audit Logs
+app.get('/api/logs', async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: 1000
+    });
+    res.json(logs);
+  } catch (err) {
+    safeError(res, err);
+  }
+});
+
+app.post('/api/logs', async (req, res) => {
+  try {
+    const { action, table_name, item_id, details, category, user_id, user_name, user_email, actor_ip, user_agent, severity } = req.body;
+    
+    await prisma.auditLog.create({
+      data: {
+        action,
+        table_name,
+        item_id,
+        details,
+        actor_name: user_name || 'System',
+        actor_email: user_email || 'admin@growthtrack.ultimate',
+        actor_ip,
+        category,
+        user_id,
+        user_agent,
+        severity: severity || 'info'
+      }
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    safeError(res, err);
+  }
+});
+
+// Login Logs
+app.post('/api/login-logs', async (req, res) => {
+  try {
+    const { user_id, email, action, failure_reason } = req.body;
+    
+    await prisma.loginLog.create({
+      data: {
+        user_id,
+        email,
+        action,
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent'],
+        failure_reason
+      }
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    safeError(res, err);
+  }
+});
+
+// Session Logs
+app.post('/api/session-logs', async (req, res) => {
+  try {
+    const { user_id, action, details } = req.body;
+    
+    await prisma.sessionLog.create({
+      data: {
+        user_id,
+        action,
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent'],
+        details
+      }
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    safeError(res, err);
+  }
+});
+
 // --- Apple Health Sync Simulation ---
 app.post('/api/health/sync/apple', async (req, res) => {
   try {

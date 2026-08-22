@@ -24,7 +24,7 @@ export const GROUPS = [
   { id: 'physiology', label: 'Body',       icon: Shield,          firstTab: 'humanoid' },
   { id: 'lifestyle',  label: 'Life',       icon: Heart,           firstTab: 'sleep'    },
   { id: 'operations', label: 'Work',      icon: Wallet,          firstTab: 'tasks'    },
-  { id: 'library',    label: 'More',      icon: FileText,        firstTab: 'entertainment' },
+  { id: 'library',    label: 'Library',   icon: FileText,        firstTab: 'entertainment' },
 ];
 
 export default function BottomNavBar({ activeTab, onTabChange }) {

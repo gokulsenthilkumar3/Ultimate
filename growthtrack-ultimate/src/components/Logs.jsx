@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Filter, Download, Plus, Trash2, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock } from 'lucide-react';
-import useStore from '../store/useStore';
+import { Search, Filter, Download, Plus, Trash2, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Shield, Database, Activity, Cpu } from 'lucide-react';
+import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error'];
+const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error', 'login_success', 'login_failed', 'signup', 'logout', 'session_start', 'session_end', 'page_view'];
 const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];
-const TABLES     = ['all', 'users', 'goals', 'habits', 'tasks', 'finance', 'training', 'nutrition', 'notes', 'projects'];
+const CATEGORIES = ['all', 'auth', 'crud', 'session', 'system'];
+const TABLES     = ['all', 'users', 'goals', 'habits', 'tasks', 'finance', 'training', 'nutrition', 'notes', 'projects', 'sessions', 'navigation'];
 
 const SENTIMENT_COLORS = {
   positive: { text: '#10b981', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)',  icon: <CheckCircle size={12} /> },
@@ -48,6 +49,7 @@ export default function Logs() {
   const [search,   setSearch]   = useState('');
   const [actionF,  setActionF]  = useState('all');
   const [tableF,   setTableF]   = useState('all');
+  const [categoryF, setCategoryF] = useState('all');
   const [sentimentF, setSentimentF] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo,   setDateTo]   = useState('');
@@ -55,16 +57,13 @@ export default function Logs() {
   const [sortDir,  setSortDir]  = useState('desc');
   const [expandedId, setExpandedId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [manualForm, setManualForm] = useState({ action: 'create', table_name: 'users', details: '' });
-
-  const apiSync = useStore(s => s.apiSync);
+  const [manualForm, setManualForm] = useState({ action: 'create', table_name: 'users', details: '', category: 'crud' });
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/logs');
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = await apiSync('/logs');
+      if (!data) throw new Error();
       setLogs(Array.isArray(data) ? data : (data.logs || []));
     } catch {
       // Fallback to empty or cached
@@ -84,6 +83,7 @@ export default function Logs() {
 
   const filtered = useMemo(() => {
     let list = enriched;
+    if (categoryF !== 'all') list = list.filter(l => (l.category || '') === categoryF);
     if (actionF   !== 'all') list = list.filter(l => (l.action || '').toLowerCase().includes(actionF));
     if (tableF    !== 'all') list = list.filter(l => (l.table_name || '') === tableF);
     if (sentimentF !== 'all') list = list.filter(l => l._sentiment === sentimentF);
@@ -106,7 +106,7 @@ export default function Logs() {
       return 0;
     });
     return list;
-  }, [enriched, actionF, tableF, sentimentF, dateFrom, dateTo, search, sortKey, sortDir]);
+  }, [enriched, categoryF, actionF, tableF, sentimentF, dateFrom, dateTo, search, sortKey, sortDir]);
 
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -139,11 +139,12 @@ export default function Logs() {
   const handleAddLog = async () => {
     if (!manualForm.details) { toast.error('Details required.'); return; }
     try {
-      await fetch('/api/logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...manualForm, user_id: user?.id, timestamp: new Date().toISOString() }),
+      const res = await apiSync('/logs', 'POST', {
+        ...manualForm,
+        user_id: user?.id,
+        timestamp: new Date().toISOString(),
       });
+      if (!res) throw new Error();
       toast.success('Log entry added');
       setShowAddModal(false);
       setManualForm({ action: 'create', table_name: 'users', details: '' });
@@ -182,6 +183,34 @@ export default function Logs() {
         </div>
       </div>
 
+      {/* Category tabs */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        {CATEGORIES.map(cat => {
+          const isActive = categoryF === cat;
+          const icon = cat === 'auth' ? <Shield size={12} /> : 
+                     cat === 'crud' ? <Database size={12} /> :
+                     cat === 'session' ? <Activity size={12} /> :
+                     cat === 'system' ? <Cpu size={12} /> : null;
+          const count = cat === 'all' ? enriched.length : enriched.filter(l => (l.category || '') === cat).length;
+          const color = cat === 'auth' ? '#8b5cf6' :
+                      cat === 'crud' ? '#10b981' :
+                      cat === 'session' ? '#0ea5e9' :
+                      cat === 'system' ? '#f59e0b' : '#6b7280';
+          return (
+            <button key={cat} onClick={() => setCategoryF(cat)} style={{
+              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '10px',
+              background: isActive ? `${color}20` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${isActive ? color : 'rgba(255,255,255,0.08)'}`,
+              color: isActive ? color : 'var(--text-2)', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem',
+              transition: 'all 0.2s',
+            }}>
+              {icon} {cat === 'all' ? 'All Logs' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+              <span style={{ background: `${color}30`, padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', color }}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Sentiment summary */}
       <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
         {Object.entries(sentimentStats).map(([s, count]) => {
@@ -206,6 +235,9 @@ export default function Logs() {
           <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search logs…" className="form-input" style={{ paddingLeft: '30px' }} />
         </div>
+        <select value={categoryF} onChange={e => setCategoryF(e.target.value)} className="form-input" style={{ width: 'auto' }}>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>)}
+        </select>
         <select value={actionF}  onChange={e => setActionF(e.target.value)}  className="form-input" style={{ width: 'auto' }}>
           {ACTIONS.map(a => <option key={a} value={a}>{a === 'all' ? 'All Actions' : a}</option>)}
         </select>
@@ -215,8 +247,8 @@ export default function Logs() {
         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="form-input" style={{ width: '140px' }} />
         <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>→</span>
         <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   className="form-input" style={{ width: '140px' }} />
-        {(search || actionF !== 'all' || tableF !== 'all' || sentimentF !== 'all' || dateFrom || dateTo) && (
-          <button onClick={() => { setSearch(''); setActionF('all'); setTableF('all'); setSentimentF('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '0.72rem' }}>
+        {(search || categoryF !== 'all' || actionF !== 'all' || tableF !== 'all' || sentimentF !== 'all' || dateFrom || dateTo) && (
+          <button onClick={() => { setSearch(''); setCategoryF('all'); setActionF('all'); setTableF('all'); setSentimentF('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '0.72rem' }}>
             ✕ Clear
           </button>
         )}
@@ -328,6 +360,9 @@ export default function Logs() {
           <div className="glass-card" style={{ width: '420px', maxWidth: '95vw' }}>
             <p style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--text-1)' }}>Add Manual Log Entry</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
+              <select value={manualForm.category} onChange={e => setManualForm(f => ({ ...f, category: e.target.value }))} className="form-input">
+                {CATEGORIES.filter(c => c !== 'all').map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
               <select value={manualForm.action} onChange={e => setManualForm(f => ({ ...f, action: e.target.value }))} className="form-input">
                 {ACTIONS.filter(a => a !== 'all').map(a => <option key={a} value={a}>{a}</option>)}
               </select>

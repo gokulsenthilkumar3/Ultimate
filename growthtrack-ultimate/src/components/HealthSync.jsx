@@ -70,7 +70,7 @@ export default function HealthSync({ onDataUpdate }) {
   };
 
   const s = {
-    card: { background: '#13131a', border: '1px solid #2a2a3a', borderRadius: 16, padding: 24, maxWidth: 480, fontFamily: "'Inter', sans-serif" },
+    card: { background: '#13131a', border: '1px solid #2a2a3a', borderRadius: 16, padding: 24, maxWidth: 480, fontFamily: 'var(--font-body)' },
     title: { fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 20 },
     form: { display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 },
     input: { flex: 1, minWidth: 80, padding: '10px 12px', background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, color: '#fff', fontSize: 14, outline: 'none' },

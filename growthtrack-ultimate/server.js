@@ -4,16 +4,14 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createRequire } from 'module';
 import Stripe from 'stripe';
-import { createClient } from '@libsql/client';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 const require = createRequire(import.meta.url);
 require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 
-const libsql = createClient({
+const adapter = new PrismaLibSql({
   url: process.env.DATABASE_URL || 'file:./dev.db',
 });
-const adapter = new PrismaLibSql(libsql);
 const prisma = new PrismaClient({ adapter });
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock');
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_mock';
@@ -28,7 +26,95 @@ app.use(express.json());
 // Delay to simulate network
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-app.post('/auth/signup', async (req, res) => {
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
+
+// Audit Logs
+app.get('/api/logs', async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: 1000
+    });
+    res.json(logs);
+  } catch (err) {
+    console.error('[Logs Error]', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/logs', async (req, res) => {
+  try {
+    const { action, table_name, item_id, details, category, user_id, user_name, user_email, actor_ip, user_agent, severity } = req.body;
+    
+    await prisma.auditLog.create({
+      data: {
+        action,
+        table_name,
+        item_id,
+        details,
+        actor_name: user_name || 'System',
+        actor_email: user_email || 'admin@growthtrack.ultimate',
+        actor_ip,
+        category,
+        user_id,
+        user_agent,
+        severity: severity || 'info'
+      }
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Logs Error]', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Login Logs
+app.post('/api/login-logs', async (req, res) => {
+  try {
+    const { user_id, email, action, failure_reason } = req.body;
+    
+    await prisma.loginLog.create({
+      data: {
+        user_id,
+        email,
+        action,
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent'],
+        failure_reason
+      }
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Login Logs Error]', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Session Logs
+app.post('/api/session-logs', async (req, res) => {
+  try {
+    const { user_id, action, details } = req.body;
+    
+    await prisma.sessionLog.create({
+      data: {
+        user_id,
+        action,
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent'],
+        details
+      }
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Session Logs Error]', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+const handleSignup = async (req, res) => {
   await delay(500);
   const { email, password, fullName, referralCode } = req.body;
   if (!email || !password || !fullName) {
@@ -82,12 +168,15 @@ app.post('/auth/signup', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error('[Signup Error]', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
 
-app.post('/auth/login', async (req, res) => {
+app.post('/auth/signup', handleSignup);
+app.post('/api/auth/signup', handleSignup);
+
+const handleLogin = async (req, res) => {
   await delay(500);
   const { email, password } = req.body;
   
@@ -118,12 +207,15 @@ app.post('/auth/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error('[Login Error]', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
 
-app.get('/auth/me', async (req, res) => {
+app.post('/auth/login', handleLogin);
+app.post('/api/auth/login', handleLogin);
+
+const handleMe = async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'No token provided' });
@@ -149,6 +241,41 @@ app.get('/auth/me', async (req, res) => {
     });
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+app.get('/auth/me', handleMe);
+app.get('/api/auth/me', handleMe);
+
+// GitHub OAuth Token Exchange
+app.post('/auth/github/exchange', async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'No code provided' });
+
+  try {
+    const response = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        code
+      })
+    });
+    
+    const data = await response.json();
+    if (data.error) {
+      return res.status(400).json({ error: data.error_description || data.error });
+    }
+    
+    // Return the token to the frontend
+    res.json({ access_token: data.access_token });
+  } catch (error) {
+    console.error('GitHub OAuth Exchange Error:', error);
+    res.status(500).json({ error: 'Internal server error during GitHub OAuth' });
   }
 });
 

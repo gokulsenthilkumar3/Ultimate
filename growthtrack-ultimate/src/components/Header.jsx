@@ -3,7 +3,7 @@ import React from 'react';
 import { Zap, Moon, Sun, Bell, Settings } from 'lucide-react';
 import HealthScoreRing from './HealthScoreRing';
 
-export default function Header({ user, theme, setTheme, palette, onOpenSettings, unreadCount = 0, onOpenNotifications }) {
+export default function Header({ user, theme, setTheme, palette, onOpenSettings, unreadCount = 0, onOpenNotifications, serverStatus }) {
   const accentColor = palette === 'ocean' ? '#06b6d4' : palette === 'mint' ? '#10b981' : palette === 'violet' ? '#7c3aed' : palette === 'rose' ? '#f43f5e' : palette === 'gold' ? '#e5a50a' : '#06b6d4';
 
   return (
@@ -123,6 +123,28 @@ export default function Header({ user, theme, setTheme, palette, onOpenSettings,
           }}>
           <Settings size={14} />
         </button>
+
+        {/* Server status pill */}
+        {serverStatus && serverStatus !== 'unknown' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '4px 10px', borderRadius: '20px',
+            background: serverStatus === 'online' ? 'var(--success-10, rgba(16, 185, 129, 0.1))' : 'rgba(255, 165, 0, 0.1)',
+            border: `1px solid ${serverStatus === 'online' ? 'var(--success-20, rgba(16, 185, 129, 0.2))' : 'rgba(255, 165, 0, 0.3)'}`,
+            fontSize: '0.65rem', fontWeight: 800,
+            color: serverStatus === 'online' ? 'var(--success)' : 'orange',
+            marginLeft: '8px'
+          }}>
+            <span style={{
+              width: '6px', height: '6px', borderRadius: '50%',
+              background: serverStatus === 'online' ? 'var(--success)' : 'orange',
+              boxShadow: `0 0 8px ${serverStatus === 'online' ? 'var(--success)' : 'orange'}`,
+              animation: serverStatus === 'online' ? 'pulse 2s infinite' : 'none',
+              display: 'inline-block',
+            }} />
+            {serverStatus === 'online' ? 'API ONLINE' : 'LOCAL SAVES'}
+          </div>
+        )}
 
         {/* Profile */}
         <div style={{

@@ -16,7 +16,7 @@ import SyncTab from './finance/SyncTab';
 
 
 const CURRENCY = '₹';
-const fmtINR = (n) => CURRENCY + Number(n).toLocaleString('en-IN');
+const fmtINR = (n: any) => CURRENCY + Number(n).toLocaleString('en-IN');
 
 const CATEGORIES = ['Gym', 'Supplements', 'Food', 'Apparel', 'Equipment', 'Salary', 'Stocks', 'Crypto', 'Rent', 'Utilities', 'Transport', 'Medical', 'Entertainment', 'Learning'];
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'UPI (GPay/PhonePe)', 'Slice Card', 'Axio', 'HDFC Credit', 'SBI Debit'];
@@ -24,7 +24,7 @@ const COLORS = ['#10b981', '#f43f5e', '#0ea5e9', '#8b5cf6', '#e5a50a', '#ec4899'
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.82rem' };
 
 const EMPTY_FORM = { type: 'Expense', category: '', amount: '', note: '', method: 'UPI (GPay/PhonePe)', date: new Date().toISOString().split('T')[0] };
-const API_BASE = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001';
 
 // Build last N months as YYYY-MM strings
 function lastNMonths(n = 6) {
@@ -38,11 +38,11 @@ function lastNMonths(n = 6) {
 }
 
 // Aggregate transactions into monthly buckets for trend chart
-function buildTrendData(transactions, months) {
-  return months.map(month => {
-    const txs = transactions.filter(t => t.date && t.date.startsWith(month));
+function buildTrendData(transactions: any[], months: string[]) {
+  return months.map((month: string) => {
+    const txs = transactions.filter((t: any) => t.date && t.date.startsWith(month));
     let income = 0, expenses = 0, investments = 0;
-    txs.forEach(t => {
+    txs.forEach((t: any) => {
       if (t.type === 'Income') income += t.amount;
       else if (t.type === 'Expense') expenses += t.amount;
       else if (t.type === 'Investment') investments += t.amount;
@@ -52,9 +52,9 @@ function buildTrendData(transactions, months) {
 }
 
 // Day-of-month spend heatmap data for current month
-function buildDayHeatmap(transactions, month) {
-  const map = {};
-  transactions.filter(t => t.date && t.date.startsWith(month) && t.type === 'Expense').forEach(t => {
+function buildDayHeatmap(transactions: any[], month: string) {
+  const map: Record<number, number> = {};
+  transactions.filter((t: any) => t.date && t.date.startsWith(month) && t.type === 'Expense').forEach((t: any) => {
     const day = parseInt(t.date.slice(8), 10);
     map[day] = (map[day] || 0) + t.amount;
   });
@@ -63,12 +63,14 @@ function buildDayHeatmap(transactions, month) {
 }
 
 export default function Finance() {
-  const { transactions, budgets = [] } = useStore(selectFinance);
+  const finance = useStore(selectFinance);
+  const transactions = useMemo(() => Object.values(finance?.transactions || {}) as any[], [finance?.transactions]);
+  const budgets = useMemo(() => Object.values(finance?.budgets || {}) as any[], [finance?.budgets]);
   const addTransaction = useStore(selectAddTransaction);
   const deleteTransaction = useStore(selectDeleteTransaction);
   const addBudget = useStore(selectAddBudget);
   const deleteBudget = useStore(selectDeleteBudget);
-  const toast = useToast();
+  const toast = useToast() as any;
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [budgetForm, setBudgetForm] = useState({ category: '', limit_amount: '' });
@@ -84,7 +86,7 @@ export default function Finance() {
 
   const [csvUploading, setCsvUploading] = useState(false);
   const [axioSyncing, setAxioSyncing] = useState(false);
-  const [axioLastSync, setAxioLastSync] = useState(null);
+  const [axioLastSync, setAxioLastSync] = useState<string | null>(null);
 
   const filteredTransactions = useMemo(() =>
     transactions.filter(t => t.date && t.date.startsWith(selectedMonth)),
@@ -148,31 +150,31 @@ export default function Finance() {
     toast.success(`${form.type} added successfully.`);
   }, [form, addTransaction, toast]);
 
-  const handleDeleteTransaction = useCallback((id) => {
-    const txToRestore = transactions.find(t => t.id === id);
+  const handleDeleteTransaction = useCallback((id: any) => {
+    const txToRestore = transactions.find((t: any) => t.id === id);
     deleteTransaction(id);
     toast.info('Transaction deleted', 5000, {
       action: { label: 'Undo', onClick: () => { if (txToRestore) addTransaction(txToRestore); } }
     });
   }, [transactions, deleteTransaction, addTransaction, toast]);
 
-  const handleDeleteBudget = useCallback((id) => {
-    const bToRestore = budgets.find(t => t.id === id);
+  const handleDeleteBudget = useCallback((id: any) => {
+    const bToRestore = budgets.find((t: any) => t.id === id);
     deleteBudget(id);
     toast.info('Budget deleted', 5000, {
       action: { label: 'Undo', onClick: () => { if (bToRestore) addBudget(bToRestore); } }
     });
   }, [budgets, deleteBudget, addBudget, toast]);
 
-  const handleDeleteSubscription = useCallback((id) => {
-    const subToRestore = subs.find(t => t.id === id);
+  const handleDeleteSubscription = useCallback((id: any) => {
+    const subToRestore = subs.find((t: any) => t.id === id);
     deleteSubscription(id);
     toast.info('Subscription deleted', 5000, {
       action: { label: 'Undo', onClick: () => { if (subToRestore) addSubscription(subToRestore); } }
     });
   }, [subs, deleteSubscription, addSubscription, toast]);
 
-  const handleCsvImport = async (event) => {
+  const handleCsvImport = async (event: any) => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.name.endsWith('.csv')) { toast.error('Please upload a .csv file'); return; }

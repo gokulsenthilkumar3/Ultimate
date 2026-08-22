@@ -89,7 +89,7 @@ function DeltaLabel({ measurement, delta, yPosition }) {
           flexDirection:  "column",
           alignItems:     "center",
           gap:            "2px",
-          fontFamily:     "'Outfit', sans-serif",
+          fontFamily:     'var(--font-display)',
           color,
           filter:         `drop-shadow(0 0 6px ${color}88)`,
           whiteSpace:     "nowrap",
@@ -263,7 +263,7 @@ export default function CloneEngine() {
           {/* "YOU NOW" label */}
           <Html position={[-DUAL_SEPARATION, -0.1, 0]} center style={{ pointerEvents: "none" }}>
             <div style={{
-              fontFamily: "'Outfit', sans-serif",
+              fontFamily: 'var(--font-display)',
               color: "#4FC3F7",
               fontSize: "12px",
               fontWeight: 600,
@@ -278,7 +278,7 @@ export default function CloneEngine() {
           {/* "YOUR GOAL" label */}
           <Html position={[DUAL_SEPARATION, -0.1, 0]} center style={{ pointerEvents: "none" }}>
             <div style={{
-              fontFamily: "'Outfit', sans-serif",
+              fontFamily: 'var(--font-display)',
               color: "#22D3EE",
               fontSize: "12px",
               fontWeight: 600,

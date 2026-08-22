@@ -1,6 +1,6 @@
 export default function TermsPage() {
   const s = {
-    page: { fontFamily: "'Inter', sans-serif", background: '#0a0a0f', color: '#d1d5db', minHeight: '100vh', padding: '60px 24px', maxWidth: 720, margin: '0 auto' },
+    page: { fontFamily: 'var(--font-body)', background: '#0a0a0f', color: '#d1d5db', minHeight: '100vh', padding: '60px 24px', maxWidth: 720, margin: '0 auto' },
     h1: { fontSize: 36, fontWeight: 700, color: '#fff', marginBottom: 8 },
     date: { color: '#6b7280', fontSize: 14, marginBottom: 40 },
     h2: { fontSize: 20, fontWeight: 600, color: '#fff', marginTop: 36, marginBottom: 12 },

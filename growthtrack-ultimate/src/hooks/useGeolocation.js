@@ -2,14 +2,43 @@ import { useState, useEffect } from 'react';
 
 let geolocationPromise = null;
 
+function fetchFallbackIp(resolve) {
+  fetch('https://ipapi.co/json/')
+    .then(r => r.json())
+    .then(resolve)
+    .catch(err => {
+      console.error('IP Info fetch failed:', err);
+      resolve(null);
+    });
+}
+
 export function fetchIpInfo() {
   if (!geolocationPromise) {
-    geolocationPromise = fetch('https://ipapi.co/json/')
-      .then(r => r.json())
-      .catch(err => {
-        console.error('IP Info fetch failed:', err);
-        return null;
-      });
+    geolocationPromise = new Promise((resolve) => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+              .then(res => res.json())
+              .then(data => {
+                const address = data.address || {};
+                const city = address.city || address.town || address.village || address.county || 'Unknown Location';
+                resolve({ city, country_name: address.country || '', ip: 'GPS Verified' });
+              })
+              .catch(() => {
+                fetchFallbackIp(resolve);
+              });
+          },
+          () => {
+            fetchFallbackIp(resolve);
+          },
+          { timeout: 8000 }
+        );
+      } else {
+        fetchFallbackIp(resolve);
+      }
+    });
   }
   return geolocationPromise;
 }

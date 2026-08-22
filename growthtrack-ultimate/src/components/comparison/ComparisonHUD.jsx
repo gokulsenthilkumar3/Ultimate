@@ -90,7 +90,7 @@ function DeltaCard({ measurement, currentVal, goalVal, delta, yPosition, entryDe
         opacity:         visible ? 1 : 0,
         transform:       visible ? "translateY(0px) scale(1)" : "translateY(8px) scale(0.92)",
         transition:      "opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1)",
-        fontFamily:      "'Outfit', 'Inter', sans-serif",
+        fontFamily:      'var(--font-display)',
         whiteSpace:      "nowrap",
       }}>
         {/* Card body */}
@@ -160,7 +160,7 @@ function CloneNameplate({ label, sublabel, x, color, progressPercent }) {
         flexDirection: "column",
         alignItems:    "center",
         gap:           "4px",
-        fontFamily:    "'Outfit', sans-serif",
+        fontFamily:    'var(--font-display)',
       }}>
         <span style={{
           fontSize:    "11px",
@@ -217,7 +217,7 @@ function OverallProgressBadge({ percent }) {
         padding:       "5px 16px",
         backdropFilter:"blur(10px)",
         boxShadow:     "0 0 20px #22D3EE22",
-        fontFamily:    "'Outfit', sans-serif",
+        fontFamily:    'var(--font-display)',
         display:       "flex",
         alignItems:    "center",
         gap:           "10px",

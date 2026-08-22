@@ -10,6 +10,7 @@ model User {
   id            Int      @id @default(autoincrement())
   email         String   @unique
   password_hash String
+  fullName      String?
   created_at    DateTime @default(now())
   source        String   @default("manual")
   confidence    Float    @default(1.0)
@@ -130,11 +131,47 @@ model AuditLog {
   actor_name  String   @default("System")
   actor_email String   @default("admin@growthtrack.ultimate")
   actor_ip    String?
+  category    String?
+  user_id     String?
+  user_agent  String?
+  severity    String?
   source      String   @default("manual")
   confidence  Float    @default(1.0)
   updated_at  DateTime @default(now()) @updatedAt
 
   @@map("audit_log")
+}
+
+model SessionLog {
+  id            Int      @id @default(autoincrement())
+  user_id       String?
+  session_token String?
+  action        String?
+  ip_address    String?
+  user_agent    String?
+  timestamp     DateTime @default(now())
+  details       String?
+  source        String   @default("manual")
+  confidence    Float    @default(1.0)
+  updated_at    DateTime @default(now()) @updatedAt
+
+  @@map("session_logs")
+}
+
+model LoginLog {
+  id             Int      @id @default(autoincrement())
+  user_id        String?
+  email          String?
+  action         String?
+  ip_address     String?
+  user_agent     String?
+  timestamp      DateTime @default(now())
+  failure_reason String?
+  source         String   @default("manual")
+  confidence     Float    @default(1.0)
+  updated_at     DateTime @default(now()) @updatedAt
+
+  @@map("login_logs")
 }
 
 model UserProfile {

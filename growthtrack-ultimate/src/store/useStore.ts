@@ -253,7 +253,7 @@ const useStore = create<any>()(
 
       checkServerHealth: async () => {
         try {
-          const res = await fetch(`${((import.meta as any).env.VITE_API_URL || 'http://localhost:5000')}/health`, { method: 'GET', signal: AbortSignal.timeout(4000) });
+          const res = await fetch(`${((import.meta as any).env.VITE_API_URL || 'http://localhost:3001')}/api/health`, { method: 'GET', signal: AbortSignal.timeout(4000) });
           set({ serverStatus: res.ok ? 'online' : 'offline' });
         } catch {
           set({ serverStatus: 'offline' });
@@ -512,11 +512,7 @@ export const selectTogglePinnedTab = (s: any) => s.togglePinnedTab;
 export const selectOnboardingComplete = (s: any) => s.onboardingComplete;
 export const selectSetOnboardingComplete = (s: any) => s.setOnboardingComplete;
 
-export const selectFinance = (s: any) => ({
-  ...s.finance,
-  transactions: Object.values(s.finance?.transactions || {}),
-  budgets: Object.values(s.finance?.budgets || {})
-});
+export const selectFinance = (s: any) => s.finance;
 export const selectAddTransaction = (s: any) => s.addTransaction;
 export const selectDeleteTransaction = (s: any) => s.deleteTransaction;
 

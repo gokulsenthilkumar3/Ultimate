@@ -30,6 +30,7 @@ import { useVascularitySync }    from './store/use3DStore.usage';
 import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
 import { GLOBAL_MODULES } from './constants/modules';
 import { trackEvent } from './lib/analytics';
+import { logSession, logPageView } from './lib/logger';
 
 // ── Unread notification count ──────────────────────────────────────────────
 function countUnreadNotifs(user) {
@@ -171,34 +172,36 @@ function NavbarCheckInAlert({ onOpen, onDismiss }) {
       aria-live="polite"
       style={{
         position: 'fixed',
-        top: 'var(--header-height, 54px)',
-        left: 0,
-        right: 0,
-        zIndex: LAYOUT.STATUS_PILL_ZINDEX - 1,
+        bottom: '24px',
+        right: '24px',
+        zIndex: 5000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '10px',
-        padding: '7px 16px',
-        background: COLORS.ALERT_BANNER_BG,
-        borderBottom: `1px solid ${COLORS.ALERT_BANNER_BORDER}`,
-        backdropFilter: 'blur(8px)',
-        fontSize: '0.72rem',
-        fontWeight: 700,
-        color: COLORS.ALERT_BANNER_COLOR,
-        letterSpacing: '0.04em',
+        gap: '12px',
+        padding: '10px 20px',
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-strong)',
+        borderRadius: '24px',
+        boxShadow: 'var(--shadow-card)',
+        backdropFilter: 'blur(16px)',
+        fontSize: '0.78rem',
+        fontWeight: 600,
+        color: 'var(--text-1)',
+        letterSpacing: '0.02em',
+        maxWidth: 'calc(100vw - 48px)',
       }}
     >
-      <span>⚡ Daily Check-In pending — keep your streak alive!</span>
+      <span><span style={{ color: 'var(--accent)' }}>⚡</span> Daily Check-In pending — keep your streak alive!</span>
       <button
         onClick={onOpen}
         style={{
-          background: COLORS.ALERT_BANNER_BORDER,
-          border: `1px solid ${COLORS.ALERT_BANNER_BORDER}`,
+          background: 'var(--accent)',
+          border: 'none',
           borderRadius: '8px',
           padding: '3px 12px',
           fontSize: '0.68rem',
-          color: COLORS.ALERT_BANNER_COLOR,
+          color: '#fff',
           cursor: 'pointer',
           fontWeight: 800,
           letterSpacing: '0.08em',
@@ -212,7 +215,7 @@ function NavbarCheckInAlert({ onOpen, onDismiss }) {
         style={{
           background: 'transparent',
           border: 'none',
-          color: COLORS.ALERT_BANNER_COLOR,
+          color: 'var(--text-3)',
           cursor: 'pointer',
           fontSize: '1rem',
           lineHeight: 1,
@@ -293,6 +296,7 @@ export default function App() {
       if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
         setActiveTab(pathTab);
         setIsNotFound(false);
+        logPageView(pathTab);
       } else if (location.pathname === '/' && isAuthed) {
         navigate(`/${storeActiveTab}`, { replace: true });
         setIsNotFound(false);
@@ -303,6 +307,7 @@ export default function App() {
       // Store drove the change (user clicked a tab)
       if (storeActiveTab && pathTab !== storeActiveTab) {
         navigate(`/${storeActiveTab}`);
+        logPageView(storeActiveTab);
       }
     }
 
@@ -320,10 +325,14 @@ export default function App() {
 
   useEffect(() => {
     trackEvent('App Opened');
+    logSession('start', 'Application opened');
     fetchInitialData();
     checkServerHealth();
     const interval = setInterval(checkServerHealth, TIMING.SERVER_HEALTH_POLL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      logSession('end', 'Application closed');
+    };
   }, []);
 
   // ── Daily Check-In alert: show slim banner (not auto-modal) ──
@@ -380,32 +389,9 @@ export default function App() {
         <div className="app-shell" data-theme={theme} data-palette={palette}>
           <div className="mesh-bg" />
 
-          {/* Server status pill */}
-          {serverStatus !== 'unknown' && (
-            <div style={{
-              position: 'fixed', top: '12px', right: '16px',
-              zIndex: LAYOUT.STATUS_PILL_ZINDEX,
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '4px 12px', borderRadius: '20px',
-              background: serverStatus === 'online' ? COLORS.STATUS_ONLINE_BG    : 'rgba(255, 165, 0, 0.1)',
-              border:    `1px solid ${serverStatus === 'online' ? COLORS.STATUS_ONLINE_BORDER : 'rgba(255, 165, 0, 0.3)'}`,
-              fontSize: '0.65rem', fontWeight: 800,
-              color: serverStatus === 'online' ? 'var(--success)' : 'orange',
-              backdropFilter: 'blur(8px)',
-            }}>
-              <span style={{
-                width: '6px', height: '6px', borderRadius: '50%',
-                background: serverStatus === 'online' ? 'var(--success)' : 'orange',
-                boxShadow: `0 0 8px ${serverStatus === 'online' ? 'var(--success)' : 'orange'}`,
-                animation: serverStatus === 'online' ? 'pulse 2s infinite' : 'none',
-                display: 'inline-block',
-              }} />
-              {serverStatus === 'online' ? 'API ONLINE' : 'LOCAL SAVES'}
-            </div>
-          )}
 
           {/* ── Single .main-area: header + content + both navbars ── */}
-          <div className={`main-area${showCheckInAlert && onboardingComplete ? ' has-alert' : ''}`}>
+          <div className="main-area">
             <Header
               user={user}
               theme={theme}
@@ -415,6 +401,7 @@ export default function App() {
               onOpenSettings={() => setShowSettings(true)}
               unreadCount={unreadCount}
               onOpenNotifications={() => setActiveTab('notifications')}
+              serverStatus={serverStatus}
             />
 
             {/* ── Navbar Check-In Alert Banner ── */}
