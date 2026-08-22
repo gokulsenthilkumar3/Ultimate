@@ -15,7 +15,7 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
     // Work / Operations
     'projects', 'calendar', 'timesheet', 'finance', 'shopping',
     // Body / Health
-    'humanoid', 'physique', 'assessment', 'training', 'strength',
+    'physique', 'assessment', 'training', 'strength',
     'nutrition', 'hydration', 'sleep', 'medical', 'health', 'mind', 'lifestyle',
     // Knowledge / Library
     'notes', 'documents', 'databases', 'logs', 'skills',

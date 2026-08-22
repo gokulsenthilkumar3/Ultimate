@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   User, Camera, Save, X, Upload, CheckCircle,
   MapPin, Shield, Flag, Bell, Layout, Globe,
-  MessageCircle, Trash2, Plus, Info
+  MessageCircle, Trash2, Plus, Info, Users, RefreshCw
 } from 'lucide-react';
+
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import StunningDatePicker from './ui/StunningDatePicker';
@@ -17,7 +18,10 @@ const TABS = [
   { id: 'physical', label: 'Physical Stats', icon: Shield },
   { id: 'goals', label: 'Primary Goal', icon: Flag },
   { id: 'prefs', label: 'Preferences', icon: Bell },
+  { id: 'sync', label: 'Cloud Sync', icon: RefreshCw },
+  { id: 'admin', label: 'Admin', icon: Users },
 ];
+
 
 const SOCIAL_THEMES = {
   GitHub: { icon: Globe, color: 'var(--text-1)', bg: 'var(--bg-elevated)' },
@@ -120,8 +124,47 @@ export default function ProfileEditor() {
   const [imageToCrop, setImageToCrop] = useState(null);
   const [cropperModalOpen, setCropperModalOpen] = useState(false);
 
+  // Admin panel state
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState(null);
+  const [editingTier, setEditingTier] = useState(null); // userId being edited
+
+  const fetchAdminUsers = useCallback(async () => {
+    setAdminLoading(true); setAdminError(null);
+    try {
+      const token = sessionStorage.getItem('growthtrack-session-token');
+      const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001');
+      const res = await fetch(`${API}/api/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setAdminUsers(await res.json());
+    } catch (e) {
+      setAdminError(e.message);
+    } finally {
+      setAdminLoading(false);
+    }
+  }, []);
+
+  const updateUserTier = useCallback(async (userId, newTier) => {
+    try {
+      const token = sessionStorage.getItem('growthtrack-session-token');
+      const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001');
+      await fetch(`${API}/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ subscriptionTier: newTier }),
+      });
+      setAdminUsers(prev => prev.map(u => u.id === userId ? { ...u, subscriptionTier: newTier } : u));
+      setEditingTier(null);
+      toast.success('User tier updated.');
+    } catch (e) { toast.error('Update failed.'); }
+  }, [toast]);
+
   useEffect(() => {
     if (user && !isLoaded) {
+
       setFormData({
         name: user?.name || '',
         email: user?.email || '',
@@ -214,6 +257,13 @@ export default function ProfileEditor() {
         chin_projection: user?.chin_projection ?? 0.5,
         lip_fullness: user?.lip_fullness ?? 0.5,
         eye_size: user?.eye_size ?? 0.5,
+        
+        privacyLevel: user?.privacyLevel || 'Private',
+        emailNotifications: user?.emailNotifications !== false,
+        smsNotifications: user?.smsNotifications === true,
+        cloudSyncEnabled: user?.cloudSyncEnabled || false,
+        syncProvider: user?.syncProvider || 'Google Drive',
+        autoSyncInterval: user?.autoSyncInterval || 'Daily',
         
         primaryGoal: user?.primaryGoal || '',
         notifications: user?.notifications ?? true,
@@ -309,6 +359,13 @@ export default function ProfileEditor() {
       chin_projection: user?.chin_projection ?? 0.5,
       lip_fullness: user?.lip_fullness ?? 0.5,
       eye_size: user?.eye_size ?? 0.5,
+      
+      privacyLevel: user?.privacyLevel || 'Private',
+      emailNotifications: user?.emailNotifications !== false,
+      smsNotifications: user?.smsNotifications === true,
+      cloudSyncEnabled: user?.cloudSyncEnabled || false,
+      syncProvider: user?.syncProvider || 'Google Drive',
+      autoSyncInterval: user?.autoSyncInterval || 'Daily',
       
       primaryGoal: user?.primaryGoal || '',
       notifications: user?.notifications ?? true,
@@ -813,6 +870,51 @@ export default function ProfileEditor() {
               </>
             )}
 
+            {/* Cloud Sync Tab */}
+            {activeTab === 'sync' && (
+              <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+                  <RefreshCw size={24} color="var(--accent)" />
+                  <h3 className="text-display" style={{ fontSize: '1.4rem', margin: 0 }}>Cloud Synchronization</h3>
+                </div>
+                
+                <div style={{ padding: '1.5rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-1)' }}>Sync Settings</h4>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '1rem' }}>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-2)' }}>Enable Cloud Sync</p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginTop: '4px' }}>Automatically back up your data to the cloud.</p>
+                    </div>
+                    <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
+                      <input 
+                        type="checkbox" 
+                        style={{ opacity: 0, width: 0, height: 0 }} 
+                        checked={formData.cloudSyncEnabled || false}
+                        onChange={e => handleChange('cloudSyncEnabled', e.target.checked)}
+                      />
+                      <span style={{
+                        position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: formData.cloudSyncEnabled ? 'var(--accent)' : 'var(--bg-dark)',
+                        transition: '.3s', borderRadius: '24px', border: '1px solid var(--border)'
+                      }}>
+                        <span style={{
+                          position: 'absolute', height: '18px', width: '18px', left: formData.cloudSyncEnabled ? '22px' : '3px', bottom: '2px',
+                          backgroundColor: 'white', transition: '.3s', borderRadius: '50%'
+                        }} />
+                      </span>
+                    </label>
+                  </div>
+                  
+                  {formData.cloudSyncEnabled && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                      <Field label="Sync Provider" field="syncProvider" options={['Google Drive', 'OneDrive', 'Dropbox', 'Local Network']} formData={formData} handleChange={handleChange} />
+                      <Field label="Auto-Sync Interval" field="autoSyncInterval" options={['Real-time', 'Hourly', 'Daily', 'Weekly']} formData={formData} handleChange={handleChange} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'social' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
@@ -1129,6 +1231,104 @@ export default function ProfileEditor() {
             <X size={24} />
           </button>
           <img src={avatarPreview} alt="Full Profile" onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }} />
+        </div>
+      )}
+
+      {/* ── Admin Tab ──────────────────────────────────────────────────────── */}
+      {activeTab === 'admin' && (
+        <div style={{ padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>System Admin</p>
+              <h3 className="text-display" style={{ fontSize: '1.5rem', margin: 0 }}>User Management</h3>
+              <p style={{ color: 'var(--text-3)', fontSize: '0.8rem', marginTop: '4px' }}>View and manage all registered users</p>
+            </div>
+            <button
+              className="btn-primary"
+              onClick={fetchAdminUsers}
+              disabled={adminLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem' }}
+            >
+              <RefreshCw size={14} className={adminLoading ? 'spin' : ''} />
+              {adminLoading ? 'Loading…' : adminUsers.length ? 'Refresh' : 'Load Users'}
+            </button>
+          </div>
+
+          {adminError && (
+            <div style={{ padding: '1rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', color: '#f87171', fontSize: '0.82rem', marginBottom: '1rem' }}>
+              ⚠️ {adminError}
+            </div>
+          )}
+
+          {adminUsers.length > 0 ? (
+            <div className="glass-card" style={{ overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Name', 'Email', 'Tier', 'Credits', 'Joined', 'Actions'].map(h => (
+                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', color: 'var(--text-3)', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminUsers.map(u => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-1)' }}>{u.fullName || '—'}</td>
+                      <td style={{ padding: '12px 14px', color: 'var(--text-2)' }}>{u.email}</td>
+                      <td style={{ padding: '12px 14px' }}>
+                        {editingTier === u.id ? (
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <select
+                              defaultValue={u.subscriptionTier || 'free'}
+                              onChange={e => updateUserTier(u.id, e.target.value)}
+                              className="form-input"
+                              style={{ padding: '4px 8px', fontSize: '0.75rem', width: 'auto' }}
+                            >
+                              {['free', 'pro', 'admin'].map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <button onClick={() => setEditingTier(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '1rem' }}>✕</button>
+                          </div>
+                        ) : (
+                          <span style={{
+                            padding: '3px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 800,
+                            background: u.subscriptionTier === 'pro' ? 'rgba(168,85,247,0.15)' : u.subscriptionTier === 'admin' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
+                            color: u.subscriptionTier === 'pro' ? '#a855f7' : u.subscriptionTier === 'admin' ? '#f87171' : 'var(--text-3)',
+                            border: `1px solid ${u.subscriptionTier === 'pro' ? 'rgba(168,85,247,0.3)' : u.subscriptionTier === 'admin' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                            letterSpacing: '0.05em',
+                          }}>
+                            {u.subscriptionTier || 'free'}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 14px', color: 'var(--text-2)' }}>{u.creditBalance ?? 0}</td>
+                      <td style={{ padding: '12px 14px', color: 'var(--text-3)', fontSize: '0.75rem' }}>
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <button
+                          onClick={() => setEditingTier(editingTier === u.id ? null : u.id)}
+                          style={{ padding: '4px 10px', borderRadius: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-2)' }}
+                        >
+                          Edit Tier
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p style={{ padding: '12px 14px', color: 'var(--text-3)', fontSize: '0.72rem', borderTop: '1px solid var(--border)', marginTop: 0 }}>
+                {adminUsers.length} user{adminUsers.length !== 1 ? 's' : ''} registered
+              </p>
+            </div>
+          ) : !adminLoading && (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)', fontSize: '0.85rem' }}>
+              <Users size={40} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+              <p>Click "Load Users" to fetch the user registry.</p>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,10 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, AreaChart, Area, Legend, ReferenceLine,
 } from 'recharts';
-import { TrendingUp, BarChart2, Zap, Brain, Moon, Activity } from 'lucide-react';
+import { TrendingUp, BarChart2, Zap, Brain, Moon, Activity, Shield, Target } from 'lucide-react';
 import useStore from '../store/useStore';
+
+// Lazy-load heavy sub-panels so they only download when selected
+const Logs = lazy(() => import('./Logs'));
+const TransformationPredictor = lazy(() => import('./TransformationPredictor'));
 
 const TOOLTIP_STYLE = {
   background: 'var(--bg-glass)', border: '1px solid var(--border)',
@@ -145,8 +149,11 @@ export default function Analytics() {
   const habits    = state.habits       || [];
   const habitLogsByHabit = state.habitLogsByHabit || {};
   const goals     = state.goals        || [];
+  const metricLogs = state.metric_logs || [];
 
   const [view, setView] = useState('correlations');
+  // Top-level Command Center tab
+  const [commandTab, setCommandTab] = useState('correlations');
 
   // ── Build correlation datasets ────────────────────────────────────────
   const sleepByDate  = useMemo(() => Object.fromEntries(sleepLogs.map(s => [s.date, Number(s.duration) || 0])), [sleepLogs]);
@@ -223,13 +230,47 @@ export default function Analytics() {
   [goals]);
 
   return (
-    <div style={{ padding: '0.5rem 0' }}>
+    <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
       {/* Header */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Insights</p>
+        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Command Center</p>
         <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Analytics</h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Cross-domain correlations · Trend analysis · Habit & goal patterns</p>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Cross-domain correlations · Audit logs · Growth forecast</p>
       </div>
+
+      {/* ── Command Center Tab Bar ────────────────────────────────────── */}
+      <div style={{
+
+        display: 'flex', gap: '4px', padding: '4px',
+        background: 'var(--bg-elevated)', borderRadius: '14px',
+        border: '1px solid var(--border)', marginBottom: '1.75rem',
+        width: 'fit-content',
+      }}>
+        {[
+          { id: 'correlations', label: '📈 Correlations' },
+          { id: 'logs',         label: '🔐 Audit Logs' },
+          { id: 'forecast',     label: '🚀 Growth Forecast' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setCommandTab(tab.id)}
+            style={{
+              padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+              fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.03em',
+              transition: 'all 0.2s ease',
+              background: commandTab === tab.id ? 'var(--accent)' : 'transparent',
+              color: commandTab === tab.id ? '#fff' : 'var(--text-2)',
+              boxShadow: commandTab === tab.id ? '0 4px 14px rgba(var(--accent-rgb),0.4)' : 'none',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Correlations sub-tab (original Analytics content) ────────────── */}
+      {commandTab === 'correlations' && (
+      <div>
 
       {/* Summary chips */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
@@ -353,6 +394,23 @@ export default function Analytics() {
             </div>
           )}
         </div>
+      )}
+        </div>
+      )}{/* end correlations sub-tab */}
+
+
+      {/* ── Audit Logs sub-tab ────────────────────────────────────── */}
+      {commandTab === 'logs' && (
+        <Suspense fallback={<div style={{height:'40vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spin-ring"/></div>}>
+          <Logs />
+        </Suspense>
+      )}
+
+      {/* ── Growth Forecast sub-tab ────────────────────────────────── */}
+      {commandTab === 'forecast' && (
+        <Suspense fallback={<div style={{height:'40vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spin-ring"/></div>}>
+          <TransformationPredictor logs={metricLogs} />
+        </Suspense>
       )}
     </div>
   );

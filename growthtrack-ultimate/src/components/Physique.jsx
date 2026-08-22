@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import {
   Zap, Target, Layers, Activity, User, Ruler, Scale, Info,
   Shield, Save, Edit3, X, ToggleLeft, ToggleRight, TrendingDown, TrendingUp,
@@ -7,6 +7,9 @@ import useStore, { selectSetActiveTab, selectPhysiqueTargets, selectUpdatePhysiq
 import use3DStore from '../store/use3DStore';
 import { useToast } from '../hooks/useToast';
 import PhysiqueRoadmap from './PhysiqueRoadmap';
+
+// Lazy-load the heavy 3D viewer — only downloaded when the 3D Mirror sub-tab is selected
+const HumanoidViewer = lazy(() => import('./HumanoidViewer'));
 
 // ── Body-fat formulas ─────────────────────────────────────────────────────
 function calcNavyBF(gender, waist, neck, height, hip = 0) {
@@ -181,6 +184,10 @@ export default function Physique({ user }) {
   const [editingTarget, setEditingTarget] = useState(null);
   const [targetDraft,   setTargetDraft]   = useState({});
   const [unitMode,      setUnitMode]      = useState('cm');
+  // Sub-tab: 'blueprint' (default body metrics) | '3d' (HumanoidViewer embedded)
+  const [subTab, setSubTab] = useState(
+    () => window.location.hash === '#3d' ? '3d' : 'blueprint'
+  );
 
   // ── Body-fat calculator state ─────────────────────────────────────────
   const [bfGender, setBfGender] = useState(user?.gender || 'M');
@@ -245,35 +252,63 @@ export default function Physique({ user }) {
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+      {/* ── Sub-tab bar: Blueprint | 3D Mirror ─────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem',
+      }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Architectural Blueprint</p>
           <h2 className="text-display" style={{ fontSize: '2rem' }}>Physique Matrix</h2>
-          <p className="text-secondary">Precision morphing targets and regional dominance tracking. Click a zone to cycle its phase.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button
-            onClick={() => setUnitMode(m => m === 'cm' ? 'in' : 'cm')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-              borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-              cursor: 'pointer', color: 'var(--text-2)', fontSize: '0.78rem', fontWeight: 700,
-            }}
-          >
-            {unitMode === 'cm' ? <ToggleLeft size={16} color="var(--accent)" /> : <ToggleRight size={16} color="var(--accent)" />}
-            {unitMode === 'cm' ? 'cm' : 'in'}
-          </button>
-          <button className="btn-primary" onClick={() => setActiveTab('humanoid')}>
-            <Layers size={18} /> VIEW 3D MODEL
-          </button>
+        {/* Sub-tab pill toggle */}
+        <div style={{
+          display: 'flex', gap: '4px', padding: '4px',
+          background: 'var(--bg-elevated)', borderRadius: '14px',
+          border: '1px solid var(--border)',
+        }}>
+          {[{ id: 'blueprint', label: '📐 Blueprint' }, { id: '3d', label: '🫁 3D Mirror' }].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setSubTab(tab.id);
+                window.location.hash = tab.id === '3d' ? '#3d' : '';
+              }}
+              style={{
+                padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.03em',
+                transition: 'all 0.2s ease',
+                background: subTab === tab.id ? 'var(--accent)' : 'transparent',
+                color: subTab === tab.id ? '#fff' : 'var(--text-2)',
+                boxShadow: subTab === tab.id ? '0 4px 14px rgba(var(--accent-rgb),0.4)' : 'none',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
+      {/* ── 3D Mirror sub-tab ──────────────────────────────────────────────── */}
+      {subTab === '3d' && (
+        <Suspense fallback={
+          <div style={{ display:'flex', justifyContent:'center', alignItems:'center', height:'60vh', flexDirection:'column', gap:'1rem' }}>
+            <div className="spin-ring" />
+            <span style={{ color:'var(--text-3)', fontSize:'0.78rem', letterSpacing:'0.1em', fontWeight:600 }}>LOADING 3D MIRROR</span>
+          </div>
+        }>
+          <HumanoidViewer />
+        </Suspense>
+      )}
+
+      {/* ── Blueprint sub-tab (original content) ───────────────────────────── */}
+      {subTab === 'blueprint' && (<>
+
       {/* Zone cards */}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
         {zones.map((zone, idx) => (
-          <div key={idx} className="glass-card" style={{
+          <div key={idx} className="soft-neumorphism glassmorphism" style={{
             padding: '1.5rem', borderLeft: `4px solid ${zone.color}`,
             cursor: 'pointer', transition: 'all 0.3s ease',
             background: activeZone === zone.name ? 'var(--bg-elevated)' : 'var(--bg-card)',
@@ -296,7 +331,7 @@ export default function Physique({ user }) {
       {/* Metric Targets + Body Fat Calculator */}
       <div className="dual-grid mb-lg">
         {/* Metric Targets */}
-        <div className="glass-card" style={{ padding: '2rem' }}>
+        <div className="soft-neumorphism glassmorphism" style={{ padding: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Target size={24} color="var(--accent)" />
@@ -359,7 +394,7 @@ export default function Physique({ user }) {
         </div>
 
         {/* Body Fat Calculator */}
-        <div className="glass-card" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem', background: 'linear-gradient(145deg, rgba(20,20,25,0.7) 0%, rgba(10,10,15,0.9) 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }}>
+        <div className="soft-neumorphism glassmorphism" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem', background: 'linear-gradient(145deg, rgba(20,20,25,0.7) 0%, rgba(10,10,15,0.9) 100%)', position: 'relative', overflow: 'hidden' }}>
           
           {/* Decorative background glow */}
           <div style={{ position: 'absolute', top: '-30%', left: '-20%', width: '140%', height: '140%', background: 'radial-gradient(ellipse at 50% 0%, rgba(var(--accent-rgb), 0.1) 0%, transparent 60%)', pointerEvents: 'none', zIndex: 0 }} />
@@ -534,6 +569,9 @@ export default function Physique({ user }) {
         </div>
       {/* Physique Roadmap */}
       <PhysiqueRoadmap targets={targets} user={user} />
+      </>)}{/* end blueprint sub-tab */}
     </div>
   );
 }
+
+// Trigger HMR

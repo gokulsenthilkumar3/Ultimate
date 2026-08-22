@@ -967,7 +967,7 @@ export default function HumanoidViewer() {
       {/* ═══ SETTINGS DRAWER ═══ */}
       {showSettings && (
         <div className="chamber-settings-overlay" onClick={() => setShowSettings(false)}>
-          <div className="chamber-settings-drawer" onClick={(e) => e.stopPropagation()}>
+          <div className="chamber-settings-drawer soft-neumorphism glassmorphism" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '1rem' }}>
                 <Settings size={16} color="var(--chamber-glow)" /> Chamber Settings
@@ -1145,7 +1145,7 @@ export default function HumanoidViewer() {
       )}
 
       {/* ═══ OVERALL PROGRESS + MEASUREMENTS DELTA ═══ */}
-      <div className="chamber-comparison glass-card">
+      <div className="chamber-comparison soft-neumorphism glassmorphism">
         <div className="chamber-comparison__header">
           <h3 className="chamber-comparison__title">
             <TrendingUp size={18} /> Measurements Delta
@@ -1282,7 +1282,7 @@ export default function HumanoidViewer() {
       </div>
 
       {/* ═══ AMBITION PATH ═══ */}
-      <div className="chamber-ambition glass-card">
+      <div className="chamber-ambition soft-neumorphism glassmorphism" style={{ padding: '24px', borderRadius: 'var(--radius-lg)' }}>
         <h3 className="chamber-ambition__title">
           <Flag size={18} color="var(--chamber-gold)" /> Ambition Path — Road to Greek God
         </h3>

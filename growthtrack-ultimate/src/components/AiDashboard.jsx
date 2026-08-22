@@ -132,15 +132,27 @@ export default function AiDashboard() {
 
       let response;
       try {
-        response = await firebaseAskGemini(fullPrompt, model);
+        if (model.startsWith('ollama-')) {
+          const ollamaModel = model.replace('ollama-', '');
+          const res = await fetch('http://localhost:11434/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: ollamaModel, prompt: fullPrompt, stream: false })
+          });
+          if (!res.ok) throw new Error(`Ollama API failed: ${res.statusText}`);
+          const data = await res.json();
+          response = data.response;
+        } else {
+          response = await firebaseAskGemini(fullPrompt, model);
+        }
       } catch (fbErr) {
-        // Firebase/Gemini not configured — show a helpful offline message
-        console.warn('[AiDashboard] Gemini unavailable:', fbErr.message);
+        // Fallback or error handling
+        console.warn('[AiDashboard] AI Model unavailable:', fbErr.message);
         response = null;
       }
 
       if (!response) {
-        response = `⚠️ AI is unavailable — Firebase/Gemini credentials are not configured in this environment.\n\nTo enable AI features, add your Firebase project credentials as Replit Secrets:\n- \`VITE_FIREBASE_PROJECT_ID\`\n- \`VITE_FIREBASE_API_KEY\`\n- \`VITE_FIREBASE_APP_ID\``;
+        response = `⚠️ AI is unavailable.\n\nFor Gemini: Check Firebase credentials.\nFor Ollama: Ensure Ollama is running locally on port 11434 with CORS enabled (e.g., \`OLLAMA_ORIGINS="*" ollama serve\`).`;
       }
 
       const aiMsg = { role: 'assistant', content: response, id: Date.now() + 1, typing: true };
@@ -246,6 +258,11 @@ export default function AiDashboard() {
             <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
             <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <optgroup label="Local (Ollama)">
+              <option value="ollama-llama3">Llama 3</option>
+              <option value="ollama-mistral">Mistral</option>
+              <option value="ollama-phi3">Phi-3</option>
+            </optgroup>
           </select>
           <button onClick={clearChat} title="Clear chat" style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 10px', color: 'var(--text-3)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <Trash2 size={12} /> Clear

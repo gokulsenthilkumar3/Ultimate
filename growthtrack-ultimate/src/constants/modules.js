@@ -1,5 +1,5 @@
 export const GLOBAL_MODULES = {
-  overview: 'Overview', humanoid: '3D Model', physique: 'Blueprint', assessment: 'Assessment',
+  overview: 'Overview', physique: 'Physique', assessment: 'Assessment',
   training: 'Training', nutrition: 'Nutrition', sleep: 'Sleep', lifestyle: 'Lifestyle',
   progress: 'Progress', goals: 'Goals', skills: 'Skills', health: 'Health+',
   habits: 'Habits', shopping: 'Shopping', tasks: 'Tasks', projects: 'Projects',

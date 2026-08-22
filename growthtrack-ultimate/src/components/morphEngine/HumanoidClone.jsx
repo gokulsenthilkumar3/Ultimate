@@ -104,6 +104,28 @@ export default function HumanoidClone({
     const center = new THREE.Vector3();
     box.getSize(size);
     box.getCenter(center);
+    
+    // Auto-normalize scale and position for arbitrary GLBs
+    if (size.y > 0.01) {
+      const targetHeight = 1.78;
+      const scale = targetHeight / size.y;
+      if (scale < 0.8 || scale > 1.2) {
+        scene.scale.set(scale, scale, scale);
+        scene.updateMatrixWorld(true);
+        box.setFromObject(scene);
+        box.getSize(size);
+        box.getCenter(center);
+      }
+      // Align feet to Y=0
+      if (Math.abs(box.min.y) > 0.05) {
+        scene.position.y -= box.min.y;
+        scene.updateMatrixWorld(true);
+        box.setFromObject(scene);
+        box.getSize(size);
+        box.getCenter(center);
+      }
+    }
+    
     setModelFrame({
       center,
       size,
