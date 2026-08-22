@@ -6,8 +6,8 @@ export const GLOBAL_MODULES = {
   portfolio: 'Portfolio', calendar: 'Calendar', timesheet: 'Timesheet', finance: 'Finance',
   entertainment: 'Entertainment', social: 'Social Media', ai: 'Agent', maps: 'Maps',
   documents: 'Documents', current: 'Current', notes: 'Notes', databases: 'Databases',
-  logs: 'Logs', settings: 'Settings', dashboards: 'Dashboards', mind: 'Mind & Wellness',
+  logs: 'Logs', settings: 'Profile & Settings', dashboards: 'Dashboards', mind: 'Mind & Wellness',
   medical: 'Medical', hydration: 'Hydration', strength: 'Strength', analytics: 'Analytics',
-  apps: 'App Hub', about: 'About', sip: 'SIP Calculator', forecast: 'Growth Forecast',
+  apps: 'Apps', about: 'About', sip: 'SIP Calculator', forecast: 'Growth Forecast',
   notifications: 'Notifications',
 };

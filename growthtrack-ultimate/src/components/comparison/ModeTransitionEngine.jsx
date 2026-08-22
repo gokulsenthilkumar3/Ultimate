@@ -262,7 +262,7 @@ export function ModeLabelFlash() {
       }}
     >
       <div style={{
-        fontFamily:    "'Outfit', sans-serif",
+        fontFamily:    'var(--font-display)',
         fontSize:      "clamp(32px, 6vw, 72px)",
         fontWeight:    900,
         letterSpacing: "0.22em",
@@ -273,7 +273,7 @@ export function ModeLabelFlash() {
         {config.label}
       </div>
       <div style={{
-        fontFamily:    "'Outfit', sans-serif",
+        fontFamily:    'var(--font-display)',
         fontSize:      "clamp(10px, 1.4vw, 14px)",
         fontWeight:    500,
         letterSpacing: "0.3em",

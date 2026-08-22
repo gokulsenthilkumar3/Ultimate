@@ -81,7 +81,33 @@ CREATE TABLE IF NOT EXISTS audit_log (
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   actor_name TEXT DEFAULT 'System',
   actor_email TEXT DEFAULT 'admin@growthtrack.ultimate',
-  actor_ip TEXT
+  actor_ip TEXT,
+  category TEXT CHECK (category IN ('auth','crud','session','system')),
+  user_id TEXT,
+  user_agent TEXT,
+  severity TEXT CHECK (severity IN ('info','warning','error','critical'))
+);
+
+CREATE TABLE IF NOT EXISTS session_logs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT,
+  session_token TEXT,
+  action TEXT CHECK (action IN ('start','end','validate','refresh')),
+  ip_address TEXT,
+  user_agent TEXT,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  details TEXT
+);
+
+CREATE TABLE IF NOT EXISTS login_logs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id TEXT,
+  email TEXT,
+  action TEXT CHECK (action IN ('login_success','login_failed','signup','logout')),
+  ip_address TEXT,
+  user_agent TEXT,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  failure_reason TEXT
 );
 
 CREATE TABLE IF NOT EXISTS user_profile (
@@ -325,3 +351,5 @@ ALTER TABLE progress_photos DISABLE ROW LEVEL SECURITY;
 ALTER TABLE vitals_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE medications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE saved_articles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE session_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE login_logs DISABLE ROW LEVEL SECURITY;

@@ -1,20 +1,35 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import gsap from 'gsap';
-import { Sparkles, Shield, Heart, Wallet, FileText, Settings, Bell } from 'lucide-react';
-import { GROUPS, TAB_GROUP_MAP } from './BottomNavBar';
+import { Settings, Bell } from 'lucide-react';
+import { TAB_GROUP_MAP } from './BottomNavBar';
+import { GLOBAL_MODULES } from '../constants/modules';
 
 export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSettings }) {
-  const activeGroup = TAB_GROUP_MAP[activeTab] || 'command';
   const indicatorRef = useRef(null);
-  const itemsRef = useRef([]);
+  const itemsRef = useRef({});
+
+  // Flat list of all tabs ordered by business logic
+  const allTabs = [
+    // Primary / Daily Focus
+    'overview', 'current', 'tasks', 'habits', 'progress', 'goals',
+    // Work / Operations
+    'projects', 'calendar', 'timesheet', 'finance', 'sip', 'shopping',
+    // Body / Health
+    'humanoid', 'physique', 'assessment', 'training', 'strength',
+    'nutrition', 'hydration', 'sleep', 'medical', 'health', 'mind', 'lifestyle',
+    // Knowledge / Library
+    'notes', 'documents', 'databases', 'logs', 'skills', 'portfolio',
+    // Tools / Extras
+    'dashboards', 'analytics', 'forecast', 'ai', 'maps', 'entertainment', 'social', 'apps',
+    // System
+    'settings', 'about'
+  ];
 
   // Animate the magic indicator
   useEffect(() => {
-    const activeIndex = GROUPS.findIndex(g => g.id === activeGroup);
-    if (activeIndex !== -1 && itemsRef.current[activeIndex] && indicatorRef.current) {
-      const activeItem = itemsRef.current[activeIndex];
+    const activeItem = itemsRef.current[activeTab];
+    if (activeItem && indicatorRef.current) {
       const { offsetTop, offsetHeight } = activeItem;
-      
       gsap.to(indicatorRef.current, {
         y: offsetTop,
         height: offsetHeight,
@@ -22,7 +37,7 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
         ease: 'power3.out'
       });
     }
-  }, [activeGroup]);
+  }, [activeTab]);
 
   return (
     <aside className="premium-sidebar">
@@ -38,21 +53,19 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
         </div>
       </div>
 
-      <nav className="premium-sidebar-nav">
+      <nav className="premium-sidebar-nav" style={{ overflowY: 'auto', paddingRight: '4px' }}>
         <div className="magic-indicator" ref={indicatorRef} />
-        {GROUPS.map((group, index) => {
-          const isActive = activeGroup === group.id;
-          const Icon = group.icon;
+        {allTabs.map((tabId) => {
+          const isActive = activeTab === tabId;
           return (
             <button
-              key={group.id}
-              ref={el => itemsRef.current[index] = el}
+              key={tabId}
+              ref={el => itemsRef.current[tabId] = el}
               className={`premium-sidebar-item ${isActive ? 'active' : ''}`}
-              onClick={() => setActiveTab(group.firstTab)}
-              aria-label={group.label}
+              onClick={() => setActiveTab(tabId)}
+              style={{ padding: '10px 12px' }}
             >
-              <Icon className="premium-sidebar-icon" size={20} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="premium-sidebar-label">{group.label}</span>
+              <span className="premium-sidebar-label">{GLOBAL_MODULES[tabId] || tabId}</span>
             </button>
           );
         })}

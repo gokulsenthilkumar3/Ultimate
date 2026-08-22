@@ -86,7 +86,7 @@ function CanvasScene({ lodConfig }) {
                 border: '1px solid rgba(239,68,68,0.4)',
                 borderRadius: '12px',
                 color: '#f87171',
-                fontFamily: "'Outfit', sans-serif",
+                fontFamily: 'var(--font-display)',
                 fontSize: '0.8rem',
                 textAlign: 'center',
                 maxWidth: '260px',

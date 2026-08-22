@@ -546,7 +546,7 @@ export default function HumanoidViewer() {
       </div>
 
       {/* ═══ VIEWPORT + EDITOR LAYOUT ═══ */}
-      <div className="chamber-layout" style={{ flex: 1, minHeight: 0 }}>
+      <div className="chamber-layout">
         {/* ── VIEWPORT ── */}
         <div className="chamber-viewport">
           {/* Top overlay bar */}
@@ -594,9 +594,11 @@ export default function HumanoidViewer() {
             }
           >
             <Suspense fallback={<ChamberSpinner />}>
-              {renderMode === 'SPRITE'
-                ? <Sprite3DViewer />
-                : <ChamberCanvas />}
+              <div className="chamber-canvas-wrap">
+                {renderMode === 'SPRITE'
+                  ? <Sprite3DViewer />
+                  : <ChamberCanvas />}
+              </div>
             </Suspense>
           </TabErrorBoundary>
 

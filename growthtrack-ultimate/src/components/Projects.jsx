@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GitBranch, Star, GitFork, ExternalLink, Code2, Clock, Circle, Search, ArrowDownUp, Plus, Trash2, Edit2, Save, X, Check } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import { useToast } from '../hooks/useToast';
@@ -34,6 +35,7 @@ const EMPTY_FORM = { title: '', description: '', stack: '', status: 'Active', ur
 export default function Projects() {
   const user = useStore(s => s.user);
   const updateUserSlice = useStore(s => s.updateUserSlice);
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab]       = useState('github');
   const [viewMode, setViewMode]         = useState('grid');
@@ -42,34 +44,140 @@ export default function Projects() {
   const [filter, setFilter]             = useState('all');
   const [searchTerm, setSearchTerm]     = useState('');
   const [sortBy, setSortBy]             = useState('updated');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [noteInput, setNoteInput]       = useState('');
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
 
   // Manual projects state
   const [showForm, setShowForm]         = useState(false);
   const [editId, setEditId]             = useState(null);
-  const [form, setForm]                 = useState(EMPTY_FORM);
+  const formState = useState(EMPTY_FORM);
+  const [form, setForm] = formState;
 
   const toast = useToast();
 
+  const githubManageEnabled = user?.githubManageEnabled || false;
+  const githubToken = user?.githubToken || '';
   const githubUsername = user?.githubUsername || user?.socialMedia?.GitHub?.replace(/.*github\.com\//, '') || '';
   const manualProjects = user?.manualProjects || [];
+  const repoNotes = user?.repoNotes || {};
+
+  // Create/Edit Repo states
+  const [showGithubModal, setShowGithubModal] = useState(false);
+  const [githubRepoForm, setGithubRepoForm] = useState({ name: '', description: '', private: false, editMode: false, oldName: '', owner: '' });
+
+  const saveNote = (repoId) => {
+    updateUserSlice('repoNotes', { ...repoNotes, [repoId]: noteInput });
+    setEditingNoteId(null);
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showSortDropdown && !e.target.closest('.sort-dropdown-container')) {
+        setShowSortDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSortDropdown]);
 
   useEffect(() => {
-    if (!githubUsername) { setLoading(false); return; }
+    if (!githubManageEnabled && !githubUsername) { setLoading(false); return; }
     setLoading(true);
-    fetch(`https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=100`)
-      .then(res => { if (!res.ok) throw new Error('Failed'); return res.json(); })
-      .then(data => { setRepos(data); setLoading(false); })
-      .catch(() => { toast.error('Failed to load GitHub projects'); setLoading(false); });
-  }, [githubUsername, toast]);
+    
+    const endpoint = (githubManageEnabled && githubToken)
+      ? `https://api.github.com/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator`
+      : `https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=100`;
 
-  const handleSaveUsername = () => {
-    if (!usernameInput.trim()) return;
-    updateUserSlice('githubUsername', usernameInput.trim());
-    toast.success(`GitHub username set to @${usernameInput.trim()}`);
-    setEditingUsername(false);
-    setUsernameInput('');
+    const headers = {};
+    if (githubManageEnabled && githubToken) {
+      headers['Authorization'] = `Bearer ${githubToken}`;
+      headers['Accept'] = 'application/vnd.github.v3+json';
+    }
+
+    fetch(endpoint, { headers })
+      .then(res => { 
+        if (res.status === 401) {
+          toast.error('GitHub token is invalid or expired. Please reconnect in settings.');
+          throw new Error('Unauthorized');
+        }
+        if (!res.ok) throw new Error('Failed'); 
+        return res.json(); 
+      })
+      .then(data => { setRepos(data); setLoading(false); })
+      .catch(() => { setLoading(false); });
+  }, [githubManageEnabled, githubToken, githubUsername, toast]);
+
+  const handleCreateOrEditGithubRepo = async () => {
+    if (!githubRepoForm.name.trim()) { toast.error('Repository name is required'); return; }
+    
+    const isEdit = githubRepoForm.editMode;
+    const endpoint = isEdit 
+      ? `https://api.github.com/repos/${githubRepoForm.owner}/${githubRepoForm.oldName}`
+      : `https://api.github.com/user/repos`;
+    
+    const method = isEdit ? 'PATCH' : 'POST';
+    
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: githubRepoForm.name.trim(),
+          description: githubRepoForm.description.trim(),
+          private: githubRepoForm.private,
+        })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to save repository');
+      }
+      
+      const savedRepo = await res.json();
+      
+      if (isEdit) {
+        setRepos(repos.map(r => r.id === savedRepo.id ? savedRepo : r));
+        toast.success(`Repository ${savedRepo.name} updated`);
+      } else {
+        setRepos([savedRepo, ...repos]);
+        toast.success(`Repository ${savedRepo.name} created`);
+      }
+      setShowGithubModal(false);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleDeleteGithubRepo = async (owner, name, repoId) => {
+    if (!window.confirm(`Are you absolutely sure you want to delete ${owner}/${name}? This action cannot be undone.`)) return;
+    
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to delete repository');
+      }
+      
+      setRepos(repos.filter(r => r.id !== repoId));
+      toast.success(`Repository deleted successfully`);
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   const filteredRepos = repos.filter(repo => {
@@ -181,15 +289,35 @@ export default function Projects() {
                   onChange={e => setSearchTerm(e.target.value)}
                   style={{ background: 'transparent', border: 'none', color: 'var(--text-1)', padding: '0.5rem', outline: 'none', width: '100%', fontSize: '0.8rem' }} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '0 0.5rem' }}>
-                <ArrowDownUp size={14} color="var(--text-3)" />
-                <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-2)', padding: '0.5rem', outline: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
-                  <option value="updated">Recently Updated</option>
-                  <option value="stars">Most Stars</option>
-                  <option value="forks">Most Forks</option>
-                  <option value="name">Alphabetical</option>
-                </select>
+              <div className="sort-dropdown-container" style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '0.45rem 0.75rem', cursor: 'pointer', color: 'var(--text-2)', fontSize: '0.8rem', outline: 'none' }}
+                >
+                  <ArrowDownUp size={14} color="var(--text-3)" />
+                  {sortBy === 'updated' ? 'Recently Updated' : sortBy === 'stars' ? 'Most Stars' : sortBy === 'forks' ? 'Most Forks' : 'Alphabetical'}
+                </button>
+                
+                {showSortDropdown && (
+                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '6px', background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.4rem', minWidth: '160px', zIndex: 20, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {[
+                      { value: 'updated', label: 'Recently Updated' },
+                      { value: 'stars', label: 'Most Stars' },
+                      { value: 'forks', label: 'Most Forks' },
+                      { value: 'name', label: 'Alphabetical' }
+                    ].map(opt => (
+                      <div 
+                        key={opt.value}
+                        onClick={() => { setSortBy(opt.value); setShowSortDropdown(false); }}
+                        style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', fontWeight: 600, color: sortBy === opt.value ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', borderRadius: '4px', background: sortBy === opt.value ? 'rgba(99,102,241,0.1)' : 'transparent', transition: 'all 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = sortBy === opt.value ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)'}
+                        onMouseLeave={e => e.currentTarget.style.background = sortBy === opt.value ? 'rgba(99,102,241,0.1)' : 'transparent'}
+                      >
+                        {opt.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
                 <button className={`btn-sm ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
@@ -197,23 +325,58 @@ export default function Projects() {
                 <button className={`btn-sm ${filter === 'fork' ? 'active' : ''}`} onClick={() => setFilter('fork')}>Forks</button>
               </div>
 
-              {/* GitHub username config */}
-              {!editingUsername ? (
-                <button className="btn-sm" onClick={() => { setEditingUsername(true); setUsernameInput(githubUsername); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
-                  <Code2 size={12} /> {githubUsername ? `@${githubUsername}` : 'Set Username'}
+              <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
+                <button className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>Grid</button>
+                <button className={`btn-sm ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>List</button>
+              </div>
+
+              {githubManageEnabled && githubToken && (
+                <button className="btn-primary" onClick={() => { setGithubRepoForm({ name: '', description: '', private: false, editMode: false, oldName: '', owner: '' }); setShowGithubModal(true); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                  <Plus size={14} /> New Repo
                 </button>
-              ) : (
-                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  <input className="form-input" value={usernameInput} onChange={e => setUsernameInput(e.target.value)}
-                    placeholder="GitHub username" onKeyDown={e => e.key === 'Enter' && handleSaveUsername()}
-                    style={{ width: '130px', fontSize: '0.8rem', padding: '4px 8px' }} />
-                  <button className="btn-primary" style={{ padding: '4px 8px' }} onClick={handleSaveUsername}><Check size={12} /></button>
-                  <button className="btn-sm" style={{ padding: '4px 8px' }} onClick={() => setEditingUsername(false)}><X size={12} /></button>
-                </div>
               )}
+
+              {/* GitHub username config */}
+              <button className="btn-sm" onClick={() => navigate('/settings')}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                <Code2 size={12} /> {githubManageEnabled ? 'Manage Account' : (githubUsername ? `@${githubUsername}` : 'Set Username')}
+              </button>
             </div>
           </div>
+
+          {/* GitHub Create/Edit Repo Modal */}
+          {showGithubModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="glass-card" style={{ width: '400px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.2s' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{githubRepoForm.editMode ? 'Edit Repository' : 'Create New Repository'}</h3>
+                  <button className="btn-icon" onClick={() => setShowGithubModal(false)}><X size={18} /></button>
+                </div>
+                
+                <div>
+                  <label className="form-label">Repository Name *</label>
+                  <input className="form-input" value={githubRepoForm.name} onChange={e => setGithubRepoForm({...githubRepoForm, name: e.target.value})} style={{ width: '100%' }} placeholder="awesome-project" />
+                </div>
+                
+                <div>
+                  <label className="form-label">Description (Optional)</label>
+                  <textarea className="form-input" value={githubRepoForm.description} onChange={e => setGithubRepoForm({...githubRepoForm, description: e.target.value})} style={{ width: '100%', minHeight: '80px', resize: 'vertical' }} placeholder="What does this repository do?" />
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="checkbox" id="repoPrivate" checked={githubRepoForm.private} onChange={e => setGithubRepoForm({...githubRepoForm, private: e.target.checked})} style={{ width: '16px', height: '16px', accentColor: 'var(--accent)' }} />
+                  <label htmlFor="repoPrivate" style={{ fontSize: '0.85rem', color: 'var(--text-1)', cursor: 'pointer', fontWeight: 600 }}>Make this repository private</label>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  <button className="btn-primary" onClick={handleCreateOrEditGithubRepo} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                    {githubRepoForm.editMode ? 'Save Changes' : 'Create Repository'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}>
@@ -223,23 +386,73 @@ export default function Projects() {
             <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)' }}>
               {githubUsername ? 'No repositories match your filters.' : 'Set your GitHub username above to load repositories.'}
             </div>
-          ) : (
+          ) : viewMode === 'grid' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
               {filteredRepos.map(repo => (
                 <div key={repo.id} className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <a href={repo.html_url} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-1)', textDecoration: 'none', fontWeight: 700, fontSize: '1.05rem', wordBreak: 'break-all' }}>
-                      <GitBranch size={18} color="var(--text-2)" />{repo.name}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-1)', textDecoration: 'none', fontWeight: 700, fontSize: '1.05rem', wordBreak: 'break-all', paddingRight: '0.5rem' }}>
+                      <GitBranch size={18} color="var(--text-2)" flexShrink={0} />
+                      {repo.name} {repo.private && <span style={{ fontSize: '0.65rem', padding: '1px 6px', background: 'var(--warning)', color: 'black', borderRadius: '4px', fontWeight: 800 }}>PRIVATE</span>}
                     </a>
-                    <a href={repo.html_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-3)' }}>
-                      <ExternalLink size={16} />
-                    </a>
+                    
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                      {githubManageEnabled && githubToken && repo.permissions?.admin && (
+                        <>
+                          <button className="btn-icon" onClick={() => { setGithubRepoForm({ name: repo.name, description: repo.description || '', private: repo.private, editMode: true, oldName: repo.name, owner: repo.owner.login }); setShowGithubModal(true); }} style={{ padding: '4px' }} title="Edit Repo Settings">
+                            <Edit2 size={14} color="var(--text-3)" />
+                          </button>
+                          <button className="btn-icon" onClick={() => handleDeleteGithubRepo(repo.owner.login, repo.name, repo.id)} style={{ padding: '4px' }} title="Delete Repo">
+                            <Trash2 size={14} color="var(--danger)" />
+                          </button>
+                        </>
+                      )}
+                      <a href={repo.html_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-3)', padding: '4px', display: 'flex', alignItems: 'center' }}>
+                        <ExternalLink size={16} />
+                      </a>
+                    </div>
                   </div>
                   <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', flex: 1, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {repo.description || <span style={{ fontStyle: 'italic', opacity: 0.5 }}>No description provided.</span>}
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-3)' }}>
+                  
+                  {/* Repo Comments Section */}
+                  <div style={{ marginTop: 'auto', paddingTop: '0.75rem' }}>
+                    {editingNoteId === repo.id ? (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input 
+                          autoFocus
+                          value={noteInput}
+                          onChange={e => setNoteInput(e.target.value)}
+                          placeholder="Add a comment..."
+                          style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.4rem 0.5rem', color: 'var(--text-1)', fontSize: '0.75rem', outline: 'none' }}
+                          onKeyDown={e => e.key === 'Enter' && saveNote(repo.id)}
+                        />
+                        <button className="btn-icon" onClick={() => saveNote(repo.id)} style={{ padding: '4px', background: 'rgba(16,185,129,0.1)' }}><Check size={14} color="var(--success)" /></button>
+                        <button className="btn-icon" onClick={() => setEditingNoteId(null)} style={{ padding: '4px', background: 'rgba(244,63,94,0.1)' }}><X size={14} color="var(--danger)" /></button>
+                      </div>
+                    ) : repoNotes[repo.id] ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.6rem', background: 'rgba(99,102,241,0.06)', borderRadius: '6px', border: '1px solid rgba(99,102,241,0.15)' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-1)', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>"{repoNotes[repo.id]}"</span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button className="btn-icon" onClick={() => { setEditingNoteId(repo.id); setNoteInput(repoNotes[repo.id]); }} style={{ padding: '4px' }}><Edit2 size={12} color="var(--text-3)" /></button>
+                          <button className="btn-icon" onClick={() => { const newNotes = {...repoNotes}; delete newNotes[repo.id]; updateUserSlice('repoNotes', newNotes); }} style={{ padding: '4px' }}><Trash2 size={12} color="var(--danger)" /></button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => { setEditingNoteId(repo.id); setNoteInput(''); }}
+                        style={{ fontSize: '0.75rem', color: 'var(--accent)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8, transition: 'opacity 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+                      >
+                        <Plus size={12} /> Add Comment
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-3)' }}>
                     {repo.language && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Circle size={10} fill={getLanguageColor(repo.language)} color={getLanguageColor(repo.language)} />
@@ -249,6 +462,91 @@ export default function Projects() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Star size={12} /> {repo.stargazers_count}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><GitFork size={12} /> {repo.forks_count}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}><Clock size={12} /> {formatDate(repo.pushed_at)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {filteredRepos.map(repo => (
+                <div key={repo.id} className="glass-card" style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                  <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '4px' }}>
+                      <GitBranch size={16} color="var(--text-2)" />
+                      <a href={repo.html_url} target="_blank" rel="noopener noreferrer"
+                        style={{ color: 'var(--text-1)', textDecoration: 'none', fontWeight: 700, fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {repo.name} {repo.private && <span style={{ fontSize: '0.65rem', padding: '1px 6px', background: 'var(--warning)', color: 'black', borderRadius: '4px', fontWeight: 800, verticalAlign: 'middle', marginLeft: '6px' }}>PRIVATE</span>}
+                      </a>
+                    </div>
+                    <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {repo.description || <span style={{ fontStyle: 'italic', opacity: 0.5 }}>No description provided.</span>}
+                    </p>
+                    
+                    {/* Repo Comments for List View */}
+                    <div style={{ marginTop: '0.5rem' }}>
+                      {editingNoteId === repo.id ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', maxWidth: '400px' }}>
+                          <input 
+                            autoFocus
+                            value={noteInput}
+                            onChange={e => setNoteInput(e.target.value)}
+                            placeholder="Add a comment..."
+                            style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.3rem 0.5rem', color: 'var(--text-1)', fontSize: '0.75rem', outline: 'none' }}
+                            onKeyDown={e => e.key === 'Enter' && saveNote(repo.id)}
+                          />
+                          <button className="btn-icon" onClick={() => saveNote(repo.id)} style={{ padding: '4px', background: 'rgba(16,185,129,0.1)' }}><Check size={14} color="var(--success)" /></button>
+                          <button className="btn-icon" onClick={() => setEditingNoteId(null)} style={{ padding: '4px', background: 'rgba(244,63,94,0.1)' }}><X size={14} color="var(--danger)" /></button>
+                        </div>
+                      ) : repoNotes[repo.id] ? (
+                        <div style={{ display: 'inline-flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0.5rem', background: 'rgba(99,102,241,0.06)', borderRadius: '4px', border: '1px solid rgba(99,102,241,0.15)', gap: '1rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-1)', fontStyle: 'italic' }}>"{repoNotes[repo.id]}"</span>
+                          <div style={{ display: 'flex', gap: '2px' }}>
+                            <button className="btn-icon" onClick={() => { setEditingNoteId(repo.id); setNoteInput(repoNotes[repo.id]); }} style={{ padding: '2px' }}><Edit2 size={12} color="var(--text-3)" /></button>
+                            <button className="btn-icon" onClick={() => { const newNotes = {...repoNotes}; delete newNotes[repo.id]; updateUserSlice('repoNotes', newNotes); }} style={{ padding: '2px' }}><Trash2 size={12} color="var(--danger)" /></button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => { setEditingNoteId(repo.id); setNoteInput(''); }}
+                          style={{ fontSize: '0.7rem', color: 'var(--accent)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                          onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+                        >
+                          <Plus size={12} /> Add Comment
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexShrink: 0 }}>
+                    {repo.language && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-2)', width: '90px' }}>
+                        <Circle size={10} fill={getLanguageColor(repo.language)} color={getLanguageColor(repo.language)} />
+                        {repo.language}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-2)', width: '60px' }}>
+                      <Star size={14} color="var(--warning)" /> {repo.stargazers_count}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-2)', width: '60px' }}>
+                      <GitFork size={14} /> {repo.forks_count}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-3)', width: '100px' }}>
+                      <Clock size={14} /> {formatDate(repo.pushed_at)}
+                    </div>
+                    {githubManageEnabled && githubToken && repo.permissions?.admin && (
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button className="btn-icon" onClick={() => { setGithubRepoForm({ name: repo.name, description: repo.description || '', private: repo.private, editMode: true, oldName: repo.name, owner: repo.owner.login }); setShowGithubModal(true); }} style={{ padding: '6px' }} title="Edit Repo Settings">
+                          <Edit2 size={14} color="var(--text-3)" />
+                        </button>
+                        <button className="btn-icon" onClick={() => handleDeleteGithubRepo(repo.owner.login, repo.name, repo.id)} style={{ padding: '6px' }} title="Delete Repo">
+                          <Trash2 size={14} color="var(--danger)" />
+                        </button>
+                      </div>
+                    )}
+                    <a href={repo.html_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-3)', display: 'flex', alignItems: 'center' }}>
+                      <ExternalLink size={18} />
+                    </a>
                   </div>
                 </div>
               ))}

@@ -22,7 +22,7 @@ module.exports = function authRoutes(prisma) {
   };
 
   router.post('/signup', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, fullName } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
     try {
@@ -31,14 +31,14 @@ module.exports = function authRoutes(prisma) {
 
       const password_hash = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({
-        data: { email, password_hash }
+        data: { email, password_hash, fullName }
       });
 
       const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      res.json({ token, user: { id: user.id, email: user.email } });
+      res.json({ token, user: { id: user.id, email: user.email, fullName: user.fullName || email.split('@')[0] } });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('[Signup Error]', err);
+      res.status(500).json({ error: 'Internal server error', details: err.message });
     }
   });
 
@@ -54,10 +54,10 @@ module.exports = function authRoutes(prisma) {
       if (!isValid) return res.status(401).json({ error: 'Invalid credentials' });
 
       const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      res.json({ token, user: { id: user.id, email: user.email } });
+      res.json({ token, user: { id: user.id, email: user.email, fullName: user.fullName || email.split('@')[0] } });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('[Login Error]', err);
+      res.status(500).json({ error: 'Internal server error', details: err.message });
     }
   });
 
@@ -65,9 +65,59 @@ module.exports = function authRoutes(prisma) {
     try {
       const user = await prisma.user.findUnique({ where: { id: req.userId } });
       if (!user) return res.status(404).json({ error: 'User not found' });
-      res.json({ user: { id: user.id, email: user.email } });
+      res.json({ user: { id: user.id, email: user.email, fullName: user.fullName || user.email.split('@')[0] } });
     } catch (err) {
       res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  router.put('/profile', verifyToken, async (req, res) => {
+    const { name, email, currentPassword, newPassword } = req.body;
+    const userId = req.userId;
+
+    try {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      const updateData = {};
+      if (name !== undefined) {
+        updateData.fullName = name;
+      }
+      
+      if (email && email !== user.email) {
+        const emailExists = await prisma.user.findUnique({ where: { email } });
+        if (emailExists) {
+          return res.status(400).json({ error: 'Email is already in use by another account' });
+        }
+        updateData.email = email;
+      }
+
+      if (newPassword) {
+        if (!currentPassword) {
+          return res.status(400).json({ error: 'Current password is required to set a new password' });
+        }
+        const isValid = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isValid) {
+          return res.status(400).json({ error: 'Invalid current password' });
+        }
+        updateData.password_hash = await bcrypt.hash(newPassword, 10);
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+
+      res.json({
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          fullName: updatedUser.fullName || updatedUser.email.split('@')[0],
+        }
+      });
+    } catch (err) {
+      console.error('[Profile Update Error]', err);
+      res.status(500).json({ error: 'Internal server error', details: err.message });
     }
   });
 

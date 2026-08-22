@@ -186,7 +186,7 @@ export default function TimelineScrubber({ style = {} }) {
       transform:     "translateX(-50%)",
       width:         "min(680px, 90vw)",
       zIndex:        30,
-      fontFamily:    "'Outfit', sans-serif",
+      fontFamily:    'var(--font-display)',
       ...style,
     }}>
       {/* Header row */}

@@ -6,6 +6,7 @@ import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import '../styles/notes.css';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280'];
 
@@ -18,38 +19,30 @@ function NoteCard({ note, onEdit, onDelete, onToggleStar, onTogglePin, onCopy, i
   const wordCount = (note.content || '').split(/\s+/).filter(Boolean).length;
 
   return (
-    <div onClick={onClick} style={{
-      borderRadius: '14px', padding: '0.75rem 1rem', cursor: 'pointer',
-      background: isActive ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.03)',
-      border: `1px solid ${isActive ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.07)'}`,
-      borderLeft: `3px solid ${note.color || 'var(--accent)'}`,
-      transition: 'all 0.15s',
-      height: '115px',
-      display: 'flex', flexDirection: 'column'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.35rem' }}>
-        <p style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-1)', flex: 1, marginRight: '0.5rem', lineHeight: 1.3 }}>{note.title || 'Untitled'}</p>
-        <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-          {note.pinned && <Pin size={11} color="#f59e0b" />}
-          {note.starred && <Star size={11} color="#f59e0b" fill="#f59e0b" />}
+    <div onClick={onClick} className={`note-card ${isActive ? 'active' : ''}`} style={{ '--card-accent-color': note.color }}>
+      <div className="note-card-title-row">
+        <p className="note-card-title">{note.title || 'Untitled'}</p>
+        <div className="note-card-indicators">
+          {note.pinned && <Pin size={11} className="pin-active" />}
+          {note.starred && <Star size={11} className="star-active" fill="currentColor" />}
         </div>
       </div>
-      {preview && <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', lineHeight: 1.45, marginBottom: '0.5rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{preview}</p>}
+      {preview && <p className="note-card-preview">{preview}</p>}
       {tags.length > 0 && (
-        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <div className="note-card-tags">
           {tags.slice(0, 4).map((tag, i) => (
-            <span key={i} style={{ padding: '1px 7px', borderRadius: '99px', fontSize: '0.58rem', fontWeight: 700, background: `${TAG_COLORS[i % TAG_COLORS.length]}22`, color: TAG_COLORS[i % TAG_COLORS.length], border: `1px solid ${TAG_COLORS[i % TAG_COLORS.length]}44` }}>{tag}</span>
+            <span key={i} className="note-card-tag" style={{ background: `${TAG_COLORS[i % TAG_COLORS.length]}18`, color: TAG_COLORS[i % TAG_COLORS.length], borderColor: `${TAG_COLORS[i % TAG_COLORS.length]}33` }}>{tag}</span>
           ))}
         </div>
       )}
-      <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.58rem', color: 'var(--text-3)' }}>{wordCount}w · {note.updatedAt?.slice(0, 10) || '—'}</span>
-        <div style={{ display: 'flex', gap: '2px' }} onClick={e => e.stopPropagation()}>
-          <button onClick={() => onTogglePin(note.id)} title={note.pinned ? 'Unpin' : 'Pin'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: note.pinned ? '#f59e0b' : 'rgba(255,255,255,0.2)', padding: '2px' }}><Pin size={12} /></button>
-          <button onClick={() => onToggleStar(note.id)} title={note.starred ? 'Unstar' : 'Star'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: note.starred ? '#f59e0b' : 'rgba(255,255,255,0.2)', padding: '2px' }}><Star size={12} /></button>
-          <button onClick={() => onCopy(note)} title="Copy" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', padding: '2px' }}><Copy size={12} /></button>
-          <button onClick={() => onEdit(note)} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', padding: '2px' }}><Edit3 size={12} /></button>
-          <button onClick={() => onDelete(note.id)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(248,113,113,0.4)', padding: '2px' }}><Trash2 size={12} /></button>
+      <div className="note-card-footer">
+        <span className="note-card-meta">{wordCount}w · {note.updatedAt?.slice(0, 10) || '—'}</span>
+        <div className="note-card-actions" onClick={e => e.stopPropagation()}>
+          <button onClick={() => onTogglePin(note.id)} className={`note-card-action-btn ${note.pinned ? 'pin-active' : ''}`} title={note.pinned ? 'Unpin' : 'Pin'}><Pin size={12} /></button>
+          <button onClick={() => onToggleStar(note.id)} className={`note-card-action-btn ${note.starred ? 'star-active' : ''}`} title={note.starred ? 'Unstar' : 'Star'}><Star size={12} fill={note.starred ? 'currentColor' : 'none'} /></button>
+          <button onClick={() => onCopy(note)} className="note-card-action-btn" title="Copy"><Copy size={12} /></button>
+          <button onClick={() => onEdit(note)} className="note-card-action-btn" title="Edit"><Edit3 size={12} /></button>
+          <button onClick={() => onDelete(note.id)} className="note-card-action-btn delete-btn" title="Delete"><Trash2 size={12} /></button>
         </div>
       </div>
     </div>
@@ -70,7 +63,6 @@ export default function Notes() {
   const [search,    setSearch]    = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [viewMode,  setViewMode]  = useState('preview');
-  const [copied,    setCopied]    = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState(null);
   const textRef = useRef(null);
 
@@ -143,9 +135,14 @@ export default function Notes() {
 
   const saveNote = () => {
     if (!activeId) return;
-    if (typeof updateNote === 'function') updateNote(activeId, { ...draft, updatedAt: new Date().toISOString() });
+    const title = draft.title.trim() || 'Untitled Note';
+    const updatedDraft = { ...draft, title };
+    if (typeof updateNote === 'function') {
+      updateNote(activeId, { ...updatedDraft, updatedAt: new Date().toISOString() });
+    }
+    setDraft(updatedDraft);
     setEditMode(false);
-    toast.success('Note saved');
+    toast.success('Note saved successfully');
   };
 
   const handleDelete = (id) => {
@@ -167,15 +164,16 @@ export default function Notes() {
 
   const copyNote = (note) => {
     navigator.clipboard.writeText(`# ${note.title}\n\n${note.content}`).then(() => {
-      setCopied(true);
       toast.success('Copied to clipboard');
-      setTimeout(() => setCopied(false), 2000);
     });
   };
 
   const addTag = () => {
-    const tag = tagInput.trim().replace(/[^a-zA-Z0-9_-]/g, '');
-    if (!tag || draft.tags.includes(tag)) return;
+    const tag = tagInput.trim().replace(/[^a-zA-Z0-9_-\s]/g, '');
+    if (!tag) return;
+    if (tag.length > 15) return toast.warning('Tags must be 15 characters or less');
+    if (draft.tags.includes(tag)) return toast.warning('Tag already exists');
+    if (draft.tags.length >= 6) return toast.warning('Maximum 6 tags allowed per note');
     setDraft(d => ({ ...d, tags: [...d.tags, tag] }));
     setTagInput('');
   };
@@ -195,34 +193,38 @@ export default function Notes() {
   const wordCount = (draft.content || '').split(/\s+/).filter(Boolean).length;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem', height: 'calc(100vh - 160px)', minHeight: '500px', padding: '0.5rem 0' }}>
+    <div className="notes-container">
       {/* Sidebar */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', minWidth: 0 }}>
+      <div className="notes-sidebar">
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+        <div className="notes-sidebar-header">
           <div>
             <p className="label-caps" style={{ color: 'var(--accent)', fontSize: '0.58rem' }}>Notes</p>
-            <h3 style={{ fontWeight: 900, fontSize: '1.1rem', margin: 0 }}>My Notes</h3>
+            <h3 className="notes-sidebar-title">My Notes</h3>
           </div>
           <button onClick={newNote} className="btn-primary" style={{ padding: '5px 10px', fontSize: '0.72rem' }}><Plus size={12} /> New</button>
         </div>
 
         {/* Search */}
-        <div style={{ position: 'relative' }}>
-          <Search size={12} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes…" className="form-input" style={{ paddingLeft: '26px', fontSize: '0.78rem' }} />
+        <div className="notes-search-wrapper">
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes…" className="notes-search-input" />
+          <Search size={12} className="notes-search-icon" />
         </div>
 
         {/* Tag filter */}
         {allTags.length > 0 && (
-          <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
+          <div className="notes-tag-filters">
             {allTags.map((t, i) => (
-              <button key={t} onClick={() => setTagFilter(tagFilter === t ? '' : t)} style={{
-                padding: '2px 8px', borderRadius: '99px', fontSize: '0.6rem', fontWeight: 700, cursor: 'pointer',
-                background: tagFilter === t ? TAG_COLORS[i % TAG_COLORS.length] : `${TAG_COLORS[i % TAG_COLORS.length]}18`,
-                color: tagFilter === t ? '#fff' : TAG_COLORS[i % TAG_COLORS.length],
-                border: `1px solid ${TAG_COLORS[i % TAG_COLORS.length]}55`,
-              }}>{t}</button>
+              <button key={t} onClick={() => setTagFilter(tagFilter === t ? '' : t)}
+                className="notes-tag-btn"
+                style={{
+                  background: tagFilter === t ? 'var(--accent)' : 'var(--bg-input)',
+                  color: tagFilter === t ? '#000' : 'var(--text-2)',
+                  borderColor: tagFilter === t ? 'var(--accent)' : 'var(--border)',
+                }}
+              >
+                {t}
+              </button>
             ))}
           </div>
         )}
@@ -237,18 +239,18 @@ export default function Notes() {
             <p style={{ fontSize: '0.78rem' }}>{notes.length === 0 ? 'Create your first note' : 'No notes match'}</p>
           </div>
         ) : (
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div className="notes-list-scroll">
             <List
-              height={500}
+              height={480}
               itemCount={filtered.length}
-              itemSize={130}
+              itemSize={135}
               width="100%"
               itemData={filtered}
             >
               {({ index, style, data }) => {
                 const n = data[index];
                 return (
-                  <div style={{ ...style, paddingBottom: '0.4rem' }}>
+                  <div style={{ ...style, paddingBottom: '0.5rem' }}>
                     <NoteCard note={n} isActive={activeId === n.id}
                       onClick={() => openNote(n)}
                       onEdit={n => { openNote(n); setEditMode(true); }}
@@ -265,35 +267,42 @@ export default function Notes() {
       </div>
 
       {/* Editor / Viewer */}
-      <div style={{ display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden', minWidth: 0 }}>
+      <div className={`notes-detail-pane ${!activeNote && !editMode ? 'empty-state' : ''}`} style={{ '--card-accent-color': activeNote?.color || draft.color }}>
         {!activeNote && !editMode ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: 'var(--text-3)' }}>
-            <FileText size={40} style={{ opacity: 0.15 }} />
-            <p style={{ fontSize: '0.88rem' }}>Select a note or create a new one</p>
+          <>
+            <FileText size={40} className="notes-empty-icon" />
+            <p style={{ fontSize: '0.88rem', fontWeight: 700 }}>Select a note or create a new one</p>
             <button onClick={newNote} className="btn-primary"><Plus size={14} /> New Note</button>
-          </div>
+          </>
         ) : (
           <>
             {/* Toolbar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.07)', flexWrap: 'wrap', gap: '0.4rem' }}>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {['preview', 'edit'].map(m => (
-                  <button key={m} onClick={() => setViewMode(m)} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', background: viewMode === m ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: viewMode === m ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{m}</button>
-                ))}
-              </div>
-              {viewMode === 'edit' && (
-                <div style={{ display: 'flex', gap: '3px', marginLeft: '4px' }}>
-                  {[
-                    { l: 'B', s: 'bold', title: 'Bold' }, { l: 'I', s: 'italic', title: 'Italic' },
-                    { l: '`', s: 'code', title: 'Inline code' }, { l: 'H3', s: 'h3', title: 'Heading' },
-                    { l: '☐', s: 'check', title: 'Task checkbox' }, { l: '🔗', s: 'link', title: 'Link' },
-                  ].map(b => (
-                    <button key={b.s} onClick={() => insertMarkdown(b.s)} title={b.title} style={{ width: '24px', height: '24px', borderRadius: '5px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.68rem', fontWeight: 800, fontStyle: b.s === 'italic' ? 'italic' : 'normal' }}>{b.l}</button>
+            <div className="notes-toolbar">
+              <div className="notes-toolbar-left">
+                <div className="notes-mode-toggles">
+                  {['preview', 'edit'].map(m => (
+                    <button key={m} onClick={() => setViewMode(m)} className={`notes-mode-btn ${viewMode === m ? 'active' : ''}`}>{m}</button>
                   ))}
                 </div>
-              )}
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                {viewMode === 'edit' && <span style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>{wordCount}w · auto-save</span>}
+                {viewMode === 'edit' && (
+                  <div className="notes-formatting-bar">
+                    {[
+                      { l: 'B', s: 'bold', title: 'Bold' }, { l: 'I', s: 'italic', title: 'Italic' },
+                      { l: '`', s: 'code', title: 'Inline code' }, { l: 'H3', s: 'h3', title: 'Heading' },
+                      { l: '☐', s: 'check', title: 'Task checkbox' }, { l: '🔗', s: 'link', title: 'Link' },
+                    ].map(b => (
+                      <button key={b.s} onClick={() => insertMarkdown(b.s)} className="notes-fmt-btn" title={b.title}>{b.l}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="notes-toolbar-right">
+                {viewMode === 'edit' && (
+                  <div className="notes-autosave-indicator">
+                    <span className="notes-autosave-dot" />
+                    <span>{wordCount}w · Auto-saved</span>
+                  </div>
+                )}
                 <button onClick={() => { if (editMode) saveNote(); else setEditMode(true); }}
                   className={editMode ? 'btn-primary' : 'btn-ghost'}
                   style={{ padding: '4px 12px', fontSize: '0.72rem' }}>
@@ -303,21 +312,21 @@ export default function Notes() {
             </div>
 
             {/* Title */}
-            <div style={{ padding: '1rem 1.25rem 0' }}>
+            <div className="notes-title-section">
               {editMode ? (
                 <input value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
                   placeholder="Note title…"
-                  style={{ width: '100%', background: 'none', border: 'none', outline: 'none', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-1)', fontFamily: 'var(--font-display, system-ui)' }} />
+                  className="notes-title-input" />
               ) : (
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-1)', marginBottom: 0 }}>{activeNote?.title || draft.title || 'Untitled'}</h2>
+                <h2 className="notes-title-display">{activeNote?.title || draft.title || 'Untitled'}</h2>
               )}
             </div>
 
             {/* Tags editor */}
-            {editMode && (
-              <div style={{ padding: '0.5rem 1.25rem', display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {editMode ? (
+              <div className="notes-tags-section">
                 {draft.tags.map(t => (
-                  <span key={t} style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(99,102,241,0.15)', color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                  <span key={t} className="notes-tag-badge"
                     onClick={() => setDraft(d => ({ ...d, tags: d.tags.filter(x => x !== t) }))}>
                     {t} ×
                   </span>
@@ -325,31 +334,35 @@ export default function Notes() {
                 <input value={tagInput} onChange={e => setTagInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); } }}
                   placeholder="+ tag"
-                  style={{ fontSize: '0.68rem', background: 'none', border: 'none', outline: 'none', color: 'var(--text-3)', width: '60px' }} />
+                  className="notes-tag-input" />
               </div>
+            ) : (
+              (activeNote?.tags || []).length > 0 && (
+                <div className="notes-tags-section" style={{ borderBottom: 'none' }}>
+                  {(activeNote?.tags || []).map(t => (
+                    <span key={t} className="notes-tag-badge" style={{ cursor: 'default' }}>{t}</span>
+                  ))}
+                </div>
+              )
             )}
 
             {/* Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 1.25rem 1.25rem' }}>
+            <div className="notes-content-body">
               {editMode && viewMode === 'edit' ? (
                 <textarea
                   ref={textRef}
                   value={draft.content}
                   onChange={e => setDraft(d => ({ ...d, content: e.target.value }))}
                   placeholder="Start writing… Markdown supported.&#10;&#10;# Headings&#10;**bold** *italic* `code`&#10;- [ ] Todo items&#10;> Blockquotes"
-                  style={{
-                    width: '100%', height: '100%', minHeight: '300px', background: 'none',
-                    border: 'none', outline: 'none', color: 'var(--text-1)', fontSize: '0.88rem',
-                    lineHeight: 1.7, resize: 'none', fontFamily: 'var(--font-mono, monospace)',
-                  }}
+                  className="notes-textarea"
                 />
               ) : (
-                <div style={{ fontSize: '0.88rem', color: 'var(--text-1)', lineHeight: 1.75 }}>
+                <div className="notes-markdown-preview">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }} />,
-                      blockquote: ({ node, ...props }) => <blockquote {...props} style={{ borderLeft: '3px solid var(--accent)', margin: '0.5em 0', padding: '0.35em 0.75em', color: 'var(--text-2)', fontStyle: 'italic', background: 'rgba(99,102,241,0.06)', borderRadius: '0 8px 8px 0' }} />,
+                      a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
+                      blockquote: ({ node, ...props }) => <blockquote {...props} />,
                     }}
                   >
                     {editMode ? draft.content : (activeNote?.content || '')}
@@ -360,11 +373,23 @@ export default function Notes() {
 
             {/* Color picker + meta */}
             {editMode && (
-              <div style={{ padding: '0.5rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>Color:</span>
-                {COLORS.map(c => (
-                  <button key={c} onClick={() => setDraft(d => ({ ...d, color: c }))} style={{ width: '16px', height: '16px', borderRadius: '50%', background: c, border: draft.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0 }} />
-                ))}
+              <div className="notes-footer-picker">
+                <span className="notes-footer-picker-title">Color Theme</span>
+                <div className="notes-color-dots">
+                  {COLORS.map(c => (
+                    <button key={c} onClick={() => {
+                      setDraft(d => {
+                        const next = { ...d, color: c };
+                        if (typeof updateNote === 'function' && activeId) {
+                          updateNote(activeId, { ...next, updatedAt: new Date().toISOString() });
+                        }
+                        return next;
+                      });
+                    }}
+                      className={`notes-color-dot ${draft.color === c ? 'active' : ''}`}
+                      style={{ background: c, '--card-accent-color': c }} />
+                  ))}
+                </div>
               </div>
             )}
           </>

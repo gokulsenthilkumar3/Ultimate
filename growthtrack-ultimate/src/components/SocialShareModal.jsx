@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
-import { X, Download, Share2, Instagram, Twitter } from 'lucide-react';
+import { X, Download, Share2 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { Z_INDEX } from '../constants';
 
@@ -125,8 +125,10 @@ export default function SocialShareModal({ onClose, imageSrc, score }) {
         </div>
         
         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-          <button onClick={() => handleShare('twitter')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }} className="hover-text-1">
-            <Twitter size={20} />
+          <button onClick={() => handleShare('twitter')} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }} className="hover-text-1">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
+            </svg> Post to X
           </button>
         </div>
       </div>
