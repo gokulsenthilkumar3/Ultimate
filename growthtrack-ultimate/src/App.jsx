@@ -9,6 +9,7 @@ import { ToastProvider }   from './hooks/useToast';
 import ErrorBoundary       from './components/ErrorBoundary';
 import Header              from './components/Header';
 import './index.css';
+import './theme-v4.css';
 import './styles/chamber.css';
 import './styles/premium.css';
 
@@ -119,8 +120,9 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
   const props = { user, setUser, theme, setTheme };
   switch (tab) {
     case 'overview':       return <Overview {...props} />;
-    case 'humanoid':       return <HumanoidViewer {...props} />;
+    case 'humanoid':       // ── Merged into Physique → 3D Mirror sub-tab ──────────
     case 'physique':       return <Physique {...props} />;
+
     case 'assessment':     return <Assessment {...props} />;
     case 'training':       return <Training {...props} />;
     case 'strength':       return <StrengthMetrics {...props} />;

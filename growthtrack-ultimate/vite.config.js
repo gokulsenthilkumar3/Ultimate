@@ -17,6 +17,18 @@ export default defineConfig({
     port: 5000,
     host: '0.0.0.0',
     allowedHosts: true,
+    watch: {
+      // Prevent Vite from hot-reloading when SQLite writes to these files.
+      // Without this, every DB transaction triggers HMR, restarts server.js,
+      // and can corrupt or wipe in-flight data.
+      ignored: [
+        '**/*.db',
+        '**/*.db-journal',
+        '**/*.db-wal',
+        '**/*.db-shm',
+        '**/dev.db',
+      ],
+    },
   },
   build: {
     sourcemap: true,

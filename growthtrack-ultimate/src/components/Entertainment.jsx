@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   Film, Tv, Star, Plus, Trash2, Search, ChevronLeft, ChevronRight,
-  X, Filter, BarChart2, Clock, Trophy, SortAsc, SortDesc, Eye
+  X, Filter, BarChart2, Clock, Trophy, SortAsc, SortDesc, Eye, RefreshCw, Key
 } from 'lucide-react';
+
 import useStore, {
   selectEntertainment,
   selectAddMediaItem,
@@ -208,6 +209,76 @@ export default function Entertainment() {
   const entertainmentSync   = useStore(s => s.entertainmentSync) || { otts: ['Netflix'] };
   const setEntertainmentSync = useStore(s => s.setEntertainmentSync);
   const toast = useToast();
+
+  // ── Trakt.tv state (stored in localStorage for persistence) ──────────
+  const [traktClientId, setTraktClientId] = useState(
+    () => localStorage.getItem('gt_trakt_client_id') || ''
+  );
+  const [traktUsername, setTraktUsername] = useState(
+    () => localStorage.getItem('gt_trakt_username') || ''
+  );
+  const [traktSyncing, setTraktSyncing] = useState(false);
+  const [traktLastSync, setTraktLastSync] = useState(
+    () => localStorage.getItem('gt_trakt_last_sync') || null
+  );
+
+  const saveTraktConfig = () => {
+    localStorage.setItem('gt_trakt_client_id', traktClientId);
+    localStorage.setItem('gt_trakt_username', traktUsername);
+    toast.success('Trakt.tv credentials saved!');
+  };
+
+  const syncTrakt = async () => {
+    if (!traktClientId || !traktUsername) {
+      toast.error('Enter your Trakt Client ID and username first.');
+      return;
+    }
+    setTraktSyncing(true);
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'trakt-api-version': '2',
+        'trakt-api-key': traktClientId,
+      };
+      const [moviesRes, showsRes] = await Promise.all([
+        fetch(`https://api.trakt.tv/users/${traktUsername}/watched/movies?limit=50`, { headers }),
+        fetch(`https://api.trakt.tv/users/${traktUsername}/watched/shows?limit=50`, { headers }),
+      ]);
+      if (!moviesRes.ok || !showsRes.ok) throw new Error('Trakt API request failed. Check your Client ID and username.');
+
+      const [movies, shows] = await Promise.all([moviesRes.json(), showsRes.json()]);
+      const existingTitles = new Set((media || []).map(m => m.title?.toLowerCase()));
+
+      let added = 0;
+      movies.forEach(entry => {
+        const title = entry.movie?.title;
+        if (title && !existingTitles.has(title.toLowerCase())) {
+          addMediaItem({ title, type: 'Movie', status: 'Completed', rating: 7.0, season: 1, episode: 1, total_episodes: 1 });
+          existingTitles.add(title.toLowerCase());
+          added++;
+        }
+      });
+      shows.forEach(entry => {
+        const title = entry.show?.title;
+        if (title && !existingTitles.has(title.toLowerCase())) {
+          const seasons = entry.seasons?.length || 1;
+          const eps = entry.seasons?.reduce((s, se) => s + (se.episodes?.length || 0), 0) || 1;
+          addMediaItem({ title, type: 'Series', status: 'Completed', rating: 7.0, season: seasons, episode: eps, total_episodes: eps });
+          existingTitles.add(title.toLowerCase());
+          added++;
+        }
+      });
+
+      const now = new Date().toLocaleString();
+      localStorage.setItem('gt_trakt_last_sync', now);
+      setTraktLastSync(now);
+      toast.success(`Trakt sync complete! ${added} new titles imported.`);
+    } catch (err) {
+      toast.error(err.message || 'Trakt sync failed.');
+    } finally {
+      setTraktSyncing(false);
+    }
+  };
 
   const [form, setForm]             = useState(EMPTY_FORM);
   const [searchTerm, setSearchTerm] = useState('');
@@ -518,9 +589,66 @@ export default function Entertainment() {
 
       {/* SYNC TAB */}
       {activeTab === 'Sync' && (
-        <div className="glass-card" style={{ padding: '2rem' }}>
-          <h3 className="card-title" style={{ marginBottom: '0.5rem' }}>OTT Provider Sync</h3>
-          <p className="text-secondary" style={{ marginBottom: '2rem', fontSize: '0.82rem' }}>Connect your streaming accounts to pull watch history into your library automatically.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+          {/* Trakt.tv Sync Card */}
+          <div className="glass-card" style={{ borderTop: '3px solid #ed1c24', padding: '1.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '1.5rem' }}>📡</span>
+              <div>
+                <h3 style={{ fontWeight: 900, fontSize: '1.1rem', color: '#ed1c24', margin: 0 }}>Trakt.tv Sync</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '2px' }}>Import your real watch history from Trakt.tv using your public API key.</p>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', margin: '1.25rem 0' }}>
+              <div>
+                <label className="label-caps" style={{ fontSize: '0.65rem', display: 'block', marginBottom: '6px' }}>Client ID (from trakt.tv/oauth/applications)</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="Paste your Client ID…"
+                  value={traktClientId}
+                  onChange={e => setTraktClientId(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label-caps" style={{ fontSize: '0.65rem', display: 'block', marginBottom: '6px' }}>Trakt Username</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="your-trakt-username"
+                  value={traktUsername}
+                  onChange={e => setTraktUsername(e.target.value)}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button className="btn-ghost" onClick={saveTraktConfig} style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Key size={14} /> Save Credentials
+              </button>
+              <button
+                className="btn-primary"
+                onClick={syncTrakt}
+                disabled={traktSyncing}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', opacity: traktSyncing ? 0.7 : 1 }}
+              >
+                <RefreshCw size={14} className={traktSyncing ? 'spin' : ''} />
+                {traktSyncing ? 'Syncing…' : 'Sync Watch History'}
+              </button>
+              {traktLastSync && (
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Last sync: {traktLastSync}</span>
+              )}
+            </div>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '1rem', lineHeight: 1.6 }}>
+              ℹ️ Get your free Client ID at <a href="https://trakt.tv/oauth/applications" target="_blank" rel="noreferrer" style={{ color: '#ed1c24' }}>trakt.tv/oauth/applications</a>. 
+              Make sure your profile is set to <strong>Public</strong>. Synced titles are de-duplicated against your existing library.
+            </p>
+          </div>
+
+          {/* OTT Provider Sync */}
+          <div className="glass-card" style={{ padding: '1.75rem' }}>
+            <h3 className="card-title" style={{ marginBottom: '0.5rem' }}>OTT Provider Indicators</h3>
+            <p className="text-secondary" style={{ marginBottom: '1.5rem', fontSize: '0.82rem' }}>Mark which platforms you subscribe to. Use Trakt.tv above for actual watch history import.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
             {OTT_PROVIDERS.map(provider => {
               const isConnected = syncedOTTs.includes(provider.name);
@@ -531,18 +659,19 @@ export default function Entertainment() {
                   <h4 style={{ fontWeight: 800, fontSize: '0.95rem', color: provider.color }}>{provider.name}</h4>
                   {isConnected && (
                     <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '99px', background: `${provider.color}22`, border: `1px solid ${provider.color}55`, color: provider.color, fontWeight: 700 }}>
-                      ✓ CONNECTED
+                      ✓ SUBSCRIBED
                     </span>
                   )}
                   <button
                     className="btn-ghost"
                     style={{ width: '100%', borderColor: provider.color, color: isConnected ? 'var(--text-1)' : provider.color, background: isConnected ? `${provider.color}33` : 'transparent', fontWeight: 800, fontSize: '0.8rem' }}
                     onClick={() => toggleSync(provider.name)}>
-                    {isConnected ? 'Disconnect' : 'Connect'}
+                    {isConnected ? 'Unmark' : 'Mark as Subscribed'}
                   </button>
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ datasource db {
   provider = "sqlite"
 }
 
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -269,4 +270,49 @@ model Medication {
   dosage    String?
   data      String?
   createdAt DateTime @default(now())
+}
+
+// ── Logging Models ──────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String?
+  table_name  String?
+  item_id     String?
+  details     String?
+  actor_name  String?  @default("System")
+  actor_email String?  @default("admin@growthtrack.ultimate")
+  actor_ip    String?
+  category    String?  @default("system")
+  user_id     String?
+  user_agent  String?
+  severity    String?  @default("info")
+  timestamp   DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model LoginLog {
+  id             String   @id @default(uuid())
+  user_id        String?
+  email          String?
+  action         String?
+  ip_address     String?
+  user_agent     String?
+  failure_reason String?
+  timestamp      DateTime @default(now())
+
+  @@map("login_logs")
+}
+
+model SessionLog {
+  id         String   @id @default(uuid())
+  user_id    String?
+  action     String?
+  ip_address String?
+  user_agent String?
+  details    String?
+  timestamp  DateTime @default(now())
+
+  @@map("session_logs")
 }

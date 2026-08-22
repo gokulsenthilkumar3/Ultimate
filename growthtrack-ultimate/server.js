@@ -7,6 +7,7 @@ import Stripe from 'stripe';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { logToFile } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,13 +39,44 @@ app.get('/', (req, res) => {
 
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
-// Audit Logs
+// Audit Logs (Read from Winston rotating file)
 app.get('/api/logs', async (req, res) => {
   try {
-    const logs = await prisma.auditLog.findMany({
-      orderBy: { timestamp: 'desc' },
-      take: 1000
-    });
+    const fs = require('fs');
+    const path = require('path');
+    const logsDir = path.join(__dirname, 'logs');
+    
+    if (!fs.existsSync(logsDir)) {
+      return res.json([]);
+    }
+
+    const files = fs.readdirSync(logsDir).filter(f => f.startsWith('app-') && f.endsWith('.log')).sort().reverse();
+    if (files.length === 0) {
+      return res.json([]);
+    }
+
+    // Read the most recent log file
+    const latestLogFile = path.join(logsDir, files[0]);
+    const fileContent = fs.readFileSync(latestLogFile, 'utf8');
+    const logs = fileContent.trim().split('\n').map(line => {
+      try {
+        const parsed = JSON.parse(line);
+        // Map winston format to what UI expects
+        return {
+          id: Math.random().toString(36).substring(7),
+          action: parsed.action || parsed.message,
+          severity: parsed.level === 'warn' ? 'warning' : parsed.level,
+          actor_name: parsed.actor_name || 'System',
+          actor_email: parsed.actor_email || 'admin@growthtrack.ultimate',
+          timestamp: parsed.timestamp,
+          details: parsed.details || parsed.message,
+          category: parsed.category || 'system'
+        };
+      } catch (e) {
+        return null;
+      }
+    }).filter(Boolean).reverse().slice(0, 1000); // Most recent first
+
     res.json(logs);
   } catch (err) {
     console.error('[Logs Error]', err);
@@ -56,20 +88,11 @@ app.post('/api/logs', async (req, res) => {
   try {
     const { action, table_name, item_id, details, category, user_id, user_name, user_email, actor_ip, user_agent, severity } = req.body;
     
-    await prisma.auditLog.create({
-      data: {
-        action,
-        table_name,
-        item_id,
-        details,
-        actor_name: user_name || 'System',
-        actor_email: user_email || 'admin@growthtrack.ultimate',
-        actor_ip,
-        category,
-        user_id,
-        user_agent,
-        severity: severity || 'info'
-      }
+    // Write only to rotating log file via Winston
+    logToFile(severity || 'info', details || action, {
+      action, table_name, item_id, category, user_id,
+      actor_name: user_name, actor_email: user_email,
+      actor_ip, user_agent
     });
     
     res.json({ success: true });
@@ -83,17 +106,12 @@ app.post('/api/logs', async (req, res) => {
 app.post('/api/login-logs', async (req, res) => {
   try {
     const { user_id, email, action, failure_reason } = req.body;
-    
-    await prisma.loginLog.create({
-      data: {
-        user_id,
-        email,
-        action,
-        ip_address: req.ip,
-        user_agent: req.headers['user-agent'],
-        failure_reason
-      }
-    });
+
+    // Write to file only
+    logToFile(action === 'login_failed' ? 'warning' : 'info',
+      `${action}: ${email}`,
+      { user_id, email, action, failure_reason, ip: req.ip, user_agent: req.headers['user-agent'] }
+    );
     
     res.json({ success: true });
   } catch (err) {
@@ -106,16 +124,9 @@ app.post('/api/login-logs', async (req, res) => {
 app.post('/api/session-logs', async (req, res) => {
   try {
     const { user_id, action, details } = req.body;
-    
-    await prisma.sessionLog.create({
-      data: {
-        user_id,
-        action,
-        ip_address: req.ip,
-        user_agent: req.headers['user-agent'],
-        details
-      }
-    });
+
+    // Write to file only
+    logToFile('info', `session:${action}`, { user_id, action, details, ip: req.ip, user_agent: req.headers['user-agent'] });
     
     res.json({ success: true });
   } catch (err) {
@@ -415,6 +426,41 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// ── Admin: list all users ────────────────────────────────────────────────────
+app.get('/api/admin/users', authMiddleware, async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true, email: true, fullName: true,
+        subscriptionTier: true, subscriptionStatus: true,
+        creditBalance: true, referralCode: true,
+        createdAt: true, updatedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(users);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Admin: update a user's tier ─────────────────────────────────────────────
+app.patch('/api/admin/users/:id', authMiddleware, async (req, res) => {
+  try {
+    const { subscriptionTier } = req.body;
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { subscriptionTier },
+      select: { id: true, email: true, subscriptionTier: true },
+    });
+    logToFile('info', `Admin updated user tier`, { adminId: req.user.id, targetId: req.params.id, newTier: subscriptionTier });
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 // Update user singletons
 app.post('/user', authMiddleware, async (req, res) => {
   try {
@@ -600,5 +646,6 @@ app.get('/habit_logs/:habitId', authMiddleware, async (req, res) => {
 });
 
 app.listen(PORT, () => {
+  logToFile('info', `GrowthTrack server started`, { port: PORT, env: process.env.NODE_ENV || 'development' });
   console.log(`Local Auth Server running on http://localhost:${PORT}`);
 });
