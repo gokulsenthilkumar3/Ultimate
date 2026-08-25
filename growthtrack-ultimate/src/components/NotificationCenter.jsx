@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Bell, BellOff, CheckCheck, Trash2, RefreshCw,
@@ -198,7 +199,7 @@ export default function NotificationCenter({ onNavigate }) {
 
   // Dismissed IDs (persisted to localStorage)
   const [dismissed, setDismissed] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('notif_dismissed') || '[]')); }
+    try { return new Set(JSON.parse(safeLocalStorage.getItem('notif_dismissed') || '[]')); }
     catch { return new Set(); }
   });
 
@@ -260,7 +261,7 @@ export default function NotificationCenter({ onNavigate }) {
   const dismiss = useCallback((id) => {
     setDismissed(prev => {
       const next = new Set([...prev, id]);
-      try { localStorage.setItem('notif_dismissed', JSON.stringify([...next])); } catch {}
+      try { safeLocalStorage.setItem('notif_dismissed', JSON.stringify([...next])); } catch {}
       return next;
     });
   }, []);
@@ -269,7 +270,7 @@ export default function NotificationCenter({ onNavigate }) {
     const ids = visible.map(n => n.id);
     setDismissed(prev => {
       const next = new Set([...prev, ...ids]);
-      try { localStorage.setItem('notif_dismissed', JSON.stringify([...next])); } catch {}
+      try { safeLocalStorage.setItem('notif_dismissed', JSON.stringify([...next])); } catch {}
       return next;
     });
     toast.info('All notifications cleared');

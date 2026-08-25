@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import { Z_INDEX } from '../constants';
 import React from 'react';
 import { AlertTriangle, RefreshCw, Trash2, X } from 'lucide-react';
@@ -34,12 +35,12 @@ class ErrorBoundary extends React.Component {
 
   handleResetData = () => {
     try {
-      localStorage.removeItem('growthtrack-ultimate-v4');
-      localStorage.removeItem('growthtrack-ultimate-v3');
-      localStorage.removeItem('ultimate_user');
-      localStorage.removeItem('ultimate_theme');
-      localStorage.removeItem('ultimate_palette');
-      localStorage.removeItem('ultimate_tab');
+      safeLocalStorage.removeItem('growthtrack-ultimate-v4');
+      safeLocalStorage.removeItem('growthtrack-ultimate-v3');
+      safeLocalStorage.removeItem('ultimate_user');
+      safeLocalStorage.removeItem('ultimate_theme');
+      safeLocalStorage.removeItem('ultimate_palette');
+      safeLocalStorage.removeItem('ultimate_tab');
     } catch {
       // ignore
     }

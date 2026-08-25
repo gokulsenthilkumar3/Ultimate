@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { safeLocalStorage } from '../utils/safeLocalStorage';
 import { createFinanceSlice } from './slices/financeSlice';
 import { createTaskSlice } from './slices/taskSlice';
 import { createHealthSlice } from './slices/healthSlice';
@@ -477,7 +478,7 @@ const useStore = create<any>()(
     }),
     {
       name: 'growthtrack-ultimate-v4',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
       version: 4,
       // Persist every user-owned data domain. The previous whitelist only
       // saved a handful of modules, so a restart looked like a data reset.

@@ -738,50 +738,50 @@ export default function Tasks() {
                 {editId ? <Edit3 size={18} color="var(--accent)" /> : <Plus size={18} color="var(--accent)" />}
                 {editId ? 'Edit Task Spec' : 'Deploy New Task'}
               </h3>
-              <button type="button" onClick={resetForm} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
+              <button type="button" className="btn btn-secondary" onClick={resetForm} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
                 <X size={20} />
               </button>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
               <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '8px', fontSize: '0.68rem', letterSpacing: '0.08em', color: 'var(--text-3)' }}>Title *</label>
+                <label className="form-label">Title *</label>
                 <input type="text" placeholder="Specify task name..." value={form.title} autoFocus required
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  className="form-input" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', color: 'var(--text-1)', fontSize: '0.88rem' }} />
+                  className="form-input"  />
               </div>
 
               <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '8px', fontSize: '0.68rem', letterSpacing: '0.08em', color: 'var(--text-3)' }}>Description</label>
+                <label className="form-label">Description</label>
                 <textarea rows={4} placeholder="Describe the objectives..." value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className="form-input" style={{ width: '100%', resize: 'none', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', color: 'var(--text-1)', fontSize: '0.88rem' }} />
+                  className="form-input"  />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="label-caps" style={{ display: 'block', marginBottom: '8px', fontSize: '0.68rem', color: 'var(--text-3)' }}>Priority</label>
-                  <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="form-input" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)' }}>
+                  <label className="form-label">Priority</label>
+                  <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="form-input" >
                     {PRIORITIES.map(p => <option key={p.value} value={p.value} style={{ background: 'var(--bg-surface)', color: 'var(--text-1)' }}>{p.label} — {p.long}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="label-caps" style={{ display: 'block', marginBottom: '8px', fontSize: '0.68rem', color: 'var(--text-3)' }}>Category</label>
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="form-input" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)' }}>
+                  <label className="form-label">Category</label>
+                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="form-input" >
                     {CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--bg-surface)', color: 'var(--text-1)' }}>{c}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '8px', fontSize: '0.68rem', color: 'var(--text-3)' }}>Due Date</label>
+                <label className="form-label">Due Date</label>
                 <input type="date" value={form.dueDate}
-                  onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className="form-input" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)' }} />
+                  onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className="form-input"  />
               </div>
 
               <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '8px', fontSize: '0.68rem', color: 'var(--text-3)' }}>Parent Task (Optional)</label>
-                <select value={form.parent_task_id} onChange={e => setForm(f => ({ ...f, parent_task_id: e.target.value }))} className="form-input" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)' }}>
+                <label className="form-label">Parent Task (Optional)</label>
+                <select value={form.parent_task_id} onChange={e => setForm(f => ({ ...f, parent_task_id: e.target.value }))} className="form-input" >
                   <option value="" style={{ background: 'var(--bg-surface)', color: 'var(--text-1)' }}>None</option>
                   {allTasks.filter(t => t.id !== editId).map(t => (
                     <option key={t.id} value={t.id} style={{ background: 'var(--bg-surface)', color: 'var(--text-1)' }}>{t.title}</option>
@@ -791,13 +791,7 @@ export default function Tasks() {
             </div>
             
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-              <button type="button" onClick={resetForm}
-                style={{ flex: 1, padding: '12px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700,
-                         background: 'none', border: '1px solid var(--border)',
-                         color: 'var(--text-2)', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--text-3)'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-              >Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
               <button type="submit"
                 style={{ flex: 1, padding: '12px', borderRadius: '10px', fontSize: '0.85rem',
                          fontWeight: 900, background: 'var(--accent)', color: '#000',

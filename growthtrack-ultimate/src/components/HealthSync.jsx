@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 /**
  * HealthSync — Manual weight entry + Apple Health CSV import
  * Apple HealthKit doesn't work on web; CSV export is the bridge until native app.
@@ -8,12 +9,12 @@ import { useState, useRef } from 'react';
 const STORAGE_KEY = 'ultimate_health_data';
 
 function loadData() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  try { return JSON.parse(safeLocalStorage.getItem(STORAGE_KEY) || '[]'); }
   catch { return []; }
 }
 
 function saveData(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
 function parseCSV(text) {

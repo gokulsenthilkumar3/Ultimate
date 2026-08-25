@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import { Z_INDEX } from '../constants';
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon, Zap, Scale, X, CheckCircle2, AlertTriangle, Flame } from 'lucide-react';
@@ -174,12 +175,12 @@ export default function DailyCheckIn({ onClose }) {
 
     // ── NEW: auto-dismiss matching habit notifications ──
     try {
-      const dismissed = JSON.parse(localStorage.getItem('notif_dismissed') || '[]');
+      const dismissed = JSON.parse(safeLocalStorage.getItem('notif_dismissed') || '[]');
       // build IDs that NotificationCenter would generate for today's missed habits
       // Those IDs are: `missed-habit-${h.id}-${today}` (see NotificationCenter)
       const habitNotifIds = (habits || []).map(h => `missed-habit-${h.id}-${checkInDate}`);
       const merged = [...new Set([...dismissed, ...habitNotifIds])];
-      localStorage.setItem('notif_dismissed', JSON.stringify(merged));
+      safeLocalStorage.setItem('notif_dismissed', JSON.stringify(merged));
     } catch (_) { /* silent */ }
 
     if (setUser) setUser(updatedUser);

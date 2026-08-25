@@ -356,7 +356,7 @@ export default function Projects() {
                 
                 <div>
                   <label className="form-label">Repository Name *</label>
-                  <input className="form-input" value={githubRepoForm.name} onChange={e => setGithubRepoForm({...githubRepoForm, name: e.target.value})} style={{ width: '100%' }} placeholder="awesome-project" />
+                  <input className="form-input" value={githubRepoForm.name} onChange={e => setGithubRepoForm({...githubRepoForm, name: e.target.value})}  placeholder="awesome-project" />
                 </div>
                 
                 <div>
@@ -569,38 +569,38 @@ export default function Projects() {
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">Project Title *</label>
                   <input className="form-input" placeholder="e.g. Personal Finance App" value={form.title}
-                    onChange={e => setForm({ ...form, title: e.target.value })} style={{ width: '100%' }} />
+                    onChange={e => setForm({ ...form, title: e.target.value })}  />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">Description</label>
                   <input className="form-input" placeholder="What does this project do?" value={form.description}
-                    onChange={e => setForm({ ...form, description: e.target.value })} style={{ width: '100%' }} />
+                    onChange={e => setForm({ ...form, description: e.target.value })}  />
                 </div>
                 <div>
                   <label className="form-label">Tech Stack / Language</label>
                   <input className="form-input" placeholder="e.g. React, Python, PostgreSQL" value={form.stack}
-                    onChange={e => setForm({ ...form, stack: e.target.value })} style={{ width: '100%' }} />
+                    onChange={e => setForm({ ...form, stack: e.target.value })}  />
                 </div>
                 <div>
                   <label className="form-label">Status</label>
-                  <select className="form-input" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{ width: '100%' }}>
+                  <select className="form-input" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} >
                     {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">Project URL</label>
                   <input className="form-input" placeholder="https://your-project-url.com" value={form.url}
-                    onChange={e => setForm({ ...form, url: e.target.value })} style={{ width: '100%' }} />
+                    onChange={e => setForm({ ...form, url: e.target.value })}  />
                 </div>
                 <div>
                   <label className="form-label">Start Date</label>
                   <input type="date" className="form-input" value={form.startDate}
-                    onChange={e => setForm({ ...form, startDate: e.target.value })} style={{ width: '100%' }} />
+                    onChange={e => setForm({ ...form, startDate: e.target.value })}  />
                 </div>
                 <div>
                   <label className="form-label">Target End Date</label>
                   <input type="date" className="form-input" value={form.endDate}
-                    onChange={e => setForm({ ...form, endDate: e.target.value })} style={{ width: '100%' }} />
+                    onChange={e => setForm({ ...form, endDate: e.target.value })}  />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>

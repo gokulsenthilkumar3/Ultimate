@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   Film, Tv, Star, Plus, Trash2, Search, ChevronLeft, ChevronRight,
@@ -212,19 +213,19 @@ export default function Entertainment() {
 
   // ── Trakt.tv state (stored in localStorage for persistence) ──────────
   const [traktClientId, setTraktClientId] = useState(
-    () => localStorage.getItem('gt_trakt_client_id') || ''
+    () => safeLocalStorage.getItem('gt_trakt_client_id') || ''
   );
   const [traktUsername, setTraktUsername] = useState(
-    () => localStorage.getItem('gt_trakt_username') || ''
+    () => safeLocalStorage.getItem('gt_trakt_username') || ''
   );
   const [traktSyncing, setTraktSyncing] = useState(false);
   const [traktLastSync, setTraktLastSync] = useState(
-    () => localStorage.getItem('gt_trakt_last_sync') || null
+    () => safeLocalStorage.getItem('gt_trakt_last_sync') || null
   );
 
   const saveTraktConfig = () => {
-    localStorage.setItem('gt_trakt_client_id', traktClientId);
-    localStorage.setItem('gt_trakt_username', traktUsername);
+    safeLocalStorage.setItem('gt_trakt_client_id', traktClientId);
+    safeLocalStorage.setItem('gt_trakt_username', traktUsername);
     toast.success('Trakt.tv credentials saved!');
   };
 
@@ -270,7 +271,7 @@ export default function Entertainment() {
       });
 
       const now = new Date().toLocaleString();
-      localStorage.setItem('gt_trakt_last_sync', now);
+      safeLocalStorage.setItem('gt_trakt_last_sync', now);
       setTraktLastSync(now);
       toast.success(`Trakt sync complete! ${added} new titles imported.`);
     } catch (err) {

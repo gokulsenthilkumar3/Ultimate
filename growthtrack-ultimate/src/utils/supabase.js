@@ -1,3 +1,4 @@
+import safeLocalStorage from './safeLocalStorage';
 /**
  * Supabase Cloud Persistence Scaffold
  * ────────────────────────────────────
@@ -32,10 +33,10 @@ const isConfigured = () => Boolean(SUPABASE_URL && SUPABASE_KEY);
 
 /** Get or create a stable local user ID */
 const getLocalUserId = () => {
-  let id = localStorage.getItem(USER_ID_KEY);
+  let id = safeLocalStorage.getItem(USER_ID_KEY);
   if (!id) {
     id = `user_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(USER_ID_KEY, id);
+    safeLocalStorage.setItem(USER_ID_KEY, id);
   }
   return id;
 };
