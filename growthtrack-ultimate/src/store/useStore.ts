@@ -13,6 +13,20 @@ export async function apiSync(endpoint: string, method: string = 'POST', data: a
     if (endpoint.includes('/health/sync/apple') && method === 'POST') {
       return { ok: true, data: { synced: true } };
     }
+    const apiBase = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.VITE_API_BASE || 'http://localhost:3001';
+    const token = localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token');
+    // Use the durable API whenever a signed-in session is available. The
+    // local sync layer remains a safe offline fallback for demo/local mode.
+    if (token && (endpoint === '/logs' || !endpoint.startsWith('/api/'))) {
+      const apiPath = ['/logs', '/referrals'].includes(endpoint) ? `/api${endpoint}` : endpoint;
+      const response = await fetch(`${apiBase}${apiPath}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: method === 'GET' ? undefined : JSON.stringify(data ?? {}),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (response.ok) return response.json();
+    }
     return await syncEndpoint(endpoint, method, data);
   } catch (e: any) {
     console.warn(`[useStore] sync failed for ${endpoint}:`, e.message);
@@ -31,6 +45,8 @@ const useStore = create<any>()(
       palette: 'gold',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'logs'],
+      navigationOrder: ['today', 'physique', 'insights', 'workspace', 'fitness', 'wellness', 'money', 'social', 'entertainment', 'tools', 'profile'],
+      navigationTabOrder: {},
 
       togglePinnedTab: (tabId: string) => {
         set((state: any) => {
@@ -42,6 +58,8 @@ const useStore = create<any>()(
           };
         });
       },
+      setNavigationOrder: (navigationOrder: string[]) => set({ navigationOrder }),
+      setNavigationTabOrder: (navigationTabOrder: Record<string, string[]>) => set({ navigationTabOrder }),
       isLoading: false,
       serverStatus: 'unknown',
       onboardingComplete: false,
@@ -133,6 +151,18 @@ const useStore = create<any>()(
 
           if (stored && typeof stored === 'object') {
             Object.assign(newState, stored);
+            // Normalize offline collection caches back to the shapes used by
+            // the UI. This keeps the cache format stable across restarts.
+            if (Array.isArray(stored.entertainment)) newState.entertainment = { media: stored.entertainment };
+            if (Array.isArray(stored.shopping)) newState.shopping = { items: stored.shopping };
+            if (Array.isArray(stored.tasks)) {
+              const pending = stored.tasks.filter((item: any) => !item?.done);
+              const completed = stored.tasks.filter((item: any) => item?.done);
+              newState.user = { ...(newState.user || {}), tasks: { pending, completed } };
+            }
+            if (Array.isArray(stored.finance)) {
+              newState.finance = { ...(newState.finance || {}), transactions: Object.fromEntries(stored.finance.map((item: any) => [item.id, item])) };
+            }
           }
 
           set(newState);
@@ -468,18 +498,10 @@ const useStore = create<any>()(
       name: 'growthtrack-ultimate-v4',
       storage: createJSONStorage(() => localStorage),
       version: 4,
+      // Persist every user-owned data domain. The previous whitelist only
+      // saved a handful of modules, so a restart looked like a data reset.
       partialize: (state: any) => ({
-        theme: state.theme,
-        palette: state.palette,
-        pinnedTabs: state.pinnedTabs,
-        finance: state.finance,
-        entertainment: state.entertainment,
-        timesheet: state.timesheet,
-        shopping: state.shopping,
-        onboardingComplete: state.onboardingComplete,
-        lastCheckIn: state.lastCheckIn,
-        checkInAlertDismissedDate: state.checkInAlertDismissedDate,
-        databases: state.databases,
+        ...Object.fromEntries(Object.entries(state).filter(([key, value]) => typeof value !== 'function' && key !== 'isLoading' && key !== 'serverStatus')),
       }),
       migrate: (persistedState: any, version) => {
         try {

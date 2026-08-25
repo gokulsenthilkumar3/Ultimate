@@ -82,6 +82,9 @@ const Entertainment      = lazy(() => import('./components/Entertainment'));
 const Calendar           = lazy(() => import('./components/Calendar'));
 const Timesheet          = lazy(() => import('./components/Timesheet'));
 const Logs               = lazy(() => import('./components/Logs'));
+const Helpdesk           = lazy(() => import('./components/Helpdesk'));
+const InsightsHub        = lazy(() => import('./components/InsightsHub'));
+const WorkspaceHub       = lazy(() => import('./components/WorkspaceHub'));
 const Portfolio          = lazy(() => import('./components/Portfolio'));
 const Projects           = lazy(() => import('./components/Projects'));
 const Databases          = lazy(() => import('./components/Databases'));
@@ -134,8 +137,9 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
     case 'medical':        return <Medical {...props} />;
     case 'progress':       return <Progress {...props} />;
     case 'goals':          return <GoalsDashboard {...props} />;
-    case 'analytics':      return <Analytics {...props} />;
+    case 'analytics':      return <InsightsHub initialTab="analytics" logs={metricLogs} />;
     case 'settings':       return <ProfileEditor {...props} />;
+    case 'profile':        return <ProfileEditor {...props} />;
     case 'skills':         return <Skills {...props} />;
     case 'health':         return <HealthExtras />;
     case 'habits':         return <HabitsMatrix />;
@@ -143,23 +147,26 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
     case 'tasks':          return <Tasks {...props} />;
     case 'projects':       return <Projects />;
     case 'portfolio':      return <Portfolio />;
-    case 'calendar':       return <Calendar />;
+    case 'calendar':       return <WorkspaceHub initialTab="calendar" />;
     case 'timesheet':      return <Timesheet />;
     case 'logs':           return <Logs />;
+    case 'help':           return <Helpdesk />;
     case 'finance':        return <Finance />;
     case 'entertainment':  return <Entertainment />;
     case 'social':         return <SocialMedia />;
     case 'pricing':        return <Pricing />;
     case 'ai':             return <AiDashboard />;
     case 'maps':           return <Maps />;
-    case 'documents':      return <Documents />;
+    case 'documents':      return <WorkspaceHub initialTab="documents" />;
+    case 'workspace':      return <WorkspaceHub />;
     case 'current':        return <Current />;
-    case 'notes':          return <Notes />;
+    case 'notes':          return <WorkspaceHub initialTab="notes" />;
     case 'databases':      return <Databases />;
-    case 'dashboards':     return <Dashboards />;
+    case 'dashboards':     return <InsightsHub initialTab="dashboards" logs={metricLogs} />;
     case 'about':          return <About />;
     case 'sip':            return <SIPCalculator />;
-    case 'forecast':       return <TransformationPredictor logs={metricLogs} />;
+    case 'forecast':       return <InsightsHub initialTab="forecast" logs={metricLogs} />;
+    case 'insights':       return <InsightsHub logs={metricLogs} />;
     case 'apps':           return <AppLauncher setActiveTab={setActiveTab} />;
     case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} />;
     default:               return <Overview {...props} />;
@@ -261,7 +268,7 @@ export default function App() {
   const [authView, setAuthView] = React.useState('landing'); // 'landing', 'login', 'signup'
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const isAuthed = Boolean(sessionStorage.getItem('growthtrack-session-token'));
+  const isAuthed = Boolean(localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token'));
   const navigate = useNavigate();
   const location = useLocation();
 

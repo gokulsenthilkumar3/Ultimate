@@ -14,9 +14,9 @@ async function parseJsonResponse(res) {
   }
 }
 
-const readToken = () => sessionStorage.getItem(TOKEN_KEY);
-const writeToken = (token) => sessionStorage.setItem(TOKEN_KEY, token);
-const clearToken = () => sessionStorage.removeItem(TOKEN_KEY);
+const readToken = () => localStorage.getItem(TOKEN_KEY);
+const writeToken = (token) => localStorage.setItem(TOKEN_KEY, token);
+const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -42,17 +42,17 @@ export function AuthProvider({ children }) {
         const data = await parseJsonResponse(res);
         setUser(data.user);
         setSession({ access_token: token });
-        sessionStorage.setItem('growthtrack-user', JSON.stringify(data.user));
+        localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
       } else {
         clearToken();
-        sessionStorage.removeItem('growthtrack-user');
+        localStorage.removeItem('growthtrack-user');
         setSession(null);
         setUser(null);
       }
     } catch (err) {
       console.error(err);
       clearToken();
-      sessionStorage.removeItem('growthtrack-user');
+      localStorage.removeItem('growthtrack-user');
       setSession(null);
       setUser(null);
     } finally {
@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
       const res = await fetch(`${AUTH_API_BASE}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, fullName })
+        body: JSON.stringify({ email, password, fullName, referralCode: new URLSearchParams(window.location.search).get('ref') || undefined })
       });
       const data = await parseJsonResponse(res);
       if (!res.ok) {
@@ -77,9 +77,10 @@ export function AuthProvider({ children }) {
       }
       if (data.token) writeToken(data.token);
       if (data.user) {
-        sessionStorage.setItem('growthtrack-user', JSON.stringify(data.user));
+        localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
       }
       await fetchSession();
+      try { await fetch(`${AUTH_API_BASE}/api/referrals/sync`, { method: 'POST', headers: { Authorization: `Bearer ${readToken()}` } }); } catch {}
       try { await logAuth('signup', email); } catch {}
       try { await logSession('start', 'New session created after signup'); } catch {}
       return { data: { user: data.user }, error: null };
@@ -101,7 +102,7 @@ export function AuthProvider({ children }) {
       }
       if (data.token) writeToken(data.token);
       if (data.user) {
-        sessionStorage.setItem('growthtrack-user', JSON.stringify(data.user));
+        localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
       }
       await fetchSession();
       try { await logAuth('login_success', email); } catch {}
@@ -117,7 +118,7 @@ export function AuthProvider({ children }) {
     await logAuth('logout', email);
     await logSession('end', 'Session ended by user logout');
     clearToken();
-    sessionStorage.removeItem('growthtrack-user');
+    localStorage.removeItem('growthtrack-user');
     setSession(null);
     setUser(null);
     return { error: null };

@@ -133,7 +133,7 @@ export default function ProfileEditor() {
   const fetchAdminUsers = useCallback(async () => {
     setAdminLoading(true); setAdminError(null);
     try {
-      const token = sessionStorage.getItem('growthtrack-session-token');
+      const token = localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token');
       const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001');
       const res = await fetch(`${API}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -149,7 +149,7 @@ export default function ProfileEditor() {
 
   const updateUserTier = useCallback(async (userId, newTier) => {
     try {
-      const token = sessionStorage.getItem('growthtrack-session-token');
+      const token = localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token');
       const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001');
       await fetch(`${API}/api/admin/users/${userId}`, {
         method: 'PATCH',

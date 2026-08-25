@@ -10,6 +10,7 @@ import PhysiqueRoadmap from './PhysiqueRoadmap';
 
 // Lazy-load the heavy 3D viewer — only downloaded when the 3D Mirror sub-tab is selected
 const HumanoidViewer = lazy(() => import('./HumanoidViewer'));
+const ScrollShowcase = lazy(() => import('./ScrollShowcase'));
 
 // ── Body-fat formulas ─────────────────────────────────────────────────────
 function calcNavyBF(gender, waist, neck, height, hip = 0) {
@@ -186,8 +187,9 @@ export default function Physique({ user }) {
   const [unitMode,      setUnitMode]      = useState('cm');
   // Sub-tab: 'blueprint' (default body metrics) | '3d' (HumanoidViewer embedded)
   const [subTab, setSubTab] = useState(
-    () => window.location.hash === '#3d' ? '3d' : 'blueprint'
+    () => ['3d', 'targets', 'history'].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'blueprint'
   );
+  const metricLogs = useStore(s => s.metric_logs || []);
 
   // ── Body-fat calculator state ─────────────────────────────────────────
   const [bfGender, setBfGender] = useState(user?.gender || 'M');
@@ -267,12 +269,12 @@ export default function Physique({ user }) {
           background: 'var(--bg-elevated)', borderRadius: '14px',
           border: '1px solid var(--border)',
         }}>
-          {[{ id: 'blueprint', label: '📐 Blueprint' }, { id: '3d', label: '🫁 3D Mirror' }].map(tab => (
+          {[{ id: 'blueprint', label: '📐 Blueprint' }, { id: '3d', label: '🫁 3D Mirror' }, { id: 'targets', label: '🎯 Targets' }, { id: 'history', label: '🕘 History' }].map(tab => (
             <button
               key={tab.id}
               onClick={() => {
                 setSubTab(tab.id);
-                window.location.hash = tab.id === '3d' ? '#3d' : '';
+                window.location.hash = tab.id === 'blueprint' ? '' : `#${tab.id}`;
               }}
               style={{
                 padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
@@ -300,6 +302,12 @@ export default function Physique({ user }) {
           <HumanoidViewer />
         </Suspense>
       )}
+
+      {subTab === 'blueprint' && <Suspense fallback={null}><ScrollShowcase /></Suspense>}
+
+      {subTab === 'targets' && <div className="glass-card physique-subpanel"><PhysiqueRoadmap targets={targets} user={user} /></div>}
+
+      {subTab === 'history' && <div className="glass-card physique-subpanel"><div className="eyebrow"><TrendingUp size={14} /> Measurement history</div><h3 className="text-display">Your body over time</h3>{metricLogs.length === 0 ? <p className="text-secondary">Save metric check-ins in Progress to build a history timeline.</p> : <div className="physique-history-list">{[...metricLogs].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20).map((log, index) => <div className="physique-history-row" key={log.id || `${log.date}-${index}`}><strong>{new Date(log.date).toLocaleDateString()}</strong><span>{log.metric || 'Metric'} · {log.value ?? '—'}</span></div>)}</div>}</div>}
 
       {/* ── Blueprint sub-tab (original content) ───────────────────────────── */}
       {subTab === 'blueprint' && (<>

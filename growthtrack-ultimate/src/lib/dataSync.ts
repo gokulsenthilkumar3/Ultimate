@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-const STORAGE_KEY = 'growthtrack-app-state-v1';
+const STORAGE_KEY = 'growthtrack-app-state-v2';
 const USER_ID_KEY = 'growthtrack-user-id';
 const PROFILE_TABLE = 'user_profiles';
 
@@ -20,10 +20,18 @@ const safeParse = (value: string | null, fallback: any) => {
 };
 
 const getLocalUserId = () => {
-  let id = localStorage.getItem(USER_ID_KEY);
+  // Keep the offline cache scoped to the signed-in account when available.
+  // Fall back to the legacy anonymous id for local/demo mode.
+  let signedInId = null;
+  try {
+    const rawUser = localStorage.getItem('growthtrack-user');
+    signedInId = rawUser ? JSON.parse(rawUser)?.id : null;
+  } catch {}
+  const userKey = signedInId ? `${USER_ID_KEY}:${signedInId}` : USER_ID_KEY;
+  let id = localStorage.getItem(userKey);
   if (!id) {
     id = `user_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(USER_ID_KEY, id);
+    localStorage.setItem(userKey, id);
   }
   return id;
 };
@@ -86,7 +94,10 @@ export const syncEndpoint = async (
   data: any = null,
 ) => {
   const state = await loadSyncedState();
-  const key = endpoint.replace(/^\/+/, '').replace(/\//g, '__');
+  const parts = endpoint.replace(/^\/+/, '').split('/').filter(Boolean);
+  const key = parts[0] || 'unknown';
+  const itemId = parts[1];
+  const collectionKeys = new Set(['tasks', 'finance', 'budgets', 'metric_logs', 'nutrition_logs', 'workout_sessions', 'shopping', 'timesheet', 'entertainment', 'notes', 'goals', 'sleep_logs', 'documents', 'habits', 'subscriptions', 'mood_logs', 'vitals_logs', 'medications']);
   const current = state[key];
 
   if (method === 'GET') {
@@ -96,9 +107,17 @@ export const syncEndpoint = async (
   let nextValue = data;
 
   if (method === 'DELETE') {
-    nextValue = null;
+    nextValue = itemId && Array.isArray(current)
+      ? current.filter((item) => item?.id !== itemId)
+      : null;
   } else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-    if (key === 'user' && current && data && typeof current === 'object' && typeof data === 'object') {
+    if (collectionKeys.has(key)) {
+      const list = Array.isArray(current) ? current : [];
+      if (method === 'POST') nextValue = data?.id && list.some((item) => item?.id === data.id)
+        ? list.map((item) => item.id === data.id ? { ...item, ...data } : item)
+        : [...list, data];
+      else nextValue = list.map((item) => item?.id && data?.id && item.id === data.id ? { ...item, ...data } : item);
+    } else if (key === 'user' && current && data && typeof current === 'object' && typeof data === 'object') {
       nextValue = { ...current, ...data };
     } else if (Array.isArray(current)) {
       if (method === 'POST') {
@@ -117,11 +136,7 @@ export const syncEndpoint = async (
 
   const nextState = { ...state };
 
-  if (method === 'DELETE') {
-    delete nextState[key];
-  } else {
-    nextState[key] = nextValue;
-  }
+  nextState[key] = nextValue;
 
   await setSyncedState(nextState);
 

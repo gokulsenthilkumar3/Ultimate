@@ -59,13 +59,7 @@ const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:30
  * Get client IP address (fallback to unknown)
  */
 async function getClientIP(): Promise<string> {
-  try {
-    const res = await fetch('https://api.ipify.org?format=json');
-    const data = await res.json();
-    return data.ip || 'unknown';
-  } catch {
-    return 'unknown';
-  }
+  return 'client';
 }
 
 /**
@@ -79,7 +73,7 @@ function getUserAgent(): string {
  * Get current user info from storage
  */
 function getCurrentUser(): { user_id?: string; user_name?: string; user_email?: string } {
-  const userStr = sessionStorage.getItem('growthtrack-user');
+  const userStr = localStorage.getItem('growthtrack-user') || sessionStorage.getItem('growthtrack-user');
   if (userStr) {
     try {
       const user = JSON.parse(userStr);
@@ -114,12 +108,17 @@ export async function logAction(entry: LogEntry): Promise<void> {
 
     await fetch(`${API_BASE}/api/logs`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(payload)
     });
   } catch (error) {
     console.error('[Logger] Failed to log action:', error);
   }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /**
@@ -148,7 +147,7 @@ export async function logAuth(
   try {
     await fetch(`${API_BASE}/api/login-logs`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         user_id: user.user_id,
         email: email || user.user_email,
@@ -205,7 +204,7 @@ export async function logSession(
   try {
     await fetch(`${API_BASE}/api/session-logs`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         user_id: user.user_id,
         action,
