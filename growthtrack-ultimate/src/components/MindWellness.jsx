@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import useStore, { selectMoodLogs, selectAddMoodLog } from '../store/useStore';
 import {
@@ -169,7 +170,7 @@ function BreathingExercise() {
 // ── Journal component ─────────────────────────────────────────────────────────
 const JOURNAL_KEY = 'gt_journal_entries';
 function loadJournal() {
-  try { return JSON.parse(localStorage.getItem(JOURNAL_KEY) || '[]'); } catch { return []; }
+  try { return JSON.parse(safeLocalStorage.getItem(JOURNAL_KEY) || '[]'); } catch { return []; }
 }
 
 function Journal() {
@@ -204,7 +205,7 @@ function Journal() {
     };
     const updated = [entry, ...entries].slice(0, 50); // keep last 50
     setEntries(updated);
-    localStorage.setItem(JOURNAL_KEY, JSON.stringify(updated));
+    safeLocalStorage.setItem(JOURNAL_KEY, JSON.stringify(updated));
     setText('');
     randomPrompt();
     toast.success('Journal entry saved');
@@ -213,7 +214,7 @@ function Journal() {
   const remove = (id) => {
     const updated = entries.filter(e => e.id !== id);
     setEntries(updated);
-    localStorage.setItem(JOURNAL_KEY, JSON.stringify(updated));
+    safeLocalStorage.setItem(JOURNAL_KEY, JSON.stringify(updated));
   };
 
   const totalWords = entries.reduce((s, e) => s + (e.wordCount || 0), 0);

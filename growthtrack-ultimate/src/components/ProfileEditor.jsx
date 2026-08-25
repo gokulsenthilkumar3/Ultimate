@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   User, Camera, Save, X, Upload, CheckCircle,
@@ -35,13 +36,13 @@ const SOCIAL_THEMES = {
 
 const Field = ({ label, type = 'text', field, placeholder, options, formData, handleChange, prefix }) => (
   <div style={{ marginBottom: '1.25rem' }}>
-    <label className="label-caps" style={{ fontSize: '0.72rem', display: 'block', marginBottom: '8px', color: 'var(--text-2)', letterSpacing: '0.12em', fontWeight: 800 }}>{label}</label>
+    <label className="form-label">{label}</label>
     {options ? (
       <select
         className="form-input"
         value={field.includes('.') ? formData[field.split('.')[0]]?.[field.split('.')[1]] : formData[field]}
         onChange={e => handleChange(field, e.target.value)}
-        style={{ width: '100%', fontSize: '0.95rem', fontWeight: 500, fontFamily: 'var(--font-display)' }}
+        
       >
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -71,7 +72,7 @@ const Field = ({ label, type = 'text', field, placeholder, options, formData, ha
 const RangeField = ({ label, field, min = 0, max = 1, step = 0.05, formData, handleChange }) => (
   <div style={{ marginBottom: '1.25rem' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
-      <label className="label-caps" style={{ fontSize: '0.72rem', color: 'var(--text-2)', letterSpacing: '0.12em', fontWeight: 800 }}>{label}</label>
+      <label className="form-label">{label}</label>
       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)' }}>{formData[field] ?? 0.5}</span>
     </div>
     <input
@@ -551,7 +552,7 @@ export default function ProfileEditor() {
           email: resData.user.email
         });
 
-        localStorage.setItem('growthtrack-user', JSON.stringify({
+        safeLocalStorage.setItem('growthtrack-user', JSON.stringify({
           id: resData.user.id,
           email: resData.user.email,
           fullName: resData.user.user_metadata?.full_name || formData.name
@@ -725,7 +726,7 @@ export default function ProfileEditor() {
                 </div>
 
                 <div style={{ marginTop: '0.5rem' }}>
-                  <label className="label-caps" style={{ fontSize: '0.65rem', display: 'block', marginBottom: '8px', color: 'var(--text-3)' }}>Bio / About Me</label>
+                  <label className="form-label">Bio / About Me</label>
                   <textarea
                     className="form-input"
                     value={formData.bio}
@@ -854,20 +855,20 @@ export default function ProfileEditor() {
                   </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: newSocialPlatform === 'Other' ? '1fr 1fr 2fr auto' : '1fr 2fr auto', gap: '1rem', alignItems: 'flex-end' }}>
                     <div>
-                      <label className="label-caps" style={{ fontSize: '0.72rem', display: 'block', marginBottom: '8px', color: 'var(--text-2)' }}>Platform</label>
-                      <select className="form-input" value={newSocialPlatform} onChange={e => setNewSocialPlatform(e.target.value)} style={{ width: '100%', fontSize: '0.95rem', fontWeight: 500, fontFamily: 'var(--font-display)' }}>
+                      <label className="form-label">Platform</label>
+                      <select className="form-input" value={newSocialPlatform} onChange={e => setNewSocialPlatform(e.target.value)} >
                         {Object.keys(SOCIAL_THEMES).map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
                     </div>
                     {newSocialPlatform === 'Other' && (
                       <div>
-                        <label className="label-caps" style={{ fontSize: '0.72rem', display: 'block', marginBottom: '8px', color: 'var(--text-2)' }}>Custom Name</label>
-                        <input className="form-input" value={newSocialCustomName} onChange={e => setNewSocialCustomName(e.target.value)} placeholder="e.g. Substack" style={{ width: '100%', fontSize: '0.95rem', fontWeight: 500, fontFamily: 'var(--font-display)' }} />
+                        <label className="form-label">Custom Name</label>
+                        <input className="form-input" value={newSocialCustomName} onChange={e => setNewSocialCustomName(e.target.value)} placeholder="e.g. Substack"  />
                       </div>
                     )}
                     <div>
-                      <label className="label-caps" style={{ fontSize: '0.72rem', display: 'block', marginBottom: '8px', color: 'var(--text-2)' }}>URL or Username</label>
-                      <input className="form-input" placeholder="e.g. https://... or @username" value={newSocialUrl} onChange={e => setNewSocialUrl(e.target.value)} style={{ width: '100%', fontSize: '0.95rem', fontWeight: 500, fontFamily: 'var(--font-display)' }} />
+                      <label className="form-label">URL or Username</label>
+                      <input className="form-input" placeholder="e.g. https://... or @username" value={newSocialUrl} onChange={e => setNewSocialUrl(e.target.value)}  />
                     </div>
                     <button className="btn-primary" style={{ height: '42px', padding: '0 1.5rem' }} onClick={handleAddLink}>
                       Add

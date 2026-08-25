@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import safeLocalStorage from '../utils/safeLocalStorage';
 
 /**
  * useLocalStorage Hook
@@ -9,7 +10,7 @@ export default function useLocalStorage(key, initialValue) {
   // Pass initial state function to useState so logic is only executed once
   const [storedValue, setStoredValue] = useState(() => {
     try {
-      const item = window.localStorage.getItem(key);
+      const item = safeLocalStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}":`, error);
@@ -22,7 +23,7 @@ export default function useLocalStorage(key, initialValue) {
       // Allow value to be a function so we have same API as useState
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      safeLocalStorage.setItem(key, JSON.stringify(valueToStore));
     } catch (error) {
       console.warn(`Error setting localStorage key "${key}":`, error);
     }

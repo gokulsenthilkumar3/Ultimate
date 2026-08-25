@@ -36,7 +36,7 @@ export function createSecurity({ prisma, logToFile }) {
   const corsOptions = {
     credentials: true,
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+      if (!origin || allowedOrigins.has(origin)) return callback(null, origin || true);
       return callback(new Error('Origin is not allowed'));
     },
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

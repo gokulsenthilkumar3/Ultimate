@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import { supabase } from './supabaseClient';
 
 const STORAGE_KEY = 'growthtrack-app-state-v2';
@@ -24,22 +25,22 @@ const getLocalUserId = () => {
   // Fall back to the legacy anonymous id for local/demo mode.
   let signedInId = null;
   try {
-    const rawUser = localStorage.getItem('growthtrack-user');
+    const rawUser = safeLocalStorage.getItem('growthtrack-user');
     signedInId = rawUser ? JSON.parse(rawUser)?.id : null;
   } catch {}
   const userKey = signedInId ? `${USER_ID_KEY}:${signedInId}` : USER_ID_KEY;
-  let id = localStorage.getItem(userKey);
+  let id = safeLocalStorage.getItem(userKey);
   if (!id) {
     id = `user_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(userKey, id);
+    safeLocalStorage.setItem(userKey, id);
   }
   return id;
 };
 
-const getLocalState = (): AppState => safeParse(localStorage.getItem(STORAGE_KEY), {});
+const getLocalState = (): AppState => safeParse(safeLocalStorage.getItem(STORAGE_KEY), {});
 
 const setLocalState = (state: AppState) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 };
 
 export const getSyncedState = () => {

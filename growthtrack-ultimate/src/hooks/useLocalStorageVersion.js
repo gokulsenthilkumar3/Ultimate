@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 /**
  * useLocalStorageVersion
  * Utility to check the current persisted store version.
@@ -5,7 +6,7 @@
  */
 export function getPersistedStoreVersion(storeName = 'growthtrack-user') {
   try {
-    const raw = localStorage.getItem(storeName);
+    const raw = safeLocalStorage.getItem(storeName);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed?.version ?? 0;
@@ -15,5 +16,5 @@ export function getPersistedStoreVersion(storeName = 'growthtrack-user') {
 }
 
 export function clearPersistedStore(storeName = 'growthtrack-user') {
-  localStorage.removeItem(storeName);
+  safeLocalStorage.removeItem(storeName);
 }

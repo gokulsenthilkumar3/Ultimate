@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore, { selectPinnedTabs, selectTogglePinnedTab } from '../store/useStore';
 import { Pin, PinOff, Search, Grid, Star } from 'lucide-react';
@@ -42,13 +43,13 @@ const PORTFOLIO_URL = 'https://portfolio-ten-plum-98.vercel.app/';
 const CLICK_KEY = 'gtd_app_click_counts';
 
 function getClickCounts() {
-  try { return JSON.parse(localStorage.getItem(CLICK_KEY) || '{}'); } catch { return {}; }
+  try { return JSON.parse(safeLocalStorage.getItem(CLICK_KEY) || '{}'); } catch { return {}; }
 }
 function incrementClick(id) {
   try {
     const counts = getClickCounts();
     counts[id] = (counts[id] || 0) + 1;
-    localStorage.setItem(CLICK_KEY, JSON.stringify(counts));
+    safeLocalStorage.setItem(CLICK_KEY, JSON.stringify(counts));
   } catch { /* ignore */ }
 }
 

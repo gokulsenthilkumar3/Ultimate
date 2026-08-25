@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import { apiRequest } from './apiClient';
 
 /**
@@ -62,7 +63,7 @@ export interface LoginLogEntry {
  * Get current user info from storage
  */
 function getCurrentUser(): { user_id?: string; user_name?: string; user_email?: string } {
-  const userStr = localStorage.getItem('growthtrack-user') || sessionStorage.getItem('growthtrack-user');
+  const userStr = safeLocalStorage.getItem('growthtrack-user') || sessionStorage.getItem('growthtrack-user');
   if (userStr) {
     try {
       const user = JSON.parse(userStr);

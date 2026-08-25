@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { apiRequest, refreshCsrfToken, setCsrfToken } from '../lib/apiClient';
 
@@ -10,7 +11,7 @@ export function AuthProvider({ children }) {
 
   const clearSession = () => {
     setCsrfToken(null); setSession(null); setUser(null);
-    localStorage.removeItem('growthtrack-user');
+    safeLocalStorage.removeItem('growthtrack-user');
   };
 
   const fetchSession = async () => {
@@ -18,7 +19,7 @@ export function AuthProvider({ children }) {
       const data = await apiRequest('/api/auth/me');
       await refreshCsrfToken();
       setUser(data.user); setSession({ expiresAt: data.expiresAt });
-      localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
+      safeLocalStorage.setItem('growthtrack-user', JSON.stringify(data.user));
     } catch { clearSession(); }
     finally { setLoading(false); }
   };
@@ -34,7 +35,7 @@ export function AuthProvider({ children }) {
     try {
       const data = await apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
       setCsrfToken(data.csrfToken); setUser(data.user); setSession({ expiresAt: data.expiresAt });
-      localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
+      safeLocalStorage.setItem('growthtrack-user', JSON.stringify(data.user));
       return { data: { user: data.user }, error: null };
     } catch (error) { clearSession(); return { error }; }
   };

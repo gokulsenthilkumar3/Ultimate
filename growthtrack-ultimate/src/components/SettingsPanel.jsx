@@ -1,3 +1,4 @@
+import safeLocalStorage from '../utils/safeLocalStorage';
 import { Z_INDEX } from '../constants';
 import React from 'react';
 import { X, UserRound, Target, Activity } from 'lucide-react';
