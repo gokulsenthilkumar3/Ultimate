@@ -3,7 +3,7 @@
  * Adapted from Layer 2: Render Pipeline
  */
 
-import React, { Suspense, useCallback } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Canvas }                        from "@react-three/fiber";
 import { Html, AdaptiveDpr, AdaptiveEvents } from "@react-three/drei";
 import * as THREE                        from "three";
@@ -137,28 +137,49 @@ function useGlCreated(setLodConfig) {
 }
 
 export default function ChamberCanvas({ className = "", style = {} }) {
-  const [lodConfig, setLodConfig] = React.useState(LOD_CONFIG[GPU_TIERS.HIGH]);
+  const wrapperRef = useRef(null);
+  const [lodConfig, setLodConfig] = useState(LOD_CONFIG[GPU_TIERS.HIGH]);
+  const [isIntersecting, setIsIntersecting] = useState(true);
+  const [documentVisible, setDocumentVisible] = useState(() => document.visibilityState !== 'hidden');
   const onCreated = useGlCreated(setLodConfig);
 
+  useEffect(() => {
+    const element = wrapperRef.current;
+    if (!element || !('IntersectionObserver' in window)) return undefined;
+    const observer = new IntersectionObserver(([entry]) => setIsIntersecting(entry.isIntersecting), { threshold: 0.05 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const handleVisibility = () => setDocumentVisible(document.visibilityState !== 'hidden');
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  const shouldRender = isIntersecting && documentVisible;
+
   return (
-    <Canvas
-      gl={{
-        powerPreference:      "high-performance",
-        antialias:            lodConfig.antialias,
-        alpha:                false,
-        stencil:              true,
-        depth:                true,
-        preserveDrawingBuffer: true,
-      }}
-      dpr={lodConfig.dpr}
-      camera={{ fov: 36, near: 0.1, far: 100 }}
-      shadows={false}
-      frameloop="always"
-      onCreated={onCreated}
-      style={{ width: "100%", height: "100%", ...style }}
-    >
-      <CanvasScene lodConfig={lodConfig} />
-    </Canvas>
+    <div ref={wrapperRef} className={className} style={{ width: '100%', height: '100%', ...style }} data-rendering={shouldRender ? 'active' : 'paused'}>
+      <Canvas
+        gl={{
+          powerPreference:      "high-performance",
+          antialias:            lodConfig.antialias,
+          alpha:                false,
+          stencil:              true,
+          depth:                true,
+          preserveDrawingBuffer: true,
+        }}
+        dpr={lodConfig.dpr}
+        camera={{ fov: 36, near: 0.1, far: 100 }}
+        shadows={false}
+        frameloop={shouldRender ? "always" : "never"}
+        onCreated={onCreated}
+        style={{ width: "100%", height: "100%" }}
+      >
+        <CanvasScene lodConfig={lodConfig} />
+      </Canvas>
+    </div>
   );
 }
 

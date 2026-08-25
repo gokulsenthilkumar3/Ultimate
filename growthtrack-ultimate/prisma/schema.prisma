@@ -2,7 +2,6 @@ datasource db {
   provider = "sqlite"
 }
 
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -21,16 +20,16 @@ model User {
   updatedAt          DateTime @updatedAt
 
   // Singletons (stored as JSON string)
-  trainingPlan       String?
-  nutritionStrategy  String?
-  lifestyleTips      String?
-  medicalData        String?
-  physiqueTargets    String?
-  assessmentQA       String?
-  skills             String?
-  calendarEvents     String?
-  wellnessData       String?
-  healthExtras       String?
+  trainingPlan      String?
+  nutritionStrategy String?
+  lifestyleTips     String?
+  medicalData       String?
+  physiqueTargets   String?
+  assessmentQA      String?
+  skills            String?
+  calendarEvents    String?
+  wellnessData      String?
+  healthExtras      String?
 
   // Relations
   tasks              Task[]
@@ -51,6 +50,237 @@ model User {
   moodLogs           MoodLog[]
   vitalsLogs         VitalsLog[]
   medications        Medication[]
+  authSessions       AuthSession[]
+  preference         UserPreference?
+  ownerProfile       OwnerProfile?
+  socialProfiles     SocialProfile[]
+  bodyProfile        BodyProfile?
+  integrationCredentials IntegrationCredential[]
+}
+
+model AuthSession {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  csrfHash   String
+  ipAddress  String?
+  userAgent  String?
+  expiresAt  DateTime
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+  @@map("auth_sessions")
+}
+
+model UserPreference {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme              String   @default("dark")
+  palette            String   @default("gold")
+  sidebarCollapsed   Boolean  @default(false)
+  onboardingComplete Boolean  @default(false)
+  navigationOrder    String?
+  navigationTabOrder String?
+  reducedMotion      Boolean  @default(false)
+  updatedAt          DateTime @updatedAt
+
+  @@map("user_preferences")
+}
+
+model OwnerProfile {
+  id                        String   @id @default(uuid())
+  userId                    String   @unique
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatar                    String?
+  phone                     String?
+  bio                       String?
+  dateOfBirth               String?
+  gender                    String?
+  bloodType                 String?
+  locationName              String?
+  country                   String?
+  state                     String?
+  city                      String?
+  nationality               String?
+  language                  String?
+  timezone                  String?
+  occupation                String?
+  education                 String?
+  maritalStatus             String?
+  incomeBracket             Float?
+  livingSituation           String?
+  dietaryPreference         String?
+  emergencyContactName      String?
+  emergencyContactPhone     String?
+  medicalConditions         String?
+  allergies                 String?
+  restingHeartRate          Float?
+  activityLevel             String?
+  maintenanceCalories       Float?
+  trainingStyle             String?
+  baseCurrency              String?
+  isdCode                   String?
+  netWorth                  Float?
+  primaryBank               String?
+  passportNationality       String?
+  dateFormat                String?
+  measurementSystem         String?
+  textDirection             String?
+  motherLanguage            String?
+  motherLanguageProficiency String?
+  privacyLevel              String   @default("Private")
+  emailNotifications        Boolean  @default(false)
+  smsNotifications          Boolean  @default(false)
+  notifications             Boolean  @default(true)
+  primaryGoal               String?
+  updatedAt                 DateTime @updatedAt
+  createdAt                 DateTime @default(now())
+
+  @@map("owner_profiles")
+}
+
+model SocialProfile {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  profileUrl String?
+  followers  Int      @default(0)
+  avgLikes   Int      @default(0)
+  avgViews   Int      @default(0)
+  enabled    Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@map("social_profiles")
+}
+
+model BodyProfile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  heightCm          Float?
+  weightKg          Float?
+  bodyFatPct        Float?
+  chestCm           Float?
+  waistCm           Float?
+  shouldersCm       Float?
+  armsCm            Float?
+  forearmsCm        Float?
+  hipsCm            Float?
+  thighsCm          Float?
+  calvesCm          Float?
+  neckCm            Float?
+  glutesCm           Float?
+  ankleCm            Float?
+  torsoLengthCm      Float?
+  upperArmCm         Float?
+  lowerArmCm         Float?
+  handLengthCm       Float?
+  legLengthCm        Float?
+  footLengthCm       Float?
+  headCircCm         Float?
+  headTiltAngle      Float?
+  pelvicTilt         Float?
+  shoulderRounding   Float?
+  browDepth          Float?
+  noseBridgeWidth    Float?
+  noseTipSize        Float?
+  earProminence      Float?
+  jawWidth           Float?
+  chinProjection     Float?
+  lipFullness        Float?
+  eyeSize            Float?
+  targetWeightKg    Float?
+  targetBodyFatPct  Float?
+  targetChestCm     Float?
+  targetWaistCm     Float?
+  targetShouldersCm Float?
+  targetArmsCm      Float?
+  targetThighsCm    Float?
+  skinTone          String?
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+
+  @@map("body_profiles")
+}
+
+model IntegrationCredential {
+  id                     String    @id @default(uuid())
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider               String
+  accountName            String?
+  clientIdCiphertext     String?
+  accessTokenCiphertext  String?
+  refreshTokenCiphertext String?
+  tokenExpiresAt         DateTime?
+  enabled                Boolean   @default(true)
+  lastSyncAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@unique([userId, provider])
+  @@map("integration_credentials")
+}
+
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  valueType String   @default("string")
+  category  String   @default("application")
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+model IntegrationProvider {
+  id               String   @id @default(uuid())
+  providerKey      String   @unique
+  displayName      String
+  category         String
+  authType         String
+  enabled          Boolean  @default(false)
+  icon             String?
+  documentationUrl String?
+  sortOrder        Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@map("integration_providers")
+}
+
+model HelpArticle {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  section   String
+  title     String
+  body      String
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  @@map("help_articles")
+}
+
+model PlanTemplate {
+  id            String   @id @default(uuid())
+  planType      String
+  name          String
+  description   String?
+  durationWeeks Int?
+  active        Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("plan_templates")
 }
 
 model Referral {
@@ -76,16 +306,16 @@ model Task {
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount      Float?
-  type        String?
-  category    String?
-  method      String?
-  date        String?
-  note        String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Float?
+  type      String?
+  category  String?
+  method    String?
+  date      String?
+  note      String?
+  createdAt DateTime @default(now())
 }
 
 model Budget {
@@ -114,24 +344,24 @@ model NutritionLog {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   logged_at String?
   date      String?
-  data      String?  // Storing entire payload as JSON string if dynamic fields exist
+  data      String? // Storing entire payload as JSON string if dynamic fields exist
   createdAt DateTime @default(now())
 }
 
 model WorkoutSession {
-  id               String   @id @default(uuid())
+  id               String            @id @default(uuid())
   userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   date             String?
   notes            String?
   duration_minutes Int?
   volume           Float?
   exercises        WorkoutExercise[]
-  createdAt        DateTime @default(now())
+  createdAt        DateTime          @default(now())
 }
 
 model WorkoutExercise {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   sessionId     String
   session       WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   exercise_name String?
@@ -139,7 +369,7 @@ model WorkoutExercise {
   reps          Int?
   weight_kg     Float?
   notes         String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime       @default(now())
 }
 
 model ShoppingItem {
@@ -148,7 +378,7 @@ model ShoppingItem {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String?
   purchased Boolean  @default(false)
-  data      String?  // For flexible additional fields
+  data      String? // For flexible additional fields
   createdAt DateTime @default(now())
 }
 
@@ -213,13 +443,13 @@ model Document {
 }
 
 model Habit {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String?
-  streak    Int      @default(0)
+  streak    Int        @default(0)
   logs      HabitLog[]
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
 }
 
 model HabitLog {
