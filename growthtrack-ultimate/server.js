@@ -16,8 +16,12 @@ const require = createRequire(import.meta.url);
 require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 
+// Resolve the database from this file, not the process working directory.
+// This prevents `npm run dev` launched from another folder from creating a
+// second empty dev.db and making the app appear to lose its data.
+const databaseUrl = process.env.DATABASE_URL || `file:${path.join(__dirname, 'dev.db')}`;
 const adapter = new PrismaLibSql({
-  url: process.env.DATABASE_URL || 'file:./dev.db',
+  url: databaseUrl,
 });
 const prisma = new PrismaClient({ adapter });
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock');
@@ -42,41 +46,7 @@ app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
 // Audit Logs (Read from Winston rotating file)
 app.get('/api/logs', async (req, res) => {
   try {
-    const fs = require('fs');
-    const path = require('path');
-    const logsDir = path.join(__dirname, 'logs');
-    
-    if (!fs.existsSync(logsDir)) {
-      return res.json([]);
-    }
-
-    const files = fs.readdirSync(logsDir).filter(f => f.startsWith('app-') && f.endsWith('.log')).sort().reverse();
-    if (files.length === 0) {
-      return res.json([]);
-    }
-
-    // Read the most recent log file
-    const latestLogFile = path.join(logsDir, files[0]);
-    const fileContent = fs.readFileSync(latestLogFile, 'utf8');
-    const logs = fileContent.trim().split('\n').map(line => {
-      try {
-        const parsed = JSON.parse(line);
-        // Map winston format to what UI expects
-        return {
-          id: Math.random().toString(36).substring(7),
-          action: parsed.action || parsed.message,
-          severity: parsed.level === 'warn' ? 'warning' : parsed.level,
-          actor_name: parsed.actor_name || 'System',
-          actor_email: parsed.actor_email || 'admin@growthtrack.ultimate',
-          timestamp: parsed.timestamp,
-          details: parsed.details || parsed.message,
-          category: parsed.category || 'system'
-        };
-      } catch (e) {
-        return null;
-      }
-    }).filter(Boolean).reverse().slice(0, 1000); // Most recent first
-
+    const logs = await prisma.auditLog.findMany({ orderBy: { timestamp: 'desc' }, take: 1000 });
     res.json(logs);
   } catch (err) {
     console.error('[Logs Error]', err);
@@ -88,7 +58,11 @@ app.post('/api/logs', async (req, res) => {
   try {
     const { action, table_name, item_id, details, category, user_id, user_name, user_email, actor_ip, user_agent, severity } = req.body;
     
-    // Write only to rotating log file via Winston
+    await prisma.auditLog.create({ data: {
+      action, table_name, item_id, details: typeof details === 'string' ? details : JSON.stringify(details),
+      category: category || 'system', user_id, actor_name: user_name, actor_email: user_email,
+      actor_ip, user_agent, severity: severity || 'info'
+    }});
     logToFile(severity || 'info', details || action, {
       action, table_name, item_id, category, user_id,
       actor_name: user_name, actor_email: user_email,
@@ -107,7 +81,7 @@ app.post('/api/login-logs', async (req, res) => {
   try {
     const { user_id, email, action, failure_reason } = req.body;
 
-    // Write to file only
+    await prisma.loginLog.create({ data: { user_id, email, action, failure_reason, ip_address: req.ip, user_agent: req.headers['user-agent'] } });
     logToFile(action === 'login_failed' ? 'warning' : 'info',
       `${action}: ${email}`,
       { user_id, email, action, failure_reason, ip: req.ip, user_agent: req.headers['user-agent'] }
@@ -125,7 +99,7 @@ app.post('/api/session-logs', async (req, res) => {
   try {
     const { user_id, action, details } = req.body;
 
-    // Write to file only
+    await prisma.sessionLog.create({ data: { user_id, action, details, ip_address: req.ip, user_agent: req.headers['user-agent'] } });
     logToFile('info', `session:${action}`, { user_id, action, details, ip: req.ip, user_agent: req.headers['user-agent'] });
     
     res.json({ success: true });

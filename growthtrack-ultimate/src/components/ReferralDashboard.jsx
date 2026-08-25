@@ -13,7 +13,7 @@ export default function ReferralDashboard() {
     const fetchReferrals = async () => {
       try {
         const res = await apiSync('/referrals', 'GET');
-        setData(res);
+        if (res && typeof res === 'object') setData({ creditBalance: 0, history: [], referralCode: user?.referralCode || '', ...res });
       } catch (err) {
         console.error(err);
       } finally {
@@ -23,7 +23,7 @@ export default function ReferralDashboard() {
     fetchReferrals();
   }, []);
 
-  const referralLink = `${window.location.origin}/login?ref=${data.referralCode}`;
+  const referralLink = `${window.location.origin}${import.meta.env.BASE_URL || '/'}login?ref=${encodeURIComponent(data.referralCode || '')}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
