@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   User, Camera, Save, X, Upload, CheckCircle,
-  MapPin, Shield, Flag, Bell, Layout, Globe,
-  MessageCircle, Trash2, Plus, Info, Users, RefreshCw
+  Shield, Layout, Globe,
+  MessageCircle, Trash2, Plus, RefreshCw
 } from 'lucide-react';
 
 import useStore, { apiSync } from '../store/useStore';
@@ -10,16 +10,14 @@ import { useToast } from '../hooks/useToast';
 import StunningDatePicker from './ui/StunningDatePicker';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../utils/cropImage';
+import { apiRequest } from '../lib/apiClient';
 
 const TABS = [
-  { id: 'personal', label: 'Personal Info', icon: User },
-  { id: 'social', label: 'Social & Web', icon: Globe },
-  { id: 'location', label: 'Location & Language', icon: MapPin },
-  { id: 'physical', label: 'Physical Stats', icon: Shield },
-  { id: 'goals', label: 'Primary Goal', icon: Flag },
-  { id: 'prefs', label: 'Preferences', icon: Bell },
-  { id: 'sync', label: 'Cloud Sync', icon: RefreshCw },
-  { id: 'admin', label: 'Admin', icon: Users },
+  { id: 'personal', label: 'Personal', icon: User },
+  { id: 'physical', label: 'Body Profile', icon: Shield },
+  { id: 'security', label: 'Security', icon: Shield },
+  { id: 'appearance', label: 'Appearance', icon: Layout },
+  { id: 'integrations', label: 'Integrations', icon: Globe },
 ];
 
 
@@ -90,6 +88,10 @@ export default function ProfileEditor() {
   const user = useStore(s => s.user);
   const updateUser = useStore(s => s.updateUser);
   const fetchInitialData = useStore(s => s.fetchInitialData);
+  const theme = useStore(s => s.theme);
+  const palette = useStore(s => s.palette);
+  const setTheme = useStore(s => s.setTheme);
+  const setPalette = useStore(s => s.setPalette);
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('personal');
@@ -101,7 +103,6 @@ export default function ProfileEditor() {
 
   const [formData, setFormData] = useState({});
   const [isLoaded, setIsLoaded] = useState(false);
-  const [showGithubInfo, setShowGithubInfo] = useState(false);
 
   // Password change local state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -123,44 +124,6 @@ export default function ProfileEditor() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [imageToCrop, setImageToCrop] = useState(null);
   const [cropperModalOpen, setCropperModalOpen] = useState(false);
-
-  // Admin panel state
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [adminLoading, setAdminLoading] = useState(false);
-  const [adminError, setAdminError] = useState(null);
-  const [editingTier, setEditingTier] = useState(null); // userId being edited
-
-  const fetchAdminUsers = useCallback(async () => {
-    setAdminLoading(true); setAdminError(null);
-    try {
-      const token = localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token');
-      const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001');
-      const res = await fetch(`${API}/api/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setAdminUsers(await res.json());
-    } catch (e) {
-      setAdminError(e.message);
-    } finally {
-      setAdminLoading(false);
-    }
-  }, []);
-
-  const updateUserTier = useCallback(async (userId, newTier) => {
-    try {
-      const token = localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token');
-      const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001');
-      await fetch(`${API}/api/admin/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ subscriptionTier: newTier }),
-      });
-      setAdminUsers(prev => prev.map(u => u.id === userId ? { ...u, subscriptionTier: newTier } : u));
-      setEditingTier(null);
-      toast.success('User tier updated.');
-    } catch (e) { toast.error('Update failed.'); }
-  }, [toast]);
 
   useEffect(() => {
     if (user && !isLoaded) {
@@ -229,8 +192,6 @@ export default function ProfileEditor() {
         isdCode: user?.isdCode || '',
         netWorth: user?.netWorth || '',
         primaryBank: user?.primaryBank || '',
-        idType: user?.idType || '',
-        idNumber: user?.idNumber || '',
         passportNationality: user?.passportNationality || '',
         languages: user?.languages || [],
         country: user?.country || '',
@@ -269,9 +230,6 @@ export default function ProfileEditor() {
         notifications: user?.notifications ?? true,
         theme: user?.theme || 'dark',
 
-        githubManageEnabled: user?.githubManageEnabled ?? false,
-        githubAuthMode: user?.githubAuthMode || 'pat',
-        githubToken: user?.githubToken || '',
       });
       setIsLoaded(true);
     }
@@ -371,38 +329,10 @@ export default function ProfileEditor() {
       notifications: user?.notifications ?? true,
       theme: user?.theme || 'dark',
       
-      githubManageEnabled: user?.githubManageEnabled ?? false,
-      githubAuthMode: user?.githubAuthMode || 'pat',
-      githubToken: user?.githubToken || '',
     }) || avatarPreview !== (user?.avatar || null);
     
     setHasChanges(isChanged);
   }, [formData, avatarPreview, user]);
-
-  // Check for GitHub OAuth Code on Mount
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    if (code && !isLoaded) {
-      toast.info('Authenticating with GitHub...');
-      fetch('http://localhost:3001/auth/github/exchange', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.access_token) {
-          updateUser({ githubToken: data.access_token, githubAuthMode: 'oauth', githubManageEnabled: true });
-          toast.success('GitHub connected successfully!');
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-          toast.error(data.error || 'Failed to connect to GitHub');
-        }
-      })
-      .catch(e => toast.error('Error connecting to GitHub'));
-    }
-  }, []);
 
   const handleAvatarClick = () => {
     if (avatarPreview) setIsPreviewModalOpen(true);
@@ -580,8 +510,8 @@ export default function ProfileEditor() {
         toast.error('New passwords do not match');
         return;
       }
-      if (newPassword.length < 6) {
-        toast.error('New password must be at least 6 characters');
+      if (newPassword.length < 12) {
+        toast.error('New password must be at least 12 characters');
         return;
       }
     }
@@ -606,15 +536,8 @@ export default function ProfileEditor() {
         newPassword;
 
       if (hasCredsChanges) {
-        const token = sessionStorage.getItem('growthtrack-session-token');
-        const AUTH_API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001';
-        
-        const res = await fetch(`${AUTH_API_BASE}/api/auth/profile`, {
+        const resData = await apiRequest('/api/auth/profile', {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
           body: JSON.stringify({
             name: formData.name,
             email: formData.email,
@@ -622,24 +545,16 @@ export default function ProfileEditor() {
             newPassword: newPassword || undefined
           })
         });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || 'Failed to update login credentials');
-        }
-
-        const resData = await res.json();
         // Update user state in store with actual DB saved credentials
         updateUser({
-          name: resData.user.fullName,
+          name: resData.user.user_metadata?.full_name || formData.name,
           email: resData.user.email
         });
-        
-        // Update sessionStorage user context so logs can get updated details
-        sessionStorage.setItem('growthtrack-user', JSON.stringify({
+
+        localStorage.setItem('growthtrack-user', JSON.stringify({
           id: resData.user.id,
           email: resData.user.email,
-          fullName: resData.user.fullName
+          fullName: resData.user.user_metadata?.full_name || formData.name
         }));
       }
 
@@ -809,54 +724,6 @@ export default function ProfileEditor() {
                   </div>
                 </div>
 
-                <div>
-                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '1rem' }}>Identification</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
-                    <Field label="National ID Type" field="idType" options={['', 'SSN', 'Aadhaar', 'NIN', 'Driving License', 'Other']} formData={formData} handleChange={handleChange} />
-                    <Field label="ID Number" field="idNumber" type="password" placeholder="••••••••" formData={formData} handleChange={handleChange} />
-                    <Field label="Passport Nationality" field="passportNationality" placeholder="e.g. United States" formData={formData} handleChange={handleChange} />
-                  </div>
-                </div>
-
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Security & Credentials</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                      <label className="label-caps" style={{ fontSize: '0.72rem', display: 'block', marginBottom: '8px', color: 'var(--text-2)', letterSpacing: '0.12em', fontWeight: 800 }}>Current Password</label>
-                      <input
-                        type="password"
-                        className="form-input"
-                        value={currentPassword}
-                        onChange={e => { setCurrentPassword(e.target.value); setHasChanges(true); }}
-                        placeholder="••••••••"
-                        style={{ width: '100%', fontSize: '0.95rem', fontWeight: 500, fontFamily: 'var(--font-display)' }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                      <label className="label-caps" style={{ fontSize: '0.72rem', display: 'block', marginBottom: '8px', color: 'var(--text-2)', letterSpacing: '0.12em', fontWeight: 800 }}>New Password</label>
-                      <input
-                        type="password"
-                        className="form-input"
-                        value={newPassword}
-                        onChange={e => { setNewPassword(e.target.value); setHasChanges(true); }}
-                        placeholder="••••••••"
-                        style={{ width: '100%', fontSize: '0.95rem', fontWeight: 500, fontFamily: 'var(--font-display)' }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                      <label className="label-caps" style={{ fontSize: '0.72rem', display: 'block', marginBottom: '8px', color: 'var(--text-2)', letterSpacing: '0.12em', fontWeight: 800 }}>Confirm New Password</label>
-                      <input
-                        type="password"
-                        className="form-input"
-                        value={confirmPassword}
-                        onChange={e => { setConfirmPassword(e.target.value); setHasChanges(true); }}
-                        placeholder="••••••••"
-                        style={{ width: '100%', fontSize: '0.95rem', fontWeight: 500, fontFamily: 'var(--font-display)' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 <div style={{ marginTop: '0.5rem' }}>
                   <label className="label-caps" style={{ fontSize: '0.65rem', display: 'block', marginBottom: '8px', color: 'var(--text-3)' }}>Bio / About Me</label>
                   <textarea
@@ -870,8 +737,31 @@ export default function ProfileEditor() {
               </>
             )}
 
+            {activeTab === 'security' && (
+              <div className="profile-security-panel">
+                <div className="profile-security-note">
+                  <Shield size={22} />
+                  <div><strong>Owner-only access</strong><p>Signup is disabled. Sessions use an encrypted, HttpOnly cookie and every protected request is written to the audit log.</p></div>
+                </div>
+                <div className="profile-field-grid">
+                  <div className="field">
+                    <span>Current password</span>
+                    <input type="password" autoComplete="current-password" className="form-input" value={currentPassword} onChange={e => { setCurrentPassword(e.target.value); setHasChanges(true); }} />
+                  </div>
+                  <div className="field">
+                    <span>New password</span>
+                    <input type="password" autoComplete="new-password" className="form-input" value={newPassword} onChange={e => { setNewPassword(e.target.value); setHasChanges(true); }} placeholder="12 characters minimum" />
+                  </div>
+                  <div className="field">
+                    <span>Confirm new password</span>
+                    <input type="password" autoComplete="new-password" className="form-input" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setHasChanges(true); }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Cloud Sync Tab */}
-            {activeTab === 'sync' && (
+            {activeTab === 'integrations' && (
               <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
                   <RefreshCw size={24} color="var(--accent)" />
@@ -915,7 +805,7 @@ export default function ProfileEditor() {
               </div>
             )}
 
-            {activeTab === 'social' && (
+            {activeTab === 'integrations' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
                 {/* Current Links */}
@@ -985,80 +875,12 @@ export default function ProfileEditor() {
                   </div>
                 </div>
 
-                {/* GitHub Integration */}
-                <div style={{ padding: '1.5rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 800, marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Globe size={16} color="var(--accent)" /> Advanced GitHub Management
-                      <button className="btn-icon" onClick={() => setShowGithubInfo(!showGithubInfo)} style={{ padding: '2px' }} title="Learn about GitHub Authentication">
-                        <Info size={14} color="var(--text-3)" />
-                      </button>
-                    </div>
-                    <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={formData.githubManageEnabled} onChange={e => handleChange('githubManageEnabled', e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
-                      <span style={{
-                        position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
-                        background: formData.githubManageEnabled ? 'var(--accent)' : 'var(--bg-dark)',
-                        borderRadius: '26px', transition: '0.3s', border: '1px solid var(--border)'
-                      }}>
-                        <span style={{
-                          position: 'absolute', content: '""', height: '14px', width: '14px', left: formData.githubManageEnabled ? '20px' : '4px', bottom: '3px',
-                          background: 'white', borderRadius: '50%', transition: '0.3s',
-                        }} />
-                      </span>
-                    </label>
-                  </h4>
-                  {showGithubInfo && (
-                    <div style={{ margin: '1rem 0', padding: '1rem', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-2)' }}>
-                      <strong style={{ color: 'var(--text-1)' }}>How it works:</strong>
-                      <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <li><strong>Personal Access Token:</strong> Generates a long-lived token directly from your GitHub Developer Settings. Faster to set up and ideal for personal local use. Requires the `repo` and `delete_repo` scopes.</li>
-                        <li><strong>Login with GitHub:</strong> Uses OAuth for a seamless 1-click login. Secure, industry-standard, and recommended for shared or production environments.</li>
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {formData.githubManageEnabled && (
-                    <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button 
-                          className={formData.githubAuthMode === 'pat' ? 'btn-primary' : 'btn-secondary'} 
-                          onClick={() => handleChange('githubAuthMode', 'pat')}
-                          style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem' }}>
-                          Personal Access Token (Faster)
-                        </button>
-                        <button 
-                          className={formData.githubAuthMode === 'oauth' ? 'btn-primary' : 'btn-secondary'} 
-                          onClick={() => handleChange('githubAuthMode', 'oauth')}
-                          style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem' }}>
-                          Login with GitHub (Premium)
-                        </button>
-                      </div>
-
-                      {formData.githubAuthMode === 'pat' && (
-                        <div>
-                          <label className="label-caps" style={{ fontSize: '0.72rem', display: 'block', marginBottom: '8px', color: 'var(--text-2)' }}>GitHub PAT (repo scope)</label>
-                          <input type="password" placeholder="ghp_xxxxxxxxxxx" className="form-input" value={formData.githubToken} onChange={e => handleChange('githubToken', e.target.value)} style={{ width: '100%' }} />
-                        </div>
-                      )}
-                      
-                      {formData.githubAuthMode === 'oauth' && (
-                        <div>
-                          <button 
-                            className="btn-primary" 
-                            style={{ width: '100%', padding: '0.75rem', background: '#333' }}
-                            onClick={() => {
-                              const clientId = 'YOUR_GITHUB_CLIENT_ID'; // Ensure this matches env setup
-                              // Wait, for this to be premium we redirect to GitHub:
-                              window.location.href = `https://github.com/login/oauth/authorize?client_id=${import.meta.env.VITE_GITHUB_CLIENT_ID || 'Iv23libdZ6QyY41I4v8M'}&scope=repo,delete_repo`;
-                            }}>
-                            {formData.githubToken ? 'Reconnect GitHub' : 'Connect with GitHub'}
-                          </button>
-                          {formData.githubToken && <p style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '8px', textAlign: 'center' }}>✓ Authenticated via OAuth</p>}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                <div className="profile-security-note">
+                  <Globe size={22} />
+                  <div>
+                    <strong>OAuth connectors only</strong>
+                    <p>GitHub, Google Drive, Dropbox, Calendar, and streaming services must be connected by their approved OAuth/API flow. Tokens and passwords are never entered or stored in this browser.</p>
+                  </div>
                 </div>
 
               </div>
@@ -1169,8 +991,18 @@ export default function ProfileEditor() {
               </div>
             )}
 
-            {activeTab === 'prefs' && (
+            {activeTab === 'appearance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div>
+                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Theme</h4>
+                  <div className="appearance-options">
+                    {['light', 'dark', 'amoled'].map(option => <button key={option} className={theme === option ? 'is-active' : ''} onClick={() => setTheme(option)}><span data-theme-preview={option} />{option}</button>)}
+                  </div>
+                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', margin: '1.5rem 0 1rem' }}>Accent</h4>
+                  <div className="appearance-options appearance-options--palette">
+                    {['gold', 'violet', 'ocean', 'mint', 'rose'].map(option => <button key={option} className={palette === option ? 'is-active' : ''} onClick={() => setPalette(option)}><span data-palette-preview={option} />{option}</button>)}
+                  </div>
+                </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>Formatting & Culture</h4>
@@ -1231,104 +1063,6 @@ export default function ProfileEditor() {
             <X size={24} />
           </button>
           <img src={avatarPreview} alt="Full Profile" onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }} />
-        </div>
-      )}
-
-      {/* ── Admin Tab ──────────────────────────────────────────────────────── */}
-      {activeTab === 'admin' && (
-        <div style={{ padding: '0.5rem 0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>System Admin</p>
-              <h3 className="text-display" style={{ fontSize: '1.5rem', margin: 0 }}>User Management</h3>
-              <p style={{ color: 'var(--text-3)', fontSize: '0.8rem', marginTop: '4px' }}>View and manage all registered users</p>
-            </div>
-            <button
-              className="btn-primary"
-              onClick={fetchAdminUsers}
-              disabled={adminLoading}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem' }}
-            >
-              <RefreshCw size={14} className={adminLoading ? 'spin' : ''} />
-              {adminLoading ? 'Loading…' : adminUsers.length ? 'Refresh' : 'Load Users'}
-            </button>
-          </div>
-
-          {adminError && (
-            <div style={{ padding: '1rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', color: '#f87171', fontSize: '0.82rem', marginBottom: '1rem' }}>
-              ⚠️ {adminError}
-            </div>
-          )}
-
-          {adminUsers.length > 0 ? (
-            <div className="glass-card" style={{ overflow: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Name', 'Email', 'Tier', 'Credits', 'Joined', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', color: 'var(--text-3)', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminUsers.map(u => (
-                    <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--text-1)' }}>{u.fullName || '—'}</td>
-                      <td style={{ padding: '12px 14px', color: 'var(--text-2)' }}>{u.email}</td>
-                      <td style={{ padding: '12px 14px' }}>
-                        {editingTier === u.id ? (
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            <select
-                              defaultValue={u.subscriptionTier || 'free'}
-                              onChange={e => updateUserTier(u.id, e.target.value)}
-                              className="form-input"
-                              style={{ padding: '4px 8px', fontSize: '0.75rem', width: 'auto' }}
-                            >
-                              {['free', 'pro', 'admin'].map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                            <button onClick={() => setEditingTier(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '1rem' }}>✕</button>
-                          </div>
-                        ) : (
-                          <span style={{
-                            padding: '3px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 800,
-                            background: u.subscriptionTier === 'pro' ? 'rgba(168,85,247,0.15)' : u.subscriptionTier === 'admin' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
-                            color: u.subscriptionTier === 'pro' ? '#a855f7' : u.subscriptionTier === 'admin' ? '#f87171' : 'var(--text-3)',
-                            border: `1px solid ${u.subscriptionTier === 'pro' ? 'rgba(168,85,247,0.3)' : u.subscriptionTier === 'admin' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                            letterSpacing: '0.05em',
-                          }}>
-                            {u.subscriptionTier || 'free'}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 14px', color: 'var(--text-2)' }}>{u.creditBalance ?? 0}</td>
-                      <td style={{ padding: '12px 14px', color: 'var(--text-3)', fontSize: '0.75rem' }}>
-                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
-                      </td>
-                      <td style={{ padding: '12px 14px' }}>
-                        <button
-                          onClick={() => setEditingTier(editingTier === u.id ? null : u.id)}
-                          style={{ padding: '4px 10px', borderRadius: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-2)' }}
-                        >
-                          Edit Tier
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p style={{ padding: '12px 14px', color: 'var(--text-3)', fontSize: '0.72rem', borderTop: '1px solid var(--border)', marginTop: 0 }}>
-                {adminUsers.length} user{adminUsers.length !== 1 ? 's' : ''} registered
-              </p>
-            </div>
-          ) : !adminLoading && (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)', fontSize: '0.85rem' }}>
-              <Users size={40} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-              <p>Click "Load Users" to fetch the user registry.</p>
-            </div>
-          )}
         </div>
       )}
 

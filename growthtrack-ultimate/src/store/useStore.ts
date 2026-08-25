@@ -3,35 +3,14 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { createFinanceSlice } from './slices/financeSlice';
 import { createTaskSlice } from './slices/taskSlice';
 import { createHealthSlice } from './slices/healthSlice';
-import { loadSyncedState, syncEndpoint } from '../lib/dataSync';
+import { apiRequest } from '../lib/apiClient';
 
 export async function apiSync(endpoint: string, method: string = 'POST', data: any = null): Promise<any> {
-  try {
-    if (endpoint.includes('/finance/sync/bank') && method === 'POST') {
-      return { data: { transactions: [] } };
-    }
-    if (endpoint.includes('/health/sync/apple') && method === 'POST') {
-      return { ok: true, data: { synced: true } };
-    }
-    const apiBase = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.VITE_API_BASE || 'http://localhost:3001';
-    const token = localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token');
-    // Use the durable API whenever a signed-in session is available. The
-    // local sync layer remains a safe offline fallback for demo/local mode.
-    if (token && (endpoint === '/logs' || !endpoint.startsWith('/api/'))) {
-      const apiPath = ['/logs', '/referrals'].includes(endpoint) ? `/api${endpoint}` : endpoint;
-      const response = await fetch(`${apiBase}${apiPath}`, {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: method === 'GET' ? undefined : JSON.stringify(data ?? {}),
-        signal: AbortSignal.timeout(5000),
-      });
-      if (response.ok) return response.json();
-    }
-    return await syncEndpoint(endpoint, method, data);
-  } catch (e: any) {
-    console.warn(`[useStore] sync failed for ${endpoint}:`, e.message);
-    return null;
-  }
+  const apiPath = endpoint.startsWith('/api/') ? endpoint : `/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  return apiRequest(apiPath, {
+    method,
+    body: method === 'GET' || method === 'HEAD' ? undefined : data instanceof FormData ? data : JSON.stringify(data ?? {}),
+  });
 }
 
 const useStore = create<any>()(
@@ -45,8 +24,9 @@ const useStore = create<any>()(
       palette: 'gold',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'logs'],
-      navigationOrder: ['today', 'physique', 'insights', 'workspace', 'fitness', 'wellness', 'money', 'social', 'entertainment', 'tools', 'profile'],
+      navigationOrder: ['today', 'body', 'wellness', 'insights', 'work', 'money', 'life', 'system'],
       navigationTabOrder: {},
+      sidebarCollapsed: false,
 
       togglePinnedTab: (tabId: string) => {
         set((state: any) => {
@@ -58,8 +38,9 @@ const useStore = create<any>()(
           };
         });
       },
-      setNavigationOrder: (navigationOrder: string[]) => set({ navigationOrder }),
-      setNavigationTabOrder: (navigationTabOrder: Record<string, string[]>) => set({ navigationTabOrder }),
+      setNavigationOrder: (navigationOrder: string[]) => { set({ navigationOrder }); apiSync('/preferences', 'PUT', { navigationOrder }); },
+      setNavigationTabOrder: (navigationTabOrder: Record<string, string[]>) => { set({ navigationTabOrder }); apiSync('/preferences', 'PUT', { navigationTabOrder }); },
+      setSidebarCollapsed: (sidebarCollapsed: boolean) => { set({ sidebarCollapsed }); apiSync('/preferences', 'PUT', { sidebarCollapsed }); },
       isLoading: false,
       serverStatus: 'unknown',
       onboardingComplete: false,
@@ -109,9 +90,9 @@ const useStore = create<any>()(
       setLastCheckIn: (date: string) => set({ lastCheckIn: date }),
       setCheckInAlertDismissedDate: (date: string) => set({ checkInAlertDismissedDate: date }),
       setActiveTab: (tab: string) => set({ activeTab: tab }),
-      setOnboardingComplete: (status: boolean) => set({ onboardingComplete: status }),
-      setTheme: (theme: string) => set({ theme }),
-      setPalette: (palette: string) => set({ palette }),
+      setOnboardingComplete: (status: boolean) => { set({ onboardingComplete: status }); apiSync('/preferences', 'PUT', { onboardingComplete: status }); },
+      setTheme: (theme: string) => { set({ theme }); apiSync('/preferences', 'PUT', { theme }); },
+      setPalette: (palette: string) => { set({ palette }); apiSync('/preferences', 'PUT', { palette }); },
 
       setUser: (userOrUpdater: any) => {
         set((state: any) => {
@@ -146,26 +127,26 @@ const useStore = create<any>()(
         set({ isLoading: true });
 
         try {
-          const stored = await loadSyncedState();
-          const newState: any = { isLoading: false };
-
-          if (stored && typeof stored === 'object') {
-            Object.assign(newState, stored);
-            // Normalize offline collection caches back to the shapes used by
-            // the UI. This keeps the cache format stable across restarts.
-            if (Array.isArray(stored.entertainment)) newState.entertainment = { media: stored.entertainment };
-            if (Array.isArray(stored.shopping)) newState.shopping = { items: stored.shopping };
-            if (Array.isArray(stored.tasks)) {
-              const pending = stored.tasks.filter((item: any) => !item?.done);
-              const completed = stored.tasks.filter((item: any) => item?.done);
-              newState.user = { ...(newState.user || {}), tasks: { pending, completed } };
-            }
-            if (Array.isArray(stored.finance)) {
-              newState.finance = { ...(newState.finance || {}), transactions: Object.fromEntries(stored.finance.map((item: any) => [item.id, item])) };
-            }
-          }
-
-          set(newState);
+          const stored = await apiRequest('/api/state');
+          const pending = (stored.tasks || []).filter((item: any) => !item?.done && item?.status !== 'done');
+          const completed = (stored.tasks || []).filter((item: any) => item?.done || item?.status === 'done');
+          const preference = stored.preference || {};
+          set({
+            isLoading: false,
+            user: { ...(stored.user || {}), tasks: { pending, completed } },
+            theme: preference.theme || 'dark', palette: preference.palette || 'gold',
+            sidebarCollapsed: Boolean(preference.sidebarCollapsed), onboardingComplete: Boolean(preference.onboardingComplete),
+            navigationOrder: preference.navigationOrder?.length ? preference.navigationOrder : get().navigationOrder,
+            navigationTabOrder: preference.navigationTabOrder || {},
+            bodyProfile: stored.bodyProfile || null, socialProfiles: stored.socialProfiles || [],
+            finance: { ...(get().finance || {}), transactions: Object.fromEntries((stored.finance || []).map((item: any) => [item.id, item])), budgets: stored.budgets || [] },
+            shopping: { items: stored.shopping || [] }, entertainment: { media: stored.entertainment || [] },
+            timesheetEntries: stored.timesheet || [], sleep_logs: stored.sleep_logs || [], nutrition_logs: stored.nutrition_logs || [],
+            notes: stored.notes || [], goals: stored.goals || [], documents: stored.documents || [], habits: stored.habits || [], subscriptions: stored.subscriptions || [],
+            metric_logs: stored.metric_logs || [], moodLogs: stored.moodLogs || [], vitalsLogs: stored.vitalsLogs || [], medications: stored.medications || [],
+            workouts: { sessions: stored.workout_sessions || [], exercisesBySession: {} },
+            trainingPlan: stored.user?.trainingPlan || null, nutritionStrategy: stored.user?.nutritionStrategy || null, lifestyleTips: stored.user?.lifestyleTips || [], medicalData: stored.user?.medicalData || null, physiqueTargets: stored.user?.physiqueTargets || null, assessmentQA: stored.user?.assessmentQA || [], skills: stored.user?.skills || [], calendar_events: stored.user?.calendar_events || [], wellnessData: stored.user?.wellnessData || null,
+          });
         } catch (err) {
           console.error('[useStore] fetchInitialData error:', err);
           set({ isLoading: false });
@@ -500,9 +481,7 @@ const useStore = create<any>()(
       version: 4,
       // Persist every user-owned data domain. The previous whitelist only
       // saved a handful of modules, so a restart looked like a data reset.
-      partialize: (state: any) => ({
-        ...Object.fromEntries(Object.entries(state).filter(([key, value]) => typeof value !== 'function' && key !== 'isLoading' && key !== 'serverStatus')),
-      }),
+      partialize: (state: any) => ({ theme: state.theme, palette: state.palette, activeTab: state.activeTab, navigationOrder: state.navigationOrder, navigationTabOrder: state.navigationTabOrder, sidebarCollapsed: state.sidebarCollapsed }),
       migrate: (persistedState: any, version) => {
         try {
           if (version < 4) {

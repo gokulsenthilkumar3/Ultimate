@@ -5,7 +5,7 @@ import {
   BarChart2, Layout, Zap, Clock, Hash,
 } from 'lucide-react';
 import useStore, { selectSetActiveTab } from '../store/useStore';
-import { GLOBAL_MODULES } from '../constants/modules';
+import { TABS } from '../config/navigation';
 
 // ── Module icon map ───────────────────────────────────────────────────────────
 const MODULE_ICONS = {
@@ -121,9 +121,10 @@ export default function CommandPalette() {
     const candidates = [];
 
     // Modules
-    Object.entries(GLOBAL_MODULES).forEach(([id, label]) => {
-      const score = Math.max(fuzzyScore(label, q), fuzzyScore(id, q));
-      if (!q || score > 0) candidates.push({ type: 'module', id, label, icon: MODULE_ICONS[id] || '📌', score, detail: 'Go to module', tab: id });
+    Object.entries(TABS).forEach(([id, meta]) => {
+      const searchText = `${id} ${meta.label} ${(meta.keywords || []).join(' ')}`;
+      const score = Math.max(fuzzyScore(meta.label, q), fuzzyScore(searchText, q));
+      if (!q || score > 0) candidates.push({ type: 'module', id, label: meta.label, icon: meta.emoji || MODULE_ICONS[id] || '📌', score, detail: 'Go to module', tab: id });
     });
 
     // Tasks (pending only)

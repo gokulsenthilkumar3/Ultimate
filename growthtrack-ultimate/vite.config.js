@@ -1,22 +1,37 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 // https://vite.dev/config/
-export default defineConfig({
-  base: '/Ultimate/',
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const allowedHosts = (env.VITE_ALLOWED_HOSTS || 'localhost,127.0.0.1').split(',').map(host => host.trim()).filter(Boolean);
+  const sentryEnabled = Boolean(env.SENTRY_AUTH_TOKEN && env.SENTRY_ORG && env.SENTRY_PROJECT);
+
+  return {
+  base: env.VITE_BASE_PATH || '/Ultimate/',
   plugins: [
     react(),
-    sentryVitePlugin({
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-    })
-  ],
+    sentryEnabled && sentryVitePlugin({
+      org: env.SENTRY_ORG,
+      project: env.SENTRY_PROJECT,
+      authToken: env.SENTRY_AUTH_TOKEN,
+    }),
+  ].filter(Boolean),
   server: {
-    port: 5000,
-    host: '0.0.0.0',
-    allowedHosts: true,
+    port: Number(env.VITE_PORT || 5000),
+    host: env.VITE_HOST || '127.0.0.1',
+    allowedHosts,
+    proxy: {
+      '/api': {
+        target: env.API_PROXY_TARGET || 'http://127.0.0.1:3001',
+        changeOrigin: false,
+      },
+      '/auth': {
+        target: env.API_PROXY_TARGET || 'http://127.0.0.1:3001',
+        changeOrigin: false,
+      },
+    },
     watch: {
       // Prevent Vite from hot-reloading when SQLite writes to these files.
       // Without this, every DB transaction triggers HMR, restarts server.js,
@@ -31,7 +46,8 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: true,
+    target: ['es2020', 'chrome90', 'edge90', 'firefox88', 'safari14'],
+    sourcemap: sentryEnabled,
     chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
@@ -64,4 +80,5 @@ export default defineConfig({
       include: ['src/utils/**'],
     },
   },
+  };
 });

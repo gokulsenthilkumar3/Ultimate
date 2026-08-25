@@ -1,3 +1,5 @@
+import { apiRequest } from './apiClient';
+
 /**
  * GrowthTrack Logger - Centralized logging system
  * Handles authentication, CRUD, session, and system logs
@@ -53,22 +55,9 @@ export interface LoginLogEntry {
   failure_reason?: string;
 }
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:3001';
-
 /**
  * Get client IP address (fallback to unknown)
  */
-async function getClientIP(): Promise<string> {
-  return 'client';
-}
-
-/**
- * Get user agent string
- */
-function getUserAgent(): string {
-  return navigator.userAgent || 'unknown';
-}
-
 /**
  * Get current user info from storage
  */
@@ -93,32 +82,22 @@ function getCurrentUser(): { user_id?: string; user_name?: string; user_email?: 
 export async function logAction(entry: LogEntry): Promise<void> {
   try {
     const user = getCurrentUser();
-    const ip = await getClientIP();
-    
     const payload: LogEntry = {
       ...entry,
       timestamp: entry.timestamp || new Date().toISOString(),
       user_id: entry.user_id || user.user_id,
       user_name: entry.user_name || user.user_name,
       user_email: entry.user_email || user.user_email,
-      actor_ip: entry.actor_ip || ip,
-      user_agent: entry.user_agent || getUserAgent(),
       severity: entry.severity || 'info'
     };
 
-    await fetch(`${API_BASE}/api/logs`, {
+    await apiRequest('/api/logs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(payload)
     });
   } catch (error) {
     console.error('[Logger] Failed to log action:', error);
   }
-}
-
-function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /**
@@ -143,21 +122,8 @@ export async function logAuth(
     severity: action === 'login_failed' ? 'warning' : 'info'
   });
 
-  // Also log to login_logs table
-  try {
-    await fetch(`${API_BASE}/api/login-logs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({
-        user_id: user.user_id,
-        email: email || user.user_email,
-        action,
-        failure_reason: failureReason
-      })
-    });
-  } catch (error) {
-    console.error('[Logger] Failed to log to login_logs:', error);
-  }
+  // Login success/failure is written by the server, where the actor and IP
+  // cannot be forged by client payloads.
 }
 
 /**
@@ -202,11 +168,9 @@ export async function logSession(
 
   // Also log to session_logs table
   try {
-    await fetch(`${API_BASE}/api/session-logs`, {
+    await apiRequest('/api/session-logs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
-        user_id: user.user_id,
         action,
         details
       })

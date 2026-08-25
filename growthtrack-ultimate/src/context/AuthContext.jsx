@@ -1,136 +1,51 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { logAuth, logSession } from '../lib/logger';
+import { apiRequest, refreshCsrfToken, setCsrfToken } from '../lib/apiClient';
 
 const AuthContext = createContext(null);
-const TOKEN_KEY = 'growthtrack-session-token';
-const AUTH_API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001';
-
-async function parseJsonResponse(res) {
-  const text = await res.text();
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch {
-    throw new Error(res.ok ? 'Invalid server response' : 'Auth server unavailable. Start the API with npm run dev.');
-  }
-}
-
-const readToken = () => localStorage.getItem(TOKEN_KEY);
-const writeToken = (token) => localStorage.setItem(TOKEN_KEY, token);
-const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const clearSession = () => {
+    setCsrfToken(null); setSession(null); setUser(null);
+    localStorage.removeItem('growthtrack-user');
+  };
+
   const fetchSession = async () => {
-    const token = readToken();
-    if (!token) {
-      setSession(null);
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-    
     try {
-      const res = await fetch(`${AUTH_API_BASE}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
-        const data = await parseJsonResponse(res);
-        setUser(data.user);
-        setSession({ access_token: token });
-        localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
-      } else {
-        clearToken();
-        localStorage.removeItem('growthtrack-user');
-        setSession(null);
-        setUser(null);
-      }
-    } catch (err) {
-      console.error(err);
-      clearToken();
-      localStorage.removeItem('growthtrack-user');
-      setSession(null);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+      const data = await apiRequest('/api/auth/me');
+      await refreshCsrfToken();
+      setUser(data.user); setSession({ expiresAt: data.expiresAt });
+      localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
+    } catch { clearSession(); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => {
     fetchSession();
+    const expire = () => clearSession();
+    window.addEventListener('growthtrack:auth-expired', expire);
+    return () => window.removeEventListener('growthtrack:auth-expired', expire);
   }, []);
-
-  const signUp = async (email, password, fullName) => {
-    try {
-      const res = await fetch(`${AUTH_API_BASE}/api/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, fullName, referralCode: new URLSearchParams(window.location.search).get('ref') || undefined })
-      });
-      const data = await parseJsonResponse(res);
-      if (!res.ok) {
-        return { error: new Error(data.error || 'Signup failed') };
-      }
-      if (data.token) writeToken(data.token);
-      if (data.user) {
-        localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
-      }
-      await fetchSession();
-      try { await fetch(`${AUTH_API_BASE}/api/referrals/sync`, { method: 'POST', headers: { Authorization: `Bearer ${readToken()}` } }); } catch {}
-      try { await logAuth('signup', email); } catch {}
-      try { await logSession('start', 'New session created after signup'); } catch {}
-      return { data: { user: data.user }, error: null };
-    } catch (err) {
-      return { error: err };
-    }
-  };
 
   const signIn = async (email, password) => {
     try {
-      const res = await fetch(`${AUTH_API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await parseJsonResponse(res);
-      if (!res.ok) {
-        return { error: new Error(data.error || 'Login failed') };
-      }
-      if (data.token) writeToken(data.token);
-      if (data.user) {
-        localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
-      }
-      await fetchSession();
-      try { await logAuth('login_success', email); } catch {}
-      try { await logSession('start', 'Session started after login'); } catch {}
+      const data = await apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+      setCsrfToken(data.csrfToken); setUser(data.user); setSession({ expiresAt: data.expiresAt });
+      localStorage.setItem('growthtrack-user', JSON.stringify(data.user));
       return { data: { user: data.user }, error: null };
-    } catch (err) {
-      return { error: err };
-    }
+    } catch (error) { clearSession(); return { error }; }
   };
 
   const signOut = async () => {
-    const email = user?.email;
-    await logAuth('logout', email);
-    await logSession('end', 'Session ended by user logout');
-    clearToken();
-    localStorage.removeItem('growthtrack-user');
-    setSession(null);
-    setUser(null);
+    try { await apiRequest('/api/auth/logout', { method: 'POST', body: '{}' }); } catch {}
+    clearSession();
     return { error: null };
   };
 
-  const value = { user, session, loading, signUp, signIn, signOut };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, session, loading, signIn, signOut, refreshSession: fetchSession }}>{!loading && children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

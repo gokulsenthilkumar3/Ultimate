@@ -45,3 +45,15 @@ Claude.md
 *.tmp
 
 /src/generated/prisma
+
+# Databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+dev.db
+
+# Build output
+build/
+coverage/
+

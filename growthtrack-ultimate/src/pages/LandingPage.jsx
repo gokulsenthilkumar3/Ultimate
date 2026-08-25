@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import MarketingCursor from '../components/MarketingCursor';
 
 const pillars = [
   'Health, habits, and goals in one place',
@@ -15,6 +16,7 @@ const stats = [
 export default function LandingPage() {
   return (
     <main className="auth-shell">
+      <MarketingCursor />
       <div className="auth-shell__glow auth-shell__glow--one" />
       <div className="auth-shell__glow auth-shell__glow--two" />
 
@@ -36,8 +38,8 @@ export default function LandingPage() {
         </div>
 
         <div className="auth-actions">
-          <Link to="/login" className="btn btn--primary">Login</Link>
-          <a href="#why" className="btn btn--ghost">Why it feels better</a>
+          <Link to="/login" className="btn btn--primary" data-magnetic>Login</Link>
+          <a href="#why" className="btn btn--ghost" data-magnetic>Why it feels better</a>
         </div>
 
         <div className="auth-stats">

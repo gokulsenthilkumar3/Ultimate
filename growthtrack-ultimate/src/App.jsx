@@ -1,19 +1,20 @@
-import React, { lazy, Suspense, useEffect, useMemo } from 'react';
-import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import useStore, {
   selectUser, selectSetUser, selectTheme, selectPalette,
-  selectSetTheme, selectSetPalette, selectActiveTab, selectSetActiveTab,
-  selectFetchInitialData, selectCheckServerHealth, selectServerStatus, selectIsLoading,
+  selectSetTheme, selectActiveTab, selectSetActiveTab,
+  selectFetchInitialData, selectCheckServerHealth, selectIsLoading,
 } from './store/useStore';
+import { useAuth } from './context/AuthContext';
 import { ToastProvider }   from './hooks/useToast';
 import ErrorBoundary       from './components/ErrorBoundary';
-import Header              from './components/Header';
 import './index.css';
 import './theme-v4.css';
 import './styles/chamber.css';
 import './styles/premium.css';
+import './styles/ui-components.css';
+import './styles/ultimate-ui.css';
 
-import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 
 import OnboardingWizard    from './components/OnboardingWizard';
@@ -28,33 +29,10 @@ import NotFound            from './components/NotFound';
 
 import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
 import { useVascularitySync }    from './store/use3DStore.usage';
-import { TIMING, COLORS, LAYOUT, NOTIFICATION, ASSET_PATHS } from './constants';
+import { TIMING } from './constants';
 import { GLOBAL_MODULES } from './constants/modules';
 import { trackEvent } from './lib/analytics';
 import { logSession, logPageView } from './lib/logger';
-
-// ── Unread notification count ──────────────────────────────────────────────
-function countUnreadNotifs(user) {
-  if (!user) return 0;
-  const today = new Date().toISOString().slice(0, 10);
-  let count = 0;
-  (Array.isArray(user.habits) ? user.habits : []).forEach(h => {
-    const last = h.lastLog || h.last_log;
-    if (!last || last < today) count++;
-  });
-  (Array.isArray(user.tasks?.pending) ? user.tasks.pending : []).forEach(t => {
-    const due = t.dueDate || t.due_date;
-    if (due && due < today) count++;
-  });
-  (Array.isArray(user.goals) ? user.goals : []).forEach(g => {
-    if (g.status === 'completed') return;
-    const dl = g.deadline || g.target_date;
-    if (!dl) return;
-    const daysLeft = Math.ceil((new Date(dl) - new Date(today)) / 86_400_000);
-    if (daysLeft <= NOTIFICATION.GOAL_DEADLINE_WARN_DAYS) count++;
-  });
-  return count;
-}
 
 // ── Lazy modules ──────────────────────────────────────────────────────────────
 const Overview           = lazy(() => import('./components/Overview'));
@@ -176,82 +154,27 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
 // ── Navbar Alert Banner ─────────────────────────────────────────────────────
 function NavbarCheckInAlert({ onOpen, onDismiss }) {
   return (
-    <div
-      role="alert"
-      aria-live="polite"
-      style={{
-        position: 'fixed',
-        bottom: '24px',
-        right: '24px',
-        zIndex: 5000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '12px',
-        padding: '10px 20px',
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-strong)',
-        borderRadius: '24px',
-        boxShadow: 'var(--shadow-card)',
-        backdropFilter: 'blur(16px)',
-        fontSize: '0.78rem',
-        fontWeight: 600,
-        color: 'var(--text-1)',
-        letterSpacing: '0.02em',
-        maxWidth: 'calc(100vw - 48px)',
-      }}
-    >
-      <span><span style={{ color: 'var(--accent)' }}>⚡</span> Daily Check-In pending — keep your streak alive!</span>
-      <button
-        onClick={onOpen}
-        style={{
-          background: 'var(--accent)',
-          border: 'none',
-          borderRadius: '8px',
-          padding: '3px 12px',
-          fontSize: '0.68rem',
-          color: '#fff',
-          cursor: 'pointer',
-          fontWeight: 800,
-          letterSpacing: '0.08em',
-        }}
-      >
-        CHECK IN NOW
-      </button>
-      <button
-        onClick={onDismiss}
-        aria-label="Dismiss check-in reminder"
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--text-3)',
-          cursor: 'pointer',
-          fontSize: '1rem',
-          lineHeight: 1,
-          opacity: 0.7,
-          padding: '0 4px',
-        }}
-      >
-        ✕
-      </button>
+    <div className="navbar-checkin-alert" role="alert" aria-live="polite">
+      <span><b>⚡</b><span>Daily Check-In pending — keep your streak alive!</span></span>
+      <button className="navbar-checkin-alert__action" onClick={onOpen}>CHECK IN NOW</button>
+      <button className="navbar-checkin-alert__close" onClick={onDismiss} aria-label="Dismiss check-in reminder">✕</button>
     </div>
   );
 }
 
 
 export default function App() {
+  const { session, signOut } = useAuth();
   const user         = useStore(selectUser);
   const setUser      = useStore(selectSetUser);
   const theme        = useStore(selectTheme);
   const palette      = useStore(selectPalette);
   const setTheme     = useStore(selectSetTheme);
-  const setPalette   = useStore(selectSetPalette);
   const storeActiveTab = useStore(selectActiveTab);
   const setActiveTab = useStore(selectSetActiveTab);
-  const pinnedTabs   = useStore((state) => state.pinnedTabs);
+  const sidebarCollapsed = useStore((state) => state.sidebarCollapsed);
   const fetchInitialData   = useStore(selectFetchInitialData);
   const checkServerHealth  = useStore(selectCheckServerHealth);
-  const serverStatus       = useStore(selectServerStatus);
   const isLoading          = useStore(selectIsLoading);
   const onboardingComplete = useStore((state) => state.onboardingComplete);
   const lastCheckIn        = useStore((state) => state.lastCheckIn);
@@ -264,11 +187,7 @@ export default function App() {
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
   const [isNotFound,        setIsNotFound]        = React.useState(false);
 
-  const [isAuthenticated, setIsAuthenticated] = React.useState(true); // Temp bypass for local dev
-  const [authView, setAuthView] = React.useState('landing'); // 'landing', 'login', 'signup'
-
   const todayStr = new Date().toISOString().slice(0, 10);
-  const isAuthed = Boolean(localStorage.getItem('growthtrack-session-token') || sessionStorage.getItem('growthtrack-session-token'));
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -278,8 +197,9 @@ export default function App() {
 
   // ── Preload 3D model once on mount ──
   useEffect(() => {
+    if (!session) return;
     preloadHumanoidModel();
-  }, []);
+  }, [session]);
 
   const prevLocationRef = React.useRef(location.pathname);
   const prevStoreTabRef = React.useRef(storeActiveTab);
@@ -287,6 +207,7 @@ export default function App() {
 
   // ── Sync URL ↔ Store ──
   useEffect(() => {
+    if (!session) return;
     const pathTab = location.pathname.substring(1);
     const locChanged = location.pathname !== prevLocationRef.current;
     const storeChanged = storeActiveTab !== prevStoreTabRef.current;
@@ -303,7 +224,7 @@ export default function App() {
       if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
         setActiveTab(pathTab);
         setIsNotFound(false);
-      } else if (location.pathname === '/' && isAuthed) {
+      } else if (location.pathname === '/') {
         navigate(`/${storeActiveTab}`, { replace: true });
         setIsNotFound(false);
       }
@@ -313,7 +234,7 @@ export default function App() {
         setActiveTab(pathTab);
         setIsNotFound(false);
         logPageView(pathTab);
-      } else if (location.pathname === '/' && isAuthed) {
+      } else if (location.pathname === '/') {
         navigate(`/${storeActiveTab}`, { replace: true });
         setIsNotFound(false);
       } else if (pathTab && !GLOBAL_MODULES[pathTab]) {
@@ -334,12 +255,11 @@ export default function App() {
     const moduleName = GLOBAL_MODULES[storeActiveTab];
     if (moduleName) document.title = `GrowthTrack — ${moduleName}`;
     else document.title = 'GrowthTrack Ultimate';
-  }, [location.pathname, storeActiveTab, setActiveTab, navigate]);
-
-  const unreadCount = useMemo(() => countUnreadNotifs(user), [user]);
+  }, [location.pathname, storeActiveTab, setActiveTab, navigate, session]);
 
 
   useEffect(() => {
+    if (!session) return undefined;
     trackEvent('App Opened');
     logSession('start', 'Application opened');
     fetchInitialData();
@@ -349,23 +269,13 @@ export default function App() {
       clearInterval(interval);
       logSession('end', 'Application closed');
     };
-  }, []);
+  }, [session, fetchInitialData, checkServerHealth]);
 
   // ── Daily Check-In alert: show slim banner (not auto-modal) ──
   useEffect(() => {
     if (onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr) {
       const t = setTimeout(() => {
         setShowCheckInAlert(true);
-        if ('Notification' in window && Notification.permission !== 'denied') {
-          Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-              new Notification('Daily Check-In', {
-                body: "It's time for your daily review.",
-                icon: ASSET_PATHS.FAVICON,
-              });
-            }
-          });
-        }
       }, TIMING.DAILY_CHECKIN_DELAY_MS);
       return () => clearTimeout(t);
     } else {
@@ -379,8 +289,14 @@ export default function App() {
     document.documentElement.setAttribute('data-palette', palette);
   }, [theme, palette]);
 
-  if (location.pathname === '/login') return <LoginPage />;
-  if (location.pathname === '/' && !isAuthed) return <LandingPage />;
+  if (!session) {
+    return location.pathname === '/login'
+      ? <LoginPage />
+      : <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  if (location.pathname === '/login' || location.pathname === '/') {
+    return <Navigate to={`/${storeActiveTab || 'overview'}`} replace />;
+  }
 
   return (
     <ErrorBoundary resetKey="root">
@@ -402,24 +318,12 @@ export default function App() {
           <SettingsModal onClose={() => setShowSettings(false)} />
         )}
 
-        <div className="app-shell" data-theme={theme} data-palette={palette}>
+        <div className="app-shell" data-theme={theme} data-palette={palette} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed}>
           <div className="mesh-bg" />
 
 
-          {/* ── Single .main-area: header + content + both navbars ── */}
+          {/* ── Main workspace: content + navigation ── */}
           <div className="main-area">
-            <Header
-              user={user}
-              theme={theme}
-              setTheme={setTheme}
-              palette={palette}
-              setPalette={setPalette}
-              onOpenSettings={() => setShowSettings(true)}
-              unreadCount={unreadCount}
-              onOpenNotifications={() => setActiveTab('notifications')}
-              serverStatus={serverStatus}
-            />
-
             {/* ── Navbar Check-In Alert Banner ── */}
             {showCheckInAlert && onboardingComplete && (
               <NavbarCheckInAlert
@@ -464,6 +368,7 @@ export default function App() {
               setActiveTab={setActiveTab} 
               user={user} 
               onOpenSettings={() => setShowSettings(true)} 
+              onLogout={signOut}
             />
             <FloatingPillDock 
               activeTab={activeTab} 

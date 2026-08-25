@@ -8,8 +8,7 @@ import use3DStore from '../store/use3DStore';
 import { useToast } from '../hooks/useToast';
 import PhysiqueRoadmap from './PhysiqueRoadmap';
 
-// Lazy-load the heavy 3D viewer — only downloaded when the 3D Mirror sub-tab is selected
-const HumanoidViewer = lazy(() => import('./HumanoidViewer'));
+// Lazy-load the immersive 3D experience only when the 3D Mirror is selected.
 const ScrollShowcase = lazy(() => import('./ScrollShowcase'));
 
 // ── Body-fat formulas ─────────────────────────────────────────────────────
@@ -299,11 +298,9 @@ export default function Physique({ user }) {
             <span style={{ color:'var(--text-3)', fontSize:'0.78rem', letterSpacing:'0.1em', fontWeight:600 }}>LOADING 3D MIRROR</span>
           </div>
         }>
-          <HumanoidViewer />
+          <ScrollShowcase />
         </Suspense>
       )}
-
-      {subTab === 'blueprint' && <Suspense fallback={null}><ScrollShowcase /></Suspense>}
 
       {subTab === 'targets' && <div className="glass-card physique-subpanel"><PhysiqueRoadmap targets={targets} user={user} /></div>}
 

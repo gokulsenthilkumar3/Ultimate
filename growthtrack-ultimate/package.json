@@ -16,7 +16,9 @@
     "analyze": "vite build --mode analyze",
     "validate:glb": "node scripts/validate-glb.js",
     "glb:health": "node scripts/glb-health.js",
-    "glb:priority-fixes": "node scripts/glb-priority-fixes.js"
+    "glb:priority-fixes": "node scripts/glb-priority-fixes.js",
+    "owner:create": "node scripts/create-owner.js",
+    "db:sync": "prisma generate && prisma db push"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
