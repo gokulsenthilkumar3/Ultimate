@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Bell,
   GripVertical,
   LogOut,
   Orbit,
@@ -16,6 +15,11 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
   const indicatorRef = useRef(null);
   const itemsRef = useRef({});
   const savedOrder = useStore(state => state.navigationOrder) || GROUP_ORDER;
+  const databaseNavigation = useStore(state => state.appConfig?.navigation?.groups) || [];
+  const runtimeGroups = useMemo(() => Object.fromEntries(Object.entries(GROUPS).map(([id, group]) => {
+    const configured = databaseNavigation.find(item => item.id === id);
+    return [id, configured ? { ...group, label: configured.label || group.label, tabs: configured.tabs || group.tabs } : group];
+  })), [databaseNavigation]);
   const setNavigationOrder = useStore(state => state.setNavigationOrder);
   const navigationTabOrder = useStore(state => state.navigationTabOrder) || {};
   const setNavigationTabOrder = useStore(state => state.setNavigationTabOrder);
@@ -56,7 +60,7 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
     if (!dragged?.includes(':')) return finishDrag();
     const [fromGroup, fromTab] = dragged.split(':');
     if (fromGroup !== groupId || fromTab === targetTab) return finishDrag();
-    const tabs = [...(navigationTabOrder[groupId] || GROUPS[groupId].tabs)];
+    const tabs = [...(navigationTabOrder[groupId] || runtimeGroups[groupId].tabs)];
     const from = tabs.indexOf(fromTab);
     const to = tabs.indexOf(targetTab);
     if (from >= 0 && to >= 0) {
@@ -95,8 +99,9 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
       <nav className="premium-sidebar-nav" aria-label="Modules">
         <div className="magic-indicator" ref={indicatorRef} />
         {navigationOrder.map(groupId => {
-          const group = GROUPS[groupId];
-          const tabs = navigationTabOrder[groupId] || group.tabs;
+          const group = runtimeGroups[groupId];
+          const savedTabs = navigationTabOrder[groupId] || [];
+          const tabs = [...savedTabs.filter(tabId => group.tabs.includes(tabId)), ...group.tabs.filter(tabId => !savedTabs.includes(tabId))];
           return (
             <section
               key={groupId}
@@ -149,9 +154,6 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
       </nav>
 
       <div className="premium-sidebar-footer">
-        <button className="premium-sidebar-action" onClick={() => setActiveTab('notifications')} title="Updates">
-          <Bell size={18} /><span>Updates</span>
-        </button>
         <button className="premium-sidebar-action" onClick={onOpenSettings} title="Settings">
           <Settings size={18} /><span>Settings</span>
         </button>

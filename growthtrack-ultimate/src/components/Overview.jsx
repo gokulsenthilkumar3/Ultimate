@@ -13,16 +13,14 @@ const TOOLTIP_STYLE = {
   borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.75rem',
 };
 
-const QUOTES = [
-  { text: "Small steps every day lead to massive results over time.", author: "James Clear" },
-  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
-  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
-  { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
-  { text: "What gets measured gets managed.", author: "Peter Drucker" },
-  { text: "Your only limit is you.", author: "Unknown" },
-  { text: "Progress, not perfection.", author: "Unknown" },
-  { text: "Every expert was once a beginner.", author: "Helen Hayes" },
-];
+function generateDailyMessage({ tasks, habits, goals, metrics, cycle }) {
+  const focus = cycle % 4;
+  if (focus === 0 && tasks.length) return { text: `${tasks.length} active task${tasks.length === 1 ? '' : 's'} — finishing the smallest one will clear momentum.`, author: 'GrowthTrack · live signal' };
+  if (focus === 1 && habits.length) return { text: `${habits.length} habit${habits.length === 1 ? '' : 's'} in motion — consistency is your strongest signal today.`, author: 'GrowthTrack · live signal' };
+  if (focus === 2 && goals.length) return { text: `${goals.length} goal${goals.length === 1 ? '' : 's'} tracked — choose the next measurable action.`, author: 'GrowthTrack · live signal' };
+  if (metrics.length) return { text: `${metrics.length} saved check-in${metrics.length === 1 ? '' : 's'} — your trend is becoming clearer.`, author: 'GrowthTrack · live signal' };
+  return { text: 'Save your first real check-in to generate a personal daily signal.', author: 'GrowthTrack · waiting for data' };
+}
 
 function getTimeOfDay() {
   const h = new Date().getHours();
@@ -206,15 +204,17 @@ export default function Overview({ setActiveTab }) {
   const sleep_logs       = state.sleep_logs       || [];
   const habitLogsByHabit = state.habitLogsByHabit || {};
   const user             = state.user             || {};
+  const currentSources   = state.appConfig?.currentSources || {};
 
   const addMetricLog = useStore(s => s.addMetricLog);
 
-  const [quote,       setQuote]       = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+  const [messageCycle, setMessageCycle] = useState(0);
   const [hydration,   setHydration]   = useState(0);
+  const quote = useMemo(() => generateDailyMessage({ tasks, habits, goals, metrics: metric_logs, cycle: messageCycle }), [tasks, habits, goals, metric_logs, messageCycle]);
 
   // Rotate quote every 30s
   useEffect(() => {
-    const t = setInterval(() => setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]), 30000);
+    const t = setInterval(() => setMessageCycle(value => value + 1), 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -225,13 +225,14 @@ export default function Overview({ setActiveTab }) {
       if (!navigator.geolocation) return resolve(null);
       navigator.geolocation.getCurrentPosition(pos => {
         const { latitude, longitude } = pos.coords;
-        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode,relativehumidity_2m&timezone=auto`)
+        if (!currentSources.weatherUrl) return resolve(null);
+        fetch(`${currentSources.weatherUrl}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode,relativehumidity_2m&timezone=auto`)
           .then(r => r.json())
           .then(data => resolve(data.current))
           .catch(() => resolve(null));
       }, () => resolve(null));
     }),
-    staleTime: 1000 * 60 * 15, // Cache for 15 minutes
+    staleTime: 1000 * 60 * 15,
     retry: false
   });
 
@@ -306,8 +307,7 @@ export default function Overview({ setActiveTab }) {
     }
   };
 
-  const WMO_ICONS = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 61: '🌧️', 63: '🌧️', 80: '🌦️' };
-  const wIcon = weather ? (WMO_ICONS[weather.weathercode] || '🌡️') : '';
+  const wIcon = weather ? (currentSources.weatherCodes?.[String(weather.weathercode)]?.[1] || '🌡️') : '';
 
   const quickLinks = [
     { label: 'Tasks', tab: 'tasks', note: 'Action items', icon: <CheckSquare size={14} color="var(--accent)" /> },

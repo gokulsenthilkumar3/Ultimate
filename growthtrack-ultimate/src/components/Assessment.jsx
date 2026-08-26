@@ -3,40 +3,21 @@ import useStore, { selectAssessmentQA, apiSync } from '../store/useStore';
 import { ChevronDown, ChevronUp, Search, ClipboardList, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 
-const FALLBACK_QUESTIONS = [
-  { key: 'current_weight',    label: 'Current Weight',          placeholder: 'e.g. 72 kg' },
-  { key: 'target_weight',     label: 'Target Weight',           placeholder: 'e.g. 80 kg' },
-  { key: 'height',            label: 'Height',                  placeholder: 'e.g. 175 cm' },
-  { key: 'activity_level',    label: 'Activity Level',          placeholder: 'Sedentary / Lightly active / Active / Very active' },
-  { key: 'diet_preference',   label: 'Diet Preference',         placeholder: 'Veg / Non-veg / Vegan' },
-  { key: 'sleep_hours',       label: 'Average Sleep Hours',     placeholder: 'e.g. 7' },
-  { key: 'workout_days',      label: 'Workout Days per Week',   placeholder: 'e.g. 4' },
-  { key: 'main_goal',         label: 'Main Health Goal',        placeholder: 'e.g. Build muscle, Lose fat, Improve endurance' },
-  { key: 'health_conditions', label: 'Any Health Conditions',   placeholder: 'e.g. None, Knee pain, Hypertension' },
-  { key: 'motivation',        label: 'What motivates you?',     placeholder: 'e.g. Sports, Aesthetics, Health' },
-];
-
-export default function Assessment({ user }) {
+export default function Assessment() {
   const assessmentQA  = useStore(selectAssessmentQA) || [];
   const saveAssessment = useStore(s => s.saveAssessmentQA);
+  const configuredQuestions = useStore(s => s.appConfig?.assessmentQuestions || []);
   const toast = useToast();
 
-  const [questions, setQuestions] = useState(FALLBACK_QUESTIONS);
+  const [questions, setQuestions] = useState(configuredQuestions);
   const [view, setView]   = useState('history');
   const [step, setStep]   = useState(0);
   const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch questions from DB
   useEffect(() => {
-    apiSync('/assessment_questions', 'GET')
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setQuestions(data);
-        }
-      })
-      .catch(() => { /* keep fallback */ });
-  }, []);
+    setQuestions(Array.isArray(configuredQuestions) ? configuredQuestions : []);
+  }, [configuredQuestions]);
 
 
   // ── History search
@@ -91,17 +72,12 @@ export default function Assessment({ user }) {
       if (typeof saveAssessment === 'function') {
         await saveAssessment(round);
       } else {
-        // Fallback: POST directly
-        await fetch('/api/assessment_qa', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(round),
-        });
+        await apiSync('/assessment_qa', 'POST', round);
       }
       toast.success('Assessment saved!');
       setView('history');
       setStep(0);
-    } catch (e) {
+    } catch {
       toast.error('Failed to save assessment.');
     } finally {
       setSubmitting(false);
@@ -207,12 +183,12 @@ export default function Assessment({ user }) {
 
             {/* Step dots */}
             <div style={{ display: 'flex', gap: '6px' }}>
-              {QA_FORM_QUESTIONS.map((_, i) => (
+              {questions.map((_, i) => (
                 <div key={i} onClick={() => setStep(i)} style={{
                   width: i === step ? '20px' : '7px',
                   height: '7px',
                   borderRadius: '4px',
-                  background: answers[QA_FORM_QUESTIONS[i].key] ? '#10b981' : i === step ? 'var(--accent)' : 'var(--bg-elevated)',
+                  background: answers[questions[i].key] ? '#10b981' : i === step ? 'var(--accent)' : 'var(--bg-elevated)',
                   border: '1px solid var(--border)',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',

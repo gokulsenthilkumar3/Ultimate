@@ -5,7 +5,7 @@
  * All detail driven by morph weights from use3DStore.
  */
 
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -26,7 +26,7 @@ const FITZPATRICK = {
 };
 
 // == Hair color presets ========================================================
-export const HAIR_COLOR_PRESETS = {
+const HAIR_COLOR_PRESETS = {
   black:"#110a05",darkbrown:"#2c1a0a",brown:"#6b3a1a",
   auburn:"#8b3a2a",blonde:"#c8a04a",grey:"#888880",white:"#d8d8d4"
 };
@@ -188,9 +188,9 @@ function AuraRing({radius,y}) {
 
 function EyeGroup({d,side,eyeColorHex,skinMat}) {
   const sx=side==="L"?-1:1, er=d.eyeR;
-  const scl=useMemo(makeScleraMat,[]);
+  const scl=useMemo(()=>makeScleraMat(),[]);
   const iris=useMemo(()=>makeIrisMat(eyeColorHex),[eyeColorHex]);
-  const pupil=useMemo(makePupilMat,[]);
+  const pupil=useMemo(()=>makePupilMat(),[]);
   return (
     <group position={[sx*d.eyeX,d.eyeY,d.eyeZ]}>
       <mesh material={scl}><sphereGeometry args={[er,22,16]}/></mesh>
@@ -340,7 +340,9 @@ export default function ProceduralHumanoid({
   const nailMat=useMemo(makeNailMat,[]);
 
   // Breathing animation state
-  const breathT = useRef(0);
+  const breathT = useRef(cloneKey === "B" ? Math.PI : 0);
+  const introT = useRef(0);
+  const reduceMotion = useRef(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 
   const groupRef=useRef(), torsoRef=useRef(), hipRef=useRef(), headRef=useRef(), neckRef=useRef();
   const uArmRefs=[useRef(),useRef()], fArmRefs=[useRef(),useRef()];
@@ -350,15 +352,41 @@ export default function ProceduralHumanoid({
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const initD=useMemo(()=>computeDimensions(weights),[]);
+  const d=initD;
   const prevW=useRef(weights);
+
+  useEffect(() => () => {
+    Object.values(prevGeoRefs.current).flat().forEach((geometry) => geometry?.dispose?.());
+    [mat, lipMat, nailMat].forEach((material) => material?.dispose?.());
+  }, [lipMat, mat, nailMat]);
 
   useFrame((_,dt)=>{
     if(!groupRef.current)return;
 
     // ── Breathing idle animation ────────────────────────────────────────────
     breathT.current += dt;
-    const breathScale = 1 + Math.sin(breathT.current * 0.78) * 0.008;
-    if(torsoRef.current) torsoRef.current.scale.y = breathScale;
+    introT.current = Math.min(1, introT.current + dt / 1.15);
+    const intro = 1 - Math.pow(1 - introT.current, 3);
+    const motion = reduceMotion.current ? 0 : 1;
+    const breath = Math.sin(breathT.current * 0.78);
+    const breathScale = 1 + breath * 0.008 * motion;
+    const baseScale = initD.bodyScale * (0.965 + intro * 0.035);
+    groupRef.current.scale.setScalar(baseScale);
+    groupRef.current.position.y = position[1] - (1 - intro) * 0.045;
+    groupRef.current.rotation.y = Math.sin(breathT.current * 0.22) * 0.018 * motion;
+    groupRef.current.rotation.z = Math.sin(breathT.current * 0.31) * 0.006 * motion;
+    if(torsoRef.current) {
+      torsoRef.current.scale.y = breathScale;
+      torsoRef.current.scale.x = 1 + breath * 0.0035 * motion;
+      torsoRef.current.scale.z = 1 + breath * 0.006 * motion;
+    }
+    if(headRef.current) {
+      headRef.current.rotation.y = Math.sin(breathT.current * 0.28) * 0.025 * motion;
+      headRef.current.rotation.z = Math.sin(breathT.current * 0.19) * 0.008 * motion;
+    }
+    uArmRefs.forEach((arm, index) => {
+      if (arm.current) arm.current.rotation.z = (index ? -1 : 1) * Math.sin(breathT.current * 0.52) * 0.012 * motion;
+    });
 
     // ── Morph update ───────────────────────────────────────────────────────
     const st=use3DStore.getState(), curW=(cloneKey==="B"?st.cloneB:st.cloneA).weights;
@@ -420,7 +448,6 @@ export default function ProceduralHumanoid({
     });
   });
 
-  const d=initD;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const torsoGeo=useMemo(()=>bldTorso({shoulderW:d.shoulderW,chestW:d.chestW,waistW:d.waistW,bellyW:d.bellyW,hipW:d.hipW,h:d.torsoH}),[]);
   // eslint-disable-next-line react-hooks/exhaustive-deps

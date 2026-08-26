@@ -190,8 +190,9 @@ const MORPH_RANGES = {
  */
 const normalise = (value, key) => {
   const range = MORPH_RANGES[key];
-  if (!range) return 0;
-  return Math.max(0, Math.min(1, (value - range.min) / (range.max - range.min)));
+  const numericValue = Number(value);
+  if (!range || !Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(1, (numericValue - range.min) / (range.max - range.min)));
 };
 
 /**

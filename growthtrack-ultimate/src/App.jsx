@@ -173,6 +173,7 @@ export default function App() {
   const storeActiveTab = useStore(selectActiveTab);
   const setActiveTab = useStore(selectSetActiveTab);
   const sidebarCollapsed = useStore((state) => state.sidebarCollapsed);
+  const reducedMotion = useStore((state) => state.reducedMotion);
   const fetchInitialData   = useStore(selectFetchInitialData);
   const checkServerHealth  = useStore(selectCheckServerHealth);
   const isLoading          = useStore(selectIsLoading);
@@ -195,11 +196,12 @@ export default function App() {
   const pathTabRaw = location.pathname.substring(1);
   const activeTab = (pathTabRaw && GLOBAL_MODULES[pathTabRaw]) ? pathTabRaw : storeActiveTab;
 
-  // ── Preload 3D model once on mount ──
+  // Load the large 3D asset only when its module is requested. This keeps the
+  // initial dashboard path fast on lower-memory devices.
   useEffect(() => {
-    if (!session) return;
+    if (!session || !['physique', 'humanoid'].includes(activeTab)) return;
     preloadHumanoidModel();
-  }, [session]);
+  }, [session, activeTab]);
 
   const prevLocationRef = React.useRef(location.pathname);
   const prevStoreTabRef = React.useRef(storeActiveTab);
@@ -287,7 +289,8 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme',   theme);
     document.documentElement.setAttribute('data-palette', palette);
-  }, [theme, palette]);
+    document.documentElement.setAttribute('data-reduced-motion', String(reducedMotion));
+  }, [theme, palette, reducedMotion]);
 
   if (!session) {
     return location.pathname === '/login'

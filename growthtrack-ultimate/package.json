@@ -18,7 +18,8 @@
     "glb:health": "node scripts/glb-health.js",
     "glb:priority-fixes": "node scripts/glb-priority-fixes.js",
     "owner:create": "node scripts/create-owner.js",
-    "db:sync": "prisma generate && prisma db push"
+    "db:sync": "prisma generate && prisma db push",
+    "db:seed-config": "node scripts/seed-app-config.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
@@ -30,7 +31,6 @@
     "@sentry/react": "^10.70.0",
     "@sentry/vite-plugin": "^5.4.0",
     "@stripe/stripe-js": "^9.13.0",
-    "@supabase/supabase-js": "^2.110.6",
     "@tanstack/react-query": "^5.100.11",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",

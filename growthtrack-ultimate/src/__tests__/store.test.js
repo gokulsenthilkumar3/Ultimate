@@ -13,7 +13,7 @@ describe('useStore API Integration', () => {
       user: { id: 'test-user-123', tasks: { pending: [], completed: [], recurring: [] } },
       shopping: { items: [] },
       timesheet: { sessions: [] },
-      finance: { transactions: [], budgets: [] },
+      finance: { transactions: {}, budgets: {} },
       notes: [], goals: [], sleep_logs: [], documents: [],
       subscriptions: [], habits: [],
       entertainment: { media: [] },
@@ -28,18 +28,16 @@ describe('useStore API Integration', () => {
     const mockShopping = [{ id: 1, name: 'Apple' }];
     const mockTimesheet = [{ id: 1, task: 'Coding' }];
 
-    // fetchInitialData makes 22 parallel requests — resolve all of them
-    // First 4 match meaningful data, the rest resolve to []/{}
-    let callCount = 0;
+    const stateSnapshot = {
+      user: mockUser, tasks: mockTasks, shopping: mockShopping, timesheet: mockTimesheet,
+      finance: [], budgets: [], preference: {}, config: {}, databases: [], healthProfile: {},
+    };
     global.fetch.mockImplementation(() => {
-      callCount++;
-      const bodies = [mockUser, mockTasks, mockShopping, mockTimesheet];
-      const body = callCount <= 4 ? bodies[callCount - 1] : [];
-      const bodyStr = JSON.stringify(body);
+      const bodyStr = JSON.stringify(stateSnapshot);
       return Promise.resolve({
         ok: true,
         text: () => Promise.resolve(bodyStr),
-        json: () => Promise.resolve(body),
+        json: () => Promise.resolve(stateSnapshot),
       });
     });
 
@@ -49,7 +47,7 @@ describe('useStore API Integration', () => {
     expect(state.user.name).toBe('Test User');
     expect(state.user.tasks.pending[0].title).toBe('Test Task');
     expect(state.shopping.items).toEqual(mockShopping);
-    expect(state.timesheet.sessions).toEqual(mockTimesheet);
+    expect(state.timesheetEntries).toEqual(mockTimesheet);
   });
 
   it('addTask sends POST request and updates store', async () => {

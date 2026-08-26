@@ -698,7 +698,7 @@ export default function Tasks() {
             }}
           >
             {showForm ? <X size={14} /> : <Plus size={14} />}
-            {showForm ? 'Cancel' : 'Deploy Task'}
+            {showForm ? 'Cancel' : 'Add Task'}
           </button>
         </div>
       </div>

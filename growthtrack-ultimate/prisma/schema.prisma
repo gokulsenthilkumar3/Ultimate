@@ -55,6 +55,9 @@ model User {
   ownerProfile       OwnerProfile?
   socialProfiles     SocialProfile[]
   bodyProfile        BodyProfile?
+  healthProfile      HealthProfile?
+  locationPoints     LocationPoint[]
+  customTables       CustomTable[]
   integrationCredentials IntegrationCredential[]
 }
 
@@ -335,7 +338,47 @@ model MetricLog {
   date      String?
   metric    String?
   value     Float?
+  source    String?  @default("manual")
+  data      String?
   createdAt DateTime @default(now())
+}
+
+model HealthProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      String   @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("health_profiles")
+}
+
+model LocationPoint {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  latitude   Float
+  longitude  Float
+  accuracyM  Float?
+  source     String   @default("browser")
+  capturedAt DateTime @default(now())
+
+  @@index([userId, capturedAt])
+  @@map("location_points")
+}
+
+model CustomTable {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  schema    String   @default("[]")
+  rows      String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("custom_tables")
 }
 
 model NutritionLog {

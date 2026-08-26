@@ -44,12 +44,12 @@ export default function Progress() {
   const user           = useStore(selectUser);
   const storeLogs      = useStore(state => state.metric_logs) || [];
   const saveMetricLog  = useStore(state => state.saveMetricLog);
+  const fetchInitialData = useStore(state => state.fetchInitialData);
 
   const [isLogging,     setIsLogging]     = useState(false);
   const [activeMetric,  setActiveMetric]  = useState('weight');
 
   // ── DB-backed progress entries
-  const [progressEntries, setProgressEntries] = useState([]);
   const [loadingEntries,  setLoadingEntries]  = useState(false);
 
   // ── Photo gallery state
@@ -60,18 +60,17 @@ export default function Progress() {
   const fetchProgressEntries = useCallback(async () => {
     setLoadingEntries(true);
     try {
-      const res = await fetch('/api/progress_entries');
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setProgressEntries(Array.isArray(data) ? data.sort((a, b) => b.date?.localeCompare(a.date)) : []);
+      await fetchInitialData();
     } catch (e) {
-      console.error('progress_entries fetch error', e);
+      console.error('metric_logs refresh error', e);
     } finally {
       setLoadingEntries(false);
     }
-  }, []);
+  }, [fetchInitialData]);
 
-  useEffect(() => { fetchProgressEntries(); }, [fetchProgressEntries]);
+  const progressEntries = useMemo(() => [...storeLogs]
+    .filter(entry => entry.photo_url || entry.weight || entry.chest || entry.waist || entry.hips || entry.body_fat)
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))), [storeLogs]);
 
   // ── Build chart data from DB metric_logs (store)
   const chartData = useMemo(() => {
@@ -109,7 +108,7 @@ export default function Progress() {
     return result;
   }, [storeLogs]);
 
-  const latestLog = storeLogs[0] || { weight: user?.weight || 0, sleep: 7, water: 2.5, stamina: 40, hr: 72 };
+  const latestLog = storeLogs[0] || { weight: user?.weight || '—', sleep: '—', water: '—', stamina: '—', hr: '—' };
   const selected  = METRICS.find(m => m.key === activeMetric) || METRICS[0];
 
   // ── Photos only (entries with photo_url)
@@ -125,7 +124,7 @@ export default function Progress() {
   const handleLightboxNext = () => setLightboxIdx(i => (i < photoEntries.length - 1 ? i + 1 : 0));
 
   return (
-    <div className="fade-in stagger-container">
+    <div className="fade-in stagger-container progress-page">
       {isLogging && <MetricLogger onClose={() => setIsLogging(false)} onSave={handleSaveLog} />}
 
       {/* Lightbox */}
@@ -166,8 +165,8 @@ export default function Progress() {
       {/* Header */}
       <div className="section-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 className="text-display" style={{ fontSize: '2rem' }}>Progress Intelligence</h2>
-          <p className="text-secondary" style={{ fontSize: '0.9rem' }}>Tracking the evolution of your digital twin across body, lifestyle, and holistic sensory data.</p>
+          <h2 className="text-display" style={{ fontSize: '2rem' }}>Progress</h2>
+          <p className="text-secondary" style={{ fontSize: '0.9rem' }}>Log what changed, leave everything else blank, and follow the trend over time.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button className="btn-secondary" onClick={fetchProgressEntries} title="Refresh entries"
@@ -175,7 +174,7 @@ export default function Progress() {
             <RefreshCw size={14} className={loadingEntries ? 'spin' : ''} /> Refresh
           </button>
           <button className="btn-primary" onClick={() => setIsLogging(true)}>
-            <Plus size={18} /> NEW LOG ENTRY
+            <Plus size={18} /> Add check-in
           </button>
         </div>
       </div>

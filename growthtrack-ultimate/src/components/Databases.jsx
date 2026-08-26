@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Edit3, Check, X, Download, Upload, Search, ChevronUp, ChevronDown, Database, ArrowUpDown, Filter, Copy } from 'lucide-react';
-import useStore from '../store/useStore';
+import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 
@@ -8,14 +8,9 @@ import EmptyState from './ui/EmptyState';
 const FIELD_TYPES = ['text', 'number', 'date', 'boolean', 'select', 'email', 'url'];
 
 const defaultTable = (name) => ({
-  id: Date.now(),
+  id: crypto.randomUUID(),
   name,
-  fields: [
-    { id: 'f1', name: 'Name',   type: 'text',   required: true  },
-    { id: 'f2', name: 'Notes',  type: 'text',   required: false },
-    { id: 'f3', name: 'Status', type: 'select', options: ['Active', 'Done', 'Archived'], required: false },
-    { id: 'f4', name: 'Date',   type: 'date',   required: false },
-  ],
+  fields: [],
   rows: [],
   createdAt: new Date().toISOString(),
 });
@@ -369,6 +364,19 @@ export default function Databases() {
 
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState('');
+  const [systemTables, setSystemTables] = useState([]);
+  const [configDrafts, setConfigDrafts] = useState({});
+  const refreshSystemTables = useCallback(async () => {
+    try { setSystemTables(await apiSync('/database/tables', 'GET')); } catch { setSystemTables([]); }
+  }, []);
+  useEffect(() => { refreshSystemTables(); }, [refreshSystemTables]);
+  const saveConfig = async row => {
+    try {
+      const value = JSON.parse(configDrafts[row.key] ?? JSON.stringify(row.value));
+      await apiSync(`/config/${row.key}`, 'PUT', { value, category: row.category });
+      toast.success(`${row.key} saved`); refreshSystemTables();
+    } catch (error) { toast.error(error instanceof SyntaxError ? 'Configuration must be valid JSON.' : 'Configuration could not be saved.'); }
+  };
 
   const saveTable = (updated) => {
     const next = tables.map(t => t.id === updated.id ? updated : t);
@@ -415,6 +423,14 @@ export default function Databases() {
           <DataTable key={table.id} table={table} onUpdate={saveTable} onDelete={deleteTable} />
         ))
       )}
+
+      <section className="glass-card databases-system" aria-labelledby="app-data-title">
+        <div className="databases-system__header"><div><p className="label-caps">Live app data</p><h3 id="app-data-title">Application tables</h3></div><span className="badge">SQL-backed</span></div>
+        <p className="text-secondary databases-system__hint">Every module table is available here as a read view. Create or edit records in their module; the API handles the SQL persistence and CRUD audit trail.</p>
+        <div className="databases-system__grid">
+          {systemTables.map(table => <details key={table.name} className="databases-system__table"><summary><span>{table.name}</span><b>{table.count}</b></summary><div className="databases-system__rows">{table.rows?.length ? table.rows.map((row, i) => table.name === 'app_settings' ? <div className="config-row" key={row.id || i}><strong>{row.key}</strong><textarea className="form-input" value={configDrafts[row.key] ?? JSON.stringify(row.value, null, 2)} onChange={event => setConfigDrafts(drafts => ({ ...drafts, [row.key]: event.target.value }))} /><button className="btn-secondary" onClick={() => saveConfig(row)}>Save configuration</button></div> : <pre key={row.id || i}>{JSON.stringify(row, null, 2)}</pre>) : <span className="text-secondary">No records</span>}{table.count > (table.rows?.length || 0) && <small>Showing {table.rows.length} of {table.count}</small>}</div></details>)}
+        </div>
+      </section>
     </div>
   );
 }

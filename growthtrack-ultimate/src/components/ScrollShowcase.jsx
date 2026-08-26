@@ -1,23 +1,39 @@
-import React, { Suspense, lazy, useLayoutEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import React, { Suspense, lazy } from 'react';
+import { Activity, MousePointer2, ScanLine, Sparkles } from 'lucide-react';
 
 const HumanoidViewer = lazy(() => import('./HumanoidViewer'));
-gsap.registerPlugin(ScrollTrigger);
+const FEATURES = [
+  { icon: MousePointer2, label: 'Explore', detail: 'Drag to orbit · scroll to zoom' },
+  { icon: ScanLine, label: 'Inspect', detail: 'Select a body region to focus' },
+  { icon: Activity, label: 'Compare', detail: 'Move between now, goal and timeline' },
+];
 
 export default function ScrollShowcase() {
-  const root = useRef(null);
-  useLayoutEffect(() => {
-    const ctx = gsap.context(() => {
-      const stage = root.current.querySelector('.scroll-showcase__stage');
-      const copy = root.current.querySelectorAll('.scroll-showcase__copy');
-      gsap.to(stage, { rotate: 4, scale: 1.04, ease: 'none', scrollTrigger: { trigger: root.current, start: 'top top', end: 'bottom bottom', scrub: 1 } });
-      copy.forEach((node, index) => gsap.fromTo(node, { opacity: .25, y: 30 }, { opacity: 1, y: 0, ease: 'none', scrollTrigger: { trigger: node, start: 'top 75%', end: 'top 42%', scrub: true, onEnter: () => node.dataset.active = 'true', onLeaveBack: () => node.dataset.active = 'false' } }));
-    }, root);
-    return () => ctx.revert();
-  }, []);
-  return <section ref={root} className="scroll-showcase" aria-label="Physique product showcase">
-    <div className="scroll-showcase__stage"><Suspense fallback={<div className="hub-loading"><div className="spin-ring" /> Loading mirror…</div>}><HumanoidViewer /></Suspense></div>
-    <div className="scroll-showcase__story"><div className="scroll-showcase__copy" data-active="true"><span className="eyebrow">01 · Observe</span><h3>See the system, not a number.</h3><p>Your 3D Mirror anchors metrics in a body you can understand.</p></div><div className="scroll-showcase__copy"><span className="eyebrow">02 · Shape</span><h3>Move through the blueprint.</h3><p>Targets and morphology become a visual plan instead of a spreadsheet.</p></div><div className="scroll-showcase__copy"><span className="eyebrow">03 · Evolve</span><h3>Let the timeline tell the truth.</h3><p>History makes progress visible and gives Growthcast real data to learn from.</p></div></div>
-  </section>;
+  return (
+    <section className="physique-lab" aria-labelledby="physique-lab-title">
+      <header className="physique-lab__intro">
+        <div>
+          <span className="physique-lab__eyebrow"><Sparkles size={13} /> Realtime physique lab</span>
+          <h2 id="physique-lab-title">Your progress, rendered in motion.</h2>
+          <p>Explore your current body, compare the goal model and inspect changes without leaving the canvas.</p>
+        </div>
+        <div className="physique-lab__status" aria-label="3D renderer status">
+          <span className="physique-lab__live-dot" aria-hidden="true" /> Live CG
+        </div>
+      </header>
+      <div className="physique-lab__stage">
+        <Suspense fallback={<div className="hub-loading"><div className="spin-ring" /> Preparing your digital twin…</div>}>
+          <HumanoidViewer />
+        </Suspense>
+      </div>
+      <div className="physique-lab__guide" aria-label="3D controls guide">
+        {FEATURES.map(({ icon, label, detail }) => (
+          <div className="physique-lab__guide-item" key={label}>
+            {React.createElement(icon, { size: 16, 'aria-hidden': true })}
+            <span><strong>{label}</strong>{detail}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }

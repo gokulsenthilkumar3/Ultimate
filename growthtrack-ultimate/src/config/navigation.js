@@ -43,18 +43,17 @@ export const TABS = {
   logs: { label: 'Logs', group: 'system', icon: FileText, emoji: '📊', keywords: ['audit', 'sessions'] },
   apps: { label: 'Apps', group: 'system', icon: Cloud, emoji: '🚀', keywords: ['connectors', 'integrations'] },
   about: { label: 'About', group: 'system', icon: Sparkles, emoji: 'ℹ️', keywords: ['version'] },
-  notifications: { label: 'Notifications', group: 'system', icon: Activity, emoji: '🔔', keywords: ['updates'] },
 };
 
 export const GROUPS = {
   today: { label: 'Today', icon: Home, tabs: ['overview', 'current'] },
   body: { label: 'Body', icon: Dumbbell, tabs: ['physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration'] },
   wellness: { label: 'Wellness', icon: HeartPulse, tabs: ['sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits'] },
-  insights: { label: 'Insights', icon: TrendingUp, tabs: ['insights', 'progress', 'goals'] },
+  insights: { label: 'Insights', icon: TrendingUp, tabs: ['insights'] },
   work: { label: 'Workspace', icon: BriefcaseBusiness, tabs: ['workspace', 'tasks', 'projects', 'timesheet', 'skills'] },
   money: { label: 'Money', icon: WalletCards, tabs: ['finance', 'shopping', 'sip', 'portfolio'] },
   life: { label: 'Life', icon: Users, tabs: ['social', 'entertainment', 'maps'] },
-  system: { label: 'More', icon: LayoutDashboard, tabs: ['ai', 'databases', 'profile', 'help', 'logs', 'apps', 'about', 'notifications'] },
+  system: { label: 'More', icon: LayoutDashboard, tabs: ['ai', 'databases', 'profile', 'help', 'logs', 'apps', 'about'] },
 };
 
 export const GROUP_ORDER = Object.keys(GROUPS);

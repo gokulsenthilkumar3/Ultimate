@@ -31,7 +31,7 @@ export default function Timesheet() {
 
   const fetchEntries = useCallback(async () => {
     try {
-      const rows = await apiSync('/timesheets', 'GET');
+      const rows = await apiSync('/timesheet', 'GET');
       if (Array.isArray(rows)) setDbEntries(rows);
     } catch {}
   }, []);
@@ -44,7 +44,7 @@ export default function Timesheet() {
     // Optimistic UI
     setDbEntries(prev => prev ? [entry, ...prev] : [entry, ...storeEntries]);
     try {
-      const created = await apiSync('/timesheets', 'POST', entry);
+      const created = await apiSync('/timesheet', 'POST', entry);
       if (created?.id) {
         setDbEntries(prev => prev ? prev.map(e => e.id === entry.id ? created : e) : null);
       }
@@ -57,7 +57,7 @@ export default function Timesheet() {
     // Optimistic UI
     setDbEntries(prev => prev ? prev.filter(e => e.id !== id) : null);
     try {
-      await apiSync(`/timesheets/${id}`, 'DELETE');
+      await apiSync(`/timesheet/${id}`, 'DELETE');
     } catch {
       if (typeof storeDelete === 'function') storeDelete(id);
     }

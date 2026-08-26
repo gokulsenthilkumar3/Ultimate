@@ -3,43 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore, { selectPinnedTabs, selectTogglePinnedTab } from '../store/useStore';
 import { Pin, PinOff, Search, Grid, Star } from 'lucide-react';
 
-// ── App Registry ───────────────────────────────────────────────────────────
-const ALL_APPS = [
-  // Core
-  { id: 'overview',    label: 'Overview',       icon: '🏠', group: 'Core',         color: '#6366f1', description: 'Dashboard summary' },
-  { id: 'current',     label: 'Current',        icon: '⚡', group: 'Core',         color: '#0ea5e9', description: 'Live feed & weather' },
-  { id: 'analytics',   label: 'Analytics',      icon: '📊', group: 'Core',         color: '#8b5cf6', description: 'Cross-domain insights' },
-  // Health & Fitness
-  { id: 'training',    label: 'Training',        icon: '💪', group: 'Health',       color: '#f43f5e', description: 'Workout tracker' },
-  { id: 'nutrition',   label: 'Nutrition',       icon: '🥗', group: 'Health',       color: '#10b981', description: 'Macro & calorie tracking' },
-  { id: 'physique',    label: 'Physique',        icon: '🏋️', group: 'Health',       color: '#3b82f6', description: 'Body composition' },
-  { id: 'medical',     label: 'Medical',         icon: '🩺', group: 'Health',       color: '#ec4899', description: 'Vitals & medications' },
-  { id: 'habits',      label: 'Habits',          icon: '🔥', group: 'Health',       color: '#f97316', description: 'Habit matrix' },
-  { id: 'strength',    label: 'Strength',        icon: '🏆', group: 'Health',       color: '#fbbf24', description: 'Strength metrics & PRs' },
-  // Productivity
-  { id: 'goals',       label: 'Goals',           icon: '🎯', group: 'Productivity', color: '#06b6d4', description: 'Goal tracking' },
-  { id: 'tasks',       label: 'Tasks',           icon: '✅', group: 'Productivity', color: '#34d399', description: 'Task management' },
-  { id: 'projects',    label: 'Projects',        icon: '🚀', group: 'Productivity', color: '#a78bfa', description: 'Projects & GitHub' },
-  { id: 'calendar',    label: 'Calendar',        icon: '📅', group: 'Productivity', color: '#f87171', description: 'Events & schedule' },
-  { id: 'timesheet',   label: 'Timesheet',       icon: '⏱️', group: 'Productivity', color: '#fb923c', description: 'Time tracking & billing' },
-  { id: 'notes',       label: 'Notes',           icon: '📝', group: 'Productivity', color: '#a3e635', description: 'Markdown notes' },
-  { id: 'skills',      label: 'Skills',          icon: '⚡', group: 'Productivity', color: '#818cf8', description: 'Skill trees & XP' },
-  // Finance
-  { id: 'finance',     label: 'Finance',         icon: '💰', group: 'Finance',      color: '#22c55e', description: 'Wealth engine' },
-  { id: 'sip',         label: 'SIP Calc',        icon: '📈', group: 'Finance',      color: '#4ade80', description: 'SIP projections' },
-  { id: 'portfolio',   label: 'Portfolio',       icon: '💹', group: 'Finance',      color: '#86efac', description: 'Investment portfolio' },
-  { id: 'shopping',    label: 'Shopping',        icon: '🛒', group: 'Finance',      color: '#fdba74', description: 'Shopping list' },
-  // Misc
-  { id: 'ai',          label: 'AI Assistant',    icon: '🤖', group: 'Tools',        color: '#38bdf8', description: 'GrowthTrack AI' },
-  { id: 'logs',        label: 'Logs',            icon: '📋', group: 'Tools',        color: '#94a3b8', description: 'Audit trail' },
-  { id: 'databases',   label: 'Databases',       icon: '🗄️', group: 'Tools',        color: '#7dd3fc', description: 'Data explorer' },
-  { id: 'about',       label: 'About',           icon: 'ℹ️', group: 'Tools',        color: '#c4b5fd', description: 'App info & changelog' },
-  { id: 'settings',    label: 'Profile',         icon: '🪪', group: 'Tools',        color: '#f9a8d4', description: 'Bio, about me & profile' },
-];
-
-const GROUP_ORDER = ['Core', 'Health', 'Productivity', 'Finance', 'Tools'];
 const DOCK_APP_IDS = ['overview', 'training', 'tasks', 'finance', 'ai', 'habits', 'notes'];
-const PORTFOLIO_URL = 'https://portfolio-ten-plum-98.vercel.app/';
 const CLICK_KEY = 'gtd_app_click_counts';
 
 function getClickCounts() {
@@ -102,6 +66,9 @@ function Dock({ dockApps, onNavigate, pinnedTabs }) {
 }
 
 export default function AppLauncher({ setActiveTab }) {
+  const appConfig = useStore(s => s.appConfig || {});
+  const allApps = Array.isArray(appConfig.appCatalog) ? appConfig.appCatalog : [];
+  const groupOrder = useMemo(() => [...new Set(allApps.map(app => app.group).filter(Boolean))], [allApps]);
   const pinnedTabs     = useStore(selectPinnedTabs)     || [];
   const togglePinnedTab = useStore(selectTogglePinnedTab);
 
@@ -115,32 +82,32 @@ export default function AppLauncher({ setActiveTab }) {
   const clickCounts = useMemo(() => getClickCounts(), []);
 
   const frequentApps = useMemo(() => {
-    return [...ALL_APPS].sort((a, b) => (clickCounts[b.id] || 0) - (clickCounts[a.id] || 0)).slice(0, 8).filter(a => (clickCounts[a.id] || 0) > 0);
-  }, []);
+    return [...allApps].sort((a, b) => (clickCounts[b.id] || 0) - (clickCounts[a.id] || 0)).slice(0, 8).filter(a => (clickCounts[a.id] || 0) > 0);
+  }, [allApps, clickCounts]);
 
-  const pinnedApps = useMemo(() => ALL_APPS.filter(a => pinnedTabs.includes(a.id)), [pinnedTabs]);
+  const pinnedApps = useMemo(() => allApps.filter(a => pinnedTabs.includes(a.id)), [allApps, pinnedTabs]);
   const dockApps   = useMemo(() => {
     const dockSet = new Set(DOCK_APP_IDS);
     pinnedApps.forEach(a => dockSet.add(a.id));
-    return ALL_APPS.filter(a => dockSet.has(a.id));
-  }, [pinnedApps]);
+    return allApps.filter(a => dockSet.has(a.id));
+  }, [allApps, pinnedApps]);
 
   const filtered = useMemo(() => {
-    let apps = ALL_APPS;
+    let apps = allApps;
     if (groupFilter !== 'all') apps = apps.filter(a => a.group === groupFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       apps = apps.filter(a => a.label.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.group.toLowerCase().includes(q));
     }
     return apps;
-  }, [search, groupFilter]);
+  }, [allApps, search, groupFilter]);
 
   const grouped = useMemo(() => {
     const g = {};
-    GROUP_ORDER.forEach(gr => { g[gr] = []; });
+    groupOrder.forEach(gr => { g[gr] = []; });
     filtered.forEach(a => { if (!g[a.group]) g[a.group] = []; g[a.group].push(a); });
     return g;
-  }, [filtered]);
+  }, [filtered, groupOrder]);
 
   const onNavigate = (id) => {
     if (setActiveTab) setActiveTab(id);
@@ -154,7 +121,7 @@ export default function AppLauncher({ setActiveTab }) {
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Navigation</p>
           <h2 className="text-display" style={{ fontSize: '2rem', margin: 0 }}>App Hub</h2>
           <p style={{ color: 'var(--text-3)', fontSize: '0.88rem', marginTop: '0.4rem' }}>
-            {ALL_APPS.length} modules, organized for quick launch.
+            {allApps.length} modules, organized for quick launch.
           </p>
         </div>
         <div className="app-hub-hero__meta">
@@ -176,9 +143,9 @@ export default function AppLauncher({ setActiveTab }) {
           <p className="app-hub-label">Personal Portfolio</p>
           <p className="app-hub-copy">Your external website lives there. Edit the site directly from the linked portfolio.</p>
         </div>
-        <a href={PORTFOLIO_URL} target="_blank" rel="noreferrer" className="btn btn--ghost">
+        {appConfig.portfolioUrl && <a href={appConfig.portfolioUrl} target="_blank" rel="noreferrer" className="btn btn--ghost">
           Open Website
-        </a>
+        </a>}
       </div>
 
       {/* Frequent apps */}
@@ -230,7 +197,7 @@ export default function AppLauncher({ setActiveTab }) {
             className="form-input" style={{ paddingLeft: '32px', width: '100%' }} />
         </div>
         <div className="segmented segmented--compact">
-          {['all', ...GROUP_ORDER].map(g => (
+          {['all', ...groupOrder].map(g => (
             <button key={g} onClick={() => setGroupFilter(g)} style={{
               padding: '4px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
               background: groupFilter === g ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
@@ -251,7 +218,7 @@ export default function AppLauncher({ setActiveTab }) {
       </div>
 
       {/* All apps */}
-      {GROUP_ORDER.map(group => {
+      {groupOrder.map(group => {
         const apps = grouped[group];
         if (!apps?.length) return null;
         return (

@@ -2,29 +2,31 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import useStore from '../store/useStore';
 import { Send, Bot, User, Trash2, Copy, Zap, RefreshCw, Sparkles } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-import { askGemini as firebaseAskGemini } from '../lib/firebase';
+import { askLocalGrowthcast } from '../lib/growthcast';
 
 // ── Typing simulation component ────────────────────────────────────────────
 function TypedMessage({ text, speed = 12, onDone }) {
   const [displayed, setDisplayed] = useState('');
-  const idxRef = useRef(0);
+  const onDoneRef = useRef(onDone);
+
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
 
   useEffect(() => {
-    idxRef.current = 0;
+    let index = 0;
     setDisplayed('');
     const interval = setInterval(() => {
-      idxRef.current++;
-      if (idxRef.current <= text.length) {
-        setDisplayed(text.slice(0, idxRef.current));
+      index += 1;
+      if (index <= text.length) {
+        setDisplayed(text.slice(0, index));
       } else {
         clearInterval(interval);
-        onDone?.();
+        onDoneRef.current?.();
       }
     }, speed);
     return () => clearInterval(interval);
-  }, [text]);
+  }, [text, speed]);
 
-  return <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayed}<span style={{ opacity: idxRef.current < text.length ? 1 : 0, marginLeft: '1px', animation: 'blink 1s step-end infinite' }}>▌</span></span>;
+  return <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayed}<span style={{ opacity: displayed.length < text.length ? 1 : 0, marginLeft: '1px', animation: 'blink 1s step-end infinite' }}>▌</span></span>;
 }
 
 const QUICK_PROMPTS = [
@@ -40,17 +42,18 @@ const QUICK_PROMPTS = [
 
 const CACHE_KEY = 'gt_ai_cache_v2';
 function getCache() { try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || '[]'); } catch { return []; } }
-function setCache(msgs) { try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(msgs.slice(-40))); } catch {} }
+function setCache(msgs) { try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(msgs.slice(-40))); } catch { /* storage may be unavailable in private mode */ } }
 
 export default function AiDashboard() {
   const toast = useToast();
   const state = useStore();
+  const aiConfig = state.appConfig?.aiAgent || {};
 
   const [messages,    setMessages]    = useState(getCache);
   const [input,       setInput]       = useState('');
   const [loading,     setLoading]     = useState(false);
   const [typing,      setTyping]      = useState(false);
-  const [model,       setModel]       = useState('gemini-1.5-flash');
+  const [model,       setModel]       = useState(() => `ollama-${aiConfig.model || 'unconfigured'}`);
   const [showPrompts, setShowPrompts] = useState(messages.length === 0);
 
   const bottomRef = useRef(null);
@@ -132,19 +135,8 @@ export default function AiDashboard() {
 
       let response;
       try {
-        if (model.startsWith('ollama-')) {
-          const ollamaModel = model.replace('ollama-', '');
-          const res = await fetch('http://localhost:11434/api/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: ollamaModel, prompt: fullPrompt, stream: false })
-          });
-          if (!res.ok) throw new Error(`Ollama API failed: ${res.statusText}`);
-          const data = await res.json();
-          response = data.response;
-        } else {
-          response = await firebaseAskGemini(fullPrompt, model);
-        }
+        const ollamaModel = model.replace(/^ollama-/, '');
+        response = await askLocalGrowthcast(fullPrompt, { ...aiConfig, model: ollamaModel });
       } catch (fbErr) {
         // Fallback or error handling
         console.warn('[AiDashboard] AI Model unavailable:', fbErr.message);
@@ -152,7 +144,7 @@ export default function AiDashboard() {
       }
 
       if (!response) {
-        response = `⚠️ AI is unavailable.\n\nFor Gemini: Check Firebase credentials.\nFor Ollama: Ensure Ollama is running locally on port 11434 with CORS enabled (e.g., \`OLLAMA_ORIGINS="*" ollama serve\`).`;
+        response = '⚠️ The configured Agent is unavailable. Check the database-backed Agent settings and local Ollama service.';
       }
 
       const aiMsg = { role: 'assistant', content: response, id: Date.now() + 1, typing: true };
@@ -167,7 +159,7 @@ export default function AiDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, userContext, model, state, toast]);
+  }, [input, loading, messages, userContext, model, state, toast, aiConfig]);
 
   const handleTypingDone = useCallback((msgId) => {
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, typing: false } : m));
@@ -255,13 +247,8 @@ export default function AiDashboard() {
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <select value={model} onChange={e => setModel(e.target.value)} className="form-input" style={{ fontSize: '0.72rem', padding: '4px 8px' }}>
-            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             <optgroup label="Local (Ollama)">
-              <option value="ollama-llama3">Llama 3</option>
-              <option value="ollama-mistral">Mistral</option>
-              <option value="ollama-phi3">Phi-3</option>
+              <option value={`ollama-${aiConfig.model || 'unconfigured'}`}>{aiConfig.model || 'Not configured'}</option>
             </optgroup>
           </select>
           <button onClick={clearChat} title="Clear chat" style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 10px', color: 'var(--text-3)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>

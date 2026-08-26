@@ -17,6 +17,8 @@ export default function SettingsModal({ onClose }) {
   const user = useStore(state => state.user);
   const skills = useStore(state => state.skills) || [];
   const events = useStore(state => state.calendar_events) || [];
+  const healthProfile = useStore(state => state.healthProfile) || {};
+  const appConfig = useStore(state => state.appConfig) || {};
   const setOnboardingComplete = useStore(state => state.setOnboardingComplete);
 
   const [serverStatus, setServerStatus] = useState('Checking...');
@@ -59,7 +61,7 @@ export default function SettingsModal({ onClose }) {
       try {
         const start = Date.now();
         const res = await apiSync('/health', 'GET');
-        if (res && res.status === 'online') {
+        if (res && (res.status === 'online' || res.status === 'ok')) {
           const latency = Date.now() - start;
           setServerStatus(`Online (${latency}ms)`);
         } else {
@@ -88,13 +90,13 @@ export default function SettingsModal({ onClose }) {
   const systemStats = [
     { label: 'API Server', value: serverStatus, icon: Server, status: serverStatus.includes('Online') },
     { label: 'UI Engine', value: 'Running', icon: Globe, status: true },
-    { label: 'Data Nodes', value: 'SQLite3', icon: Database, status: true },
+    { label: 'Data Nodes', value: serverStatus.includes('Online') ? 'Local database' : 'Unavailable', icon: Database, status: serverStatus.includes('Online') },
     { label: 'Security', value: 'Active', icon: Lock, status: true }
   ];
 
   const userStats = [
     { label: 'Skills', value: skills.length, icon: Star, color: 'var(--accent)' },
-    { label: 'Health Score', value: '84', icon: Zap, color: '#10b981' },
+    { label: 'Health Score', value: healthProfile.healthScore ?? '—', icon: Zap, color: '#10b981' },
   ];
 
   const handleResetOnboarding = () => {
@@ -235,7 +237,8 @@ export default function SettingsModal({ onClose }) {
                     <Zap size={16} /> Devices
                   </button>
                   <button 
-                    onClick={() => window.open('https://billing.stripe.com/p/login/test_YOUR_STRIPE_LINK', '_blank')}
+                    onClick={() => appConfig.billingPortalUrl && window.open(appConfig.billingPortalUrl, '_blank')}
+                    disabled={!appConfig.billingPortalUrl}
                     style={{
                       flex: 1, padding: '12px', borderRadius: '12px',
                       background: 'rgba(255,255,255,0.05)', color: 'var(--text-1)',
