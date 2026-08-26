@@ -74,10 +74,11 @@ export default function HumanoidClone({
   const auraRef = useRef();
 
   // ── Load model ──────────────────────────────────────────────────────────────
-  const { bodyMesh, morphIndexMap, skeleton, scene, diagnostics, isDev } = useModelLoader();
+  const { bodyMesh, morphIndexMap, skeleton, scene, diagnostics } = useModelLoader();
   const useProcedural = !bodyMesh || diagnostics?.isSuspicious || Object.keys(morphIndexMap || {}).length < 12;
   const setModelFrame = use3DStore((s) => s.setModelFrame);
   const setModelDiagnostics = use3DStore((s) => s.setModelDiagnostics);
+  const gpuTier = use3DStore((s) => s.gpuTier);
 
   // ── Store slice ─────────────────────────────────────────────────────────────
   const { weights, metrics, posture } = use3DStore(
@@ -107,26 +108,6 @@ export default function HumanoidClone({
     box.getCenter(center);
     
     // Auto-normalize scale and position for arbitrary GLBs
-    if (size.y > 0.01) {
-      const targetHeight = 1.78;
-      const scale = targetHeight / size.y;
-      if (scale < 0.8 || scale > 1.2) {
-        scene.scale.set(scale, scale, scale);
-        scene.updateMatrixWorld(true);
-        box.setFromObject(scene);
-        box.getSize(size);
-        box.getCenter(center);
-      }
-      // Align feet to Y=0
-      if (Math.abs(box.min.y) > 0.05) {
-        scene.position.y -= box.min.y;
-        scene.updateMatrixWorld(true);
-        box.setFromObject(scene);
-        box.getSize(size);
-        box.getCenter(center);
-      }
-    }
-    
     setModelFrame({
       center,
       size,
@@ -136,8 +117,11 @@ export default function HumanoidClone({
   }, [scene, setModelFrame, useProcedural]);
 
   useEffect(() => {
-    setModelDiagnostics(diagnostics);
-  }, [diagnostics, setModelDiagnostics]);
+    setModelDiagnostics(diagnostics ? {
+      ...diagnostics,
+      activeRenderer: useProcedural ? 'procedural-production' : 'authored-glb',
+    } : null);
+  }, [diagnostics, setModelDiagnostics, useProcedural]);
 
   // ── Material ────────────────────────────────────────────────────────────────
   const material = useMemo(() => {
@@ -151,15 +135,10 @@ export default function HumanoidClone({
     }
   }, [renderMode, metrics?.skinTone]);
 
-  // Sync opacity into material
-  useEffect(() => {
-    if (!material) return;
-    if (material.transparent) material.opacity = opacity;
-  }, [material, opacity]);
-
   // Apply material to GLB mesh when available
   useEffect(() => {
     if (bodyMesh && !useProcedural) {
+      // eslint-disable-next-line react-hooks/immutability
       bodyMesh.material = material;
       bodyMesh.castShadow    = renderMode === "normal";
       bodyMesh.receiveShadow = false;
@@ -204,6 +183,7 @@ export default function HumanoidClone({
         visible={visible}
         showAura={showAura}
         skinTone={metrics?.skinTone ?? "IV"}
+        quality={gpuTier === "LOW" ? "LOW" : gpuTier === "MED" ? "MED" : "HIGH"}
       />
     );
   }

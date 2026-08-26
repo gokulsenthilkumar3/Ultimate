@@ -1,10 +1,9 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import {
   Zap, Target, Layers, Activity, User, Ruler, Scale, Info,
   Shield, Save, Edit3, X, ToggleLeft, ToggleRight, TrendingDown, TrendingUp,
 } from 'lucide-react';
-import useStore, { selectSetActiveTab, selectPhysiqueTargets, selectUpdatePhysiqueTargets } from '../store/useStore';
-import use3DStore from '../store/use3DStore';
+import useStore, { selectPhysiqueTargets, selectUpdatePhysiqueTargets } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import PhysiqueRoadmap from './PhysiqueRoadmap';
 
@@ -117,24 +116,6 @@ function SilhouetteGuide({ activeMeasurement }) {
   );
 }
 
-const DEFAULT_ZONES = [
-  { name: 'Core Anterior',   status: 'Cutting',    progress: 68, color: 'var(--accent)', icon: '⚡' },
-  { name: 'Posterior Chain', status: 'Maintenance', progress: 85, color: '#3b82f6',      icon: '⛓️' },
-  { name: 'Upper Extremity', status: 'Hypertrophy', progress: 42, color: '#8b5cf6',      icon: '💪' },
-  { name: 'Anatomical Base', status: 'Power',       progress: 91, color: '#10b981',      icon: '🦵' },
-];
-
-const DEFAULT_TARGETS = [
-  { label: 'Weight',    current: '63kg',    target: '76.5kg', progress: 82, type: 'Hypertrophy' },
-  { label: 'Shoulders', current: '107.5cm', target: '123cm',  progress: 87, type: 'Hypertrophy' },
-  { label: 'Chest',     current: '86.5cm',  target: '104.5cm',progress: 82, type: 'Hypertrophy' },
-  { label: 'Waist',     current: '82cm',    target: '75cm',   progress: 90, type: 'Reduction'   },
-  { label: 'Arms',      current: '30cm',    target: '40.5cm', progress: 74, type: 'Hypertrophy' },
-  { label: 'Forearms',  current: '27cm',    target: '33.5cm', progress: 80, type: 'Hypertrophy' },
-  { label: 'Thighs',    current: '53cm',    target: '59cm',   progress: 89, type: 'Hypertrophy' },
-  { label: 'Calves',    current: '35cm',    target: '40cm',   progress: 87, type: 'Hypertrophy' },
-];
-
 const CM_TO_IN = 0.393701;
 function convertValue(val, toIn) {
   if (!val) return val;
@@ -149,41 +130,17 @@ function convertValue(val, toIn) {
 
 export default function Physique({ user }) {
   const toast = useToast();
-  const setActiveTab = useStore(selectSetActiveTab);
   const physiqueTargets = useStore(selectPhysiqueTargets);
   const updatePhysiqueTargets = useStore(selectUpdatePhysiqueTargets);
   const updateUser = useStore(s => s.updateUser);
 
-  // Sync user profile metrics to 3D store
-  useEffect(() => {
-    if (!user) return;
-    const metrics = {
-      weight: parseFloat(user.weight), bodyFat: parseFloat(user.bodyFat),
-      chest: parseFloat(user.chest), shoulders: parseFloat(user.shoulders),
-      waist: parseFloat(user.waist), arms: parseFloat(user.arms),
-      thighs: parseFloat(user.thighs), calves: parseFloat(user.calves),
-      neck: parseFloat(user.neck), forearm: parseFloat(user.forearm),
-      hips: parseFloat(user.hips), glutes: parseFloat(user.glutes),
-      ankle: parseFloat(user.ankle),
-    };
-    const validMetrics = Object.fromEntries(Object.entries(metrics).filter(([, v]) => !isNaN(v)));
-    if (Object.keys(validMetrics).length > 0) use3DStore.getState().setCurrentMetrics(validMetrics);
-  }, [user?.weight, user?.bodyFat, user?.chest, user?.shoulders, user?.waist,
-      user?.arms, user?.thighs, user?.calves, user?.neck, user?.forearm, user?.hips, user?.glutes, user?.ankle]);
-
-  const zones   = physiqueTargets?.zones   || DEFAULT_ZONES;
-  const targets = physiqueTargets?.targets || DEFAULT_TARGETS;
-
-  useEffect(() => {
-    if (targets?.length > 0 && targets[0].label === 'Chest Width') {
-      updatePhysiqueTargets({ ...(physiqueTargets || {}), targets: DEFAULT_TARGETS });
-    }
-  }, [targets]);
+  const zones   = physiqueTargets?.zones   || [];
+  const targets = physiqueTargets?.targets || [];
 
   const [activeZone,    setActiveZone]    = useState(zones[0]?.name || '');
   const [editingTarget, setEditingTarget] = useState(null);
   const [targetDraft,   setTargetDraft]   = useState({});
-  const [unitMode,      setUnitMode]      = useState('cm');
+  const [unitMode] = useState('cm');
   // Sub-tab: 'blueprint' (default body metrics) | '3d' (HumanoidViewer embedded)
   const [subTab, setSubTab] = useState(
     () => ['3d', 'targets', 'history'].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'blueprint'
@@ -448,7 +405,7 @@ export default function Physique({ user }) {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
               {/* Section 1: Basic Info */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.25rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
                     <User size={12} /> Gender
@@ -470,7 +427,7 @@ export default function Physique({ user }) {
 
               {/* Section 2: Measurements */}
               <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: bfGender === 'F' ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1.25rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
                       <Scale size={12} /> Weight (kg)
@@ -529,7 +486,7 @@ export default function Physique({ user }) {
 
             {/* Lean / Fat mass breakdown & BMI */}
             {bfPercent !== null && leanMass && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
                 <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 100%)', borderRadius: '16px', border: '1px solid rgba(16,185,129,0.15)', textAlign: 'center', boxShadow: 'inset 0 2px 10px rgba(16,185,129,0.05)' }}>
                   <p className="label-caps" style={{ fontSize: '0.65rem', color: '#10b981', marginBottom: '8px' }}>Lean Body Mass</p>
                   <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#10b981', textShadow: '0 2px 15px rgba(16,185,129,0.3)' }}>{leanMass} <span style={{ fontSize: '1rem', opacity: 0.7, fontWeight: 700 }}>kg</span></p>
@@ -571,7 +528,7 @@ export default function Physique({ user }) {
           </div>
 
         </div>
-        </div>
+      </div>
       {/* Physique Roadmap */}
       <PhysiqueRoadmap targets={targets} user={user} />
       </>)}{/* end blueprint sub-tab */}

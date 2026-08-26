@@ -991,31 +991,44 @@ export default function Tasks() {
 
       {/* Task list / Matrix */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-        {tab === 'pending' && viewMode === 'list' && filteredPending.map((task: any) => (
-          <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>
-            <input
-              type="checkbox"
-              checked={selected.has(task.id)}
-              onChange={(e: any) => setSelected(prev => {
-                const next = new Set(prev);
-                e.target.checked ? next.add(task.id) : next.delete(task.id);
-                return next;
-              })}
-              style={{ marginTop: '20px', accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0, width: 16, height: 16 }}
-              title="Select task"
-            />
-            <div style={{ flex: 1 }}>
-              <TaskCard task={task}
-                onComplete={handleComplete}
-                onDelete={handleDelete}
-                onEdit={startEdit}
-                onSubToggle={handleSubToggle}
-                onSubDelete={handleSubDelete}
-                onSubAdd={handleSubAdd}
-              />
-            </div>
-          </div>
-        ))}
+        {tab === 'pending' && viewMode === 'list' && filteredPending.length > 0 && (
+          <List
+            height={600}
+            itemCount={filteredPending.length}
+            itemSize={190}
+            width="100%"
+            itemData={filteredPending}
+          >
+            {({ index, style, data }: any) => {
+              const task = data[index];
+              return (
+                <div key={task.id} style={{ ...style, display: 'flex', alignItems: 'flex-start', gap: '0.65rem', paddingBottom: '0.6rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(task.id)}
+                    onChange={(e: any) => setSelected(prev => {
+                      const next = new Set(prev);
+                      e.target.checked ? next.add(task.id) : next.delete(task.id);
+                      return next;
+                    })}
+                    style={{ marginTop: '20px', accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0, width: 16, height: 16 }}
+                    title="Select task"
+                  />
+                  <div style={{ flex: 1 }}>
+                    <TaskCard task={task}
+                      onComplete={handleComplete}
+                      onDelete={handleDelete}
+                      onEdit={startEdit}
+                      onSubToggle={handleSubToggle}
+                      onSubDelete={handleSubDelete}
+                      onSubAdd={handleSubAdd}
+                    />
+                  </div>
+                </div>
+              );
+            }}
+          </List>
+        )}
         
         {tab === 'pending' && viewMode === 'matrix' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginTop: '0.5rem' }}>

@@ -1,6 +1,8 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import use3DStore from '../../store/use3DStore';
+import { getCinematicSceneProfile } from './cinematicProfiles';
 
 function seededNoise(seed) {
   let value = seed >>> 0;
@@ -14,9 +16,11 @@ function seededNoise(seed) {
  * ChamberVFX — Ambient cosmic particle field for the Digital Twin chamber.
  * Renders a slow-drifting field of cyan/violet holographic dust.
  */
-export default function ChamberVFX({ count = 800 }) {
+export default function ChamberVFX({ count = 800, motionEnabled = true }) {
   const pointsRef = useRef();
   const ringsRef = useRef();
+  const environment = use3DStore((state) => state.cinematicState.sceneEnvironment);
+  const profile = getCinematicSceneProfile(environment);
 
   // Generate random particle positions within a cylinder/sphere around the model
   const particles = useMemo(() => {
@@ -25,8 +29,8 @@ export default function ChamberVFX({ count = 800 }) {
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
 
-    const colorCyan = new THREE.Color(0x06b6d4);
-    const colorViolet = new THREE.Color(0x7c3aed);
+    const colorCyan = new THREE.Color(profile.accent);
+    const colorViolet = new THREE.Color(profile.secondary);
     const tempColor = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
@@ -52,7 +56,7 @@ export default function ChamberVFX({ count = 800 }) {
     }
 
     return { positions, colors, sizes };
-  }, [count]);
+  }, [count, profile.accent, profile.secondary]);
 
   // Shader material for glowing points with custom sizes
   const material = useMemo(() => {
@@ -113,18 +117,21 @@ export default function ChamberVFX({ count = 800 }) {
     });
   }, []);
 
+  useEffect(() => () => material.dispose(), [material]);
+
   useFrame(({ clock }) => {
+    const time = motionEnabled ? clock.elapsedTime : 0;
     if (pointsRef.current) {
-      pointsRef.current.material.uniforms.uTime.value = clock.elapsedTime;
+      pointsRef.current.material.uniforms.uTime.value = time;
       // Slow overall rotation
-      pointsRef.current.rotation.y = clock.elapsedTime * 0.02;
+      pointsRef.current.rotation.y = time * 0.02;
     }
     if (ringsRef.current) {
-      ringsRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.16) * 0.025;
+      ringsRef.current.rotation.z = Math.sin(time * 0.16) * 0.025;
       ringsRef.current.children.forEach((ring, index) => {
-        const pulse = 1 + Math.sin(clock.elapsedTime * 0.7 + index * 1.8) * 0.035;
+        const pulse = 1 + Math.sin(time * 0.7 + index * 1.8) * 0.035;
         ring.scale.setScalar(pulse);
-        ring.material.opacity = 0.12 + Math.sin(clock.elapsedTime * 0.55 + index) * 0.035;
+        ring.material.opacity = 0.12 + Math.sin(time * 0.55 + index) * 0.035;
       });
     }
   });
@@ -158,7 +165,7 @@ export default function ChamberVFX({ count = 800 }) {
       {[0.58, 0.82, 1.08].map((radius, index) => (
         <mesh key={radius}>
           <ringGeometry args={[radius, radius + 0.006 + index * 0.002, 96]} />
-          <meshBasicMaterial color={index === 1 ? '#8b5cf6' : '#22d3ee'} transparent opacity={0.13} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color={index === 1 ? profile.secondary : profile.accent} transparent opacity={0.13} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
       ))}
     </group>

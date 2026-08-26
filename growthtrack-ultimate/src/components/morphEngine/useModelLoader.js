@@ -25,7 +25,7 @@ import { useGLTF }       from '@react-three/drei';
 import * as THREE        from 'three';
 import { SkeletonUtils } from 'three-stdlib';
 
-import { MORPH_TARGET_NAMES } from './constants';
+import { GEOMETRY_MORPH_TARGETS } from './morphMath';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
@@ -56,13 +56,13 @@ export function buildMorphIndexMap(mesh) {
   if (!dict) return {};
 
   const map = {};
-  for (const name of MORPH_TARGET_NAMES) {
+  for (const name of GEOMETRY_MORPH_TARGETS) {
     if (name in dict) {
       map[name] = dict[name];
     }
     // Missing targets are handled gracefully by ProceduralHumanoid fallback
   }
-  const missing = MORPH_TARGET_NAMES.filter((n) => !(n in map));
+  const missing = GEOMETRY_MORPH_TARGETS.filter((n) => !(n in map));
   if (missing.length > 0 && import.meta.env.DEV) {
     console.debug(`[useModelLoader] ${missing.length} morph targets not in GLB — using ProceduralHumanoid fallback`);
   }
@@ -80,7 +80,7 @@ function buildDiagnosticsFromScene(scene, bodyMesh, morphIndexMap, bounds) {
     }
   });
 
-  const missingMorphTargets = MORPH_TARGET_NAMES.filter((name) => !(name in morphIndexMap));
+  const missingMorphTargets = GEOMETRY_MORPH_TARGETS.filter((name) => !(name in morphIndexMap));
   const vertexCount = bodyMesh?.geometry?.attributes?.position?.count ?? 0;
   const isSuspicious =
     !bodyMesh ||
@@ -160,12 +160,11 @@ export function useModelLoader() {
     gltf = useGLTF(MODEL_PATH, 'https://www.gstatic.com/draco/v1/decoders/');
   } catch (err) {
     if (err && typeof err.then === 'function') throw err; // re-throw Suspense promises
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.warn('[useModelLoader] GLB load failed, using fallback mesh:', err?.message ?? err);
     }
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => {
       if (!gltf || !gltf.scene) {
         // GLB not yet available — return dev fallback

@@ -10,29 +10,50 @@
  * so existing components (Timesheet, Logs, Notes) compile and work without
  * requiring a full refactor.
  */
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 
 /**
- * A simple virtualized list that mimics the react-window v1 FixedSizeList API.
- * Renders all rows (no virtual scrolling) for simplicity when v2 API is incompatible.
- * For lists under ~500 items this performs perfectly well.
+ * A small virtualized list that mimics the react-window v1 FixedSizeList API.
+ * Only the visible window plus a small overscan buffer is mounted. This keeps
+ * the compatibility surface lightweight while avoiding a full react-window
+ * migration for callers that still use the v1 render-prop contract.
  */
-export function FixedSizeList({ children, height, itemCount, itemSize, width, itemData, style = {}, className = '' }) {
-  const rows = [];
-  for (let index = 0; index < itemCount; index++) {
+export function FixedSizeList({
+  children,
+  height,
+  itemCount,
+  itemSize,
+  width,
+  itemData,
+  style = {},
+  className = '',
+  overscanCount = 4,
+}) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const viewportHeight = Number(height) || 0;
+  const safeItemSize = Math.max(1, Number(itemSize) || 1);
+  const firstVisibleIndex = Math.max(0, Math.floor(scrollTop / safeItemSize) - overscanCount);
+  const visibleRowCount = Math.ceil(viewportHeight / safeItemSize) + (overscanCount * 2);
+  const lastVisibleIndex = Math.min(itemCount, firstVisibleIndex + visibleRowCount);
+  const indexes = useMemo(
+    () => Array.from({ length: Math.max(0, lastVisibleIndex - firstVisibleIndex) }, (_, offset) => firstVisibleIndex + offset),
+    [firstVisibleIndex, lastVisibleIndex],
+  );
+  const rows = indexes.map((index) => {
     const rowStyle = {
       position: 'absolute',
-      top: index * itemSize,
-      height: itemSize,
+      top: index * safeItemSize,
+      height: safeItemSize,
       width: '100%',
-      overflow: 'hidden',
+      overflow: 'visible',
     };
-    rows.push(children({ index, style: rowStyle, data: itemData }));
-  }
+    return children({ index, style: rowStyle, data: itemData });
+  });
 
   return (
     <div
       className={className}
+      onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
       style={{
         position: 'relative',
         height,
@@ -42,7 +63,7 @@ export function FixedSizeList({ children, height, itemCount, itemSize, width, it
         ...style,
       }}
     >
-      <div style={{ position: 'relative', height: itemCount * itemSize }}>
+      <div style={{ position: 'relative', height: itemCount * safeItemSize }}>
         {rows}
       </div>
     </div>

@@ -22,14 +22,17 @@ import TabErrorBoundary from './TabErrorBoundary';
 import {
   Rotate3D, Eye, Layers, Zap, Shirt, Ruler, Camera, Download,
   ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle,
-  Target, TrendingUp, Maximize2, Minimize2, Settings,
-  Activity, Heart, Dumbbell, ArrowRight, Star, Flag,
+  Target, Maximize2, Minimize2, Settings,
+  Activity, Heart, Dumbbell, Star,
   Play, Pause, SlidersHorizontal, Palette, Globe,
-  FlaskConical, Cpu, Monitor, Share2,
+  FlaskConical, Share2,
 } from 'lucide-react';
 import SocialShareModal from './SocialShareModal';
-import use3DStore from '../store/use3DStore';
+import PhysiqueDataPanel from './PhysiqueDataPanel';
+import use3DStore, { CINEMATIC_PRESETS } from '../store/use3DStore';
 import useStore from '../store/useStore';
+import { bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, metricLogsToSnapshots, metricsToBodyProfile } from '../lib/physiqueProfile';
+import { buildRendererQualityGate } from '../lib/rendererQualityGate';
 import { USER, BODY_PARTS, STATUS } from '../data/userData';
 import { useToast } from '../hooks/useToast';
 import { trackEvent } from '../lib/analytics';
@@ -54,14 +57,6 @@ const METRIC_LABELS: Record<string, { label: string; unit: string; icon: React.E
   calves:    { label: 'Calves',    unit: 'cm', icon: Activity, direction: 'increase' },
   hips:      { label: 'Hips',      unit: 'cm', icon: Activity, direction: 'increase' },
 };
-// Sensitive metrics — require privacy unlock
-const SENSITIVE_METRICS: Record<string, { label: string; unit: string; icon: React.ElementType }> = {
-  d_size:  { label: 'D Size',  unit: 'in', icon: Ruler },
-  d_girth: { label: 'D Girth', unit: 'in', icon: Ruler },
-};
-
-const PRIVATE_METRIC_KEYS = ['d_size', 'd_girth'] as const;
-
 // ── Extra morph sliders not backed by a metric (pure blend shape weights exposed via dimensions)
 const MORPH_WEIGHT_GROUPS = [
   {
@@ -141,8 +136,29 @@ const SCENE_ENVS = [
   { id: 'night',   label: '🌃 Night'    },
 ];
 
+const CINEMATIC_LOOKS = [
+  { id: 'PORTRAIT', label: 'Portrait', note: 'Natural skin, soft focus and restrained grain.' },
+  { id: 'ANALYTIC', label: 'Analytic', note: 'Neutral, crisp and distraction-free for measurements.' },
+  { id: 'NEON', label: 'Neon', note: 'Cool rim light, stronger bloom and subtle lens separation.' },
+  { id: 'SUNSET', label: 'Sunset', note: 'Warm key light with rose and amber atmosphere.' },
+];
+
 const EYE_COLOR_PRESETS = [
   '#3b7bd4', '#6b4c33', '#2e7d32', '#888', '#1a237e', '#c0ca33',
+];
+
+const ADVANCED_MORPH_CONTROLS = [
+  { key: 'torso_length', label: 'Torso length' },
+  { key: 'shoulder_slope', label: 'Shoulder slope' },
+  { key: 'clavicle_width', label: 'Clavicle width' },
+  { key: 'ribcage_depth', label: 'Ribcage depth' },
+  { key: 'pelvis_width', label: 'Pelvis width' },
+  { key: 'neck_length', label: 'Neck length' },
+  { key: 'upper_arm_length', label: 'Upper arm length' },
+  { key: 'forearm_length', label: 'Forearm length' },
+  { key: 'leg_length', label: 'Leg length' },
+  { key: 'hand_length', label: 'Hand length' },
+  { key: 'foot_length', label: 'Foot length' },
 ];
 
 // ── Spinner
@@ -151,33 +167,6 @@ function ChamberSpinner() {
     <div className="chamber-spinner">
       <div className="chamber-spinner__ring" />
       <span className="chamber-spinner__text">INITIALIZING DIGITAL TWIN</span>
-    </div>
-  );
-}
-
-// ── Overall Progress Score Ring (SVG)
-function ProgressRing({ score }: { score: number }) {
-  const r = 36;
-  const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  const color = score >= 75 ? 'var(--chamber-success)' : score >= 40 ? 'var(--chamber-gold)' : 'var(--chamber-glow)';
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-      <svg width={88} height={88} viewBox="0 0 88 88">
-        <circle cx={44} cy={44} r={r} fill="none" stroke="var(--surface-3)" strokeWidth={6} />
-        <circle cx={44} cy={44} r={r} fill="none"
-          stroke={color} strokeWidth={6}
-          strokeDasharray={`${dash} ${circ - dash}`}
-          strokeDashoffset={circ / 4}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 0.6s ease', filter: `drop-shadow(0 0 4px ${color}88)` }}
-        />
-        <text x={44} y={48} textAnchor="middle" fontSize={15} fontWeight={700}
-          fill={color} fontFamily="'Outfit', sans-serif">
-          {score}%
-        </text>
-      </svg>
-      <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', letterSpacing: '0.08em' }}>OVERALL SCORE</span>
     </div>
   );
 }
@@ -243,8 +232,11 @@ export default function HumanoidViewer() {
   const currentMetrics    = use3DStore((s) => s.cloneA?.metrics || EMPTY_OBJECT);
   const goalMetrics       = use3DStore((s) => s.cloneB?.metrics || EMPTY_OBJECT);
   const modelDiagnostics  = use3DStore((s) => s.modelDiagnostics);
+  const rendererTelemetry = use3DStore((s) => s.rendererQualityTelemetry);
   const morphOverrides    = use3DStore((s) => s.cloneA?.weights || EMPTY_OBJECT);
+  const manualMorphOverrides = use3DStore((s) => s.morphOverrides?.current || EMPTY_OBJECT);
   const quality           = use3DStore((s) => s.gpuTier);
+  const cinematic         = use3DStore((s) => s.cinematicState);
   const heatmapMode       = use3DStore((s) => s.vfxState?.heatmap);
   const vascMode          = use3DStore((s) => s.vfxState?.vascularity);
   const auraMode          = use3DStore((s) => s.vfxState?.aura);
@@ -271,12 +263,21 @@ export default function HumanoidViewer() {
   const setSplitDividerX  = use3DStore((s) => s.setSplitDividerX);
   const setSplitPos       = useCallback((v: number) => setSplitDividerX(v / 100), [setSplitDividerX]);
   const setQuality        = use3DStore((s) => s.setGpuTier);
+  const setCinematicSetting = use3DStore((s) => s.setCinematicSetting);
+  const setCinematicState = use3DStore((s) => s.setCinematicState);
+  const applyCinematicPreset = use3DStore((s) => s.applyCinematicPreset);
   const setTimelinePos    = use3DStore((s) => s.scrubTimeline);
   const updateCurrentMetric = use3DStore((s) => s.setCurrentMetric);
   const updateGoalMetric  = use3DStore((s) => s.setGoalMetric);
   const setPosture        = use3DStore((s) => s.setPosture);
-  const achieveMilestone  = use3DStore((s) => s.achieveMilestone);
   const addTimelineSnap   = use3DStore((s) => s.addTimelineSnap);
+  const setTimelineSnaps  = use3DStore((s) => s.setTimelineSnaps);
+  const setCurrentMetrics = use3DStore((s) => s.setCurrentMetrics);
+  const setGoalMetrics    = use3DStore((s) => s.setGoalMetrics);
+  const setMorphOverrideAction = use3DStore((s) => s.setMorphOverride);
+  const setMorphOverrides = use3DStore((s) => s.setMorphOverrides);
+  const clearMorphOverrides = use3DStore((s) => s.clearMorphOverrides);
+  const setMilestones     = use3DStore((s) => s.setMilestones);
   const [cameraZoom, setCameraZoomState] = useState(() => use3DStore.getState().cameraZoom ?? 1);
 
   const setMorphOverride = useCallback(
@@ -284,13 +285,102 @@ export default function HumanoidViewer() {
     [updateCurrentMetric]
   );
 
-  const saveSnapshot = useCallback(() => {
-    addTimelineSnap({
-      id: Date.now().toString(),
-      metrics: currentMetrics,
-      date: new Date().toISOString(),
-    });
-  }, [addTimelineSnap, currentMetrics]);
+  const bodyProfileState = useStore((s: any) => s.bodyProfile);
+  const metricLogsState = useStore((s: any) => s.metric_logs);
+  const persistedPhysiqueState = useStore((s: any) => s.physiqueTargets);
+  const bodyProfile = bodyProfileState || EMPTY_OBJECT;
+  const globalMetricLogs = metricLogsState || EMPTY_ARRAY;
+  const persistedPhysique = persistedPhysiqueState || EMPTY_OBJECT;
+  const qualityGate = useMemo(() => buildRendererQualityGate({
+    diagnostics: modelDiagnostics,
+    telemetry: rendererTelemetry,
+    renderMode,
+    cinematicState: cinematic,
+    gpuTier: quality,
+    settingsPersisted: Boolean(persistedPhysique?.renderSettings),
+  }), [cinematic, modelDiagnostics, persistedPhysique?.renderSettings, quality, renderMode, rendererTelemetry]);
+  const updateBodyProfile = useStore((s: any) => s.updateBodyProfile);
+  const updatePhysiqueTargets = useStore((s: any) => s.updatePhysiqueTargets);
+  const saveMetricLog = useStore((s: any) => s.saveMetricLog);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const renderPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const queueProfileSave = useCallback((nextCurrent: any, nextGoal: any, nextMorphOverrides: any = manualMorphOverrides) => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(async () => {
+      try {
+        await updateBodyProfile(metricsToBodyProfile(nextCurrent, nextGoal));
+        await updatePhysiqueTargets({
+          ...(persistedPhysique || {}),
+          goalMetrics: nextGoal,
+          morphOverrides: {
+            ...(persistedPhysique?.morphOverrides || {}),
+            current: nextMorphOverrides,
+          },
+        });
+      } catch {
+        toast.error('Could not save physique measurements.');
+      }
+    }, 650);
+  }, [manualMorphOverrides, persistedPhysique, toast, updateBodyProfile, updatePhysiqueTargets]);
+
+  const setAdvancedMorph = useCallback((key: string, value: number) => {
+    const nextOverrides = { ...manualMorphOverrides, [key]: value };
+    setMorphOverrideAction('current', key, value);
+    queueProfileSave(currentMetrics, goalMetrics, nextOverrides);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, setMorphOverrideAction]);
+
+  const resetAdvancedMorphs = useCallback(() => {
+    clearMorphOverrides('current');
+    queueProfileSave(currentMetrics, goalMetrics, {});
+  }, [clearMorphOverrides, currentMetrics, goalMetrics, queueProfileSave]);
+
+  const queueRenderSettingsSave = useCallback((nextSettings: any) => {
+    if (renderPersistTimerRef.current) clearTimeout(renderPersistTimerRef.current);
+    renderPersistTimerRef.current = setTimeout(async () => {
+      try {
+        const latest = useStore.getState().physiqueTargets || {};
+        await updatePhysiqueTargets({ ...latest, renderSettings: nextSettings });
+      } catch {
+        toast.error('Could not save cinematic settings.');
+      }
+    }, 450);
+  }, [toast, updatePhysiqueTargets]);
+
+  const handleCinematicSetting = useCallback((key: string, value: any) => {
+    setCinematicSetting(key, value);
+    const next = { ...cinematic, [key]: value, preset: key === 'preset' ? value : 'CUSTOM' };
+    queueRenderSettingsSave(next);
+  }, [cinematic, queueRenderSettingsSave, setCinematicSetting]);
+
+  const handleCinematicPreset = useCallback((preset: string) => {
+    const next = (CINEMATIC_PRESETS as any)[preset];
+    if (!next) return;
+    applyCinematicPreset(preset);
+    queueRenderSettingsSave(next);
+  }, [applyCinematicPreset, queueRenderSettingsSave]);
+
+  const handleCurrentValue = useCallback((key: string, rawValue: string) => {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) return;
+    const next = { ...currentMetrics, [key]: value };
+    updateCurrentMetric(key, value);
+    queueProfileSave(next, goalMetrics, manualMorphOverrides);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateCurrentMetric]);
+
+  const handleGoalValue = useCallback((key: string, rawValue: string) => {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) return;
+    const next = { ...goalMetrics, [key]: value };
+    updateGoalMetric(key, value);
+    queueProfileSave(currentMetrics, next, manualMorphOverrides);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateGoalMetric]);
+
+  const saveSnapshot = useCallback(async () => {
+    const snapshot = { id: Date.now().toString(), metrics: { ...currentMetrics }, date: new Date().toISOString(), label: 'Physique check-in' };
+    addTimelineSnap(snapshot);
+    await saveMetricLog({ date: snapshot.date.slice(0, 10), metric: 'physique_snapshot', source: 'physique', metrics: snapshot.metrics, label: snapshot.label });
+  }, [addTimelineSnap, currentMetrics, saveMetricLog]);
 
   // ── Local UI state
   const [showEditor, setShowEditor] = useState(false);
@@ -302,20 +392,14 @@ export default function HumanoidViewer() {
 
   // Settings drawer
   const [showSettings, setShowSettings] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [skinTone, setSkinTone] = useState<string>(currentMetrics.skinTone || 'IV');
   const [eyeColor, setEyeColor] = useState('#3b7bd4');
-  const [sceneEnv, setSceneEnv] = useState('studio');
-  const [postFxBloom, setPostFxBloom] = useState(true);
-  const [postFxVignette, setPostFxVignette] = useState(true);
-  const [postFxChrAb, setPostFxChrAb] = useState(false);
 
   // Timeline playback
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const timelineIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Milestone tooltip
-  const [activeMilestone, setActiveMilestone] = useState<string | null>(null);
 
   // Morphs tab — collapsed groups
   const [openMorphGroups, setOpenMorphGroups] = useState<Record<string, boolean>>({ 'Upper Body': true });
@@ -338,20 +422,29 @@ export default function HumanoidViewer() {
     return () => window.removeEventListener('keydown', handler);
   }, [setViewMode]);
 
-  // ── Sync global DB store weight into 3D
-  const globalMetricLogs = useStore((s: any) => s.metric_logs || []);
+  // ── Hydrate the renderer cache from persisted physique records.
   useEffect(() => {
-    if (globalMetricLogs?.length > 0) {
-      const weightLogs = globalMetricLogs.filter((log: any) => log.metric === 'weight');
-      if (weightLogs.length > 0) {
-        weightLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const latestWeight = parseFloat(weightLogs[0].value);
-        if (!isNaN(latestWeight) && latestWeight !== currentMetrics.weight) {
-          updateCurrentMetric('weight', latestWeight);
-        }
-      }
+    const persistedCurrent = bodyProfileToMetrics(bodyProfile);
+    const persistedGoal = bodyProfileToGoals(bodyProfile, persistedPhysique);
+    const persistedSnapshots = metricLogsToSnapshots(globalMetricLogs);
+    const persistedMilestones = Array.isArray(persistedPhysique?.milestones) ? persistedPhysique.milestones : [];
+    const persistedMorphOverrides = persistedPhysique?.morphOverrides && typeof persistedPhysique.morphOverrides === 'object'
+      ? persistedPhysique.morphOverrides
+      : { current: {}, goal: {} };
+    if (persistedPhysique?.renderSettings && typeof persistedPhysique.renderSettings === 'object') {
+      setCinematicState(persistedPhysique.renderSettings);
     }
-  }, [globalMetricLogs, updateCurrentMetric, currentMetrics.weight]);
+    setMorphOverrides(persistedMorphOverrides);
+    setCurrentMetrics(persistedCurrent);
+    setGoalMetrics(persistedGoal);
+    setTimelineSnaps(persistedSnapshots);
+    setMilestones(persistedMilestones);
+  }, [bodyProfile, globalMetricLogs, persistedPhysique, setCinematicState, setCurrentMetrics, setGoalMetrics, setMilestones, setMorphOverrides, setTimelineSnaps]);
+
+  useEffect(() => () => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    if (renderPersistTimerRef.current) clearTimeout(renderPersistTimerRef.current);
+  }, []);
 
   // ── Timeline playback auto-scrub
   useEffect(() => {
@@ -374,40 +467,10 @@ export default function HumanoidViewer() {
     }
   }, [skinTone, currentMetrics.skinTone, updateCurrentMetric]);
 
-  // ── Computed deltas
-  const deltas = useMemo(() => {
-    const d: Record<string, { current: number; goal: number; delta: number }> = {};
-    for (const key of Object.keys(currentMetrics)) {
-      const c = currentMetrics[key] as number;
-      const g = goalMetrics[key] as number;
-      d[key] = { current: c, goal: g, delta: g - c };
-    }
-    return d;
-  }, [currentMetrics, goalMetrics]);
-
   // ── Overall progress score
-  const overallScore = useMemo(() => {
-    const keys = Object.keys(METRIC_LABELS);
-    let total = 0;
-    let count = 0;
-    for (const key of keys) {
-      const d = deltas[key];
-      if (!d || !d.goal || d.goal === 0) continue;
-      const dir = METRIC_LABELS[key].direction;
-      let pct: number;
-      if (dir === 'decrease') {
-        // Lower is better: progress = how much we've reduced relative to goal
-        const start = Math.max(d.current, d.goal); // use higher as start anchor
-        const goal  = d.goal;
-        pct = d.current <= goal ? 100 : Math.max(0, Math.min(100, ((start - d.current) / (start - goal)) * 100));
-      } else {
-        pct = d.goal > 0 ? Math.min(100, Math.max(0, (d.current / d.goal) * 100)) : 0;
-      }
-      total += pct;
-      count++;
-    }
-    return count > 0 ? Math.round(total / count) : 0;
-  }, [deltas]);
+  const baselineMetrics = useMemo(() => getBaselineMetrics(snapshots, currentMetrics), [currentMetrics, snapshots]);
+  const progressSummary = useMemo(() => calculateGoalProgress({ baseline: baselineMetrics, current: currentMetrics, goal: goalMetrics }), [baselineMetrics, currentMetrics, goalMetrics]);
+  const overallScore = progressSummary.score ?? 0;
 
   // ── Export screenshot
   const captureScreenshot = useCallback(() => {
@@ -430,10 +493,25 @@ export default function HumanoidViewer() {
     setShowShareModal(true);
   }, []);
 
-  const handleSaveSnapshot = useCallback(() => {
-    saveSnapshot();
-    toast.success('Timeline snapshot saved.');
+  const handleSaveSnapshot = useCallback(async () => {
+    try {
+      await saveSnapshot();
+      toast.success('Timeline snapshot saved.');
+    } catch {
+      toast.error('Could not save the snapshot.');
+    }
   }, [saveSnapshot, toast]);
+
+  const handleToggleMilestone = useCallback(async (milestone: any) => {
+    const next = milestones.map((item: any) => item.id === milestone.id ? { ...item, achieved: !item.achieved } : item);
+    setMilestones(next);
+    try {
+      await updatePhysiqueTargets({ ...(persistedPhysique || {}), milestones: next });
+    } catch {
+      setMilestones(milestones);
+      toast.error('Could not update the milestone.');
+    }
+  }, [milestones, persistedPhysique, setMilestones, toast, updatePhysiqueTargets]);
 
   // ── Body part info
   const partInfo = selectedPart ? (BODY_PARTS as any)[selectedPart] : null;
@@ -444,12 +522,6 @@ export default function HumanoidViewer() {
     const snap = snapshots[Math.min(timelinePos as number, snapshots.length - 1)] as any;
     return snap?.date ? new Date(snap.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
   }, [snapshots, timelinePos]);
-
-  const chamberKpis = [
-    { label: 'Score', value: `${overallScore}%` },
-    { label: 'GLB', value: modelDiagnostics?.health === 'healthy' ? 'Healthy' : modelDiagnostics ? 'Repair' : 'Loading' },
-  ];
-  const focusedLabel = selectedPart ? (BODY_PARTS as any)?.[selectedPart]?.name || selectedPart : null;
 
   useEffect(() => {
     const unsubscribe = use3DStore.subscribe(
@@ -483,7 +555,7 @@ export default function HumanoidViewer() {
             <span className="shimmer-text" style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
               DIGITAL TWIN
             </span>
-            <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-3)', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>v3</span>
+            <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-3)', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>v5</span>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             {/* Render status — detailed model diagnostics live in Settings. */}
@@ -496,6 +568,17 @@ export default function HumanoidViewer() {
             </span>
             <span className="hud-chip" style={{ '--hud-delay': '0.18s' } as React.CSSProperties}>
               REALTIME MORPHS
+            </span>
+            <span className="hud-chip cinematic" style={{ '--hud-delay': '0.26s' } as React.CSSProperties}>
+              <Camera size={10} /> {cinematic.preset === 'CUSTOM' ? 'CUSTOM GRADE' : `${cinematic.preset} GRADE`}
+            </span>
+            <span
+              className={`hud-chip quality-gate quality-gate--${qualityGate.status}`}
+              style={{ '--hud-delay': '0.32s' } as React.CSSProperties}
+              title={`${qualityGate.passed} of ${qualityGate.total} quality checks passing`}
+            >
+              {qualityGate.releaseReady ? <CheckCircle size={10} /> : <AlertTriangle size={10} />}
+              {qualityGate.releaseReady ? 'QUALITY GATE READY' : qualityGate.status === 'pending' ? 'QUALITY CHECKING' : 'QUALITY BLOCKED'}
             </span>
             {overallScore > 0 && (
               <span className="hud-chip healthy" style={{ '--hud-delay': '0.36s' } as React.CSSProperties}>
@@ -626,7 +709,7 @@ export default function HumanoidViewer() {
 
           {/* Floating action buttons */}
           <div className="chamber-fab-row">
-            <button className={`chamber-fab${autoRotate ? ' active' : ''}`} onClick={() => setAutoRotate(!autoRotate)} title={autoRotate ? 'Pause rotation' : 'Auto rotate'} aria-pressed={autoRotate}>
+            <button className={`chamber-fab${autoRotate ? ' active' : ''}`} onClick={() => setAutoRotate(!autoRotate)} title={autoRotate ? 'Pause cinematic orbit' : 'Cinematic orbit'} aria-pressed={autoRotate}>
               <Rotate3D size={16} />
             </button>
             <button className={`chamber-fab${showEditor ? ' active' : ''}`} onClick={() => setShowEditor(!showEditor)} title="Open body editor" aria-expanded={showEditor}>
@@ -784,6 +867,29 @@ export default function HumanoidViewer() {
                       })}
                     </div>
                   ))}
+
+                  <div className="chamber-divider" />
+                  <h4 className="chamber-editor__heading"><SlidersHorizontal size={14} /> Advanced shape mixer</h4>
+                  <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', lineHeight: 1.45, margin: '-2px 0 8px' }}>
+                    Fine-tune proportion channels without changing the measured values. The engine keeps the result within anatomical constraints.
+                  </p>
+                  {ADVANCED_MORPH_CONTROLS.map(({ key, label }) => {
+                    const value = (manualMorphOverrides[key] as number) ?? (morphOverrides[key] as number) ?? 0;
+                    return (
+                      <div key={key} className="chamber-morph-row">
+                        <div className="chamber-morph-row__header">
+                          <span>{label}</span>
+                          <span className="chamber-morph-row__value">{Math.round(value * 100)}%</span>
+                        </div>
+                        <input type="range" min={0} max={1} step={0.01} value={value}
+                          onChange={(e) => setAdvancedMorph(key, parseFloat(e.target.value))}
+                          className="chamber-slider" />
+                      </div>
+                    );
+                  })}
+                  <button className="chamber-pill" onClick={resetAdvancedMorphs} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+                    Reset manual shape overrides
+                  </button>
                 </div>
               )}
 
@@ -801,7 +907,7 @@ export default function HumanoidViewer() {
                     { key: 'jaw_width',         label: 'Jaw Width',       min: 0, max: 1, step: 0.01 },
                     { key: 'chin_projection',   label: 'Chin Projection', min: 0, max: 1, step: 0.01 },
                   ].map((s) => {
-                    const val = (morphOverrides[s.key] as number) ?? 0.35;
+                    const val = (manualMorphOverrides[s.key] as number) ?? (morphOverrides[s.key] as number) ?? 0.35;
                     return (
                       <div key={s.key} className="chamber-morph-row">
                         <div className="chamber-morph-row__header">
@@ -810,7 +916,7 @@ export default function HumanoidViewer() {
                         </div>
                         <input type="range" min={s.min} max={s.max} step={s.step}
                           value={val}
-                          onChange={(e) => setMorphOverride(s.key, parseFloat(e.target.value))}
+                          onChange={(e) => setAdvancedMorph(s.key, parseFloat(e.target.value))}
                           className="chamber-slider" />
                       </div>
                     );
@@ -1009,31 +1115,79 @@ export default function HumanoidViewer() {
               <div className="chamber-pill-group" style={{ flexWrap: 'wrap' }}>
                 {SCENE_ENVS.map((env) => (
                   <button key={env.id}
-                    className={`chamber-pill${sceneEnv === env.id ? ' active' : ''}`}
-                    onClick={() => setSceneEnv(env.id)}>
+                    className={`chamber-pill${cinematic.sceneEnvironment === env.id ? ' active' : ''}`}
+                    onClick={() => handleCinematicSetting('sceneEnvironment', env.id)}>
                     {env.label}
                   </button>
                 ))}
               </div>
             </div>
 
+            <div className="chamber-settings-section">
+              <h4 className="chamber-editor__heading"><Camera size={13} /> Cinematic Look</h4>
+              <div className="chamber-look-grid">
+                {CINEMATIC_LOOKS.map((look) => (
+                  <button key={look.id}
+                    className={`chamber-look-card${cinematic.preset === look.id ? ' active' : ''}`}
+                    aria-pressed={cinematic.preset === look.id}
+                    onClick={() => handleCinematicPreset(look.id)}>
+                    <strong>{look.label}</strong>
+                    <span>{look.note}</span>
+                  </button>
+                ))}
+              </div>
+              <label className="chamber-exposure-control">
+                <span>Exposure <strong>{cinematic.exposure.toFixed(2)}</strong></span>
+                <input type="range" min="0.72" max="1.35" step="0.01" value={cinematic.exposure}
+                  onChange={(e) => handleCinematicSetting('exposure', parseFloat(e.target.value))}
+                  className="chamber-slider" />
+              </label>
+            </div>
+
             {/* Post-FX toggles */}
             <div className="chamber-settings-section">
               <h4 className="chamber-editor__heading"><FlaskConical size={13} /> Post-Processing</h4>
               {[
-                { key: 'bloom',    label: 'Bloom',              val: postFxBloom,    set: setPostFxBloom    },
-                { key: 'vignette', label: 'Vignette',           val: postFxVignette, set: setPostFxVignette },
-                { key: 'chrAb',    label: 'Chromatic Aberration', val: postFxChrAb,  set: setPostFxChrAb   },
-              ].map(({ key, label, val, set }) => (
+                { key: 'bloom', label: 'Bloom', val: cinematic.bloom },
+                { key: 'vignette', label: 'Vignette', val: cinematic.vignette },
+                { key: 'chromaticAberration', label: 'Chromatic Aberration', val: cinematic.chromaticAberration },
+                { key: 'depthOfField', label: 'Depth of Field', val: cinematic.depthOfField },
+                { key: 'filmGrain', label: 'Film Grain', val: cinematic.filmGrain },
+                { key: 'cameraMotion', label: 'Cinematic Camera', val: cinematic.cameraMotion },
+              ].map(({ key, label, val }) => (
                 <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>{label}</span>
                   <button className={`chamber-pill${val ? ' active' : ''}`}
                     style={{ fontSize: '0.65rem', padding: '2px 10px' }}
-                    onClick={() => set(!val)}>
+                    onClick={() => handleCinematicSetting(key, !val)}>
                     {val ? 'ON' : 'OFF'}
                   </button>
                 </div>
               ))}
+            </div>
+
+            {/* Export */}
+            <div className="chamber-settings-section chamber-quality-gate" aria-live="polite">
+              <div className="chamber-quality-gate__header">
+                <div>
+                  <h4 className="chamber-editor__heading"><CheckCircle size={13} /> Phase 5 Quality Gate</h4>
+                  <p>{qualityGate.releaseReady ? 'Runtime release checks are clear.' : 'A release-blocking check needs attention.'}</p>
+                </div>
+                <strong className={`quality-gate-badge quality-gate-badge--${qualityGate.status}`}>
+                  {qualityGate.passed}/{qualityGate.total}
+                </strong>
+              </div>
+              <div className="chamber-quality-gate__checks">
+                {qualityGate.checks.map((item) => (
+                  <div key={item.id} className={`quality-check quality-check--${item.status}`}>
+                    {item.status === 'pass' ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.detail}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Export */}
@@ -1045,44 +1199,6 @@ export default function HumanoidViewer() {
               </button>
             </div>
 
-            {/* Advanced */}
-            <div className="chamber-settings-section">
-              <button
-                className="chamber-pill"
-                style={{ width: '100%', justifyContent: 'space-between' }}
-                onClick={() => setShowAdvanced((v) => !v)}
-              >
-                <span>Advanced</span>
-                <span>{showAdvanced ? 'Hide' : 'Show'}</span>
-              </button>
-              {showAdvanced && (
-                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <p className="chamber-note" style={{ margin: 0 }}>
-                    Private measurements stay hidden from the main studio and only live here.
-                  </p>
-                  {Object.entries(SENSITIVE_METRICS).map(([key, meta]) => (
-                    <div key={key} className="chamber-metric-row">
-                      <div className="chamber-metric-row__header">
-                        <span className="chamber-metric-row__label">{meta.label}</span>
-                        <span className="chamber-metric-row__value">
-                          {((currentMetrics[key] as number) ?? 5).toFixed(1)}{meta.unit}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={2}
-                        max={10}
-                        step={0.1}
-                        value={(currentMetrics[key] as number) ?? 5}
-                        onChange={(e) => updateCurrentMetric(key, parseFloat(e.target.value))}
-                        className="chamber-slider"
-                        style={{ accentColor: 'var(--chamber-glow)' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -1126,191 +1242,20 @@ export default function HumanoidViewer() {
         </div>
       )}
 
-      {/* ═══ OVERALL PROGRESS + MEASUREMENTS DELTA ═══ */}
-      <div className="chamber-comparison soft-neumorphism glassmorphism">
-        <div className="chamber-comparison__header">
-          <h3 className="chamber-comparison__title">
-            <TrendingUp size={18} /> Measurements Delta
-          </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <ProgressRing score={overallScore} />
-            <div className="chamber-comparison__legend">
-              <span className="chamber-legend-dot" style={{ background: 'var(--chamber-current)' }} /> Current
-              <span className="chamber-legend-dot" style={{ background: 'var(--chamber-glow)' }} /> Goal
-            </div>
-          </div>
-        </div>
-        {modelDiagnostics && (
-          <div className="chamber-settings-section" style={{ marginTop: 0, marginBottom: 16 }}>
-            <h4 className="chamber-editor__heading"><Cpu size={13} /> GLB Health</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-              <div className="chamber-metric-row">
-                <div className="chamber-metric-row__header">
-                  <span className="chamber-metric-row__label">Status</span>
-                  <span className="chamber-metric-row__value">{modelDiagnostics.health}</span>
-                </div>
-                <p className="chamber-note" style={{ margin: 0 }}>
-                  {modelDiagnostics.isSuspicious
-                    ? 'The GLB loads, but its structure or bounds look off. This usually needs a cleaner Blender export.'
-                    : 'The GLB looks healthy and is framing normally.'}
-                </p>
-              </div>
-              <div className="chamber-metric-row">
-                <div className="chamber-metric-row__header">
-                  <span className="chamber-metric-row__label">Morph Targets</span>
-                  <span className="chamber-metric-row__value">{modelDiagnostics.morphTargetCount}</span>
-                </div>
-                <p className="chamber-note" style={{ margin: 0 }}>
-                  Meshes: {(modelDiagnostics.meshCount?.mesh || 0) + (modelDiagnostics.meshCount?.skinnedMesh || 0)} | Vertices: {modelDiagnostics.vertexCount}
-                </p>
-              </div>
-              <div className="chamber-metric-row">
-                <div className="chamber-metric-row__header">
-                  <span className="chamber-metric-row__label">Missing Targets</span>
-                  <span className="chamber-metric-row__value">{modelDiagnostics.missingMorphTargets?.length || 0}</span>
-                </div>
-                <p className="chamber-note" style={{ margin: 0 }}>
-                  {modelDiagnostics.missingMorphTargets?.length
-                    ? modelDiagnostics.missingMorphTargets.slice(0, 4).join(', ')
-                    : 'All declared morph names were found in the GLB.'}
-                </p>
-              </div>
-            </div>
-            {modelDiagnostics.health !== 'healthy' && (
-              <div style={{
-                marginTop: 12,
-                padding: '12px 14px',
-                borderRadius: 12,
-                border: '1px solid rgba(248,113,113,0.35)',
-                background: 'rgba(127,29,29,0.18)',
-                color: '#fecaca',
-                fontSize: '0.78rem',
-                lineHeight: 1.45,
-              }}>
-                <strong style={{ display: 'block', marginBottom: 6 }}>Asset needs repair</strong>
-                <div>Fix the Blender export before expecting a human-like silhouette.</div>
-                <div style={{ marginTop: 6, opacity: 0.9 }}>
-                  Reasons: {[
-                    modelDiagnostics.bounds?.height && (modelDiagnostics.bounds.height < 1.25 || modelDiagnostics.bounds.height > 2.45) ? 'bounds height' : null,
-                    modelDiagnostics.bounds?.radius && (modelDiagnostics.bounds.radius < 0.15 || modelDiagnostics.bounds.radius > 1.15) ? 'bounds radius' : null,
-                    modelDiagnostics.missingMorphTargets?.length ? 'missing morph coverage' : null,
-                    modelDiagnostics.isSuspicious ? 'mesh / topology sanity check' : null,
-                  ].filter(Boolean).join(' · ') || 'runtime GLB validation failed'}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="chamber-comparison__grid">
-          {Object.entries(METRIC_LABELS).map(([key, meta]) => {
-            const d = deltas[key] || { current: 0, goal: 0, delta: 0 };
-            const dir = meta.direction;
-            // For "decrease" metrics, delta < 0 means progress
-            const isProgress = dir === 'decrease' ? d.delta < 0 : d.delta > 0;
-            const progressColor = isProgress ? 'var(--chamber-success)' : d.delta !== 0 ? 'var(--chamber-glow)' : 'var(--text-3)';
-            const pct = dir === 'decrease'
-              ? (d.goal > 0 && d.current > d.goal
-                  ? Math.max(0, Math.min(100, ((Math.max(d.current, d.goal) - d.current) / (Math.max(d.current, d.goal) - d.goal)) * 100))
-                  : 100)
-              : (d.goal > 0 ? Math.min(100, Math.max(0, (d.current / d.goal) * 100)) : 0);
-            return (
-              <div key={key} className="chamber-delta-card">
-                <div className="chamber-delta-card__top">
-                  <span className="chamber-delta-card__label">{meta.label}</span>
-                  <span className="chamber-delta-card__delta" style={{ color: progressColor }}>
-                    {d.delta > 0 ? '+' : ''}{d.delta.toFixed(1)}{meta.unit}
-                  </span>
-                </div>
-                <div className="chamber-delta-card__bar">
-                  <div className="chamber-delta-card__fill"
-                    style={{ width: `${pct}%`, background: progressColor }} />
-                </div>
-                <div className="chamber-delta-card__bottom">
-                  <span>{(d.current ?? 0).toFixed(1)}{meta.unit}</span>
-                  <ArrowRight size={10} />
-                  <span style={{ color: 'var(--chamber-glow)' }}>{(d.goal ?? 0).toFixed(1)}{meta.unit}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="chamber-settings-section" style={{ marginTop: 20 }}>
-          <h4 className="chamber-editor__heading"><Ruler size={13} /> Private Metrics</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            {PRIVATE_METRIC_KEYS.map((key) => {
-              const meta = SENSITIVE_METRICS[key];
-              const value = (currentMetrics[key] as number) ?? 5;
-              return (
-                <div key={key} className="chamber-metric-row">
-                  <div className="chamber-metric-row__header">
-                    <span className="chamber-metric-row__label">{meta.label}</span>
-                    <span className="chamber-metric-row__value">{value.toFixed(1)}{meta.unit}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={2}
-                    max={10}
-                    step={0.1}
-                    value={value}
-                    onChange={(e) => updateCurrentMetric(key, parseFloat(e.target.value))}
-                    className="chamber-slider"
-                    style={{ accentColor: 'var(--chamber-glow)' }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <PhysiqueDataPanel
+        current={currentMetrics}
+        goal={goalMetrics}
+        baseline={baselineMetrics}
+        snapshots={snapshots}
+        milestones={milestones}
+        progress={progressSummary}
+        diagnostics={modelDiagnostics}
+        onCurrentChange={handleCurrentValue}
+        onGoalChange={handleGoalValue}
+        onSaveSnapshot={handleSaveSnapshot}
+        onToggleMilestone={handleToggleMilestone}
+      />
 
-      {/* ═══ AMBITION PATH ═══ */}
-      <div className="chamber-ambition soft-neumorphism glassmorphism" style={{ padding: '24px', borderRadius: 'var(--radius-lg)' }}>
-        <h3 className="chamber-ambition__title">
-          <Flag size={18} color="var(--chamber-gold)" /> Ambition Path — Road to Greek God
-        </h3>
-        <div className="chamber-ambition__road">
-          <div className="chamber-ambition__line" />
-          {milestones.map((m: any, i: number) => {
-            const left = ((m.monthIndex ?? 0) / 20) * 100;
-            const isFinal = i === milestones.length - 1;
-            const isCurrent = ambitionPath?.currentMonthIndex === m.monthIndex;
-            return (
-              <div key={i}
-                className={`chamber-ambition__node${m.achieved ? ' achieved' : ''}${isFinal ? ' final' : ''}`}
-                style={{ left: `${left}%`, cursor: 'pointer' }}
-                onClick={() => setActiveMilestone(activeMilestone === m.id ? null : m.id)}>
-                <div className={`chamber-ambition__beacon${isCurrent ? ' current-beacon' : ''}`}>
-                  {isFinal ? <Star size={16} /> : m.achieved ? <CheckCircle size={14} /> : <Target size={14} />}
-                </div>
-                <div className="chamber-ambition__info">
-                  <span className="chamber-ambition__month">{m.month}</span>
-                  <span className="chamber-ambition__label">{m.label}</span>
-                </div>
-                {/* Milestone tooltip */}
-                {activeMilestone === m.id && (
-                  <div style={{
-                    position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'var(--surface-2)', border: '1px solid var(--chamber-glow)',
-                    borderRadius: 8, padding: '8px 12px', minWidth: 160, zIndex: 20,
-                    boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
-                  }}>
-                    <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--chamber-glow)', margin: '0 0 4px 0' }}>{m.label}</p>
-                    <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', margin: '0 0 8px 0' }}>{m.month}</p>
-                    {!m.achieved && (
-                      <button className="chamber-pill"
-                        style={{ fontSize: '0.65rem', width: '100%', justifyContent: 'center' }}
-                        onClick={(e) => { e.stopPropagation(); achieveMilestone(m.id); setActiveMilestone(null); toast.success(`Milestone achieved: ${m.label}`); }}>
-                        ✅ Mark Achieved
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
       {showShareModal && (
         <SocialShareModal 

@@ -56,6 +56,7 @@ const useStore = create<any>()(
       databases: [],
       appConfig: {},
       healthProfile: {},
+      bodyProfile: null,
 
       shopping: { items: [] },
       entertainment: { media: [] },
@@ -126,6 +127,20 @@ const useStore = create<any>()(
           apiSync('/user', 'POST', newUser);
           return { user: newUser };
         });
+      },
+
+      updateBodyProfile: async (data: any) => {
+        const previous = get().bodyProfile || {};
+        const optimistic = { ...previous, ...data };
+        set({ bodyProfile: optimistic });
+        try {
+          const saved = await apiSync('/body-profile', 'PUT', data);
+          set({ bodyProfile: saved });
+          return saved;
+        } catch (error) {
+          set({ bodyProfile: previous });
+          throw error;
+        }
       },
 
       fetchInitialData: async () => {

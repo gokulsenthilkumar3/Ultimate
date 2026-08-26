@@ -1,143 +1,63 @@
-/**
- * GrowthTrack Ultimate — Layer 2: Render Pipeline
- * StudioLighting.jsx
- *
- * "The Studio God Light" — exact spec from architecture doc:
- *
- *   Key Light:  DirectionalLight  pos[-3, 5, 3]   intensity 2.2   #FFF5E0  (shadow)
- *   Fill Light: DirectionalLight  pos[4, 2, 2]    intensity 0.7   #D6EEFF
- *   Rim Light:  DirectionalLight  pos[0, 1, -5]   intensity 1.2   #8899FF  (edge glow)
- *   Sub Light:  PointLight        pos[0,-0.3,0.5] intensity 0.5   #FFCC88  dist 3
- *   Ambient:    AmbientLight      intensity 0.08  #0D0D1A
- *
- * Shadow map size is tier-controlled via lodConfig prop.
- */
+/** Physically layered portrait rig shared by every digital-human render mode. */
 
-import React, { useRef } from "react";
-import { useHelper }     from "@react-three/drei";
-import * as THREE        from "three";
+import { useRef } from "react";
 
-// ── Toggle this in dev to see light helpers ──────────────────────────────────
-const SHOW_LIGHT_HELPERS = process.env.NODE_ENV === "development" && false;
+import use3DStore from "../../store/use3DStore";
+import { getCinematicSceneProfile } from "./cinematicProfiles";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// KEY LIGHT — main warm directional, casts shadows
-// ─────────────────────────────────────────────────────────────────────────────
-
-function KeyLight({ shadowMapSize }) {
+function CinematicKey({ profile, shadowMapSize }) {
   const ref = useRef();
-  if (SHOW_LIGHT_HELPERS) useHelper(ref, THREE.DirectionalLightHelper, 1, "yellow");
-
-  const hasShadow = !!shadowMapSize;
 
   return (
-    <directionalLight
+    <spotLight
       ref={ref}
-      position={[-3, 5, 3]}
-      intensity={2.2}
-      color="#FFF5E0"
-      castShadow={hasShadow}
-      shadow-mapSize-width={shadowMapSize  ?? 512}
-      shadow-mapSize-height={shadowMapSize ?? 512}
-      shadow-camera-near={0.5}
-      shadow-camera-far={30}
-      shadow-camera-left={-4}
-      shadow-camera-right={4}
-      shadow-camera-top={6}
-      shadow-camera-bottom={-2}
-      shadow-bias={-0.0004}
-      shadow-normalBias={0.02}
-    />
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FILL LIGHT — cool blue-white fill, no shadow
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FillLight() {
-  const ref = useRef();
-  if (SHOW_LIGHT_HELPERS) useHelper(ref, THREE.DirectionalLightHelper, 0.5, "cyan");
-
-  return (
-    <directionalLight
-      ref={ref}
-      position={[4, 2, 2]}
-      intensity={0.7}
-      color="#D6EEFF"
-      castShadow={false}
-    />
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RIM LIGHT — back-facing blue-purple edge glow (the iconic look)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function RimLight() {
-  const ref = useRef();
-  if (SHOW_LIGHT_HELPERS) useHelper(ref, THREE.DirectionalLightHelper, 0.5, "blue");
-
-  return (
-    <directionalLight
-      ref={ref}
-      position={[0, 1, -5]}
-      intensity={1.2}
-      color="#8899FF"
-      castShadow={false}
-    />
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SUB LIGHT — warm bounce from below, adds skin depth
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SubLight() {
-  const ref = useRef();
-  if (SHOW_LIGHT_HELPERS) useHelper(ref, THREE.PointLightHelper, 0.3, "orange");
-
-  return (
-    <pointLight
-      ref={ref}
-      position={[0, -0.3, 0.5]}
-      intensity={0.5}
-      color="#FFCC88"
-      distance={3}
+      position={[-2.8, 4.8, 3.6]}
+      intensity={52}
+      color={profile.key}
+      distance={10}
       decay={2}
-      castShadow={false}
+      angle={0.48}
+      penumbra={0.82}
+      castShadow={Boolean(shadowMapSize)}
+      shadow-mapSize-width={shadowMapSize ?? 512}
+      shadow-mapSize-height={shadowMapSize ?? 512}
+      shadow-camera-near={0.4}
+      shadow-camera-far={12}
+      shadow-bias={-0.0003}
+      shadow-normalBias={0.025}
     />
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AMBIENT — very dark cool base fill (keeps shadows from going pure black)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function AmbientBase() {
+function PortraitFill({ profile }) {
   return (
     <>
-      <ambientLight intensity={0.35} color="#e8d5c0" />
-      <hemisphereLight skyColor="#FFF5E0" groundColor="#0D1025" intensity={0.5} />
+      <rectAreaLight position={[2.8, 2.4, 2.5]} rotation={[0, -0.72, 0]} width={3.2} height={4.4} intensity={2.6} color={profile.fill} />
+      <pointLight position={[0, 0.45, 1.6]} intensity={3.4} color={profile.key} distance={4.5} decay={2} />
     </>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STUDIO LIGHTING — assembled rig
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * @param {{ lodConfig: { shadowMapSize: number|null } }} props
- */
-export default function StudioLighting({ lodConfig }) {
+function EdgeLights({ profile }) {
   return (
-    <group name="studio-lighting-rig">
-      <KeyLight  shadowMapSize={lodConfig.shadowMapSize} />
-      <FillLight />
-      <RimLight  />
-      <SubLight  />
-      <AmbientBase />
+    <>
+      <spotLight position={[2.7, 3.0, -3.4]} intensity={38} color={profile.rim} distance={9} decay={2} angle={0.42} penumbra={0.9} />
+      <spotLight position={[-2.5, 2.0, -2.8]} intensity={24} color={profile.accent} distance={8} decay={2} angle={0.52} penumbra={0.88} />
+    </>
+  );
+}
+
+export default function StudioLighting({ lodConfig }) {
+  const environment = use3DStore((state) => state.cinematicState.sceneEnvironment);
+  const profile = getCinematicSceneProfile(environment);
+
+  return (
+    <group name="cinematic-portrait-lighting">
+      <ambientLight intensity={0.18} color={profile.fill} />
+      <hemisphereLight skyColor={profile.key} groundColor={profile.fog} intensity={0.46} />
+      <CinematicKey profile={profile} shadowMapSize={lodConfig.shadowMapSize} />
+      <PortraitFill profile={profile} />
+      <EdgeLights profile={profile} />
     </group>
   );
 }

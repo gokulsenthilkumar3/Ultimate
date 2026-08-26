@@ -1,177 +1,169 @@
 /**
- * GrowthTrack Ultimate — Layer 2: Render Pipeline
- * PostProcessingStack.jsx
+ * Phase 4 cinematic post-processing pipeline.
  *
- * EffectComposer pipeline stub — wired into HumanoidViewer.jsx.
- * Full shader passes are implemented in Layer 4.
- *
- * This file defines the pass ORDER and LOD branching.
- * Layer 4 will flesh out the custom GLSL passes (SSS, vascularity, delta, aura).
- *
- * Pass order from architecture doc:
- *   Pass 1: RenderPass          ← base scene (handled by R3F automatically)
- *   Pass 2: SSAOPass            ← ambient occlusion
- *   Pass 3: BloomPass           ← glow on aura/goal edges (threshold 0.85)
- *   Pass 4: ChromaticAberration ← subtle (0.0005) on transitions
- *   Pass 5: VignettePass        ← dark edges
- *   Pass 6: ToneMappingPass     ← ACES cinematic grade
- *   Pass 7: GlitchPass          ← fires 1 frame on mode transitions
- *
- * Mode:
- *   "FULL"    → all 7 passes (HIGH GPU tier)
- *   "PARTIAL" → Bloom + Vignette only (MED GPU tier)
- *   "NONE"    → no EffectComposer (LOW GPU tier — HumanoidViewer skips this)
- *
- * Deps: @react-three/postprocessing
+ * This uses postprocessing directly instead of the React wrapper. The installed
+ * wrapper still relies on an older R3F child-instance shape, which can fail on
+ * R3F 9. Direct pass ownership keeps the pipeline deterministic and disposable.
  */
 
-import React, { useRef, useEffect, Suspense } from "react";
-import {
-  EffectComposer,
-  Bloom,
-  Vignette,
-  ChromaticAberration,
-  ToneMapping,
-  Glitch,
-} from "@react-three/postprocessing";
+import { useEffect, useMemo } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import * as THREE from "three";
 import {
   BlendFunction,
-  GlitchMode,
+  BloomEffect,
+  ChromaticAberrationEffect,
+  DepthOfFieldEffect,
+  EffectComposer,
+  EffectPass,
+  NoiseEffect,
+  RenderPass,
+  ToneMappingEffect,
   ToneMappingMode,
+  VignetteEffect,
 } from "postprocessing";
-import * as THREE from "three";
 
 import use3DStore from "../../store/use3DStore";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GLITCH TRIGGER — fires for exactly 1 frame on viewMode change
-// ─────────────────────────────────────────────────────────────────────────────
+function addEffectPass(composer, camera, effect, passes) {
+  const pass = new EffectPass(camera, effect);
+  composer.addPass(pass);
+  passes.push(pass);
+}
 
-function useGlitchTrigger(glitchRef) {
-  const prevMode = useRef(null);
+function applyToneMapping(renderer, exposure) {
+  const previous = {
+    toneMapping: renderer.toneMapping,
+    exposure: renderer.toneMappingExposure,
+  };
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMappingExposure = exposure;
+  return previous;
+}
+
+function restoreToneMapping(renderer, previous) {
+  renderer.toneMapping = previous.toneMapping;
+  renderer.toneMappingExposure = previous.exposure;
+}
+
+export default function PostProcessingStack({ mode, reducedMotion = false }) {
+  const { gl, scene, camera, size } = useThree();
+  const cinematic = use3DStore((state) => state.cinematicState);
+
+  const pipeline = useMemo(() => {
+    const composer = new EffectComposer(gl, {
+      multisampling: mode === "FULL" ? 4 : 0,
+      frameBufferType: THREE.HalfFloatType,
+      depthBuffer: true,
+      stencilBuffer: false,
+    });
+    const passes = [];
+    const effects = [];
+
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+    passes.push(renderPass);
+
+    if (mode === "FULL" && cinematic.depthOfField && !reducedMotion) {
+      const depthOfField = new DepthOfFieldEffect(camera, {
+        focusDistance: 3.25,
+        focusRange: 1.7,
+        bokehScale: 0.9,
+        resolutionScale: 0.5,
+      });
+      effects.push(depthOfField);
+      addEffectPass(composer, camera, depthOfField, passes);
+    }
+
+    if (cinematic.bloom) {
+      const bloom = new BloomEffect({
+        blendFunction: BlendFunction.SCREEN,
+        luminanceThreshold: mode === "FULL" ? 0.82 : 0.9,
+        luminanceSmoothing: 0.12,
+        intensity: mode === "FULL" ? 0.52 : 0.34,
+        radius: 0.68,
+        levels: mode === "FULL" ? 7 : 5,
+        mipmapBlur: true,
+      });
+      effects.push(bloom);
+      addEffectPass(composer, camera, bloom, passes);
+    }
+
+    const finishingEffects = [];
+    if (mode === "FULL" && cinematic.chromaticAberration && !reducedMotion) {
+      const chromatic = new ChromaticAberrationEffect({
+        blendFunction: BlendFunction.NORMAL,
+        offset: new THREE.Vector2(0.00032, 0.00022),
+        radialModulation: true,
+        modulationOffset: 0.34,
+      });
+      finishingEffects.push(chromatic);
+      effects.push(chromatic);
+    }
+
+    const toneMapping = new ToneMappingEffect({
+      blendFunction: BlendFunction.SRC,
+      mode: ToneMappingMode.AGX,
+    });
+    finishingEffects.push(toneMapping);
+    effects.push(toneMapping);
+
+    if (mode === "FULL" && cinematic.filmGrain && !reducedMotion) {
+      const grain = new NoiseEffect({
+        blendFunction: BlendFunction.SOFT_LIGHT,
+        premultiply: true,
+      });
+      grain.blendMode.opacity.value = 0.026;
+      finishingEffects.push(grain);
+      effects.push(grain);
+    }
+
+    if (cinematic.vignette) {
+      const vignette = new VignetteEffect({
+        blendFunction: BlendFunction.NORMAL,
+        offset: mode === "FULL" ? 0.28 : 0.34,
+        darkness: mode === "FULL" ? 0.72 : 0.58,
+      });
+      finishingEffects.push(vignette);
+      effects.push(vignette);
+    }
+
+    if (finishingEffects.length > 0) {
+      const finishingPass = new EffectPass(camera, ...finishingEffects);
+      composer.addPass(finishingPass);
+      passes.push(finishingPass);
+    }
+
+    return { composer, effects, passes };
+  }, [
+    camera,
+    cinematic.bloom,
+    cinematic.chromaticAberration,
+    cinematic.depthOfField,
+    cinematic.filmGrain,
+    cinematic.vignette,
+    gl,
+    mode,
+    reducedMotion,
+    scene,
+  ]);
 
   useEffect(() => {
-    return use3DStore.subscribe(
-      (s) => s.viewMode,
-      (mode) => {
-        if (prevMode.current !== null && glitchRef.current) {
-          // Access the underlying effect object safely
-          const effect = glitchRef.current;
-          if (effect && typeof effect === 'object') {
-            try {
-              effect.mode = GlitchMode.SPORADIC;
-              setTimeout(() => {
-                if (effect) effect.mode = GlitchMode.DISABLED;
-              }, 80);
-            } catch { /* ignore if API changed */ }
-          }
-        }
-        prevMode.current = mode;
-      }
-    );
-  }, [glitchRef]);
-}
+    pipeline.composer.setSize(size.width, size.height);
+  }, [pipeline, size.height, size.width]);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FULL STACK — HIGH tier
-// ─────────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const previous = applyToneMapping(gl, cinematic.exposure);
+    return () => restoreToneMapping(gl, previous);
+  }, [cinematic.exposure, gl]);
 
-function FullPostProcessing() {
-  const glitchRef = useRef();
-  useGlitchTrigger(glitchRef);
+  useEffect(() => () => {
+    pipeline.composer.dispose();
+  }, [pipeline]);
 
-  return (
-    <Suspense fallback={null}>
-      <EffectComposer multisampling={4}>
+  useFrame((_, delta) => {
+    pipeline.composer.render(delta);
+  }, 1);
 
-        {/* Pass 3 — Bloom: aura/goal model edges */}
-        <Bloom
-          luminanceThreshold={0.85}
-          luminanceSmoothing={0.025}
-          intensity={0.6}
-          mipmapBlur
-          radius={0.7}
-        />
-
-        {/* Pass 4 — Chromatic Aberration: subtle, fires on transitions */}
-        <ChromaticAberration
-          blendFunction={BlendFunction.NORMAL}
-          offset={new THREE.Vector2(0.0005, 0.0005)}
-          radialModulation={false}
-        />
-
-        {/* Pass 5 — Vignette: focus attention on models */}
-        <Vignette
-          blendFunction={BlendFunction.NORMAL}
-          eskil={false}
-          offset={0.3}
-          darkness={0.85}
-        />
-
-        {/* Pass 6 — Tone Mapping: Safe linear grade to prevent crash in three.js 0.184 */}
-        <ToneMapping
-          blendFunction={BlendFunction.NORMAL}
-          mode={ToneMappingMode.LINEAR}
-        />
-
-        {/* Pass 7 — Glitch: 1-frame cinematic cut on mode switch */}
-        <Glitch
-          ref={glitchRef}
-          delay={new THREE.Vector2(0, 0)}
-          duration={new THREE.Vector2(0.08, 0.08)}
-          strength={new THREE.Vector2(0.15, 0.25)}
-          mode={GlitchMode.DISABLED}
-          active
-          ratio={0.85}
-        />
-      </EffectComposer>
-    </Suspense>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PARTIAL STACK — MED tier (Bloom + Vignette only)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function PartialPostProcessing() {
-  return (
-    <Suspense fallback={null}>
-      <EffectComposer multisampling={0}>
-        <Bloom
-          luminanceThreshold={0.85}
-          luminanceSmoothing={0.025}
-          intensity={0.5}
-          mipmapBlur
-          radius={0.7}
-        />
-        <Vignette
-          blendFunction={BlendFunction.NORMAL}
-          eskil={false}
-          offset={0.3}
-          darkness={0.8}
-        />
-      </EffectComposer>
-    </Suspense>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST PROCESSING STACK — exported (called by HumanoidViewer)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * @param {{ mode: "FULL" | "PARTIAL" }} props
- */
-/**
- * @param {{ mode: "FULL" | "PARTIAL" }} props
- *
- * NOTE: @react-three/postprocessing v3 changed how EffectComposer collects
- * children effects — it internally calls `.length` on an undefined list,
- * crashing the canvas. Disabled until the v3 API migration is complete.
- * The scene renders correctly without post-processing.
- */
-export default function PostProcessingStack({ mode }) {
-  // eslint-disable-next-line no-unused-vars
-  void mode;
   return null;
 }
