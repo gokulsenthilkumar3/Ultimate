@@ -75,6 +75,7 @@ export default function HumanoidClone({
 
   // ── Load model ──────────────────────────────────────────────────────────────
   const { bodyMesh, morphIndexMap, skeleton, scene, diagnostics, isDev } = useModelLoader();
+  const useProcedural = !bodyMesh || diagnostics?.isSuspicious || Object.keys(morphIndexMap || {}).length < 12;
   const setModelFrame = use3DStore((s) => s.setModelFrame);
   const setModelDiagnostics = use3DStore((s) => s.setModelDiagnostics);
 
@@ -98,7 +99,7 @@ export default function HumanoidClone({
   }, [weights, updateWeights]);
 
   useEffect(() => {
-    if (!scene) return;
+    if (!scene || useProcedural) return;
     const box = new THREE.Box3().setFromObject(scene);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
@@ -132,7 +133,7 @@ export default function HumanoidClone({
       height: Math.max(size.y, 0.001),
       radius: Math.max(size.x, size.y, size.z) * 0.5,
     });
-  }, [scene, setModelFrame]);
+  }, [scene, setModelFrame, useProcedural]);
 
   useEffect(() => {
     setModelDiagnostics(diagnostics);
@@ -158,16 +159,16 @@ export default function HumanoidClone({
 
   // Apply material to GLB mesh when available
   useEffect(() => {
-    if (bodyMesh) {
+    if (bodyMesh && !useProcedural) {
       bodyMesh.material = material;
       bodyMesh.castShadow    = renderMode === "normal";
       bodyMesh.receiveShadow = false;
     }
-  }, [bodyMesh, material, renderMode]);
+  }, [bodyMesh, material, renderMode, useProcedural]);
 
   // ── Per-frame morph application ─────────────────────────────────────────────
   useFrame((_, delta) => {
-    if (!bodyMesh) return;
+    if (!bodyMesh || useProcedural) return;
     interpolator.tick(delta);
     interpolator.applyToMesh(bodyMesh, morphIndexMap);
 
@@ -193,7 +194,7 @@ export default function HumanoidClone({
   if (!visible) return null;
 
   // ── Fallback: no body mesh → use procedural model ───────────────────────────
-  if (!bodyMesh) {
+  if (useProcedural) {
     return (
       <ProceduralHumanoid
         cloneKey={cloneKey}

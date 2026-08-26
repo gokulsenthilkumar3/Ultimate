@@ -2,15 +2,25 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+function seededNoise(seed) {
+  let value = seed >>> 0;
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+}
+
 /**
  * ChamberVFX — Ambient cosmic particle field for the Digital Twin chamber.
  * Renders a slow-drifting field of cyan/violet holographic dust.
  */
 export default function ChamberVFX({ count = 800 }) {
   const pointsRef = useRef();
+  const ringsRef = useRef();
 
   // Generate random particle positions within a cylinder/sphere around the model
   const particles = useMemo(() => {
+    const noise = seededNoise(0x4754524b + count);
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
@@ -21,16 +31,16 @@ export default function ChamberVFX({ count = 800 }) {
 
     for (let i = 0; i < count; i++) {
       // Cylinder distribution: radius 1.5 to 4, height 0 to 3
-      const r = 1.5 + Math.random() * 2.5;
-      const theta = Math.random() * Math.PI * 2;
-      const y = Math.random() * 4.0 - 0.5; // From slightly below floor up to 3.5m
+      const r = 1.5 + noise() * 2.5;
+      const theta = noise() * Math.PI * 2;
+      const y = noise() * 4.0 - 0.5; // From slightly below floor up to 3.5m
 
       positions[i * 3] = r * Math.cos(theta);
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = r * Math.sin(theta);
 
       // Mix between cyan and violet based on height + noise
-      const mixRatio = Math.random();
+      const mixRatio = noise();
       tempColor.lerpColors(colorCyan, colorViolet, mixRatio);
       
       colors[i * 3] = tempColor.r;
@@ -38,7 +48,7 @@ export default function ChamberVFX({ count = 800 }) {
       colors[i * 3 + 2] = tempColor.b;
 
       // Random sizes
-      sizes[i] = Math.random() * 0.5 + 0.1;
+      sizes[i] = noise() * 0.5 + 0.1;
     }
 
     return { positions, colors, sizes };
@@ -109,9 +119,18 @@ export default function ChamberVFX({ count = 800 }) {
       // Slow overall rotation
       pointsRef.current.rotation.y = clock.elapsedTime * 0.02;
     }
+    if (ringsRef.current) {
+      ringsRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.16) * 0.025;
+      ringsRef.current.children.forEach((ring, index) => {
+        const pulse = 1 + Math.sin(clock.elapsedTime * 0.7 + index * 1.8) * 0.035;
+        ring.scale.setScalar(pulse);
+        ring.material.opacity = 0.12 + Math.sin(clock.elapsedTime * 0.55 + index) * 0.035;
+      });
+    }
   });
 
   return (
+    <group>
     <points ref={pointsRef}>
       <bufferGeometry>
         <bufferAttribute
@@ -135,5 +154,14 @@ export default function ChamberVFX({ count = 800 }) {
       </bufferGeometry>
       <primitive object={material} attach="material" />
     </points>
+    <group ref={ringsRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}>
+      {[0.58, 0.82, 1.08].map((radius, index) => (
+        <mesh key={radius}>
+          <ringGeometry args={[radius, radius + 0.006 + index * 0.002, 96]} />
+          <meshBasicMaterial color={index === 1 ? '#8b5cf6' : '#22d3ee'} transparent opacity={0.13} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+    </group>
   );
 }

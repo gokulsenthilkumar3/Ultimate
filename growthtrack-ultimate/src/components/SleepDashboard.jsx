@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell,
   CartesianGrid, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Legend
@@ -6,14 +6,6 @@ import {
 import { Moon, Sun, Zap, Clock, TrendingUp, AlertCircle, CheckCircle, Plus, Trash2, BatteryCharging, Minus } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import useStore, { selectSleepLogs, selectSaveSleepLog, apiSync } from '../store/useStore';
-
-const FALLBACK_TIPS = [
-  { icon: Moon,       tip: 'Aim for consistent bed/wake times within a 30-min window daily.', priority: 'HIGH' },
-  { icon: Sun,        tip: 'Get 10 min of sunlight within 30 min of waking to anchor your circadian clock.', priority: 'HIGH' },
-  { icon: Zap,        tip: 'Cut caffeine 8–10 hours before target bedtime to clear adenosine receptors.', priority: 'MED' },
-  { icon: Clock,      tip: 'Keep bedroom temp 18–20°C for optimal deep sleep onset.', priority: 'MED' },
-  { icon: TrendingUp, tip: 'Progressive resistance training improves slow-wave sleep by ~15%.', priority: 'LOW' },
-];
 
 const PRIORITY_COLOR = { HIGH: '#ef4444', MED: '#f59e0b', LOW: '#22c55e' };
 const QUALITY_LABELS = {
@@ -99,6 +91,7 @@ export default function SleepDashboard() {
   const saveSleepLog = useStore(selectSaveSleepLog);
   const isLoading = useStore(s => s.isLoading);
   const toast = useToast();
+  const configuredTips = useStore(s => s.appConfig?.sleepTips || []);
 
   const [activeView, setActiveView] = useState('trend');
   const [logForm, setLogForm] = useState({
@@ -107,23 +100,11 @@ export default function SleepDashboard() {
     quality: 7, notes: ''
   });
   const [saving, setSaving] = useState(false);
-  const [tips, setTips] = useState(FALLBACK_TIPS);
+  const tips = useMemo(() => configuredTips.map(row => ({ icon: Clock, tip: row.tip, priority: String(row.priority || 'MED').toUpperCase() })), [configuredTips]);
 
-  // Fetch tips from DB if on tips view
-  useEffect(() => {
-    if (activeView !== 'tips') return;
-    apiSync('/sleep_tips', 'GET')
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setTips(data.map(row => ({ icon: Clock, tip: row.tip, priority: (row.priority || 'MED').toUpperCase() })));
-        }
-      })
-      .catch(() => {/* keep fallback */});
-  }, [activeView]);
-
-  const handleDeleteEntry = useCallback(async (date) => {
+  const handleDeleteEntry = useCallback(async (id) => {
     try {
-      await apiSync(`/sleep_logs/${date}`, 'DELETE');
+      await apiSync(`/sleep_logs/${id}`, 'DELETE');
       toast.success('Entry deleted');
       useStore.getState().fetchInitialData();
     } catch {
@@ -428,7 +409,7 @@ export default function SleepDashboard() {
                         )}
                       </div>
                       <button
-                        onClick={() => handleDeleteEntry(entry.date)}
+                        onClick={() => handleDeleteEntry(entry.id)}
                         className="btn-icon hover-text-danger"
                         style={{ color: 'var(--text-3)', flexShrink: 0 }}
                         title="Delete entry"

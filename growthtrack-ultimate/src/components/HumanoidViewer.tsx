@@ -449,19 +449,6 @@ export default function HumanoidViewer() {
     { label: 'Score', value: `${overallScore}%` },
     { label: 'GLB', value: modelDiagnostics?.health === 'healthy' ? 'Healthy' : modelDiagnostics ? 'Repair' : 'Loading' },
   ];
-  const glbIssueCount = modelDiagnostics?.health === 'healthy' ? 0 : [
-    modelDiagnostics?.missingMorphTargets?.length ? 1 : 0,
-    modelDiagnostics?.isSuspicious ? 1 : 0,
-    modelDiagnostics?.bounds?.height && (modelDiagnostics.bounds.height < 1.25 || modelDiagnostics.bounds.height > 2.45) ? 1 : 0,
-    modelDiagnostics?.bounds?.radius && (modelDiagnostics.bounds.radius < 0.15 || modelDiagnostics.bounds.radius > 1.15) ? 1 : 0,
-  ].reduce((sum, v) => sum + v, 0);
-  const topPriorityFixes = [
-    'Real humanoid topology',
-    'Full rig',
-    'Authored shape keys',
-    'Y-up export',
-    'Textures + materials',
-  ];
   const focusedLabel = selectedPart ? (BODY_PARTS as any)?.[selectedPart]?.name || selectedPart : null;
 
   useEffect(() => {
@@ -499,49 +486,38 @@ export default function HumanoidViewer() {
             <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-3)', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>v3</span>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* GLB status chip */}
+            {/* Render status — detailed model diagnostics live in Settings. */}
             <span
-              className={`hud-chip${modelDiagnostics?.health === 'healthy' ? ' healthy' : modelDiagnostics ? ' warning' : ''}`}
+              className="hud-chip healthy"
               style={{ '--hud-delay': '0.1s' } as React.CSSProperties}
             >
               <span className="hud-dot" />
-              {modelDiagnostics?.health === 'healthy' ? 'GLB HEALTHY' : modelDiagnostics ? 'GLB REPAIR' : 'GLB LOADING'}
+              {modelDiagnostics?.health === 'healthy' ? 'AUTHORED MODEL' : 'PROCEDURAL CG'}
             </span>
             <span className="hud-chip" style={{ '--hud-delay': '0.18s' } as React.CSSProperties}>
-              {modelDiagnostics?.morphTargetCount ?? 0} morphs
+              REALTIME MORPHS
             </span>
-            <span className={`hud-chip${(modelDiagnostics?.missingMorphTargets?.length ?? 0) > 0 ? ' warning' : ''}`} style={{ '--hud-delay': '0.24s' } as React.CSSProperties}>
-              {modelDiagnostics?.missingMorphTargets?.length ?? 0} missing
-            </span>
-            {glbIssueCount > 0 && (
-              <span className="hud-chip danger" style={{ '--hud-delay': '0.3s' } as React.CSSProperties}>
-                {glbIssueCount} issues
-              </span>
-            )}
             {overallScore > 0 && (
               <span className="hud-chip healthy" style={{ '--hud-delay': '0.36s' } as React.CSSProperties}>
                 <Star size={10} /> {overallScore}%
               </span>
             )}
           </div>
-          {/* Priority fixes */}
-          {modelDiagnostics?.health !== 'healthy' && (
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.58rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Fixes:</span>
-              {topPriorityFixes.map((fix, i) => (
-                <span key={fix} className="hud-chip warning" style={{ '--hud-delay': `${0.4 + i * 0.06}s`, fontSize: '0.62rem' } as React.CSSProperties}>
-                  {fix}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
         {/* Right: quality + render mode toggles */}
-        <div style={{ pointerEvents: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-          <button className={`chamber-view-btn${quality === 'HIGH' ? ' active' : ''}`} style={{ padding: '5px 12px', fontSize: '0.65rem' }}
-            onClick={() => setQuality('HIGH')}>HQ</button>
-          <button className={`chamber-view-btn${renderMode === 'WEBGL' ? ' active' : ''}`} style={{ padding: '5px 12px', fontSize: '0.65rem' }}
-            onClick={() => setRenderMode('WEBGL')}>3D</button>
+        <div className="chamber-render-controls">
+          <div className="chamber-quality-switch" aria-label="Render quality">
+            {QUALITY_OPTIONS.map((level) => (
+              <button key={level} className={`chamber-view-btn${quality === level ? ' active' : ''}`}
+                aria-pressed={quality === level} onClick={() => setQuality(level)}>{level === 'MED' ? 'BAL' : level}</button>
+            ))}
+          </div>
+          <div className="chamber-quality-switch" aria-label="Renderer">
+            <button className={`chamber-view-btn${renderMode === 'WEBGL' ? ' active' : ''}`}
+              aria-pressed={renderMode === 'WEBGL'} onClick={() => setRenderMode('WEBGL')}>3D</button>
+            <button className={`chamber-view-btn${renderMode === 'SPRITE' ? ' active' : ''}`}
+              aria-pressed={renderMode === 'SPRITE'} onClick={() => setRenderMode('SPRITE')}>2D</button>
+          </div>
         </div>
       </div>
 
@@ -650,6 +626,12 @@ export default function HumanoidViewer() {
 
           {/* Floating action buttons */}
           <div className="chamber-fab-row">
+            <button className={`chamber-fab${autoRotate ? ' active' : ''}`} onClick={() => setAutoRotate(!autoRotate)} title={autoRotate ? 'Pause rotation' : 'Auto rotate'} aria-pressed={autoRotate}>
+              <Rotate3D size={16} />
+            </button>
+            <button className={`chamber-fab${showEditor ? ' active' : ''}`} onClick={() => setShowEditor(!showEditor)} title="Open body editor" aria-expanded={showEditor}>
+              <SlidersHorizontal size={16} />
+            </button>
             <button className="chamber-fab" onClick={() => setShowSettings(!showSettings)} title="Settings">
               <Settings size={16} />
             </button>

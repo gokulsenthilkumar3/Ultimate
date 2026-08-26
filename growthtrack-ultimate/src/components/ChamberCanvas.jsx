@@ -63,7 +63,7 @@ function CanvasScene({ lodConfig }) {
 
       <StudioLighting lodConfig={lodConfig} />
 
-      <ChamberVFX count={lodConfig.postFx === "NONE" ? 200 : 800} />
+      <ChamberVFX count={lodConfig.postFx === "NONE" ? 140 : lodConfig.postFx === "PARTIAL" ? 420 : 760} />
 
       <Suspense fallback={null}>
         <ChamberFloor />
@@ -143,6 +143,11 @@ export default function ChamberCanvas({ className = "", style = {} }) {
   const [documentVisible, setDocumentVisible] = useState(() => document.visibilityState !== 'hidden');
   const onCreated = useGlCreated(setLodConfig);
 
+  useEffect(() => use3DStore.subscribe(
+    (state) => state.gpuTier,
+    (tier) => setLodConfig(LOD_CONFIG[tier] || LOD_CONFIG[GPU_TIERS.MED])
+  ), []);
+
   useEffect(() => {
     const element = wrapperRef.current;
     if (!element || !('IntersectionObserver' in window)) return undefined;
@@ -160,7 +165,7 @@ export default function ChamberCanvas({ className = "", style = {} }) {
   const shouldRender = isIntersecting && documentVisible;
 
   return (
-    <div ref={wrapperRef} className={className} style={{ width: '100%', height: '100%', ...style }} data-rendering={shouldRender ? 'active' : 'paused'}>
+    <div ref={wrapperRef} className={className} style={{ width: '100%', height: '100%', ...style }} data-rendering={shouldRender ? 'active' : 'paused'} role="img" aria-label="Interactive three-dimensional physique model. Drag to rotate and use the mouse wheel or pinch gesture to zoom.">
       <Canvas
         gl={{
           powerPreference:      "high-performance",

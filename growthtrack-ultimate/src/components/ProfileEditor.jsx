@@ -93,6 +93,10 @@ export default function ProfileEditor() {
   const palette = useStore(s => s.palette);
   const setTheme = useStore(s => s.setTheme);
   const setPalette = useStore(s => s.setPalette);
+  const reducedMotion = useStore(s => s.reducedMotion);
+  const setReducedMotion = useStore(s => s.setReducedMotion);
+  const documentProviders = useStore(s => s.appConfig?.documentProviders) || [];
+  const providerLabels = documentProviders.filter(provider => provider.enabled !== false).map(provider => provider.label);
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('personal');
@@ -224,7 +228,7 @@ export default function ProfileEditor() {
         emailNotifications: user?.emailNotifications !== false,
         smsNotifications: user?.smsNotifications === true,
         cloudSyncEnabled: user?.cloudSyncEnabled || false,
-        syncProvider: user?.syncProvider || 'Google Drive',
+        syncProvider: user?.syncProvider || providerLabels[0] || '',
         autoSyncInterval: user?.autoSyncInterval || 'Daily',
         
         primaryGoal: user?.primaryGoal || '',
@@ -323,7 +327,7 @@ export default function ProfileEditor() {
       emailNotifications: user?.emailNotifications !== false,
       smsNotifications: user?.smsNotifications === true,
       cloudSyncEnabled: user?.cloudSyncEnabled || false,
-      syncProvider: user?.syncProvider || 'Google Drive',
+      syncProvider: user?.syncProvider || providerLabels[0] || '',
       autoSyncInterval: user?.autoSyncInterval || 'Daily',
       
       primaryGoal: user?.primaryGoal || '',
@@ -374,9 +378,13 @@ export default function ProfileEditor() {
       const croppedImageBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
       if (!croppedImageBlob) throw new Error('Crop failed');
 
-      const body = new FormData();
-      body.append('avatar', croppedImageBlob, 'avatar.jpg');
-      const result = await apiSync('/profile/avatar', 'POST', body, { raw: true });
+      const avatar = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(croppedImageBlob);
+      });
+      const result = await apiSync('/profile/avatar', 'POST', { avatar });
       const url = result?.url || result?.avatar || null;
       if (url) {
         setAvatarPreview(url);
@@ -798,7 +806,7 @@ export default function ProfileEditor() {
                   
                   {formData.cloudSyncEnabled && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                      <Field label="Sync Provider" field="syncProvider" options={['Google Drive', 'OneDrive', 'Dropbox', 'Local Network']} formData={formData} handleChange={handleChange} />
+                      <Field label="Sync Provider" field="syncProvider" options={providerLabels} formData={formData} handleChange={handleChange} />
                       <Field label="Auto-Sync Interval" field="autoSyncInterval" options={['Real-time', 'Hourly', 'Daily', 'Weekly']} formData={formData} handleChange={handleChange} />
                     </div>
                   )}
@@ -1018,6 +1026,14 @@ export default function ProfileEditor() {
                     <Field label="Measurement System" field="measurementSystem" options={['Metric (cm, kg)', 'Imperial (inches, lbs)']} formData={formData} handleChange={handleChange} />
                     <Field label="Text Direction" field="textDirection" options={['LTR (Left to Right)', 'RTL (Right to Left)']} formData={formData} handleChange={handleChange} />
                   </div>
+                </div>
+
+                <div className="preference-toggle-row">
+                  <div>
+                    <strong>Reduce motion</strong>
+                    <span>Minimizes page, card, chart, and dialog animation while preserving feedback.</span>
+                  </div>
+                  <button type="button" className={`preference-switch${reducedMotion ? ' is-on' : ''}`} role="switch" aria-checked={reducedMotion} onClick={() => setReducedMotion(!reducedMotion)}><span /></button>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)' }}>

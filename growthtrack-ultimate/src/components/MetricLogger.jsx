@@ -3,11 +3,8 @@ import React, { useState, useRef } from 'react';
 import { X, Save, Ruler, Activity, Zap, Camera, Upload, CheckCircle } from 'lucide-react';
 import { BODY_METRICS_LIST, VITALS_METRICS_LIST, HOLISTIC_METRICS_LIST } from '../data/userData';
 import useStore from '../store/useStore';
-import { supabase } from '../lib/supabase'; // adjust path if needed
 import { useToast } from '../hooks/useToast';
 import { trackEvent } from '../lib/analytics';
-
-const PHOTO_BUCKET = 'progress-photos';
 
 export default function MetricLogger({ onClose, onSave }) {
   const toast = useToast();
@@ -16,13 +13,13 @@ export default function MetricLogger({ onClose, onSave }) {
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    weight: 63, chest: 34.1, shoulders: 42.3, waist: 32.3,
-    arms: 11.8, neck: 14.5, biceps: 11.8, hips: 34.6,
-    thighs: 20.9, calves: 13.8, headCirc: 57, d_size: 5.9, d_girth: 4.7,
-    sleep: 6, water: 2, caffeine: 3, stress: 7, hr: 75,
-    eyePower: -2.5, memoryPower: 65, stamina: 40, flexibility: 15,
-    hairHealth: 50, skinGlow: 40, sight: 60, hearing: 85,
-    smell: 80, taste: 90, touch: 85,
+    weight: '', chest: '', shoulders: '', waist: '',
+    arms: '', neck: '', biceps: '', hips: '',
+    thighs: '', calves: '', headCirc: '', d_size: '', d_girth: '',
+    sleep: '', water: '', caffeine: '', stress: '', hr: '',
+    eyePower: '', memoryPower: '', stamina: '', flexibility: '',
+    hairHealth: '', skinGlow: '', sight: '', hearing: '',
+    smell: '', taste: '', touch: '',
   });
 
   // ── Photo upload state
@@ -45,7 +42,7 @@ export default function MetricLogger({ onClose, onSave }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { toast.error('Please select an image file.'); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error('Photo must be under 10MB.'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be under 5MB.'); return; }
     setPhotoFile(file);
     setPhotoUrl(null);
     const reader = new FileReader();
@@ -53,25 +50,19 @@ export default function MetricLogger({ onClose, onSave }) {
     reader.readAsDataURL(file);
   };
 
-  // ── Upload photo to Supabase Storage
+  // Store the photo with the Metrics row in the local database. This keeps
+  // progress logging usable without a cloud storage account.
   const uploadPhoto = async () => {
     if (!photoFile) return null;
     setUploadingPhoto(true);
     try {
-      const ext  = photoFile.name.split('.').pop();
-      const path = `${formData.date}_${Date.now()}.${ext}`;
-      const { error } = await supabase.storage
-        .from(PHOTO_BUCKET)
-        .upload(path, photoFile, { upsert: false, contentType: photoFile.type });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-      const url = urlData?.publicUrl;
+      const url = photoPreview;
       setPhotoUrl(url);
-      toast.success('Photo uploaded ✓');
+      toast.success('Photo ready to save');
       return url;
     } catch (err) {
       console.error('Photo upload error', err);
-      toast.error('Photo upload failed. Saving log without photo.');
+      toast.error('Photo could not be prepared. Saving log without it.');
       return null;
     } finally {
       setUploadingPhoto(false);
@@ -96,31 +87,9 @@ export default function MetricLogger({ onClose, onSave }) {
     }
 
     try {
-      // Save metric log (existing behaviour)
-      await onSave({ ...formData });
-
-      // If we have body measurements or photo, also POST to /api/progress_entries
-      const hasBodyData = formData.weight || formData.chest || formData.waist || formData.hips || finalPhotoUrl;
-      if (hasBodyData) {
-        try {
-          await fetch('/api/progress_entries', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              date:      formData.date,
-              weight:    formData.weight    || null,
-              body_fat:  formData.body_fat  || null,
-              chest:     formData.chest     || null,
-              waist:     formData.waist     || null,
-              hips:      formData.hips      || null,
-              note:      formData.note      || null,
-              photo_url: finalPhotoUrl      || null,
-            }),
-          });
-        } catch (err) {
-          console.error('progress_entries POST error', err);
-        }
-      }
+      // One Metrics row is the source of truth for measurements, vitals,
+      // lifestyle values, notes, and the optional progress photo.
+      await onSave({ ...formData, photo_url: finalPhotoUrl || null, source: 'manual', metric: 'check_in' });
 
       // Update main user profile if weight changed
       if (formData.weight && formData.weight !== storeUser?.weight) {
@@ -149,7 +118,7 @@ export default function MetricLogger({ onClose, onSave }) {
   };
 
   return (
-    <div style={{
+    <div role="dialog" aria-modal="true" aria-labelledby="metric-logger-title" style={{
       position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
       background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: Z_INDEX.OVERLAY,
@@ -164,7 +133,7 @@ export default function MetricLogger({ onClose, onSave }) {
             <div style={{ background: 'var(--accent)', padding: '8px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Zap color="var(--bg-base)" size={20} strokeWidth={3} />
             </div>
-            <h3 className="text-display" style={{ fontSize: '1.8rem' }}>Universal Logger</h3>
+            <div><h3 id="metric-logger-title" className="text-display" style={{ fontSize: '1.6rem' }}>New progress check-in</h3><p className="text-secondary" style={{ fontSize: '.75rem', margin: '3px 0 0' }}>Only enter values you measured today.</p></div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }}>
             <X size={28} />

@@ -39,13 +39,44 @@ app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 app.use(security.headers);
 app.use(cors(security.corsOptions));
 app.use('/api/webhook/stripe', express.raw({ type: 'application/json' }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '8mb' }));
+app.use('/api', (req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) || /^\/(logs|session-logs|auth)(\/|$)/.test(req.path)) return next();
+  res.on('finish', () => {
+    if (res.statusCode < 400 && req.user?.id && !req.auditWritten) {
+      const segments = req.path.split('/').filter(Boolean);
+      void auditCrud({ action: req.method === 'POST' ? 'create' : req.method === 'DELETE' ? 'delete' : 'update', table_name: segments[0] || 'system', item_id: segments[1] || 'request', details: `${req.method} ${req.path}`, userId: req.user.id, req });
+    }
+  });
+  next();
+});
 
 app.get('/', (req, res) => {
   res.status(200).json({ service: 'GrowthTrack API', status: 'online' });
 });
 
-app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'online', service: 'GrowthTrack API' }));
+
+// Keep CRUD auditing at the API boundary so every module is covered, including
+// modules whose client-side store does not import the logger directly.
+async function auditCrud({ action, table_name, item_id, details, userId, req }) {
+  req.auditWritten = true;
+  try {
+    await prisma.auditLog.create({ data: {
+      action, table_name, item_id: item_id == null ? null : String(item_id),
+      details: typeof details === 'string' ? details : JSON.stringify(details),
+      category: 'crud', user_id: userId, actor_ip: req.ip,
+      user_agent: req.headers['user-agent'], severity: 'info'
+    }});
+  } catch (error) {
+    console.error('[CRUD Audit Error]', error);
+  }
+}
+
+function sendInternalError(res, error, context) {
+  console.error(`[${context}]`, error);
+  return res.status(500).json({ error: 'Internal server error.' });
+}
 
 // Audit Logs (Read from Winston rotating file)
 app.get('/api/logs', authMiddleware, async (req, res) => {
@@ -160,7 +191,7 @@ app.post('/api/create-checkout-session', authMiddleware, async (req, res) => {
     res.json({ url: session.url });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    sendInternalError(res, error, 'Stripe checkout');
   }
 });
 
@@ -243,6 +274,19 @@ const parseStoredJson = (value, fallback = null) => {
   if (value == null) return fallback;
   try { return JSON.parse(value); } catch { return value; }
 };
+const jsonSize = value => Buffer.byteLength(JSON.stringify(value ?? null), 'utf8');
+const PROTECTED_MUTATION_FIELDS = new Set(['id', 'userId', 'user_id', 'createdAt', 'updatedAt']);
+const stripProtectedFields = source => Object.fromEntries(Object.entries(source || {}).filter(([key]) => !PROTECTED_MUTATION_FIELDS.has(key)));
+
+const metricColumns = new Set(['date', 'metric', 'value', 'source']);
+const metricToClient = row => row ? { ...parseStoredJson(row.data, {}), ...row, data: undefined } : row;
+const metricPayload = input => {
+  const raw = { ...(input || {}) };
+  delete raw.id; delete raw.userId; delete raw.createdAt;
+  const columns = Object.fromEntries(Object.entries(raw).filter(([key]) => metricColumns.has(key)));
+  const details = Object.fromEntries(Object.entries(raw).filter(([key, value]) => !metricColumns.has(key) && value !== '' && value !== undefined));
+  return { ...columns, value: columns.value == null || columns.value === '' ? null : Number(columns.value), data: JSON.stringify(details) };
+};
 
 const ownerFieldMap = {
   avatar: 'avatar', phone: 'phone', bio: 'bio', dob: 'dateOfBirth', gender: 'gender', bloodType: 'bloodType',
@@ -299,6 +343,84 @@ app.get('/api/config', authMiddleware, async (req, res) => {
   });
 });
 
+app.put('/api/config/:key', authMiddleware, async (req, res) => {
+  const key = String(req.params.key || '').trim();
+  if (!/^[a-z][a-zA-Z0-9.-]{0,63}$/.test(key)) return res.status(400).json({ error: 'Setting key is invalid.' });
+  const rawValue = req.body?.value ?? req.body;
+  if (jsonSize(rawValue) > 512 * 1024) return res.status(413).json({ error: 'Setting value is too large.' });
+  const value = JSON.stringify(rawValue);
+  const category = ['application', 'integration', 'content'].includes(req.body?.category) ? req.body.category : 'application';
+  const setting = await prisma.appSetting.upsert({
+    where: { key }, update: { value, valueType: 'json', category },
+    create: { key, value, valueType: 'json', category },
+  });
+  await auditCrud({ action: 'update', table_name: 'app_settings', item_id: setting.id, details: `Updated ${key}`, userId: req.user.id, req });
+  res.json({ ...setting, value: parseStoredJson(setting.value, setting.value) });
+});
+
+app.get('/api/health-profile', authMiddleware, async (req, res) => {
+  const profile = await prisma.healthProfile.findUnique({ where: { userId: req.user.id } });
+  res.json(profile ? { ...profile, data: parseStoredJson(profile.data, {}) } : { data: {} });
+});
+
+app.put('/api/health-profile', authMiddleware, async (req, res) => {
+  const current = await prisma.healthProfile.findUnique({ where: { userId: req.user.id } });
+  const merged = { ...parseStoredJson(current?.data, {}), ...(req.body || {}) };
+  if (jsonSize(merged) > 1024 * 1024) return res.status(413).json({ error: 'Health profile is too large.' });
+  const profile = await prisma.healthProfile.upsert({ where: { userId: req.user.id }, update: { data: JSON.stringify(merged) }, create: { userId: req.user.id, data: JSON.stringify(merged) } });
+  await auditCrud({ action: current ? 'update' : 'create', table_name: 'health_profiles', item_id: profile.id, details: { fields: Object.keys(req.body || {}) }, userId: req.user.id, req });
+  res.json({ ...profile, data: merged });
+});
+
+app.post('/api/profile/avatar', authMiddleware, async (req, res) => {
+  const avatar = req.body?.avatar;
+  if (typeof avatar !== 'string' || !/^data:image\/(png|jpeg|webp);base64,/i.test(avatar)) return res.status(400).json({ error: 'Use a PNG, JPEG, or WebP image.' });
+  if (Buffer.byteLength(avatar, 'utf8') > 7 * 1024 * 1024) return res.status(413).json({ error: 'Profile image must be 5 MB or smaller.' });
+  const profile = await prisma.ownerProfile.upsert({ where: { userId: req.user.id }, update: { avatar }, create: { userId: req.user.id, avatar } });
+  await auditCrud({ action: 'update', table_name: 'owner_profiles', item_id: profile.id, details: 'Updated profile picture', userId: req.user.id, req });
+  res.json({ avatar });
+});
+
+app.get('/api/locations', authMiddleware, async (req, res) => {
+  res.json(await prisma.locationPoint.findMany({ where: { userId: req.user.id }, orderBy: { capturedAt: 'desc' }, take: 500 }));
+});
+
+app.post('/api/locations', authMiddleware, async (req, res) => {
+  const latitude = Number(req.body?.latitude), longitude = Number(req.body?.longitude);
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) return res.status(400).json({ error: 'Valid coordinates are required.' });
+  const requestedDate = req.body?.capturedAt ? new Date(req.body.capturedAt) : new Date();
+  if (Number.isNaN(requestedDate.getTime())) return res.status(400).json({ error: 'Capture time is invalid.' });
+  const accuracy = Number(req.body?.accuracyM);
+  const source = String(req.body?.source || 'browser').slice(0, 32);
+  const point = await prisma.locationPoint.create({ data: { userId: req.user.id, latitude, longitude, accuracyM: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null, source, capturedAt: requestedDate } });
+  await auditCrud({ action: 'create', table_name: 'location_points', item_id: point.id, details: 'Saved location timeline point', userId: req.user.id, req });
+  res.json(point);
+});
+
+app.get('/api/custom-tables', authMiddleware, async (req, res) => {
+  const rows = await prisma.customTable.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'asc' } });
+  res.json(rows.map(row => ({ ...row, fields: parseStoredJson(row.schema, []), rows: parseStoredJson(row.rows, []) })));
+});
+
+app.put('/api/custom-tables', authMiddleware, async (req, res) => {
+  const tables = Array.isArray(req.body) ? req.body : [];
+  if (tables.length > 100 || jsonSize(tables) > 2 * 1024 * 1024) return res.status(413).json({ error: 'Custom database payload is too large.' });
+  const incomingIds = tables.map(table => String(table.id)).filter(Boolean);
+  const conflicting = incomingIds.length ? await prisma.customTable.findFirst({ where: { id: { in: incomingIds }, userId: { not: req.user.id } }, select: { id: true } }) : null;
+  if (conflicting) return res.status(403).json({ error: 'A custom table identifier is not owned by this account.' });
+  await prisma.customTable.deleteMany({ where: { userId: req.user.id, ...(incomingIds.length ? { id: { notIn: incomingIds } } : {}) } });
+  const saved = [];
+  for (const table of tables) {
+    const id = String(table.id || crypto.randomUUID());
+    const fields = Array.isArray(table.fields) ? table.fields.slice(0, 100) : [];
+    const rows = Array.isArray(table.rows) ? table.rows.slice(0, 10_000) : [];
+    const data = { name: String(table.name || 'Untitled').trim().slice(0, 100) || 'Untitled', schema: JSON.stringify(fields), rows: JSON.stringify(rows) };
+    saved.push(await prisma.customTable.upsert({ where: { id }, update: data, create: { id, userId: req.user.id, ...data } }));
+  }
+  await auditCrud({ action: 'update', table_name: 'custom_tables', item_id: 'bulk', details: `Saved ${saved.length} custom tables`, userId: req.user.id, req });
+  res.json({ success: true, count: saved.length });
+});
+
 app.get('/api/preferences', authMiddleware, async (req, res) => {
   const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: {}, create: { userId: req.user.id } });
   res.json({ ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) });
@@ -345,26 +467,31 @@ app.put('/api/social-profiles', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/state', authMiddleware, async (req, res) => {
-  const [user, ownerProfile, preference, bodyProfile, socialProfiles, tasks, finance, budgets, metric_logs, nutrition_logs, workout_sessions, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions, moodLogs, vitalsLogs, medications] = await Promise.all([
+  const [user, ownerProfile, preference, bodyProfile, healthProfile, socialProfiles, tasks, finance, budgets, metric_logs, nutrition_logs, workout_sessions, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions, moodLogs, vitalsLogs, medications, customTables, configRows] = await Promise.all([
     prisma.user.findUnique({ where: { id: req.user.id } }),
     prisma.ownerProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.userPreference.findUnique({ where: { userId: req.user.id } }),
     prisma.bodyProfile.findUnique({ where: { userId: req.user.id } }),
+    prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.socialProfile.findMany({ where: { userId: req.user.id }, orderBy: { sortOrder: 'asc' } }),
-    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), prisma.note.findMany({ where: { userId: req.user.id } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }),
+    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), prisma.note.findMany({ where: { userId: req.user.id } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany(),
   ]);
+  const profileBaseline = metric_logs.find(row => row.source === 'profile' && row.metric === 'profile_baseline');
   res.json({
     user: {
       id: user.id, email: user.email, name: user.fullName, fullName: user.fullName,
       ...mapDatabaseFields(ownerProfile, ownerFieldMap),
       ...mapDatabaseFields(bodyProfile, bodyFieldMap),
+      ...parseStoredJson(profileBaseline?.data, {}),
       socialLinks: socialProfiles.map(profile => ({ id: profile.id, platform: profile.provider, url: profile.profileUrl || '' })),
       trainingPlan: parseStoredJson(user.trainingPlan), nutritionStrategy: parseStoredJson(user.nutritionStrategy), lifestyleTips: parseStoredJson(user.lifestyleTips, []),
       medicalData: parseStoredJson(user.medicalData), physiqueTargets: parseStoredJson(user.physiqueTargets), assessmentQA: parseStoredJson(user.assessmentQA, []),
       skills: parseStoredJson(user.skills, []), calendar_events: parseStoredJson(user.calendarEvents, []), wellnessData: parseStoredJson(user.wellnessData), healthExtras: parseStoredJson(user.healthExtras),
     },
     preference: preference ? { ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) } : null,
-    bodyProfile, socialProfiles, tasks, finance, budgets, metric_logs, nutrition_logs, workout_sessions, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions, moodLogs, vitalsLogs, medications,
+    bodyProfile, healthProfile: parseStoredJson(healthProfile?.data, {}), socialProfiles, tasks, finance, budgets, metric_logs: metric_logs.map(metricToClient), nutrition_logs, workout_sessions, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions, moodLogs, vitalsLogs, medications,
+    databases: customTables.map(table => ({ ...table, fields: parseStoredJson(table.schema, []), rows: parseStoredJson(table.rows, []) })),
+    config: Object.fromEntries(configRows.map(row => [row.key, parseStoredJson(row.value, row.value)])),
   });
 });
 
@@ -389,9 +516,12 @@ app.post('/api/user', authMiddleware, async (req, res) => {
       await prisma.ownerProfile.upsert({ where: { userId: req.user.id }, update: ownerData, create: { userId: req.user.id, ...ownerData } });
     }
 
-    const bodyData = mapClientFields(data, bodyFieldMap, bodyNumberFields);
-    if (Object.keys(bodyData).length) {
-      await prisma.bodyProfile.upsert({ where: { userId: req.user.id }, update: bodyData, create: { userId: req.user.id, ...bodyData } });
+    const bodyClientData = Object.fromEntries(Object.keys(bodyFieldMap).filter(key => data[key] !== undefined).map(key => [key, data[key]]));
+    if (Object.keys(bodyClientData).length) {
+      const existingBaseline = await prisma.metricLog.findFirst({ where: { userId: req.user.id, source: 'profile', metric: 'profile_baseline' }, orderBy: { createdAt: 'desc' } });
+      const payload = metricPayload({ ...parseStoredJson(existingBaseline?.data, {}), ...bodyClientData, date: new Date().toISOString().slice(0, 10), metric: 'profile_baseline', source: 'profile' });
+      if (existingBaseline) await prisma.metricLog.update({ where: { id: existingBaseline.id }, data: payload });
+      else await prisma.metricLog.create({ data: { ...payload, userId: req.user.id } });
     }
 
     if (Array.isArray(data.socialLinks)) {
@@ -407,7 +537,7 @@ app.post('/api/user', authMiddleware, async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    sendInternalError(res, error, 'User profile update');
   }
 });
 
@@ -426,7 +556,7 @@ singletons.forEach(route => {
         data: { [camelCaseField]: typeof req.body === 'object' ? JSON.stringify(req.body) : req.body }
       });
       res.json(user);
-    } catch(e) { res.status(500).json({ error: e.message }); }
+    } catch(e) { sendInternalError(res, e, `${route} update`); }
   });
   
   app.put(`/api/${route}`, authMiddleware, async (req, res) => {
@@ -437,8 +567,80 @@ singletons.forEach(route => {
         data: { [camelCaseField]: typeof req.body === 'object' ? JSON.stringify(req.body) : req.body }
       });
       res.json(user);
-    } catch(e) { res.status(500).json({ error: e.message }); }
+    } catch(e) { sendInternalError(res, e, `${route} update`); }
   });
+});
+
+// Domain endpoints that adapt specialized module payloads to the canonical
+// local tables. This keeps modules interconnected without duplicate storage.
+app.get('/api/hydration/logs', authMiddleware, async (req, res) => {
+  const rows = await prisma.metricLog.findMany({ where: { userId: req.user.id, metric: 'hydration' }, orderBy: { createdAt: 'desc' }, take: 1000 });
+  res.json(rows.map(metricToClient));
+});
+
+app.post('/api/hydration/log', authMiddleware, async (req, res) => {
+  const amount = Number(req.body?.amount);
+  if (!Number.isFinite(amount) || Math.abs(amount) > 5000) return res.status(400).json({ error: 'Hydration amount is invalid.' });
+  const at = req.body?.at ? new Date(req.body.at) : new Date();
+  if (Number.isNaN(at.getTime())) return res.status(400).json({ error: 'Hydration time is invalid.' });
+  const payload = metricPayload({ metric: 'hydration', source: 'manual', date: at.toISOString().slice(0, 10), value: amount, amount, at: at.toISOString() });
+  const row = await prisma.metricLog.create({ data: { ...payload, userId: req.user.id } });
+  await auditCrud({ action: 'create', table_name: 'metric_logs', item_id: row.id, details: 'Logged hydration', userId: req.user.id, req });
+  res.json(metricToClient(row));
+});
+
+app.get('/api/notifications', authMiddleware, async (req, res) => {
+  const rows = await prisma.auditLog.findMany({ where: { user_id: req.user.id, category: 'crud' }, orderBy: { timestamp: 'desc' }, take: 50 });
+  res.json(rows.map(row => ({ id: row.id, type: 'system', title: `${row.action || 'Updated'} ${row.table_name || 'record'}`, message: row.details || 'Local data changed.', createdAt: row.timestamp })));
+});
+
+app.post('/api/health/sync/apple', authMiddleware, (_req, res) => {
+  res.status(501).json({ error: 'Apple Health requires an approved native HealthKit connector; browser-only sync is not available.' });
+});
+
+const parseCsvRow = line => {
+  const cells = []; let value = ''; let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (char === '"' && quoted && line[index + 1] === '"') { value += '"'; index += 1; }
+    else if (char === '"') quoted = !quoted;
+    else if (char === ',' && !quoted) { cells.push(value.trim()); value = ''; }
+    else value += char;
+  }
+  cells.push(value.trim());
+  return cells;
+};
+const csvCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+
+app.post('/api/finance/import/csv', authMiddleware, async (req, res) => {
+  const content = String(req.body?.content || '');
+  if (!content || Buffer.byteLength(content, 'utf8') > 2 * 1024 * 1024) return res.status(413).json({ error: 'CSV must be between 1 byte and 2 MB.' });
+  const lines = content.replace(/^\uFEFF/, '').split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2 || lines.length > 5001) return res.status(400).json({ error: 'CSV needs a header and up to 5,000 rows.' });
+  const headers = parseCsvRow(lines[0]).map(header => header.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+  const allowed = new Set(['amount', 'type', 'category', 'method', 'date', 'note']);
+  const rows = lines.slice(1).map(parseCsvRow).map(cells => Object.fromEntries(headers.map((header, index) => [header, cells[index]]).filter(([header]) => allowed.has(header)))).map(row => ({
+    userId: req.user.id,
+    amount: Number.isFinite(Number(row.amount)) ? Number(row.amount) : null,
+    type: row.type || null, category: row.category || null, method: row.method || null, date: row.date || null, note: row.note || null,
+  })).filter(row => row.amount != null);
+  if (!rows.length) return res.status(400).json({ error: 'No valid transaction rows were found.' });
+  await prisma.transaction.createMany({ data: rows });
+  await auditCrud({ action: 'create', table_name: 'finance', item_id: 'csv-import', details: `Imported ${rows.length} transactions`, userId: req.user.id, req });
+  res.json({ imported: rows.length });
+});
+
+app.get('/api/finance/export', authMiddleware, async (req, res) => {
+  const rows = await prisma.transaction.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } });
+  const headers = ['amount', 'type', 'category', 'method', 'date', 'note'];
+  const csv = [headers.join(','), ...rows.map(row => headers.map(header => csvCell(row[header])).join(','))].join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="growthtrack-finance.csv"');
+  res.send(csv);
+});
+
+app.post('/api/finance/sync/bank', authMiddleware, (_req, res) => {
+  res.status(501).json({ error: 'Bank sync needs an approved provider connection. CSV import is available now.' });
 });
 
 // Dynamic CRUD endpoints for collections
@@ -468,14 +670,15 @@ collections.forEach(({ name, model }) => {
   app.get(`/api/${name}`, authMiddleware, async (req, res) => {
     try {
       const items = await model.findMany({ where: { userId: req.user.id } });
-      res.json(items);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+      res.json(name === 'metric_logs' ? items.map(metricToClient) : items);
+    } catch (e) { sendInternalError(res, e, `${name} list`); }
   });
 
   // POST create new
   app.post(`/api/${name}`, authMiddleware, async (req, res) => {
     try {
-      const { id, ...data } = req.body;
+      const { id, ...rawData } = req.body;
+      const data = name === 'metric_logs' ? metricPayload(rawData) : stripProtectedFields(rawData);
       
       // Clean up relations or arrays that might be in the payload
       Object.keys(data).forEach(k => {
@@ -487,14 +690,21 @@ collections.forEach(({ name, model }) => {
       const item = await model.create({
         data: { ...data, userId: req.user.id, id: id || undefined }
       });
-      res.json(item);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+      await auditCrud({ action: 'create', table_name: name, item_id: item.id, details: `Created ${name} record`, userId: req.user.id, req });
+      res.json(name === 'metric_logs' ? metricToClient(item) : item);
+    } catch (e) { sendInternalError(res, e, `${name} create`); }
   });
 
-  // PUT update
-  app.put(`/api/${name}/:id`, authMiddleware, async (req, res) => {
+  // PUT/PATCH update. Both methods use the same ownership and field guards so
+  // module clients cannot accidentally bypass persistence or reassign records.
+  const updateItem = async (req, res) => {
     try {
-      const data = { ...req.body };
+      let data = stripProtectedFields(req.body);
+      if (name === 'metric_logs') {
+        const current = await model.findFirst({ where: { id: req.params.id, userId: req.user.id } });
+        if (!current) return res.status(404).json({ error: 'Record not found.' });
+        data = metricPayload({ ...parseStoredJson(current?.data, {}), ...req.body });
+      }
       Object.keys(data).forEach(k => {
         if (typeof data[k] === 'object' && data[k] !== null) {
           data[k] = JSON.stringify(data[k]);
@@ -505,9 +715,13 @@ collections.forEach(({ name, model }) => {
         where: { id: req.params.id, userId: req.user.id },
         data
       });
+      if (!item.count) return res.status(404).json({ error: 'Record not found.' });
+      await auditCrud({ action: 'update', table_name: name, item_id: req.params.id, details: { fields: Object.keys(req.body) }, userId: req.user.id, req });
       res.json({ success: true, count: item.count });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-  });
+    } catch (e) { sendInternalError(res, e, `${name} update`); }
+  };
+  app.put(`/api/${name}/:id`, authMiddleware, updateItem);
+  app.patch(`/api/${name}/:id`, authMiddleware, updateItem);
 
   // DELETE 
   app.delete(`/api/${name}/:id`, authMiddleware, async (req, res) => {
@@ -515,9 +729,36 @@ collections.forEach(({ name, model }) => {
       const item = await model.deleteMany({
         where: { id: req.params.id, userId: req.user.id }
       });
+      if (!item.count) return res.status(404).json({ error: 'Record not found.' });
+      await auditCrud({ action: 'delete', table_name: name, item_id: req.params.id, details: `Deleted ${name} record`, userId: req.user.id, req });
       res.json({ success: true, count: item.count });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { sendInternalError(res, e, `${name} delete`); }
   });
+});
+
+app.get('/api/database/tables', authMiddleware, async (req, res) => {
+  const userTables = await Promise.all(collections.map(async ({ name, model }) => {
+    const [count, rows] = await Promise.all([
+      model.count({ where: { userId: req.user.id } }),
+      model.findMany({ where: { userId: req.user.id }, take: 10, orderBy: { createdAt: 'desc' } }),
+    ]);
+    return { name, count, rows: name === 'metric_logs' ? rows.map(metricToClient) : rows };
+  }));
+  const [healthProfile, ownerProfile, locations, settings, providers] = await Promise.all([
+    prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
+    prisma.ownerProfile.findUnique({ where: { userId: req.user.id } }),
+    prisma.locationPoint.findMany({ where: { userId: req.user.id }, take: 10, orderBy: { capturedAt: 'desc' } }),
+    prisma.appSetting.findMany({ orderBy: { key: 'asc' } }),
+    prisma.integrationProvider.findMany({ orderBy: { sortOrder: 'asc' } }),
+  ]);
+  res.json([
+    ...userTables,
+    { name: 'health_profiles', count: healthProfile ? 1 : 0, rows: healthProfile ? [{ ...healthProfile, data: parseStoredJson(healthProfile.data, {}) }] : [] },
+    { name: 'owner_profiles', count: ownerProfile ? 1 : 0, rows: ownerProfile ? [ownerProfile] : [] },
+    { name: 'location_points', count: await prisma.locationPoint.count({ where: { userId: req.user.id } }), rows: locations },
+    { name: 'app_settings', count: settings.length, rows: settings.map(row => ({ ...row, value: parseStoredJson(row.value, row.value) })) },
+    { name: 'integration_providers', count: providers.length, rows: providers },
+  ]);
 });
 
 // Nested entities overrides
@@ -536,7 +777,7 @@ app.post('/api/workout_sessions/:id/exercises', authMiddleware, async (req, res)
        data: { ...data, sessionId: req.params.id }
     });
     res.json(item);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { sendInternalError(res, e, 'Workout exercise create'); }
 });
 
 app.get('/api/workout_sessions/:id/exercises', authMiddleware, async (req, res) => {
@@ -545,7 +786,7 @@ app.get('/api/workout_sessions/:id/exercises', authMiddleware, async (req, res) 
     if (!session) return res.status(404).json({ error: 'Workout session not found.' });
     const items = await prisma.workoutExercise.findMany({ where: { sessionId: req.params.id } });
     res.json(items);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { sendInternalError(res, e, 'Workout exercise list'); }
 });
 
 app.post('/api/habit_logs', authMiddleware, async (req, res) => {
@@ -563,7 +804,7 @@ app.post('/api/habit_logs', authMiddleware, async (req, res) => {
        const log = await prisma.habitLog.create({ data: { habitId, date } });
        res.json(log);
     }
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { sendInternalError(res, e, 'Habit log create'); }
 });
 
 app.get('/api/habit_logs/:habitId', authMiddleware, async (req, res) => {
@@ -572,7 +813,7 @@ app.get('/api/habit_logs/:habitId', authMiddleware, async (req, res) => {
     if (!habit) return res.status(404).json({ error: 'Habit not found.' });
     const items = await prisma.habitLog.findMany({ where: { habitId: req.params.habitId } });
     res.json(items);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) { sendInternalError(res, e, 'Habit log list'); }
 });
 
 app.listen(PORT, () => {

@@ -1,35 +1,32 @@
 import { Z_INDEX } from '../constants';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, Ear, Wind, Fingerprint, Brain, Activity, ClipboardList, Target, Smile, Heart, Sparkles, Droplets, X, Battery, Plus, Trash2 } from 'lucide-react';
+import useStore from '../store/useStore';
+
+const SENSE_ICONS = { vision: Eye, hearing: Ear, smell: Wind, taste: Activity, touch: Fingerprint };
+const SPECIAL_ICONS = [Target, Droplets, Sparkles];
 
 export default function HealthExtras() {
-  const [senses, setSenses] = useState({
-    vision: { level: 85, note: 'Slight strain after long work', exercises: ['Palming', 'Focus Shifting'], color: '#3b82f6', icon: Eye, currentPower: '-2.5 D', targetPower: '0.0 D (20/20)', path: 'Laser correction, extended outdoor focus, and targeted ocular exercises.' },
-    hearing: { level: 90, note: 'Normal acoustic range', exercises: ['Sound Localization'], color: '#8b5cf6', icon: Ear, currentPower: '15 dB HL', targetPower: '0 dB HL', path: 'Acoustic therapy & strictly avoiding high-decibel environments.' },
-    smell: { level: 95, note: 'Highly sensitive olfactory', exercises: ['Scent Identification'], color: '#10b981', icon: Wind, currentPower: 'Tier 2 (High)', targetPower: 'Tier 1 (Sommelier)', path: 'Daily essential oil scent discrimination training.' },
-    taste: { level: 90, note: 'Clear palate', exercises: ['Mindful Eating'], color: '#f59e0b', icon: Activity, currentPower: 'High Sensitivity', targetPower: 'Peak Sensitivity', path: 'Zinc supplementation, regular fasting, & daily tongue scraping.' },
-    touch: { level: 88, note: 'Responsive tactile feedback', exercises: ['Texture Discrimination'], color: '#ef4444', icon: Fingerprint, currentPower: '88% Acuity', targetPower: '95% Acuity', path: 'Tactile discrimination exercises & improved hydration.' }
-  });
+  const healthProfile = useStore(s => s.healthProfile || {});
+  const healthTemplate = useStore(s => s.appConfig?.healthTemplates || {});
+  const updateHealth = useStore(s => s.updateHealthExtras);
+  const [senses, setSenses] = useState({});
 
   const [activeSense, setActiveSense] = useState(null);
 
-  const [lifestyle, setLifestyle] = useState({
-    posture: 'Optimized',
-    diets: ['Keto-friendly', 'Intermittent Fasting (16:8)'],
-    hobbies: ['Chess', 'Acoustic Guitar', 'Macro Photography'],
-    broncoTest: 'Level 12.4'
-  });
+  const [lifestyle, setLifestyle] = useState({ posture: '', diets: [], hobbies: [], broncoTest: '' });
+  const [specialized, setSpecialized] = useState([]);
+  const [recoveryMetrics, setRecoveryMetrics] = useState([]);
 
-  const [specialized, setSpecialized] = useState([
-    { name: 'Gut Biome', score: 78, note: 'Balanced', icon: Target, color: '#10b981' },
-    { name: 'Dermatology', score: 82, note: 'Hydrated', icon: Droplets, color: '#3b82f6' },
-    { name: 'Hair Vitality', score: 85, note: 'Voluminous', icon: Sparkles, color: '#8b5cf6' }
-  ]);
+  useEffect(() => {
+    const source = { ...healthTemplate, ...healthProfile };
+    setSenses(Object.fromEntries(Object.entries(source.senses || {}).map(([key, value]) => [key, { ...value, icon: SENSE_ICONS[key] || Activity }])));
+    setLifestyle(source.lifestyle || { posture: '', diets: [], hobbies: [], broncoTest: '' });
+    setSpecialized((source.specialized || []).map((item, index) => ({ ...item, icon: SPECIAL_ICONS[index % SPECIAL_ICONS.length] })));
+    setRecoveryMetrics(source.recoveryMetrics || []);
+  }, [healthProfile, healthTemplate]);
 
-  const [recoveryMetrics, setRecoveryMetrics] = useState([
-    { id: 1, name: 'HRV', value: '65 ms', status: 'Optimal' },
-    { id: 2, name: 'Resting HR', value: '54 bpm', status: 'Optimal' }
-  ]);
+  const saveRecovery = next => { setRecoveryMetrics(next); updateHealth({ recoveryMetrics: next }); };
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
@@ -40,6 +37,10 @@ export default function HealthExtras() {
           <p className="text-secondary" style={{ maxWidth: '600px' }}>Deep bio-metric analysis of your five senses, specialized organ health, and comprehensive lifestyle markers.</p>
         </div>
       </div>
+
+      {!Object.keys(senses).length && !specialized.length && !recoveryMetrics.length && (
+        <div className="glass-card health-empty-state"><Heart size={28} color="var(--accent)" /><div><h3>No fabricated health data</h3><p className="text-secondary">Add recovery metrics below or connect a health source. Saved values will appear from the local Health table.</p></div></div>
+      )}
 
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
         
@@ -182,7 +183,7 @@ export default function HealthExtras() {
                 <p className="label-caps" style={{ fontSize: '0.65rem' }}>System Readiness</p>
               </div>
             </div>
-            <button className="btn-sm" onClick={() => setRecoveryMetrics([...recoveryMetrics, { id: Date.now(), name: 'New Metric', value: '0', status: 'Pending' }])}>
+            <button className="btn-sm" onClick={() => saveRecovery([...recoveryMetrics, { id: crypto.randomUUID(), name: '', value: '', status: 'Pending' }])}>
               <Plus size={14} /> Add Metric
             </button>
           </div>
@@ -190,10 +191,10 @@ export default function HealthExtras() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
             {recoveryMetrics.map(metric => (
               <div key={metric.id} style={{ padding: '1.25rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <input className="form-input" value={metric.name} onChange={e => setRecoveryMetrics(prev => prev.map(m => m.id === metric.id ? { ...m, name: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-1)' }} />
+                <input className="form-input" value={metric.name} placeholder="Metric name" onChange={e => saveRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, name: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-1)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <input className="form-input" value={metric.value} onChange={e => setRecoveryMetrics(prev => prev.map(m => m.id === metric.id ? { ...m, value: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--accent)', width: '60%' }} />
-                  <select value={metric.status} onChange={e => setRecoveryMetrics(prev => prev.map(m => m.id === metric.id ? { ...m, status: e.target.value } : m))} style={{ background: 'var(--bg-dark)', border: '1px solid var(--border)', color: 'var(--text-2)', fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px' }}>
+                  <input className="form-input" value={metric.value} placeholder="Value" onChange={e => saveRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, value: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--accent)', width: '60%' }} />
+                  <select className="form-input" value={metric.status} onChange={e => saveRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, status: e.target.value } : m))}>
                     <option value="Optimal">Optimal</option>
                     <option value="Warning">Warning</option>
                     <option value="Critical">Critical</option>
@@ -201,7 +202,7 @@ export default function HealthExtras() {
                   </select>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                  <button className="btn-icon" onClick={() => setRecoveryMetrics(prev => prev.filter(m => m.id !== metric.id))} style={{ color: 'var(--danger)', padding: '4px' }}><Trash2 size={14} /></button>
+                  <button className="btn-icon" onClick={() => saveRecovery(recoveryMetrics.filter(m => m.id !== metric.id))} style={{ color: 'var(--danger)', padding: '4px' }}><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}

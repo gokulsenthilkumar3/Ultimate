@@ -2,30 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Cloud, Sun, Droplets, Wind, Eye, Thermometer, Newspaper, RefreshCw, MapPin, AlertTriangle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-
-const WMO_CODES = {
-  0: { label: 'Clear sky',       icon: '☀️' },
-  1: { label: 'Mainly clear',    icon: '🌤️' },
-  2: { label: 'Partly cloudy',   icon: '⛅' },
-  3: { label: 'Overcast',        icon: '☁️' },
-  45: { label: 'Foggy',          icon: '🌫️' },
-  48: { label: 'Icy fog',        icon: '🌫️' },
-  51: { label: 'Light drizzle',  icon: '🌦️' },
-  53: { label: 'Drizzle',        icon: '🌦️' },
-  55: { label: 'Heavy drizzle',  icon: '🌧️' },
-  61: { label: 'Light rain',     icon: '🌧️' },
-  63: { label: 'Rain',           icon: '🌧️' },
-  65: { label: 'Heavy rain',     icon: '🌧️' },
-  71: { label: 'Light snow',     icon: '🌨️' },
-  73: { label: 'Snow',           icon: '🌨️' },
-  75: { label: 'Heavy snow',     icon: '❄️' },
-  80: { label: 'Showers',        icon: '🌦️' },
-  81: { label: 'Rain showers',   icon: '🌧️' },
-  82: { label: 'Violent showers',icon: '⛈️' },
-  95: { label: 'Thunderstorm',   icon: '⛈️' },
-  96: { label: 'Thunderstorm',   icon: '⛈️' },
-  99: { label: 'Thunderstorm',   icon: '⛈️' },
-};
+import useStore from '../store/useStore';
 
 // Time-of-day gradient based on current hour
 function getTimeGradient(hour) {
@@ -38,11 +15,6 @@ function getTimeGradient(hour) {
   return { from: '#030712',  to: '#1e1b4b', label: 'Late Night', emoji: '🌙' };
 }
 
-const NEWS_CATS = ['tech', 'science', 'world', 'finance', 'health'];
-const NEWS_SOURCES = [
-  { label: 'HN Top',      url: 'https://hacker-news.firebaseio.com/v0/topstories.json' },
-];
-
 function timeAgo(ms) {
   if (!ms) return '';
   const s = Math.floor((Date.now() - ms) / 1000);
@@ -53,6 +25,9 @@ function timeAgo(ms) {
 
 export default function Current() {
   const toast = useToast();
+  const sources = useStore(s => s.appConfig?.currentSources || {});
+  const weatherCodes = sources.weatherCodes || {};
+  const newsSource = (sources.newsSources || []).find(source => source.enabled !== false);
 
   const [lastUpdated,  setLastUpdated]  = useState(null);
 
@@ -65,15 +40,15 @@ export default function Current() {
     queryKey: ['location'],
     queryFn: () => new Promise((resolve) => {
       if (!navigator.geolocation) {
-        toast.info('Using default location (London). Enable location for accurate weather.');
-        resolve({ lat: 51.5074, lon: -0.1278, default: true });
+        toast.info('Enable location to load local weather.');
+        resolve(null);
         return;
       }
       navigator.geolocation.getCurrentPosition(
         pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, default: false }),
         () => {
-          toast.info('Using default location (London). Enable location for accurate weather.');
-          resolve({ lat: 51.5074, lon: -0.1278, default: true });
+          toast.info('Enable location to load local weather.');
+          resolve(null);
         }
       );
     }),
@@ -89,7 +64,8 @@ export default function Current() {
         'apparent_temperature', 'visibility', 'precipitation_probability',
         'uv_index', 'is_day',
       ].join(',');
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&current_weather=true&current=${params}&hourly=temperature_2m&timezone=auto&forecast_days=1`;
+      if (!sources.weatherUrl) throw new Error('Weather source is not configured');
+      const url = `${sources.weatherUrl}?latitude=${location.lat}&longitude=${location.lon}&current_weather=true&current=${params}&hourly=temperature_2m&timezone=auto&forecast_days=1`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Weather fetch failed');
       const data = await res.json();
@@ -103,7 +79,6 @@ export default function Current() {
     queryKey: ['reverse-geo', location?.lat, location?.lon],
     enabled: !!location,
     queryFn: async () => {
-      if (location.default) return 'London (default)';
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.lon}&format=json`);
         const data = await res.json();
@@ -118,16 +93,17 @@ export default function Current() {
 
   // ── News ──────────────────────────────────────────────────────────────
   const { data: news = [], isLoading: newsLoading, refetch: fetchNews } = useQuery({
-    queryKey: ['hackernews'],
+    queryKey: ['news', newsSource?.url],
+    enabled: Boolean(newsSource?.url),
     queryFn: async () => {
-      const ids = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json').then(r => r.json());
+      const ids = await fetch(newsSource.url).then(r => r.json());
       const top = ids.slice(0, 12);
       const stories = await Promise.all(top.map(id =>
         fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json())
       ));
       return stories.filter(s => s && s.title).map(s => ({
         id: s.id, title: s.title, url: s.url, score: s.score, comments: s.descendants || 0,
-        by: s.by, time: s.time ? s.time * 1000 : null, source: 'Hacker News',
+        by: s.by, time: s.time ? s.time * 1000 : null, source: newsSource.label,
       }));
     },
     staleTime: 1000 * 60 * 10, // 10 minutes
@@ -135,7 +111,8 @@ export default function Current() {
 
   // ── Derived weather values ──────────────────────────────────────────────
   const cur = weather?.current;
-  const wmo = WMO_CODES[cur?.weathercode] || { label: 'Unknown', icon: '🌡️' };
+  const configuredWmo = weatherCodes[String(cur?.weathercode)];
+  const wmo = configuredWmo ? { label: configuredWmo[0], icon: configuredWmo[1] } : { label: 'Unknown', icon: '🌡️' };
 
   const weatherCards = cur ? [
     { label: 'Feels Like',  val: `${Math.round(cur.apparent_temperature)}°C`, icon: <Thermometer size={16} color="#f43f5e" /> },
@@ -246,7 +223,7 @@ export default function Current() {
       <div className="glass-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <Newspaper size={16} color="var(--accent)" />
-          <span className="card-title" style={{ margin: 0 }}>Hacker News — Top Stories</span>
+          <span className="card-title" style={{ margin: 0 }}>{newsSource?.label || 'News'} — Top Stories</span>
           {newsLoading && <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginLeft: 'auto' }}>Loading…</span>}
         </div>
 

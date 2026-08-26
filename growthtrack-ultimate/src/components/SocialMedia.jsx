@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Globe, Link2, ExternalLink, Save, Copy, Check, Trash2,
   TrendingUp, Users, Heart, Eye, BarChart2, Activity
@@ -53,11 +53,6 @@ function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatf
   const er = analyticsData
     ? calcEngagementRate(analyticsData.followers, analyticsData.avgLikes)
     : null;
-
-  const erColor = er === null ? 'var(--text-3)'
-    : parseFloat(er) >= 3 ? '#22c55e'
-    : parseFloat(er) >= 1 ? '#f59e0b'
-    : '#ef4444';
 
   return (
     <div className="platform-analytics-card" style={{ border: `1px solid ${isLinked ? cfg.border : 'var(--border)'}`, background: isLinked ? cfg.bg : undefined }}>
@@ -149,26 +144,19 @@ function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatf
 // ── Main SocialMedia Component ─────────────────────────────────────────────────
 export default function SocialMedia() {
   const user = useStore(state => state.user);
+  const socialProfiles = useStore(state => state.socialProfiles || []);
   const fetchInitialData = useStore(state => state.fetchInitialData);
-  const [socialData, setSocialData] = useState({});
-  const [analyticsData, setAnalyticsData] = useState({}); // { platform: { followers, avgLikes, avgViews } }
+  const [socialData, setSocialData] = useState(() => socialProfiles.length
+    ? Object.fromEntries(socialProfiles.map(profile => [profile.provider, profile.profileUrl || '']))
+    : user?.socialMedia || { LinkedIn: '', Instagram: '', Twitter: '', Threads: '', WhatsApp: '', GitHub: '', YouTube: '' });
+  const [analyticsData, setAnalyticsData] = useState(() => socialProfiles.length
+    ? Object.fromEntries(socialProfiles.map(profile => [profile.provider, { followers: profile.followers || 0, avgLikes: profile.avgLikes || 0, avgViews: profile.avgViews || 0 }]))
+    : user?.socialAnalytics || {}); // { platform: { followers, avgLikes, avgViews } }
   const [isSaving, setIsSaving] = useState(false);
   const [newPlatform, setNewPlatform] = useState('');
   const [copiedPlatform, setCopiedPlatform] = useState(null);
   const [activeTab, setActiveTab] = useState('profiles');
   const toast = useToast();
-
-  useEffect(() => {
-    if (user?.socialMedia) {
-      setSocialData(user.socialMedia);
-    } else {
-      setSocialData({ LinkedIn: '', Instagram: '', Twitter: '', Threads: '', WhatsApp: '', GitHub: '', YouTube: '' });
-    }
-    // Load any saved analytics data
-    if (user?.socialAnalytics) {
-      setAnalyticsData(user.socialAnalytics);
-    }
-  }, [user]);
 
   const validateUrls = () => {
     for (const [platform, link] of Object.entries(socialData)) {
@@ -187,7 +175,10 @@ export default function SocialMedia() {
     if (invalid) { toast.error(`Invalid URL for ${invalid}.`); return; }
     setIsSaving(true);
     try {
-      await apiSync('/user_profile', 'PUT', { ...user, socialMedia: socialData, socialAnalytics: analyticsData });
+      const rows = Object.entries(socialData).map(([provider, profileUrl]) => ({
+        provider, profileUrl, ...(analyticsData[provider] || {}), enabled: Boolean(profileUrl),
+      }));
+      await apiSync('/social-profiles', 'PUT', rows);
       toast.success('Social graph synchronized.');
       fetchInitialData();
     } catch { toast.error('Failed to sync social media data.'); }

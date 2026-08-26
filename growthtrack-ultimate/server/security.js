@@ -6,6 +6,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const SESSION_HOURS = Number(process.env.SESSION_HOURS || 12);
 const LOGIN_WINDOW_MS = Number(process.env.LOGIN_WINDOW_MS || 15 * 60 * 1000);
 const LOGIN_MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS || 5);
+const SESSION_TOUCH_MS = Number(process.env.SESSION_TOUCH_MS || 5 * 60 * 1000);
 
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 const randomToken = () => crypto.randomBytes(48).toString('base64url');
@@ -105,9 +106,16 @@ export function createSecurity({ prisma, logToFile }) {
     }
     req.user = session.user;
     req.authSession = session;
-    await prisma.authSession.update({ where: { id: session.id }, data: { lastSeenAt: new Date() } });
+    // Avoid a SQLite write on every API read. A five-minute activity heartbeat
+    // is enough to observe session use without amplifying dashboard traffic.
+    if (Date.now() - session.lastSeenAt.getTime() >= SESSION_TOUCH_MS) {
+      await prisma.authSession.update({ where: { id: session.id }, data: { lastSeenAt: new Date() } });
+    }
     res.on('finish', () => {
-      prisma.auditLog.create({ data: { action: `${req.method} ${req.path}`, table_name: 'http_request', item_id: session.id, details: JSON.stringify({ status: res.statusCode, queryKeys: Object.keys(req.query || {}) }), actor_name: session.user.fullName, actor_email: session.user.email, actor_ip: req.ip, category: 'request', user_id: session.user.id, user_agent: req.headers['user-agent'], severity: res.statusCode >= 400 ? 'warning' : 'info' } }).catch(() => {});
+      // Successful mutations are recorded by the CRUD audit service. Keep a
+      // request-level record only for failures so routine reads do not flood
+      // the local database or duplicate mutation logs.
+      if (res.statusCode >= 400) prisma.auditLog.create({ data: { action: `${req.method} ${req.path}`, table_name: 'http_request', item_id: session.id, details: JSON.stringify({ status: res.statusCode, queryKeys: Object.keys(req.query || {}) }), actor_name: session.user.fullName, actor_email: session.user.email, actor_ip: req.ip, category: 'request', user_id: session.user.id, user_agent: req.headers['user-agent'], severity: 'warning' } }).catch(() => {});
     });
     next();
   };

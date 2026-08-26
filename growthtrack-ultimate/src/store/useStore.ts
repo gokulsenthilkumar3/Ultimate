@@ -28,6 +28,7 @@ const useStore = create<any>()(
       navigationOrder: ['today', 'body', 'wellness', 'insights', 'work', 'money', 'life', 'system'],
       navigationTabOrder: {},
       sidebarCollapsed: false,
+      reducedMotion: false,
 
       togglePinnedTab: (tabId: string) => {
         set((state: any) => {
@@ -42,6 +43,7 @@ const useStore = create<any>()(
       setNavigationOrder: (navigationOrder: string[]) => { set({ navigationOrder }); apiSync('/preferences', 'PUT', { navigationOrder }); },
       setNavigationTabOrder: (navigationTabOrder: Record<string, string[]>) => { set({ navigationTabOrder }); apiSync('/preferences', 'PUT', { navigationTabOrder }); },
       setSidebarCollapsed: (sidebarCollapsed: boolean) => { set({ sidebarCollapsed }); apiSync('/preferences', 'PUT', { sidebarCollapsed }); },
+      setReducedMotion: (reducedMotion: boolean) => { set({ reducedMotion }); apiSync('/preferences', 'PUT', { reducedMotion }); },
       isLoading: false,
       serverStatus: 'unknown',
       onboardingComplete: false,
@@ -52,6 +54,8 @@ const useStore = create<any>()(
       skills: [],
       calendar_events: [],
       databases: [],
+      appConfig: {},
+      healthProfile: {},
 
       shopping: { items: [] },
       entertainment: { media: [] },
@@ -137,9 +141,11 @@ const useStore = create<any>()(
             user: { ...(stored.user || {}), tasks: { pending, completed } },
             theme: preference.theme || 'dark', palette: preference.palette || 'gold',
             sidebarCollapsed: Boolean(preference.sidebarCollapsed), onboardingComplete: Boolean(preference.onboardingComplete),
+            reducedMotion: Boolean(preference.reducedMotion),
             navigationOrder: preference.navigationOrder?.length ? preference.navigationOrder : get().navigationOrder,
             navigationTabOrder: preference.navigationTabOrder || {},
             bodyProfile: stored.bodyProfile || null, socialProfiles: stored.socialProfiles || [],
+            healthProfile: stored.healthProfile || {}, appConfig: stored.config || {}, databases: stored.databases || [],
             finance: { ...(get().finance || {}), transactions: Object.fromEntries((stored.finance || []).map((item: any) => [item.id, item])), budgets: stored.budgets || [] },
             shopping: { items: stored.shopping || [] }, entertainment: { media: stored.entertainment || [] },
             timesheetEntries: stored.timesheet || [], sleep_logs: stored.sleep_logs || [], nutrition_logs: stored.nutrition_logs || [],
@@ -447,7 +453,7 @@ const useStore = create<any>()(
       updateAssessmentQA: async (data: any) => { set({ assessmentQA: data }); apiSync('/assessment_qa', 'POST', data); },
       updateSkills: async (data: any) => { set({ skills: data }); apiSync('/skills', 'POST', data); },
       updateCalendarEvents: async (data: any) => { set({ calendar_events: data }); apiSync('/calendar_events', 'POST', data); },
-      setDatabases: (data: any[]) => set({ databases: data }),
+      setDatabases: (data: any[]) => { set({ databases: data }); apiSync('/custom-tables', 'PUT', data); },
       updateWellnessData: async (data: any) => { set({ wellnessData: data }); apiSync('/wellness_data', 'POST', data); },
 
       addMoodLog: async (log: any) => {
@@ -482,7 +488,7 @@ const useStore = create<any>()(
       version: 4,
       // Persist every user-owned data domain. The previous whitelist only
       // saved a handful of modules, so a restart looked like a data reset.
-      partialize: (state: any) => ({ theme: state.theme, palette: state.palette, activeTab: state.activeTab, navigationOrder: state.navigationOrder, navigationTabOrder: state.navigationTabOrder, sidebarCollapsed: state.sidebarCollapsed }),
+      partialize: (state: any) => ({ theme: state.theme, palette: state.palette, activeTab: state.activeTab, navigationOrder: state.navigationOrder, navigationTabOrder: state.navigationTabOrder, sidebarCollapsed: state.sidebarCollapsed, reducedMotion: state.reducedMotion }),
       migrate: (persistedState: any, version) => {
         try {
           if (version < 4) {

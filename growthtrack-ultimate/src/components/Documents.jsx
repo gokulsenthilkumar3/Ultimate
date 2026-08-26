@@ -156,6 +156,7 @@ function UploadModal({ onUpload, onClose }) {
 
 // ── Main Documents Component ────────────────────────────────────────────────────
 export default function Documents() {
+  const documentProviders = useStore(s => s.appConfig?.documentProviders || []);
   const documents = useStore(selectDocuments);
   const addDocument = useStore(selectAddDocument);
   const deleteDocument = useStore(selectDeleteDocument);
@@ -283,9 +284,9 @@ export default function Documents() {
           <p className="text-secondary">{(documents || []).length} items synced · {storagePercent}% storage used</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {[['Google Drive', '🌐'], ['OneDrive', '☁️']].map(([provider, emoji]) => (
-            <button key={provider} className={`btn-${syncedProviders.includes(provider) ? 'primary' : 'ghost'}`} onClick={() => toggleSync(provider)} title={`Sync ${provider}`}>
-              <Cloud size={16} /> {syncedProviders.includes(provider) ? `${emoji} Linked` : `Link ${provider.split(' ')[0]}`}
+          {documentProviders.filter(item => item.enabled !== false).map(item => (
+            <button key={item.id} className={`btn-${syncedProviders.includes(item.label) ? 'primary' : 'ghost'}`} onClick={() => toggleSync(item.label)} title={`Sync ${item.label}`}>
+              <Cloud size={16} /> {syncedProviders.includes(item.label) ? 'Linked' : `Link ${item.label}`}
             </button>
           ))}
           <div style={{ width: 1, background: 'var(--border)', margin: '0 4px' }} />

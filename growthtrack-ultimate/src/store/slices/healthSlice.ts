@@ -5,8 +5,8 @@ import { MetricLog } from '../../schemas';
 export interface HealthSlice {
   metric_logs: MetricLog[];
   nutrition_logs: any[];
-  saveMetricLog: (log: Partial<MetricLog>) => Promise<void>;
-  addMetricLog: (log: Partial<MetricLog>) => Promise<void>;
+  saveMetricLog: (log: Partial<MetricLog>) => Promise<any>;
+  addMetricLog: (log: Partial<MetricLog>) => Promise<any>;
   addNutritionLog: (log: any) => Promise<void>;
   deleteNutritionLog: (id: string) => void;
   updateNutritionLog: (id: string, updates: any) => void;
@@ -19,11 +19,13 @@ export const createHealthSlice: StateCreator<any, [], [], HealthSlice> = (set) =
 
   saveMetricLog: async (log) => {
     const res = await apiSync('/metric_logs', 'POST', log);
-    set((state: any) => ({ metric_logs: [{ ...log, id: res?.id ?? Date.now().toString() }, ...state.metric_logs] }));
+    set((state: any) => ({ metric_logs: [{ ...log, ...res, id: res?.id ?? Date.now().toString() }, ...state.metric_logs] }));
+    return res;
   },
   addMetricLog: async (log) => {
     const res = await apiSync('/metric_logs', 'POST', log);
-    set((state: any) => ({ metric_logs: [{ ...log, id: res?.id ?? Date.now().toString() }, ...state.metric_logs] }));
+    set((state: any) => ({ metric_logs: [{ ...log, ...res, id: res?.id ?? Date.now().toString() }, ...state.metric_logs] }));
+    return res;
   },
 
   addNutritionLog: async (log) => {
@@ -42,7 +44,7 @@ export const createHealthSlice: StateCreator<any, [], [], HealthSlice> = (set) =
   },
 
   updateHealthExtras: async (data) => {
-    set((state: any) => ({ health_extras: { ...(state.health_extras || {}), ...data } }));
-    await apiSync('/health_extras', 'PUT', data);
+    set((state: any) => ({ healthProfile: { ...(state.healthProfile || {}), ...data } }));
+    await apiSync('/health-profile', 'PUT', data);
   },
 });
