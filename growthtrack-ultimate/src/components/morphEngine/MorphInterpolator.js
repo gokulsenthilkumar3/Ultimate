@@ -12,7 +12,8 @@
  *
  * Design:
  *   MorphInterpolator is a plain JS class (not a React hook) so it can
- *   live inside a useRef and be called from useFrame without re-renders.
+ *   live inside a stable hook-owned instance and be called from useFrame
+ *   without re-renders.
  *   The React hook `useMorphInterpolator` wraps it for component use.
  *
  * cubic-bezier(0.16, 1, 0.3, 1) is an "expo-out" curve:
@@ -21,8 +22,9 @@
  *   - Used for slider drag → model morph response
  */
 
-import { useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { MORPH_TARGET_NAMES }  from "./constants";
+import { constrainMorphWeights } from "./morphMath";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CUBIC BEZIER SOLVER
@@ -155,10 +157,11 @@ export class MorphInterpolator {
    * @param {Object} weights - { [morphName]: 0-1 value }
    */
   setTargets(weights) {
+    const safeWeights = constrainMorphWeights(weights);
     let anyChanged = false;
     for (let i = 0; i < this.count; i++) {
       const name  = this.morphNames[i];
-      const value = weights[name] ?? 0;
+      const value = safeWeights[name] ?? 0;
       if (Math.abs(value - this.target[i]) > 0.0001) {
         this._from[i]     = this.current[i]; // snapshot current as new "from"
         this._progress[i] = 0;              // reset easing progress
@@ -210,9 +213,10 @@ export class MorphInterpolator {
    * @param {Object} weights
    */
   snapToTargets(weights) {
+    const safeWeights = constrainMorphWeights(weights);
     for (let i = 0; i < this.count; i++) {
       const name       = this.morphNames[i];
-      const rawValue   = weights[name] ?? 0;
+      const rawValue   = safeWeights[name] ?? 0;
       const value      = Number.isNaN(rawValue) ? 0 : rawValue;
       this.current[i]  = value;
       this.target[i]   = value;
@@ -272,31 +276,27 @@ export class MorphInterpolator {
 
 /**
  * Returns a stable MorphInterpolator instance for use in a component.
- * The interpolator persists across renders inside a useRef.
+ * The interpolator persists across renders inside stable hook state.
  *
  * @param {boolean} [snapMode=false] - if true, weights snap instantly (goal clone)
  * @returns {{ interpolator: MorphInterpolator, updateWeights: Function }}
  */
 export function useMorphInterpolator(snapMode = false) {
-  const interpolatorRef = useRef(null);
-
-  if (!interpolatorRef.current) {
-    interpolatorRef.current = new MorphInterpolator();
-  }
+  const [interpolator] = useState(() => new MorphInterpolator());
 
   const updateWeights = useCallback(
     (weights) => {
       if (snapMode) {
-        interpolatorRef.current.snapToTargets(weights);
+        interpolator.snapToTargets(weights);
       } else {
-        interpolatorRef.current.setTargets(weights);
+        interpolator.setTargets(weights);
       }
     },
-    [snapMode]
+    [interpolator, snapMode]
   );
 
   return {
-    interpolator:  interpolatorRef.current,
+    interpolator,
     updateWeights,
   };
 }

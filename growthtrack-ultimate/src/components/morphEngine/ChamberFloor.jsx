@@ -12,6 +12,8 @@
 
 import React, { useMemo } from "react";
 import * as THREE          from "three";
+import use3DStore from "../../store/use3DStore";
+import { getCinematicSceneProfile } from "./cinematicProfiles";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FLOOR GRID — procedural shader-based subtle grid (no texture file needed)
@@ -49,7 +51,7 @@ const gridFragmentShader = /* glsl */ `
   }
 `;
 
-function FloorGrid() {
+function FloorGrid({ profile }) {
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -57,7 +59,7 @@ function FloorGrid() {
         fragmentShader: gridFragmentShader,
         uniforms: {
           uGridScale:  { value: 8.0 },
-          uLineColor:  { value: new THREE.Color("#22D3EE") },
+          uLineColor:  { value: new THREE.Color(profile.accent) },
           uLineWidth:  { value: 0.04 },
           uFadeRadius: { value: 6.0 },
         },
@@ -65,7 +67,7 @@ function FloorGrid() {
         depthWrite:  false,
         side:        THREE.FrontSide,
       }),
-    []
+    [profile.accent]
   );
 
   return (
@@ -81,24 +83,43 @@ function FloorGrid() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ChamberFloor() {
+  const environment = use3DStore((state) => state.cinematicState.sceneEnvironment);
+  const profile = getCinematicSceneProfile(environment);
+
   return (
     <group name="chamber-floor">
-      {/* ── Simple dark base plane ── */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0, 0]}
-        receiveShadow={false}
+        receiveShadow
       >
         <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial
-          color="#030508"
-          metalness={0.4}
-          roughness={0.9}
+        <meshPhysicalMaterial
+          color={profile.floor}
+          metalness={0.26}
+          roughness={0.72}
+          clearcoat={0.18}
+          clearcoatRoughness={0.54}
         />
       </mesh>
 
-      {/* ── Cyan procedural grid overlay ── */}
-      <FloorGrid />
+      <mesh position={[0, 0.018, 0]} receiveShadow>
+        <cylinderGeometry args={[1.18, 1.24, 0.035, 96]} />
+        <meshPhysicalMaterial
+          color={profile.floor}
+          metalness={0.36}
+          roughness={0.48}
+          clearcoat={0.42}
+          clearcoatRoughness={0.3}
+        />
+      </mesh>
+
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.039, 0]}>
+        <ringGeometry args={[1.14, 1.17, 128]} />
+        <meshBasicMaterial color={profile.accent} transparent opacity={0.42} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+
+      <FloorGrid profile={profile} />
     </group>
   );
 }

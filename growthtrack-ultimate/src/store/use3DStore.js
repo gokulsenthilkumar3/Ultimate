@@ -12,6 +12,7 @@
 
 import { create } from "zustand";
 import { subscribeWithSelector, devtools } from "zustand/middleware";
+import { constrainMorphWeights } from "../components/morphEngine/morphMath";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -64,6 +65,77 @@ export const GPU_TIERS = {
   HIGH: "HIGH", // RTX / M-Series — 4096 shadows, 50k poly, full post-FX
   MED:  "MED",  // GTX / Iris     — 2048 shadows, 25k poly, bloom+vignette
   LOW:  "LOW",  // Mobile / Intel — shadows off, 8k poly, no post-FX
+};
+
+export const CINEMATIC_PRESETS = Object.freeze({
+  PORTRAIT: Object.freeze({
+    preset: "PORTRAIT",
+    sceneEnvironment: "studio",
+    bloom: true,
+    vignette: true,
+    chromaticAberration: false,
+    depthOfField: true,
+    filmGrain: true,
+    cameraMotion: true,
+    exposure: 1.08,
+  }),
+  ANALYTIC: Object.freeze({
+    preset: "ANALYTIC",
+    sceneEnvironment: "studio",
+    bloom: false,
+    vignette: false,
+    chromaticAberration: false,
+    depthOfField: false,
+    filmGrain: false,
+    cameraMotion: false,
+    exposure: 1.0,
+  }),
+  NEON: Object.freeze({
+    preset: "NEON",
+    sceneEnvironment: "night",
+    bloom: true,
+    vignette: true,
+    chromaticAberration: true,
+    depthOfField: true,
+    filmGrain: true,
+    cameraMotion: true,
+    exposure: 1.16,
+  }),
+  SUNSET: Object.freeze({
+    preset: "SUNSET",
+    sceneEnvironment: "outdoor",
+    bloom: true,
+    vignette: true,
+    chromaticAberration: false,
+    depthOfField: true,
+    filmGrain: true,
+    cameraMotion: true,
+    exposure: 1.12,
+  }),
+});
+
+export const CINEMATIC_DEFAULTS = Object.freeze({ ...CINEMATIC_PRESETS.PORTRAIT });
+
+const sanitizeCinematicState = (value = {}) => {
+  const merged = { ...CINEMATIC_DEFAULTS, ...value };
+  const preset = (Object.prototype.hasOwnProperty.call(CINEMATIC_PRESETS, merged.preset) || merged.preset === "CUSTOM")
+    ? merged.preset
+    : CINEMATIC_DEFAULTS.preset;
+  const sceneEnvironment = ["studio", "outdoor", "night"].includes(merged.sceneEnvironment)
+    ? merged.sceneEnvironment
+    : CINEMATIC_DEFAULTS.sceneEnvironment;
+  const exposure = Math.max(0.72, Math.min(1.35, Number(merged.exposure) || CINEMATIC_DEFAULTS.exposure));
+  return {
+    preset,
+    sceneEnvironment,
+    bloom: Boolean(merged.bloom),
+    vignette: Boolean(merged.vignette),
+    chromaticAberration: Boolean(merged.chromaticAberration),
+    depthOfField: Boolean(merged.depthOfField),
+    filmGrain: Boolean(merged.filmGrain),
+    cameraMotion: Boolean(merged.cameraMotion),
+    exposure,
+  };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -196,13 +268,14 @@ const normalise = (value, key) => {
 };
 
 /**
- * Computes all 24 blend-shape weights from a BodyMetrics object.
- * Each key maps directly to a morph target name in the GLB file.
+ * Computes the canonical body and shader channel weights from a BodyMetrics
+ * object. Geometry channels map to authored/procedural morph targets; shader
+ * channels are consumed by the material layer.
  *
  * @param {BodyMetrics} metrics
  * @returns {Object} blend shape weights
  */
-export const computeMorphWeights = (metrics) => ({
+export const computeMorphWeights = (metrics) => constrainMorphWeights({
   // MASS / FAT
   overall_mass:    normalise(metrics.weight,    "weight"),
   gut_volume:      Math.max(
@@ -287,124 +360,21 @@ export const computeMorphWeights = (metrics) => ({
   fitzpatrick_index: ["I","II","III","IV","V","VI"].indexOf(metrics.skinTone),
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INITIAL SEED DATA — Gokul's current stats
-// (Replace with real userData.js import in production)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const CURRENT_METRICS = {
-  height:     182,
-  weight:     63,
-  bodyFat:    18,
-  chest:      88,
-  shoulders:  104,
-  waist:      78,
-  arms:       31,
-  forearm:    27,
-  thighs:     52,
-  hips:       88,
-  glutes:     92,
-  calves:     35,
-  neck:       36,
-  d_size:     5.5,
-  d_girth:    4.5,
-  ankle:      22,
-  torsoLength: 50,
-  upperArm:    34,
-  lowerArm:    29,
-  handLength:  19,
-  legLength:   91,
-  footLength:  27,
-  headCirc:    57,
-  brow_depth:  0.35,
-  nose_bridge_width: 0.32,
-  nose_tip_size: 0.33,
-  ear_prominence: 0.38,
-  jaw_width: 0.36,
-  chin_projection: 0.30,
-  lip_fullness: 0.42,
-  eye_size: 0.40,
-  skinTone:   "IV",
-};
-
-const GOAL_METRICS = {
-  weight:     82,
-  bodyFat:    10,
-  chest:      108,
-  shoulders:  124,
-  waist:      76,
-  arms:       43,
-  forearm:    33,
-  thighs:     62,
-  hips:       96,
-  glutes:     104,
-  calves:     40,
-  neck:       41,
-  torsoLength: 54,
-  upperArm:    38,
-  lowerArm:    33,
-  handLength:  20,
-  legLength:   95,
-  footLength:  29,
-  headCirc:    58,
-  brow_depth:  0.35,
-  nose_bridge_width: 0.32,
-  nose_tip_size: 0.33,
-  ear_prominence: 0.38,
-  jaw_width: 0.36,
-  chin_projection: 0.30,
-  lip_fullness: 0.42,
-  eye_size: 0.40,
-  d_size:     5.5,   // unchanged
-  d_girth:    4.5,   // unchanged
-  ankle:      23,
-  skinTone:   "IV",  // unchanged
-};
-
-const CURRENT_POSTURE = {
-  headTiltAngle:    8,   // degrees forward
-  pelvicTilt:       12,  // degrees APT
-  shoulderRounding: 15,  // degrees forward
-};
-
-const GOAL_POSTURE = {
-  headTiltAngle:    2,
-  pelvicTilt:       4,
-  shoulderRounding: 5,
-};
-
-/** Build a clone's full MorphState from metrics + posture */
-const buildMorphState = (metrics, posture) => ({
-  metrics,
-  posture,
-  weights: computeMorphWeights(metrics),
+const buildMorphWeights = (metrics = {}, overrides = {}) => constrainMorphWeights({
+  ...computeMorphWeights(metrics),
+  ...overrides,
 });
 
-const INITIAL_TIMELINE = [
-  {
-    id:      "snap_0",
-    date:    "2025-05-01",
-    label:   "Month 0 — Start",
-    metrics: { ...CURRENT_METRICS, weight: 61, bodyFat: 20, arms: 29 },
-    note:    "Day one. Let's go.",
-  },
-  {
-    id:      "snap_3",
-    date:    "2025-08-01",
-    label:   "Month 3",
-    metrics: { ...CURRENT_METRICS, weight: 63, bodyFat: 18, arms: 31, chest: 88 },
-    note:    "Consistency paying off.",
-  },
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty initial state: persisted profile metrics are hydrated by the viewer.
+// ─────────────────────────────────────────────────────────────────────────────
 
-const INITIAL_MILESTONES = [
-  { id: "m1",  label: "Visible abs",            month: "Month 3",  monthIndex: 3,  achieved: false },
-  { id: "m2",  label: "70kg — Lean mass",        month: "Month 6",  monthIndex: 6,  achieved: false },
-  { id: "m3",  label: "Bench 80kg",              month: "Month 9",  monthIndex: 9,  achieved: false },
-  { id: "m4",  label: "75kg — Halfway to Greek", month: "Month 12", monthIndex: 12, achieved: false },
-  { id: "m5",  label: "15% BF — Vascularity",   month: "Month 15", monthIndex: 15, achieved: false },
-  { id: "m6",  label: "82kg — DESTINATION",      month: "Month 20", monthIndex: 20, achieved: false },
-];
+/** Build a clone's render state from persisted metrics and posture. */
+const buildMorphState = (metrics = {}, posture = {}, overrides = {}) => ({
+  metrics,
+  posture,
+  weights: buildMorphWeights(metrics, overrides),
+});
 
 export const computeFitCameraZoom = (radius) => {
   const safeRadius = Math.max(Number(radius) || 0, 0.6);
@@ -424,13 +394,19 @@ const use3DStore = create(
       // ───────────────────────────────────────────────────────────────────────
 
       /** MorphState for the "YOU NOW" clone */
-      cloneA: buildMorphState(CURRENT_METRICS, CURRENT_POSTURE),
+      cloneA: buildMorphState({}, {}),
 
       /** MorphState for the "YOUR GOAL" clone */
-      cloneB: buildMorphState(GOAL_METRICS, GOAL_POSTURE),
+      cloneB: buildMorphState({}, {}),
+
+      /** Optional hand-tuned shape channels layered over measured values. */
+      morphOverrides: {
+        current: {},
+        goal: {},
+      },
 
       /** Logged progress snapshots for TIMELINE mode */
-      timelineSnaps: INITIAL_TIMELINE,
+      timelineSnaps: [],
 
       /** Index into timelineSnaps currently being scrubbed to (null = live) */
       timelineScrubIndex: null,
@@ -451,6 +427,21 @@ const use3DStore = create(
       /** Loader diagnostics for the active humanoid asset */
       modelDiagnostics: null,
 
+      /** Runtime evidence consumed by the Phase 5 quality gate. */
+      rendererQualityTelemetry: {
+        status: 'initializing',
+        contextLost: false,
+        contextLossCount: 0,
+        frames: 0,
+        fps: 0,
+        frameTimeP95: 0,
+        accessibleName: true,
+        reducedMotionSupported: true,
+        visibilityPauseSupported: true,
+        intersectionPauseSupported: true,
+        lastUpdated: null,
+      },
+
       /**
        * Anatomy depth: 100 = full skin, 0 = full X-ray skeleton.
        * Drives shader fade skin→muscle→skeleton→organs.
@@ -459,10 +450,10 @@ const use3DStore = create(
 
       /** Ambition path data */
       ambitionPath: {
-        currentMonthIndex: 3,
-        targetMonthIndex:  20,
-        deadline:          "2026-12-31",
-        milestones:        INITIAL_MILESTONES,
+        currentMonthIndex: 0,
+        targetMonthIndex:  0,
+        deadline:          null,
+        milestones:        [],
       },
 
       /** Active post-processing / visual effects flags */
@@ -470,6 +461,9 @@ const use3DStore = create(
 
       /** Detected GPU tier — set on mount via capability detection */
       gpuTier: GPU_TIERS.HIGH,
+
+      /** Shared, database-hydratable cinematic renderer configuration. */
+      cinematicState: { ...CINEMATIC_DEFAULTS },
 
       /** Split-mode divider position (0–1, fraction of viewport width) */
       splitDividerX: 0.5,
@@ -516,7 +510,7 @@ const use3DStore = create(
             cloneA: {
               ...prev,
               metrics: updatedMetrics,
-              weights: computeMorphWeights(updatedMetrics),
+              weights: buildMorphWeights(updatedMetrics, get().morphOverrides.current),
             },
           },
           false,
@@ -537,7 +531,7 @@ const use3DStore = create(
             cloneB: {
               ...prev,
               metrics: updatedMetrics,
-              weights: computeMorphWeights(updatedMetrics),
+              weights: buildMorphWeights(updatedMetrics, get().morphOverrides.goal),
             },
           },
           false,
@@ -556,7 +550,7 @@ const use3DStore = create(
             cloneA: {
               ...prev,
               metrics,
-              weights: computeMorphWeights(metrics),
+              weights: buildMorphWeights(metrics, get().morphOverrides.current),
             },
           },
           false,
@@ -575,12 +569,62 @@ const use3DStore = create(
             cloneB: {
               ...prev,
               metrics,
-              weights: computeMorphWeights(metrics),
+              weights: buildMorphWeights(metrics, get().morphOverrides.goal),
             },
           },
           false,
           "setGoalMetrics"
         );
+      },
+
+      /**
+       * Apply a hand-tuned morph channel on top of measured data. These are
+       * renderer controls, not measurements, so they never overwrite metrics.
+       * @param {"current"|"goal"} target
+       * @param {string} key
+       * @param {number} value
+       */
+      setMorphOverride: (target, key, value) => {
+        const cloneKey = target === "goal" ? "cloneB" : "cloneA";
+        const overrideKey = target === "goal" ? "goal" : "current";
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) return;
+        set((state) => {
+          const overrides = {
+            ...state.morphOverrides[overrideKey],
+            [key]: numericValue,
+          };
+          const clone = state[cloneKey];
+          return {
+            morphOverrides: { ...state.morphOverrides, [overrideKey]: overrides },
+            [cloneKey]: {
+              ...clone,
+              weights: buildMorphWeights(clone.metrics, overrides),
+            },
+          };
+        }, false, `setMorphOverride:${overrideKey}:${key}`);
+      },
+
+      setMorphOverrides: (overrides = {}) => {
+        const current = overrides?.current && typeof overrides.current === "object" ? overrides.current : {};
+        const goal = overrides?.goal && typeof overrides.goal === "object" ? overrides.goal : {};
+        set((state) => ({
+          morphOverrides: { current, goal },
+          cloneA: { ...state.cloneA, weights: buildMorphWeights(state.cloneA.metrics, current) },
+          cloneB: { ...state.cloneB, weights: buildMorphWeights(state.cloneB.metrics, goal) },
+        }), false, "setMorphOverrides");
+      },
+
+      clearMorphOverrides: (target) => {
+        const cloneKey = target === "goal" ? "cloneB" : "cloneA";
+        const overrideKey = target === "goal" ? "goal" : "current";
+        set((state) => ({
+          morphOverrides: { ...state.morphOverrides, [overrideKey]: {} },
+          [cloneKey]: {
+            ...state[cloneKey],
+            weights: buildMorphWeights(state[cloneKey].metrics),
+          },
+        }), false, `clearMorphOverrides:${overrideKey}`);
       },
 
       /**
@@ -639,7 +683,7 @@ const use3DStore = create(
         const snapB = timelineSnaps[Math.min(i + 1, timelineSnaps.length - 1)];
 
         if (!snapA) return cloneA;
-        if (!snapB || t === 0) return buildMorphState(snapA.metrics, CURRENT_POSTURE);
+        if (!snapB || t === 0) return buildMorphState(snapA.metrics, cloneA.posture);
 
         // Linear interpolate every metric between two adjacent snapshots
         const lerpMetrics = Object.fromEntries(
@@ -651,7 +695,7 @@ const use3DStore = create(
           })
         );
 
-        return buildMorphState(lerpMetrics, CURRENT_POSTURE);
+        return buildMorphState(lerpMetrics, cloneA.posture);
       },
 
       // ───────────────────────────────────────────────────────────────────────
@@ -664,6 +708,10 @@ const use3DStore = create(
        */
       setCameraPreset: (preset) => {
         set({ cameraPreset: preset }, false, `setCameraPreset:${preset}`);
+      },
+
+      setTimelineSnaps: (snaps) => {
+        set({ timelineSnaps: Array.isArray(snaps) ? snaps : [] }, false, "setTimelineSnaps");
       },
 
       setCameraZoom: (zoom) => {
@@ -691,6 +739,16 @@ const use3DStore = create(
 
       setModelDiagnostics: (diagnostics) => {
         set({ modelDiagnostics: diagnostics || null }, false, "setModelDiagnostics");
+      },
+
+      setRendererQualityTelemetry: (telemetry = {}) => {
+        set((state) => ({
+          rendererQualityTelemetry: {
+            ...state.rendererQualityTelemetry,
+            ...telemetry,
+            lastUpdated: Date.now(),
+          },
+        }), false, "setRendererQualityTelemetry");
       },
 
       // ───────────────────────────────────────────────────────────────────────
@@ -839,6 +897,33 @@ const use3DStore = create(
           false,
           `achieveMilestone:${milestoneId}`
         );
+      },
+
+      setCinematicSetting: (key, value) => {
+        if (!Object.prototype.hasOwnProperty.call(CINEMATIC_DEFAULTS, key)) return;
+        set((state) => ({
+          cinematicState: sanitizeCinematicState({
+            ...state.cinematicState,
+            [key]: value,
+            ...(key === "preset" ? {} : { preset: "CUSTOM" }),
+          }),
+        }), false, `setCinematicSetting:${key}`);
+      },
+
+      setCinematicState: (settings = {}) => {
+        set({ cinematicState: sanitizeCinematicState(settings) }, false, "setCinematicState");
+      },
+
+      applyCinematicPreset: (preset) => {
+        const next = CINEMATIC_PRESETS[preset];
+        if (!next) return;
+        set({ cinematicState: { ...next } }, false, `applyCinematicPreset:${preset}`);
+      },
+
+      setMilestones: (milestones) => {
+        const rows = Array.isArray(milestones) ? milestones : [];
+        const targetMonthIndex = rows.reduce((max, milestone) => Math.max(max, Number(milestone.monthIndex) || 0), 0);
+        set((state) => ({ ambitionPath: { ...state.ambitionPath, milestones: rows, targetMonthIndex } }), false, "setMilestones");
       },
 
       /**

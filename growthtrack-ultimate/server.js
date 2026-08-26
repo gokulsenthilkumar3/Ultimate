@@ -448,7 +448,9 @@ app.put('/api/body-profile', authMiddleware, async (req, res) => {
     const parsed = Number(value);
     return [key, value === '' || value == null || !Number.isFinite(parsed) ? null : parsed];
   }));
+  const existing = await prisma.bodyProfile.findUnique({ where: { userId: req.user.id }, select: { id: true } });
   const profile = await prisma.bodyProfile.upsert({ where: { userId: req.user.id }, update: data, create: { userId: req.user.id, ...data } });
+  await auditCrud({ action: existing ? 'update' : 'create', table_name: 'body_profiles', item_id: profile.id, details: { fields: Object.keys(data) }, userId: req.user.id, req });
   res.json(profile);
 });
 

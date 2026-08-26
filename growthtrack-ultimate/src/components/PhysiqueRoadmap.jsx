@@ -18,7 +18,7 @@ export default function PhysiqueRoadmap({ targets, user }) {
         </h2>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
         
         {/* Roadmap Left: Nutrition & Split */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -88,7 +88,7 @@ export default function PhysiqueRoadmap({ targets, user }) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {targets.map((t, idx) => (
-              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2.5fr', gap: '0.5rem', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: idx < targets.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))', gap: '0.5rem', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: idx < targets.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-1)' }}>{t.label}</span>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>{t.current}</span>
                 <span style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 700 }}>{t.target}</span>

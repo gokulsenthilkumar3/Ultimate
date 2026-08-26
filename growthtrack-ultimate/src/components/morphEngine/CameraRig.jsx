@@ -39,11 +39,8 @@ import { BODY_PART_MAP } from "./BodyPartInteraction";
 /** OrbitControls rotation speed */
 const ROTATE_SPEED = 0.7;
 
-/** Auto-rotate angular speed (radians per second) */
-const AUTO_ROTATE_SPEED = 0.4;
-
-/** Reverses auto-rotate direction every N full rotations */
-const DIRECTION_REVERSE_EVERY = 2;
+/** Maximum front-axis camera sway used by the cinematic portrait mode. */
+const CINEMATIC_SWAY = THREE.MathUtils.degToRad(9);
 
 /** Lerp factor for smooth preset transitions (per frame at 60fps) */
 const PRESET_LERP_SPEED = 0.06;
@@ -85,19 +82,21 @@ export default function CameraRig() {
   // ── Store subscriptions ───────────────────────────────────────────────────
   const cameraPreset   = use3DStore((s) => s.cameraPreset);
   const autoRotate     = use3DStore((s) => s.autoRotate);
+  const cameraMotion   = use3DStore((s) => s.cinematicState.cameraMotion);
   const focusedBodyPart = use3DStore((s) => s.focusedBodyPart);
   const modelFrame     = use3DStore((s) => s.modelFrame);
   const setAutoRotate  = use3DStore((s) => s.setAutoRotate);
   const setCameraPreset = use3DStore((s) => s.setCameraPreset);
   const fitCameraToBody = use3DStore((s) => s.fitCameraToBody);
   const [cameraZoom, setCameraZoom] = useState(() => use3DStore.getState().cameraZoom ?? 1);
+  const [reducedMotion, setReducedMotion] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  ));
 
   // ── Local animation state ─────────────────────────────────────────────────
   const targetSpherical   = useRef(presetToSpherical("FRONT"));
   const currentSpherical  = useRef(presetToSpherical("FRONT"));
   const isAnimatingPreset = useRef(false);
-  const rotationAccum     = useRef(0);
-  const autoRotateDir     = useRef(1);
 
   // ── Respond to preset changes from store ─────────────────────────────────
   useEffect(() => {
@@ -106,7 +105,8 @@ export default function CameraRig() {
     spherical.radius *= (cameraZoom ?? 1) * (modelFrame?.radius ? Math.max(0.9, Math.min(1.25, modelFrame.radius / 0.72)) : 1);
     targetSpherical.current  = spherical;
     isAnimatingPreset.current = true;
-  }, [cameraPreset, cameraZoom, modelFrame?.radius]);
+    if (cameraPreset !== "FRONT") setAutoRotate(false);
+  }, [cameraPreset, cameraZoom, modelFrame?.radius, setAutoRotate]);
 
   useEffect(() => {
     if (!modelFrame?.radius) return;
@@ -120,6 +120,19 @@ export default function CameraRig() {
     );
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return undefined;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handleChange = () => setReducedMotion(media.matches);
+    media.addEventListener?.("change", handleChange);
+    if (media.matches) setAutoRotate(false);
+    return () => media.removeEventListener?.("change", handleChange);
+  }, [setAutoRotate]);
+
+  useEffect(() => {
+    if (!cameraMotion) setAutoRotate(false);
+  }, [cameraMotion, setAutoRotate]);
 
   useEffect(() => {
     if (!focusedBodyPart) return;
@@ -161,7 +174,7 @@ export default function CameraRig() {
   }, [setCameraPreset]);
 
   // ── Per-frame: auto-rotate + preset lerp ─────────────────────────────────
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     if (!orbitRef.current) return;
     const controls = orbitRef.current;
 
@@ -170,14 +183,15 @@ export default function CameraRig() {
       const t  = currentSpherical.current;
       const tg = targetSpherical.current;
 
-      t.radius = THREE.MathUtils.lerp(t.radius, tg.radius, PRESET_LERP_SPEED);
-      t.phi    = THREE.MathUtils.lerp(t.phi,    tg.phi,    PRESET_LERP_SPEED);
-      t.theta  = THREE.MathUtils.lerp(t.theta,  tg.theta,  PRESET_LERP_SPEED);
+      const frameLerp = 1 - Math.pow(1 - PRESET_LERP_SPEED, Math.max(0.1, delta * 60));
+      t.radius = THREE.MathUtils.lerp(t.radius, tg.radius, frameLerp);
+      t.phi    = THREE.MathUtils.lerp(t.phi,    tg.phi,    frameLerp);
+      t.theta  = THREE.MathUtils.lerp(t.theta,  tg.theta,  frameLerp);
 
       // Apply to camera position from spherical
       const pos = new THREE.Vector3().setFromSpherical(t).add(MODEL_CENTER);
       camera.position.copy(pos);
-      controls.target.lerp(MODEL_CENTER, PRESET_LERP_SPEED * 2);
+      controls.target.lerp(MODEL_CENTER, Math.min(1, frameLerp * 2));
       controls.update();
 
       // Check convergence
@@ -191,24 +205,19 @@ export default function CameraRig() {
     }
 
     // ── Auto-rotate ──────────────────────────────────────────────────────────
-    if (autoRotate && !isAnimatingPreset.current) {
-      const angularStep = AUTO_ROTATE_SPEED * delta * autoRotateDir.current;
-      controls.setAzimuthalAngle(controls.getAzimuthalAngle() + angularStep);
+    if (autoRotate && cameraMotion && !reducedMotion && !isAnimatingPreset.current) {
+      const desiredAzimuth = Math.sin(clock.elapsedTime * 0.24) * CINEMATIC_SWAY;
+      const cameraLerp = 1 - Math.exp(-delta * 1.8);
+      controls.setAzimuthalAngle(THREE.MathUtils.lerp(controls.getAzimuthalAngle(), desiredAzimuth, cameraLerp));
+      controls.target.y = MODEL_CENTER.y + Math.sin(clock.elapsedTime * 0.32) * 0.01;
       controls.update();
-
-      // Track rotation accumulation for direction reversal
-      rotationAccum.current += Math.abs(angularStep);
-      if (rotationAccum.current >= Math.PI * 2 * DIRECTION_REVERSE_EVERY) {
-        autoRotateDir.current  *= -1;
-        rotationAccum.current   = 0;
-      }
     }
   });
 
   // ── Double-tap / double-click → reset to front ───────────────────────────
   useEffect(() => {
     let lastTap = 0;
-    const handleDoubleTap = (e) => {
+    const handleDoubleTap = () => {
       const now = Date.now();
       if (now - lastTap < 300) {
         use3DStore.getState().setCameraPreset("FRONT");
@@ -230,8 +239,8 @@ export default function CameraRig() {
       // ── Zoom ──────────────────────────────────────────────────────────────
       enableZoom={true}
       zoomSpeed={0.8}
-      minDistance={0.8}
-      maxDistance={10.5}
+      minDistance={MIN_DISTANCE}
+      maxDistance={MAX_DISTANCE}
       // ── Pan — disabled (always focus on model) ────────────────────────────
       enablePan={false}
       // ── Vertical orbit limits ─────────────────────────────────────────────

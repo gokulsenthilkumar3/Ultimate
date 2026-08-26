@@ -17,6 +17,7 @@
     "validate:glb": "node scripts/validate-glb.js",
     "glb:health": "node scripts/glb-health.js",
     "glb:priority-fixes": "node scripts/glb-priority-fixes.js",
+    "quality:gate": "node scripts/quality-gate.js",
     "owner:create": "node scripts/create-owner.js",
     "db:sync": "prisma generate && prisma db push",
     "db:seed-config": "node scripts/seed-app-config.mjs"
