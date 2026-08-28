@@ -46,7 +46,7 @@ const gridFragmentShader = /* glsl */ `
   void main() {
     float line   = gridLine(vUv, uGridScale, uLineWidth);
     float fade   = 1.0 - smoothstep(uFadeRadius * 0.3, uFadeRadius, vDist);
-    float alpha  = line * fade * 0.18;
+    float alpha  = line * fade * 0.055;
     gl_FragColor = vec4(uLineColor, alpha);
   }
 `;
@@ -96,10 +96,10 @@ export default function ChamberFloor() {
         <planeGeometry args={[20, 20]} />
         <meshPhysicalMaterial
           color={profile.floor}
-          metalness={0.26}
-          roughness={0.72}
-          clearcoat={0.18}
-          clearcoatRoughness={0.54}
+          metalness={0.18}
+          roughness={0.82}
+          clearcoat={0.1}
+          clearcoatRoughness={0.68}
         />
       </mesh>
 
@@ -107,16 +107,16 @@ export default function ChamberFloor() {
         <cylinderGeometry args={[1.18, 1.24, 0.035, 96]} />
         <meshPhysicalMaterial
           color={profile.floor}
-          metalness={0.36}
-          roughness={0.48}
-          clearcoat={0.42}
-          clearcoatRoughness={0.3}
+          metalness={0.24}
+          roughness={0.62}
+          clearcoat={0.24}
+          clearcoatRoughness={0.46}
         />
       </mesh>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.039, 0]}>
         <ringGeometry args={[1.14, 1.17, 128]} />
-        <meshBasicMaterial color={profile.accent} transparent opacity={0.42} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <meshBasicMaterial color={profile.accent} transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
 
       <FloorGrid profile={profile} />

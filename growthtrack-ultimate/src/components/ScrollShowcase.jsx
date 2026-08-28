@@ -10,15 +10,15 @@ const FEATURES = [
 
 export default function ScrollShowcase() {
   return (
-    <section className="physique-lab" aria-labelledby="physique-lab-title">
+    <section className="physique-lab physique-lab--cinematic" aria-labelledby="physique-lab-title">
       <header className="physique-lab__intro">
         <div>
-          <span className="physique-lab__eyebrow"><Sparkles size={13} /> Realtime physique lab</span>
+          <span className="physique-lab__eyebrow"><Sparkles size={13} /> Digital twin / physique lab</span>
           <h2 id="physique-lab-title">Your progress, rendered in motion.</h2>
-          <p>Explore your current body, compare the goal model and inspect changes without leaving the canvas.</p>
+          <p>Explore the current body, compare the destination, and inspect change without leaving the scene.</p>
         </div>
         <div className="physique-lab__status" aria-label="3D renderer status">
-          <span className="physique-lab__live-dot" aria-hidden="true" /> Live CG
+          <span className="physique-lab__live-dot" aria-hidden="true" /> Live / realtime CG
         </div>
       </header>
       <div className="physique-lab__stage">

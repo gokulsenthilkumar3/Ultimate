@@ -4,6 +4,15 @@ import { ArrowRight, Check, Activity, Target, User as UserIcon, AlertCircle } fr
 import useStore, { selectSetUser, selectSetOnboardingComplete } from '../store/useStore';
 import { apiSync } from '../store/useStore';
 
+function FieldError({ message }) {
+  if (!message) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f87171', fontSize: '0.78rem', marginTop: '4px' }}>
+      <AlertCircle size={12} /> {message}
+    </div>
+  );
+}
+
 export default function OnboardingWizard() {
   const setUser = useStore(selectSetUser);
   const setOnboardingComplete = useStore(selectSetOnboardingComplete);
@@ -65,14 +74,8 @@ export default function OnboardingWizard() {
     if (errors[key]) setErrors(prev => { const e = { ...prev }; delete e[key]; return e; });
   };
 
-  const FieldError = ({ field }) => errors[field] ? (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f87171', fontSize: '0.78rem', marginTop: '4px' }}>
-      <AlertCircle size={12} /> {errors[field]}
-    </div>
-  ) : null;
-
   return (
-    <div 
+    <div className="onboarding-wizard"
       role="dialog"
       aria-modal="true"
       aria-label="Onboarding Wizard"
@@ -85,7 +88,7 @@ export default function OnboardingWizard() {
     >
       <div className="mesh-bg" />
 
-      <div className="glass-card fade-in" style={{
+      <div className="glass-card onboarding-wizard__card fade-in" style={{
         maxWidth: '500px', width: '100%',
         display: 'flex', flexDirection: 'column', gap: '2rem'
       }}>
@@ -125,7 +128,7 @@ export default function OnboardingWizard() {
                   aria-required="true"
                   aria-invalid={!!errors.name}
                 />
-                <FieldError field="name" />
+                <FieldError message={errors.name} />
               </label>
 
               <label>
@@ -166,7 +169,7 @@ export default function OnboardingWizard() {
                   onChange={e => updateForm('age', Number(e.target.value))}
                   aria-invalid={!!errors.age}
                 />
-                <FieldError field="age" />
+                <FieldError message={errors.age} />
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <label>
@@ -176,7 +179,7 @@ export default function OnboardingWizard() {
                     onChange={e => updateForm('height', Number(e.target.value))}
                     aria-invalid={!!errors.height}
                   />
-                  <FieldError field="height" />
+                  <FieldError message={errors.height} />
                 </label>
                 <label>
                   <span className="card-title">Weight (kg)</span>
@@ -185,7 +188,7 @@ export default function OnboardingWizard() {
                     onChange={e => updateForm('weight', Number(e.target.value))}
                     aria-invalid={!!errors.weight}
                   />
-                  <FieldError field="weight" />
+                  <FieldError message={errors.weight} />
                 </label>
               </div>
             </div>

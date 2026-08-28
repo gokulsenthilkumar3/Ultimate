@@ -67,8 +67,8 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     if (mode === "FULL" && cinematic.depthOfField && !reducedMotion) {
       const depthOfField = new DepthOfFieldEffect(camera, {
         focusDistance: 3.25,
-        focusRange: 1.7,
-        bokehScale: 0.9,
+        focusRange: 2.2,
+        bokehScale: 0.55,
         resolutionScale: 0.5,
       });
       effects.push(depthOfField);
@@ -78,11 +78,11 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     if (cinematic.bloom) {
       const bloom = new BloomEffect({
         blendFunction: BlendFunction.SCREEN,
-        luminanceThreshold: mode === "FULL" ? 0.82 : 0.9,
-        luminanceSmoothing: 0.12,
-        intensity: mode === "FULL" ? 0.52 : 0.34,
-        radius: 0.68,
-        levels: mode === "FULL" ? 7 : 5,
+        luminanceThreshold: mode === "FULL" ? 0.92 : 0.96,
+        luminanceSmoothing: 0.18,
+        intensity: mode === "FULL" ? 0.26 : 0.16,
+        radius: 0.56,
+        levels: mode === "FULL" ? 6 : 4,
         mipmapBlur: true,
       });
       effects.push(bloom);
@@ -93,7 +93,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     if (mode === "FULL" && cinematic.chromaticAberration && !reducedMotion) {
       const chromatic = new ChromaticAberrationEffect({
         blendFunction: BlendFunction.NORMAL,
-        offset: new THREE.Vector2(0.00032, 0.00022),
+        offset: new THREE.Vector2(0.00012, 0.00008),
         radialModulation: true,
         modulationOffset: 0.34,
       });
@@ -113,7 +113,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
         blendFunction: BlendFunction.SOFT_LIGHT,
         premultiply: true,
       });
-      grain.blendMode.opacity.value = 0.026;
+      grain.blendMode.opacity.value = 0.012;
       finishingEffects.push(grain);
       effects.push(grain);
     }
@@ -121,8 +121,8 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     if (cinematic.vignette) {
       const vignette = new VignetteEffect({
         blendFunction: BlendFunction.NORMAL,
-        offset: mode === "FULL" ? 0.28 : 0.34,
-        darkness: mode === "FULL" ? 0.72 : 0.58,
+        offset: mode === "FULL" ? 0.34 : 0.4,
+        darkness: mode === "FULL" ? 0.36 : 0.26,
       });
       finishingEffects.push(vignette);
       effects.push(vignette);

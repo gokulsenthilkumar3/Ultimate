@@ -16,7 +16,6 @@ export default function SettingsModal({ onClose }) {
   const [activeTab, setActiveTab] = useState('Profile');
   const user = useStore(state => state.user);
   const skills = useStore(state => state.skills) || [];
-  const events = useStore(state => state.calendar_events) || [];
   const healthProfile = useStore(state => state.healthProfile) || {};
   const appConfig = useStore(state => state.appConfig) || {};
   const setOnboardingComplete = useStore(state => state.setOnboardingComplete);
@@ -31,15 +30,14 @@ export default function SettingsModal({ onClose }) {
   const fetchNetworkInfo = async () => {
     try {
       if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(async (pos) => {
+        navigator.geolocation.getCurrentPosition(async () => {
           try {
-            const { latitude, longitude } = pos.coords;
             // Mock Reverse geocode to avoid 429 Too Many Requests
             const loc = 'Local';
             const country = 'Network';
             const ipData = await fetchIpInfo();
             setNetworkInfo({ ip: ipData?.ip || 'Unknown', location: `${loc}, ${country} (GPS)` });
-          } catch (e) {
+          } catch {
             const ipData = await fetchIpInfo();
             setNetworkInfo({ ip: ipData?.ip || 'Unknown', location: ipData ? `${ipData.city}, ${ipData.country_name} (IP)` : 'Offline' });
           }
@@ -51,7 +49,7 @@ export default function SettingsModal({ onClose }) {
         const data = await fetchIpInfo();
         setNetworkInfo({ ip: data?.ip || 'Unknown', location: data ? `${data.city}, ${data.country_name}` : 'Offline' });
       }
-    } catch (err) {
+    } catch {
       setNetworkInfo({ ip: 'Unavailable', location: 'Offline' });
     }
   };
@@ -67,7 +65,7 @@ export default function SettingsModal({ onClose }) {
         } else {
           setServerStatus('Error');
         }
-      } catch (err) {
+      } catch {
         setServerStatus('Offline');
       }
     };
@@ -76,7 +74,7 @@ export default function SettingsModal({ onClose }) {
       try {
         const data = await apiSync('/logs', 'GET');
         if (Array.isArray(data)) setLogs(data);
-      } catch (err) {
+      } catch {
         console.error('Failed to fetch logs');
       }
       setLoadingLogs(false);
@@ -84,7 +82,8 @@ export default function SettingsModal({ onClose }) {
 
     checkServer();
     fetchLogs();
-    fetchNetworkInfo();
+    const networkInfoTimer = window.setTimeout(fetchNetworkInfo, 0);
+    return () => window.clearTimeout(networkInfoTimer);
   }, []);
 
   const systemStats = [
@@ -118,7 +117,7 @@ export default function SettingsModal({ onClose }) {
   ];
 
   return (
-    <div 
+    <div className="settings-modal-shell"
       role="dialog" 
       aria-modal="true" 
       aria-labelledby="settings-title"
@@ -136,14 +135,14 @@ export default function SettingsModal({ onClose }) {
         onConfirm={doReset}
         onCancel={() => setConfirmReset(false)}
       />
-      <div className="glass-card fade-in" style={{
+      <div className="glass-card settings-modal-card fade-in" style={{
         width: '100%', maxWidth: '800px', height: '600px',
         display: 'flex', flexDirection: 'row', overflow: 'hidden',
         padding: 0, border: '1px solid var(--border-strong)'
       }}>
         
         {/* Sidebar */}
-        <div style={{
+        <div className="settings-modal-card__sidebar" style={{
           width: '240px', borderRight: '1px solid var(--border)',
           background: 'rgba(255,255,255,0.02)', padding: '2rem 1rem',
           display: 'flex', flexDirection: 'column', gap: '0.5rem'
@@ -181,8 +180,8 @@ export default function SettingsModal({ onClose }) {
         </div>
 
         {/* Content Area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <header style={{ 
+        <div className="settings-modal-card__content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <header className="settings-modal-card__header" style={{ 
             padding: '1.5rem 2rem', borderBottom: '1px solid var(--border)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
@@ -195,7 +194,7 @@ export default function SettingsModal({ onClose }) {
             </button>
           </header>
 
-          <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+          <div className="settings-modal-card__body" style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
             {activeTab === 'Profile' && (
               <div className="stagger-container">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>

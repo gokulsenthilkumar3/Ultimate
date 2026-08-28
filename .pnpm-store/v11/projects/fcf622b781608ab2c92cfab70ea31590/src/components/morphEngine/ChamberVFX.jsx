@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import use3DStore from '../../store/use3DStore';
 import { getCinematicSceneProfile } from './cinematicProfiles';
@@ -13,12 +13,16 @@ function seededNoise(seed) {
 }
 
 /**
- * ChamberVFX — Ambient cosmic particle field for the Digital Twin chamber.
- * Renders a slow-drifting field of cyan/violet holographic dust.
+ * ChamberVFX — restrained studio atmosphere for the Digital Twin chamber.
+ * The field is deliberately sparse: motion gives the scene depth without
+ * turning the body viewer into a neon dashboard.
  */
 export default function ChamberVFX({ count = 800, motionEnabled = true }) {
+  const sceneRef = useRef();
   const pointsRef = useRef();
   const ringsRef = useRef();
+  const orbitRef = useRef();
+  const pointer = useThree((state) => state.pointer);
   const environment = use3DStore((state) => state.cinematicState.sceneEnvironment);
   const profile = getCinematicSceneProfile(environment);
 
@@ -34,25 +38,26 @@ export default function ChamberVFX({ count = 800, motionEnabled = true }) {
     const tempColor = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
-      // Cylinder distribution: radius 1.5 to 4, height 0 to 3
-      const r = 1.5 + noise() * 2.5;
+      // Keep the atmosphere close to the subject so it reads as depth, not a
+      // star field. The wider outer radius is still useful on large screens.
+      const r = 1.7 + noise() * 2.1;
       const theta = noise() * Math.PI * 2;
-      const y = noise() * 4.0 - 0.5; // From slightly below floor up to 3.5m
+      const y = noise() * 3.5 - 0.25;
 
       positions[i * 3] = r * Math.cos(theta);
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = r * Math.sin(theta);
 
-      // Mix between cyan and violet based on height + noise
-      const mixRatio = noise();
+      // Keep the secondary tint quiet; it should appear only as a passing
+      // highlight in motion.
+      const mixRatio = noise() * 0.22;
       tempColor.lerpColors(colorCyan, colorViolet, mixRatio);
       
       colors[i * 3] = tempColor.r;
       colors[i * 3 + 1] = tempColor.g;
       colors[i * 3 + 2] = tempColor.b;
 
-      // Random sizes
-      sizes[i] = noise() * 0.5 + 0.1;
+      sizes[i] = noise() * 0.16 + 0.04;
     }
 
     return { positions, colors, sizes };
@@ -63,7 +68,7 @@ export default function ChamberVFX({ count = 800, motionEnabled = true }) {
     return new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
-        uSizeBase: { value: 6.0 * (window.devicePixelRatio || 1) },
+        uSizeBase: { value: 2.8 * (window.devicePixelRatio || 1) },
       },
       vertexShader: `
         attribute float aSize;
@@ -76,11 +81,11 @@ export default function ChamberVFX({ count = 800, motionEnabled = true }) {
         void main() {
           vColor = aColor;
           
-          // Slow drift upwards + slight wobble
+          // Slow drift upwards + restrained parallax.
           vec3 pos = position;
-          pos.y += mod(uTime * 0.05 + aSize, 4.0); // Wrap around height 4
-          pos.x += sin(uTime * 0.2 + pos.y) * 0.1;
-          pos.z += cos(uTime * 0.15 + pos.y) * 0.1;
+          pos.y = mod(pos.y + uTime * 0.018 + aSize, 3.5) - 0.25;
+          pos.x += sin(uTime * 0.08 + pos.y * 1.7) * 0.035;
+          pos.z += cos(uTime * 0.06 + pos.y * 1.4) * 0.035;
           
           vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
           gl_Position = projectionMatrix * mvPosition;
@@ -91,7 +96,7 @@ export default function ChamberVFX({ count = 800, motionEnabled = true }) {
           // Fade edges (top and bottom of cylinder)
           float fadeBottom = smoothstep(-0.5, 0.5, pos.y);
           float fadeTop = 1.0 - smoothstep(2.5, 3.5, pos.y);
-          vAlpha = fadeBottom * fadeTop * 0.6; // max opacity 0.6
+          vAlpha = fadeBottom * fadeTop * 0.32;
         }
       `,
       fragmentShader: `
@@ -123,21 +128,28 @@ export default function ChamberVFX({ count = 800, motionEnabled = true }) {
     const time = motionEnabled ? clock.elapsedTime : 0;
     if (pointsRef.current) {
       pointsRef.current.material.uniforms.uTime.value = time;
-      // Slow overall rotation
-      pointsRef.current.rotation.y = time * 0.02;
+      pointsRef.current.rotation.y = time * 0.012;
     }
     if (ringsRef.current) {
-      ringsRef.current.rotation.z = Math.sin(time * 0.16) * 0.025;
+      ringsRef.current.rotation.z = Math.sin(time * 0.16) * 0.018;
       ringsRef.current.children.forEach((ring, index) => {
-        const pulse = 1 + Math.sin(time * 0.7 + index * 1.8) * 0.035;
+        const pulse = 1 + Math.sin(time * 0.45 + index * 1.8) * 0.018;
         ring.scale.setScalar(pulse);
-        ring.material.opacity = 0.12 + Math.sin(time * 0.55 + index) * 0.035;
+        ring.material.opacity = 0.045 + Math.sin(time * 0.45 + index) * 0.012;
       });
+    }
+    if (orbitRef.current) {
+      orbitRef.current.rotation.y = time * 0.08;
+      orbitRef.current.rotation.z = Math.sin(time * 0.2) * 0.06;
+    }
+    if (sceneRef.current && motionEnabled) {
+      sceneRef.current.rotation.x = THREE.MathUtils.lerp(sceneRef.current.rotation.x, pointer.y * 0.018, 0.025);
+      sceneRef.current.rotation.z = THREE.MathUtils.lerp(sceneRef.current.rotation.z, -pointer.x * 0.018, 0.025);
     }
   });
 
   return (
-    <group>
+    <group ref={sceneRef}>
     <points ref={pointsRef}>
       <bufferGeometry>
         <bufferAttribute
@@ -162,13 +174,17 @@ export default function ChamberVFX({ count = 800, motionEnabled = true }) {
       <primitive object={material} attach="material" />
     </points>
     <group ref={ringsRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]}>
-      {[0.58, 0.82, 1.08].map((radius, index) => (
+      {[1.27, 1.51].map((radius, index) => (
         <mesh key={radius}>
-          <ringGeometry args={[radius, radius + 0.006 + index * 0.002, 96]} />
-          <meshBasicMaterial color={index === 1 ? profile.secondary : profile.accent} transparent opacity={0.13} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <ringGeometry args={[radius, radius + 0.004, 128]} />
+          <meshBasicMaterial color={index === 1 ? profile.secondary : profile.accent} transparent opacity={0.05} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
         </mesh>
       ))}
     </group>
+    <mesh ref={orbitRef} position={[0, 1.55, 0]} rotation={[0.12, 0, 0]}>
+      <torusGeometry args={[1.28, 0.0025, 4, 128]} />
+      <meshBasicMaterial color={profile.secondary} transparent opacity={0.045} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+    </mesh>
     </group>
   );
 }
