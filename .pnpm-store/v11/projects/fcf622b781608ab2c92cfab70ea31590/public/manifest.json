@@ -1,0 +1,20 @@
+{
+  "name": "GrowthTrack Ultimate",
+  "short_name": "GrowthTrack",
+  "description": "Premium multi-module dashboard for hypertrophy, finance, and tactical life management.",
+  "id": "/Ultimate/",
+  "start_url": "/Ultimate/",
+  "scope": "/Ultimate/",
+  "display": "standalone",
+  "background_color": "#050810",
+  "theme_color": "#e5a50a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

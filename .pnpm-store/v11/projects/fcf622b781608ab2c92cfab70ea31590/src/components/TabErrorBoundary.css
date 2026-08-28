@@ -1,0 +1,52 @@
+.tab-error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  min-height: 300px;
+  background: var(--color-surface, #1a1a2e);
+  border: 1px solid var(--color-error, #ff4757);
+  border-radius: 12px;
+  margin: 1rem;
+  text-align: center;
+  gap: 1rem;
+}
+
+.tab-error-icon {
+  font-size: 3rem;
+}
+
+.tab-error-title {
+  color: var(--color-error, #ff4757);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.tab-error-message {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #888);
+  background: var(--color-bg, #0d0d1a);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  max-width: 500px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tab-error-retry {
+  padding: 0.5rem 1.5rem;
+  background: var(--color-primary, #6c63ff);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: opacity 0.2s;
+}
+
+.tab-error-retry:hover {
+  opacity: 0.85;
+}
