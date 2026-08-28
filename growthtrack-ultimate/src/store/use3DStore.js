@@ -766,7 +766,10 @@ const use3DStore = create(
        * @param {keyof typeof WARDROBE_PRESETS} preset
        */
       setWardrobe: (preset) => {
-        set({ wardrobeState: preset }, false, `setWardrobe:${preset}`);
+        const normalized = String(preset || '').toUpperCase();
+        if (!Object.prototype.hasOwnProperty.call(WARDROBE_PRESETS, normalized)) return;
+        const value = WARDROBE_PRESETS[normalized];
+        set({ wardrobeState: value }, false, `setWardrobe:${value}`);
       },
 
       // ───────────────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ import PostureRig               from "./PostureRig";
 import ProceduralHumanoid       from "./ProceduralHumanoid";
 import use3DStore               from "../../store/use3DStore";
 import { createSkinMaterial, updateSkinUniforms, createRimAuraMaterial, updateAuraUniforms } from "./UberShader";
+import { createClothMaterial, isClothPreset } from "./WardrobeShader";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MATERIAL FACTORY
@@ -57,34 +58,6 @@ function createDeltaMaterial() {
   });
 }
 
-function FeatureOverlay({ metrics }) {
-  const eyeColor = metrics?.eyeColor || '#5a3018';
-  const hairColor = metrics?.hairColor || '#21140f';
-  const eyeMaterial = useMemo(() => new THREE.MeshPhysicalMaterial({ color: '#f6f2ea', roughness: 0.22, clearcoat: 0.65 }), []);
-  const irisMaterial = useMemo(() => new THREE.MeshPhysicalMaterial({ color: eyeColor, roughness: 0.16, clearcoat: 0.9, clearcoatRoughness: 0.08 }), [eyeColor]);
-  const pupilMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#070606' }), []);
-  const hairMaterial = useMemo(() => new THREE.MeshPhysicalMaterial({ color: hairColor, roughness: 0.58, clearcoat: 0.18 }), [hairColor]);
-  return (
-    <group name="face-features" dispose={null}>
-      {[-1, 1].map((side) => (
-        <group key={side} position={[side * 0.060, 1.835, 0.208]} scale={[1, 0.78, 0.55]}>
-          <mesh material={eyeMaterial}><sphereGeometry args={[0.027, 24, 16]} /></mesh>
-          <mesh position={[0, 0, 0.017]} material={irisMaterial} scale={[0.58, 0.84, 0.22]}><sphereGeometry args={[0.020, 20, 14]} /></mesh>
-          <mesh position={[0, 0, 0.021]} material={pupilMaterial} scale={[0.48, 0.86, 0.18]}><sphereGeometry args={[0.011, 16, 10]} /></mesh>
-        </group>
-      ))}
-      <mesh name="hair-cap" position={[0, 1.935, 0.012]} scale={[1.08, 0.92, 0.94]} rotation={[0.04, 0, 0]} material={hairMaterial}>
-        <sphereGeometry args={[0.145, 32, 18, 0, Math.PI * 2, 0, Math.PI * 0.60]} />
-      </mesh>
-      {[-1, 1].map((side) => (
-        <mesh key={`brow-${side}`} position={[side * 0.060, 1.882, 0.227]} rotation={[0.1, side * 0.15, side * 0.12]} scale={[1.34, 0.20, 0.22]} material={hairMaterial}>
-          <sphereGeometry args={[0.020, 14, 8]} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // HUMANOID CLONE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,14 +73,17 @@ export default function HumanoidClone({
 }) {
   const groupRef = useRef();
   const auraRef = useRef();
+  const clothOverlayRef = useRef();
+  const mouthRef = useRef();
 
   // ── Load model ──────────────────────────────────────────────────────────────
-  const { bodyMesh, morphIndexMap, morphMeshes, privateAnatomyMesh, skeleton, scene, diagnostics } = useModelLoader();
+  const { bodyMesh, morphIndexMap, morphMeshes, privateAnatomyMesh, featureMeshes, skinVariantMaterials, skeleton, scene, diagnostics } = useModelLoader();
   const useProcedural = !bodyMesh || diagnostics?.isSuspicious || Object.keys(morphIndexMap || {}).length < 12;
   const setModelFrame = use3DStore((s) => s.setModelFrame);
   const setModelDiagnostics = use3DStore((s) => s.setModelDiagnostics);
   const gpuTier = use3DStore((s) => s.gpuTier);
   const privateAnatomyVisible = use3DStore((s) => s.privateAnatomyVisible);
+  const wardrobe = use3DStore((s) => s.wardrobeState);
 
   // ── Store slice ─────────────────────────────────────────────────────────────
   const { weights, metrics, posture } = use3DStore(
@@ -130,7 +106,7 @@ export default function HumanoidClone({
 
   useEffect(() => {
     if (!scene || useProcedural) return;
-    const box = new THREE.Box3().setFromObject(scene);
+    const box = new THREE.Box3().setFromObject(bodyMesh);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
     box.getSize(size);
@@ -143,7 +119,7 @@ export default function HumanoidClone({
       height: Math.max(size.y, 0.001),
       radius: Math.max(size.x, size.y, size.z) * 0.5,
     });
-  }, [scene, setModelFrame, useProcedural]);
+  }, [bodyMesh, scene, setModelFrame, useProcedural]);
 
   useEffect(() => {
     setModelDiagnostics(diagnostics ? {
@@ -159,10 +135,15 @@ export default function HumanoidClone({
       case "delta": return createDeltaMaterial();
       default: {
         const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[metrics?.skinTone] ?? 3;
-        return createSkinMaterial(toneIndex, bodyMesh?.material?.map || null);
+        const variant = toneIndex <= 1
+          ? skinVariantMaterials?.SkinVariant_Light
+          : toneIndex >= 4
+            ? skinVariantMaterials?.SkinVariant_Deep
+            : null;
+        return createSkinMaterial(toneIndex, variant || bodyMesh?.material || null);
       }
     }
-  }, [bodyMesh, renderMode, metrics?.skinTone]);
+  }, [bodyMesh, renderMode, metrics?.skinTone, skinVariantMaterials]);
 
   // The protected anatomy surface uses the same tone but no body atlas. The
   // atlas is laid out for the MakeHuman body UV islands and would otherwise
@@ -173,13 +154,102 @@ export default function HumanoidClone({
     return createSkinMaterial(toneIndex, null);
   }, [material, metrics?.skinTone, renderMode]);
 
+  // The authored GLB carries real MakeHuman eye and hair-card textures. Clone
+  // their materials per figure so the two comparison models can customize
+  // colour independently without mutating the shared GLTF cache.
+  const featureMaterials = useMemo(() => {
+    const eyeColor = metrics?.eyeColor || '#6b3b20';
+    const hairColor = metrics?.hairColor || '#21140f';
+    const materials = {};
+    (featureMeshes || []).forEach(({ mesh, feature }) => {
+      const source = Array.isArray(mesh?.material) ? mesh.material[0] : mesh?.material;
+      if (feature === 'eyes') {
+        materials.eyes = new THREE.MeshPhysicalMaterial({
+          map: source?.map || null,
+          color: eyeColor,
+          roughness: 0.16,
+          clearcoat: 0.78,
+          clearcoatRoughness: 0.06,
+          transparent: true,
+          alphaTest: 0.12,
+          side: THREE.DoubleSide,
+        });
+      }
+      if (feature === 'hair') {
+        materials.hair = new THREE.MeshPhysicalMaterial({
+          map: source?.map || null,
+          normalMap: source?.normalMap || null,
+          color: hairColor,
+          roughness: 0.46,
+          clearcoat: 0.24,
+          clearcoatRoughness: 0.16,
+          transparent: true,
+          alphaTest: 0.34,
+          side: THREE.DoubleSide,
+        });
+      }
+    });
+    return materials;
+  }, [featureMeshes, metrics?.eyeColor, metrics?.hairColor]);
+
+  const clothMaterial = useMemo(() => (
+    renderMode === "normal" && isClothPreset(wardrobe)
+      ? createClothMaterial(wardrobe)
+      : null
+  ), [renderMode, wardrobe]);
+
+  const mouthMaterials = useMemo(() => ({
+    interior: new THREE.MeshStandardMaterial({ color: "#190b0d", roughness: 0.72 }),
+    teeth: new THREE.MeshPhysicalMaterial({ color: "#fff8e8", roughness: 0.24, clearcoat: 0.32 }),
+    tongue: new THREE.MeshPhysicalMaterial({ color: "#a34f5f", roughness: 0.42, clearcoat: 0.08 }),
+  }), []);
+
+  useEffect(() => () => {
+    Object.values(mouthMaterials).forEach((mouthMaterial) => mouthMaterial.dispose());
+    clothMaterial?.dispose?.();
+  }, [clothMaterial, mouthMaterials]);
+
+  useEffect(() => {
+    (featureMeshes || []).forEach(({ mesh, feature }) => {
+      const next = featureMaterials[feature];
+      if (next) mesh.material = next;
+      mesh.castShadow = true;
+      mesh.receiveShadow = false;
+    });
+    return () => Object.values(featureMaterials).forEach((featureMaterial) => featureMaterial.dispose());
+  }, [featureMeshes, featureMaterials]);
+
+  // WardrobeShader is intentionally a surface overlay: it reuses the authored
+  // body's exact geometry, skinning and morph targets, so clothing cannot drift
+  // after a measurement change or a future body-asset refresh.
+  useEffect(() => {
+    if (useProcedural || !bodyMesh || !scene || !skeleton || !clothMaterial) return undefined;
+    const parent = bodyMesh.parent || scene;
+    const overlay = new THREE.SkinnedMesh(bodyMesh.geometry, clothMaterial);
+    overlay.name = `GrowthTrackCloth_${cloneKey}`;
+    overlay.morphTargetDictionary = bodyMesh.morphTargetDictionary;
+    overlay.morphTargetInfluences = new Float32Array(bodyMesh.morphTargetInfluences?.length || 0);
+    overlay.bind(skeleton, bodyMesh.bindMatrix);
+    overlay.scale.setScalar(1.004);
+    overlay.renderOrder = 1;
+    overlay.frustumCulled = false;
+    overlay.castShadow = true;
+    overlay.receiveShadow = true;
+    parent.add(overlay);
+    clothOverlayRef.current = overlay;
+
+    return () => {
+      parent.remove(overlay);
+      if (clothOverlayRef.current === overlay) clothOverlayRef.current = null;
+    };
+  }, [bodyMesh, cloneKey, clothMaterial, scene, skeleton, useProcedural]);
+
   // Apply one coherent skin material to every authored surface, including the
   // separately gated private-anatomy mesh.
   useEffect(() => {
     if (bodyMesh && !useProcedural) {
       (morphMeshes || [{ mesh: bodyMesh }]).forEach(({ mesh, sensitive }) => {
         if (!mesh) return;
-        // eslint-disable-next-line react-hooks/immutability
         mesh.material = sensitive ? privateMaterial : material;
         mesh.castShadow = renderMode === "normal";
         mesh.receiveShadow = false;
@@ -187,7 +257,10 @@ export default function HumanoidClone({
       // eslint-disable-next-line react-hooks/immutability
       bodyMesh.material = material;
     }
-    if (privateAnatomyMesh) privateAnatomyMesh.material = privateMaterial;
+    if (privateAnatomyMesh) {
+      // eslint-disable-next-line react-hooks/immutability
+      privateAnatomyMesh.material = privateMaterial;
+    }
   }, [bodyMesh, material, morphMeshes, privateAnatomyMesh, privateMaterial, renderMode, useProcedural]);
 
   useEffect(() => {
@@ -208,6 +281,24 @@ export default function HumanoidClone({
     targets.forEach(({ mesh, morphIndexMap: indexMap }) => {
       interpolator.applyToMesh(mesh, indexMap);
     });
+    if (clothOverlayRef.current) {
+      interpolator.applyToMesh(clothOverlayRef.current, morphIndexMap);
+    }
+
+    const blink = interpolator.getWeight("blink");
+    const smile = interpolator.getWeight("smile");
+    const jawOpen = interpolator.getWeight("jaw_open");
+    (featureMeshes || []).forEach(({ mesh, feature }) => {
+      if (feature === "eyes") mesh.visible = blink < 0.78;
+    });
+    if (mouthRef.current) {
+      mouthRef.current.visible = jawOpen > 0.035 || smile > 0.58;
+      mouthRef.current.scale.set(
+        0.82 + smile * 0.30,
+        0.70 + jawOpen * 1.55,
+        0.82 + jawOpen * 0.20,
+      );
+    }
 
     // Shader uniforms for Layer 4 materials
     if (bodyMesh.material?.uniforms) {
@@ -241,6 +332,9 @@ export default function HumanoidClone({
         visible={visible}
         showAura={showAura}
         skinTone={metrics?.skinTone ?? "IV"}
+        eyeColor={metrics?.eyeColor ?? "#6b3b20"}
+        hairColor={metrics?.hairColor ?? "darkbrown"}
+        expressionWeights={weights}
         quality={gpuTier === "LOW" ? "LOW" : gpuTier === "MED" ? "MED" : "HIGH"}
       />
     );
@@ -250,7 +344,27 @@ export default function HumanoidClone({
   return (
     <group ref={groupRef} position={position} name={`clone-${cloneKey}`}>
       {scene && <primitive object={scene} />}
-      <FeatureOverlay metrics={metrics} />
+
+      {/* Deliberately hidden at rest; expression channels reveal these details
+          only when the mouth is opened or the smile is strong enough. */}
+      {scene && (
+        <group
+          position={[scene.position.x, scene.position.y, scene.position.z]}
+          scale={[scene.scale.x, scene.scale.y, scene.scale.z]}
+        >
+          <group ref={mouthRef} position={[0, 1.665, 0.215]} visible={false}>
+            <mesh material={mouthMaterials.interior} scale={[1.15, 0.68, 0.34]}>
+              <sphereGeometry args={[0.036, 18, 10]} />
+            </mesh>
+            <mesh position={[0, 0.010, 0.014]} material={mouthMaterials.teeth} scale={[1.0, 0.50, 0.22]}>
+              <boxGeometry args={[0.076, 0.022, 0.008]} />
+            </mesh>
+            <mesh position={[0, -0.012, 0.018]} material={mouthMaterials.tongue} scale={[1.0, 0.64, 0.30]}>
+              <sphereGeometry args={[0.024, 18, 10]} />
+            </mesh>
+          </group>
+        </group>
+      )}
 
       {/* Aura rim — goal clone only */}
       {showAura && bodyMesh && skeleton && (

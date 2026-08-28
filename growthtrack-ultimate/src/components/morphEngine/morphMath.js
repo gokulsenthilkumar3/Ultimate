@@ -24,6 +24,7 @@ export const MORPH_CHANNEL_GROUPS = Object.freeze({
   arms: Object.freeze(['bicep_peak', 'tricep_horse', 'forearm_girth', 'upper_arm_length', 'forearm_length']),
   lowerBody: Object.freeze(['glute_volume', 'hip_width', 'pelvis_width', 'quad_sweep', 'ham_thickness', 'calf_diamond', 'ankle_width', 'leg_length']),
   face: Object.freeze(['brow_depth', 'nose_bridge_width', 'nose_tip_size', 'ear_prominence', 'jaw_width', 'chin_projection', 'lip_fullness', 'eye_size', 'cheekbone_width', 'forehead_height', 'temple_narrowing', 'nose_length', 'jaw_angle']),
+  expression: Object.freeze(['blink', 'smile', 'jaw_open']),
   extremities: Object.freeze(['knee_spacing', 'ankle_taper', 'hand_splay', 'foot_arch', 'hand_length', 'foot_length']),
 });
 
@@ -59,6 +60,18 @@ export function constrainMorphWeights(weights = {}) {
   next.pec_thickness = Math.max(next.pec_thickness, next.chest_depth * 0.68);
   next.trap_swell = Math.max(next.trap_swell, next.deltoid_width * 0.42);
   next.clavicle_width = Math.max(next.clavicle_width, next.deltoid_width * 0.30);
+
+  // Corrective channels are generated only for combinations that can pinch
+  // the authored surface. They stay zero for ordinary single-slider edits.
+  next.corrective_abdomen_waist = clamp01(
+    Math.max(0, next.gut_volume - 0.55) * Math.max(0, next.waist_narrow - 0.45) * 1.65,
+  );
+  next.corrective_pec_ribcage = clamp01(
+    Math.max(0, next.pec_thickness - 0.68) * Math.max(0, next.chest_depth - 0.62) * 1.9,
+  );
+  next.corrective_shoulder_arm = clamp01(
+    Math.max(0, next.deltoid_width - 0.66) * Math.max(next.bicep_peak, next.tricep_horse) * 1.55,
+  );
 
   // The lower-body chain stays continuous at the knee and ankle.
   next.ham_thickness = Math.max(next.ham_thickness, next.quad_sweep * 0.32);
@@ -99,4 +112,3 @@ export function interpolateMorphWeights(from = {}, to = {}, progress = 0) {
   }
   return constrainMorphWeights(result);
 }
-

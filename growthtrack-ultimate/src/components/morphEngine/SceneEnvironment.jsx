@@ -30,11 +30,12 @@ function Atmosphere({ profile }) {
   return null;
 }
 
-function EnvironmentRig({ profile }) {
+function EnvironmentRig({ profile, lodConfig }) {
+  const resolution = lodConfig?.environmentResolution ?? 128;
   return (
     <>
       <Atmosphere profile={profile} />
-      <Environment background={false} resolution={128} environmentIntensity={profile.environmentIntensity}>
+      <Environment background={false} resolution={resolution} environmentIntensity={profile.environmentIntensity}>
         <Lightformer intensity={2.4} color={profile.key} position={[-1.5, 4.2, 2.2]} rotation={[0.25, 0.15, 0]} scale={[4.6, 1.4, 1]} />
         <Lightformer intensity={1.8} color={profile.fill} position={[-4, 1.6, 0.4]} rotation={[0, Math.PI / 2, 0]} scale={[4, 1.5, 1]} />
         <Lightformer intensity={2.0} color={profile.rim} position={[4, 2.4, -1]} rotation={[0, -Math.PI / 2, 0]} scale={[3.2, 1.1, 1]} />
@@ -44,13 +45,13 @@ function EnvironmentRig({ profile }) {
   );
 }
 
-export default function SceneEnvironment() {
+export default function SceneEnvironment({ lodConfig }) {
   const environment = use3DStore((state) => state.cinematicState.sceneEnvironment);
   const profile = getCinematicSceneProfile(environment);
 
   return (
     <ErrorBoundary fallback={<Atmosphere profile={profile} />}>
-      <EnvironmentRig profile={profile} />
+      <EnvironmentRig profile={profile} lodConfig={lodConfig} />
     </ErrorBoundary>
   );
 }

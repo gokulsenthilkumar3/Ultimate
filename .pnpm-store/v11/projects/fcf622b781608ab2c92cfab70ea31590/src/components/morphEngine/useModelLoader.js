@@ -24,6 +24,7 @@ import { useMemo }       from 'react';
 import { useGLTF }       from '@react-three/drei';
 import * as THREE        from 'three';
 import { SkeletonUtils } from 'three-stdlib';
+import use3DStore from '../../store/use3DStore';
 
 import { GEOMETRY_MORPH_TARGETS } from './morphMath';
 
@@ -32,6 +33,7 @@ import { GEOMETRY_MORPH_TARGETS } from './morphMath';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const MODEL_PATH = `${import.meta.env.BASE_URL}assets/models/humanoid-base.glb`;
+export const MODEL_PATH_LITE = `${import.meta.env.BASE_URL}assets/models/humanoid-base-lite.glb`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PRELOAD — call this at app root to start loading immediately
@@ -39,6 +41,7 @@ export const MODEL_PATH = `${import.meta.env.BASE_URL}assets/models/humanoid-bas
 
 export function preloadHumanoidModel() {
   useGLTF.preload(MODEL_PATH, 'https://www.gstatic.com/draco/v1/decoders/');
+  useGLTF.preload(MODEL_PATH_LITE, 'https://www.gstatic.com/draco/v1/decoders/');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,13 +158,15 @@ function buildFallbackBounds() {
  * }}
  */
 export function useModelLoader() {
+  const gpuTier = use3DStore((state) => state.gpuTier);
+  const modelPath = gpuTier === 'LOW' ? MODEL_PATH_LITE : MODEL_PATH;
   // useGLTF must be called unconditionally (Rules of Hooks).
   // Suspense promises must be re-thrown so React Suspense can catch them.
   // Network / parse errors are caught and we fall through to the dev fallback.
   let gltf = null;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    gltf = useGLTF(MODEL_PATH, 'https://www.gstatic.com/draco/v1/decoders/');
+    gltf = useGLTF(modelPath, 'https://www.gstatic.com/draco/v1/decoders/');
   } catch (err) {
     if (err && typeof err.then === 'function') throw err; // re-throw Suspense promises
     if (import.meta.env.DEV) {
@@ -181,6 +186,8 @@ export function useModelLoader() {
           morphIndexMap: {},
           morphMeshes: [{ mesh, morphIndexMap: {}, sensitive: false }],
           privateAnatomyMesh: null,
+          featureMeshes: [],
+          skinVariantMaterials: {},
           skeleton: null,
           scene: group,
           bounds,
@@ -193,11 +200,15 @@ export function useModelLoader() {
       // Clone the scene so each HumanoidClone gets its own morph influence array.
       // SkeletonUtils.clone also correctly rebinds bone references for SkinnedMeshes.
       const clonedScene = SkeletonUtils.clone(gltf.scene);
+      const skinVariantMaterials = Object.fromEntries(
+        Object.entries(gltf.materials || {}).filter(([name]) => name.startsWith('SkinVariant_')),
+      );
 
       let bodyMesh     = null;
       let morphIndexMap = {};
       const morphMeshes = [];
       let privateAnatomyMesh = null;
+      const featureMeshes = [];
       let skeleton     = null;
       let bounds = null;
 
@@ -206,6 +217,12 @@ export function useModelLoader() {
 
         const lowerName = String(node.name || '').toLowerCase();
         const isSensitive = lowerName.includes('privateanatomy') || node.userData?.sensitive === true;
+        if (lowerName.includes('growthtrackeyes') || lowerName.includes('growthtrackhair')) {
+          featureMeshes.push({
+            mesh: node,
+            feature: lowerName.includes('eyes') ? 'eyes' : 'hair',
+          });
+        }
         const nodeMorphIndexMap = buildMorphIndexMap(node);
         if (Object.keys(nodeMorphIndexMap).length > 0) {
           morphMeshes.push({ mesh: node, morphIndexMap: nodeMorphIndexMap, sensitive: isSensitive });
@@ -249,7 +266,9 @@ export function useModelLoader() {
         // Normalize the model so the humanoid reads like a full body figure.
         // Many GLBs arrive with an offset origin or inconsistent scale, which
         // makes the human look cropped even when the mesh itself is correct.
-        const box = new THREE.Box3().setFromObject(clonedScene);
+        // Normalize from the body only. Optional hair/eye accessories must not
+        // change the body's scale or make metric landmarks drift between builds.
+        const box = new THREE.Box3().setFromObject(bodyMesh);
         const size = new THREE.Vector3();
         const center = new THREE.Vector3();
         box.getSize(size);
@@ -271,6 +290,8 @@ export function useModelLoader() {
           morphIndexMap,
           morphMeshes,
           privateAnatomyMesh,
+          featureMeshes,
+          skinVariantMaterials,
           skeleton,
           scene: clonedScene,
           bounds,
@@ -293,6 +314,8 @@ export function useModelLoader() {
       morphIndexMap: {},
       morphMeshes: [{ mesh, morphIndexMap: {}, sensitive: false }],
       privateAnatomyMesh: null,
+      featureMeshes: [],
+      skinVariantMaterials: {},
       skeleton: null,
       scene: group,
       bounds,

@@ -10,6 +10,7 @@ named metric channels.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import struct
 import zlib
@@ -19,6 +20,24 @@ import numpy as np
 
 
 SCALE = 0.1  # MakeHuman source units are centimetres; GLB uses metres.
+
+
+def texture_bytes(path: Path, max_size: int | None = None) -> bytes:
+    """Return a PNG, optionally downsampled for the mobile GLB tier."""
+    source = path.read_bytes()
+    if not max_size:
+        return source
+    try:
+        from PIL import Image
+    except ImportError:
+        return source
+    with Image.open(io.BytesIO(source)) as image:
+        if max(image.size) <= max_size:
+            return source
+        image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+        output = io.BytesIO()
+        image.save(output, format="PNG", optimize=True)
+        return output.getvalue()
 
 # The current profile target is a young athletic male. MakeHuman macro targets
 # are absolute blend shapes from its neutral base, so this establishes a male,
@@ -85,6 +104,16 @@ MORPH_SOURCES = {
     "hand_splay": [("targets/armslegs/l-hand-fingers-distance-incr", 0.5), ("targets/armslegs/r-hand-fingers-distance-incr", 0.5)],
     "foot_arch": [("targets/armslegs/l-foot-scale-depth-incr", 0.15), ("targets/armslegs/r-foot-scale-depth-incr", 0.15)],
 }
+
+GENERATED_MORPH_NAMES = {
+    "corrective_abdomen_waist",
+    "corrective_pec_ribcage",
+    "corrective_shoulder_arm",
+    "blink",
+    "smile",
+    "jaw_open",
+}
+MORPH_SOURCES.update({name: [] for name in GENERATED_MORPH_NAMES})
 
 
 def target_delta(targets, stem: str, vertex_count: int) -> np.ndarray:
@@ -214,6 +243,42 @@ def base_muscle_detail(coords: np.ndarray) -> np.ndarray:
     calf = np.exp(-((abs_x - 0.145) / 0.075) ** 2 - ((y + 0.665) / 0.135) ** 2)
     delta[:, 0] += np.sign(x) * (quad * 0.004 + ham * 0.003 + calf * 0.003)
     delta[:, 2] += quad * front * 0.0035 + calf * 0.0025
+
+    return delta
+
+
+def generated_morph_delta(name: str, coords: np.ndarray) -> np.ndarray:
+    """Generate only the corrective/expression keys that need no source asset."""
+    delta = np.zeros_like(coords, dtype=np.float32)
+    x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
+    abs_x = np.abs(x)
+    front = np.clip((z - 0.075) / 0.075, 0.0, 1.0)
+
+    if name == "corrective_abdomen_waist":
+        waist = np.exp(-((y - 0.04) / 0.20) ** 4) * front
+        delta[:, 0] += x * waist * 0.028
+        delta[:, 2] += waist * 0.0025
+    elif name == "corrective_pec_ribcage":
+        rib = np.exp(-((abs_x - 0.095) / 0.11) ** 4 - ((y - 0.28) / 0.16) ** 4) * front
+        delta[:, 2] += rib * 0.006
+    elif name == "corrective_shoulder_arm":
+        armhole = np.exp(-((abs_x - 0.22) / 0.10) ** 4 - ((y - 0.34) / 0.18) ** 4)
+        delta[:, 0] += np.sign(x) * armhole * 0.004
+        delta[:, 2] += armhole * front * 0.002
+    elif name == "blink":
+        upper_lid = np.exp(-((abs_x - 0.042) / 0.033) ** 4 - ((y - 0.775) / 0.030) ** 4) * front
+        lower_lid = np.exp(-((abs_x - 0.042) / 0.033) ** 4 - ((y - 0.690) / 0.030) ** 4) * front
+        delta[:, 1] -= upper_lid * 0.010
+        delta[:, 1] += lower_lid * 0.008
+    elif name == "smile":
+        mouth = np.exp(-((y - 0.605) / 0.055) ** 4) * front
+        corners = np.exp(-((abs_x - 0.052) / 0.040) ** 4)
+        delta[:, 1] += mouth * corners * 0.008
+        delta[:, 2] += mouth * 0.002
+    elif name == "jaw_open":
+        lower_face = np.exp(-((y - 0.525) / 0.095) ** 4 - (x / 0.095) ** 4) * front
+        delta[:, 1] -= lower_face * 0.016
+        delta[:, 2] += lower_face * 0.004
 
     return delta
 
@@ -435,11 +500,14 @@ def make_mesh(base, targets, group_index: int, morph_names=None, add_anatomy_det
     for name in names:
         sources = MORPH_SOURCES[name]
         delta = np.zeros((len(coords), 3), dtype=np.float32)
-        found = False
-        for stem, weight in sources:
-            if f"{stem}.index" in targets:
-                found = True
-            delta += target_delta(targets, stem, len(coords)) * weight * SCALE
+        found = name in GENERATED_MORPH_NAMES
+        if found:
+            delta += generated_morph_delta(name, coords)
+        else:
+            for stem, weight in sources:
+                if f"{stem}.index" in targets:
+                    found = True
+                delta += target_delta(targets, stem, len(coords)) * weight * SCALE
         if add_anatomy_detail:
             delta += procedural_anatomy_delta(name, coords)
         if not found and group_index == 0 and name not in ("d_length", "d_girth"):
@@ -507,14 +575,139 @@ class GlbWriter:
         return len(self.accessors) - 1
 
 
-def flat_normal_png():
-    def chunk(kind, payload):
-        return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)
-    raw = b"\x00\x80\x80\xff"
-    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+def _png_chunk(kind, payload):
+    return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)
 
 
-def build_glb(body, private_anatomy, output: Path, skin_texture: Path | None = None):
+def _rgb_png(pixels: np.ndarray) -> bytes:
+    """Encode a uint8 HxWx3 array as a deterministic, browser-safe PNG."""
+    height, width, channels = pixels.shape
+    if channels != 3:
+        raise ValueError("_rgb_png expects an HxWx3 array")
+    scanlines = b"".join(b"\x00" + pixels[row].tobytes() for row in range(height))
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", header)
+        + _png_chunk(b"IDAT", zlib.compress(scanlines, 6))
+        + _png_chunk(b"IEND", b"")
+    )
+
+
+def procedural_normal_png(size: int = 1024) -> bytes:
+    """Create a subtle tangent-space skin normal map instead of a 1x1 stub.
+
+    This is intentionally low-amplitude: the body sculpt and the albedo atlas
+    own the large forms while this texture supplies pores and fine breakup at
+    close camera distances. It is generated locally, so the GLB build remains
+    reproducible and does not depend on an external texture download.
+    """
+    axis = np.linspace(0.0, 1.0, size, dtype=np.float32)
+    u, v = np.meshgrid(axis, axis)
+    tau = np.float32(np.pi * 2.0)
+
+    h1 = np.sin(u * tau * 137.0 + np.sin(v * tau * 11.0) * 1.7)
+    h2 = np.sin(v * tau * 181.0 + np.sin(u * tau * 13.0) * 1.3)
+    h3 = np.sin((u + v) * tau * 73.0) * 0.45
+    # A second, directional band supplies a restrained follicle-like breakup
+    # on the atlas. It is intentionally subtle so pores remain primary and the
+    # material never reads like painted fur at normal viewing distance.
+    hair = np.sin(v * tau * 337.0 + np.sin(u * tau * 9.0) * 0.65) * (0.55 + 0.45 * np.sin(u * tau * 3.0) ** 2)
+    dhdu = tau * (137.0 * np.cos(u * tau * 137.0 + np.sin(v * tau * 11.0) * 1.7) + h2 * 0.08 + 73.0 * 0.45 * np.cos((u + v) * tau * 73.0) + hair * 0.018)
+    dhdv = tau * (181.0 * np.cos(v * tau * 181.0 + np.sin(u * tau * 13.0) * 1.3) + h1 * 0.08 + 73.0 * 0.45 * np.cos((u + v) * tau * 73.0) + hair * 0.075)
+    amplitude = 0.00016
+    nx = np.clip(-dhdu * amplitude, -0.28, 0.28)
+    ny = np.clip(-dhdv * amplitude, -0.28, 0.28)
+    nz = np.sqrt(np.maximum(1.0 - nx * nx - ny * ny, 0.65))
+    pixels = np.stack(((nx * 0.5 + 0.5) * 255.0, (ny * 0.5 + 0.5) * 255.0, (nz * 0.5 + 0.5) * 255.0), axis=-1)
+    return _rgb_png(np.clip(pixels, 0.0, 255.0).astype(np.uint8))
+
+
+def procedural_metallic_roughness_png(size: int = 1024) -> bytes:
+    """Create a packed glTF roughness/AO map (R=AO, G=roughness, B=metal)."""
+    axis = np.linspace(0.0, 1.0, size, dtype=np.float32)
+    u, v = np.meshgrid(axis, axis)
+    pores = 0.5 + 0.5 * np.sin(u * np.float32(np.pi * 2.0) * 19.0 + np.sin(v * 31.0) * 2.0)
+    creases = np.clip(np.abs(np.sin(v * np.float32(np.pi * 2.0) * 7.0)), 0.0, 1.0)
+    ao = np.clip(0.985 - creases * 0.045 - pores * 0.015, 0.86, 1.0)
+    roughness = np.clip(0.43 + pores * 0.18 + (1.0 - creases) * 0.12, 0.32, 0.82)
+    metallic = np.zeros_like(roughness)
+    pixels = np.stack((ao * 255.0, roughness * 255.0, metallic), axis=-1)
+    return _rgb_png(np.clip(pixels, 0.0, 255.0).astype(np.uint8))
+
+
+def make_static_mesh(npz, body_center, body_min_y, body_scale, target_center, target_scale, flip_v=True):
+    """Fit an accessory NPZ into the body's normalized GLB frame.
+
+    MakeHuman accessories are stored in their own source-space coordinates.
+    The body is normalized by useModelLoader at runtime, so this function
+    pre-fits eyes/hair into the inverse of that same transform. Body/private
+    topology and morph accessors remain untouched.
+    """
+    source_positions = npz["coord"].astype(np.float32)
+    source_uvs = npz["texco"].astype(np.float32)
+    faces = npz["fvert"].astype(np.int64)
+    face_uvs = npz["fuvs"].astype(np.int64)
+    face_counts = npz.get("nfaces", np.full(len(faces), 4, dtype=np.uint8))[:len(faces)]
+
+    source_center = (source_positions.min(axis=0) + source_positions.max(axis=0)) * 0.5
+    centered = source_positions - source_center
+    scaled = centered * np.asarray(target_scale, dtype=np.float32)
+    target_center = np.asarray(target_center, dtype=np.float32)
+    fitted = np.empty_like(scaled)
+    fitted[:, 0] = (scaled[:, 0] + target_center[0]) / body_scale + body_center[0]
+    fitted[:, 1] = (scaled[:, 1] + target_center[1]) / body_scale + body_min_y
+    fitted[:, 2] = (scaled[:, 2] + target_center[2]) / body_scale + body_center[2]
+
+    vertex_map = {}
+    positions = []
+    uv_values = []
+    triangles = []
+    for face_index, row in enumerate(faces):
+        count = int(face_counts[face_index]) if face_index < len(face_counts) else 4
+        count = min(max(count, 3), 4)
+        corners = []
+        for corner in range(count):
+            position_index = int(row[corner])
+            uv_index = int(face_uvs[face_index, corner])
+            key = (position_index, uv_index)
+            if key not in vertex_map:
+                vertex_map[key] = len(positions)
+                positions.append(fitted[position_index])
+                uv = source_uvs[uv_index].copy()
+                if flip_v:
+                    uv[1] = 1.0 - uv[1]
+                uv_values.append(uv)
+            corners.append(vertex_map[key])
+        for corner in range(1, len(corners) - 1):
+            triangles.extend((corners[0], corners[corner], corners[corner + 1]))
+
+    positions = np.asarray(positions, dtype=np.float32)
+    uv_values = np.asarray(uv_values, dtype=np.float32)
+    indices = np.asarray(triangles, dtype=np.uint32)
+    normals = np.zeros_like(positions)
+    tri = positions[indices].reshape(-1, 3, 3)
+    cross = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    for offset in range(3):
+        np.add.at(normals, indices[offset::3], cross)
+    lengths = np.linalg.norm(normals, axis=1, keepdims=True)
+    normals /= np.maximum(lengths, 1e-8)
+    return {"positions": positions, "normals": normals, "colors": np.ones_like(positions, dtype=np.float32), "uv_values": uv_values, "indices": indices}
+
+
+def build_glb(
+    body,
+    private_anatomy,
+    output: Path,
+    skin_texture: Path | None = None,
+    eye_geometry: dict | None = None,
+    eye_texture: Path | None = None,
+    hair_geometry: dict | None = None,
+    hair_diffuse: Path | None = None,
+    hair_normal: Path | None = None,
+    skin_variants: dict[str, Path] | None = None,
+    texture_size: int | None = None,
+):
     writer = GlbWriter()
     bone_specs = [
         ("Hips", None, (0.00, -0.10, 0.00)), ("Spine", "Hips", (0.00, 0.08, 0.00)),
@@ -584,25 +777,136 @@ def build_glb(body, private_anatomy, output: Path, skin_texture: Path | None = N
         }
         return primitive, target_names
 
+    def build_static_primitive(mesh_data, material_index):
+        """Write a non-skinned accessory mesh without touching body accessors."""
+        positions = mesh_data["positions"]
+        normals = mesh_data["normals"]
+        colors = mesh_data["colors"]
+        uv_values = mesh_data["uv_values"]
+        indices = mesh_data["indices"]
+        pview = writer.blob(positions.astype(np.float32).tobytes(), 34962)
+        nview = writer.blob(normals.astype(np.float32).tobytes(), 34962)
+        cview = writer.blob(colors.astype(np.float32).tobytes(), 34962)
+        uvview = writer.blob(uv_values.astype(np.float32).tobytes(), 34962)
+        iview = writer.blob(indices.astype(np.uint32).tobytes(), 34963)
+        return {
+            "attributes": {
+                "POSITION": writer.accessor(pview, 5126, len(positions), "VEC3", positions.min(0).tolist(), positions.max(0).tolist()),
+                "NORMAL": writer.accessor(nview, 5126, len(normals), "VEC3"),
+                "COLOR_0": writer.accessor(cview, 5126, len(colors), "VEC3"),
+                "TEXCOORD_0": writer.accessor(uvview, 5126, len(uv_values), "VEC2"),
+            },
+            "indices": writer.accessor(iview, 5125, len(indices), "SCALAR", [int(indices.min())], [int(indices.max())]),
+            "material": material_index,
+        }
+
     body_primitive, body_target_names = build_primitive(body)
     private_primitive, private_target_names = build_primitive(private_anatomy)
+
     images = []
     textures = []
+
+    def add_image(data: bytes, label: str):
+        image_view = writer.blob(data)
+        dimensions = [0, 0]
+        if data[:8] == b"\x89PNG\r\n\x1a\n" and len(data) >= 24:
+            dimensions = list(struct.unpack(">II", data[16:24]))
+        images.append({
+            "name": label,
+            "bufferView": image_view,
+            "mimeType": "image/png",
+            "extras": {"width": dimensions[0], "height": dimensions[1]},
+        })
+        textures.append({"sampler": 0, "source": len(images) - 1})
+        return len(textures) - 1
+
+    skin_texture_index = None
     if skin_texture and skin_texture.exists():
-        image_view = writer.blob(skin_texture.read_bytes())
-        images.append({"bufferView": image_view, "mimeType": "image/png"})
-        textures.append({"sampler": 0, "source": 0})
-    normal_view = writer.blob(flat_normal_png())
-    images.append({"bufferView": normal_view, "mimeType": "image/png"})
-    textures.append({"sampler": 0, "source": len(images) - 1})
-    material = {"name": "Skin", "pbrMetallicRoughness": {"baseColorFactor": [0.62, 0.35, 0.17, 1.0], "roughnessFactor": 0.72, "metallicFactor": 0.0}, "doubleSided": False}
-    if textures:
-        material["pbrMetallicRoughness"]["baseColorTexture"] = {"index": 0}
-    material["normalTexture"] = {"index": 1 if skin_texture and skin_texture.exists() else 0}
+        skin_texture_index = add_image(texture_bytes(skin_texture, texture_size), "SkinAlbedo_YoungMale")
+    skin_variant_indices = {}
+    for variant_name, variant_path in (skin_variants or {}).items():
+        if variant_path and variant_path.exists():
+            skin_variant_indices[variant_name] = add_image(texture_bytes(variant_path, texture_size), f"SkinAlbedo_{variant_name}")
+    map_size = min(texture_size, 1024) if texture_size else 1024
+    normal_texture_index = add_image(procedural_normal_png(map_size), "SkinNormal_ProceduralMicrodetail")
+    metallic_roughness_index = add_image(procedural_metallic_roughness_png(map_size), "SkinAO_Roughness")
+    eye_texture_index = add_image(texture_bytes(eye_texture, texture_size), "EyeBrown_IrisSclera") if eye_texture and eye_texture.exists() else None
+    hair_diffuse_index = add_image(texture_bytes(hair_diffuse, texture_size), "HairShort02_Albedo") if hair_diffuse and hair_diffuse.exists() else None
+    hair_normal_index = add_image(texture_bytes(hair_normal, texture_size), "HairShort02_Normal") if hair_normal and hair_normal.exists() else normal_texture_index
+
+    skin_material = {
+        "name": "Skin",
+        "pbrMetallicRoughness": {
+            "baseColorFactor": [0.62, 0.35, 0.17, 1.0],
+            "roughnessFactor": 0.72,
+            "metallicFactor": 0.0,
+            "baseColorTexture": {"index": skin_texture_index if skin_texture_index is not None else normal_texture_index},
+            "metallicRoughnessTexture": {"index": metallic_roughness_index},
+        },
+        "normalTexture": {"index": normal_texture_index, "scale": 0.42},
+        "occlusionTexture": {"index": metallic_roughness_index, "strength": 0.65},
+        "doubleSided": False,
+    }
+    materials = [skin_material]
+    for variant_name, variant_index in skin_variant_indices.items():
+        materials.append({
+            "name": f"SkinVariant_{variant_name}",
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+                "roughnessFactor": 0.72,
+                "metallicFactor": 0.0,
+                "baseColorTexture": {"index": variant_index},
+                "metallicRoughnessTexture": {"index": metallic_roughness_index},
+            },
+            "normalTexture": {"index": normal_texture_index, "scale": 0.42},
+            "occlusionTexture": {"index": metallic_roughness_index, "strength": 0.65},
+            "doubleSided": False,
+        })
+    eye_material_index = len(materials)
+    if eye_geometry is not None and eye_texture_index is not None:
+        materials.append({
+            "name": "Eyes_HighPoly_Brown",
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+                "roughnessFactor": 0.16,
+                "metallicFactor": 0.0,
+                "baseColorTexture": {"index": eye_texture_index},
+            },
+            "normalTexture": {"index": normal_texture_index, "scale": 0.08},
+            "doubleSided": True,
+            "alphaMode": "BLEND",
+            "extensions": {"KHR_materials_clearcoat": {"clearcoatFactor": 0.72, "clearcoatRoughnessFactor": 0.08}},
+        })
+    hair_material_index = len(materials)
+    if hair_geometry is not None and hair_diffuse_index is not None:
+        materials.append({
+            "name": "Hair_Short02_Cards",
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+                "roughnessFactor": 0.46,
+                "metallicFactor": 0.0,
+                "baseColorTexture": {"index": hair_diffuse_index},
+            },
+            "normalTexture": {"index": hair_normal_index, "scale": 0.52},
+            "doubleSided": True,
+            "alphaMode": "MASK",
+            "alphaCutoff": 0.34,
+            "extensions": {"KHR_materials_clearcoat": {"clearcoatFactor": 0.24, "clearcoatRoughnessFactor": 0.18}},
+        })
+    eyes_mesh_index = 2 if eye_geometry is not None and eye_texture_index is not None else None
+    hair_mesh_index = (2 if eyes_mesh_index is None else 3) if hair_geometry is not None and hair_diffuse_index is not None else None
+    feature_meshes = []
+    if eyes_mesh_index is not None:
+        eye_primitive = build_static_primitive(eye_geometry, eye_material_index)
+        feature_meshes.append({"name": "GrowthTrackEyes", "mesh": eyes_mesh_index, "primitives": [eye_primitive], "extras": {"feature": "eyes", "source": "MakeHuman high-poly eyes"}})
+    if hair_mesh_index is not None:
+        hair_primitive = build_static_primitive(hair_geometry, hair_material_index)
+        feature_meshes.append({"name": "GrowthTrackHair", "mesh": hair_mesh_index, "primitives": [hair_primitive], "extras": {"feature": "hair", "source": "MakeHuman short02 hair cards"}})
     document = {
         "asset": {"version": "2.0", "generator": "GrowthTrack MakeHuman CC0 converter"},
+        "extensionsUsed": ["KHR_materials_clearcoat"],
         "scene": 0,
-        "scenes": [{"nodes": [0, 1]}],
+        "scenes": [{"nodes": [0, 1] + [item["mesh"] for item in feature_meshes]}],
         "nodes": [
             {"name": "Body", "mesh": 0, "skin": 0},
             {"name": "PrivateAnatomy", "mesh": 1, "skin": 0, "extras": {"sensitive": True, "defaultVisible": False}},
@@ -611,7 +915,7 @@ def build_glb(body, private_anatomy, output: Path, skin_texture: Path | None = N
             {"name": "GrowthTrackBody", "primitives": [body_primitive], "weights": [0.0] * len(body_target_names), "extras": {"targetNames": body_target_names}},
             {"name": "GrowthTrackPrivateAnatomy", "primitives": [private_primitive], "weights": [0.0] * len(private_target_names), "extras": {"targetNames": private_target_names, "sensitive": True}},
         ],
-        "materials": [material],
+        "materials": materials,
         "buffers": [{"byteLength": len(writer.binary)}],
         "bufferViews": writer.buffer_views,
         "accessors": writer.accessors,
@@ -621,10 +925,27 @@ def build_glb(body, private_anatomy, output: Path, skin_texture: Path | None = N
             "vertexCount": len(body["positions"]),
             "privateVertexCount": len(private_anatomy["positions"]),
             "morphTargetCount": len(body_target_names),
+            "featureNodes": [item["name"] for item in feature_meshes],
+            "pbrTextureSet": {
+                "normal": "SkinNormal_ProceduralMicrodetail",
+                "metallicRoughness": "SkinAO_Roughness",
+                "eye": "EyeBrown_IrisSclera" if eye_texture_index is not None else None,
+                "hair": "HairShort02_Albedo" if hair_diffuse_index is not None else None,
+                "skinVariants": list(skin_variant_indices.keys()),
+            },
+            "textureDelivery": {
+                "format": "PNG",
+                "maxTextureEdge": texture_size,
+                "webglMipmaps": True,
+                "mobileTier": bool(texture_size and texture_size <= 512),
+                "ktx2": False,
+            },
             "privacy": "PrivateAnatomy is hidden by the application until an explicit per-session reveal.",
         },
     }
-    bone_node_offset = 2
+    document["meshes"].extend(feature_meshes)
+    document["nodes"].extend({"name": item["name"], "mesh": item["mesh"]} for item in feature_meshes)
+    bone_node_offset = len(document["nodes"])
     bone_nodes = []
     for name, parent, local in bone_specs:
         node = {"name": name, "translation": [float(v) for v in local]}
@@ -640,10 +961,9 @@ def build_glb(body, private_anatomy, output: Path, skin_texture: Path | None = N
         "inverseBindMatrices": inverse_accessor,
         "joints": list(range(bone_node_offset, bone_node_offset + len(bone_specs))),
     }]
-    if images:
-        document["images"] = images
-        document["textures"] = textures
-        document["samplers"] = [{"magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497}]
+    document["images"] = images
+    document["textures"] = textures
+    document["samplers"] = [{"magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497}]
     json_bytes = json.dumps(document, separators=(",", ":")).encode("utf-8")
     while len(json_bytes) % 4:
         json_bytes += b" "
@@ -664,6 +984,12 @@ def main():
     parser.add_argument("--data", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data"))
     parser.add_argument("--output", type=Path, default=Path("public/assets/models/humanoid-base.glb"))
     parser.add_argument("--skin-texture", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/skins/textures/young_lightskinned_male_diffuse.png"))
+    parser.add_argument("--eye-texture", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/eyes/materials/brown_eye.png"))
+    parser.add_argument("--hair-diffuse", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/hair/short02/short02_diffuse.png"))
+    parser.add_argument("--hair-normal", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/hair/short02/short02_normal.png"))
+    parser.add_argument("--skin-light-variant", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/skins/textures/young_lightskinned_male_diffuse2.png"))
+    parser.add_argument("--skin-deep-variant", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/skins/textures/young_darkskinned_male_diffuse.png"))
+    parser.add_argument("--texture-size", type=int, default=2048, help="Maximum embedded texture edge; use 512 for the mobile tier.")
     args = parser.parse_args()
     base_path = args.data / "3dobjs" / "base.npz"
     target_path = args.data / "targets.npz"
@@ -671,7 +997,42 @@ def main():
     targets = np.load(target_path, allow_pickle=True)
     body = make_mesh(base, targets, group_index=0, add_anatomy_detail=True)
     private_anatomy = make_private_anatomy_mesh()
-    build_glb(body, private_anatomy, args.output, args.skin_texture)
+    body_min = body["positions"].min(axis=0)
+    body_max = body["positions"].max(axis=0)
+    body_center = (body_min + body_max) * 0.5
+    body_height = max(float(body_max[1] - body_min[1]), 1e-6)
+    body_scale = 1.92 / body_height
+    eyes = np.load(args.data / "eyes" / "high-poly" / "high-poly.npz") if args.eye_texture.exists() else None
+    hair = np.load(args.data / "hair" / "short02" / "short02.npz") if args.hair_diffuse.exists() else None
+    eye_geometry = make_static_mesh(
+        eyes,
+        body_center,
+        float(body_min[1]),
+        body_scale,
+        target_center=(0.0, 1.835, 0.208),
+        target_scale=(0.185, 0.185, 0.185),
+    ) if eyes is not None else None
+    hair_geometry = make_static_mesh(
+        hair,
+        body_center,
+        float(body_min[1]),
+        body_scale,
+        target_center=(0.0, 1.855, 0.055),
+        target_scale=(0.172, 0.105, 0.120),
+    ) if hair is not None else None
+    build_glb(
+        body,
+        private_anatomy,
+        args.output,
+        args.skin_texture,
+        eye_geometry,
+        args.eye_texture,
+        hair_geometry,
+        args.hair_diffuse,
+        args.hair_normal,
+        {"Light": args.skin_light_variant, "Deep": args.skin_deep_variant},
+        max(256, args.texture_size),
+    )
     print(json.dumps({
         "output": str(args.output),
         "vertices": len(body["positions"]),
@@ -680,6 +1041,7 @@ def main():
         "privateVertices": len(private_anatomy["positions"]),
         "privateTriangles": len(private_anatomy["indices"]) // 3,
         "privateMorphs": len(private_anatomy["morphs"]),
+        "features": {"eyes": eye_geometry is not None, "hair": hair_geometry is not None},
         "missingSources": body["missing"],
     }, indent=2))
 

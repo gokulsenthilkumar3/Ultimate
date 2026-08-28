@@ -313,8 +313,10 @@ const skinFragmentShader = /* glsl */ `
  * @param {number} [fitzpatrickIndex=3] - 0(I) to 5(VI), default IV
  * @returns {THREE.ShaderMaterial}
  */
-export function createSkinMaterial(fitzpatrickIndex = 3, map = null) {
+export function createSkinMaterial(fitzpatrickIndex = 3, mapOrMaterial = null) {
   const tone = FITZPATRICK_TABLE[Math.max(0, Math.min(5, fitzpatrickIndex))];
+  const sourceMaterial = mapOrMaterial?.isMaterial ? mapOrMaterial : null;
+  const map = sourceMaterial?.map || mapOrMaterial || null;
 
   // We use MeshStandardMaterial as the base to get 100% correct
   // skinning, morph targets, shadows, and PBR lighting out of the box,
@@ -333,6 +335,10 @@ export function createSkinMaterial(fitzpatrickIndex = 3, map = null) {
     depthWrite: true,
     vertexColors: true,
     map: map || null,
+    normalMap: sourceMaterial?.normalMap || null,
+    normalScale: sourceMaterial?.normalScale || new THREE.Vector2(0.42, 0.42),
+    roughnessMap: sourceMaterial?.roughnessMap || null,
+    metalnessMap: sourceMaterial?.metalnessMap || null,
   });
 
   // Attach dynamic uniforms object so updateSkinUniforms doesn't crash,
@@ -376,6 +382,8 @@ export function updateSkinUniforms(mat, {
   // Update Fitzpatrick tone (only if changed — Color.set is cheap)
   const fi   = Math.max(0, Math.min(5, Math.round(fitzpatrickIndex)));
   const tone = FITZPATRICK_TABLE[fi];
+  if (mat.color) mat.color.setRGB(...tone.base);
+  if (mat.emissive) mat.emissive.setRGB(...tone.sss);
   mat.uniforms.uBaseColor.value.setRGB(...tone.base);
   mat.uniforms.uSSSColor.value.setRGB(...tone.sss);
   mat.uniforms.uSpecColor.value.setRGB(...tone.spec);

@@ -112,10 +112,10 @@ const CAMERA_PRESETS = [
 ];
 
 const WARDROBE_OPTIONS = [
-  { id: 'gym',        label: 'Gym',        icon: '🏋️' },
-  { id: 'casual',     label: 'Casual',     icon: '👕' },
-  { id: 'underwear',  label: 'Underwear',  icon: '🩲' },
-  { id: 'anatomical', label: 'Anatomical', icon: '🔬' },
+  { id: 'GYM',        label: 'Gym',        icon: '🏋️' },
+  { id: 'CASUAL',     label: 'Casual',     icon: '👕' },
+  { id: 'UNDERWEAR',  label: 'Underwear',  icon: '🩲' },
+  { id: 'ANATOMICAL', label: 'Anatomical', icon: '🔬' },
 ];
 
 const QUALITY_OPTIONS = ['LOW', 'MED', 'HIGH'];
@@ -288,11 +288,6 @@ export default function HumanoidViewer() {
   const setMilestones     = use3DStore((s) => s.setMilestones);
   const [cameraZoom, setCameraZoomState] = useState(() => use3DStore.getState().cameraZoom ?? 1);
 
-  const setMorphOverride = useCallback(
-    (metricKey: string, value: number) => updateCurrentMetric(metricKey, value),
-    [updateCurrentMetric]
-  );
-
   const bodyProfileState = useStore((s: any) => s.bodyProfile);
   const metricLogsState = useStore((s: any) => s.metric_logs);
   const persistedPhysiqueState = useStore((s: any) => s.physiqueTargets);
@@ -414,7 +409,7 @@ export default function HumanoidViewer() {
     const next = !sensitiveUnlocked;
     setSensitiveUnlocked(next);
     setPrivateAnatomyVisible(next);
-    if (next) setWardrobe('anatomical');
+    if (next) setWardrobe('ANATOMICAL');
   }, [sensitiveUnlocked, setPrivateAnatomyVisible, setWardrobe]);
 
   // Timeline playback
@@ -943,19 +938,21 @@ export default function HumanoidViewer() {
                         <span style={{ fontSize: '0.8rem' }}>{openMorphGroups[grp.group] ? '▲' : '▼'}</span>
                       </button>
                       {openMorphGroups[grp.group] && grp.items.map((s) => {
-                        const rawMetric = currentMetrics[s.metricKey] as number ?? 0;
-                        // Compute a display value derived from the metric
-                        const displayVal = Math.round(rawMetric);
+                        const value = Number.isFinite(Number(manualMorphOverrides[s.id]))
+                          ? Number(manualMorphOverrides[s.id])
+                          : Number.isFinite(Number(morphOverrides[s.id]))
+                            ? Number(morphOverrides[s.id])
+                            : 0;
                         return (
                           <div key={s.id} className="chamber-morph-row">
                             <div className="chamber-morph-row__header">
                               <span>{s.label}</span>
-                              <span className="chamber-morph-row__value">{displayVal}</span>
+                              <span className="chamber-morph-row__value">{Math.round(value * 100)}%</span>
                             </div>
                             <input type="range"
-                              min={30} max={150} step={1}
-                              value={displayVal}
-                              onChange={(e) => setMorphOverride(s.metricKey, parseFloat(e.target.value))}
+                              min={0} max={1} step={0.01}
+                              value={value}
+                              onChange={(e) => setAdvancedMorph(s.id, parseFloat(e.target.value))}
                               className="chamber-slider" />
                           </div>
                         );
@@ -1011,6 +1008,30 @@ export default function HumanoidViewer() {
                         </div>
                         <input type="range" min={s.min} max={s.max} step={s.step}
                           value={val}
+                          onChange={(e) => setAdvancedMorph(s.key, parseFloat(e.target.value))}
+                          className="chamber-slider" />
+                      </div>
+                      );
+                    })}
+
+                  <div className="chamber-divider" />
+                  <h4 className="chamber-editor__heading"><Zap size={14} /> Expressions</h4>
+                  <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', lineHeight: 1.45, margin: '-2px 0 8px' }}>
+                    Preview the production expression channels. These controls are saved as shape overrides and never alter measurements.
+                  </p>
+                  {[
+                    { key: 'blink', label: 'Blink' },
+                    { key: 'smile', label: 'Smile' },
+                    { key: 'jaw_open', label: 'Jaw open' },
+                  ].map((s) => {
+                    const val = Number(manualMorphOverrides[s.key] ?? morphOverrides[s.key] ?? 0);
+                    return (
+                      <div key={s.key} className="chamber-morph-row">
+                        <div className="chamber-morph-row__header">
+                          <span>{s.label}</span>
+                          <span className="chamber-morph-row__value">{Math.round(val * 100)}%</span>
+                        </div>
+                        <input type="range" min={0} max={1} step={0.01} value={val}
                           onChange={(e) => setAdvancedMorph(s.key, parseFloat(e.target.value))}
                           className="chamber-slider" />
                       </div>
@@ -1083,11 +1104,11 @@ export default function HumanoidViewer() {
                     ))}
                   </div>
                   <p className="chamber-note">
-                    {wardrobe === 'anatomical'
+                    {wardrobe === 'ANATOMICAL'
                       ? 'Anatomical mode — full body visible for measurement comparison.'
-                      : wardrobe === 'underwear'
+                      : wardrobe === 'UNDERWEAR'
                       ? 'Underwear mode — full physique for body composition analysis.'
-                      : `${wardrobe.charAt(0).toUpperCase() + wardrobe.slice(1)} outfit applied.`}
+                      : `${wardrobe.charAt(0).toUpperCase() + wardrobe.slice(1).toLowerCase()} outfit applied.`}
                   </p>
                 </div>
               )}
