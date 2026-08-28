@@ -1,0 +1,539 @@
+import React, { useState, useMemo, lazy, Suspense } from 'react';
+import {
+  Zap, Target, Layers, Activity, User, Ruler, Scale, Info,
+  Shield, Save, Edit3, X, ToggleLeft, ToggleRight, TrendingDown, TrendingUp,
+} from 'lucide-react';
+import useStore, { selectPhysiqueTargets, selectUpdatePhysiqueTargets } from '../store/useStore';
+import { useToast } from '../hooks/useToast';
+import PhysiqueRoadmap from './PhysiqueRoadmap';
+
+// Lazy-load the immersive 3D experience only when the 3D Mirror is selected.
+const ScrollShowcase = lazy(() => import('./ScrollShowcase'));
+
+// ── Body-fat formulas ─────────────────────────────────────────────────────
+function calcNavyBF(gender, waist, neck, height, hip = 0) {
+  const w = parseFloat(waist), n = parseFloat(neck), h = parseFloat(height), hi = parseFloat(hip);
+  if (!w || !n || !h || (gender === 'F' && !hi)) return null;
+  if (gender === 'M') {
+    if (w - n <= 0) return null;
+    return (495 / (1.0324 - 0.19077 * Math.log10(w - n) + 0.15456 * Math.log10(h))) - 450;
+  } else {
+    if (w + hi - n <= 0) return null;
+    return (495 / (1.29579 - 0.35004 * Math.log10(w + hi - n) + 0.22100 * Math.log10(h))) - 450;
+  }
+}
+
+function calcBMI(weight, height) {
+  const w = parseFloat(weight), h = parseFloat(height);
+  if (!w || !h) return null;
+  return w / ((h / 100) ** 2);
+}
+
+// ── BF% categories ────────────────────────────────────────────────────────
+const BF_CATEGORIES = {
+  M: [
+    { label: 'Essential', max: 6,  color: '#a78bfa', desc: 'Minimum for physiological function' },
+    { label: 'Athletes',  max: 14, color: '#10b981', desc: 'Elite athletic range' },
+    { label: 'Fitness',   max: 18, color: '#0ea5e9', desc: 'Lean & healthy' },
+    { label: 'Average',   max: 25, color: '#f59e0b', desc: 'Typical healthy adult' },
+    { label: 'Obese',     max: 100, color: '#ef4444', desc: 'Above healthy range' },
+  ],
+  F: [
+    { label: 'Essential', max: 14, color: '#a78bfa', desc: 'Minimum for physiological function' },
+    { label: 'Athletes',  max: 21, color: '#10b981', desc: 'Elite athletic range' },
+    { label: 'Fitness',   max: 25, color: '#0ea5e9', desc: 'Lean & healthy' },
+    { label: 'Average',   max: 32, color: '#f59e0b', desc: 'Typical healthy adult' },
+    { label: 'Obese',     max: 100, color: '#ef4444', desc: 'Above healthy range' },
+  ],
+};
+
+function getBFCategory(bf, gender) {
+  const cats = BF_CATEGORIES[gender] || BF_CATEGORIES.M;
+  return cats.find(c => bf <= c.max) || cats[cats.length - 1];
+}
+
+// ── Body Fat Gauge (horizontal scale) ────────────────────────────────────
+function BFGauge({ bf, gender }) {
+  const cats = BF_CATEGORIES[gender] || BF_CATEGORIES.M;
+  const maxScale = gender === 'M' ? 35 : 45;
+  const cat = getBFCategory(bf, gender);
+  const pct = Math.min(100, (bf / maxScale) * 100);
+
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      {/* Category bands */}
+      <div style={{ display: 'flex', height: '10px', borderRadius: '999px', overflow: 'hidden', marginBottom: '6px' }}>
+        {cats.map((c, i) => {
+          const prev = i === 0 ? 0 : cats[i - 1].max;
+          const w = ((Math.min(c.max, maxScale) - prev) / maxScale) * 100;
+          return (
+            <div key={c.label} style={{
+              width: `${Math.max(0, w)}%`, background: c.color,
+              opacity: cat.label === c.label ? 1 : 0.35,
+            }} />
+          );
+        })}
+      </div>
+
+      {/* Needle indicator */}
+      <div style={{ position: 'relative', height: '20px', marginBottom: '4px' }}>
+        <div style={{
+          position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)',
+          width: 0, height: 0,
+          borderLeft: '5px solid transparent',
+          borderRight: '5px solid transparent',
+          borderBottom: `8px solid ${cat.color}`,
+        }} />
+      </div>
+
+      {/* Category labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+        {cats.map(c => (
+          <span key={c.label} style={{
+            fontSize: '0.58rem', fontWeight: 700, color: cat.label === c.label ? c.color : 'var(--text-3)',
+            textTransform: 'uppercase', letterSpacing: '0.04em',
+          }}>{c.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Body Silhouette (with measurement highlight) ──────────────────────────
+function SilhouetteGuide({ activeMeasurement }) {
+  const points = { neck: { y: 25 }, waist: { y: 85 }, hip: { y: 110 }, height: { y: 10 } };
+  const activeY = points[activeMeasurement]?.y;
+  return (
+    <svg viewBox="0 0 100 200" width="100%" height="200" style={{ maxWidth: '110px', margin: '0 auto', display: 'block' }}>
+      <path d="M 50 10 C 60 10 60 30 50 30 C 40 30 40 10 50 10 Z" fill="var(--text-3)" />
+      <path d="M 50 30 L 50 90 M 50 40 L 20 80 M 50 40 L 80 80 M 50 90 L 30 190 M 50 90 L 70 190"
+        stroke="var(--text-3)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {activeY && (
+        <line x1="5" y1={activeY} x2="95" y2={activeY}
+          stroke="var(--accent)" strokeWidth="3.5" strokeDasharray="5 2" />
+      )}
+    </svg>
+  );
+}
+
+const CM_TO_IN = 0.393701;
+function convertValue(val, toIn) {
+  if (!val) return val;
+  const match = String(val).match(/^([\d.]+)(cm|in)?$/);
+  if (!match) return val;
+  const num = parseFloat(match[1]);
+  if (isNaN(num)) return val;
+  if (toIn) return `${(num * CM_TO_IN).toFixed(1)}in`;
+  if (match[2] === 'in') return `${(num / CM_TO_IN).toFixed(1)}cm`;
+  return val;
+}
+
+export default function Physique({ user }) {
+  const toast = useToast();
+  const physiqueTargets = useStore(selectPhysiqueTargets);
+  const updatePhysiqueTargets = useStore(selectUpdatePhysiqueTargets);
+  const updateUser = useStore(s => s.updateUser);
+
+  const zones   = physiqueTargets?.zones   || [];
+  const targets = physiqueTargets?.targets || [];
+
+  const [activeZone,    setActiveZone]    = useState(zones[0]?.name || '');
+  const [editingTarget, setEditingTarget] = useState(null);
+  const [targetDraft,   setTargetDraft]   = useState({});
+  const [unitMode] = useState('cm');
+  // Sub-tab: 'blueprint' (default body metrics) | '3d' (HumanoidViewer embedded)
+  const [subTab, setSubTab] = useState(
+    () => ['3d', 'targets', 'history'].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'blueprint'
+  );
+  const metricLogs = useStore(s => s.metric_logs || []);
+
+  // ── Body-fat calculator state ─────────────────────────────────────────
+  const [bfGender, setBfGender] = useState(user?.gender || 'M');
+  const [bfHeight, setBfHeight] = useState(user?.height || '');
+  const [bfWeight, setBfWeight] = useState(user?.weight || '');
+  const [bfNeck,   setBfNeck]   = useState('');
+  const [bfWaist,  setBfWaist]  = useState('');
+  const [bfHip,    setBfHip]    = useState('');
+  const [activeMeas, setActiveMeas] = useState('');
+
+  const bfRaw = useMemo(
+    () => calcNavyBF(bfGender, bfWaist, bfNeck, bfHeight, bfHip),
+    [bfGender, bfWaist, bfNeck, bfHeight, bfHip]
+  );
+  const bfPercent = bfRaw && bfRaw > 0 && bfRaw < 70 ? bfRaw : null;
+  const bfCategory = bfPercent ? getBFCategory(bfPercent, bfGender) : null;
+
+  const bmi = useMemo(() => calcBMI(bfWeight, bfHeight), [bfWeight, bfHeight]);
+  const bmiCategory = useMemo(() => {
+    if (!bmi) return null;
+    if (bmi < 18.5) return { label: 'Underweight', color: '#a78bfa' };
+    if (bmi < 25)   return { label: 'Normal',      color: '#10b981' };
+    if (bmi < 30)   return { label: 'Overweight',  color: '#f59e0b' };
+    return                 { label: 'Obese',        color: '#ef4444' };
+  }, [bmi]);
+
+  // Lean / fat mass
+  const leanMass = bfPercent && bfWeight
+    ? ((1 - bfPercent / 100) * parseFloat(bfWeight)).toFixed(1)
+    : null;
+  const fatMass = bfPercent && bfWeight
+    ? (bfPercent / 100 * parseFloat(bfWeight)).toFixed(1)
+    : null;
+
+  const handleSaveTarget = (idx) => {
+    const updated = targets.map((t, i) => i === idx ? { ...t, ...targetDraft } : t);
+    const progress = targetDraft.current && targetDraft.target
+      ? Math.min(100, Math.round((parseFloat(targetDraft.current) / parseFloat(targetDraft.target)) * 100))
+      : targets[idx].progress;
+    updated[idx] = { ...updated[idx], progress };
+    updatePhysiqueTargets({ ...(physiqueTargets || {}), targets: updated });
+    setEditingTarget(null);
+    setTargetDraft({});
+    toast.success('Target updated');
+  };
+
+  const handleZoneClick = (zone, idx) => {
+    setActiveZone(zone.name);
+    const statuses = ['Cutting', 'Maintenance', 'Hypertrophy', 'Power', 'Recomp'];
+    const next = statuses[(statuses.indexOf(zone.status) + 1) % statuses.length];
+    const updated = zones.map((z, i) => i === idx ? { ...z, status: next } : z);
+    updatePhysiqueTargets({ ...(physiqueTargets || {}), zones: updated });
+  };
+
+  const saveToProfile = () => {
+    if (!bfPercent) return;
+    updateUser({ bodyFat: parseFloat(bfPercent.toFixed(1)) });
+    toast.success(`Body fat ${bfPercent.toFixed(1)}% saved to profile`);
+  };
+
+  const displayVal = (val) => unitMode === 'in' ? convertValue(val, true) : convertValue(val, false);
+
+  return (
+    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+      {/* ── Sub-tab bar: Blueprint | 3D Mirror ─────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem',
+      }}>
+        <div>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Architectural Blueprint</p>
+          <h2 className="text-display" style={{ fontSize: '2rem' }}>Physique Matrix</h2>
+        </div>
+        {/* Sub-tab pill toggle */}
+        <div style={{
+          display: 'flex', gap: '4px', padding: '4px',
+          background: 'var(--bg-elevated)', borderRadius: '14px',
+          border: '1px solid var(--border)',
+        }}>
+          {[{ id: 'blueprint', label: '📐 Blueprint' }, { id: '3d', label: '🫁 3D Mirror' }, { id: 'targets', label: '🎯 Targets' }, { id: 'history', label: '🕘 History' }].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setSubTab(tab.id);
+                window.location.hash = tab.id === 'blueprint' ? '' : `#${tab.id}`;
+              }}
+              style={{
+                padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.03em',
+                transition: 'all 0.2s ease',
+                background: subTab === tab.id ? 'var(--accent)' : 'transparent',
+                color: subTab === tab.id ? '#fff' : 'var(--text-2)',
+                boxShadow: subTab === tab.id ? '0 4px 14px rgba(var(--accent-rgb),0.4)' : 'none',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 3D Mirror sub-tab ──────────────────────────────────────────────── */}
+      {subTab === '3d' && (
+        <Suspense fallback={
+          <div style={{ display:'flex', justifyContent:'center', alignItems:'center', height:'60vh', flexDirection:'column', gap:'1rem' }}>
+            <div className="spin-ring" />
+            <span style={{ color:'var(--text-3)', fontSize:'0.78rem', letterSpacing:'0.1em', fontWeight:600 }}>LOADING 3D MIRROR</span>
+          </div>
+        }>
+          <ScrollShowcase />
+        </Suspense>
+      )}
+
+      {subTab === 'targets' && <div className="glass-card physique-subpanel"><PhysiqueRoadmap targets={targets} user={user} /></div>}
+
+      {subTab === 'history' && <div className="glass-card physique-subpanel"><div className="eyebrow"><TrendingUp size={14} /> Measurement history</div><h3 className="text-display">Your body over time</h3>{metricLogs.length === 0 ? <p className="text-secondary">Save metric check-ins in Progress to build a history timeline.</p> : <div className="physique-history-list">{[...metricLogs].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20).map((log, index) => <div className="physique-history-row" key={log.id || `${log.date}-${index}`}><strong>{new Date(log.date).toLocaleDateString()}</strong><span>{log.metric || 'Metric'} · {log.value ?? '—'}</span></div>)}</div>}</div>}
+
+      {/* ── Blueprint sub-tab (original content) ───────────────────────────── */}
+      {subTab === 'blueprint' && (<>
+
+      {/* Zone cards */}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        {zones.map((zone, idx) => (
+          <div key={idx} className="soft-neumorphism glassmorphism" style={{
+            padding: '1.5rem', borderLeft: `4px solid ${zone.color}`,
+            cursor: 'pointer', transition: 'all 0.3s ease',
+            background: activeZone === zone.name ? 'var(--bg-elevated)' : 'var(--bg-card)',
+          }} onClick={() => handleZoneClick(zone, idx)} title="Click to cycle training phase">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <span style={{ fontSize: '1.5rem' }}>{zone.icon}</span>
+              <span className="badge" style={{ background: `${zone.color}22`, color: zone.color }}>{zone.status}</span>
+            </div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '0.5rem' }}>{zone.name}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ flex: 1, height: '6px', background: 'var(--bg-dark)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: `${zone.progress}%`, height: '100%', background: zone.color, transition: 'width 0.5s ease' }} />
+              </div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-2)' }}>{zone.progress}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Metric Targets + Body Fat Calculator */}
+      <div className="dual-grid mb-lg">
+        {/* Metric Targets */}
+        <div className="soft-neumorphism glassmorphism" style={{ padding: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Target size={24} color="var(--accent)" />
+              <h3 className="text-display" style={{ fontSize: '1.5rem', margin: 0 }}>Metric Targets</h3>
+            </div>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', padding: '2px 8px', background: 'var(--bg-elevated)', borderRadius: '6px' }}>
+              Displaying in {unitMode}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {targets.map((t, i) => (
+              <div key={i} style={{ padding: '1.1rem', background: 'var(--bg-dark)', borderRadius: '14px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <p style={{ fontWeight: 800, fontSize: '0.95rem' }}>{t.label}</p>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', background: 'var(--bg-elevated)', padding: '2px 8px', borderRadius: '4px' }}>{t.type}</span>
+                    {editingTarget !== i && (
+                      <button onClick={() => { setEditingTarget(i); setTargetDraft({ current: t.current, target: t.target }); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', display: 'flex', padding: '2px' }}>
+                        <Edit3 size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {editingTarget === i ? (
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input placeholder="Current (e.g. 104cm)" value={targetDraft.current || ''}
+                      onChange={e => setTargetDraft(d => ({ ...d, current: e.target.value }))}
+                      className="form-input" style={{ flex: 1, padding: '4px 8px', fontSize: '0.82rem' }} />
+                    <span style={{ color: 'var(--text-3)' }}>&rarr;</span>
+                    <input placeholder="Goal (e.g. 112cm)" value={targetDraft.target || ''}
+                      onChange={e => setTargetDraft(d => ({ ...d, target: e.target.value }))}
+                      className="form-input" style={{ flex: 1, padding: '4px 8px', fontSize: '0.82rem' }} />
+                    <button className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.75rem' }} onClick={() => handleSaveTarget(i)}>
+                      <Save size={12} /> Save
+                    </button>
+                    <button onClick={() => { setEditingTarget(null); setTargetDraft({}); }}
+                      style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)', padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <X size={12} /> Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex-between" style={{ marginBottom: '6px' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>
+                        {displayVal(t.current)} / <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{displayVal(t.target)}</span>
+                      </div>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: t.type === 'Reduction' ? '#10b981' : 'var(--accent)' }}>
+                        {t.progress}%
+                      </span>
+                    </div>
+                    <div style={{ height: '6px', background: 'var(--bg-elevated)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${t.progress}%`, height: '100%', background: t.type === 'Reduction' ? '#10b981' : 'var(--accent)', transition: 'width 0.4s ease' }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Body Fat Calculator */}
+        <div className="soft-neumorphism glassmorphism" style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem', background: 'linear-gradient(145deg, rgba(20,20,25,0.7) 0%, rgba(10,10,15,0.9) 100%)', position: 'relative', overflow: 'hidden' }}>
+          
+          {/* Decorative background glow */}
+          <div style={{ position: 'absolute', top: '-30%', left: '-20%', width: '140%', height: '140%', background: 'radial-gradient(ellipse at 50% 0%, rgba(var(--accent-rgb), 0.1) 0%, transparent 60%)', pointerEvents: 'none', zIndex: 0 }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1 }}>
+            <div style={{ padding: '12px', borderRadius: '14px', background: 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.2) 0%, rgba(var(--accent-rgb), 0.05) 100%)', border: '1px solid rgba(var(--accent-rgb), 0.3)', boxShadow: '0 4px 20px rgba(var(--accent-rgb), 0.2)' }}>
+              <Activity size={26} color="var(--accent)" />
+            </div>
+            <div>
+              <h3 className="text-display" style={{ fontSize: '1.8rem', margin: 0, letterSpacing: '-0.02em', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Body Fat % Calculator</h3>
+              <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginTop: '4px', letterSpacing: '0.01em' }}>Precision tracking using the U.S. Navy Method</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap', zIndex: 1 }}>
+            {/* Silhouette */}
+            <div style={{ flex: '0 0 auto', width: '130px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', paddingTop: '10px' }}>
+              
+              {/* Silhouette Glowing backdrop */}
+              <div style={{ position: 'absolute', top: '15%', width: '140px', height: '140px', background: bfPercent ? bfCategory?.color : 'var(--accent)', filter: 'blur(50px)', opacity: bfPercent ? 0.25 : 0.1, borderRadius: '50%', zIndex: 0, transition: 'all 0.5s ease' }} />
+
+              <div style={{ zIndex: 1 }}>
+                <SilhouetteGuide activeMeasurement={activeMeas} />
+              </div>
+              
+              {bfPercent !== null ? (
+                <div style={{ marginTop: '1.25rem', textAlign: 'center', zIndex: 1, animation: 'fadeIn 0.4s ease' }}>
+                  <span style={{ fontSize: '2.5rem', fontWeight: 900, color: bfCategory?.color, lineHeight: 1, textShadow: `0 0 20px ${bfCategory?.color}60` }}>
+                    {bfPercent.toFixed(1)}%
+                  </span>
+                  <div style={{ background: `${bfCategory?.color}15`, border: `1px solid ${bfCategory?.color}40`, padding: '4px 12px', borderRadius: '99px', marginTop: '10px', display: 'inline-block', backdropFilter: 'blur(4px)' }}>
+                    <p style={{ fontSize: '0.65rem', color: bfCategory?.color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                      {bfCategory?.label}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: '1.5rem', textAlign: 'center', zIndex: 1 }}>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-3)', opacity: 0.3 }}>—</span>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.04em', marginTop: '4px', textTransform: 'uppercase' }}>Awaiting Data</p>
+                </div>
+              )}
+            </div>
+
+            {/* Inputs */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Section 1: Basic Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                    <User size={12} /> Gender
+                  </label>
+                  <select className="form-input" value={bfGender} onChange={e => setBfGender(e.target.value)} style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
+                    <option value="M">Male</option><option value="F">Female</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                    <Ruler size={12} /> Height (cm)
+                  </label>
+                  <input className="form-input" type="number" value={bfHeight} placeholder="e.g., 180"
+                    onChange={e => setBfHeight(e.target.value)}
+                    onFocus={() => setActiveMeas('height')} onBlur={() => setActiveMeas('')} 
+                    style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                </div>
+              </div>
+
+              {/* Section 2: Measurements */}
+              <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                      <Scale size={12} /> Weight (kg)
+                    </label>
+                    <input className="form-input" type="number" value={bfWeight} placeholder="Optional"
+                      onChange={e => setBfWeight(e.target.value)} 
+                      style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                      Neck (cm)
+                    </label>
+                    <input className="form-input" type="number" value={bfNeck} placeholder="e.g., 40"
+                      onChange={e => setBfNeck(e.target.value)}
+                      onFocus={() => setActiveMeas('neck')} onBlur={() => setActiveMeas('')} 
+                      style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                      Waist (cm)
+                    </label>
+                    <input className="form-input" type="number" value={bfWaist} placeholder="e.g., 85"
+                      onChange={e => setBfWaist(e.target.value)}
+                      onFocus={() => setActiveMeas('waist')} onBlur={() => setActiveMeas('')} 
+                      style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  {bfGender === 'F' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
+                        Hips (cm)
+                      </label>
+                      <input className="form-input" type="number" value={bfHip} placeholder="e.g., 95"
+                        onChange={e => setBfHip(e.target.value)}
+                        onFocus={() => setActiveMeas('hip')} onBlur={() => setActiveMeas('')} 
+                        style={{ padding: '12px 14px', fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Results Area */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '0.5rem', zIndex: 1 }}>
+            
+            {/* Gauge */}
+            {bfPercent !== null && (
+              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: bfCategory?.color, boxShadow: `0 0 15px ${bfCategory?.color}` }} />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '1.25rem', fontWeight: 600, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase' }}>
+                  <Info size={14} /> Category Scale: <span style={{ color: 'var(--text-2)' }}>{bfCategory?.desc}</span>
+                </p>
+                <BFGauge bf={bfPercent} gender={bfGender} />
+              </div>
+            )}
+
+            {/* Lean / Fat mass breakdown & BMI */}
+            {bfPercent !== null && leanMass && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
+                <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 100%)', borderRadius: '16px', border: '1px solid rgba(16,185,129,0.15)', textAlign: 'center', boxShadow: 'inset 0 2px 10px rgba(16,185,129,0.05)' }}>
+                  <p className="label-caps" style={{ fontSize: '0.65rem', color: '#10b981', marginBottom: '8px' }}>Lean Body Mass</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#10b981', textShadow: '0 2px 15px rgba(16,185,129,0.3)' }}>{leanMass} <span style={{ fontSize: '1rem', opacity: 0.7, fontWeight: 700 }}>kg</span></p>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Muscle, bone, organs</p>
+                </div>
+                <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.02) 100%)', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.15)', textAlign: 'center', boxShadow: 'inset 0 2px 10px rgba(245,158,11,0.05)' }}>
+                  <p className="label-caps" style={{ fontSize: '0.65rem', color: '#f59e0b', marginBottom: '8px' }}>Fat Mass</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#f59e0b', textShadow: '0 2px 15px rgba(245,158,11,0.3)' }}>{fatMass} <span style={{ fontSize: '1rem', opacity: 0.7, fontWeight: 700 }}>kg</span></p>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Adipose tissue</p>
+                </div>
+                {bmi && (
+                  <div style={{ padding: '1.5rem', background: `linear-gradient(135deg, ${bmiCategory?.color}15 0%, ${bmiCategory?.color}05 100%)`, borderRadius: '16px', border: `1px solid ${bmiCategory?.color}30`, textAlign: 'center', boxShadow: `inset 0 2px 10px ${bmiCategory?.color}15` }}>
+                    <p className="label-caps" style={{ fontSize: '0.65rem', color: bmiCategory?.color, marginBottom: '8px' }}>BMI ({bmiCategory?.label})</p>
+                    <p style={{ fontSize: '1.8rem', fontWeight: 900, color: bmiCategory?.color, textShadow: `0 2px 15px ${bmiCategory?.color}40` }}>{bmi.toFixed(1)}</p>
+                    <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Body Mass Index</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Save to profile */}
+          {bfPercent !== null && (
+            <button className="btn-primary btn-full" onClick={saveToProfile} style={{ marginTop: '0.5rem', padding: '1.25rem', fontSize: '1rem', borderRadius: '14px', gap: '10px' }}>
+              <Save size={18} /> Save {bfPercent.toFixed(1)}% to Profile
+            </button>
+          )}
+
+          {/* U.S. Navy Method Info */}
+          <div style={{ marginTop: bfPercent !== null ? '0.5rem' : '0.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.015)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', gap: '14px', alignItems: 'flex-start', zIndex: 1 }}>
+            <Info size={20} color="var(--text-3)" style={{ marginTop: '2px', flexShrink: 0, opacity: 0.7 }} />
+            <div>
+              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-2)', marginBottom: '6px' }}>U.S. Navy Method (DoD)</p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', lineHeight: 1.6 }}>
+                Estimates body fat from circumferences. Measure at the widest part of the waist/hips and the narrowest part of the neck. 
+                <br/><span style={{ opacity: 0.7, fontStyle: 'italic' }}>Accuracy: ±3–4% for most adults. Use for tracking trends rather than absolute clinical values.</span>
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {/* Physique Roadmap */}
+      <PhysiqueRoadmap targets={targets} user={user} />
+      </>)}{/* end blueprint sub-tab */}
+    </div>
+  );
+}
+
+// Trigger HMR
