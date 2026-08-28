@@ -598,21 +598,16 @@ export default function HumanoidViewer() {
       <div className="chamber-scanlines" />
 
       {/* ═══ FLOATING HUD TOP BAR ═══ */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-        padding: '14px 18px', pointerEvents: 'none',
-        background: 'linear-gradient(to bottom, rgba(3,3,6,0.85) 0%, transparent 100%)',
-      }}>
+      <div className="chamber-topbar">
         {/* Left: title + status chips */}
-        <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="shimmer-text" style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+        <div className="chamber-topbar__brand">
+          <div className="chamber-topbar__title-row">
+            <span className="shimmer-text chamber-topbar__title">
               DIGITAL TWIN
             </span>
-            <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-3)', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>v5</span>
+            <span className="chamber-topbar__version">v5</span>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="chamber-topbar__chips">
             {/* Render status — detailed model diagnostics live in Settings. */}
             <span
               className="hud-chip healthy"
@@ -643,7 +638,7 @@ export default function HumanoidViewer() {
           </div>
         </div>
         {/* Right: quality + render mode toggles */}
-        <div className="chamber-render-controls">
+        <div className="chamber-render-controls chamber-topbar__controls">
           <div className="chamber-quality-switch" aria-label="Render quality">
             {QUALITY_OPTIONS.map((level) => (
               <button key={level} className={`chamber-view-btn${quality === level ? ' active' : ''}`}
@@ -685,7 +680,7 @@ export default function HumanoidViewer() {
                 </button>
               </div>
               {/* Export */}
-              <button className="chamber-pill" onClick={handleShareAvatar} style={{ color: 'var(--chamber-gold)', borderColor: 'var(--chamber-gold)', background: 'rgba(255, 215, 0, 0.05)' }}>
+              <button className="chamber-pill chamber-pill--share" onClick={handleShareAvatar}>
                 <Share2 size={12} /> SHARE
               </button>
               <button className="chamber-pill chamber-pill--export" onClick={captureScreenshot}>

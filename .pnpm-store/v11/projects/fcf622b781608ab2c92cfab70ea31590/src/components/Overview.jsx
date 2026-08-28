@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity, Sun, Moon, Droplets, Target, CheckSquare, Flame, Zap,
@@ -12,6 +12,8 @@ const TOOLTIP_STYLE = {
   background: 'var(--bg-glass)', border: '1px solid var(--border)',
   borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.75rem',
 };
+const EMPTY_LIST = Object.freeze([]);
+const EMPTY_MAP = Object.freeze({});
 
 function generateDailyMessage({ tasks, habits, goals, metrics, cycle }) {
   const focus = cycle % 4;
@@ -106,7 +108,7 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
   const urgentTasks = todayTasks.filter(t => ['high', 'urgent', 'p1'].includes(priority(t)));
 
   return (
-    <div style={{
+    <div className="overview-glance" style={{
       borderRadius: '20px', padding: '2rem', marginBottom: '1.5rem',
       background: tod.gradient,
       border: `1px solid ${tod.color}33`,
@@ -139,7 +141,7 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
             { icon: <Target size={16} color="#0ea5e9" />,      val: activeGoals,             label: 'Goals',   color: '#0ea5e9', action: () => setActiveTab('goals') },
             lastSleep ? { icon: <Moon size={16} color="#818cf8" />, val: `${lastSleep.duration}h`, label: 'Sleep', color: '#818cf8', action: null } : null,
           ].filter(Boolean).map(m => (
-            <button 
+            <button className="overview-glance__metric"
               key={m.label} 
               onClick={m.action} 
               style={{ 
@@ -153,22 +155,6 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
                 minWidth: '112px', 
                 transition: 'all 0.25s var(--ease)', 
                 color: 'var(--text-1)' 
-              }}
-              onMouseEnter={e => {
-                if (m.action) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
-                  e.currentTarget.style.border = `1px solid ${m.color}88`;
-                  e.currentTarget.style.boxShadow = `0 4px 20px ${m.color}22, inset 0 1px 1px rgba(255,255,255,0.1)`;
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }
-              }}
-              onMouseLeave={e => {
-                if (m.action) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                  e.currentTarget.style.border = '1px solid rgba(255,255,255,0.06)';
-                  e.currentTarget.style.boxShadow = 'inset 0 1px 1px rgba(255,255,255,0.05)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>{m.icon}</div>
@@ -197,13 +183,12 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
 
 export default function Overview({ setActiveTab }) {
   const state            = useStore();
-  const metric_logs      = state.metric_logs      || [];
-  const tasks            = state.tasks            || [];
-  const habits           = state.habits           || [];
-  const goals            = state.goals            || [];
-  const sleep_logs       = state.sleep_logs       || [];
-  const habitLogsByHabit = state.habitLogsByHabit || {};
-  const user             = state.user             || {};
+  const metric_logs      = state.metric_logs      ?? EMPTY_LIST;
+  const tasks            = state.tasks            ?? EMPTY_LIST;
+  const habits           = state.habits           ?? EMPTY_LIST;
+  const goals            = state.goals            ?? EMPTY_LIST;
+  const sleep_logs       = state.sleep_logs       ?? EMPTY_LIST;
+  const habitLogsByHabit = state.habitLogsByHabit ?? EMPTY_MAP;
   const currentSources   = state.appConfig?.currentSources || {};
 
   const addMetricLog = useStore(s => s.addMetricLog);
@@ -317,8 +302,8 @@ export default function Overview({ setActiveTab }) {
   ];
 
   return (
-    <div style={{ padding: '0.5rem 0' }}>
-      <div className="glass-card" style={{ marginBottom: '1rem', padding: '1.25rem' }}>
+    <div className="overview-page" style={{ padding: '0.5rem 0' }}>
+      <div className="glass-card overview-hero" style={{ marginBottom: '1rem', padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ maxWidth: '40rem' }}>
             <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Today</p>
@@ -331,6 +316,7 @@ export default function Overview({ setActiveTab }) {
             {quickLinks.map((item) => (
               <button 
                 key={item.label} 
+                className="overview-quick-link"
                 onClick={() => {
                   if (item.hash) window.location.hash = item.hash;
                   setActiveTab(item.tab);
@@ -351,16 +337,6 @@ export default function Overview({ setActiveTab }) {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                   transition: 'all 0.2s var(--ease)'
                 }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'var(--accent)';
-                  e.currentTarget.style.boxShadow = '0 4px 15px var(--accent-glow)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'var(--border)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
               >
                 {item.icon}
                 <div>
@@ -377,8 +353,8 @@ export default function Overview({ setActiveTab }) {
       <DayAtAGlance tasks={tasks} habits={habits} goals={goals} sleepLogs={sleep_logs} habitLogsByHabit={habitLogsByHabit} setActiveTab={setActiveTab} />
 
       {/* Top row: Health Score + Environmental */}
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1.25rem', textAlign: 'center' }}>
+      <div className="overview-snapshot-grid" style={{ display: 'grid', gridTemplateColumns: '280px 1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div className="glass-card overview-snapshot-card overview-score-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1.25rem', textAlign: 'center' }}>
           <HealthScoreRing score={healthScore} />
           <div>
             <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Digital Twin Score</p>
@@ -388,7 +364,7 @@ export default function Overview({ setActiveTab }) {
 
         {/* Weather */}
         <div 
-          className="glass-card" 
+          className="glass-card overview-snapshot-card overview-weather-card" 
           style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -442,7 +418,7 @@ export default function Overview({ setActiveTab }) {
         </div>
 
         {/* Activity trend */}
-        <div className="glass-card" style={{ padding: '1.25rem' }}>
+        <div className="glass-card overview-snapshot-card overview-activity-card" style={{ padding: '1.25rem' }}>
           <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
             <Activity size={11} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />30-Day Activity
           </p>
@@ -465,7 +441,7 @@ export default function Overview({ setActiveTab }) {
       </div>
 
       {/* Strategy progress bars */}
-      <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
+      <div className="glass-card overview-progress-card" style={{ marginBottom: '1.5rem' }}>
         <p style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem' }}>
           Today's Progress
         </p>
@@ -499,7 +475,7 @@ export default function Overview({ setActiveTab }) {
       <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         {/* Hydration tracker */}
         <div 
-          className="glass-card" 
+          className="glass-card overview-hydration-card" 
           style={{ 
             textAlign: 'center', 
             padding: '1.5rem 1.25rem', 
@@ -538,7 +514,7 @@ export default function Overview({ setActiveTab }) {
           
           <button 
             onClick={logHydration} 
-            className="btn-glass"
+            className="btn-glass overview-hydration-action"
             style={{ 
               padding: '8px 14px', 
               borderRadius: '10px', 
@@ -555,18 +531,6 @@ export default function Overview({ setActiveTab }) {
               gap: '6px',
               transition: 'all 0.2s var(--ease)'
             }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(14,165,233,0.2)';
-              e.currentTarget.style.borderColor = '#0ea5e9';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(14,165,233,0.3)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'rgba(14,165,233,0.1)';
-              e.currentTarget.style.borderColor = 'rgba(14,165,233,0.3)';
-              e.currentTarget.style.boxShadow = 'none';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
           >
             + 250ml
           </button>
@@ -574,7 +538,7 @@ export default function Overview({ setActiveTab }) {
 
         {/* Quote */}
         <div 
-          className="glass-card" 
+          className="glass-card overview-quote-card" 
           style={{ 
             display: 'flex', 
             flexDirection: 'column', 
@@ -601,7 +565,7 @@ export default function Overview({ setActiveTab }) {
       </div>
 
       {/* Quick actions */}
-      <div className="glass-card" style={{ padding: '1.25rem' }}>
+      <div className="glass-card overview-actions-card" style={{ padding: '1.25rem' }}>
         <p className="label-caps" style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.08em', marginBottom: '1rem' }}>
           Quick Action Matrix
         </p>
@@ -616,6 +580,7 @@ export default function Overview({ setActiveTab }) {
           ].map(a => (
             <button 
               key={a.label} 
+              className="overview-quick-action"
               onClick={() => setActiveTab && setActiveTab(a.tab)} 
               style={{
                 padding: '8px 18px', 
@@ -627,20 +592,6 @@ export default function Overview({ setActiveTab }) {
                 color: 'var(--text-2)', 
                 cursor: 'pointer', 
                 transition: 'all 0.2s var(--ease)',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                e.currentTarget.style.color = 'var(--text-1)';
-                e.currentTarget.style.borderColor = 'var(--accent)';
-                e.currentTarget.style.boxShadow = '0 2px 10px var(--accent-glow)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                e.currentTarget.style.color = 'var(--text-2)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               {a.label}

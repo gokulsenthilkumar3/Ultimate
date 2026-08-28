@@ -209,36 +209,22 @@ export default function Physique({ user }) {
   const displayVal = (val) => unitMode === 'in' ? convertValue(val, true) : convertValue(val, false);
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+    <div className="fade-in module-page physique-page" style={{ padding: '1rem 0' }}>
       {/* ── Sub-tab bar: Blueprint | 3D Mirror ─────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem',
-      }}>
+      <div className="physique-matrix-header">
         <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Architectural Blueprint</p>
-          <h2 className="text-display" style={{ fontSize: '2rem' }}>Physique Matrix</h2>
+          <p className="label-caps physique-matrix-header__eyebrow">Architectural blueprint</p>
+          <h2 className="text-display physique-matrix-header__title">Physique Matrix</h2>
         </div>
         {/* Sub-tab pill toggle */}
-        <div style={{
-          display: 'flex', gap: '4px', padding: '4px',
-          background: 'var(--bg-elevated)', borderRadius: '14px',
-          border: '1px solid var(--border)',
-        }}>
-          {[{ id: 'blueprint', label: '📐 Blueprint' }, { id: '3d', label: '🫁 3D Mirror' }, { id: 'targets', label: '🎯 Targets' }, { id: 'history', label: '🕘 History' }].map(tab => (
+        <div className="physique-segmented-nav">
+          {[{ id: 'blueprint', label: 'Blueprint' }, { id: '3d', label: '3D Mirror' }, { id: 'targets', label: 'Targets' }, { id: 'history', label: 'History' }].map(tab => (
             <button
               key={tab.id}
+              className={`physique-segmented-nav__item${subTab === tab.id ? ' is-active' : ''}`}
               onClick={() => {
                 setSubTab(tab.id);
                 window.location.hash = tab.id === 'blueprint' ? '' : `#${tab.id}`;
-              }}
-              style={{
-                padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-                fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.03em',
-                transition: 'all 0.2s ease',
-                background: subTab === tab.id ? 'var(--accent)' : 'transparent',
-                color: subTab === tab.id ? '#fff' : 'var(--text-2)',
-                boxShadow: subTab === tab.id ? '0 4px 14px rgba(var(--accent-rgb),0.4)' : 'none',
               }}
             >
               {tab.label}

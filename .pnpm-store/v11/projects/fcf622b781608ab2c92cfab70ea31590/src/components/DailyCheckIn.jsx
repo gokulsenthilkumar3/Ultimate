@@ -1,6 +1,6 @@
 import safeLocalStorage from '../utils/safeLocalStorage';
 import { Z_INDEX } from '../constants';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Sun, Moon, Zap, Scale, X, CheckCircle2, AlertTriangle, Flame } from 'lucide-react';
 import useStore, { selectSaveSleepLog, selectAddMoodLog } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
@@ -181,7 +181,7 @@ export default function DailyCheckIn({ onClose }) {
       const habitNotifIds = (habits || []).map(h => `missed-habit-${h.id}-${checkInDate}`);
       const merged = [...new Set([...dismissed, ...habitNotifIds])];
       safeLocalStorage.setItem('notif_dismissed', JSON.stringify(merged));
-    } catch (_) { /* silent */ }
+    } catch { /* silent */ }
 
     if (setUser) setUser(updatedUser);
     if (setLastCheckIn) setLastCheckIn(checkInDate);
@@ -195,7 +195,7 @@ export default function DailyCheckIn({ onClose }) {
   };
 
   return (
-    <div 
+    <div className="daily-checkin-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="checkin-title"
@@ -206,7 +206,7 @@ export default function DailyCheckIn({ onClose }) {
         padding: '1rem',
       }}
     >
-      <div className="glass-card fade-in" style={{
+      <div className="glass-card daily-checkin-modal__card fade-in" style={{
         width: '100%', maxWidth: '480px',
         padding: '2.5rem', position: 'relative',
         border: '1px solid var(--border-strong)',
@@ -261,8 +261,8 @@ export default function DailyCheckIn({ onClose }) {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '2rem' }}>
-              {steps.map((_, i) => (
-                <div key={i} style={{
+              {steps.map((stepItem, i) => (
+                <div key={stepItem.key} style={{
                   width: i === step ? '20px' : '8px', height: '8px',
                   borderRadius: '4px',
                   background: i <= step ? 'var(--accent)' : 'var(--bg-elevated)',
