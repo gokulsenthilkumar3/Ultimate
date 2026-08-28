@@ -59,6 +59,13 @@ export const MORPH_TARGET_NAMES = [
   "ankle_taper",
   "hand_splay",
   "foot_arch",
+  // Combination correctives and minimal facial expression channels
+  "corrective_abdomen_waist",
+  "corrective_pec_ribcage",
+  "corrective_shoulder_arm",
+  "blink",
+  "smile",
+  "jaw_open",
   // Shader-driven (no geometry morph, uniform only)
   "vascularity_intensity",
   "fitzpatrick_index",

@@ -34,6 +34,8 @@ function getMorphNames() {
     'eye_size', 'cheekbone_width', 'forehead_height', 'temple_narrowing',
     'nose_length', 'jaw_angle', 'shoulder_drop', 'd_length', 'd_girth',
     'knee_spacing', 'ankle_taper', 'hand_splay', 'foot_arch',
+    'corrective_abdomen_waist', 'corrective_pec_ribcage', 'corrective_shoulder_arm',
+    'blink', 'smile', 'jaw_open',
     'vascularity_intensity', 'fitzpatrick_index',
   ]) names.push(key);
   return names;
@@ -53,6 +55,7 @@ function main() {
   const targetNames = mesh?.extras?.targetNames ?? [];
   const skin = json.skins?.[0];
   const materials = json.materials ?? [];
+  const images = json.images ?? [];
   const privateMeshIndex = (json.meshes ?? []).findIndex((item) => String(item?.name || '').toLowerCase().includes('privateanatomy'));
   const privateMesh = privateMeshIndex >= 0 ? json.meshes[privateMeshIndex] : null;
   const privatePrim = privateMesh?.primitives?.[0];
@@ -82,6 +85,11 @@ function main() {
   const geometryMorphNames = morphNames.filter((n) => !SHADER_ONLY.has(n));
   const missingMorphs = geometryMorphNames.filter((n) => !targetNames.includes(n));
   const wronglyBakedShaderMorphs = [...SHADER_ONLY].filter((n) => targetNames.includes(n));
+  const imageNamed = (name) => images.find((image) => image?.name === name);
+  const imageHasProductionResolution = (name, minimum = 512) => {
+    const image = imageNamed(name);
+    return (image?.extras?.width ?? 0) >= minimum && (image?.extras?.height ?? 0) >= minimum;
+  };
 
   const usedAccessors = new Set();
   const usedBufferViews = new Set();
@@ -122,12 +130,20 @@ function main() {
   check(dominantAxis === 'Y', 'Up axis', `dominant axis is ${dominantAxis}`, failures);
   check(orphanedBufferViews.length === 0, 'Orphaned bufferViews', `${orphanedBufferViews.length} unused`, failures);
   check(materials.length > 0 && materials.every((m) => m.pbrMetallicRoughness?.baseColorTexture && m.normalTexture), 'PBR textures', 'missing baseColorTexture or normalTexture', failures);
+  check(materials[0]?.pbrMetallicRoughness?.metallicRoughnessTexture, 'Packed roughness/AO map', 'skin material has no metallicRoughnessTexture', failures);
+  check(imageHasProductionResolution('SkinNormal_ProceduralMicrodetail'), 'Skin normal resolution', 'normal image is missing or still a placeholder', failures);
+  check(imageHasProductionResolution('SkinAO_Roughness'), 'Skin roughness/AO resolution', 'roughness/AO image is missing or still a placeholder', failures);
+  check((json.meshes ?? []).some((item) => item?.name === 'GrowthTrackEyes'), 'Eye asset', 'high-poly eye mesh is missing', failures);
+  check((json.meshes ?? []).some((item) => item?.name === 'GrowthTrackHair'), 'Hair asset', 'hair-card mesh is missing', failures);
   check(privatePosition?.count >= 800, 'Private anatomy topology', `${privatePosition?.count ?? 0} verts`, failures);
   check(privateTargetNames.includes('d_length') && privateTargetNames.includes('d_girth'), 'Private anatomy morphs', privateTargetNames.join(', ') || 'none', failures);
   check(privateMorphChangedCount('d_length') > 0 && privateMorphChangedCount('d_girth') > 0, 'Private anatomy deformation', `length ${privateMorphChangedCount('d_length')} verts · girth ${privateMorphChangedCount('d_girth')} verts`, failures);
   check(privateNode?.extras?.sensitive === true && privateNode?.extras?.defaultVisible === false, 'Private anatomy guard', 'sensitive mesh must be marked hidden-by-default', failures);
   for (const name of ['oblique_def', 'bicep_peak', 'tricep_horse', 'glute_volume']) {
     check(bodyMorphChangedCount(name) > 0, `Body landmark deformation: ${name}`, `${bodyMorphChangedCount(name)} changed verts`, failures);
+  }
+  for (const name of ['corrective_abdomen_waist', 'corrective_pec_ribcage', 'corrective_shoulder_arm', 'blink', 'smile', 'jaw_open']) {
+    check(bodyMorphChangedCount(name) > 0, `Generated channel deformation: ${name}`, `${bodyMorphChangedCount(name)} changed verts`, failures);
   }
 
   console.log(`Validating ${GLB_PATH}`);

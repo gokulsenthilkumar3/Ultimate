@@ -28,6 +28,8 @@ const LOD_CONFIG = {
     samples:         128,
     postFx:          "FULL",
     targetFps:       60,
+    tier:            GPU_TIERS.HIGH,
+    environmentResolution: 128,
   },
   [GPU_TIERS.MED]: {
     shadowMapSize:   1024,
@@ -37,6 +39,8 @@ const LOD_CONFIG = {
     samples:         64,
     postFx:          "PARTIAL",
     targetFps:       60,
+    tier:            GPU_TIERS.MED,
+    environmentResolution: 96,
   },
   [GPU_TIERS.LOW]: {
     shadowMapSize:   null,
@@ -46,6 +50,8 @@ const LOD_CONFIG = {
     samples:         32,
     postFx:          "NONE",
     targetFps:       30,
+    tier:            GPU_TIERS.LOW,
+    environmentResolution: 64,
   },
 };
 
@@ -219,7 +225,7 @@ function CanvasScene({ lodConfig, reducedMotion }) {
       <QualityTelemetry reducedMotion={reducedMotion} />
 
       <Suspense fallback={null}>
-        <SceneEnvironment />
+        <SceneEnvironment lodConfig={lodConfig} />
       </Suspense>
 
       <StudioLighting lodConfig={lodConfig} />

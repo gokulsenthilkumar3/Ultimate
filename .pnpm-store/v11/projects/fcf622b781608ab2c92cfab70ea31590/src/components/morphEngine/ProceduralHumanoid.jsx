@@ -213,13 +213,13 @@ function AuraRing({radius,y}) {
   return <mesh ref={ref} position={[0,y,0]} rotation={[Math.PI/2,0,0]} geometry={geo} material={mat}/>;
 }
 
-function EyeGroup({d,side,eyeColorHex,skinMat}) {
+function EyeGroup({d,side,eyeColorHex,skinMat,blink=0}) {
   const sx=side==="L"?-1:1, er=d.eyeR;
   const scl=useMemo(()=>makeScleraMat(),[]);
   const iris=useMemo(()=>makeIrisMat(eyeColorHex),[eyeColorHex]);
   const pupil=useMemo(()=>makePupilMat(),[]);
   return (
-    <group position={[sx*d.eyeX,d.eyeY-d.headY,d.eyeZ]}>
+    <group position={[sx*d.eyeX,d.eyeY-d.headY,d.eyeZ]} visible={blink < 0.78}>
       <mesh material={scl} scale={[1.18,0.66,0.72]}><sphereGeometry args={[er,22,16]}/></mesh>
       <mesh position={[0,0,er*0.56]} material={iris} scale={[1,0.88,0.38]}><sphereGeometry args={[d.irisR,18,14]}/></mesh>
       <mesh position={[0,0,er*0.62]} material={pupil} scale={[1,0.88,0.30]}><sphereGeometry args={[d.pupilR,14,10]}/></mesh>
@@ -251,6 +251,31 @@ function LipsMesh({d,lipMat}) {
       <mesh position={[0,d.upperLipH*0.55,0]} rotation={[0.18,0,0]} material={lipMat}><sphereGeometry args={[d.lipW,18,8,0,Math.PI*2,0,Math.PI*0.43]}/></mesh>
       <mesh position={[0,-d.lowerLipH*0.5,0]} rotation={[-0.14,0,0]} material={lipMat}><sphereGeometry args={[d.lipW*1.06,18,8,0,Math.PI*2,Math.PI*0.57,Math.PI*0.40]}/></mesh>
       {[-1,1].map(s=><mesh key={s} position={[s*d.lipW*0.88,0,0]} material={lipMat}><sphereGeometry args={[d.noseTipR_r*0.52,8,6]}/></mesh>)}
+    </group>
+  );
+}
+
+function MouthDetails({ d, jawOpen = 0, smile = 0 }) {
+  const interior = useMemo(() => new THREE.MeshStandardMaterial({ color: "#190b0d", roughness: 0.72 }), []);
+  const teeth = useMemo(() => new THREE.MeshPhysicalMaterial({ color: "#fff8e8", roughness: 0.24, clearcoat: 0.32 }), []);
+  const tongue = useMemo(() => new THREE.MeshPhysicalMaterial({ color: "#a34f5f", roughness: 0.42, clearcoat: 0.08 }), []);
+  useEffect(() => () => [interior, teeth, tongue].forEach((material) => material.dispose()), [interior, teeth, tongue]);
+
+  return (
+    <group
+      position={[0, d.lipY - d.headY, d.lipZ + 0.004]}
+      visible={jawOpen > 0.035 || smile > 0.58}
+      scale={[0.82 + smile * 0.30, 0.70 + jawOpen * 1.55, 0.82 + jawOpen * 0.20]}
+    >
+      <mesh material={interior} scale={[1.15, 0.68, 0.34]}>
+        <sphereGeometry args={[d.lipW * 0.62, 18, 10]} />
+      </mesh>
+      <mesh position={[0, d.lowerLipH * 0.30, d.lipW * 0.20]} material={teeth} scale={[1.0, 0.50, 0.22]}>
+        <boxGeometry args={[d.lipW * 0.82, d.lowerLipH * 0.72, 0.008]} />
+      </mesh>
+      <mesh position={[0, -d.lowerLipH * 0.48, d.lipW * 0.25]} material={tongue} scale={[1.0, 0.64, 0.30]}>
+        <sphereGeometry args={[d.lipW * 0.28, 18, 10]} />
+      </mesh>
     </group>
   );
 }
@@ -391,7 +416,7 @@ function SculptedSurface({ d, detailMat, segments }) {
 export default function ProceduralHumanoid({
   cloneKey="A", position=[0,0,0], renderMode="normal", opacity=1,
   visible=true, showAura=false, skinTone="IV", eyeColor="#3b7bd4",
-  hairStyle="short", hairColor="darkbrown", quality="HIGH",
+  hairStyle="short", hairColor="darkbrown", expressionWeights={}, quality="HIGH",
 }) {
   const segs = SEGS_BY_QUALITY[quality] || DEFAULT_SEGS;
   const { weights, posture } = use3DStore(useShallow((s) => {
@@ -478,11 +503,12 @@ export default function ProceduralHumanoid({
       <group ref={headRef} position={[0,d.headY,0]}>
         <mesh material={mat} scale={[0.84,1.04,0.91]}><sphereGeometry args={[d.headR,hs.head,Math.round(hs.head*.67)]}/></mesh>
         {det&&<>
-          <EyeGroup d={d} side="L" eyeColorHex={eyeColor} skinMat={mat}/>
-          <EyeGroup d={d} side="R" eyeColorHex={eyeColor} skinMat={mat}/>
+          <EyeGroup d={d} side="L" eyeColorHex={eyeColor} skinMat={mat} blink={expressionWeights.blink ?? 0}/>
+          <EyeGroup d={d} side="R" eyeColorHex={eyeColor} skinMat={mat} blink={expressionWeights.blink ?? 0}/>
           <BrowMesh d={d} side="L" mat={detailMat}/><BrowMesh d={d} side="R" mat={detailMat}/>
           <NoseMesh d={d} mat={mat}/>
           <LipsMesh d={d} lipMat={lipMat}/>
+          <MouthDetails d={d} jawOpen={expressionWeights.jaw_open ?? 0} smile={expressionWeights.smile ?? 0}/>
           <EarMesh d={d} side="L" mat={mat}/><EarMesh d={d} side="R" mat={mat}/>
           {[-1,1].map(s=><mesh key={s} position={[s*d.jawX,d.jawY-d.headY,d.headR*.40]} scale={[1.15,1.4,0.72]} material={mat}><sphereGeometry args={[d.headR*.09,14,10]}/></mesh>)}
           <mesh position={[0,d.chinY-d.headY,d.chinZ]} scale={[1.4,0.8,0.82]} material={mat}><sphereGeometry args={[d.chinR*0.88,14,10]}/></mesh>
