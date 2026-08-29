@@ -49,10 +49,14 @@ function restoreToneMapping(renderer, previous) {
 export default function PostProcessingStack({ mode, reducedMotion = false }) {
   const { gl, scene, camera, size } = useThree();
   const cinematic = use3DStore((state) => state.cinematicState);
+  const gpuTier = use3DStore((state) => state.gpuTier);
+  const highTier = gpuTier === "HIGH";
+  const polishTier = gpuTier !== "LOW";
+  const fullEffects = mode === "FULL" && highTier && !reducedMotion;
 
   const pipeline = useMemo(() => {
     const composer = new EffectComposer(gl, {
-      multisampling: mode === "FULL" ? 4 : 0,
+      multisampling: fullEffects ? 4 : 0,
       frameBufferType: THREE.HalfFloatType,
       depthBuffer: true,
       stencilBuffer: false,
@@ -64,7 +68,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     composer.addPass(renderPass);
     passes.push(renderPass);
 
-    if (mode === "FULL" && cinematic.depthOfField && !reducedMotion) {
+    if (fullEffects && cinematic.depthOfField) {
       const depthOfField = new DepthOfFieldEffect(camera, {
         focusDistance: 3.25,
         focusRange: 2.2,
@@ -75,14 +79,14 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       addEffectPass(composer, camera, depthOfField, passes);
     }
 
-    if (cinematic.bloom) {
+    if (polishTier && cinematic.bloom) {
       const bloom = new BloomEffect({
         blendFunction: BlendFunction.SCREEN,
-        luminanceThreshold: mode === "FULL" ? 0.92 : 0.96,
+        luminanceThreshold: fullEffects ? 0.92 : 0.96,
         luminanceSmoothing: 0.18,
-        intensity: mode === "FULL" ? 0.26 : 0.16,
+        intensity: fullEffects ? 0.26 : 0.16,
         radius: 0.56,
-        levels: mode === "FULL" ? 6 : 4,
+        levels: fullEffects ? 6 : 4,
         mipmapBlur: true,
       });
       effects.push(bloom);
@@ -90,7 +94,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     }
 
     const finishingEffects = [];
-    if (mode === "FULL" && cinematic.chromaticAberration && !reducedMotion) {
+    if (fullEffects && cinematic.chromaticAberration) {
       const chromatic = new ChromaticAberrationEffect({
         blendFunction: BlendFunction.NORMAL,
         offset: new THREE.Vector2(0.00012, 0.00008),
@@ -108,7 +112,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     finishingEffects.push(toneMapping);
     effects.push(toneMapping);
 
-    if (mode === "FULL" && cinematic.filmGrain && !reducedMotion) {
+    if (fullEffects && cinematic.filmGrain) {
       const grain = new NoiseEffect({
         blendFunction: BlendFunction.SOFT_LIGHT,
         premultiply: true,
@@ -118,11 +122,11 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       effects.push(grain);
     }
 
-    if (cinematic.vignette) {
+    if (polishTier && cinematic.vignette) {
       const vignette = new VignetteEffect({
         blendFunction: BlendFunction.NORMAL,
-        offset: mode === "FULL" ? 0.34 : 0.4,
-        darkness: mode === "FULL" ? 0.36 : 0.26,
+        offset: fullEffects ? 0.34 : 0.4,
+        darkness: fullEffects ? 0.36 : 0.26,
       });
       finishingEffects.push(vignette);
       effects.push(vignette);
@@ -143,8 +147,8 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     cinematic.filmGrain,
     cinematic.vignette,
     gl,
-    mode,
-    reducedMotion,
+    fullEffects,
+    polishTier,
     scene,
   ]);
 

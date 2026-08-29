@@ -316,6 +316,13 @@ export default function HumanoidViewer() {
         await updatePhysiqueTargets({
           ...(persistedPhysique || {}),
           goalMetrics: nextGoal,
+          appearanceMetrics: {
+            skinTone: nextCurrent?.skinTone || 'IV',
+            eyeColor: nextCurrent?.eyeColor || '#6b3b20',
+            hairColor: nextCurrent?.hairColor || '#2c1a0a',
+            hairStyle: nextCurrent?.hairStyle === 'bald' ? 'bald' : 'short',
+            bodyHairDensity: Math.max(0, Math.min(1, Number(nextCurrent?.bodyHairDensity ?? 0.18))),
+          },
           privateMetrics: {
             ...(Number.isFinite(Number(nextCurrent?.d_size)) ? { d_size: Number(nextCurrent.d_size) } : {}),
             ...(Number.isFinite(Number(nextCurrent?.d_girth)) ? { d_girth: Number(nextCurrent.d_girth) } : {}),
@@ -385,6 +392,18 @@ export default function HumanoidViewer() {
     queueProfileSave(currentMetrics, next, manualMorphOverrides);
   }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateGoalMetric]);
 
+  const updateCurrentAppearance = useCallback((key: string, value: string | number) => {
+    const next = { ...currentMetrics, [key]: value };
+    updateCurrentMetric(key as any, value as any);
+    queueProfileSave(next, goalMetrics, manualMorphOverrides);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateCurrentMetric]);
+
+  const updateGoalAppearance = useCallback((key: string, value: string | number) => {
+    const next = { ...goalMetrics, [key]: value };
+    updateGoalMetric(key as any, value as any);
+    queueProfileSave(currentMetrics, next, manualMorphOverrides);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateGoalMetric]);
+
   const saveSnapshot = useCallback(async () => {
     const snapshot = { id: Date.now().toString(), metrics: { ...currentMetrics }, date: new Date().toISOString(), label: 'Physique check-in' };
     addTimelineSnap(snapshot);
@@ -396,14 +415,14 @@ export default function HumanoidViewer() {
   const [editorTab, setEditorTab] = useState(() => sessionStorage.getItem('chamber_tab') || 'metrics');
   const [sensitiveUnlocked, setSensitiveUnlocked] = useState(false);
   const [splitDragging, setSplitDragging] = useState(false);
-  const [hairA, setHairA] = useState({ style: 'short', color: 'darkbrown' });
-  const [hairB, setHairB] = useState({ style: 'short', color: 'darkbrown' });
   const [storyStage, setStoryStage] = useState('current');
 
   // Settings drawer
   const [showSettings, setShowSettings] = useState(false);
-  const [skinTone, setSkinTone] = useState<string>(currentMetrics.skinTone || 'IV');
-  const [eyeColor, setEyeColor] = useState('#3b7bd4');
+  const skinTone = currentMetrics.skinTone || 'IV';
+  const eyeColor = currentMetrics.eyeColor || '#6b3b20';
+  const hairA = { style: currentMetrics.hairStyle || 'short', color: currentMetrics.hairColor || '#2c1a0a' };
+  const hairB = { style: goalMetrics.hairStyle || 'short', color: goalMetrics.hairColor || '#2c1a0a' };
 
   const toggleSensitiveAnatomy = useCallback(() => {
     const next = !sensitiveUnlocked;
@@ -459,6 +478,7 @@ export default function HumanoidViewer() {
     const normalizedProfile = mergeBodyProfileSources(bodyProfile, legacyUser);
     const persistedCurrent = {
       ...(persistedPhysique?.privateMetrics || {}),
+      ...(persistedPhysique?.appearanceMetrics || {}),
       ...bodyProfileToMetrics(normalizedProfile),
     };
     const persistedGoal = bodyProfileToGoals(normalizedProfile, persistedPhysique);
@@ -496,13 +516,6 @@ export default function HumanoidViewer() {
     }
     return () => { if (timelineIntervalRef.current) clearInterval(timelineIntervalRef.current); };
   }, [timelinePlaying, timelinePos, snapshots.length, setTimelinePos]);
-
-  // ── Skin tone synced to current metric
-  useEffect(() => {
-    if (skinTone !== currentMetrics.skinTone) {
-      updateCurrentMetric('skinTone', skinTone as any);
-    }
-  }, [skinTone, currentMetrics.skinTone, updateCurrentMetric]);
 
   // ── Overall progress score
   const baselineMetrics = useMemo(() => getBaselineMetrics(snapshots, currentMetrics), [currentMetrics, snapshots]);
@@ -1038,21 +1051,20 @@ export default function HumanoidViewer() {
                   {/* Hair — side-by-side for NOW and GOAL */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {([
-                      { key: 'A' as const, label: 'YOU NOW', state: hairA, set: setHairA, accentColor: 'var(--chamber-current)' },
-                      { key: 'B' as const, label: 'YOUR GOAL', state: hairB, set: setHairB, accentColor: 'var(--chamber-glow)' },
-                    ]).map(({ key, label, state, set, accentColor }) => (
+                      { key: 'A' as const, label: 'YOU NOW', state: hairA, update: updateCurrentAppearance, accentColor: 'var(--chamber-current)' },
+                      { key: 'B' as const, label: 'YOUR GOAL', state: hairB, update: updateGoalAppearance, accentColor: 'var(--chamber-glow)' },
+                    ]).map(({ key, label, state, update, accentColor }) => (
                       <div key={key}>
                         <p style={{ fontSize: '0.6rem', color: accentColor, fontWeight: 700, marginBottom: 4, letterSpacing: '0.06em' }}>{label}</p>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, marginBottom: 6 }}>
                           {[
-                            { id: 'bald', icon: '🔳' }, { id: 'buzz', icon: '⚡' },
-                            { id: 'short', icon: '✂️' }, { id: 'medium', icon: '💇' },
-                            { id: 'long', icon: '💈' },
+                            { id: 'bald', icon: '○' },
+                            { id: 'short', icon: '✦' },
                           ].map((h) => (
                             <button key={h.id}
                               className={`chamber-wardrobe-card${state.style === h.id ? ' active' : ''}`}
                               style={{ '--accent': accentColor } as React.CSSProperties}
-                              onClick={() => set((prev) => ({ ...prev, style: h.id }))}>
+                              onClick={() => update('hairStyle', h.id)}>
                               <span style={{ fontSize: '1rem' }}>{h.icon}</span>
                               <span className="chamber-wardrobe-card__label" style={{ fontSize: '0.58rem' }}>{h.id}</span>
                             </button>
@@ -1067,11 +1079,11 @@ export default function HumanoidViewer() {
                             { id: 'white', hex: '#d8d8d4' },
                           ].map((c) => (
                             <button key={c.id}
-                              onClick={() => set((prev) => ({ ...prev, color: c.id }))}
+                              onClick={() => update('hairColor', c.hex)}
                               title={c.id}
                               style={{
                                 width: 18, height: 18, borderRadius: '50%',
-                                border: state.color === c.id ? `2px solid ${accentColor}` : '2px solid transparent',
+                                border: state.color === c.hex ? `2px solid ${accentColor}` : '2px solid transparent',
                                 background: c.hex, cursor: 'pointer', flexShrink: 0,
                               }} />
                           ))}
@@ -1241,7 +1253,7 @@ export default function HumanoidViewer() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
                 {FITZPATRICK_SWATCHES.map((s) => (
                   <button key={s.id} title={s.label}
-                    onClick={() => { setSkinTone(s.id); updateCurrentMetric('skinTone' as any, s.id as any); }}
+                    onClick={() => updateCurrentAppearance('skinTone', s.id)}
                     style={{
                       width: 28, height: 28, borderRadius: '50%', background: s.hex,
                       border: skinTone === s.id ? '2px solid var(--chamber-glow)' : '2px solid var(--border)',
@@ -1252,16 +1264,32 @@ export default function HumanoidViewer() {
               <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginBottom: 6 }}>Eye Colour</p>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
                 {EYE_COLOR_PRESETS.map((c) => (
-                  <button key={c} onClick={() => setEyeColor(c)}
+                  <button key={c} onClick={() => updateCurrentAppearance('eyeColor', c)}
                     style={{
                       width: 22, height: 22, borderRadius: '50%', background: c,
                       border: eyeColor === c ? '2px solid var(--chamber-glow)' : '2px solid transparent',
                       cursor: 'pointer',
                     }} />
                 ))}
-                <input type="color" value={eyeColor} onChange={(e) => setEyeColor(e.target.value)}
+                <input type="color" value={eyeColor} onChange={(e) => updateCurrentAppearance('eyeColor', e.target.value)}
                   title="Custom eye colour"
                   style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: 'transparent' }} />
+              </div>
+              <div className="chamber-morph-row" style={{ marginBottom: 4 }}>
+                <div className="chamber-morph-row__header">
+                  <span>Body hair detail</span>
+                  <span className="chamber-morph-row__value">{Math.round(Number(currentMetrics.bodyHairDensity ?? 0.18) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={Number(currentMetrics.bodyHairDensity ?? 0.18)}
+                  onChange={(event) => updateCurrentAppearance('bodyHairDensity', Number(event.target.value))}
+                  className="chamber-slider"
+                  aria-label="Body hair detail"
+                />
               </div>
             </div>
 

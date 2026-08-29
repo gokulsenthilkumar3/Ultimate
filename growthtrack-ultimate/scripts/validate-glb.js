@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global process */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,6 +63,17 @@ function main() {
   const privatePosition = privatePrim?.attributes?.POSITION != null ? json.accessors?.[privatePrim.attributes.POSITION] : null;
   const privateTargetNames = privateMesh?.extras?.targetNames ?? [];
   const privateNode = (json.nodes ?? []).find((node) => node?.mesh === privateMeshIndex);
+  const nodeParents = new Map();
+  (json.nodes ?? []).forEach((node, parentIndex) => {
+    (node.children ?? []).forEach((childIndex) => nodeParents.set(childIndex, parentIndex));
+  });
+  const headNodeIndex = (json.nodes ?? []).findIndex((node) => node?.name === 'Head');
+  const featureNode = (name) => {
+    const index = (json.nodes ?? []).findIndex((node) => node?.name === name);
+    return { index, node: index >= 0 ? json.nodes[index] : null, parent: nodeParents.get(index) };
+  };
+  const eyesNode = featureNode('GrowthTrackEyes');
+  const hairNode = featureNode('GrowthTrackHair');
   const privateMorphChangedCount = (name) => {
     const targetIndex = privateTargetNames.indexOf(name);
     const accessorIndex = targetIndex >= 0 ? privatePrim?.targets?.[targetIndex]?.POSITION : null;
@@ -133,8 +145,15 @@ function main() {
   check(materials[0]?.pbrMetallicRoughness?.metallicRoughnessTexture, 'Packed roughness/AO map', 'skin material has no metallicRoughnessTexture', failures);
   check(imageHasProductionResolution('SkinNormal_ProceduralMicrodetail'), 'Skin normal resolution', 'normal image is missing or still a placeholder', failures);
   check(imageHasProductionResolution('SkinAO_Roughness'), 'Skin roughness/AO resolution', 'roughness/AO image is missing or still a placeholder', failures);
+  check(Boolean(json.asset?.extras?.aoBakedIntoAlbedo), 'Baked skin AO', 'packed AO must be baked into skin albedo because the body has no TEXCOORD_1/UV2', failures);
+  for (const name of ['SkinAlbedo_YoungMale', 'SkinAlbedo_Light', 'SkinAlbedo_Deep']) {
+    check(imageNamed(name)?.extras?.aoBaked === true, `Baked AO variant: ${name}`, 'skin albedo variant is missing the baked-AO marker', failures);
+  }
   check((json.meshes ?? []).some((item) => item?.name === 'GrowthTrackEyes'), 'Eye asset', 'high-poly eye mesh is missing', failures);
   check((json.meshes ?? []).some((item) => item?.name === 'GrowthTrackHair'), 'Hair asset', 'hair-card mesh is missing', failures);
+  check(headNodeIndex >= 0, 'Head joint', 'Head joint is missing', failures);
+  check(eyesNode.parent === headNodeIndex && eyesNode.node?.extras?.headBound === true, 'Eye head binding', 'GrowthTrackEyes must be parented to Head with an authored local bind transform', failures);
+  check(hairNode.parent === headNodeIndex && hairNode.node?.extras?.headBound === true, 'Hair head binding', 'GrowthTrackHair must be parented to Head with an authored local bind transform', failures);
   check(privatePosition?.count >= 800, 'Private anatomy topology', `${privatePosition?.count ?? 0} verts`, failures);
   check(privateTargetNames.includes('d_length') && privateTargetNames.includes('d_girth'), 'Private anatomy morphs', privateTargetNames.join(', ') || 'none', failures);
   check(privateMorphChangedCount('d_length') > 0 && privateMorphChangedCount('d_girth') > 0, 'Private anatomy deformation', `length ${privateMorphChangedCount('d_length')} verts · girth ${privateMorphChangedCount('d_girth')} verts`, failures);

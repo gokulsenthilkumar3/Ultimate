@@ -28,11 +28,11 @@ import LoadingSkeleton     from './components/ui/LoadingSkeleton';
 import NotFound            from './components/NotFound';
 
 import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
-import { useVascularitySync }    from './store/use3DStore.usage';
 import { TIMING } from './constants';
 import { GLOBAL_MODULES } from './constants/modules';
 import { trackEvent } from './lib/analytics';
 import { logSession, logPageView } from './lib/logger';
+import { useStaggeredEntrance } from './hooks/useProductMotion';
 
 // ── Lazy modules ──────────────────────────────────────────────────────────────
 const Overview           = lazy(() => import('./components/Overview'));
@@ -162,6 +162,16 @@ function NavbarCheckInAlert({ onOpen, onDismiss }) {
   );
 }
 
+function ProductPageTransition({ children, reducedMotion }) {
+  const motionScopeRef = useStaggeredEntrance({ disabled: reducedMotion });
+
+  return (
+    <div ref={motionScopeRef} className="page-transition-wrapper" data-motion-scope>
+      {children}
+    </div>
+  );
+}
+
 
 export default function App() {
   const { session, signOut } = useAuth();
@@ -186,7 +196,6 @@ export default function App() {
   const [showCheckIn,       setShowCheckIn]       = React.useState(false);
   const [showSettings,      setShowSettings]      = React.useState(false);
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
-  const [isNotFound,        setIsNotFound]        = React.useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const navigate = useNavigate();
@@ -195,6 +204,7 @@ export default function App() {
   // Use URL path as source of truth if valid, else fallback to store
   const pathTabRaw = location.pathname.substring(1);
   const activeTab = (pathTabRaw && GLOBAL_MODULES[pathTabRaw]) ? pathTabRaw : storeActiveTab;
+  const isNotFound = Boolean(pathTabRaw && !GLOBAL_MODULES[pathTabRaw]);
 
   // Load the large 3D asset only when its module is requested. This keeps the
   // initial dashboard path fast on lower-memory devices.
@@ -225,22 +235,16 @@ export default function App() {
       isMounted.current = true;
       if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
         setActiveTab(pathTab);
-        setIsNotFound(false);
       } else if (location.pathname === '/') {
         navigate(`/${storeActiveTab}`, { replace: true });
-        setIsNotFound(false);
       }
     } else if (locChanged) {
       // URL drove the change (back/forward button or manual URL)
       if (pathTab && GLOBAL_MODULES[pathTab] && pathTab !== storeActiveTab) {
         setActiveTab(pathTab);
-        setIsNotFound(false);
         logPageView(pathTab);
       } else if (location.pathname === '/') {
         navigate(`/${storeActiveTab}`, { replace: true });
-        setIsNotFound(false);
-      } else if (pathTab && !GLOBAL_MODULES[pathTab]) {
-        setIsNotFound(true);
       }
     } else if (storeChanged) {
       // Store drove the change (user clicked a tab)
@@ -280,8 +284,6 @@ export default function App() {
         setShowCheckInAlert(true);
       }, TIMING.DAILY_CHECKIN_DELAY_MS);
       return () => clearTimeout(t);
-    } else {
-      setShowCheckInAlert(false);
     }
   }, [onboardingComplete, lastCheckIn, checkInAlertDismissedDate, todayStr]);
 
@@ -328,7 +330,7 @@ export default function App() {
           {/* ── Main workspace: content + navigation ── */}
           <div className="main-area">
             {/* ── Navbar Check-In Alert Banner ── */}
-            {showCheckInAlert && onboardingComplete && (
+            {showCheckInAlert && onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr && (
               <NavbarCheckInAlert
                 onOpen={() => {
                   setShowCheckIn(true);
@@ -345,7 +347,7 @@ export default function App() {
             <main className="content-area">
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
-                  <div key={activeTab} className="page-transition-wrapper">
+                  <ProductPageTransition key={activeTab} reducedMotion={reducedMotion}>
                     {isNotFound
                       ? <NotFound />
                       : isLoading
@@ -360,7 +362,7 @@ export default function App() {
                           metricLogs={metricLogs}
                         />
                     }
-                  </div>
+                  </ProductPageTransition>
                 </Suspense>
               </ErrorBoundary>
             </main>

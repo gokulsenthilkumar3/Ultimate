@@ -29,26 +29,16 @@
  */
 
 import * as THREE from "three";
+import {
+  FITZPATRICK_TABLE,
+  createPhysicalSkinMaterial,
+  updatePhysicalSkinMaterial,
+} from '../body3d/physicalSkinMaterial';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FITZPATRICK SKIN TONE TABLE
 // [baseColor, SSS scatter color, specular tint]
 // ─────────────────────────────────────────────────────────────────────────────
-
-const FITZPATRICK_TABLE = [
-  // I  — very fair / Scandinavian
-  { base: [1.00, 0.91, 0.84], sss: [1.00, 0.72, 0.64], spec: [0.95, 0.85, 0.80] },
-  // II — fair / Northern European
-  { base: [0.96, 0.82, 0.68], sss: [0.98, 0.62, 0.52], spec: [0.90, 0.80, 0.72] },
-  // III — medium / Mediterranean
-  { base: [0.91, 0.72, 0.54], sss: [0.92, 0.55, 0.42], spec: [0.85, 0.72, 0.60] },
-  // IV — olive-brown / South Asian (Gokul's tone)
-  { base: [0.78, 0.52, 0.26], sss: [0.85, 0.40, 0.25], spec: [0.72, 0.58, 0.40] },
-  // V  — brown / African, Middle Eastern
-  { base: [0.55, 0.34, 0.16], sss: [0.70, 0.28, 0.15], spec: [0.58, 0.42, 0.28] },
-  // VI — deep / dark African
-  { base: [0.30, 0.18, 0.08], sss: [0.50, 0.18, 0.08], spec: [0.40, 0.28, 0.18] },
-];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANATOMY DEPTH COLORS
@@ -66,7 +56,7 @@ const ANATOMY_COLORS = {
 // VERTEX SHADER
 // ─────────────────────────────────────────────────────────────────────────────
 
-const skinVertexShader = /* glsl */ `
+const SKIN_VERTEX_SHADER = /* glsl */ `
   // Morph targets + skinning handled by Three.js includes
   #include <morphtarget_pars_vertex>
   #include <skinning_pars_vertex>
@@ -110,7 +100,7 @@ const skinVertexShader = /* glsl */ `
 // FRAGMENT SHADER
 // ─────────────────────────────────────────────────────────────────────────────
 
-const skinFragmentShader = /* glsl */ `
+const SKIN_FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
 
   // ── Uniforms ────────────────────────────────────────────────────────────────
@@ -308,51 +298,9 @@ const skinFragmentShader = /* glsl */ `
 // MATERIAL FACTORY
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Creates a ShaderMaterial using the SSS skin shader.
- * @param {number} [fitzpatrickIndex=3] - 0(I) to 5(VI), default IV
- * @returns {THREE.ShaderMaterial}
- */
-export function createSkinMaterial(fitzpatrickIndex = 3, mapOrMaterial = null) {
-  const tone = FITZPATRICK_TABLE[Math.max(0, Math.min(5, fitzpatrickIndex))];
-  const sourceMaterial = mapOrMaterial?.isMaterial ? mapOrMaterial : null;
-  const map = sourceMaterial?.map || mapOrMaterial || null;
-
-  // We use MeshStandardMaterial as the base to get 100% correct
-  // skinning, morph targets, shadows, and PBR lighting out of the box,
-  // avoiding the brittle WebGL injection issues of raw ShaderMaterial.
-  const mat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(...tone.base),
-    roughness: 0.5,
-    metalness: 0.1,
-    
-    // Subsurface scattering approximation using emissive
-    emissive: new THREE.Color(...tone.sss),
-    emissiveIntensity: 0.15,
-    
-    side: THREE.FrontSide,
-    transparent: false,
-    depthWrite: true,
-    vertexColors: true,
-    map: map || null,
-    normalMap: sourceMaterial?.normalMap || null,
-    normalScale: sourceMaterial?.normalScale || new THREE.Vector2(0.42, 0.42),
-    roughnessMap: sourceMaterial?.roughnessMap || null,
-    metalnessMap: sourceMaterial?.metalnessMap || null,
-  });
-
-  // Attach dynamic uniforms object so updateSkinUniforms doesn't crash,
-  // even though we aren't using the full custom shader right now.
-  mat.uniforms = {
-    uBaseColor:            { value: new THREE.Color(...tone.base) },
-    uSSSColor:             { value: new THREE.Color(...tone.sss) },
-    uSpecColor:            { value: new THREE.Color(...tone.spec) },
-    uAnatomyDepth:         { value: 100.0 },
-    uVascularityIntensity: { value: 0.0 },
-    uTime:                 { value: 0.0 },
-  };
-
-  return mat;
+/** Canonical PBR skin factory shared with the anatomical viewer. */
+export function createSkinMaterial(fitzpatrickIndex = 3, mapOrMaterial = null, options = {}) {
+  return createPhysicalSkinMaterial(fitzpatrickIndex, mapOrMaterial, options);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -375,22 +323,16 @@ export function updateSkinUniforms(mat, {
   fitzpatrickIndex     = 3,
   anatomyDepth         = 100,
   vascularityIntensity = 0,
+  bodyHairIntensity    = 0,
   time                 = 0,
 } = {}) {
-  if (!mat?.uniforms) return;
-
-  // Update Fitzpatrick tone (only if changed — Color.set is cheap)
-  const fi   = Math.max(0, Math.min(5, Math.round(fitzpatrickIndex)));
-  const tone = FITZPATRICK_TABLE[fi];
-  if (mat.color) mat.color.setRGB(...tone.base);
-  if (mat.emissive) mat.emissive.setRGB(...tone.sss);
-  mat.uniforms.uBaseColor.value.setRGB(...tone.base);
-  mat.uniforms.uSSSColor.value.setRGB(...tone.sss);
-  mat.uniforms.uSpecColor.value.setRGB(...tone.spec);
-
-  mat.uniforms.uAnatomyDepth.value         = anatomyDepth;
-  mat.uniforms.uVascularityIntensity.value = vascularityIntensity;
-  mat.uniforms.uTime.value                 = time;
+  updatePhysicalSkinMaterial(mat, {
+    fitzpatrickIndex,
+    anatomyDepth,
+    vascularityIntensity,
+    bodyHairIntensity,
+    time,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -434,7 +376,7 @@ export function updateSkinUniforms(mat, {
 // LAYER A — RIM AURA (replaces BackSide AuraMesh material)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const rimAuraVertexShader = /* glsl */ `
+const RIM_AURA_VERTEX_SHADER = /* glsl */ `
   #include <morphtarget_pars_vertex>
   #include <skinning_pars_vertex>
 
@@ -472,7 +414,7 @@ const rimAuraVertexShader = /* glsl */ `
   }
 `;
 
-const rimAuraFragmentShader = /* glsl */ `
+const RIM_AURA_FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
 
   varying vec3  vWorldNormal;

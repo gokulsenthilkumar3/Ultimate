@@ -935,3 +935,93 @@ tbody td { border-bottom-color: var(--ui-line) !important; }
   .soft-neumorphism:hover,
   .btn-primary:hover { transform: none !important; }
 }
+
+/* ── One live token contract ──────────────────────────────────────────────
+   Older modules still use the v3/v4 semantic names. Keeping this bridge at
+   the end makes those names resolve to the same Apple surface, type, motion,
+   and accent decisions as the new UI layer. */
+:root,
+[data-theme='dark'] {
+  --bg-base: var(--ui-canvas) !important;
+  --bg-surface: var(--ui-canvas-2) !important;
+  --bg-card: var(--ui-panel) !important;
+  --bg-glass: var(--ui-panel) !important;
+  --bg-elevated: var(--ui-highlight) !important;
+  --bg-input: color-mix(in srgb, var(--ui-panel-solid) 72%, transparent) !important;
+  --border: var(--ui-line) !important;
+  --border-strong: var(--ui-line-strong) !important;
+  --border-glow: color-mix(in srgb, var(--accent) 24%, transparent) !important;
+  --accent: #0A84FF !important;
+  --accent-secondary: #64D2FF !important;
+  --accent-soft: rgba(10, 132, 255, .14) !important;
+  --text-1: #f5f5f7 !important;
+  --text-2: #a1a1aa !important;
+  --text-3: #71717a !important;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif !important;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
+  --font-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace !important;
+  --ease: var(--ease-standard) !important;
+  --transition: .32s var(--ease-standard) !important;
+  --surface-canvas: var(--ui-canvas) !important;
+  --surface-card: var(--ui-panel) !important;
+  --surface-elevated: var(--ui-highlight) !important;
+  --action-primary: var(--accent) !important;
+  --action-primary-hover: var(--accent-secondary) !important;
+  --border-default: var(--ui-line) !important;
+  --border-focus: var(--border-glow) !important;
+}
+
+[data-theme='light'] {
+  --bg-base: var(--ui-canvas) !important;
+  --bg-surface: var(--ui-canvas-2) !important;
+  --bg-card: var(--ui-panel) !important;
+  --bg-glass: var(--ui-panel) !important;
+  --bg-elevated: var(--ui-highlight) !important;
+  --bg-input: color-mix(in srgb, var(--ui-panel-solid) 72%, transparent) !important;
+  --border: var(--ui-line) !important;
+  --border-strong: var(--ui-line-strong) !important;
+  --border-glow: color-mix(in srgb, var(--accent) 24%, transparent) !important;
+  --accent: #0071e3 !important;
+  --accent-secondary: #147ce5 !important;
+  --accent-soft: rgba(0, 113, 227, .10) !important;
+  --text-1: #1d1d1f !important;
+  --text-2: #515154 !important;
+  --text-3: #86868b !important;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif !important;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
+  --font-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace !important;
+  --ease: var(--ease-standard) !important;
+  --transition: .32s var(--ease-standard) !important;
+  --surface-canvas: var(--ui-canvas) !important;
+  --surface-card: var(--ui-panel) !important;
+  --surface-elevated: var(--ui-highlight) !important;
+  --action-primary: var(--accent) !important;
+  --action-primary-hover: var(--accent-secondary) !important;
+  --border-default: var(--ui-line) !important;
+  --border-focus: var(--border-glow) !important;
+}
+
+/* The entrance is owned by useStaggeredEntrance so each view gets one
+   deterministic transition instead of CSS + JS competing for the same paint. */
+.page-transition-wrapper { animation: none !important; }
+
+/* Central accessibility guard: every new animation automatically inherits
+   the same safe behavior as the existing motion surfaces. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-motion-scope] * { transform: none !important; }
+}
+
+[data-reduced-motion='true'] *,
+[data-reduced-motion='true'] *::before,
+[data-reduced-motion='true'] *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+  scroll-behavior: auto !important;
+}
