@@ -31,7 +31,7 @@ import SocialShareModal from './SocialShareModal';
 import PhysiqueDataPanel from './PhysiqueDataPanel';
 import use3DStore, { CINEMATIC_PRESETS } from '../store/use3DStore';
 import useStore from '../store/useStore';
-import { bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile } from '../lib/physiqueProfile';
+import { BODY_APPEARANCE_FIELDS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile } from '../lib/physiqueProfile';
 import { buildRendererQualityGate } from '../lib/rendererQualityGate';
 import { USER, BODY_PARTS, STATUS } from '../data/userData';
 import { useToast } from '../hooks/useToast';
@@ -312,16 +312,18 @@ export default function HumanoidViewer() {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     persistTimerRef.current = setTimeout(async () => {
       try {
+        const appearanceMetrics = Object.fromEntries(BODY_APPEARANCE_FIELDS.flatMap(([key]) => (
+          nextCurrent?.[key] === undefined || nextCurrent?.[key] === null || nextCurrent?.[key] === ''
+            ? []
+            : [[key, nextCurrent[key]]]
+        )));
         await updateBodyProfile(metricsToBodyProfile(nextCurrent, nextGoal));
         await updatePhysiqueTargets({
           ...(persistedPhysique || {}),
           goalMetrics: nextGoal,
           appearanceMetrics: {
-            skinTone: nextCurrent?.skinTone || 'IV',
-            eyeColor: nextCurrent?.eyeColor || '#6b3b20',
-            hairColor: nextCurrent?.hairColor || '#2c1a0a',
-            hairStyle: nextCurrent?.hairStyle === 'bald' ? 'bald' : 'short',
-            bodyHairDensity: Math.max(0, Math.min(1, Number(nextCurrent?.bodyHairDensity ?? 0.18))),
+            ...(persistedPhysique?.appearanceMetrics || {}),
+            ...appearanceMetrics,
           },
           privateMetrics: {
             ...(Number.isFinite(Number(nextCurrent?.d_size)) ? { d_size: Number(nextCurrent.d_size) } : {}),

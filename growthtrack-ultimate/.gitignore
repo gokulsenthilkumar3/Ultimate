@@ -57,3 +57,6 @@ dev.db
 build/
 coverage/
 
+
+.claude/
+.agents/plugins/

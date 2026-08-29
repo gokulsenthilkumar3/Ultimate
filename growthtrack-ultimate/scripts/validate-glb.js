@@ -102,6 +102,7 @@ function main() {
     const image = imageNamed(name);
     return (image?.extras?.width ?? 0) >= minimum && (image?.extras?.height ?? 0) >= minimum;
   };
+  const geometrySurfaceBake = json.asset?.extras?.geometrySurfaceBake;
 
   const usedAccessors = new Set();
   const usedBufferViews = new Set();
@@ -143,8 +144,14 @@ function main() {
   check(orphanedBufferViews.length === 0, 'Orphaned bufferViews', `${orphanedBufferViews.length} unused`, failures);
   check(materials.length > 0 && materials.every((m) => m.pbrMetallicRoughness?.baseColorTexture && m.normalTexture), 'PBR textures', 'missing baseColorTexture or normalTexture', failures);
   check(materials[0]?.pbrMetallicRoughness?.metallicRoughnessTexture, 'Packed roughness/AO map', 'skin material has no metallicRoughnessTexture', failures);
-  check(imageHasProductionResolution('SkinNormal_ProceduralMicrodetail'), 'Skin normal resolution', 'normal image is missing or still a placeholder', failures);
-  check(imageHasProductionResolution('SkinAO_Roughness'), 'Skin roughness/AO resolution', 'roughness/AO image is missing or still a placeholder', failures);
+  check(imageHasProductionResolution('SkinNormal_GeometryBaked'), 'Skin normal resolution', 'geometry-baked normal image is missing or still a placeholder', failures);
+  check(imageHasProductionResolution('SkinAO_Roughness_GeometryBaked'), 'Skin roughness/AO resolution', 'geometry-baked roughness/AO image is missing or still a placeholder', failures);
+  check(geometrySurfaceBake?.sourceMesh === 'GrowthTrackBody', 'Surface bake source', 'normal/AO maps must identify GrowthTrackBody as their bake source', failures);
+  check(String(geometrySurfaceBake?.normal || '').includes('uv-rasterized'), 'Surface normal provenance', 'normal map must be UV-rasterized from body surface data', failures);
+  check(String(geometrySurfaceBake?.ao || '').includes('ray trace'), 'Surface AO provenance', 'AO map must be ray-traced against the body topology', failures);
+  check((geometrySurfaceBake?.coveredUvTexels ?? 0) >= 100000, 'Surface bake coverage', `${geometrySurfaceBake?.coveredUvTexels ?? 0} covered UV texels`, failures);
+  check(String(imageNamed('SkinNormal_GeometryBaked')?.extras?.bakeMethod || '').includes('GrowthTrackBody'), 'Normal image metadata', 'normal image is missing its geometry bake metadata', failures);
+  check(String(imageNamed('SkinAO_Roughness_GeometryBaked')?.extras?.bakeMethod || '').includes('GrowthTrackBody'), 'AO image metadata', 'AO image is missing its geometry bake metadata', failures);
   check(Boolean(json.asset?.extras?.aoBakedIntoAlbedo), 'Baked skin AO', 'packed AO must be baked into skin albedo because the body has no TEXCOORD_1/UV2', failures);
   for (const name of ['SkinAlbedo_YoungMale', 'SkinAlbedo_Light', 'SkinAlbedo_Deep']) {
     check(imageNamed(name)?.extras?.aoBaked === true, `Baked AO variant: ${name}`, 'skin albedo variant is missing the baked-AO marker', failures);

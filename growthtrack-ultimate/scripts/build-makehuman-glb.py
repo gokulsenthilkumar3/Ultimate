@@ -12,7 +12,9 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import shutil
 import struct
+import subprocess
 import zlib
 from pathlib import Path
 
@@ -554,7 +556,13 @@ class GlbWriter:
     def sparse_accessor(self, values: np.ndarray, original_index: np.ndarray):
         changed = np.flatnonzero(np.linalg.norm(values, axis=1) > 1e-7)
         if not len(changed):
-            self.accessors.append({"componentType": 5126, "count": len(values), "type": "VEC3"})
+            self.accessors.append({
+                "componentType": 5126,
+                "count": len(values),
+                "type": "VEC3",
+                "min": [0.0, 0.0, 0.0],
+                "max": [0.0, 0.0, 0.0],
+            })
             return len(self.accessors) - 1
         source_vertices = original_index[changed]
         order = np.argsort(changed, kind="stable")
@@ -565,6 +573,10 @@ class GlbWriter:
             "componentType": 5126,
             "count": len(values),
             "type": "VEC3",
+            # Morph targets are relative offsets, so the implicit zero base is
+            # part of the bounds used by GLTFLoader for frustum sizing.
+            "min": np.minimum(values[changed].min(axis=0), 0.0).tolist(),
+            "max": np.maximum(values[changed].max(axis=0), 0.0).tolist(),
             "sparse": {
                 "count": len(changed),
                 "indices": {"bufferView": index_view, "componentType": 5125},
@@ -594,46 +606,24 @@ def _rgb_png(pixels: np.ndarray) -> bytes:
     )
 
 
-def procedural_normal_png(size: int = 1024) -> bytes:
-    """Create a subtle tangent-space skin normal map instead of a 1x1 stub.
+def neutral_normal_png(size: int = 1024) -> bytes:
+    """Create a neutral hand-off map for the geometry bake step.
 
-    This is intentionally low-amplitude: the body sculpt and the albedo atlas
-    own the large forms while this texture supplies pores and fine breakup at
-    close camera distances. It is generated locally, so the GLB build remains
-    reproducible and does not depend on an external texture download.
+    The final asset must never ship this map. ``main`` immediately runs
+    bake-geometry-surface.mjs, which replaces it with a UV-correlated bake.
+    Keeping this hand-off neutral prevents a failed/explicitly skipped bake
+    from silently shipping synthetic tiled detail.
     """
-    axis = np.linspace(0.0, 1.0, size, dtype=np.float32)
-    u, v = np.meshgrid(axis, axis)
-    tau = np.float32(np.pi * 2.0)
-
-    h1 = np.sin(u * tau * 137.0 + np.sin(v * tau * 11.0) * 1.7)
-    h2 = np.sin(v * tau * 181.0 + np.sin(u * tau * 13.0) * 1.3)
-    h3 = np.sin((u + v) * tau * 73.0) * 0.45
-    # A second, directional band supplies a restrained follicle-like breakup
-    # on the atlas. It is intentionally subtle so pores remain primary and the
-    # material never reads like painted fur at normal viewing distance.
-    hair = np.sin(v * tau * 337.0 + np.sin(u * tau * 9.0) * 0.65) * (0.55 + 0.45 * np.sin(u * tau * 3.0) ** 2)
-    dhdu = tau * (137.0 * np.cos(u * tau * 137.0 + np.sin(v * tau * 11.0) * 1.7) + h2 * 0.08 + 73.0 * 0.45 * np.cos((u + v) * tau * 73.0) + hair * 0.018)
-    dhdv = tau * (181.0 * np.cos(v * tau * 181.0 + np.sin(u * tau * 13.0) * 1.3) + h1 * 0.08 + 73.0 * 0.45 * np.cos((u + v) * tau * 73.0) + hair * 0.075)
-    amplitude = 0.00016
-    nx = np.clip(-dhdu * amplitude, -0.28, 0.28)
-    ny = np.clip(-dhdv * amplitude, -0.28, 0.28)
-    nz = np.sqrt(np.maximum(1.0 - nx * nx - ny * ny, 0.65))
-    pixels = np.stack(((nx * 0.5 + 0.5) * 255.0, (ny * 0.5 + 0.5) * 255.0, (nz * 0.5 + 0.5) * 255.0), axis=-1)
-    return _rgb_png(np.clip(pixels, 0.0, 255.0).astype(np.uint8))
+    pixels = np.empty((size, size, 3), dtype=np.uint8)
+    pixels[:] = (128, 128, 255)
+    return _rgb_png(pixels)
 
 
-def procedural_metallic_roughness_png(size: int = 1024) -> bytes:
-    """Create a packed glTF roughness/AO map (R=AO, G=roughness, B=metal)."""
-    axis = np.linspace(0.0, 1.0, size, dtype=np.float32)
-    u, v = np.meshgrid(axis, axis)
-    pores = 0.5 + 0.5 * np.sin(u * np.float32(np.pi * 2.0) * 19.0 + np.sin(v * 31.0) * 2.0)
-    creases = np.clip(np.abs(np.sin(v * np.float32(np.pi * 2.0) * 7.0)), 0.0, 1.0)
-    ao = np.clip(0.985 - creases * 0.045 - pores * 0.015, 0.86, 1.0)
-    roughness = np.clip(0.43 + pores * 0.18 + (1.0 - creases) * 0.12, 0.32, 0.82)
-    metallic = np.zeros_like(roughness)
-    pixels = np.stack((ao * 255.0, roughness * 255.0, metallic), axis=-1)
-    return _rgb_png(np.clip(pixels, 0.0, 255.0).astype(np.uint8))
+def neutral_metallic_roughness_png(size: int = 1024) -> bytes:
+    """Create a neutral packed glTF map (R=AO, G=roughness, B=metal)."""
+    pixels = np.empty((size, size, 3), dtype=np.uint8)
+    pixels[:] = (255, 184, 0)
+    return _rgb_png(pixels)
 
 
 def make_static_mesh(npz, body_center, body_min_y, body_scale, target_center, target_scale, flip_v=True):
@@ -828,8 +818,8 @@ def build_glb(
         if variant_path and variant_path.exists():
             skin_variant_indices[variant_name] = add_image(texture_bytes(variant_path, texture_size), f"SkinAlbedo_{variant_name}")
     map_size = min(texture_size, 1024) if texture_size else 1024
-    normal_texture_index = add_image(procedural_normal_png(map_size), "SkinNormal_ProceduralMicrodetail")
-    metallic_roughness_index = add_image(procedural_metallic_roughness_png(map_size), "SkinAO_Roughness")
+    normal_texture_index = add_image(neutral_normal_png(map_size), "SkinNormal_GeometryBaked")
+    metallic_roughness_index = add_image(neutral_metallic_roughness_png(map_size), "SkinAO_Roughness_GeometryBaked")
     eye_texture_index = add_image(texture_bytes(eye_texture, texture_size), "EyeBrown_IrisSclera") if eye_texture and eye_texture.exists() else None
     hair_diffuse_index = add_image(texture_bytes(hair_diffuse, texture_size), "HairShort02_Albedo") if hair_diffuse and hair_diffuse.exists() else None
     hair_normal_index = add_image(texture_bytes(hair_normal, texture_size), "HairShort02_Normal") if hair_normal and hair_normal.exists() else normal_texture_index
@@ -927,8 +917,8 @@ def build_glb(
             "morphTargetCount": len(body_target_names),
             "featureNodes": [item["name"] for item in feature_meshes],
             "pbrTextureSet": {
-                "normal": "SkinNormal_ProceduralMicrodetail",
-                "metallicRoughness": "SkinAO_Roughness",
+                "normal": "SkinNormal_GeometryBaked",
+                "metallicRoughness": "SkinAO_Roughness_GeometryBaked",
                 "eye": "EyeBrown_IrisSclera" if eye_texture_index is not None else None,
                 "hair": "HairShort02_Albedo" if hair_diffuse_index is not None else None,
                 "skinVariants": list(skin_variant_indices.keys()),
@@ -990,6 +980,7 @@ def main():
     parser.add_argument("--skin-light-variant", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/skins/textures/young_lightskinned_male_diffuse2.png"))
     parser.add_argument("--skin-deep-variant", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/skins/textures/young_darkskinned_male_diffuse.png"))
     parser.add_argument("--texture-size", type=int, default=2048, help="Maximum embedded texture edge; use 512 for the mobile tier.")
+    parser.add_argument("--skip-surface-bake", action="store_true", help="Leave neutral hand-off maps for debugging; never use for a release asset.")
     args = parser.parse_args()
     base_path = args.data / "3dobjs" / "base.npz"
     target_path = args.data / "targets.npz"
@@ -1033,6 +1024,12 @@ def main():
         {"Light": args.skin_light_variant, "Deep": args.skin_deep_variant},
         max(256, args.texture_size),
     )
+    if not args.skip_surface_bake:
+        node = shutil.which("node")
+        if not node:
+            raise RuntimeError("Node.js is required to run scripts/bake-geometry-surface.mjs")
+        bake_script = Path(__file__).with_name("bake-geometry-surface.mjs")
+        subprocess.run([node, str(bake_script), str(args.output)], check=True)
     print(json.dumps({
         "output": str(args.output),
         "vertices": len(body["positions"]),

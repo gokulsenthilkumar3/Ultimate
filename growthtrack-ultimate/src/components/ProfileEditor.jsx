@@ -1,5 +1,5 @@
 import safeLocalStorage from '../utils/safeLocalStorage';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   User, Camera, Save, X, Upload, CheckCircle,
   Shield, Layout, Globe,
@@ -12,6 +12,7 @@ import StunningDatePicker from './ui/StunningDatePicker';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../utils/cropImage';
 import { apiRequest } from '../lib/apiClient';
+import { metricsToBodyProfile } from '../lib/physiqueProfile';
 
 const TABS = [
   { id: 'personal', label: 'Personal', icon: User },
@@ -34,9 +35,24 @@ const SOCIAL_THEMES = {
   Other: { icon: Globe, color: 'var(--text-2)', bg: 'var(--bg-elevated)' }
 };
 
-const Field = ({ label, type = 'text', field, placeholder, options, formData, handleChange, prefix }) => (
+const convertBodyValue = (value, unit, measurementSystem, toCanonical = false) => {
+  if (value === '' || value == null || !unit || !['cm', 'kg'].includes(unit)) return value;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || !String(measurementSystem || '').startsWith('Imperial')) return value;
+  if (toCanonical) return unit === 'cm' ? numeric * 2.54 : numeric * 0.45359237;
+  return unit === 'cm' ? numeric / 2.54 : numeric / 0.45359237;
+};
+
+const Field = ({ label, type = 'text', field, placeholder, options, formData, handleChange, prefix, step, min, max, inputMode, unit }) => {
+  const isImperial = String(formData?.measurementSystem || '').startsWith('Imperial');
+  const displayUnit = isImperial && unit === 'cm' ? 'in' : isImperial && unit === 'kg' ? 'lb' : unit;
+  const rawValue = field.includes('.') ? formData[field.split('.')[0]]?.[field.split('.')[1]] : formData[field];
+  const displayValue = type === 'number' && unit ? convertBodyValue(rawValue, unit, formData?.measurementSystem) : rawValue;
+  const displayLabel = displayUnit ? label.replace('(cm)', `(${displayUnit})`).replace('(kg)', `(${displayUnit})`) : label;
+
+  return (
   <div style={{ marginBottom: '1.25rem' }}>
-    <label className="form-label">{label}</label>
+    <label className="form-label">{displayLabel}</label>
     {options ? (
       <select
         className="form-input"
@@ -56,9 +72,13 @@ const Field = ({ label, type = 'text', field, placeholder, options, formData, ha
         <input
           type={type}
           className="form-input"
-          value={field.includes('.') ? formData[field.split('.')[0]]?.[field.split('.')[1]] || '' : formData[field] || ''}
-          onChange={e => handleChange(field, e.target.value)}
+          value={displayValue ?? ''}
+          onChange={e => handleChange(field, type === 'number' && unit ? convertBodyValue(e.target.value, unit, formData?.measurementSystem, true) : e.target.value)}
           placeholder={placeholder}
+          step={step}
+          min={min}
+          max={max}
+          inputMode={inputMode}
           style={{ 
             width: '100%', fontSize: '0.95rem', fontWeight: 500, fontFamily: 'var(--font-display)',
             paddingLeft: prefix ? `calc(18px + ${prefix.length}ch)` : undefined 
@@ -67,7 +87,8 @@ const Field = ({ label, type = 'text', field, placeholder, options, formData, ha
       </div>
     )}
   </div>
-);
+  );
+};
 
 const RangeField = ({ label, field, min = 0, max = 1, step = 0.05, formData, handleChange }) => (
   <div style={{ marginBottom: '1.25rem' }}>
@@ -85,18 +106,139 @@ const RangeField = ({ label, field, min = 0, max = 1, step = 0.05, formData, han
   </div>
 );
 
+// These fields are intentionally data-driven. The API stores their canonical
+// values in BodyProfile; this metadata only controls the editor presentation.
+const PRECISION_BODY_FIELDS = Object.freeze([
+  { field: 'leanMass', label: 'Lean mass (kg)', placeholder: 'Optional', step: '0.1' },
+  { field: 'skeletalMuscle', label: 'Skeletal muscle (kg)', placeholder: 'Optional', step: '0.1' },
+  { field: 'bodyWater', label: 'Body water (%)', placeholder: 'Optional', step: '0.1' },
+  { field: 'boneMass', label: 'Bone mass (kg)', placeholder: 'Optional', step: '0.1' },
+  { field: 'visceralFat', label: 'Visceral fat level', placeholder: 'Optional', step: '0.1' },
+  { field: 'wrist', label: 'Wrist circumference (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'elbow', label: 'Elbow circumference (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'underbust', label: 'Underbust (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'highHip', label: 'High hip (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'chestDepth', label: 'Chest depth (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'shoulderBreadth', label: 'Shoulder breadth (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'bideltoidBreadth', label: 'Bideltoid breadth (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'pelvicBreadth', label: 'Pelvic breadth (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'sittingHeight', label: 'Sitting height (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'upperLegLength', label: 'Upper leg length (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'lowerLegLength', label: 'Lower leg length (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'inseam', label: 'Inseam (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'neckLength', label: 'Neck length (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'faceWidth', label: 'Face width (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'faceHeight', label: 'Face height (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'eyeSpacing', label: 'Eye spacing (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'earLength', label: 'Ear length (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'earWidth', label: 'Ear width (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'noseLength', label: 'Nose length (cm)', placeholder: 'Optional', step: '0.1' },
+  { field: 'noseWidth', label: 'Nose width (cm)', placeholder: 'Optional', step: '0.1' },
+]);
+
+const ASYMMETRY_BODY_FIELDS = Object.freeze([
+  { field: 'leftShoulder', label: 'Left shoulder (cm)' },
+  { field: 'rightShoulder', label: 'Right shoulder (cm)' },
+  { field: 'leftUpperArm', label: 'Left upper arm (cm)' },
+  { field: 'rightUpperArm', label: 'Right upper arm (cm)' },
+  { field: 'leftForearm', label: 'Left forearm (cm)' },
+  { field: 'rightForearm', label: 'Right forearm (cm)' },
+  { field: 'leftWrist', label: 'Left wrist (cm)' },
+  { field: 'rightWrist', label: 'Right wrist (cm)' },
+  { field: 'leftThigh', label: 'Left thigh (cm)' },
+  { field: 'rightThigh', label: 'Right thigh (cm)' },
+  { field: 'leftCalf', label: 'Left calf (cm)' },
+  { field: 'rightCalf', label: 'Right calf (cm)' },
+  { field: 'leftHip', label: 'Left hip (cm)' },
+  { field: 'rightHip', label: 'Right hip (cm)' },
+]);
+
+const ALIGNMENT_BODY_FIELDS = Object.freeze([
+  { field: 'shoulderTilt', label: 'Shoulder tilt (deg)', min: '-45', max: '45' },
+  { field: 'spineCurvature', label: 'Spine curvature (deg)', min: '-45', max: '45' },
+  { field: 'hipRotation', label: 'Hip rotation (deg)', min: '-45', max: '45' },
+  { field: 'kneeAlignment', label: 'Knee alignment (deg)', min: '-30', max: '30' },
+  { field: 'leftKneeAngle', label: 'Left knee angle (deg)', min: '0', max: '180' },
+  { field: 'rightKneeAngle', label: 'Right knee angle (deg)', min: '0', max: '180' },
+  { field: 'leftFootRotation', label: 'Left foot rotation (deg)', min: '-90', max: '90' },
+  { field: 'rightFootRotation', label: 'Right foot rotation (deg)', min: '-90', max: '90' },
+]);
+
+const BODY_PROFILE_NUMBER_FIELDS = [
+  ...PRECISION_BODY_FIELDS.map(({ field }) => field),
+  ...ASYMMETRY_BODY_FIELDS.map(({ field }) => field),
+  ...ALIGNMENT_BODY_FIELDS.map(({ field }) => field),
+  'skinFitzpatrickIndex', 'skinFreckleDensity', 'hairDensity', 'hairLength', 'facialHairDensity', 'bodyHairDensity', 'nailLengthMm',
+];
+
+const precisionUnit = (field) => ['leanMass', 'skeletalMuscle', 'boneMass'].includes(field)
+  ? 'kg'
+  : ['bodyWater'].includes(field)
+    ? '%'
+    : ['visceralFat'].includes(field)
+      ? 'level'
+      : 'cm';
+
+const BODY_PROFILE_APPEARANCE_DEFAULTS = Object.freeze({
+  biologicalSex: '', modelPreset: '', skinFitzpatrickIndex: '', skinUndertone: '', skinColorHex: '', skinTextureVariant: '', skinFreckleDensity: '', skinFeatureMap: '',
+  hairStyle: '', hairColorHex: '', hairTexture: '', hairlineStyle: '', hairPart: '', hairDensity: '', hairLength: '', facialHairStyle: '', facialHairColorHex: '', facialHairDensity: '',
+  eyebrowStyle: '', eyebrowColorHex: '', eyeColorHex: '', eyePattern: '', eyelidShape: '', eyelashStyle: '', scleraColorHex: '', irisLimbalRing: false, lipColorHex: '',
+  bodyHairPattern: '', bodyHairColorHex: '', bodyHairTexture: '', bodyHairDensity: '', nailColorHex: '', nailShape: '', nailLengthMm: '', avatarAsset: '', tattooAsset: '', anatomyPreset: '', anatomyVisibility: '', anatomyRevealConsent: false,
+});
+
+const getBodyProfileFormDefaults = (profile = {}) => ({
+  ...Object.fromEntries(BODY_PROFILE_NUMBER_FIELDS.map((field) => [field, profile?.[field] ?? ''])),
+  ...Object.fromEntries(Object.keys(BODY_PROFILE_APPEARANCE_DEFAULTS).map((field) => [field, profile?.[field] ?? BODY_PROFILE_APPEARANCE_DEFAULTS[field]])),
+});
+
+const BODY_APPEARANCE_SELECT_FIELDS = Object.freeze([
+  { field: 'biologicalSex', label: 'Biological sex', options: ['', 'female', 'male', 'intersex', 'nonbinary', 'prefer_not_to_say'] },
+  { field: 'modelPreset', label: 'Model asset preset', options: ['', 'auto', 'neutral', 'female', 'male'] },
+  { field: 'skinUndertone', label: 'Skin undertone', options: ['', 'cool', 'neutral', 'warm', 'olive'] },
+  { field: 'skinTextureVariant', label: 'Skin texture', options: ['', 'natural', 'smooth', 'detailed', 'mature'] },
+  { field: 'hairStyle', label: 'Hair style', options: ['', 'bald', 'buzz', 'short', 'medium', 'long'] },
+  { field: 'hairTexture', label: 'Hair texture', options: ['', 'straight', 'wavy', 'curly', 'coily'] },
+  { field: 'hairlineStyle', label: 'Hairline', options: ['', 'natural', 'straight', 'widow_peak', 'receding'] },
+  { field: 'hairPart', label: 'Hair part', options: ['', 'none', 'left', 'center', 'right'] },
+  { field: 'facialHairStyle', label: 'Facial hair', options: ['', 'none', 'stubble', 'short_beard', 'full_beard', 'mustache'] },
+  { field: 'eyebrowStyle', label: 'Eyebrow style', options: ['', 'natural', 'soft', 'defined', 'thick'] },
+  { field: 'eyePattern', label: 'Iris pattern', options: ['', 'natural', 'ringed', 'central_heterochromia', 'custom'] },
+  { field: 'eyelidShape', label: 'Eyelid shape', options: ['', 'neutral', 'hooded', 'deep_set', 'monolid'] },
+  { field: 'eyelashStyle', label: 'Eyelash style', options: ['', 'natural', 'soft', 'defined'] },
+  { field: 'bodyHairPattern', label: 'Body hair pattern', options: ['', 'none', 'light', 'natural', 'defined'] },
+  { field: 'bodyHairTexture', label: 'Body hair texture', options: ['', 'straight', 'wavy', 'curly', 'coily'] },
+  { field: 'nailShape', label: 'Nail shape', options: ['', 'natural', 'rounded', 'square', 'almond'] },
+  { field: 'anatomyPreset', label: 'Anatomy asset', options: ['', 'none', 'female', 'male', 'neutral'] },
+  { field: 'anatomyVisibility', label: 'Anatomy visibility', options: ['', 'hidden', 'underwear', 'anatomical'] },
+]);
+
+const BODY_APPEARANCE_TEXT_FIELDS = Object.freeze([
+  { field: 'skinColorHex', label: 'Skin color', placeholder: '#C68642' },
+  { field: 'scleraColorHex', label: 'Sclera color', placeholder: '#EEE9DF' },
+  { field: 'lipColorHex', label: 'Lip color', placeholder: '#8E4D55' },
+  { field: 'hairColorHex', label: 'Hair color', placeholder: '#2C1A0A' },
+  { field: 'facialHairColorHex', label: 'Facial hair color', placeholder: '#2C1A0A' },
+  { field: 'eyebrowColorHex', label: 'Eyebrow color', placeholder: '#2C1A0A' },
+  { field: 'eyeColorHex', label: 'Eye color', placeholder: '#6B3B20' },
+  { field: 'bodyHairColorHex', label: 'Body hair color', placeholder: '#2C1A0A' },
+  { field: 'nailColorHex', label: 'Nail color', placeholder: '#E5A39A' },
+  { field: 'avatarAsset', label: 'Avatar asset key', placeholder: 'Asset ID or generated profile key' },
+  { field: 'skinFeatureMap', label: 'Skin feature asset key', placeholder: 'Optional freckles / scars asset key' },
+  { field: 'tattooAsset', label: 'Tattoo asset key', placeholder: 'Optional user-owned asset key' },
+]);
+
 export default function ProfileEditor() {
   const user = useStore(s => s.user);
   const updateUser = useStore(s => s.updateUser);
-  const fetchInitialData = useStore(s => s.fetchInitialData);
+  const updateBodyProfile = useStore(s => s.updateBodyProfile);
   const theme = useStore(s => s.theme);
   const palette = useStore(s => s.palette);
   const setTheme = useStore(s => s.setTheme);
   const setPalette = useStore(s => s.setPalette);
   const reducedMotion = useStore(s => s.reducedMotion);
   const setReducedMotion = useStore(s => s.setReducedMotion);
-  const documentProviders = useStore(s => s.appConfig?.documentProviders) || [];
-  const providerLabels = documentProviders.filter(provider => provider.enabled !== false).map(provider => provider.label);
+  const documentProviders = useStore(s => s.appConfig?.documentProviders);
+  const providerLabels = useMemo(() => (documentProviders || []).filter(provider => provider.enabled !== false).map(provider => provider.label), [documentProviders]);
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('personal');
@@ -119,10 +261,6 @@ export default function ProfileEditor() {
   const [newSocialCustomName, setNewSocialCustomName] = useState('');
   const [newSocialUrl, setNewSocialUrl] = useState('');
   
-  // Language state
-  const [newLanguage, setNewLanguage] = useState('');
-  const [newProficiency, setNewProficiency] = useState('Native');
-
   // Cropper states
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -202,7 +340,6 @@ export default function ProfileEditor() {
         country: user?.country || '',
         state: user?.state || '',
         city: user?.city || '',
-        timezone: user?.timezone || '',
         
         skinTone: user?.skinTone || 'III',
         headTiltAngle: user?.headTiltAngle || 0,
@@ -235,10 +372,13 @@ export default function ProfileEditor() {
         notifications: user?.notifications ?? true,
         theme: user?.theme || 'dark',
 
+        // High-fidelity body and avatar fields are hydrated from BodyProfile.
+        ...getBodyProfileFormDefaults(user),
+
       });
       setIsLoaded(true);
     }
-  }, [user, isLoaded]);
+  }, [isLoaded, providerLabels, user]);
 
 
   // Track changes to show the "Save Changes" button
@@ -333,11 +473,13 @@ export default function ProfileEditor() {
       primaryGoal: user?.primaryGoal || '',
       notifications: user?.notifications ?? true,
       theme: user?.theme || 'dark',
+
+      ...getBodyProfileFormDefaults(user),
       
     }) || avatarPreview !== (user?.avatar || null);
     
     setHasChanges(isChanged);
-  }, [formData, avatarPreview, user]);
+  }, [avatarPreview, formData, isLoaded, providerLabels, user]);
 
   const handleAvatarClick = () => {
     if (avatarPreview) setIsPreviewModalOpen(true);
@@ -506,14 +648,6 @@ export default function ProfileEditor() {
     setHasChanges(true);
   };
 
-  const handleAddLanguage = () => {
-    if (!newLanguage.trim()) return;
-    const lang = { id: Date.now().toString(), language: newLanguage.trim(), proficiency: newProficiency };
-    setFormData({ ...formData, languages: [...(formData.languages || []), lang] });
-    setNewLanguage('');
-    setHasChanges(true);
-  };
-
   const handleSave = async () => {
     if (currentPassword || newPassword || confirmPassword) {
       if (!currentPassword) {
@@ -546,6 +680,11 @@ export default function ProfileEditor() {
 
       // 1. Save general profile data locally (Zustand)
       await updateUser(submitData);
+
+      // Keep the normalized BodyProfile cache in sync in this session too.
+      // includeEmpty clears values removed from the editor instead of leaving
+      // a stale 3D measurement until the next full reload.
+      await updateBodyProfile(metricsToBodyProfile(submitData, {}, { includeEmpty: true }));
 
       // 2. If credentials (name, email, or password) are being updated, hit PUT /api/auth/profile
       const hasCredsChanges = 
@@ -918,8 +1057,8 @@ export default function ProfileEditor() {
                 <div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Core Metrics</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem 1.5rem' }}>
-                    <Field label="Height (cm)" type="number" field="height" placeholder="175" formData={formData} handleChange={handleChange} />
-                    <Field label="Weight (kg)" type="number" field="weight" placeholder="70" formData={formData} handleChange={handleChange} />
+                    <Field label="Height (cm)" type="number" unit="cm" field="height" placeholder="175" formData={formData} handleChange={handleChange} />
+                    <Field label="Weight (kg)" type="number" unit="kg" field="weight" placeholder="70" formData={formData} handleChange={handleChange} />
                     <Field label="Body Fat (%)" type="number" field="bodyFat" placeholder="15" formData={formData} handleChange={handleChange} />
                     <Field label="Resting Heart Rate (bpm)" type="number" field="restingHeartRate" placeholder="60" formData={formData} handleChange={handleChange} />
                   </div>
@@ -938,32 +1077,32 @@ export default function ProfileEditor() {
                 <div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Body Measurements (cm)</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem 1.5rem' }}>
-                    <Field label="Chest" type="number" field="chest" placeholder="100" formData={formData} handleChange={handleChange} />
-                    <Field label="Shoulders" type="number" field="shoulders" placeholder="115" formData={formData} handleChange={handleChange} />
-                    <Field label="Waist" type="number" field="waist" placeholder="80" formData={formData} handleChange={handleChange} />
-                    <Field label="Arms" type="number" field="arms" placeholder="35" formData={formData} handleChange={handleChange} />
-                    <Field label="Thighs" type="number" field="thighs" placeholder="55" formData={formData} handleChange={handleChange} />
-                    <Field label="Calves" type="number" field="calves" placeholder="38" formData={formData} handleChange={handleChange} />
-                    <Field label="Neck" type="number" field="neck" placeholder="38" formData={formData} handleChange={handleChange} />
-                    <Field label="Forearms" type="number" field="forearm" placeholder="28" formData={formData} handleChange={handleChange} />
-                    <Field label="Hips" type="number" field="hips" placeholder="90" formData={formData} handleChange={handleChange} />
-                    <Field label="Glutes" type="number" field="glutes" placeholder="95" formData={formData} handleChange={handleChange} />
-                    <Field label="Ankles" type="number" field="ankle" placeholder="22" formData={formData} handleChange={handleChange} />
-                    <Field label="D-Size" type="number" field="d_size" placeholder="-" formData={formData} handleChange={handleChange} />
-                    <Field label="D-Girth" type="number" field="d_girth" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="Chest (cm)" type="number" unit="cm" field="chest" placeholder="100" formData={formData} handleChange={handleChange} />
+                    <Field label="Shoulders (cm)" type="number" unit="cm" field="shoulders" placeholder="115" formData={formData} handleChange={handleChange} />
+                    <Field label="Waist (cm)" type="number" unit="cm" field="waist" placeholder="80" formData={formData} handleChange={handleChange} />
+                    <Field label="Arms (cm)" type="number" unit="cm" field="arms" placeholder="35" formData={formData} handleChange={handleChange} />
+                    <Field label="Thighs (cm)" type="number" unit="cm" field="thighs" placeholder="55" formData={formData} handleChange={handleChange} />
+                    <Field label="Calves (cm)" type="number" unit="cm" field="calves" placeholder="38" formData={formData} handleChange={handleChange} />
+                    <Field label="Neck (cm)" type="number" unit="cm" field="neck" placeholder="38" formData={formData} handleChange={handleChange} />
+                    <Field label="Forearms (cm)" type="number" unit="cm" field="forearm" placeholder="28" formData={formData} handleChange={handleChange} />
+                    <Field label="Hips (cm)" type="number" unit="cm" field="hips" placeholder="90" formData={formData} handleChange={handleChange} />
+                    <Field label="Glutes (cm)" type="number" unit="cm" field="glutes" placeholder="95" formData={formData} handleChange={handleChange} />
+                    <Field label="Ankles (cm)" type="number" unit="cm" field="ankle" placeholder="22" formData={formData} handleChange={handleChange} />
+                    <Field label="D-Size (in)" type="number" field="d_size" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="D-Girth (in)" type="number" field="d_girth" placeholder="-" formData={formData} handleChange={handleChange} />
                   </div>
                 </div>
 
                 <div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Skeletal Proportions (cm)</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem 1.5rem' }}>
-                    <Field label="Torso Length" type="number" field="torsoLength" placeholder="-" formData={formData} handleChange={handleChange} />
-                    <Field label="Upper Arm" type="number" field="upperArm" placeholder="-" formData={formData} handleChange={handleChange} />
-                    <Field label="Lower Arm" type="number" field="lowerArm" placeholder="-" formData={formData} handleChange={handleChange} />
-                    <Field label="Hand Length" type="number" field="handLength" placeholder="-" formData={formData} handleChange={handleChange} />
-                    <Field label="Leg Length (Inseam)" type="number" field="legLength" placeholder="-" formData={formData} handleChange={handleChange} />
-                    <Field label="Foot Length" type="number" field="footLength" placeholder="-" formData={formData} handleChange={handleChange} />
-                    <Field label="Head Circumference" type="number" field="headCirc" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="Torso Length (cm)" type="number" unit="cm" field="torsoLength" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="Upper Arm (cm)" type="number" unit="cm" field="upperArm" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="Lower Arm (cm)" type="number" unit="cm" field="lowerArm" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="Hand Length (cm)" type="number" unit="cm" field="handLength" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="Leg Length (Inseam) (cm)" type="number" unit="cm" field="legLength" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="Foot Length (cm)" type="number" unit="cm" field="footLength" placeholder="-" formData={formData} handleChange={handleChange} />
+                    <Field label="Head Circumference (cm)" type="number" unit="cm" field="headCirc" placeholder="-" formData={formData} handleChange={handleChange} />
                   </div>
                 </div>
 
@@ -989,6 +1128,69 @@ export default function ProfileEditor() {
                     <RangeField label="Nose Tip Size" field="nose_tip_size" formData={formData} handleChange={handleChange} />
                     <RangeField label="Ear Prominence" field="ear_prominence" formData={formData} handleChange={handleChange} />
                   </div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Precision body profile</h4>
+                  <p className="text-secondary" style={{ fontSize: '0.76rem', margin: '0 0 1rem', lineHeight: 1.5 }}>
+                    Optional measured values improve the digital twin. Leave anything unknown empty; the model will not invent measurements.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
+                    {PRECISION_BODY_FIELDS.map(({ field, label, placeholder, step }) => (
+                      <Field key={field} label={label} unit={precisionUnit(field)} type="number" field={field} placeholder={placeholder} step={step} inputMode="decimal" formData={formData} handleChange={handleChange} />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Left / right symmetry</h4>
+                  <p className="text-secondary" style={{ fontSize: '0.76rem', margin: '0 0 1rem', lineHeight: 1.5 }}>
+                    Store each side independently so future corrective morphs can preserve natural asymmetry.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
+                    {ASYMMETRY_BODY_FIELDS.map(({ field, label }) => (
+                      <Field key={field} label={label} unit="cm" type="number" field={field} placeholder="Optional" step="0.1" inputMode="decimal" formData={formData} handleChange={handleChange} />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Posture & alignment</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
+                    {ALIGNMENT_BODY_FIELDS.map(({ field, label, min, max }) => (
+                      <Field key={field} label={label} type="number" field={field} placeholder="Optional" step="0.1" min={min} max={max} inputMode="decimal" formData={formData} handleChange={handleChange} />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '1px' }}>3D appearance & anatomy</h4>
+                  <p className="text-secondary" style={{ fontSize: '0.76rem', margin: '0 0 1rem', lineHeight: 1.5 }}>
+                    These preferences select material, hair, eye, and anatomy variants when the corresponding production asset is available.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
+                    {BODY_APPEARANCE_SELECT_FIELDS.map(({ field, label, options }) => (
+                      <Field key={field} label={label} field={field} options={options} formData={formData} handleChange={handleChange} />
+                    ))}
+                    <Field label="Fitzpatrick index (1–6)" type="number" field="skinFitzpatrickIndex" placeholder="Optional" min="1" max="6" step="1" inputMode="numeric" formData={formData} handleChange={handleChange} />
+                    {BODY_APPEARANCE_TEXT_FIELDS.map(({ field, label, placeholder }) => (
+                      <Field key={field} label={label} field={field} placeholder={placeholder} formData={formData} handleChange={handleChange} />
+                    ))}
+                    <Field label="Freckle density (0–1)" type="number" field="skinFreckleDensity" placeholder="Optional" min="0" max="1" step="0.01" inputMode="decimal" formData={formData} handleChange={handleChange} />
+                    <Field label="Hair density (0–1)" type="number" field="hairDensity" placeholder="Optional" min="0" max="1" step="0.01" inputMode="decimal" formData={formData} handleChange={handleChange} />
+                    <Field label="Hair length (cm)" unit="cm" type="number" field="hairLength" placeholder="Optional" min="0" max="150" step="0.1" inputMode="decimal" formData={formData} handleChange={handleChange} />
+                    <Field label="Facial hair density (0–1)" type="number" field="facialHairDensity" placeholder="Optional" min="0" max="1" step="0.01" inputMode="decimal" formData={formData} handleChange={handleChange} />
+                    <Field label="Body hair density (0–1)" type="number" field="bodyHairDensity" placeholder="Optional" min="0" max="1" step="0.01" inputMode="decimal" formData={formData} handleChange={handleChange} />
+                    <Field label="Nail length (mm)" type="number" field="nailLengthMm" placeholder="Optional" min="0" max="25" step="0.1" inputMode="decimal" formData={formData} handleChange={handleChange} />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', marginTop: '0.35rem', fontSize: '0.78rem', color: 'var(--text-2)', lineHeight: 1.45 }}>
+                    <input type="checkbox" checked={Boolean(formData.irisLimbalRing)} onChange={e => handleChange('irisLimbalRing', e.target.checked)} />
+                    Use the iris limbal-ring detail when the selected eye asset supports it.
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', marginTop: '0.35rem', fontSize: '0.78rem', color: 'var(--text-2)', lineHeight: 1.45 }}>
+                    <input type="checkbox" checked={Boolean(formData.anatomyRevealConsent)} onChange={e => handleChange('anatomyRevealConsent', e.target.checked)} />
+                    I consent to showing sensitive anatomy locally when I explicitly choose Anatomical mode.
+                  </label>
                 </div>
 
                 <div>

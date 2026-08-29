@@ -300,7 +300,10 @@ const SKIN_FRAGMENT_SHADER = /* glsl */ `
 
 /** Canonical PBR skin factory shared with the anatomical viewer. */
 export function createSkinMaterial(fitzpatrickIndex = 3, mapOrMaterial = null, options = {}) {
-  return createPhysicalSkinMaterial(fitzpatrickIndex, mapOrMaterial, options);
+  const toneOrColor = /^#[0-9a-f]{6}$/i.test(String(options.skinColorHex || ''))
+    ? String(options.skinColorHex)
+    : fitzpatrickIndex;
+  return createPhysicalSkinMaterial(toneOrColor, mapOrMaterial, options);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -321,6 +324,7 @@ export function createSkinMaterial(fitzpatrickIndex = 3, mapOrMaterial = null, o
  */
 export function updateSkinUniforms(mat, {
   fitzpatrickIndex     = 3,
+  skinColorHex         = null,
   anatomyDepth         = 100,
   vascularityIntensity = 0,
   bodyHairIntensity    = 0,
@@ -328,6 +332,7 @@ export function updateSkinUniforms(mat, {
 } = {}) {
   updatePhysicalSkinMaterial(mat, {
     fitzpatrickIndex,
+    skinColorHex,
     anatomyDepth,
     vascularityIntensity,
     bodyHairIntensity,
@@ -494,7 +499,7 @@ uniform float uIntensity;
       '#include <begin_vertex>',
       `
       #include <begin_vertex>
-      transformed += normal * uInflate;
+      transformed += objectNormal * uInflate;
       `
     );
   };

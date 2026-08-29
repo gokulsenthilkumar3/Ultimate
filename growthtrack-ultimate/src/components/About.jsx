@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
+import { apiRequest } from '../lib/apiClient';
 import { Server, Globe, Clock, GitBranch, Zap, CheckCircle, AlertCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchIpInfo } from '../hooks/useGeolocation';
 
@@ -83,7 +84,7 @@ export default function About() {
       });
 
     Promise.all([
-      fetch('http://localhost:3001/api/health').then(r => r.ok).catch(() => false),
+      apiRequest('/api/health', { method: 'GET', timeoutMs: 4000 }).then(() => true).catch(() => false),
       fetchIpInfo(),
     ]).then(([ok, ip]) => {
       if (cancelled) return;

@@ -43,7 +43,12 @@ export const MetricLogSchema = z.object({
   id: z.string(),
   date: z.string(),
   metric: z.string(),
-  value: z.number()
+  value: z.number(),
+  unit: z.string().optional(),
+  side: z.string().optional(),
+  phase: z.string().optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  measuredAt: z.string().optional(),
 });
 
 export type MetricLog = z.infer<typeof MetricLogSchema>;

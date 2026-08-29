@@ -82,7 +82,7 @@ function installSurfaceDetailShader(material) {
 }
 
 export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null, options = {}) {
-  const tone = toneFrom(toneOrColor);
+  const tone = toneFrom(/^#[0-9a-f]{6}$/i.test(String(options.skinColorHex || '')) ? String(options.skinColorHex) : toneOrColor);
   const sourceMaterial = mapOrMaterial?.isMaterial ? mapOrMaterial : null;
   const map = sourceMaterial?.map || (mapOrMaterial?.isTexture ? mapOrMaterial : null);
   const surfaceDetail = Boolean(sourceMaterial && options.surfaceDetail !== false);
@@ -138,13 +138,16 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
 
 export function updatePhysicalSkinMaterial(material, {
   fitzpatrickIndex = 3,
+  skinColorHex = null,
   anatomyDepth = 100,
   vascularityIntensity = 0,
   bodyHairIntensity = 0,
   time = 0,
 } = {}) {
   if (!material?.uniforms) return;
-  const tone = toneFrom(fitzpatrickIndex);
+  const tone = /^#[0-9a-f]{6}$/i.test(String(skinColorHex || ''))
+    ? toneFrom(String(skinColorHex))
+    : toneFrom(fitzpatrickIndex);
   material.color?.setRGB(...tone.base);
   material.emissive?.setRGB(...tone.sss);
   material.attenuationColor?.setRGB(...tone.sss);

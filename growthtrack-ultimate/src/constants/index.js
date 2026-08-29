@@ -227,4 +227,5 @@ export const API = {
   BASE_URL: import.meta.env.VITE_API_BASE || '/api',
 };
 
-export const AUTH_API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001';
+/** Auth calls stay same-origin locally; deployments may provide an API origin. */
+export const AUTH_API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || '';

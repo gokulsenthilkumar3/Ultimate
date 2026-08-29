@@ -51,4 +51,15 @@ describe('physical skin material', () => {
 
     material.dispose();
   });
+
+  it('accepts a validated custom skin color while retaining the PBR response', () => {
+    const material = createPhysicalSkinMaterial(3, null, { skinColorHex: '#A56B42' });
+    expect(material.color.r).toBeCloseTo(new THREE.Color('#A56B42').r, 4);
+
+    updatePhysicalSkinMaterial(material, { fitzpatrickIndex: 1, skinColorHex: '#6B3B20' });
+    expect(material.color.g).toBeCloseTo(new THREE.Color('#6B3B20').g, 4);
+    expect(material.uniforms.uBaseColor.value.b).toBeCloseTo(new THREE.Color('#6B3B20').b, 4);
+
+    material.dispose();
+  });
 });

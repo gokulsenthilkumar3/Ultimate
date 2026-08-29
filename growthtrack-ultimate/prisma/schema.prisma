@@ -17,7 +17,7 @@ model User {
   referralCode       String   @unique @default(uuid())
   creditBalance      Int      @default(0)
   createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  updatedAt          DateTime @default(now()) @updatedAt
 
   // Singletons (stored as JSON string)
   trainingPlan      String?
@@ -32,33 +32,37 @@ model User {
   healthExtras      String?
 
   // Relations
-  tasks              Task[]
-  transactions       Transaction[]
-  budgets            Budget[]
-  metricLogs         MetricLog[]
-  nutritionLogs      NutritionLog[]
-  workoutSessions    WorkoutSession[]
-  shoppingItems      ShoppingItem[]
-  timesheetSessions  TimesheetSession[]
-  entertainmentMedia EntertainmentMedia[]
-  notes              Note[]
-  goals              Goal[]
-  sleepLogs          SleepLog[]
-  documents          Document[]
-  habits             Habit[]
-  subscriptions      SubscriptionItem[]
-  moodLogs           MoodLog[]
-  vitalsLogs         VitalsLog[]
-  medications        Medication[]
-  authSessions       AuthSession[]
-  preference         UserPreference?
-  ownerProfile       OwnerProfile?
-  socialProfiles     SocialProfile[]
-  bodyProfile        BodyProfile?
-  healthProfile      HealthProfile?
-  locationPoints     LocationPoint[]
-  customTables       CustomTable[]
+  tasks                  Task[]
+  transactions           Transaction[]
+  budgets                Budget[]
+  metricLogs             MetricLog[]
+  nutritionLogs          NutritionLog[]
+  workoutSessions        WorkoutSession[]
+  shoppingItems          ShoppingItem[]
+  timesheetSessions      TimesheetSession[]
+  entertainmentMedia     EntertainmentMedia[]
+  notes                  Note[]
+  goals                  Goal[]
+  sleepLogs              SleepLog[]
+  documents              Document[]
+  habits                 Habit[]
+  subscriptions          SubscriptionItem[]
+  moodLogs               MoodLog[]
+  vitalsLogs             VitalsLog[]
+  medications            Medication[]
+  authSessions           AuthSession[]
+  preference             UserPreference?
+  ownerProfile           OwnerProfile?
+  socialProfiles         SocialProfile[]
+  bodyProfile            BodyProfile?
+  healthProfile          HealthProfile?
+  locationPoints         LocationPoint[]
+  customTables           CustomTable[]
   integrationCredentials IntegrationCredential[]
+  progressPhotos         ProgressPhoto[]
+  goalProgressLogs       GoalProgressLog[]
+  createdBy              String?
+  updatedBy              String?
 }
 
 model AuthSession {
@@ -73,6 +77,9 @@ model AuthSession {
   lastSeenAt DateTime  @default(now())
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
+  createdBy  String?
+  updatedBy  String?
+  updatedAt  DateTime  @default(now()) @updatedAt
 
   @@index([userId, expiresAt])
   @@map("auth_sessions")
@@ -89,7 +96,10 @@ model UserPreference {
   navigationOrder    String?
   navigationTabOrder String?
   reducedMotion      Boolean  @default(false)
-  updatedAt          DateTime @updatedAt
+  updatedAt          DateTime @default(now()) @updatedAt
+  createdBy          String?
+  updatedBy          String?
+  createdAt          DateTime @default(now())
 
   @@map("user_preferences")
 }
@@ -140,8 +150,10 @@ model OwnerProfile {
   smsNotifications          Boolean  @default(false)
   notifications             Boolean  @default(true)
   primaryGoal               String?
-  updatedAt                 DateTime @updatedAt
+  updatedAt                 DateTime @default(now()) @updatedAt
   createdAt                 DateTime @default(now())
+  createdBy                 String?
+  updatedBy                 String?
 
   @@map("owner_profiles")
 }
@@ -158,58 +170,173 @@ model SocialProfile {
   enabled    Boolean  @default(true)
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime @default(now()) @updatedAt
+  createdBy  String?
+  updatedBy  String?
 
   @@unique([userId, provider])
   @@map("social_profiles")
 }
 
 model BodyProfile {
-  id                String   @id @default(uuid())
-  userId            String   @unique
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  heightCm          Float?
-  weightKg          Float?
-  bodyFatPct        Float?
-  chestCm           Float?
-  waistCm           Float?
-  shouldersCm       Float?
-  armsCm            Float?
-  forearmsCm        Float?
-  hipsCm            Float?
-  thighsCm          Float?
-  calvesCm          Float?
-  neckCm            Float?
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Canonical measurements. Values are stored in cm, kg, %, and degrees;
+  // the UI converts them to the user's preferred display system.
+  heightCm           Float?
+  weightKg           Float?
+  bodyFatPct         Float?
+  leanMassKg         Float?
+  skeletalMuscleKg   Float?
+  bodyWaterPct       Float?
+  boneMassKg         Float?
+  visceralFatLevel   Float?
+  chestCm            Float?
+  waistCm            Float?
+  shouldersCm        Float?
+  armsCm             Float?
+  forearmsCm         Float?
+  hipsCm             Float?
+  thighsCm           Float?
+  calvesCm           Float?
+  neckCm             Float?
   glutesCm           Float?
   ankleCm            Float?
+  wristCm            Float?
+  elbowCm            Float?
+  underbustCm        Float?
+  highHipCm          Float?
+  chestDepthCm       Float?
+  shoulderBreadthCm  Float?
+  bideltoidBreadthCm Float?
+  pelvicBreadthCm    Float?
   torsoLengthCm      Float?
+  sittingHeightCm    Float?
   upperArmCm         Float?
   lowerArmCm         Float?
   handLengthCm       Float?
   legLengthCm        Float?
+  upperLegLengthCm   Float?
+  lowerLegLengthCm   Float?
+  inseamCm           Float?
+  neckLengthCm       Float?
   footLengthCm       Float?
   headCircCm         Float?
-  headTiltAngle      Float?
-  pelvicTilt         Float?
-  shoulderRounding   Float?
-  browDepth          Float?
-  noseBridgeWidth    Float?
-  noseTipSize        Float?
-  earProminence      Float?
-  jawWidth           Float?
-  chinProjection     Float?
-  lipFullness        Float?
-  eyeSize            Float?
-  targetWeightKg    Float?
-  targetBodyFatPct  Float?
-  targetChestCm     Float?
-  targetWaistCm     Float?
-  targetShouldersCm Float?
-  targetArmsCm      Float?
-  targetThighsCm    Float?
-  skinTone          String?
-  updatedAt         DateTime @updatedAt
-  createdAt         DateTime @default(now())
+
+  // Left/right values preserve asymmetry without replacing the bilateral
+  // summary measurements above.
+  leftShoulderCm               Float?
+  rightShoulderCm              Float?
+  leftUpperArmCircumferenceCm  Float?
+  rightUpperArmCircumferenceCm Float?
+  leftForearmCm                Float?
+  rightForearmCm               Float?
+  leftWristCm                  Float?
+  rightWristCm                 Float?
+  leftThighCm                  Float?
+  rightThighCm                 Float?
+  leftCalfCm                   Float?
+  rightCalfCm                  Float?
+  leftHipCm                    Float?
+  rightHipCm                   Float?
+
+  // Posture and alignment.
+  headTiltAngle        Float?
+  pelvicTilt           Float?
+  shoulderRounding     Float?
+  shoulderTiltDeg      Float?
+  spineCurvatureDeg    Float?
+  hipRotationDeg       Float?
+  kneeAlignmentDeg     Float?
+  leftKneeAngleDeg     Float?
+  rightKneeAngleDeg    Float?
+  leftFootRotationDeg  Float?
+  rightFootRotationDeg Float?
+
+  // Face measurements plus authored facial shape channels (0–1 where noted).
+  faceWidthCm            Float?
+  faceHeightCm           Float?
+  eyeSpacingCm           Float?
+  earLengthCm            Float?
+  earWidthCm             Float?
+  noseLengthCm           Float?
+  noseWidthCm            Float?
+  browDepth              Float?
+  noseBridgeWidth        Float?
+  noseTipSize            Float?
+  earProminence          Float?
+  jawWidth               Float?
+  chinProjection         Float?
+  lipFullness            Float?
+  eyeSize                Float?
+  targetWeightKg         Float?
+  targetBodyFatPct       Float?
+  targetLeanMassKg       Float?
+  targetSkeletalMuscleKg Float?
+  targetChestCm          Float?
+  targetWaistCm          Float?
+  targetShouldersCm      Float?
+  targetArmsCm           Float?
+  targetThighsCm         Float?
+  targetHipsCm           Float?
+  targetGlutesCm         Float?
+  targetCalvesCm         Float?
+
+  // Appearance and avatar configuration. Color values are validated by the
+  // API; Fitzpatrick remains the stable material fallback for rendering.
+  biologicalSex        String?
+  modelPreset          String?
+  skinTone             String?
+  skinFitzpatrickIndex Int?
+  skinUndertone        String?
+  skinColorHex         String?
+  skinTextureVariant   String?
+  skinFreckleDensity   Float?
+  skinFeatureMap       String?
+  hairStyle            String?
+  hairColorHex         String?
+  hairTexture          String?
+  hairlineStyle        String?
+  hairPart             String?
+  hairDensity          Float?
+  hairLengthCm         Float?
+  facialHairStyle      String?
+  facialHairColorHex   String?
+  facialHairDensity    Float?
+  eyebrowStyle         String?
+  eyebrowColorHex      String?
+  eyeColorHex          String?
+  eyePattern           String?
+  eyelidShape          String?
+  eyelashStyle         String?
+  scleraColorHex       String?
+  irisLimbalRing       Boolean?
+  lipColorHex          String?
+  bodyHairPattern      String?
+  bodyHairColorHex     String?
+  bodyHairTexture      String?
+  bodyHairDensity      Float?
+  nailColorHex         String?
+  nailShape            String?
+  nailLengthMm         Float?
+  avatarAsset          String?
+  tattooAsset          String?
+  anatomyPreset        String?
+  anatomyVisibility    String?
+  anatomyRevealConsent Boolean  @default(false)
+  morphOverrides       String   @default("{}")
+  facialMorphs         String?
+  bodyProportions      String?
+  skinTones            String?
+  skinDetails          String?
+  hairProperties       String?
+  eyeProperties        String?
+  updatedAt            DateTime @default(now()) @updatedAt
+  createdAt            DateTime @default(now())
+  createdBy            String?
+  updatedBy            String?
 
   @@map("body_profiles")
 }
@@ -227,7 +354,9 @@ model IntegrationCredential {
   enabled                Boolean   @default(true)
   lastSyncAt             DateTime?
   createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  updatedAt              DateTime  @default(now()) @updatedAt
+  createdBy              String?
+  updatedBy              String?
 
   @@unique([userId, provider])
   @@map("integration_credentials")
@@ -239,7 +368,10 @@ model AppSetting {
   value     String
   valueType String   @default("string")
   category  String   @default("application")
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
 
   @@map("app_settings")
 }
@@ -254,7 +386,10 @@ model IntegrationProvider {
   icon             String?
   documentationUrl String?
   sortOrder        Int      @default(0)
-  updatedAt        DateTime @updatedAt
+  updatedAt        DateTime @default(now()) @updatedAt
+  createdBy        String?
+  updatedBy        String?
+  createdAt        DateTime @default(now())
 
   @@map("integration_providers")
 }
@@ -267,7 +402,10 @@ model HelpArticle {
   body      String
   sortOrder Int      @default(0)
   enabled   Boolean  @default(true)
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
 
   @@map("help_articles")
 }
@@ -281,7 +419,9 @@ model PlanTemplate {
   active        Boolean  @default(true)
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  updatedAt     DateTime @default(now()) @updatedAt
+  createdBy     String?
+  updatedBy     String?
 
   @@map("plan_templates")
 }
@@ -293,6 +433,9 @@ model Referral {
   status       String   @default("pending")
   creditAmount Int      @default(10)
   createdAt    DateTime @default(now())
+  createdBy    String?
+  updatedBy    String?
+  updatedAt    DateTime @default(now()) @updatedAt
 }
 
 model Task {
@@ -306,6 +449,9 @@ model Task {
   done        Boolean  @default(false)
   completedAt String?
   createdAt   DateTime @default(now())
+  createdBy   String?
+  updatedBy   String?
+  updatedAt   DateTime @default(now()) @updatedAt
 }
 
 model Transaction {
@@ -319,6 +465,9 @@ model Transaction {
   date      String?
   note      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Budget {
@@ -329,18 +478,31 @@ model Budget {
   limit_amount Float?
   month        String?
   createdAt    DateTime @default(now())
+  createdBy    String?
+  updatedBy    String?
+  updatedAt    DateTime @default(now()) @updatedAt
 }
 
 model MetricLog {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date      String?
-  metric    String?
-  value     Float?
-  source    String?  @default("manual")
-  data      String?
-  createdAt DateTime @default(now())
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       String?
+  metric     String?
+  value      Float?
+  unit       String?
+  side       String?
+  phase      String?   @default("current")
+  confidence Float?
+  measuredAt DateTime?
+  source     String?   @default("manual")
+  data       String?
+  createdAt  DateTime  @default(now())
+  createdBy  String?
+  updatedBy  String?
+  updatedAt  DateTime  @default(now()) @updatedAt
+
+  @@index([userId, metric, measuredAt])
 }
 
 model HealthProfile {
@@ -349,7 +511,9 @@ model HealthProfile {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   data      String   @default("{}")
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
 
   @@map("health_profiles")
 }
@@ -363,6 +527,10 @@ model LocationPoint {
   accuracyM  Float?
   source     String   @default("browser")
   capturedAt DateTime @default(now())
+  createdBy  String?
+  updatedBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 
   @@index([userId, capturedAt])
   @@map("location_points")
@@ -376,7 +544,9 @@ model CustomTable {
   schema    String   @default("[]")
   rows      String   @default("[]")
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
 
   @@map("custom_tables")
 }
@@ -389,6 +559,9 @@ model NutritionLog {
   date      String?
   data      String? // Storing entire payload as JSON string if dynamic fields exist
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model WorkoutSession {
@@ -401,6 +574,9 @@ model WorkoutSession {
   volume           Float?
   exercises        WorkoutExercise[]
   createdAt        DateTime          @default(now())
+  createdBy        String?
+  updatedBy        String?
+  updatedAt        DateTime          @default(now()) @updatedAt
 }
 
 model WorkoutExercise {
@@ -413,6 +589,9 @@ model WorkoutExercise {
   weight_kg     Float?
   notes         String?
   createdAt     DateTime       @default(now())
+  createdBy     String?
+  updatedBy     String?
+  updatedAt     DateTime       @default(now()) @updatedAt
 }
 
 model ShoppingItem {
@@ -423,6 +602,9 @@ model ShoppingItem {
   purchased Boolean  @default(false)
   data      String? // For flexible additional fields
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model TimesheetSession {
@@ -433,6 +615,9 @@ model TimesheetSession {
   duration  Float?
   data      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model EntertainmentMedia {
@@ -443,6 +628,9 @@ model EntertainmentMedia {
   progress  String?
   data      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Note {
@@ -452,16 +640,23 @@ model Note {
   title     String?
   content   String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Goal {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title      String?
-  targetDate String?
-  data       String?
-  createdAt  DateTime @default(now())
+  id           String            @id @default(uuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String?
+  targetDate   String?
+  data         String?
+  progressLogs GoalProgressLog[]
+  createdAt    DateTime          @default(now())
+  createdBy    String?
+  updatedBy    String?
+  updatedAt    DateTime          @default(now()) @updatedAt
 }
 
 model SleepLog {
@@ -473,6 +668,9 @@ model SleepLog {
   quality   String?
   data      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Document {
@@ -483,6 +681,9 @@ model Document {
   url       String?
   data      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Habit {
@@ -493,6 +694,9 @@ model Habit {
   streak    Int        @default(0)
   logs      HabitLog[]
   createdAt DateTime   @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime   @default(now()) @updatedAt
 }
 
 model HabitLog {
@@ -501,6 +705,9 @@ model HabitLog {
   habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
   date      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model SubscriptionItem {
@@ -512,6 +719,9 @@ model SubscriptionItem {
   active    Int      @default(1)
   data      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model MoodLog {
@@ -522,6 +732,9 @@ model MoodLog {
   mood      String?
   data      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model VitalsLog {
@@ -533,6 +746,9 @@ model VitalsLog {
   value     Float?
   data      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Medication {
@@ -543,6 +759,37 @@ model Medication {
   dosage    String?
   data      String?
   createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model ProgressPhoto {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String?
+  url       String?
+  notes     String?
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model GoalProgressLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId    String
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  value     Float?
+  note      String?
+  date      String?
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 // ── Logging Models ──────────────────────────────────────────────────────────
@@ -561,6 +808,10 @@ model AuditLog {
   user_agent  String?
   severity    String?  @default("info")
   timestamp   DateTime @default(now())
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
   @@map("audit_logs")
 }
@@ -574,6 +825,10 @@ model LoginLog {
   user_agent     String?
   failure_reason String?
   timestamp      DateTime @default(now())
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
 
   @@map("login_logs")
 }
@@ -586,6 +841,10 @@ model SessionLog {
   user_agent String?
   details    String?
   timestamp  DateTime @default(now())
+  createdBy  String?
+  updatedBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("session_logs")
 }

@@ -7,3 +7,8 @@ glb.py to generate the optimized runtime asset.
 
 Source project: https://github.com/makehumancommunity/makehuman
 License: https://github.com/makehumancommunity/makehuman/blob/master/LICENSE.md
+
+Surface maps: SkinNormal_GeometryBaked and SkinAO_Roughness_GeometryBaked are
+generated offline from the embedded GrowthTrackBody UVs and triangle topology
+by scripts/bake-geometry-surface.mjs. The AO contribution is also baked into
+the three skin albedo variants because the runtime body has no UV2 channel.

@@ -23,7 +23,7 @@ const COLORS = ['#10b981', '#f43f5e', '#0ea5e9', '#8b5cf6', '#e5a50a', '#ec4899'
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.82rem' };
 
 const EMPTY_FORM = { type: 'Expense', category: '', amount: '', note: '', method: 'UPI (GPay/PhonePe)', date: new Date().toISOString().split('T')[0] };
-const API_BASE = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.VITE_API_BASE || '';
 const MAX_CSV_SIZE_BYTES = 2 * 1024 * 1024;
 
 // Build last N months as YYYY-MM strings

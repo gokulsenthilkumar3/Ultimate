@@ -139,11 +139,13 @@ const clothVertexShader = /* glsl */ `
 
   void main() {
     vUv = uv;
-    #include <morphtarget_vertex>
+    #include <beginnormal_vertex>
+    #include <morphnormal_vertex>
     #include <skinbase_vertex>
     #include <skinnormal_vertex>
     #include <defaultnormal_vertex>
-    #include <morphnormal_vertex>
+    #include <begin_vertex>
+    #include <morphtarget_vertex>
     #include <skinning_vertex>
     #include <project_vertex>
 
@@ -347,9 +349,6 @@ export function createClothMaterial(preset = "GYM") {
       uCovBand2:       { value: band2 },
       uEdgeFeather:    { value: 0.04 },
     },
-    skinning:     true,
-    morphTargets: true,
-    morphNormals: true,
     transparent:  true,   // needed for coverage alpha + edge fade
     depthWrite:   true,
     side:         THREE.FrontSide,
