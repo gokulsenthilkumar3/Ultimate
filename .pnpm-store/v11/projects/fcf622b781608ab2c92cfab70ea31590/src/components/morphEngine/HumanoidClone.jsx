@@ -16,7 +16,7 @@
  */
 
 import React, { useRef, useEffect, useMemo } from "react";
-import { useFrame }                           from "@react-three/fiber";
+import { createPortal, useFrame }             from "@react-three/fiber";
 import { useShallow }                         from "zustand/react/shallow";
 import * as THREE                             from "three";
 
@@ -140,10 +140,13 @@ export default function HumanoidClone({
           : toneIndex >= 4
             ? skinVariantMaterials?.SkinVariant_Deep
             : null;
-        return createSkinMaterial(toneIndex, variant || bodyMesh?.material || null);
+        return createSkinMaterial(toneIndex, variant || bodyMesh?.material || null, {
+          bodyHairIntensity: metrics?.bodyHairDensity ?? 0.18,
+          vertexColors: true,
+        });
       }
     }
-  }, [bodyMesh, renderMode, metrics?.skinTone, skinVariantMaterials]);
+  }, [bodyMesh, renderMode, metrics?.bodyHairDensity, metrics?.skinTone, skinVariantMaterials]);
 
   // The protected anatomy surface uses the same tone but no body atlas. The
   // atlas is laid out for the MakeHuman body UV islands and would otherwise
@@ -166,6 +169,8 @@ export default function HumanoidClone({
       if (feature === 'eyes') {
         materials.eyes = new THREE.MeshPhysicalMaterial({
           map: source?.map || null,
+          normalMap: source?.normalMap || null,
+          normalScale: source?.normalScale?.clone?.() || new THREE.Vector2(0.08, 0.08),
           color: eyeColor,
           roughness: 0.16,
           clearcoat: 0.78,
@@ -192,6 +197,11 @@ export default function HumanoidClone({
     return materials;
   }, [featureMeshes, metrics?.eyeColor, metrics?.hairColor]);
 
+  const headBone = useMemo(
+    () => skeleton?.bones?.find((bone) => bone.name === 'Head') || null,
+    [skeleton],
+  );
+
   const clothMaterial = useMemo(() => (
     renderMode === "normal" && isClothPreset(wardrobe)
       ? createClothMaterial(wardrobe)
@@ -206,18 +216,27 @@ export default function HumanoidClone({
 
   useEffect(() => () => {
     Object.values(mouthMaterials).forEach((mouthMaterial) => mouthMaterial.dispose());
+  }, [mouthMaterials]);
+
+  useEffect(() => () => {
     clothMaterial?.dispose?.();
-  }, [clothMaterial, mouthMaterials]);
+  }, [clothMaterial]);
+
+  useEffect(() => () => {
+    material?.dispose?.();
+    if (privateMaterial !== material) privateMaterial?.dispose?.();
+  }, [material, privateMaterial]);
 
   useEffect(() => {
     (featureMeshes || []).forEach(({ mesh, feature }) => {
       const next = featureMaterials[feature];
       if (next) mesh.material = next;
+      if (feature === 'hair') mesh.visible = (metrics?.hairStyle || 'short') !== 'bald';
       mesh.castShadow = true;
       mesh.receiveShadow = false;
     });
     return () => Object.values(featureMaterials).forEach((featureMaterial) => featureMaterial.dispose());
-  }, [featureMeshes, featureMaterials]);
+  }, [featureMeshes, featureMaterials, metrics?.hairStyle]);
 
   // WardrobeShader is intentionally a surface overlay: it reuses the authored
   // body's exact geometry, skinning and morph targets, so clothing cannot drift
@@ -305,6 +324,7 @@ export default function HumanoidClone({
       updateSkinUniforms(bodyMesh.material, {
         fitzpatrickIndex:     interpolator.getWeight("fitzpatrick_index"),
         vascularityIntensity: interpolator.getWeight("vascularity_intensity"),
+        bodyHairIntensity:    metrics?.bodyHairDensity ?? 0.18,
         time: _.clock.elapsedTime
       });
     }
@@ -345,25 +365,22 @@ export default function HumanoidClone({
     <group ref={groupRef} position={position} name={`clone-${cloneKey}`}>
       {scene && <primitive object={scene} />}
 
-      {/* Deliberately hidden at rest; expression channels reveal these details
-          only when the mouth is opened or the smile is strong enough. */}
-      {scene && (
-        <group
-          position={[scene.position.x, scene.position.y, scene.position.z]}
-          scale={[scene.scale.x, scene.scale.y, scene.scale.z]}
-        >
-          <group ref={mouthRef} position={[0, 1.665, 0.215]} visible={false}>
-            <mesh material={mouthMaterials.interior} scale={[1.15, 0.68, 0.34]}>
-              <sphereGeometry args={[0.036, 18, 10]} />
-            </mesh>
-            <mesh position={[0, 0.010, 0.014]} material={mouthMaterials.teeth} scale={[1.0, 0.50, 0.22]}>
-              <boxGeometry args={[0.076, 0.022, 0.008]} />
-            </mesh>
-            <mesh position={[0, -0.012, 0.018]} material={mouthMaterials.tongue} scale={[1.0, 0.64, 0.30]}>
-              <sphereGeometry args={[0.024, 18, 10]} />
-            </mesh>
-          </group>
-        </group>
+      {/* Teeth/tongue are currently procedural production geometry because the
+          authored GLB has no mouth-detail nodes. Portalling them into Head keeps
+          them correct under every posture instead of using a scene-space patch. */}
+      {headBone && createPortal(
+        <group ref={mouthRef} position={[0, -0.02, 0.302]} visible={false} name="GrowthTrackMouthDetails">
+          <mesh material={mouthMaterials.interior} scale={[1.15, 0.68, 0.34]} name="GrowthTrackMouthInterior">
+            <sphereGeometry args={[0.036, 24, 14]} />
+          </mesh>
+          <mesh position={[0, 0.010, 0.014]} material={mouthMaterials.teeth} scale={[1.0, 0.50, 0.22]} name="GrowthTrackTeeth">
+            <boxGeometry args={[0.076, 0.022, 0.008, 4, 2, 1]} />
+          </mesh>
+          <mesh position={[0, -0.012, 0.018]} material={mouthMaterials.tongue} scale={[1.0, 0.64, 0.30]} name="GrowthTrackTongue">
+            <sphereGeometry args={[0.024, 24, 14]} />
+          </mesh>
+        </group>,
+        headBone,
       )}
 
       {/* Aura rim — goal clone only */}

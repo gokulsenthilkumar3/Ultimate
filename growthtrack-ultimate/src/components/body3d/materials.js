@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createPhysicalSkinMaterial } from './physicalSkinMaterial';
 
 // ── PEEL SHADER (Zygote Anatomical Transition) ──
 const peelShader = {
@@ -68,22 +69,7 @@ function createPeelMaterial(colorHex, emissiveHex, intensity = 0.35, isOrgan = f
 
 // ── ADVANCED SKIN MATERIAL ──
 function createSkinMaterial(color) {
-  return new THREE.MeshPhysicalMaterial({
-    color:               new THREE.Color(color || '#C68642'),
-    roughness:           0.72,
-    metalness:           0.0,
-    thickness:           0.8,
-    attenuationColor:    new THREE.Color('#ff9966'),
-    attenuationDistance: 0.3,
-    clearcoat:           0.05,
-    clearcoatRoughness:  0.9,
-    sheen:               0.15,
-    sheenColor:          new THREE.Color('#ffddcc'),
-    envMapIntensity:     0.8,
-    transparent:         true,
-    opacity:             1.0,
-    side:                THREE.FrontSide,
-  });
+  return createPhysicalSkinMaterial(color || '#C68642');
 }
 
 // ── VASCULARITY SHADER INJECTION ──

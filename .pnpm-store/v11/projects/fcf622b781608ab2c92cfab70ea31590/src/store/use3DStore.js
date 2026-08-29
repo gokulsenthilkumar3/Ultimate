@@ -173,8 +173,12 @@ const sanitizeCinematicState = (value = {}) => {
  * @property {number} eye_size       - facial feature morph (0–1)
   * @property {number} d_size       - inches (3–9)
   * @property {number} d_girth      - inches
-  * @property {number} ankle        - cm
-  * @property {string} skinTone     - Fitzpatrick scale: "I"|"II"|"III"|"IV"|"V"|"VI"
+ * @property {number} ankle        - cm
+ * @property {string} skinTone     - Fitzpatrick scale: "I"|"II"|"III"|"IV"|"V"|"VI"
+ * @property {string} eyeColor     - CSS color for the authored iris material
+ * @property {string} hairColor    - CSS color for the authored hair material
+ * @property {'bald'|'short'} hairStyle - available authored hairstyle state
+ * @property {number} bodyHairDensity - procedural skin-detail intensity (0–1)
  */
 
 /**

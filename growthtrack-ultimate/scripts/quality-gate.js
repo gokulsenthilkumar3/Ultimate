@@ -34,7 +34,9 @@ function verifyRequiredFiles() {
     'public/assets/models/humanoid-base-lite.glb',
     'src/components/ChamberCanvas.jsx',
     'src/components/morphEngine/ProceduralHumanoid.jsx',
+    'src/components/morphEngine/HumanoidClone.jsx',
     'src/components/morphEngine/PostProcessingStack.jsx',
+    'src/components/body3d/physicalSkinMaterial.js',
     'src/lib/rendererQualityGate.js',
   ];
   const missing = files.filter((file) => !existsSync(path.join(projectRoot, file)));
@@ -70,16 +72,19 @@ verifySecurityHeaders();
 
 runNode('Renderer lint', path.join(projectRoot, 'node_modules/eslint/bin/eslint.js'), [
   'src/components/ChamberCanvas.jsx',
+  'src/components/morphEngine/HumanoidClone.jsx',
+  'src/components/morphEngine/UberShader.js',
   'src/components/morphEngine/PostProcessingStack.jsx',
   'src/components/morphEngine/CameraRig.jsx',
+  'src/components/body3d/physicalSkinMaterial.js',
   'src/lib/rendererQualityGate.js',
   'src/store/use3DStore.js',
 ]);
 runNode('Automated regression suite', path.join(projectRoot, 'node_modules/vitest/vitest.mjs'), ['--run']);
 runNode('Production build', path.join(projectRoot, 'node_modules/vite/bin/vite.js'), ['build']);
 verifyBundleBudgets();
-runNode('Strict authored GLB', path.join(projectRoot, 'scripts/validate-glb.js'), [], { advisory: true });
-runNode('Strict mobile GLB', path.join(projectRoot, 'scripts/validate-glb.js'), ['public/assets/models/humanoid-base-lite.glb'], { advisory: true });
+runNode('Strict authored GLB', path.join(projectRoot, 'scripts/validate-glb.js'));
+runNode('Strict mobile GLB', path.join(projectRoot, 'scripts/validate-glb.js'), ['public/assets/models/humanoid-base-lite.glb']);
 
 const blockingFailures = results.filter((result) => result.status === 'fail');
 const advisories = results.filter((result) => result.status === 'warn');
