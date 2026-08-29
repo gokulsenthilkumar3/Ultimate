@@ -13,7 +13,7 @@ import ChamberFloor        from "./morphEngine/ChamberFloor";
 import SceneEnvironment    from "./morphEngine/SceneEnvironment";
 import CameraRig           from "./morphEngine/CameraRig";
 import PostProcessingStack from "./morphEngine/PostProcessingStack";
-import { CloneEngine, BodyPartInteraction } from "./morphEngine";
+import { CloneEngine } from "./morphEngine";
 import ChamberVFX from "./morphEngine/ChamberVFX";
 import use3DStore, { GPU_TIERS }            from "../store/use3DStore";
 import { detectAndSetGpuTier }              from "../store/use3DStore.usage";
@@ -21,15 +21,15 @@ import TabErrorBoundary                     from "./TabErrorBoundary";
 
 const LOD_CONFIG = {
   [GPU_TIERS.HIGH]: {
-    shadowMapSize:   2048,
-    shadowType:      THREE.PCFShadowMap,
+    shadowMapSize:   4096,
+    shadowType:      THREE.PCFSoftShadowMap,
     antialias:       true,
     dpr:             [1, 2],
     samples:         128,
     postFx:          "FULL",
     targetFps:       60,
     tier:            GPU_TIERS.HIGH,
-    environmentResolution: 128,
+    environmentResolution: 256,
   },
   [GPU_TIERS.MED]: {
     shadowMapSize:   1024,
@@ -151,24 +151,14 @@ function SpatialGuide({ reducedMotion }) {
   });
 
   return (
-    <group name="spatial-guide" position={[0, 1.05, -0.42]}>
+    <group name="spatial-guide" position={[0, 0.018, -0.24]}>
       <mesh ref={haloRef} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.35, 1.38, 96]} />
-        <meshBasicMaterial color="#22d3ee" transparent opacity={0.16} depthWrite={false} />
+        <ringGeometry args={[1.18, 1.19, 96]} />
+        <meshBasicMaterial color="#67e8f9" transparent opacity={0.1} depthWrite={false} />
       </mesh>
       <mesh ref={sweepRef} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.7, 1.705, 96, 1, 0, Math.PI * 0.32]} />
-        <meshBasicMaterial color="#a78bfa" transparent opacity={0.65} depthWrite={false} />
-      </mesh>
-      {[-1.8, -1.2, -0.6, 0, 0.6, 1.2, 1.8].map((x) => (
-        <mesh key={x} position={[x, 0, 0]}>
-          <boxGeometry args={[0.008, 2.45, 0.008]} />
-          <meshBasicMaterial color="#4c6b8a" transparent opacity={0.18} depthWrite={false} />
-        </mesh>
-      ))}
-      <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <torusGeometry args={[1.92, 0.006, 6, 96]} />
-        <meshBasicMaterial color="#3b82f6" transparent opacity={0.3} depthWrite={false} />
+        <ringGeometry args={[1.48, 1.486, 96, 1, 0, Math.PI * 0.24]} />
+        <meshBasicMaterial color="#a78bfa" transparent opacity={0.22} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -185,9 +175,12 @@ const LANDMARKS = [
 
 function MeasurementLandmarks() {
   const viewMode = use3DStore((state) => state.viewMode);
+  const canvasWidth = useThree((state) => state.size.width);
   const currentMetrics = use3DStore((state) => state.cloneA?.metrics || {});
   const measured = LANDMARKS.filter(({ key }) => Number.isFinite(Number(currentMetrics[key]))).length;
   const confidence = Math.round((measured / LANDMARKS.length) * 100);
+
+  if (viewMode !== 'SOLO' || canvasWidth < 920) return null;
 
   return (
     <>
@@ -197,7 +190,7 @@ function MeasurementLandmarks() {
           LANDMARK SCAN <strong>{confidence}%</strong>
         </div>
       </Html>
-      {viewMode !== 'TIMELINE' && LANDMARKS.map(({ key, label, position }) => {
+      {LANDMARKS.map(({ key, label, position }) => {
         const value = Number(currentMetrics[key]);
         const ready = Number.isFinite(value);
         return (
@@ -215,8 +208,6 @@ function MeasurementLandmarks() {
 }
 
 function CanvasScene({ lodConfig, reducedMotion }) {
-  const viewMode = use3DStore((s) => s.viewMode);
-
   return (
     <>
       <AdaptiveDpr />
@@ -271,10 +262,6 @@ function CanvasScene({ lodConfig, reducedMotion }) {
           }
         >
           <CloneEngine />
-
-          {(viewMode === 'SOLO' || viewMode === 'DUAL') && (
-            <BodyPartInteraction clonePosition={[0, 0, 0]} />
-          )}
         </TabErrorBoundary>
       </Suspense>
 
@@ -301,8 +288,8 @@ function useGlCreated(setLodConfig) {
     gl.shadowMap.enabled = Boolean(config.shadowMapSize);
     if (config.shadowType) gl.shadowMap.type = config.shadowType;
 
-    camera.position.set(0, 1.25, 2.9);
-    camera.fov = 36;
+    camera.position.set(0, 1.12, 3.25);
+    camera.fov = 30;
     camera.updateProjectionMatrix();
 
   }, [setLodConfig]);

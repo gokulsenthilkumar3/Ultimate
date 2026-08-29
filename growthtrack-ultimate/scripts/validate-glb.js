@@ -161,6 +161,8 @@ function main() {
   check(headNodeIndex >= 0, 'Head joint', 'Head joint is missing', failures);
   check(eyesNode.parent === headNodeIndex && eyesNode.node?.extras?.headBound === true, 'Eye head binding', 'GrowthTrackEyes must be parented to Head with an authored local bind transform', failures);
   check(hairNode.parent === headNodeIndex && hairNode.node?.extras?.headBound === true, 'Hair head binding', 'GrowthTrackHair must be parented to Head with an authored local bind transform', failures);
+  check(eyesNode.node?.extras?.alignment === 'body-surface-calibrated' && Number(eyesNode.node?.extras?.alignmentOffsetZ) < -0.05, 'Eye surface alignment', 'GrowthTrackEyes must be calibrated against the face surface', failures);
+  check(hairNode.node?.extras?.alignment === 'body-surface-calibrated' && Number(hairNode.node?.extras?.alignmentOffsetZ) < -0.05, 'Hair surface alignment', 'GrowthTrackHair must be calibrated against the scalp surface', failures);
   check(privatePosition?.count >= 800, 'Private anatomy topology', `${privatePosition?.count ?? 0} verts`, failures);
   check(privateTargetNames.includes('d_length') && privateTargetNames.includes('d_girth'), 'Private anatomy morphs', privateTargetNames.join(', ') || 'none', failures);
   check(privateMorphChangedCount('d_length') > 0 && privateMorphChangedCount('d_girth') > 0, 'Private anatomy deformation', `length ${privateMorphChangedCount('d_length')} verts · girth ${privateMorphChangedCount('d_girth')} verts`, failures);

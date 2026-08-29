@@ -1,0 +1,759 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans,system-ui);color:var(--text-primary);font-size:13px}
+.nav{display:flex;overflow-x:auto;border-bottom:.5px solid var(--border);padding:0 1rem;gap:2px;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nt{padding:10px 13px;font-size:12px;cursor:pointer;border:none;background:none;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-.5px;font-family:inherit;white-space:nowrap}
+.nt.on{color:var(--text-primary);border-bottom-color:var(--text-primary)}
+.pg{display:none;padding:1.25rem}
+.pg.on{display:block}
+
+.sl{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:18px 0 8px}
+.sl:first-child{margin-top:0}
+.c{background:var(--surface-1);border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:9px}
+.ct{font-size:13px;font-weight:500;margin-bottom:4px}
+.cs{font-size:12px;color:var(--text-secondary);line-height:1.7}
+
+.bk{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:500}
+.bk-r{background:#fef2f2;color:#b91c1c;border:.5px solid #fca5a5}
+.bk-g{background:#f0fdf4;color:#15803d;border:.5px solid #86efac}
+.bk-a{background:#fffbeb;color:#b45309;border:.5px solid #fcd34d}
+.bk-p{background:#faf5ff;color:#7e22ce;border:.5px solid #d8b4fe}
+.bk-b{background:#eff6ff;color:#1d4ed8;border:.5px solid #93c5fd}
+[data-mode=dark] .bk-r{background:#450a0a;color:#fca5a5;border-color:#7f1d1d}
+[data-mode=dark] .bk-g{background:#052e16;color:#86efac;border-color:#166534}
+[data-mode=dark] .bk-a{background:#431407;color:#fcd34d;border-color:#92400e}
+[data-mode=dark] .bk-p{background:#3b0764;color:#d8b4fe;border-color:#6b21a8}
+[data-mode=dark] .bk-b{background:#1e3a5f;color:#93c5fd;border-color:#1d4ed8}
+
+.tree{font-family:var(--font-mono,monospace);font-size:11px;line-height:1.85;color:var(--text-secondary);background:var(--surface-1);border:.5px solid var(--border);border-radius:10px;padding:1rem 1.25rem;overflow-x:auto}
+.tree .folder{color:var(--text-primary);font-weight:500}
+.tree .file{color:var(--text-secondary)}
+.tree .comment{color:var(--text-muted)}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+
+.mc{background:var(--surface-1);border:.5px solid var(--border);border-radius:10px;padding:.85rem 1rem}
+.mn{font-size:10px;color:var(--text-muted)}
+.mv{font-size:15px;font-weight:500;margin:2px 0}
+.ms{font-size:11px;color:var(--text-secondary);line-height:1.5}
+
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;background:var(--surface-2);border:.5px solid var(--border);color:var(--text-secondary);margin:2px 2px 2px 0}
+
+.flow{display:flex;flex-direction:column;gap:0}
+.fstep{display:flex;gap:10px;align-items:flex-start}
+.fline{display:flex;flex-direction:column;align-items:center;gap:0}
+.fdot{width:20px;height:20px;border-radius:50%;background:#6366f1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;margin-top:2px}
+.fconn{width:1px;flex:1;background:var(--border);min-height:16px;margin:3px 0}
+.fstep:last-child .fconn{display:none}
+.fcontent{flex:1;padding-bottom:16px}
+.ftitle{font-size:13px;font-weight:500;margin-bottom:3px}
+.fdesc{font-size:12px;color:var(--text-secondary);line-height:1.6}
+
+.spec-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:.5px solid var(--border);gap:12px}
+.spec-row:last-child{border-bottom:none}
+.spec-name{font-size:12px;font-weight:500;min-width:160px;flex-shrink:0}
+.spec-val{font-size:12px;color:var(--text-secondary);text-align:right;line-height:1.5}
+
+.rule{border-left:2px solid #6366f1;padding:.6rem 1rem;margin-bottom:7px;background:var(--surface-1);border-radius:0 8px 8px 0}
+.rule-t{font-size:12px;font-weight:500;margin-bottom:2px}
+.rule-d{font-size:12px;color:var(--text-secondary);line-height:1.6}
+
+code{font-family:var(--font-mono,monospace);font-size:11px;background:var(--surface-2);border:.5px solid var(--border);border-radius:4px;padding:1px 5px}
+
+.kv{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:.5px solid var(--border)}
+.kv:last-child{border-bottom:none}
+.kk{font-size:12px;color:var(--text-secondary)}
+.kv-val{font-size:12px;font-weight:500}
+
+.cta-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:8px;font-size:12px;border:.5px solid var(--border-strong);background:var(--surface-2);color:var(--text-primary);cursor:pointer;font-family:inherit;margin-top:10px}
+</style>
+
+<div class="nav">
+  <button class="nt on" onclick="show('structure')">File structure</button>
+  <button class="nt" onclick="show('blendspec')">Blendshape spec</button>
+  <button class="nt" onclick="show('state')">State architecture</button>
+  <button class="nt" onclick="show('components')">Component system</button>
+  <button class="nt" onclick="show('assetpipe')">Asset pipeline</button>
+  <button class="nt" onclick="show('motion')">Motion spec</button>
+  <button class="nt" onclick="show('perf')">Performance rules</button>
+  <button class="nt" onclick="show('qa')">QA checklist</button>
+</div>
+
+<!-- FILE STRUCTURE -->
+<div id="pg-structure" class="pg on">
+  <div class="sl">Complete repository structure</div>
+  <div class="tree">
+<span class="folder">ultimate/</span>
+├── <span class="folder">public/</span>
+│   ├── <span class="folder">models/</span>
+│   │   ├── <span class="file">male_base.glb</span>          <span class="comment">— body mesh, 40+ morphs, rigged</span>
+│   │   ├── <span class="file">female_base.glb</span>        <span class="comment">— separate female topology</span>
+│   │   ├── <span class="folder">hair/</span>
+│   │   │   ├── <span class="file">hair_bald.glb</span>
+│   │   │   ├── <span class="file">hair_buzz.glb</span>
+│   │   │   ├── <span class="file">hair_short_m.glb</span>
+│   │   │   ├── <span class="file">hair_medium_m.glb</span>
+│   │   │   ├── <span class="file">hair_undercut_m.glb</span>
+│   │   │   ├── <span class="file">hair_fade_m.glb</span>
+│   │   │   ├── <span class="file">hair_short_f.glb</span>
+│   │   │   ├── <span class="file">hair_medium_f.glb</span>
+│   │   │   ├── <span class="file">hair_long_straight_f.glb</span>
+│   │   │   ├── <span class="file">hair_long_wavy_f.glb</span>
+│   │   │   ├── <span class="file">hair_long_curly_f.glb</span>
+│   │   │   ├── <span class="file">hair_afro.glb</span>
+│   │   │   ├── <span class="file">hair_bun_f.glb</span>
+│   │   │   └── <span class="file">hair_braids_f.glb</span>
+│   │   ├── <span class="folder">facial_hair/</span>
+│   │   │   ├── <span class="file">beard_stubble.glb</span>
+│   │   │   ├── <span class="file">beard_goatee.glb</span>
+│   │   │   ├── <span class="file">beard_short.glb</span>
+│   │   │   └── <span class="file">beard_full.glb</span>
+│   │   └── <span class="folder">clothing/</span>
+│   │       ├── <span class="file">underwear_m.glb</span>
+│   │       ├── <span class="file">underwear_f.glb</span>
+│   │       ├── <span class="file">casual_m.glb</span>
+│   │       ├── <span class="file">casual_f.glb</span>
+│   │       ├── <span class="file">sport_m.glb</span>
+│   │       └── <span class="file">sport_f.glb</span>
+│   ├── <span class="folder">textures/</span>
+│   │   ├── <span class="file">skin_tone_1.jpg</span>         <span class="comment">— 4K diffuse per ethnicity</span>
+│   │   ├── <span class="file">skin_tone_2.jpg</span>
+│   │   ├── <span class="file">skin_tone_3.jpg</span>
+│   │   ├── <span class="file">skin_tone_4.jpg</span>
+│   │   ├── <span class="file">skin_tone_5.jpg</span>
+│   │   ├── <span class="file">skin_tone_6.jpg</span>
+│   │   ├── <span class="file">skin_normal.jpg</span>         <span class="comment">— shared 2K normal map</span>
+│   │   └── <span class="file">skin_roughness.jpg</span>      <span class="comment">— shared 1K roughness map</span>
+│   └── <span class="folder">hdr/</span>
+│       └── <span class="file">studio_soft.hdr</span>         <span class="comment">— HDRI environment (CC0)</span>
+│
+├── <span class="folder">src/</span>
+│   ├── <span class="folder">3d/</span>                        <span class="comment">— all Three.js / R3F logic</span>
+│   │   ├── <span class="folder">avatar/</span>
+│   │   │   ├── <span class="file">AvatarScene.jsx</span>        <span class="comment">— R3F Canvas wrapper</span>
+│   │   │   ├── <span class="file">AvatarModel.jsx</span>        <span class="comment">— loads GLB, applies morphs</span>
+│   │   │   ├── <span class="file">AvatarHair.jsx</span>         <span class="comment">— hair GLB loader + color</span>
+│   │   │   ├── <span class="file">AvatarFacialHair.jsx</span>   <span class="comment">— beard GLB + color</span>
+│   │   │   ├── <span class="file">AvatarClothing.jsx</span>     <span class="comment">— outfit layer visibility</span>
+│   │   │   └── <span class="file">AvatarIdle.jsx</span>         <span class="comment">— breathing AnimationMixer</span>
+│   │   ├── <span class="folder">scene/</span>
+│   │   │   ├── <span class="file">SceneLighting.jsx</span>      <span class="comment">— HDRI + 3-point rig</span>
+│   │   │   ├── <span class="file">SceneBackground.jsx</span>   <span class="comment">— aurora shader plane</span>
+│   │   │   ├── <span class="file">ScenePostFX.jsx</span>        <span class="comment">— N8AO+SMAA+Bloom+Vignette</span>
+│   │   │   └── <span class="file">SceneCamera.jsx</span>        <span class="comment">— OrbitControls + parallax</span>
+│   │   ├── <span class="folder">dual/</span>
+│   │   │   ├── <span class="file">DualAvatarView.jsx</span>    <span class="comment">— side-by-side canvas pair</span>
+│   │   │   ├── <span class="file">DualDivider.jsx</span>       <span class="comment">— draggable compare divider</span>
+│   │   │   └── <span class="file">DiffHeatmap.jsx</span>       <span class="comment">— vertex color diff overlay</span>
+│   │   ├── <span class="folder">shaders/</span>
+│   │   │   ├── <span class="file">aurora.frag.glsl</span>       <span class="comment">— background aurora shader</span>
+│   │   │   ├── <span class="file">aurora.vert.glsl</span>
+│   │   │   ├── <span class="file">skin_sss.frag.glsl</span>     <span class="comment">— SSS approximation</span>
+│   │   │   └── <span class="file">heatmap.frag.glsl</span>      <span class="comment">— diff heat map overlay</span>
+│   │   └── <span class="folder">utils/</span>
+│   │       ├── <span class="file">detectGPU.js</span>           <span class="comment">— tier detection → profile</span>
+│   │       └── <span class="file">morphTween.js</span>          <span class="comment">— GSAP morph target tweener</span>
+│   │
+│   ├── <span class="folder">metrics/</span>                  <span class="comment">— the metric → shape engine</span>
+│   │   ├── <span class="file">metricsToBlendshapes.js</span> <span class="comment">— MAIN MAPPING FUNCTION</span>
+│   │   ├── <span class="file">fallbackFormulas.js</span>    <span class="comment">— derive missing metrics</span>
+│   │   ├── <span class="file">normalizers.js</span>         <span class="comment">— raw value → 0–1 per gender</span>
+│   │   ├── <span class="file">bodyTypeClassifier.js</span>  <span class="comment">— apple/pear/hourglass etc.</span>
+│   │   ├── <span class="file">goalDelta.js</span>           <span class="comment">— current vs goal diff calc</span>
+│   │   └── <span class="file">constants.js</span>           <span class="comment">— population norms tables</span>
+│   │
+│   ├── <span class="folder">stores/</span>                   <span class="comment">— Zustand state</span>
+│   │   ├── <span class="file">useCurrentMetrics.js</span>   <span class="comment">— current self metric store</span>
+│   │   ├── <span class="file">useGoalMetrics.js</span>      <span class="comment">— goal self metric store</span>
+│   │   ├── <span class="file">useAvatarPrefs.js</span>     <span class="comment">— hair/outfit/camera prefs</span>
+│   │   ├── <span class="file">useAvatarMode.js</span>      <span class="comment">— current/goal/compare mode</span>
+│   │   └── <span class="file">useSnapshots.js</span>       <span class="comment">— progress timeline snapshots</span>
+│   │
+│   ├── <span class="folder">ui/</span>                       <span class="comment">— React UI components</span>
+│   │   ├── <span class="folder">glass/</span>                 <span class="comment">— Liquid Glass component kit</span>
+│   │   │   ├── <span class="file">GlassPanel.jsx</span>
+│   │   │   ├── <span class="file">GlassButton.jsx</span>
+│   │   │   ├── <span class="file">GlassSlider.jsx</span>
+│   │   │   ├── <span class="file">GlassSheet.jsx</span>        <span class="comment">— bottom sheet modal</span>
+│   │   │   ├── <span class="file">GlassPill.jsx</span>         <span class="comment">— toggle pill (Current/Goal)</span>
+│   │   │   └── <span class="file">GlassContextMenu.jsx</span>  <span class="comment">— long-press menu</span>
+│   │   ├── <span class="folder">screens/</span>
+│   │   │   ├── <span class="file">HomeScreen.jsx</span>
+│   │   │   ├── <span class="file">MetricsScreen.jsx</span>
+│   │   │   ├── <span class="file">CompareScreen.jsx</span>
+│   │   │   ├── <span class="file">GoalStudioScreen.jsx</span>
+│   │   │   ├── <span class="file">TimelineScreen.jsx</span>
+│   │   │   └── <span class="file">ProfileScreen.jsx</span>
+│   │   ├── <span class="folder">metrics/</span>
+│   │   │   ├── <span class="file">MetricZonePanel.jsx</span>   <span class="comment">— zone selector</span>
+│   │   │   ├── <span class="file">MetricSlider.jsx</span>      <span class="comment">— single metric input</span>
+│   │   │   ├── <span class="file">MetricNumberInput.jsx</span>
+│   │   │   ├── <span class="file">FaceShapeSelector.jsx</span>
+│   │   │   ├── <span class="file">HairStyleSelector.jsx</span>
+│   │   │   └── <span class="file">SkinToneSelector.jsx</span>
+│   │   └── <span class="folder">onboarding/</span>
+│   │       ├── <span class="file">GenderStep.jsx</span>
+│   │       ├── <span class="file">AgeStep.jsx</span>
+│   │       └── <span class="file">UnitsStep.jsx</span>
+│   │
+│   ├── <span class="folder">hooks/</span>
+│   │   ├── <span class="file">useMetricMorph.js</span>     <span class="comment">— metric change → morph tween</span>
+│   │   ├── <span class="file">useBodyRaycast.js</span>     <span class="comment">— tap body zone → open panel</span>
+│   │   ├── <span class="file">useCursorParallax.js</span>  <span class="comment">— mouse → camera lean</span>
+│   │   └── <span class="file">useRenderProfile.js</span>   <span class="comment">— GPU tier → quality preset</span>
+│   │
+│   ├── <span class="folder">db/</span>
+│   │   ├── <span class="file">schema.sql</span>            <span class="comment">— full DB schema</span>
+│   │   ├── <span class="file">metricsAPI.js</span>         <span class="comment">— CRUD for user_metrics</span>
+│   │   └── <span class="file">goalsAPI.js</span>           <span class="comment">— CRUD for user_goals</span>
+│   │
+│   └── <span class="folder">electron/</span>             <span class="comment">— desktop exe wrapper</span>
+│       ├── <span class="file">main.js</span>               <span class="comment">— Electron main process</span>
+│       ├── <span class="file">preload.js</span>
+│       └── <span class="file">localDB.js</span>            <span class="comment">— SQLite offline fallback</span>
+│
+├── <span class="folder">assets/</span>                   <span class="comment">— source files (not shipped)</span>
+│   ├── <span class="folder">makehuman/</span>             <span class="comment">— .mhm project files</span>
+│   └── <span class="folder">blender/</span>               <span class="comment">— .blend rigging scenes</span>
+│
+└── <span class="file">package.json</span>
+  </div>
+
+  <div class="sl" style="margin-top:16px">Key invariants across the whole repo</div>
+  <div class="rule"><div class="rule-t">metricsToBlendshapes.js is pure — no side effects</div><div class="rule-d">Takes a metric object, returns a blendshape weight object. No DOM access, no store reads, no async. Testable in isolation with 100% coverage requirement.</div></div>
+  <div class="rule"><div class="rule-t">3D layer never reads from stores directly</div><div class="rule-d">AvatarModel.jsx receives blendshapeWeights as a prop. The store → computation → prop chain is explicit and traceable. No coupling between the 3D scene and business logic.</div></div>
+  <div class="rule"><div class="rule-t">Every GLB loads with useGLTF + Suspense</div><div class="rule-d">All model loading is suspense-based. A glass-surface skeleton shimmer shows while loading. No blank black viewport ever.</div></div>
+</div>
+
+<!-- BLENDSHAPE SPEC -->
+<div id="pg-blendspec" class="pg">
+  <div class="sl">Complete blendshape target list — male_base.glb</div>
+  <div class="c">
+    <div class="ct">Global body</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-top:6px">
+      <div class="kv"><span class="kk">height_tall</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">height_short</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">weight_heavy</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">weight_light</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">age_middle</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">age_senior</span><span class="kv-val">0→1</span></div>
+    </div>
+  </div>
+  <div class="c">
+    <div class="ct">Torso</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-top:6px">
+      <div class="kv"><span class="kk">waist_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">waist_narrow</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">belly_large</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">belly_flat</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">lovehandles</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">chest_large</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">chest_flat</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">chest_muscle</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">shoulder_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">shoulder_narrow</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">back_wide</span><span class="kv-val">0→1 (V-taper)</span></div>
+      <div class="kv"><span class="kk">torso_long</span><span class="kv-val">0→1</span></div>
+    </div>
+  </div>
+  <div class="c">
+    <div class="ct">Fat distribution (gender-split logic)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-top:6px">
+      <div class="kv"><span class="kk">belly_android</span><span class="kv-val">M stronger</span></div>
+      <div class="kv"><span class="kk">hip_gynoid</span><span class="kv-val">F stronger</span></div>
+      <div class="kv"><span class="kk">thigh_fat</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">arm_fat</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">face_fat</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">neck_fat</span><span class="kv-val">0→1</span></div>
+    </div>
+  </div>
+  <div class="c">
+    <div class="ct">Upper limbs</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-top:6px">
+      <div class="kv"><span class="kk">arm_long</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">upper_arm_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">arm_muscle</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">forearm_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">wrist_wide</span><span class="kv-val">0→1</span></div>
+    </div>
+  </div>
+  <div class="c">
+    <div class="ct">Lower limbs</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-top:6px">
+      <div class="kv"><span class="kk">leg_long</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">hip_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">thigh_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">thigh_muscle</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">knee_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">calf_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">ankle_wide</span><span class="kv-val">0→1</span></div>
+    </div>
+  </div>
+  <div class="c">
+    <div class="ct">Muscle definition (stacks on shape)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-top:6px">
+      <div class="kv"><span class="kk">abs_defined</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">leg_muscle_defined</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">core_defined</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">glute_defined</span><span class="kv-val">0→1</span></div>
+    </div>
+  </div>
+  <div class="c">
+    <div class="ct">Face (shared between M and F with different baselines)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-top:6px">
+      <div class="kv"><span class="kk">face_round</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">face_square</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">face_heart</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">face_diamond</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">face_oblong</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">neck_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">jaw_wide</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">jaw_narrow</span><span class="kv-val">0→1</span></div>
+    </div>
+  </div>
+
+  <div class="sl">Female-only additional blendshapes</div>
+  <div class="c">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 24px">
+      <div class="kv"><span class="kk">breast_vol_0</span><span class="kv-val">flat (default)</span></div>
+      <div class="kv"><span class="kk">breast_vol_1</span><span class="kv-val">XS</span></div>
+      <div class="kv"><span class="kk">breast_vol_2</span><span class="kv-val">S</span></div>
+      <div class="kv"><span class="kk">breast_vol_3</span><span class="kv-val">M</span></div>
+      <div class="kv"><span class="kk">breast_vol_4</span><span class="kv-val">L</span></div>
+      <div class="kv"><span class="kk">breast_vol_5</span><span class="kv-val">XL</span></div>
+      <div class="kv"><span class="kk">hip_gynoid_strong</span><span class="kv-val">0→1</span></div>
+      <div class="kv"><span class="kk">waist_hourglass</span><span class="kv-val">0→1</span></div>
+    </div>
+  </div>
+
+  <div class="sl">Fallback weight computation — formula table</div>
+  <div class="c">
+    <div class="cs">
+      When a metric is absent, these fallback values are computed from available data and normalized before mapping:<br><br>
+      <strong>waist_cm_est</strong> = 0.447 × height_cm + 0.294 × weight_kg − 28.4 (M) | − 31.6 (F)<br>
+      <strong>hip_cm_est</strong> = 0.541 × waist + 0.308 × weight + 12.3<br>
+      <strong>thigh_cm_est</strong> = 0.268 × hip + 0.189 × weight + 8.1<br>
+      <strong>calf_cm_est</strong> = 0.38 × thigh − 4.2<br>
+      <strong>upper_arm_cm_est</strong> = 0.29 × weight + 5.8 (M) | 0.27 × weight + 5.1 (F)<br>
+      <strong>shoulder_width_est</strong> = height × 0.259 (M) | height × 0.228 (F)<br>
+      <strong>body_fat_est</strong> = BMI-based: (1.39 × BMI) + (0.16 × age) − (10.34 × isMale) − 9.0<br>
+      <strong>breast_vol_step</strong> = round((chest_cm − underbust_cm − 12) / 4) clamped 0–5<br>
+      <strong>All formulas clamped</strong> to population min/max before normalization
+    </div>
+  </div>
+</div>
+
+<!-- STATE ARCHITECTURE -->
+<div id="pg-state" class="pg">
+  <div class="sl">Zustand store design</div>
+
+  <div class="c">
+    <div class="ct" style="margin-bottom:8px">useCurrentMetrics — the full shape</div>
+    <div class="cs">
+      <code>gender</code> · <code>age</code> · <code>units</code> ('metric'|'imperial')<br>
+      <strong>Core:</strong> <code>height_cm</code> · <code>weight_kg</code> · <code>body_fat_pct</code><br>
+      <strong>Torso:</strong> <code>chest_cm</code> · <code>underbust_cm</code> · <code>waist_cm</code> · <code>hip_cm</code> · <code>shoulder_width_cm</code> · <code>torso_length_cm</code><br>
+      <strong>Arms:</strong> <code>upper_arm_cm</code> · <code>forearm_cm</code> · <code>wrist_cm</code> · <code>arm_length_cm</code><br>
+      <strong>Legs:</strong> <code>thigh_cm</code> · <code>knee_cm</code> · <code>calf_cm</code> · <code>ankle_cm</code> · <code>inseam_cm</code><br>
+      <strong>Face:</strong> <code>face_shape</code> · <code>neck_cm</code> · <code>head_size</code><br>
+      <strong>Muscle:</strong> <code>muscularity_chest</code> · <code>muscularity_arms</code> · <code>muscularity_legs</code> · <code>muscularity_core</code> · <code>muscularity_back</code><br>
+      <strong>Appearance:</strong> <code>skin_tone_idx</code> · <code>hair_style</code> · <code>hair_color_hex</code> · <code>hair_texture</code> · <code>beard_style</code> · <code>beard_color_hex</code> · <code>outfit_type</code> · <code>outfit_color_hex</code><br><br>
+      <strong>Actions:</strong> <code>setMetric(key, value)</code> · <code>setMetrics(obj)</code> · <code>resetToDefaults(gender)</code> · <code>syncFromDB()</code> · <code>saveToDB()</code>
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct" style="margin-bottom:8px">useGoalMetrics — inherits + overrides</div>
+    <div class="cs">
+      Same shape as <code>useCurrentMetrics</code> but all values nullable. On read: <code>goalValue ?? currentValue</code> (goal inherits current if unset — means "no change planned for this zone").<br><br>
+      <strong>Extra fields:</strong> <code>goal_type</code> ('workout'|'diet'|'surgery'|'style') · <code>target_date</code> · <code>surgery_type</code> · <code>notes</code><br><br>
+      <strong>Key action:</strong> <code>getEffectiveGoal()</code> — returns merged object of goal values, falling back to current values for any null goal metric. This is what drives the goal avatar.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct" style="margin-bottom:8px">useAvatarMode — the view toggle</div>
+    <div class="cs">
+      <code>mode</code>: 'current' | 'goal' | 'compare'<br>
+      <code>setMode(mode)</code> — triggers shared-element transition<br>
+      <code>activeMetricZone</code>: null | 'torso' | 'arms' | 'legs' | 'face' | 'hair' | 'muscle'<br>
+      <code>openZone(zone)</code> / <code>closeZone()</code> — drives metric panel open/close<br>
+      <code>isMetricPanelOpen</code>: boolean<br>
+      <code>lastClickedBodyPart</code>: string | null — from raycasting
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct" style="margin-bottom:8px">useAvatarPrefs — appearance preferences</div>
+    <div class="cs">
+      <code>outfitType</code>: 'underwear' | 'casual' | 'sport'<br>
+      <code>outfitColorHex</code>: string<br>
+      <code>bodyViewMode</code>: 'clothed' | 'detailed' (detailed = underwear visible)<br>
+      <code>cameraPosition</code>: [x,y,z] — saved between sessions<br>
+      <code>backgroundStyle</code>: 'aurora' | 'studio' | 'minimal'
+    </div>
+  </div>
+
+  <div class="sl">Data flow — metric change to avatar morph</div>
+  <div class="flow">
+    <div class="fstep">
+      <div class="fline"><div class="fdot">1</div><div class="fconn"></div></div>
+      <div class="fcontent"><div class="ftitle">User moves a slider</div><div class="fdesc">MetricSlider calls <code>setMetric('waist_cm', 82)</code> on useCurrentMetrics store.</div></div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">2</div><div class="fconn"></div></div>
+      <div class="fcontent"><div class="ftitle">useMetricMorph hook reacts</div><div class="fdesc">Subscribes to store changes. On change, runs <code>metricsToBlendshapes(metrics, gender)</code> → returns new weight object.</div></div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">3</div><div class="fconn"></div></div>
+      <div class="fcontent"><div class="ftitle">GSAP tween fires</div><div class="fdesc"><code>morphTween(mesh, currentWeights, targetWeights, 0.6s)</code> — only changed targets are tweened. Others hold position.</div></div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">4</div><div class="fconn"></div></div>
+      <div class="fcontent"><div class="ftitle">Three.js renders the frame</div><div class="fdesc">On each RAF, <code>mesh.morphTargetInfluences</code> are read by the GPU. Vertex positions interpolate between base mesh and morph target.</div></div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">5</div><div class="fconn"></div></div>
+      <div class="fcontent"><div class="ftitle">DB sync (debounced 2s)</div><div class="fdesc">After 2s of inactivity, <code>saveToDB()</code> fires — writes the full metric object to <code>user_metrics</code> table. No per-keystroke DB writes.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENT SYSTEM -->
+<div id="pg-components" class="pg">
+  <div class="sl">Liquid Glass component spec</div>
+
+  <div class="c">
+    <div class="ct">GlassPanel</div>
+    <div class="cs">
+      The foundation surface. All floating UI sits on this.<br><br>
+      <strong>CSS:</strong><br>
+      background: rgba(255,255,255,0.10) [light] / rgba(255,255,255,0.07) [dark]<br>
+      backdrop-filter: blur(28px) saturate(180%)<br>
+      border: .5px solid rgba(255,255,255,0.22) [light] / rgba(255,255,255,0.12) [dark]<br>
+      border-radius: 20px<br>
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3) [top highlight]<br><br>
+      <strong>Props:</strong> <code>variant</code> ('default'|'elevated'|'sheet') · <code>padding</code> · <code>animate</code> (Framer Motion spring)
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">GlassSheet — bottom sheet modal</div>
+    <div class="cs">
+      Slides up from the bottom. Used for all metric input panels.<br><br>
+      <strong>Behaviour:</strong> Framer Motion y: [100%→0] with spring(stiffness:300, damping:32). Drag handle at top. Swipe down to dismiss. Background overlay: rgba(0,0,0,0.4).<br><br>
+      <strong>Height variants:</strong> 'peek' (30vh) · 'half' (50vh) · 'tall' (80vh) · 'full'. Height snapping on drag release. Never covers the 3D avatar fully — minimum 20% of avatar always visible.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">GlassSlider — the metric input control</div>
+    <div class="cs">
+      Custom slider that replaces the native range input.<br><br>
+      <strong>Track:</strong> rounded pill, rgba white 0.15, height 4px.<br>
+      <strong>Fill:</strong> gradient from accent left to current position. Animated as value changes.<br>
+      <strong>Thumb:</strong> 20px white circle, box-shadow: 0 0 8px rgba(99,102,241,0.5). Scales to 1.2× on active.<br>
+      <strong>Zone glow:</strong> When actively dragging, the corresponding body zone on the 3D model emits a warm overlay (<code>heatmap.frag.glsl</code> at low opacity). Stops on release.<br>
+      <strong>Value display:</strong> Floating label above thumb showing current value with unit. Animated with countup.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">GlassPill — mode toggle</div>
+    <div class="cs">
+      The "Current Self / Goal Self" switcher. Lives at the bottom of the screen always.<br><br>
+      <strong>Shape:</strong> Pill with two labels. Selected side has a white capsule sliding underneath (Framer Motion layoutId transition). Selected text is primary, unselected is muted.<br>
+      <strong>Background:</strong> GlassPanel surface. Sits on a subtle shadow separator from the 3D scene.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">MetricZonePanel — the zone selector UI</div>
+    <div class="cs">
+      A scrollable horizontal row of zone tabs: Core · Torso · Arms · Legs · Face · Hair · Muscle · Style. Tapping a zone expands its metric list below. Each zone has an icon + label + a small completeness dot (filled = has data, empty = default/estimated).<br><br>
+      <strong>Zone dot colors:</strong> Green = user-entered. Amber = estimated from other metrics. Grey = full default. Never red — never communicates "broken."
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">MetricSlider — single metric input</div>
+    <div class="cs">
+      Label + unit + GlassSlider + tap-to-type field. Unit toggle (cm↔in for lengths, kg↔lbs for weight) is a small pill next to the value. Validation: shows soft warning (not error) if value is outside realistic range for entered gender+age. Never blocks input — just informs.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">HairStyleSelector</div>
+    <div class="cs">
+      Horizontal scroll of hair style cards. Each card = thumbnail of the hair mesh from front view (pre-rendered PNG, 120×160). Selecting a style loads the corresponding hair GLB in the scene. Color picker below: 8 preset swatches + "custom" opens a color wheel. Beard section (M only) identical pattern below hair.
+    </div>
+  </div>
+</div>
+
+<!-- ASSET PIPELINE -->
+<div id="pg-assetpipe" class="pg">
+  <div class="sl">Step-by-step asset production pipeline</div>
+
+  <div class="flow">
+    <div class="fstep">
+      <div class="fline"><div class="fdot">1</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">MakeHuman — create base characters</div>
+        <div class="fdesc">Open MakeHuman. Set gender to Male. Set all sliders to exact population-median values (BMI 25, age 28, European ethnicity as neutral starting point). Export → MHX2 format with "Include body mesh", "Include skeleton". Save as <code>male_median.mhx2</code>. Repeat for Female. These are your neutral default avatars.</div>
+      </div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">2</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">Blender — import via MPFB2</div>
+        <div class="fdesc">Install MPFB2 (MakeHuman Plugin For Blender, v2). Import the .mhx2 file. This gives you the base mesh with the full skeleton and all MakeHuman targets accessible as shape keys in Blender. You will see them in the Shape Keys panel on the mesh object.</div>
+      </div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">3</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">Blender — select and rename shape keys</div>
+        <div class="fdesc">From the Shape Keys list, identify the keys matching your blendshape spec (waist_wide, hip_wide, etc.). MakeHuman uses its own naming — map to yours. Delete shape keys you don't need (keeps GLB lean). Rename the remaining ones to match the spec exactly. This is the naming contract between the asset and the code.</div>
+      </div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">4</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">Blender — skin material setup</div>
+        <div class="fdesc">Assign a Principled BSDF material. Roughness: 0.6. Specular: 0.3. Subsurface: 0.05 (tiny amount — enough to soften edges). Subsurface Color: #FF8866. Use your 4K skin texture as Base Color. Plug normal map into Normal input. Plug roughness map into Roughness. Mark face mesh as a separate material slot — it gets its own SSS values later in the shader.</div>
+      </div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">5</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">Blender — idle animation bake</div>
+        <div class="fdesc">Create a single looping action called "idle" (120 frames at 24fps = 5s loop). Keys: chest/abdomen Y-scale oscillates ±0.003 on sine, left/right hip X offset ±0.001 every 60 frames, head Y-rotation ±2° over 120 frames. Make it subtle — barely perceptible. Export with this action included.</div>
+      </div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">6</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">Blender — GLB export settings</div>
+        <div class="fdesc">File → Export → glTF 2.0 (.glb). Settings: Include: Selected Objects, Shape Keys, Skinning, Animations. Geometry: Apply Modifiers ON, UVs ON, Normals ON, Tangents OFF, Vertex Colors OFF (if unused). Animation: Limit to Playback Range ON, Always Sample Animations ON. Compression: Draco OFF (causes morph target issues). Output: <code>public/models/male_base.glb</code>.</div>
+      </div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">7</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">Verification in Three.js</div>
+        <div class="fdesc">Load the GLB with GLTFLoader in a test scene. Log <code>mesh.morphTargetDictionary</code> — verify all expected target names are present. Set each to 1.0 one at a time and verify the correct zone deforms. Set back to 0.0. If any target is missing or misnamed, fix in Blender and re-export. This is the acceptance test before any code is written against the asset.</div>
+      </div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">8</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">Hair assets — separate GLBs</div>
+        <div class="fdesc">Each hair style is a separate .blend file. The hair mesh is rigged to only the head bone (so it moves with head animation). No shape keys needed — color is set at runtime via material.color. Export each as a separate GLB. Name: <code>hair_{style}_{gender}.glb</code>. Hair GLBs are small (&lt;200KB each) — load on demand, not at startup.</div>
+      </div>
+    </div>
+    <div class="fstep">
+      <div class="fline"><div class="fdot">9</div><div class="fconn"></div></div>
+      <div class="fcontent">
+        <div class="ftitle">Texture compression for web</div>
+        <div class="fdesc">Use <code>gltf-transform</code> CLI to apply WebP texture compression to the final GLBs: <code>gltf-transform webp male_base.glb male_base_web.glb --quality 85</code>. Reduces 4K texture from ~6MB to ~1.2MB with near-identical visual quality. Separately keep the uncompressed version as source-of-truth.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MOTION SPEC -->
+<div id="pg-motion" class="pg">
+  <div class="sl">Every animation in the app — what it is, how it moves</div>
+
+  <div class="c">
+    <div class="ct">Morph target transitions (body shape changes)</div>
+    <div class="cs">
+      <strong>Library:</strong> GSAP<br>
+      <strong>Duration:</strong> 0.6s<br>
+      <strong>Ease:</strong> power2.inOut<br>
+      <strong>How:</strong> <code>gsap.to(mesh.morphTargetInfluences, { [targetIndex]: newWeight, duration: 0.6, ease: 'power2.inOut' })</code><br>
+      <strong>Rule:</strong> Only changed targets tween. Unchanged targets do not animate. Prevents unnecessary GPU work.<br>
+      <strong>Batch:</strong> Multiple metrics changing simultaneously (e.g. "Apply all") → all tweens start at same timestamp. Body reshapes holistically.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Mode switch — Current ↔ Goal ↔ Compare</div>
+    <div class="cs">
+      <strong>Sequence:</strong> Avatar scales to 0.95 (100ms) → cross-dissolve opacity 0→1 (200ms) with new blendshape weights applied during opacity 0 → scale back to 1.0 (150ms).<br>
+      <strong>Simultaneous:</strong> Background color transitions (CSS transition 700ms). GlassPill selected indicator slides (Framer Motion layoutId, 300ms spring).<br>
+      <strong>Total perceived duration:</strong> ~450ms
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">UI panel open / close</div>
+    <div class="cs">
+      <strong>Open:</strong> y: [40px→0], opacity: [0→1], blur: [6px→0] — Framer Motion spring(stiffness:280, damping:30)<br>
+      <strong>Close:</strong> y: [0→40px], opacity: [1→0] — spring(stiffness:260, damping:28)<br>
+      <strong>Sheet (bottom):</strong> y: ['100%'→'0%'] — spring(stiffness:300, damping:32). Drag gesture handled by Framer Motion drag constraints.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Metric value number display</div>
+    <div class="cs">
+      <strong>On change:</strong> Number rolls up/down from old value to new over 0.4s using react-countup with easeInOutQuad. For sliders this is throttled — only animates on mouse-up, not on every drag tick (too distracting).
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Camera orbit (OrbitControls)</div>
+    <div class="cs">
+      <strong>enableDamping:</strong> true, dampingFactor: 0.06<br>
+      <strong>Auto-rotate:</strong> autoRotate: true (0.003 rad/s) when idle &gt;8s. Stops immediately on any user interaction.<br>
+      <strong>Camera position changes</strong> (e.g. zoom to waist zone on tap): GSAP tweens camera.position and controls.target over 0.7s with power2.inOut. Never snaps.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Cursor parallax (desktop only)</div>
+    <div class="cs">
+      <strong>Effect:</strong> Avatar head tracks cursor ±8° Y rotation. Camera lean ±2° X tilt. Both use lerp with factor 0.04 (very smooth lag).<br>
+      <strong>Implementation:</strong> <code>useCursorParallax</code> hook — on mousemove, calculates normalised cursor offset from center, lerps the avatar's head bone rotation and the camera X in useFrame.<br>
+      <strong>Disabled on touch devices.</strong>
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Zone glow on slider drag</div>
+    <div class="cs">
+      When the user is actively dragging a metric slider, the corresponding body mesh zone gets a warm vertex-color overlay via <code>heatmap.frag.glsl</code> uniform: <code>uZoneHighlight = 1.0</code> fades in over 0.2s, returns to 0.0 over 0.4s on release. Color: rgba(245, 158, 11, 0.25) — warm amber.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Idle breathing (always-on)</div>
+    <div class="cs">
+      AnimationMixer plays the "idle" action from the GLB in an infinite loop. Weight: 1.0 at all times. Does not conflict with morph target changes because it's skeleton-based (chest bone scale), not morph-based. Pause only on goal-achieved celebration animation.
+    </div>
+  </div>
+</div>
+
+<!-- PERFORMANCE RULES -->
+<div id="pg-perf" class="pg">
+  <div class="sl">Performance rules — non-negotiable</div>
+
+  <div class="c">
+    <div class="ct">GPU tier detection → rendering profile</div>
+    <div class="cs">
+      Use <code>detect-gpu</code> library on app load. Results in 3 tiers:<br><br>
+      <strong>Tier 3 (high-end):</strong> Full post-processing (N8AO + SMAA + Bloom + ToneMapping + Vignette + DepthOfField on idle). dpr: min(window.devicePixelRatio, 2.0). Full HDRI. Full shadows.<br><br>
+      <strong>Tier 2 (mid):</strong> N8AO (halfRes: true) + SMAA + Bloom + ToneMapping. No DepthOfField. dpr: 1.5. HDRI at half resolution. Shadow map 1024.<br><br>
+      <strong>Tier 1 (low):</strong> No post-processing. MeshStandardMaterial only. dpr: 1.0. Three-point lighting only. Idle animation disabled if FPS &lt; 30. Hair asset poly-count halved.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Asset loading strategy</div>
+    <div class="cs">
+      <strong>Body GLB:</strong> Preloaded immediately on app start (largest, most critical asset).<br>
+      <strong>Hair GLBs:</strong> Load only the currently-selected style. Swap on selection. Cache in memory — don't reload on re-select.<br>
+      <strong>Clothing GLBs:</strong> Lazy-loaded on first outfit selection. All outfit variants preloaded silently after body GLB is ready.<br>
+      <strong>HDR:</strong> Load at startup. Compress to 512px if Tier 1.<br>
+      <strong>Loading state:</strong> Framer-animated skeleton shimmer (glass surface with animated gradient) until body GLB is ready. Never black screen.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Morph target computation throttle</div>
+    <div class="cs">
+      <code>metricsToBlendshapes()</code> is called at most once per slider drag event (not per pixel). Throttled with <code>requestAnimationFrame</code> — one computation per frame maximum during drag. On slider release: final value computed and GSAP tween starts. No redundant re-computations mid-tween.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Dual canvas (compare mode) performance</div>
+    <div class="cs">
+      Two WebGL contexts have a GPU memory cost. Rules:<br>
+      — Compare mode uses shared scene objects (lights, HDRI) where possible<br>
+      — Post-processing runs on both canvases at Tier 2 settings only (never Tier 3 in compare mode)<br>
+      — Hair and clothing assets shared by reference between both contexts<br>
+      — FPS target in compare mode: 30fps (not 60fps) — body shape fidelity matters more than smoothness here
+    </div>
+  </div>
+</div>
+
+<!-- QA CHECKLIST -->
+<div id="pg-qa" class="pg">
+  <div class="sl">Acceptance criteria — what 9/10 looks like</div>
+
+  <div class="c">
+    <div class="ct">3D model fidelity checks</div>
+    <div class="cs">
+      ☐ Setting height 160cm vs 190cm — model visibly taller/shorter, proportions remain natural<br>
+      ☐ Setting weight 60kg vs 110kg at same height — model visibly larger, fat distribution realistic<br>
+      ☐ Setting body fat 10% vs 35% at same weight — lean vs soft silhouette clearly different<br>
+      ☐ Setting waist 70cm vs 100cm — waist zone changes, nothing else changes<br>
+      ☐ Setting all muscle sliders to 100 — defined musculature visible throughout<br>
+      ☐ Changing hair color to red — hair turns red, nothing else changes<br>
+      ☐ Missing thigh metric — avatar renders correctly, thigh is estimated (not broken)<br>
+      ☐ Zero metrics entered (brand new user) — neutral gender-appropriate avatar renders<br>
+      ☐ Female model — breast volume scales with chest−underbust diff correctly<br>
+      ☐ Idle breathing animation — visible but not distracting
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">UI / UX quality checks</div>
+    <div class="cs">
+      ☐ Dragging a metric slider — corresponding body zone morphs in real-time (no lag &gt;16ms)<br>
+      ☐ Tapping a body zone (waist) — correct metric panel opens, camera zooms to zone<br>
+      ☐ Mode switch Current → Goal — transition is smooth, &lt;500ms total, no flash of wrong state<br>
+      ☐ All glass panels legible against both dark and bright scene backgrounds<br>
+      ☐ Long-press on avatar — context menu appears correctly positioned<br>
+      ☐ Compare mode — divider drag works, both models visible and independently correct<br>
+      ☐ Desktop cursor moves — avatar head tracks with natural lag, not jarringly<br>
+      ☐ At 60fps on target hardware — no dropped frames during any interaction<br>
+      ☐ No layout breaks at 1280px, 1440px, 1920px desktop widths<br>
+      ☐ Electron app — opens correctly, local DB works, no network required for core features
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Data / state integrity checks</div>
+    <div class="cs">
+      ☐ Metric entered → saved correctly to DB after 2s debounce<br>
+      ☐ App reload → all metrics restore correctly from DB<br>
+      ☐ Goal metrics do not overwrite current metrics<br>
+      ☐ Changing gender confirms dialog → new base mesh loads, metric data preserved<br>
+      ☐ All fallback formulas produce values within realistic ranges for given gender+age<br>
+      ☐ Share export — no measurements visible in PNG output<br>
+      ☐ Delete all data — wipes completely, resets to onboarding
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Scoring rubric — how 9.5/10 is reached</div>
+    <div class="cs">
+      <strong>3D model accuracy</strong> (3 points): Does it look like you when you enter your measurements? 1pt = rough silhouette. 2pt = proportions correct in most zones. 3pt = every zone responds correctly to its metric.<br><br>
+      <strong>Dual self system</strong> (2 points): Does the Current vs Goal comparison work meaningfully? 1pt = two different states visible. 2pt = seamless transition, diff heatmap, goal type selector all working.<br><br>
+      <strong>UI/UX quality</strong> (2 points): Does it feel premium? 1pt = functional and clean. 2pt = Apple/Lusion-level — glass surfaces, spring motion, micro-interactions all present.<br><br>
+      <strong>Metric completeness + graceful degradation</strong> (1.5 points): Does every metric make a visible difference? Do missing metrics never break anything?<br><br>
+      <strong>Rendering quality</strong> (1 point): HDRI lighting, N8AO, correct skin material — does the model look cinematic?<br><br>
+      <strong>Performance</strong> (0.5 points): 60fps on desktop, no loading jank, GPU-tier adaptive.
+    </div>
+  </div>
+
+  <button class="cta-btn" onclick="sendPrompt('Now start building Phase 1: the MakeHuman to Blender to GLB asset pipeline step by step')">Start Phase 1: asset pipeline ↗</button>
+  <button class="cta-btn" onclick="sendPrompt('Write the complete metricsToBlendshapes.js mapping function in full')">Write metricsToBlendshapes.js ↗</button>
+  <button class="cta-btn" onclick="sendPrompt('Write the complete AvatarScene.jsx and AvatarModel.jsx R3F components')">Write AvatarScene.jsx ↗</button>
+  <button class="cta-btn" onclick="sendPrompt('Write the complete GlassPanel, GlassSlider, GlassSheet component CSS and JSX')">Write the Glass component system ↗</button>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nt').forEach(t=>t.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  event.target.classList.add('on');
+}
+</script>

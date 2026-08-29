@@ -46,36 +46,62 @@ function makeMat(mode,opacity,tone,quality="HIGH",skinColorHex=null) {
   if (mode==="ghost") return new THREE.MeshStandardMaterial({color:"#22D3EE",emissive:"#22D3EE",emissiveIntensity:0.35,roughness:0.1,metalness:0.2,transparent:true,opacity:Math.min(opacity,0.32),depthWrite:false,side:THREE.DoubleSide});
   if (mode==="xray")  return new THREE.MeshStandardMaterial({color:"#818CF8",roughness:0.05,metalness:0.8,transparent:true,opacity:0.4,depthWrite:false});
   if (mode==="delta") return new THREE.MeshStandardMaterial({color:"#F59E0B",emissive:"#7A4800",emissiveIntensity:0.12,roughness:0.55,metalness:0.1});
-  const Material = quality === "HIGH" ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
-  const m = new Material({
+  // Always use MeshPhysicalMaterial for skin — SSS sheen is crucial for realism
+  const m = new THREE.MeshPhysicalMaterial({
     color:skin,
-    roughness:0.54,
+    roughness: quality === "LOW" ? 0.62 : 0.52,
     metalness:0.0,
-    emissive:skin.clone().multiplyScalar(0.012),
-    emissiveIntensity:0.35,
-    ...(quality === "HIGH" ? {
-      clearcoat:0.025,
-      clearcoatRoughness:0.58,
-      sheen:0.08,
-      sheenRoughness:0.72,
-      sheenColor:skin.clone().offsetHSL(0.01,0.04,0.08),
-      iridescence:0,
-    } : {}),
+    emissive:skin.clone().multiplyScalar(0.006),
+    emissiveIntensity:0.28,
+    clearcoat: quality === "LOW" ? 0 : 0.055,
+    clearcoatRoughness:0.52,
+    sheen: quality === "LOW" ? 0 : 0.14,
+    sheenRoughness:0.68,
+    sheenColor:skin.clone().offsetHSL(0.01,0.06,0.10),
+    transmission: quality === "HIGH" ? 0.012 : 0,
+    thickness: quality === "HIGH" ? 0.08 : 0,
+    attenuationColor: skin.clone().offsetHSL(0, -0.05, -0.10),
+    attenuationDistance: quality === "HIGH" ? 0.5 : Infinity,
+    ior: 1.4,
+    specularIntensity: 0.32,
+    specularColor: skin.clone().offsetHSL(0, -0.12, 0.28),
+    envMapIntensity: 0.88,
   });
   if (opacity<1){m.transparent=true;m.opacity=opacity;m.depthWrite=false;}
   return m;
 }
 function makeDetailMat(tone,quality="HIGH") {
-  const skin = new THREE.Color(FITZPATRICK[tone]||FITZPATRICK.IV).offsetHSL(0.005,0,-0.022);
-  const Material = quality === "HIGH" ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
-  return new Material({ color:skin, roughness:0.60, metalness:0, ...(quality === "HIGH" ? { sheen:0.05, sheenRoughness:0.76 } : {}) });
+  const skin = new THREE.Color(FITZPATRICK[tone]||FITZPATRICK.IV).offsetHSL(0.005, -0.04, -0.028);
+  return new THREE.MeshPhysicalMaterial({
+    color:skin,
+    roughness: quality === "LOW" ? 0.68 : 0.58,
+    metalness:0,
+    sheen: quality === "LOW" ? 0 : 0.08,
+    sheenRoughness:0.76,
+    clearcoat: quality === "HIGH" ? 0.035 : 0,
+    clearcoatRoughness: 0.55,
+  });
 }
-const makeScleraMat = () => new THREE.MeshPhysicalMaterial({color:"#eee9df",roughness:0.32,clearcoat:0.18,clearcoatRoughness:0.4});
-const makeIrisMat   = (hex) => new THREE.MeshStandardMaterial({color:hex,roughness:0.18,metalness:0.05,emissive:new THREE.Color(hex).multiplyScalar(0.07),emissiveIntensity:1});
-const makePupilMat  = () => new THREE.MeshStandardMaterial({color:"#070707",roughness:0.05,metalness:0.22});
-const makeLipMat    = (tone, customColor) => { const t={I:"#d89494",II:"#c27d7b",III:"#ad6868",IV:"#8e4d55",V:"#713e48",VI:"#54303a"}; return new THREE.MeshPhysicalMaterial({color:/^#[0-9a-f]{6}$/i.test(String(customColor || '')) ? customColor : (t[tone]||t.IV),roughness:0.46,clearcoat:0.08,clearcoatRoughness:0.55}); };
-const makeNailMat   = (customColor) => new THREE.MeshStandardMaterial({color:/^#[0-9a-f]{6}$/i.test(String(customColor || '')) ? customColor : "#e8d8c8",roughness:0.10,metalness:0.05,transparent:true,opacity:0.88});
-const makeHairMat   = (hex) => new THREE.MeshStandardMaterial({color:hex,roughness:0.88,metalness:0.02,side:THREE.DoubleSide,alphaTest:0.38,transparent:true});
+// Sclera: wet surface with realistic clearcoat
+const makeScleraMat = () => new THREE.MeshPhysicalMaterial({
+  color:"#f0ebe2",roughness:0.18,metalness:0,
+  clearcoat:0.55,clearcoatRoughness:0.18,
+  emissive:"#e8e2d8",emissiveIntensity:0.04,
+});
+// Iris: colored, subsurface-like
+const makeIrisMat = (hex) => new THREE.MeshPhysicalMaterial({
+  color:hex,roughness:0.22,metalness:0,
+  clearcoat:0.42,clearcoatRoughness:0.12,
+  emissive:new THREE.Color(hex).multiplyScalar(0.05),emissiveIntensity:1,
+  transmission:0.05,ior:1.38,
+});
+const makePupilMat  = () => new THREE.MeshStandardMaterial({color:"#050505",roughness:0.04,metalness:0.18});
+const makeLipMat    = (tone, customColor) => {
+  const t={I:"#d89494",II:"#c27d7b",III:"#ad6868",IV:"#8e4d55",V:"#713e48",VI:"#54303a"};
+  return new THREE.MeshPhysicalMaterial({color:/^#[0-9a-f]{6}$/i.test(String(customColor || '')) ? customColor : (t[tone]||t.IV),roughness:0.40,clearcoat:0.14,clearcoatRoughness:0.48,sheen:0.12,sheenRoughness:0.62});
+};
+const makeNailMat   = (customColor) => new THREE.MeshPhysicalMaterial({color:/^#[0-9a-f]{6}$/i.test(String(customColor || '')) ? customColor : "#e8d8c8",roughness:0.08,metalness:0.04,clearcoat:0.38,clearcoatRoughness:0.22,transparent:true,opacity:0.92});
+const makeHairMat   = (hex) => new THREE.MeshStandardMaterial({color:hex,roughness:0.82,metalness:0.04,side:THREE.DoubleSide,alphaTest:0.38,transparent:true});
 
 // == Geometry builders =========================================================
 function bldLathe(pts,segs){
@@ -218,13 +244,40 @@ function EyeGroup({d,side,eyeColorHex,skinMat,blink=0}) {
   const scl=useMemo(()=>makeScleraMat(),[]);
   const iris=useMemo(()=>makeIrisMat(eyeColorHex),[eyeColorHex]);
   const pupil=useMemo(()=>makePupilMat(),[]);
+  // Cornea: glassy dome over iris for wet-eye highlight
+  const cornea=useMemo(()=>new THREE.MeshPhysicalMaterial({
+    color:"#ffffff",transparent:true,opacity:0.12,roughness:0.0,metalness:0,
+    transmission:0.92,thickness:0.008,ior:1.336,
+    clearcoat:1.0,clearcoatRoughness:0.0,depthWrite:false,
+  }),[]);
+  useEffect(()=>()=>{[scl,iris,pupil,cornea].forEach(m=>m.dispose());},[scl,iris,pupil,cornea]);
   return (
     <group position={[sx*d.eyeX,d.eyeY-d.headY,d.eyeZ]} visible={blink < 0.78}>
-      <mesh material={scl} scale={[1.18,0.66,0.72]}><sphereGeometry args={[er,22,16]}/></mesh>
-      <mesh position={[0,0,er*0.56]} material={iris} scale={[1,0.88,0.38]}><sphereGeometry args={[d.irisR,18,14]}/></mesh>
-      <mesh position={[0,0,er*0.62]} material={pupil} scale={[1,0.88,0.30]}><sphereGeometry args={[d.pupilR,14,10]}/></mesh>
-      <mesh position={[0,er*0.36,er*0.12]} rotation={[-0.28,0,0]} material={skinMat} scale={[1.25,0.62,0.72]}><sphereGeometry args={[er*1.08,18,8,0,Math.PI*2,0,Math.PI*0.44]}/></mesh>
-      <mesh position={[0,-er*0.34,er*0.12]} rotation={[0.26,0,0]} material={skinMat} scale={[1.22,0.58,0.70]}><sphereGeometry args={[er*1.05,18,8,0,Math.PI*2,Math.PI*0.56,Math.PI*0.34]}/></mesh>
+      {/* Sclera — white of eye, slightly back */}
+      <mesh renderOrder={1} material={scl} scale={[1.18,0.66,0.70]}>
+        <sphereGeometry args={[er,24,18]}/>
+      </mesh>
+      {/* Iris */}
+      <mesh renderOrder={2} position={[0,0,er*0.54]} material={iris} scale={[1,0.88,0.36]}>
+        <sphereGeometry args={[d.irisR,20,16]}/>
+      </mesh>
+      {/* Pupil */}
+      <mesh renderOrder={3} position={[0,0,er*0.60]} material={pupil} scale={[1,0.88,0.28]}>
+        <sphereGeometry args={[d.pupilR,16,12]}/>
+      </mesh>
+      {/* Corneal wet dome */}
+      <mesh renderOrder={4} scale={[1.18,0.66,0.62]}>
+        <sphereGeometry args={[er*1.02,24,18,0,Math.PI*2,0,Math.PI*0.52]}/>
+        <primitive object={cornea} attach="material"/>
+      </mesh>
+      {/* Upper eyelid — rendered ON TOP of sclera so no Z-fight */}
+      <mesh renderOrder={5} position={[0,er*0.34,er*0.08]} rotation={[-0.30,0,0]} material={skinMat} scale={[1.28,0.58,0.68]} depthTest={true}>
+        <sphereGeometry args={[er*1.10,20,10,0,Math.PI*2,0,Math.PI*0.46]}/>
+      </mesh>
+      {/* Lower eyelid */}
+      <mesh renderOrder={5} position={[0,-er*0.32,er*0.08]} rotation={[0.28,0,0]} material={skinMat} scale={[1.24,0.52,0.66]} depthTest={true}>
+        <sphereGeometry args={[er*1.06,20,10,0,Math.PI*2,Math.PI*0.54,Math.PI*0.36]}/>
+      </mesh>
     </group>
   );
 }
@@ -421,7 +474,7 @@ function SculptedSurface({ d, detailMat, segments }) {
 export default function ProceduralHumanoid({
   cloneKey="A", position=[0,0,0], renderMode="normal", opacity=1,
   visible=true, showAura=false, skinTone="IV", eyeColor="#3b7bd4",
-  skinColorHex=null, lipColorHex=null, nailColorHex=null, hairStyle="short", hairColor="darkbrown", expressionWeights={}, quality="HIGH",
+  skinColorHex=null, lipColorHex=null, nailColorHex=null, hairStyle="short", hairColor="darkbrown", expressionWeights={}, heightScale=1, quality="HIGH",
 }) {
   const segs = SEGS_BY_QUALITY[quality] || DEFAULT_SEGS;
   const { weights, posture } = use3DStore(useShallow((s) => {
@@ -475,7 +528,7 @@ export default function ProceduralHumanoid({
     const breath = Math.sin(breathT.current * 0.78);
     const breathScale = 1 + breath * 0.008 * motion;
     const baseScale = d.bodyScale * (0.965 + intro * 0.035);
-    groupRef.current.scale.setScalar(baseScale);
+    groupRef.current.scale.set(baseScale, baseScale * heightScale, baseScale);
     groupRef.current.position.y = position[1] - (1 - intro) * 0.045;
     groupRef.current.rotation.y = Math.sin(breathT.current * 0.22) * 0.018 * motion;
     groupRef.current.rotation.x = THREE.MathUtils.degToRad((posture.pelvicTilt ?? 0) * -0.08);
@@ -508,11 +561,19 @@ export default function ProceduralHumanoid({
   const hs = segs; // shorthand for segment counts
 
   return (
-    <group ref={groupRef} position={position} scale={[d.bodyScale, d.bodyScale, d.bodyScale]} name={"procedural-"+cloneKey}>
+    <group ref={groupRef} position={position} scale={[d.bodyScale, d.bodyScale * heightScale, d.bodyScale]} name={"procedural-"+cloneKey}>
       {/* HEAD ASSEMBLY — all features share the same subtle head motion. */}
       <group ref={headRef} position={[0,d.headY,0]}>
-        <mesh material={mat} scale={[0.84,1.04,0.91]}><sphereGeometry args={[d.headR,hs.head,Math.round(hs.head*.67)]}/></mesh>
+        {/* Main cranium — proper ellipsoid (narrower side-to-side) */}
+        <mesh renderOrder={0} material={mat} scale={[0.82,1.05,0.90]}>
+          <sphereGeometry args={[d.headR,hs.head,Math.round(hs.head*.72)]}/>
+        </mesh>
         {det&&<>
+          {/* Cheekbones — subtle volume that catches rim light */}
+          {[-1,1].map(s=><mesh key={s} renderOrder={0} position={[s*d.headR*0.62,d.headR*0.08,d.headR*0.62]} scale={[0.72,0.48,0.42]} material={detailMat}><sphereGeometry args={[d.headR*0.24,12,8]}/></mesh>)}
+          {/* Brow ridge — subtle protrusion */}
+          {[-1,1].map(s=><mesh key={`brow-ridge-${s}`} renderOrder={0} position={[s*d.browX*0.78,d.browY-d.headY+d.headR*0.04,d.browZ*0.82]} scale={[0.82,0.35,0.35]} material={detailMat}><sphereGeometry args={[d.browR*0.68,10,6]}/></mesh>)}
+          {/* Temple narrowing — subtle concavity effect */}
           <EyeGroup d={d} side="L" eyeColorHex={eyeColor} skinMat={mat} blink={expressionWeights.blink ?? 0}/>
           <EyeGroup d={d} side="R" eyeColorHex={eyeColor} skinMat={mat} blink={expressionWeights.blink ?? 0}/>
           <BrowMesh d={d} side="L" mat={detailMat}/><BrowMesh d={d} side="R" mat={detailMat}/>
@@ -520,8 +581,10 @@ export default function ProceduralHumanoid({
           <LipsMesh d={d} lipMat={lipMat}/>
           <MouthDetails d={d} jawOpen={expressionWeights.jaw_open ?? 0} smile={expressionWeights.smile ?? 0}/>
           <EarMesh d={d} side="L" mat={mat}/><EarMesh d={d} side="R" mat={mat}/>
-          {[-1,1].map(s=><mesh key={s} position={[s*d.jawX,d.jawY-d.headY,d.headR*.40]} scale={[1.15,1.4,0.72]} material={mat}><sphereGeometry args={[d.headR*.09,14,10]}/></mesh>)}
-          <mesh position={[0,d.chinY-d.headY,d.chinZ]} scale={[1.4,0.8,0.82]} material={mat}><sphereGeometry args={[d.chinR*0.88,14,10]}/></mesh>
+          {/* Jaw angle volumes */}
+          {[-1,1].map(s=><mesh key={s} renderOrder={0} position={[s*d.jawX,d.jawY-d.headY,d.headR*.38]} scale={[1.10,1.35,0.68]} material={mat}><sphereGeometry args={[d.headR*.092,14,10]}/></mesh>)}
+          {/* Chin */}
+          <mesh renderOrder={0} position={[0,d.chinY-d.headY,d.chinZ]} scale={[1.38,0.78,0.80]} material={mat}><sphereGeometry args={[d.chinR*0.90,14,10]}/></mesh>
         </>}
         <HairCap d={d} hairStyle={hairStyle} hairColorHex={hHex} segments={hs.head} />
         <HairCards d={d} hairStyle={hairStyle} hairColorHex={hHex}/>
@@ -555,7 +618,6 @@ export default function ProceduralHumanoid({
       {[-1,1].map((s,si)=><mesh key={s} ref={thighRefs[si]} position={[s*d.thighX,d.thighY-d.thighH/2,0]} geometry={thighGeo} material={mat}/>)}
       {/* KNEES */}
       {[-1,1].map(s=><mesh key={s} position={[s*d.thighX*.92,d.calfY+d.calfH/2,.016]} scale={[1.08,1.18,.92]} material={mat}><sphereGeometry args={[d.calfR*.92,hs.detail,Math.max(9,Math.round(hs.detail*.55))]}/></mesh>)}
-      {/* CALVES */}
       {[-1,1].map((s,si)=><mesh key={s} ref={calfRefs[si]} position={[s*d.thighX*.88,d.calfY-d.calfH/2,.01]} geometry={calfGeo} material={mat}/>)}
       {/* ANKLES */}
       {[-1,1].map(s=><mesh key={s} position={[s*d.footX,d.footH,.008]} material={mat}><sphereGeometry args={[d.calfR*.62,9,7]}/></mesh>)}
@@ -563,6 +625,41 @@ export default function ProceduralHumanoid({
       {[-1,1].map(s=><FootGroup key={s} d={d} side={s===-1?"L":"R"} mat={mat} nailMat={nailMat}/>)}
       {/* AURA */}
       {showAura && <AuraRing radius={d.hipW*1.45} y={0.028}/>} 
+    </group>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FACE OVERLAY FOR GLB
+// ─────────────────────────────────────────────────────────────────────────────
+// When using an authored GLB that has a smooth/blank head geometry, this overlay
+// uses the procedural feature groups (eyes, brows, nose, lips) portalled into
+// the GLB's Head bone to provide facial identity and expressions.
+
+export function ProceduralFaceOverlay({ metrics, skinMaterial, detailMaterial, lipMaterial, eyeColorHex, hairColorHex, expressionWeights = {} }) {
+  const d = useMemo(() => computeDimensions(expressionWeights), [expressionWeights]);
+  const hs = { head: 42, torso: 36, limb: 24, detail: 18 }; // segments 
+  const hHex = /^#[0-9a-f]{6}$/i.test(String(hairColorHex || '')) ? hairColorHex : (HAIR_COLOR_PRESETS[hairColorHex] || HAIR_COLOR_PRESETS.darkbrown);
+  const hairStyle = metrics.hairStyle || 'buzz';
+
+  // We shift the Y down slightly because the GLB head bone origin is slightly 
+  // higher than the procedural head origin
+  const offsetY = -d.headY - 0.04;
+  // We push Z forward slightly to prevent Z-fighting with the GLB skull
+  const offsetZ = 0.02;
+
+  return (
+    <group position={[0, offsetY, offsetZ]}>
+      <EyeGroup d={d} side="L" eyeColorHex={eyeColorHex} skinMat={skinMaterial} blink={expressionWeights.blink ?? 0}/>
+      <EyeGroup d={d} side="R" eyeColorHex={eyeColorHex} skinMat={skinMaterial} blink={expressionWeights.blink ?? 0}/>
+      <BrowMesh d={d} side="L" mat={detailMaterial}/>
+      <BrowMesh d={d} side="R" mat={detailMaterial}/>
+      <NoseMesh d={d} mat={skinMaterial}/>
+      <LipsMesh d={d} lipMat={lipMaterial}/>
+      <EarMesh d={d} side="L" mat={skinMaterial}/>
+      <EarMesh d={d} side="R" mat={skinMaterial}/>
+      <HairCap d={d} hairStyle={hairStyle} hairColorHex={hHex} segments={hs.head} />
+      <HairCards d={d} hairStyle={hairStyle} hairColorHex={hHex}/>
     </group>
   );
 }

@@ -25,11 +25,14 @@
  *   the same group as the body mesh, positioned at anatomical landmarks.
  */
 
-import React, { useRef, useCallback, useState } from "react";
+/* eslint-disable react-refresh/only-export-components */
+
+import React, { useRef, useCallback } from "react";
 import { useThree }                             from "@react-three/fiber";
 import * as THREE                               from "three";
 
 import use3DStore from "../../store/use3DStore";
+import { computeHeightScale } from "./metricsToBlendshapes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BODY PART REGION DEFINITIONS
@@ -146,16 +149,15 @@ export const BODY_PART_MAP = Object.fromEntries(
 // ─────────────────────────────────────────────────────────────────────────────
 
 function HitZoneMesh({ region, onHit, onUnhover }) {
-  const [hovered, setHovered] = useState(false);
   const { gl } = useThree();
 
   const handlePointerEnter = useCallback(() => {
-    setHovered(true);
+    // eslint-disable-next-line react-hooks/immutability
     gl.domElement.style.cursor = "pointer";
   }, [gl]);
 
   const handlePointerLeave = useCallback(() => {
-    setHovered(false);
+    // eslint-disable-next-line react-hooks/immutability
     gl.domElement.style.cursor = "auto";
     onUnhover?.();
   }, [gl, onUnhover]);
@@ -215,17 +217,21 @@ function HitZoneMesh({ region, onHit, onUnhover }) {
 import { useShallow } from 'zustand/react/shallow';
 
 /**
- * @param {{ clonePosition: [number, number, number] }} props
+ * @param {{ clonePosition: [number, number, number], cloneKey?: 'A'|'B' }} props
  */
-export default function BodyPartInteraction({ clonePosition = [0, 0, 0] }) {
+export default function BodyPartInteraction({ clonePosition = [0, 0, 0], cloneKey = 'A' }) {
   const prevFocused   = useRef(null);
   const lastClickTime = useRef(0);
 
-  const { setFocusedBodyPart, focusedBodyPart, setCameraPreset } = use3DStore(
+  const { setFocusedBodyPart, focusedBodyPart, setCameraPreset, heightScale } = use3DStore(
     useShallow((s) => ({
       setFocusedBodyPart: s.setFocusedBodyPart,
       focusedBodyPart:    s.focusedBodyPart,
       setCameraPreset:    s.setCameraPreset,
+      heightScale: computeHeightScale(
+        cloneKey === 'B' ? s.cloneB.metrics : s.cloneA.metrics,
+        cloneKey === 'B' ? s.cloneA.metrics : {},
+      ),
     }))
   );
 
@@ -261,7 +267,7 @@ export default function BodyPartInteraction({ clonePosition = [0, 0, 0] }) {
   }, []);
 
   return (
-    <group position={clonePosition} name="hit-zones">
+    <group position={clonePosition} scale={[1, heightScale, 1]} name="hit-zones">
       {BODY_PART_REGIONS.map((region) => (
         <HitZoneMesh
           key={region.name}

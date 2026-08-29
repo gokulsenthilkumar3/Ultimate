@@ -22,6 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.fleet/
+.cursor/
+*.iml
 
 # Vite cache
 .vite/
@@ -40,6 +43,8 @@ test-results/
 # AI context files (never commit)
 Claude.md
 *.claude.md
+.claude/
+.agents/plugins/
 
 # One-off scripts output
 *.tmp
@@ -53,10 +58,21 @@ Claude.md
 *.sqlite3
 dev.db
 
-# Build output
+# Build & Test output
 build/
 coverage/
+.build_test/
+.vercel/
+.netlify/
 
+# OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-.claude/
-.agents/plugins/
+# Caches
+.eslintcache
+.npm/

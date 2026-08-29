@@ -10,7 +10,7 @@ import {
 
 describe('physique profile mapping', () => {
   it('maps database fields without inventing missing measurements', () => {
-    expect(bodyProfileToMetrics({ weightKg: 70, chestCm: null })).toEqual({ weight: 70 });
+    expect(bodyProfileToMetrics({ heightCm: 178, weightKg: 70, chestCm: null })).toEqual({ height: 178, weight: 70 });
     expect(bodyProfileToGoals({ targetWeightKg: 80 }, { goalMetrics: { calves: 41 } })).toEqual({ weight: 80, calves: 41 });
   });
 
