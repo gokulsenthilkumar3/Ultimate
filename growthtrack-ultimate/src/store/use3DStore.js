@@ -230,23 +230,43 @@ const sanitizeCinematicState = (value = {}) => {
 const MORPH_RANGES = {
   weight:    { min: 45,  max: 130 },
   bodyFat:   { min: 5,   max: 40  },
+  leanMass:  { min: 35,  max: 95  },
+  skeletalMuscle: { min: 20, max: 65 },
   chest:     { min: 80,  max: 130 },
+  chestDepth: { min: 15, max: 38 },
   shoulders: { min: 90,  max: 140 },
+  shoulderBreadth: { min: 32, max: 58 },
+  bideltoidBreadth: { min: 36, max: 65 },
   waist:     { min: 65,  max: 110 },
   arms:      { min: 28,  max: 55  },
   forearm:   { min: 22,  max: 40  },
   thighs:    { min: 45,  max: 75  },
   hips:      { min: 80,  max: 115 },
+  pelvicBreadth: { min: 25, max: 45 },
   glutes:    { min: 80,  max: 120 },
   calves:    { min: 30,  max: 50  },
   neck:      { min: 32,  max: 48  },
+  underbust: { min: 65, max: 120 },
+  highHip:   { min: 70, max: 120 },
+  wrist:     { min: 13, max: 24 },
+  elbow:     { min: 20, max: 38 },
   torsoLength:{ min: 44,  max: 58  },
+  neckLength: { min: 7, max: 16 },
   upperArm:  { min: 28,  max: 40  },
   lowerArm:  { min: 24,  max: 35  },
   handLength:{ min: 17,  max: 22  },
   legLength: { min: 82,  max: 98  },
   footLength:{ min: 24,  max: 31  },
   headCirc:  { min: 52,  max: 62  },
+  sittingHeight: { min: 70, max: 110 },
+  inseam:    { min: 65, max: 100 },
+  faceWidth: { min: 12, max: 20 },
+  faceHeight: { min: 16, max: 26 },
+  eyeSpacing: { min: 2.5, max: 8 },
+  earLength: { min: 4, max: 8 },
+  earWidth: { min: 2, max: 5 },
+  noseLength: { min: 3, max: 7 },
+  noseWidth: { min: 2, max: 5 },
   brow_depth: { min: 0, max: 1 },
   nose_bridge_width: { min: 0, max: 1 },
   nose_tip_size: { min: 0, max: 1 },
@@ -271,6 +291,13 @@ const normalise = (value, key) => {
   return Math.max(0, Math.min(1, (numericValue - range.min) / (range.max - range.min)));
 };
 
+const averageMetric = (...values) => {
+  const valid = values.map(Number).filter(Number.isFinite);
+  return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : undefined;
+};
+
+const firstMetric = (...values) => values.find((value) => value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)));
+
 /**
  * Computes the canonical body and shader channel weights from a BodyMetrics
  * object. Geometry channels map to authored/procedural morph targets; shader
@@ -279,7 +306,22 @@ const normalise = (value, key) => {
  * @param {BodyMetrics} metrics
  * @returns {Object} blend shape weights
  */
-export const computeMorphWeights = (metrics) => constrainMorphWeights({
+export const computeMorphWeights = (metrics = {}) => {
+  const armCirc = firstMetric(averageMetric(metrics.leftUpperArm, metrics.rightUpperArm), metrics.arms);
+  const forearmCirc = firstMetric(averageMetric(metrics.leftForearm, metrics.rightForearm), metrics.forearm);
+  const thighCirc = firstMetric(averageMetric(metrics.leftThigh, metrics.rightThigh), metrics.thighs);
+  const calfCirc = firstMetric(averageMetric(metrics.leftCalf, metrics.rightCalf), metrics.calves);
+  const hipCirc = firstMetric(averageMetric(metrics.leftHip, metrics.rightHip), metrics.hips);
+  const shoulderValue = firstMetric(metrics.shoulderBreadth, metrics.bideltoidBreadth, metrics.shoulders);
+  const shoulderRange = metrics.shoulderBreadth != null ? 'shoulderBreadth' : metrics.bideltoidBreadth != null ? 'bideltoidBreadth' : 'shoulders';
+  const hipValue = firstMetric(metrics.pelvicBreadth, hipCirc);
+  const hipRange = metrics.pelvicBreadth != null ? 'pelvicBreadth' : 'hips';
+  const chestDepthValue = metrics.chestDepth != null ? normalise(metrics.chestDepth, 'chestDepth') : normalise(metrics.chest, 'chest');
+  const legLengthValue = metrics.inseam != null ? normalise(metrics.inseam, 'inseam') : normalise(metrics.legLength ?? (metrics.height ? metrics.height * 0.52 : undefined), 'legLength');
+  const torsoValue = firstMetric(metrics.torsoLength, metrics.sittingHeight, metrics.height ? metrics.height * 0.28 : undefined);
+  const torsoRange = metrics.torsoLength != null ? 'torsoLength' : metrics.sittingHeight != null ? 'sittingHeight' : 'torsoLength';
+
+  return constrainMorphWeights({
   // MASS / FAT
   overall_mass:    normalise(metrics.weight,    "weight"),
   gut_volume:      Math.max(
@@ -289,47 +331,47 @@ export const computeMorphWeights = (metrics) => constrainMorphWeights({
   face_roundness:  normalise(metrics.bodyFat,   "bodyFat") * 0.7,
 
   // CHEST / UPPER BODY
-  chest_depth:     normalise(metrics.chest,     "chest"),
+  chest_depth:     chestDepthValue,
   pec_thickness:   normalise(metrics.chest,     "chest") * 0.85,
 
   // SHOULDERS
-  deltoid_width:   normalise(metrics.shoulders, "shoulders"),
-  trap_swell:      normalise(metrics.shoulders, "shoulders") * 0.6,
+  deltoid_width:   normalise(shoulderValue, shoulderRange),
+  trap_swell:      normalise(shoulderValue, shoulderRange) * 0.6,
 
   // WAIST / CORE
   waist_narrow:    1 - normalise(metrics.waist, "waist"), // inverted: smaller waist = more narrow
   oblique_def:     1 - normalise(metrics.waist, "waist") * 0.7,
 
   // ARMS
-  bicep_peak:      normalise(metrics.arms,      "arms"),
-  tricep_horse:    normalise(metrics.arms,      "arms") * 0.9,
-  forearm_girth:   normalise(metrics.forearm,   "forearm"),
+  bicep_peak:      normalise(armCirc,           "arms"),
+  tricep_horse:    normalise(armCirc,           "arms") * 0.9,
+  forearm_girth:   normalise(forearmCirc,       "forearm"),
 
   // HIPS / GLUTES
   glute_volume:    normalise(metrics.glutes,    "glutes"),
-  hip_width:       normalise(metrics.hips,      "hips"),
+  hip_width:       normalise(hipValue,           hipRange),
 
   // THIGHS / LOWER
-  quad_sweep:      normalise(metrics.thighs,    "thighs"),
-  ham_thickness:   normalise(metrics.thighs,    "thighs") * 0.8,
+  quad_sweep:      normalise(thighCirc,          "thighs"),
+  ham_thickness:   normalise(thighCirc,          "thighs") * 0.8,
 
   // CALVES
-  calf_diamond:    normalise(metrics.calves,    "calves"),
+  calf_diamond:    normalise(calfCirc,           "calves"),
   ankle_width:     normalise(metrics.ankle,     "ankle"),
 
   // NECK
   neck_thickness:  normalise(metrics.neck,      "neck"),
   trap_rise:       normalise(metrics.neck,      "neck") * 0.5,
-  torso_length:    normalise(metrics.torsoLength ?? (metrics.height ? metrics.height * 0.28 : 50), "torsoLength"),
-  shoulder_slope:   normalise(metrics.shoulders, "shoulders") * 0.5,
-  clavicle_width:   normalise(metrics.shoulders, "shoulders") * 0.8,
-  ribcage_depth:    normalise(metrics.chest,     "chest") * 0.75,
-  pelvis_width:     normalise(metrics.hips,      "hips") * 0.85,
-  neck_length:      normalise(metrics.neck,      "neck") * 0.45,
+  torso_length:    normalise(torsoValue, torsoRange),
+  shoulder_slope:   normalise(shoulderValue, shoulderRange) * 0.5,
+  clavicle_width:   normalise(shoulderValue, shoulderRange) * 0.8,
+  ribcage_depth:    chestDepthValue * 0.75,
+  pelvis_width:     normalise(hipValue, hipRange) * 0.85,
+  neck_length:      normalise(metrics.neckLength ?? metrics.neck, metrics.neckLength != null ? "neckLength" : "neck") * 0.45,
   upper_arm_length: normalise(metrics.upperArm ?? 34, "upperArm"),
   forearm_length:   normalise(metrics.lowerArm ?? 29, "lowerArm"),
   hand_length:      normalise(metrics.handLength ?? 19, "handLength"),
-  leg_length:       normalise(metrics.legLength ?? (metrics.height ? metrics.height * 0.52 : 90), "legLength"),
+  leg_length:       legLengthValue,
   foot_length:      normalise(metrics.footLength ?? 27, "footLength"),
   head_circumference: normalise(metrics.headCirc ?? 57, "headCirc"),
   brow_depth:        normalise(metrics.brow_depth ?? 0.35, "brow_depth"),
@@ -340,13 +382,13 @@ export const computeMorphWeights = (metrics) => constrainMorphWeights({
   chin_projection:   normalise(metrics.chin_projection ?? 0.30, "chin_projection"),
   lip_fullness:      normalise(metrics.lip_fullness ?? 0.42, "lip_fullness"),
   eye_size:          normalise(metrics.eye_size ?? 0.40, "eye_size"),
-  cheekbone_width:   normalise(metrics.bodyFat,   "bodyFat") * 0.35 + normalise(metrics.shoulders, "shoulders") * 0.15,
+  cheekbone_width:   normalise(metrics.bodyFat,   "bodyFat") * 0.35 + normalise(shoulderValue, shoulderRange) * 0.15,
   forehead_height:   normalise(metrics.headCirc ?? 57, "headCirc") * 0.25,
   temple_narrowing:  1 - normalise(metrics.headCirc ?? 57, "headCirc") * 0.15,
   nose_length:       normalise(metrics.bodyFat,   "bodyFat") * 0.18 + 0.15,
   jaw_angle:         normalise(metrics.bodyFat,   "bodyFat") * 0.2,
-  shoulder_drop:     1 - normalise(metrics.shoulders, "shoulders") * 0.3,
-  knee_spacing:     normalise(metrics.hips,      "hips") * 0.22,
+  shoulder_drop:     1 - normalise(shoulderValue, shoulderRange) * 0.3,
+  knee_spacing:     normalise(hipValue,           hipRange) * 0.22,
   ankle_taper:      1 - normalise(metrics.ankle, "ankle") * 0.3,
   hand_splay:       normalise(metrics.handLength ?? 19, "handLength") * 0.25,
   foot_arch:        normalise(metrics.footLength ?? 27, "footLength") * 0.2,
@@ -362,7 +404,8 @@ export const computeMorphWeights = (metrics) => constrainMorphWeights({
 
   // SKIN TONE — passed to shader as Fitzpatrick index 0–5
   fitzpatrick_index: ["I","II","III","IV","V","VI"].indexOf(metrics.skinTone),
-});
+  });
+};
 
 const buildMorphWeights = (metrics = {}, overrides = {}) => constrainMorphWeights({
   ...computeMorphWeights(metrics),

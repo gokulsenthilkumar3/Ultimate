@@ -142,11 +142,12 @@ export default function HumanoidClone({
             : null;
         return createSkinMaterial(toneIndex, variant || bodyMesh?.material || null, {
           bodyHairIntensity: metrics?.bodyHairDensity ?? 0.18,
+          skinColorHex: metrics?.skinColorHex,
           vertexColors: true,
         });
       }
     }
-  }, [bodyMesh, renderMode, metrics?.bodyHairDensity, metrics?.skinTone, skinVariantMaterials]);
+  }, [bodyMesh, renderMode, metrics?.bodyHairDensity, metrics?.skinColorHex, metrics?.skinTone, skinVariantMaterials]);
 
   // The protected anatomy surface uses the same tone but no body atlas. The
   // atlas is laid out for the MakeHuman body UV islands and would otherwise
@@ -154,8 +155,8 @@ export default function HumanoidClone({
   const privateMaterial = useMemo(() => {
     if (renderMode !== "normal") return material;
     const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[metrics?.skinTone] ?? 3;
-    return createSkinMaterial(toneIndex, null);
-  }, [material, metrics?.skinTone, renderMode]);
+    return createSkinMaterial(toneIndex, null, { skinColorHex: metrics?.skinColorHex });
+  }, [material, metrics?.skinColorHex, metrics?.skinTone, renderMode]);
 
   // The authored GLB carries real MakeHuman eye and hair-card textures. Clone
   // their materials per figure so the two comparison models can customize
@@ -323,6 +324,7 @@ export default function HumanoidClone({
     if (bodyMesh.material?.uniforms) {
       updateSkinUniforms(bodyMesh.material, {
         fitzpatrickIndex:     interpolator.getWeight("fitzpatrick_index"),
+        skinColorHex:         metrics?.skinColorHex,
         vascularityIntensity: interpolator.getWeight("vascularity_intensity"),
         bodyHairIntensity:    metrics?.bodyHairDensity ?? 0.18,
         time: _.clock.elapsedTime
@@ -352,8 +354,11 @@ export default function HumanoidClone({
         visible={visible}
         showAura={showAura}
         skinTone={metrics?.skinTone ?? "IV"}
+        skinColorHex={metrics?.skinColorHex}
+        lipColorHex={metrics?.lipColor}
+        nailColorHex={metrics?.nailColor}
         eyeColor={metrics?.eyeColor ?? "#6b3b20"}
-        hairColor={metrics?.hairColor ?? "darkbrown"}
+        hairColor={metrics?.hairColor ?? metrics?.hairColorHex ?? "darkbrown"}
         expressionWeights={weights}
         quality={gpuTier === "LOW" ? "LOW" : gpuTier === "MED" ? "MED" : "HIGH"}
       />

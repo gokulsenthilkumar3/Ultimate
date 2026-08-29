@@ -215,7 +215,7 @@ export default function Overview({ setActiveTab }) {
           .then(r => r.json())
           .then(data => resolve(data.current))
           .catch(() => resolve(null));
-      }, () => resolve(null));
+      }, () => resolve(null), { timeout: 5000 });
     }),
     staleTime: 1000 * 60 * 15,
     retry: false

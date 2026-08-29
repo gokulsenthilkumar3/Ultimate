@@ -41,8 +41,8 @@ const HAIR_CFG = {
 };
 
 // == Material factories ========================================================
-function makeMat(mode,opacity,tone,quality="HIGH") {
-  const skin = new THREE.Color(FITZPATRICK[tone]||FITZPATRICK.IV);
+function makeMat(mode,opacity,tone,quality="HIGH",skinColorHex=null) {
+  const skin = new THREE.Color(/^#[0-9a-f]{6}$/i.test(String(skinColorHex || '')) ? skinColorHex : (FITZPATRICK[tone]||FITZPATRICK.IV));
   if (mode==="ghost") return new THREE.MeshStandardMaterial({color:"#22D3EE",emissive:"#22D3EE",emissiveIntensity:0.35,roughness:0.1,metalness:0.2,transparent:true,opacity:Math.min(opacity,0.32),depthWrite:false,side:THREE.DoubleSide});
   if (mode==="xray")  return new THREE.MeshStandardMaterial({color:"#818CF8",roughness:0.05,metalness:0.8,transparent:true,opacity:0.4,depthWrite:false});
   if (mode==="delta") return new THREE.MeshStandardMaterial({color:"#F59E0B",emissive:"#7A4800",emissiveIntensity:0.12,roughness:0.55,metalness:0.1});
@@ -73,8 +73,8 @@ function makeDetailMat(tone,quality="HIGH") {
 const makeScleraMat = () => new THREE.MeshPhysicalMaterial({color:"#eee9df",roughness:0.32,clearcoat:0.18,clearcoatRoughness:0.4});
 const makeIrisMat   = (hex) => new THREE.MeshStandardMaterial({color:hex,roughness:0.18,metalness:0.05,emissive:new THREE.Color(hex).multiplyScalar(0.07),emissiveIntensity:1});
 const makePupilMat  = () => new THREE.MeshStandardMaterial({color:"#070707",roughness:0.05,metalness:0.22});
-const makeLipMat    = (tone) => { const t={I:"#d89494",II:"#c27d7b",III:"#ad6868",IV:"#8e4d55",V:"#713e48",VI:"#54303a"}; return new THREE.MeshPhysicalMaterial({color:t[tone]||t.IV,roughness:0.46,clearcoat:0.08,clearcoatRoughness:0.55}); };
-const makeNailMat   = () => new THREE.MeshStandardMaterial({color:"#e8d8c8",roughness:0.10,metalness:0.05,transparent:true,opacity:0.88});
+const makeLipMat    = (tone, customColor) => { const t={I:"#d89494",II:"#c27d7b",III:"#ad6868",IV:"#8e4d55",V:"#713e48",VI:"#54303a"}; return new THREE.MeshPhysicalMaterial({color:/^#[0-9a-f]{6}$/i.test(String(customColor || '')) ? customColor : (t[tone]||t.IV),roughness:0.46,clearcoat:0.08,clearcoatRoughness:0.55}); };
+const makeNailMat   = (customColor) => new THREE.MeshStandardMaterial({color:/^#[0-9a-f]{6}$/i.test(String(customColor || '')) ? customColor : "#e8d8c8",roughness:0.10,metalness:0.05,transparent:true,opacity:0.88});
 const makeHairMat   = (hex) => new THREE.MeshStandardMaterial({color:hex,roughness:0.88,metalness:0.02,side:THREE.DoubleSide,alphaTest:0.38,transparent:true});
 
 // == Geometry builders =========================================================
@@ -345,24 +345,29 @@ const GOLDEN = Math.PI*(3-Math.sqrt(5));
 function HairCards({d,hairStyle,hairColorHex}) {
   const cfg=HAIR_CFG[hairStyle]||HAIR_CFG.short;
   const mat=useMemo(()=>makeHairMat(hairColorHex),[hairColorHex]);
-  const cards=useMemo(()=>{
-    if(!cfg.count)return[];
-    const cov=hairStyle==="long"?0.82:hairStyle==="medium"?0.72:0.62;
-    return Array.from({length:cfg.count},(_,i)=>{
-      const t=i/cfg.count,phi=Math.acos(Math.max(-1,Math.min(1,1-t*cov))),theta=GOLDEN*i;
-      return{nx:Math.sin(phi)*Math.cos(theta),ny:Math.cos(phi),nz:Math.sin(phi)*Math.sin(theta),theta,phi};
-    });
-  },[cfg.count,hairStyle]);
-  if(!cfg.count || hairStyle === "buzz" || hairStyle === "short")return null;
   const r=d.headR*1.025, cW=d.headR*0.175;
+  const meshRef = useRef();
+
+  useEffect(() => {
+    if (!meshRef.current || !cfg.count || hairStyle === "buzz" || hairStyle === "short") return;
+    const cov=hairStyle==="long"?0.82:hairStyle==="medium"?0.72:0.62;
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < cfg.count; i++) {
+      const t=i/cfg.count,phi=Math.acos(Math.max(-1,Math.min(1,1-t*cov))),theta=GOLDEN*i;
+      const nx=Math.sin(phi)*Math.cos(theta),ny=Math.cos(phi),nz=Math.sin(phi)*Math.sin(theta);
+      dummy.position.set(nx*r, ny*r, nz*r);
+      dummy.rotation.set(-phi+Math.PI/2, theta, 0);
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    }
+    meshRef.current.instanceMatrix.needsUpdate = true;
+  }, [cfg.count, hairStyle, r]);
+
+  if(!cfg.count || hairStyle === "buzz" || hairStyle === "short")return null;
   return(
-    <group position={[0,0,0]}>
-      {cards.map((c,i)=>(
-        <mesh key={i} position={[c.nx*r,c.ny*r,c.nz*r]} rotation={[-c.phi+Math.PI/2,c.theta,0]} material={mat}>
-          <planeGeometry args={[cW,cfg.cardH,1,4]}/>
-        </mesh>
-      ))}
-    </group>
+    <instancedMesh ref={meshRef} args={[null, mat, cfg.count]}>
+      <planeGeometry args={[cW,cfg.cardH,1,4]}/>
+    </instancedMesh>
   );
 }
 
@@ -416,7 +421,7 @@ function SculptedSurface({ d, detailMat, segments }) {
 export default function ProceduralHumanoid({
   cloneKey="A", position=[0,0,0], renderMode="normal", opacity=1,
   visible=true, showAura=false, skinTone="IV", eyeColor="#3b7bd4",
-  hairStyle="short", hairColor="darkbrown", expressionWeights={}, quality="HIGH",
+  skinColorHex=null, lipColorHex=null, nailColorHex=null, hairStyle="short", hairColor="darkbrown", expressionWeights={}, quality="HIGH",
 }) {
   const segs = SEGS_BY_QUALITY[quality] || DEFAULT_SEGS;
   const { weights, posture } = use3DStore(useShallow((s) => {
@@ -424,10 +429,10 @@ export default function ProceduralHumanoid({
     return { weights: clone.weights, posture: clone.posture };
   }));
   // Fixed: skinTone and opacity in deps so material recomputes when they change
-  const mat    =useMemo(()=>makeMat(renderMode,opacity,skinTone,quality),[renderMode,opacity,skinTone,quality]);
-  const lipMat =useMemo(()=>makeLipMat(skinTone),[skinTone]);
+  const mat    =useMemo(()=>makeMat(renderMode,opacity,skinTone,quality,skinColorHex),[renderMode,opacity,skinColorHex,skinTone,quality]);
+  const lipMat =useMemo(()=>makeLipMat(skinTone,lipColorHex),[lipColorHex,skinTone]);
   const detailMat =useMemo(()=>makeDetailMat(skinTone,quality),[skinTone,quality]);
-  const nailMat=useMemo(()=>makeNailMat(),[]);
+  const nailMat=useMemo(()=>makeNailMat(nailColorHex),[nailColorHex]);
 
   // Breathing animation state
   const breathT = useRef(cloneKey === "B" ? Math.PI : 0);
@@ -454,12 +459,17 @@ export default function ProceduralHumanoid({
     });
   }, [quality, renderMode, visible]);
 
+  const throttleRef = useRef(0);
   useFrame((_,dt)=>{
     if(!groupRef.current)return;
+    throttleRef.current += dt;
+    if (throttleRef.current < 1/30) return; // Throttle to 30fps max
+    const dtThrottled = throttleRef.current;
+    throttleRef.current = 0;
 
     // ── Breathing idle animation ────────────────────────────────────────────
-    breathT.current += dt;
-    introT.current = Math.min(1, introT.current + dt / 1.15);
+    breathT.current += dtThrottled;
+    introT.current = Math.min(1, introT.current + dtThrottled / 1.15);
     const intro = 1 - Math.pow(1 - introT.current, 3);
     const motion = reduceMotion.current ? 0 : 1;
     const breath = Math.sin(breathT.current * 0.78);
@@ -494,7 +504,7 @@ export default function ProceduralHumanoid({
 
   if(!visible)return null;
   const det=renderMode==="normal";
-  const hHex=HAIR_COLOR_PRESETS[hairColor]||HAIR_COLOR_PRESETS.darkbrown;
+  const hHex=/^#[0-9a-f]{6}$/i.test(String(hairColor || '')) ? hairColor : (HAIR_COLOR_PRESETS[hairColor]||HAIR_COLOR_PRESETS.darkbrown);
   const hs = segs; // shorthand for segment counts
 
   return (

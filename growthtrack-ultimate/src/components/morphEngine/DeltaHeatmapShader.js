@@ -66,11 +66,13 @@ const deltaVertexShader = /* glsl */ `
 
   void main() {
     vUv = uv;
-    #include <morphtarget_vertex>
+    #include <beginnormal_vertex>
+    #include <morphnormal_vertex>
     #include <skinbase_vertex>
     #include <skinnormal_vertex>
     #include <defaultnormal_vertex>
-    #include <morphnormal_vertex>
+    #include <begin_vertex>
+    #include <morphtarget_vertex>
     #include <skinning_vertex>
     #include <project_vertex>
 
@@ -277,9 +279,6 @@ export function createDeltaMaterial() {
       uPulseSpeed:     { value: 1.4 },
       uScanlineOpacity:{ value: 0.08 },
     },
-    skinning:     true,
-    morphTargets: true,
-    morphNormals: true,
     transparent:  false,
     depthWrite:   true,
     side:         THREE.FrontSide,

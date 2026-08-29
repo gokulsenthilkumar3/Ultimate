@@ -49,7 +49,8 @@ export default function Current() {
         () => {
           toast.info('Enable location to load local weather.');
           resolve(null);
-        }
+        },
+        { timeout: 5000 }
       );
     }),
     staleTime: 1000 * 60 * 60, // 1 hour
@@ -161,12 +162,14 @@ export default function Current() {
             </div>
 
             {/* Weather summary */}
-            {weatherLoading ? (
+            {weatherLoading && location ? (
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>Loading weather…</div>
             ) : weatherError ? (
               <div style={{ color: 'rgba(255,100,100,0.9)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <AlertTriangle size={14} /> {weatherError}
               </div>
+            ) : !location ? (
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>Location required</div>
             ) : cur && (
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '3rem', lineHeight: 1 }}>{wmo.icon}</p>

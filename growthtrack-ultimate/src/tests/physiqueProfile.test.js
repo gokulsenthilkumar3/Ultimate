@@ -30,6 +30,45 @@ describe('physique profile mapping', () => {
     });
   });
 
+  it('maps precision measurements and appearance into the 3D profile', () => {
+    expect(bodyProfileToMetrics({
+      leanMassKg: 61.2,
+      shoulderBreadthCm: 48.5,
+      leftUpperArmCircumferenceCm: 36,
+      rightUpperArmCircumferenceCm: 35.7,
+      skinFitzpatrickIndex: 4,
+      skinColorHex: '#A56B42',
+      eyeColorHex: '#4A2A18',
+      anatomyRevealConsent: true,
+    })).toMatchObject({
+      leanMass: 61.2,
+      shoulderBreadth: 48.5,
+      leftUpperArm: 36,
+      rightUpperArm: 35.7,
+      skinFitzpatrickIndex: 4,
+      skinTone: 'V',
+      skinColor: '#A56B42',
+      eyeColor: '#4A2A18',
+      anatomyRevealConsent: true,
+    });
+
+    expect(metricsToBodyProfile({
+      shoulderBreadth: 49,
+      skinColor: '#C68642',
+      hairDensity: 0.72,
+      anatomyRevealConsent: false,
+    }, {})).toMatchObject({
+      shoulderBreadthCm: 49,
+      skinColorHex: '#C68642',
+      hairDensity: 0.72,
+      anatomyRevealConsent: false,
+    });
+  });
+
+  it('can explicitly clear a removed editor value without clearing absent fields', () => {
+    expect(metricsToBodyProfile({ waist: '' }, {}, { includeEmpty: true })).toEqual({ waistCm: null });
+  });
+
   it('calculates progress from the baseline rather than current divided by goal', () => {
     expect(calculateGoalProgress({ baseline: { weight: 60 }, current: { weight: 70 }, goal: { weight: 80 } }).score).toBe(50);
     expect(calculateGoalProgress({ baseline: { bodyFat: 20 }, current: { bodyFat: 15 }, goal: { bodyFat: 10 } }).score).toBe(50);

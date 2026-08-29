@@ -286,8 +286,8 @@ const useStore = create<any>()(
 
       checkServerHealth: async () => {
         try {
-          const res = await fetch(`${((import.meta as any).env.VITE_API_URL || 'http://localhost:3001')}/api/health`, { method: 'GET', signal: AbortSignal.timeout(4000) });
-          set({ serverStatus: res.ok ? 'online' : 'offline' });
+          await apiRequest('/api/health', { method: 'GET', timeoutMs: 4000 });
+          set({ serverStatus: 'online' });
         } catch {
           set({ serverStatus: 'offline' });
         }

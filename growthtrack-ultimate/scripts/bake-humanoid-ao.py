@@ -22,7 +22,7 @@ DEFAULT_ASSETS = (
     ROOT / "public/assets/models/humanoid-base-lite.glb",
 )
 ALBEDO_NAMES = ("SkinAlbedo_YoungMale", "SkinAlbedo_Light", "SkinAlbedo_Deep")
-AO_NAME = "SkinAO_Roughness"
+AO_NAME = "SkinAO_Roughness_GeometryBaked"
 AO_STRENGTH = 0.65
 
 

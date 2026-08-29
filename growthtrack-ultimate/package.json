@@ -16,6 +16,7 @@
     "test:e2e:ui": "playwright test --ui",
     "analyze": "vite build --mode analyze",
     "validate:glb": "node scripts/validate-glb.js",
+    "bake:surface": "node scripts/bake-geometry-surface.mjs --repack-albedo",
     "glb:health": "node scripts/glb-health.js",
     "glb:priority-fixes": "node scripts/glb-priority-fixes.js",
     "quality:gate": "node scripts/quality-gate.js",
