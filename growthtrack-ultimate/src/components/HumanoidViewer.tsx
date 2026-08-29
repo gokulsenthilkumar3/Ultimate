@@ -33,6 +33,7 @@ import use3DStore, { CINEMATIC_PRESETS } from '../store/use3DStore';
 import useStore from '../store/useStore';
 import { BODY_APPEARANCE_FIELDS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile } from '../lib/physiqueProfile';
 import { buildRendererQualityGate } from '../lib/rendererQualityGate';
+import { getMetricCompleteness } from '../lib/bodyMetricFallbacks';
 import { USER, BODY_PARTS, STATUS } from '../data/userData';
 import { useToast } from '../hooks/useToast';
 import { trackEvent } from '../lib/analytics';
@@ -522,6 +523,7 @@ export default function HumanoidViewer() {
   // ── Overall progress score
   const baselineMetrics = useMemo(() => getBaselineMetrics(snapshots, currentMetrics), [currentMetrics, snapshots]);
   const progressSummary = useMemo(() => calculateGoalProgress({ baseline: baselineMetrics, current: currentMetrics, goal: goalMetrics }), [baselineMetrics, currentMetrics, goalMetrics]);
+  const metricCompleteness = useMemo(() => getMetricCompleteness(currentMetrics), [currentMetrics]);
   const overallScore = progressSummary.score ?? 0;
 
   // ── Export screenshot
@@ -712,11 +714,16 @@ export default function HumanoidViewer() {
               <span>{viewMode === 'DUAL' ? 'Now vs destination' : `${viewMode} inspection`}</span>
             </div>
             <div className="chamber-readout__metrics">
-              <div><span>Weight</span><strong>{Number(currentMetrics.weight ?? 0).toFixed(1)}<small> kg</small></strong></div>
-              <div><span>Body fat</span><strong>{Number(currentMetrics.bodyFat ?? 0).toFixed(1)}<small>%</small></strong></div>
-              <div><span>Goal delta</span><strong className={Number(goalMetrics.weight ?? 0) - Number(currentMetrics.weight ?? 0) >= 0 ? 'positive' : 'negative'}>{(Number(goalMetrics.weight ?? 0) - Number(currentMetrics.weight ?? 0) >= 0 ? '+' : '')}{(Number(goalMetrics.weight ?? 0) - Number(currentMetrics.weight ?? 0)).toFixed(1)}<small> kg</small></strong></div>
+              <div><span>Weight</span><strong>{Number.isFinite(Number(currentMetrics.weight)) ? Number(currentMetrics.weight).toFixed(1) : '—'}{Number.isFinite(Number(currentMetrics.weight)) && <small> kg</small>}</strong></div>
+              <div><span>Body fat</span><strong>{Number.isFinite(Number(currentMetrics.bodyFat)) ? Number(currentMetrics.bodyFat).toFixed(1) : '—'}{Number.isFinite(Number(currentMetrics.bodyFat)) && <small>%</small>}</strong></div>
+              <div><span>Goal delta</span>{Number.isFinite(Number(goalMetrics.weight)) && Number.isFinite(Number(currentMetrics.weight)) ? (() => {
+                const delta = Number(goalMetrics.weight) - Number(currentMetrics.weight);
+                return <strong className={delta >= 0 ? 'positive' : 'negative'}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}<small> kg</small></strong>;
+              })() : <strong>—</strong>}</div>
             </div>
-            <div className="chamber-readout__footer"><span>SCAN RESOLUTION</span><strong>{quality === 'HIGH' ? '12.4M' : quality === 'MED' ? '6.2M' : '2.8M'} pts</strong></div>
+            <div className="chamber-readout__footer" title={metricCompleteness.missing.length ? `Add ${metricCompleteness.missing.join(', ')} for a more accurate digital twin.` : 'All high-value measurements are present.'}>
+              <span>PROFILE PRECISION</span><strong>{metricCompleteness.percent}%</strong>
+            </div>
           </aside>
 
           <div className="chamber-stage-badge">

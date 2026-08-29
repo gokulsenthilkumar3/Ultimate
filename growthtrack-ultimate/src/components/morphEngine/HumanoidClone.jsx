@@ -23,10 +23,12 @@ import * as THREE                             from "three";
 import { useModelLoader }       from "./useModelLoader";
 import { useMorphInterpolator } from "./MorphInterpolator";
 import PostureRig               from "./PostureRig";
-import ProceduralHumanoid       from "./ProceduralHumanoid";
+import ProceduralHumanoid, { ProceduralFaceOverlay } from "./ProceduralHumanoid";
 import use3DStore               from "../../store/use3DStore";
 import { createSkinMaterial, updateSkinUniforms, createRimAuraMaterial, updateAuraUniforms } from "./UberShader";
 import { createClothMaterial, isClothPreset } from "./WardrobeShader";
+import { resolveBodyMetrics } from "../../lib/bodyMetricFallbacks";
+import { computeHeightScale } from "./metricsToBlendshapes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MATERIAL FACTORY
@@ -76,9 +78,19 @@ export default function HumanoidClone({
   const clothOverlayRef = useRef();
   const mouthRef = useRef();
 
+  const modelPreference = use3DStore(useShallow((s) => {
+    const metrics = cloneKey === "B" ? s.cloneB.metrics : s.cloneA.metrics;
+    const current = s.cloneA.metrics;
+    return {
+      biologicalSex: metrics.biologicalSex || current.biologicalSex,
+      modelPreset: metrics.modelPreset || current.modelPreset,
+      avatarAsset: metrics.avatarAsset || current.avatarAsset,
+    };
+  }));
+
   // ── Load model ──────────────────────────────────────────────────────────────
-  const { bodyMesh, morphIndexMap, morphMeshes, privateAnatomyMesh, featureMeshes, skinVariantMaterials, skeleton, scene, diagnostics } = useModelLoader();
-  const useProcedural = !bodyMesh || diagnostics?.isSuspicious || Object.keys(morphIndexMap || {}).length < 12;
+  const { bodyMesh, morphIndexMap, morphMeshes, privateAnatomyMesh, featureMeshes, skinVariantMaterials, skeleton, scene, diagnostics } = useModelLoader(modelPreference);
+  const useProcedural = !bodyMesh || diagnostics?.isSuspicious;
   const setModelFrame = use3DStore((s) => s.setModelFrame);
   const setModelDiagnostics = use3DStore((s) => s.setModelDiagnostics);
   const gpuTier = use3DStore((s) => s.gpuTier);
@@ -86,15 +98,24 @@ export default function HumanoidClone({
   const wardrobe = use3DStore((s) => s.wardrobeState);
 
   // ── Store slice ─────────────────────────────────────────────────────────────
-  const { weights, metrics, posture } = use3DStore(
+  const { weights, metrics, posture, inheritedMetrics } = use3DStore(
     useShallow((s) => {
       const clone = cloneKey === "B" ? s.cloneB : s.cloneA;
       return {
         weights: clone.weights,
         metrics: clone.metrics,
         posture: clone.posture,
+        inheritedMetrics: cloneKey === "B" ? s.cloneA.metrics : null,
       };
     })
+  );
+  const renderMetrics = useMemo(() => resolveBodyMetrics(
+    metrics,
+    inheritedMetrics || {},
+  ).metrics, [inheritedMetrics, metrics]);
+  const heightScale = useMemo(
+    () => computeHeightScale(renderMetrics),
+    [renderMetrics],
   );
 
   // ── Morph interpolator ──────────────────────────────────────────────────────
@@ -114,12 +135,12 @@ export default function HumanoidClone({
     
     // Auto-normalize scale and position for arbitrary GLBs
     setModelFrame({
-      center,
-      size,
-      height: Math.max(size.y, 0.001),
-      radius: Math.max(size.x, size.y, size.z) * 0.5,
+      center: center.clone().setY(center.y * heightScale),
+      size: size.clone().setY(size.y * heightScale),
+      height: Math.max(size.y * heightScale, 0.001),
+      radius: Math.max(size.x, size.y * heightScale, size.z) * 0.5,
     });
-  }, [bodyMesh, scene, setModelFrame, useProcedural]);
+  }, [bodyMesh, heightScale, scene, setModelFrame, useProcedural]);
 
   useEffect(() => {
     setModelDiagnostics(diagnostics ? {
@@ -134,36 +155,36 @@ export default function HumanoidClone({
       case "ghost": return createGhostMaterial();
       case "delta": return createDeltaMaterial();
       default: {
-        const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[metrics?.skinTone] ?? 3;
+        const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[renderMetrics?.skinTone] ?? 3;
         const variant = toneIndex <= 1
           ? skinVariantMaterials?.SkinVariant_Light
           : toneIndex >= 4
             ? skinVariantMaterials?.SkinVariant_Deep
             : null;
         return createSkinMaterial(toneIndex, variant || bodyMesh?.material || null, {
-          bodyHairIntensity: metrics?.bodyHairDensity ?? 0.18,
-          skinColorHex: metrics?.skinColorHex,
+          bodyHairIntensity: renderMetrics?.bodyHairDensity ?? 0.18,
+          skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,
           vertexColors: true,
         });
       }
     }
-  }, [bodyMesh, renderMode, metrics?.bodyHairDensity, metrics?.skinColorHex, metrics?.skinTone, skinVariantMaterials]);
+  }, [bodyMesh, renderMetrics, renderMode, skinVariantMaterials]);
 
   // The protected anatomy surface uses the same tone but no body atlas. The
   // atlas is laid out for the MakeHuman body UV islands and would otherwise
   // paint unrelated chest/face pixels across the private mesh.
   const privateMaterial = useMemo(() => {
     if (renderMode !== "normal") return material;
-    const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[metrics?.skinTone] ?? 3;
-    return createSkinMaterial(toneIndex, null, { skinColorHex: metrics?.skinColorHex });
-  }, [material, metrics?.skinColorHex, metrics?.skinTone, renderMode]);
+    const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[renderMetrics?.skinTone] ?? 3;
+    return createSkinMaterial(toneIndex, null, { skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex });
+  }, [material, renderMetrics, renderMode]);
 
   // The authored GLB carries real MakeHuman eye and hair-card textures. Clone
   // their materials per figure so the two comparison models can customize
   // colour independently without mutating the shared GLTF cache.
   const featureMaterials = useMemo(() => {
-    const eyeColor = metrics?.eyeColor || '#6b3b20';
-    const hairColor = metrics?.hairColor || '#21140f';
+    const eyeColor = renderMetrics?.eyeColor || '#6b3b20';
+    const hairColor = renderMetrics?.hairColor || '#21140f';
     const materials = {};
     (featureMeshes || []).forEach(({ mesh, feature }) => {
       const source = Array.isArray(mesh?.material) ? mesh.material[0] : mesh?.material;
@@ -196,7 +217,7 @@ export default function HumanoidClone({
       }
     });
     return materials;
-  }, [featureMeshes, metrics?.eyeColor, metrics?.hairColor]);
+  }, [featureMeshes, renderMetrics]);
 
   const headBone = useMemo(
     () => skeleton?.bones?.find((bone) => bone.name === 'Head') || null,
@@ -232,12 +253,12 @@ export default function HumanoidClone({
     (featureMeshes || []).forEach(({ mesh, feature }) => {
       const next = featureMaterials[feature];
       if (next) mesh.material = next;
-      if (feature === 'hair') mesh.visible = (metrics?.hairStyle || 'short') !== 'bald';
+      if (feature === 'hair') mesh.visible = (renderMetrics?.hairStyle || 'short') !== 'bald';
       mesh.castShadow = true;
       mesh.receiveShadow = false;
     });
     return () => Object.values(featureMaterials).forEach((featureMaterial) => featureMaterial.dispose());
-  }, [featureMeshes, featureMaterials, metrics?.hairStyle]);
+  }, [featureMeshes, featureMaterials, renderMetrics]);
 
   // WardrobeShader is intentionally a surface overlay: it reuses the authored
   // body's exact geometry, skinning and morph targets, so clothing cannot drift
@@ -324,9 +345,9 @@ export default function HumanoidClone({
     if (bodyMesh.material?.uniforms) {
       updateSkinUniforms(bodyMesh.material, {
         fitzpatrickIndex:     interpolator.getWeight("fitzpatrick_index"),
-        skinColorHex:         metrics?.skinColorHex,
+        skinColorHex:         renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,
         vascularityIntensity: interpolator.getWeight("vascularity_intensity"),
-        bodyHairIntensity:    metrics?.bodyHairDensity ?? 0.18,
+        bodyHairIntensity:    renderMetrics?.bodyHairDensity ?? 0.18,
         time: _.clock.elapsedTime
       });
     }
@@ -353,13 +374,14 @@ export default function HumanoidClone({
         opacity={opacity}
         visible={visible}
         showAura={showAura}
-        skinTone={metrics?.skinTone ?? "IV"}
-        skinColorHex={metrics?.skinColorHex}
-        lipColorHex={metrics?.lipColor}
-        nailColorHex={metrics?.nailColor}
-        eyeColor={metrics?.eyeColor ?? "#6b3b20"}
-        hairColor={metrics?.hairColor ?? metrics?.hairColorHex ?? "darkbrown"}
+        skinTone={renderMetrics?.skinTone ?? "IV"}
+        skinColorHex={renderMetrics?.skinColor ?? renderMetrics?.skinColorHex}
+        lipColorHex={renderMetrics?.lipColor}
+        nailColorHex={renderMetrics?.nailColor}
+        eyeColor={renderMetrics?.eyeColor ?? "#6b3b20"}
+        hairColor={renderMetrics?.hairColor ?? "darkbrown"}
         expressionWeights={weights}
+        heightScale={heightScale}
         quality={gpuTier === "LOW" ? "LOW" : gpuTier === "MED" ? "MED" : "HIGH"}
       />
     );
@@ -367,24 +389,37 @@ export default function HumanoidClone({
 
   // ── GLB path ─────────────────────────────────────────────────────────────────
   return (
-    <group ref={groupRef} position={position} name={`clone-${cloneKey}`}>
+    <group ref={groupRef} position={position} scale={[1, heightScale, 1]} name={`clone-${cloneKey}`}>
       {scene && <primitive object={scene} />}
 
       {/* Teeth/tongue are currently procedural production geometry because the
           authored GLB has no mouth-detail nodes. Portalling them into Head keeps
           them correct under every posture instead of using a scene-space patch. */}
       {headBone && createPortal(
-        <group ref={mouthRef} position={[0, -0.02, 0.302]} visible={false} name="GrowthTrackMouthDetails">
-          <mesh material={mouthMaterials.interior} scale={[1.15, 0.68, 0.34]} name="GrowthTrackMouthInterior">
-            <sphereGeometry args={[0.036, 24, 14]} />
-          </mesh>
-          <mesh position={[0, 0.010, 0.014]} material={mouthMaterials.teeth} scale={[1.0, 0.50, 0.22]} name="GrowthTrackTeeth">
-            <boxGeometry args={[0.076, 0.022, 0.008, 4, 2, 1]} />
-          </mesh>
-          <mesh position={[0, -0.012, 0.018]} material={mouthMaterials.tongue} scale={[1.0, 0.64, 0.30]} name="GrowthTrackTongue">
-            <sphereGeometry args={[0.024, 24, 14]} />
-          </mesh>
-        </group>,
+        <>
+          <group ref={mouthRef} position={[0, -0.02, 0.302]} visible={false} name="GrowthTrackMouthDetails">
+            <mesh material={mouthMaterials.interior} scale={[1.15, 0.68, 0.34]} name="GrowthTrackMouthInterior">
+              <sphereGeometry args={[0.036, 24, 14]} />
+            </mesh>
+            <mesh position={[0, 0.010, 0.014]} material={mouthMaterials.teeth} scale={[1.0, 0.50, 0.22]} name="GrowthTrackTeeth">
+              <boxGeometry args={[0.076, 0.022, 0.008, 4, 2, 1]} />
+            </mesh>
+            <mesh position={[0, -0.012, 0.018]} material={mouthMaterials.tongue} scale={[1.0, 0.64, 0.30]} name="GrowthTrackTongue">
+              <sphereGeometry args={[0.024, 24, 14]} />
+            </mesh>
+          </group>
+          {renderMode === "normal" && (
+            <ProceduralFaceOverlay 
+              metrics={renderMetrics}
+              skinMaterial={material}
+              detailMaterial={material}
+              lipMaterial={mouthMaterials.lips || mouthMaterials.tongue}
+              eyeColorHex={renderMetrics.eyeColor || '#6b3b20'}
+              hairColorHex={renderMetrics.hairColor || '#21140f'}
+              expressionWeights={weights}
+            />
+          )}
+        </>,
         headBone,
       )}
 

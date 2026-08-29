@@ -3,6 +3,7 @@ export const BODY_METRIC_GROUPS = [
     id: 'composition',
     label: 'Body composition',
     metrics: [
+      { key: 'height', label: 'Height', unit: 'cm', currentField: 'heightCm' },
       { key: 'weight', label: 'Weight', unit: 'kg', currentField: 'weightKg', targetField: 'targetWeightKg' },
       { key: 'bodyFat', label: 'Body fat', unit: '%', currentField: 'bodyFatPct', targetField: 'targetBodyFatPct', direction: 'decrease' },
       { key: 'leanMass', label: 'Lean mass', unit: 'kg', currentField: 'leanMassKg', targetField: 'targetLeanMassKg' },

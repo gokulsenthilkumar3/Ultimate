@@ -96,10 +96,12 @@ export default function ChamberFloor() {
         <planeGeometry args={[20, 20]} />
         <meshPhysicalMaterial
           color={profile.floor}
-          metalness={0.18}
-          roughness={0.82}
-          clearcoat={0.1}
-          clearcoatRoughness={0.68}
+          metalness={0.52}
+          roughness={0.58}
+          clearcoat={0.22}
+          clearcoatRoughness={0.48}
+          reflectivity={0.88}
+          envMapIntensity={0.62}
         />
       </mesh>
 
@@ -116,7 +118,20 @@ export default function ChamberFloor() {
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.039, 0]}>
         <ringGeometry args={[1.14, 1.17, 128]} />
-        <meshBasicMaterial color={profile.accent} transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <meshBasicMaterial color={profile.accent} transparent opacity={0.28} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+
+      {/* Subtle radial gradient glow behind models — adds atmospheric depth */}
+      <mesh position={[0, 0.8, -2.1]} rotation={[0, 0, 0]}>
+        <planeGeometry args={[5.5, 6.5]} />
+        <meshBasicMaterial
+          color={profile.rim}
+          transparent
+          opacity={0.045}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
       <FloorGrid profile={profile} />

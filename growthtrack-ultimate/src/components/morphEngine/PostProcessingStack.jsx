@@ -108,6 +108,10 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     const toneMapping = new ToneMappingEffect({
       blendFunction: BlendFunction.SRC,
       mode: ToneMappingMode.AGX,
+      resolution: 256,
+      whitePoint: 1.0,
+      middleGrey: 0.18,
+      minLuminance: 0.005,
     });
     finishingEffects.push(toneMapping);
     effects.push(toneMapping);
@@ -122,15 +126,25 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       effects.push(grain);
     }
 
-    if (polishTier && cinematic.vignette) {
-      const vignette = new VignetteEffect({
-        blendFunction: BlendFunction.NORMAL,
-        offset: fullEffects ? 0.34 : 0.4,
-        darkness: fullEffects ? 0.36 : 0.26,
+    if (polishTier && cinematic.filmGrain) {
+      const noise = new NoiseEffect({
+        blendFunction: BlendFunction.COLOR_DODGE,
+        premultiply: true,
+        opacity: fullEffects ? 0.08 : 0.04,
       });
-      finishingEffects.push(vignette);
-      effects.push(vignette);
+      finishingEffects.push(noise);
+      effects.push(noise);
     }
+
+    // Always apply a cinematic vignette to pull focus to the model
+    const vignette = new VignetteEffect({
+      eskil: false,
+      offset: 0.28,
+      darkness: 0.62,
+      blendFunction: BlendFunction.NORMAL,
+    });
+    finishingEffects.push(vignette);
+    effects.push(vignette);
 
     if (finishingEffects.length > 0) {
       const finishingPass = new EffectPass(camera, ...finishingEffects);

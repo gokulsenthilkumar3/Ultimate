@@ -333,10 +333,22 @@ model BodyProfile {
   skinDetails          String?
   hairProperties       String?
   eyeProperties        String?
-  updatedAt            DateTime @default(now()) @updatedAt
-  createdAt            DateTime @default(now())
-  createdBy            String?
-  updatedBy            String?
+
+  // Localized Skin Shades
+  skinShadeHeadHex     String?
+  skinShadeNeckHex     String?
+  skinShadeTorsoHex    String?
+  skinShadeAbsHex      String?
+  skinShadeArmsHex     String?
+  skinShadeLegsHex     String?
+  skinShadeGenitalsHex String?
+  skinShadeHandsHex    String?
+  skinShadeFeetHex     String?
+
+  updatedAt DateTime @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  createdBy String?
+  updatedBy String?
 
   @@map("body_profiles")
 }
@@ -484,23 +496,24 @@ model Budget {
 }
 
 model MetricLog {
-  id         String    @id @default(uuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date       String?
-  metric     String?
-  value      Float?
-  unit       String?
-  side       String?
-  phase      String?   @default("current")
-  confidence Float?
-  measuredAt DateTime?
-  source     String?   @default("manual")
-  data       String?
-  createdAt  DateTime  @default(now())
-  createdBy  String?
-  updatedBy  String?
-  updatedAt  DateTime  @default(now()) @updatedAt
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String?
+  metric      String?
+  value       Float?
+  unit        String?
+  side        String?
+  phase       String?   @default("current")
+  confidence  Float?
+  measuredAt  DateTime?
+  source      String?   @default("manual")
+  data        String?
+  stringValue String?
+  createdAt   DateTime  @default(now())
+  createdBy   String?
+  updatedBy   String?
+  updatedAt   DateTime  @default(now()) @updatedAt
 
   @@index([userId, metric, measuredAt])
 }

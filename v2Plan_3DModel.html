@@ -1,0 +1,748 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--acc:#6366f1;--acc2:#a855f7;--em:#10b981;--warn:#f59e0b;--dan:#ef4444}
+body{font-family:var(--font-sans,system-ui);color:var(--text-primary);font-size:14px}
+
+.nav{display:flex;overflow-x:auto;border-bottom:.5px solid var(--border);padding:0 1rem;gap:2px;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nt{padding:10px 14px;font-size:12px;cursor:pointer;border:none;background:none;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-.5px;font-family:inherit;white-space:nowrap;flex-shrink:0}
+.nt.on{color:var(--text-primary);border-bottom-color:var(--text-primary)}
+
+.pg{display:none;padding:1.25rem}
+.pg.on{display:block}
+
+.sl{font-size:10px;font-weight:500;letter-spacing:.07em;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;margin-top:20px}
+.sl:first-child{margin-top:0}
+
+.c{background:var(--surface-1);border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:10px}
+.ct{font-size:14px;font-weight:500;margin-bottom:5px}
+.cs{font-size:13px;color:var(--text-secondary);line-height:1.65}
+
+.bk{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:500;flex-shrink:0}
+.bk-r{background:#fef2f2;color:#b91c1c;border:.5px solid #fca5a5}
+.bk-g{background:#f0fdf4;color:#15803d;border:.5px solid #86efac}
+.bk-a{background:#fffbeb;color:#b45309;border:.5px solid #fcd34d}
+.bk-p{background:#faf5ff;color:#7e22ce;border:.5px solid #d8b4fe}
+.bk-b{background:#eff6ff;color:#1d4ed8;border:.5px solid #93c5fd}
+[data-mode=dark] .bk-r{background:#450a0a;color:#fca5a5;border-color:#7f1d1d}
+[data-mode=dark] .bk-g{background:#052e16;color:#86efac;border-color:#166534}
+[data-mode=dark] .bk-a{background:#431407;color:#fcd34d;border-color:#92400e}
+[data-mode=dark] .bk-p{background:#3b0764;color:#d8b4fe;border-color:#6b21a8}
+[data-mode=dark] .bk-b{background:#1e3a5f;color:#93c5fd;border-color:#1d4ed8}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+
+.mc{background:var(--surface-1);border:.5px solid var(--border);border-radius:10px;padding:.85rem 1rem}
+.mn{font-size:10px;color:var(--text-muted)}
+.mv{font-size:16px;font-weight:500;margin:2px 0}
+.ms{font-size:11px;color:var(--text-secondary);line-height:1.5}
+.mi{font-size:10px;color:var(--text-muted);margin-top:3px}
+
+.ph{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:.5px solid var(--border)}
+.ph:last-child{border-bottom:none}
+.pn{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;background:#6366f1;color:#fff;border:.5px solid #6366f1}
+.pn.gray{background:var(--surface-2);border-color:var(--border);color:var(--text-secondary)}
+.pc{flex:1}
+.pt{font-size:13px;font-weight:500;margin-bottom:3px}
+.pd{font-size:12px;color:var(--text-secondary);line-height:1.55}
+
+.lr{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:.5px solid var(--border)}
+.lr:last-child{border-bottom:none}
+.li{font-size:16px;flex-shrink:0;line-height:1}
+.lc{flex:1}
+.lq{font-size:13px;line-height:1.5}
+.lm{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;background:var(--surface-2);border:.5px solid var(--border);color:var(--text-secondary);margin:2px}
+
+.zone-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.zone{background:var(--surface-1);border:.5px solid var(--border);border-radius:10px;padding:.85rem}
+.zone-title{font-size:12px;font-weight:500;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.zone-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.zone-items{font-size:11px;color:var(--text-secondary);line-height:1.8}
+
+.cta-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:12px;border:.5px solid var(--border-strong);background:var(--surface-2);color:var(--text-primary);cursor:pointer;font-family:inherit;margin-top:12px}
+.cta-btn:hover{background:var(--surface-1)}
+
+.rule{background:var(--surface-2);border:.5px solid var(--border);border-left:3px solid #6366f1;border-radius:0 8px 8px 0;padding:.85rem 1rem;margin-bottom:8px}
+.rule-t{font-size:12px;font-weight:500;margin-bottom:3px}
+.rule-d{font-size:12px;color:var(--text-secondary);line-height:1.55}
+
+.layer{display:flex;gap:10px;align-items:center;padding:10px 14px;background:var(--surface-1);border:.5px solid var(--border);border-radius:10px;margin-bottom:7px}
+.layer-num{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+.layer-info{flex:1}
+.layer-title{font-size:13px;font-weight:500}
+.layer-desc{font-size:11px;color:var(--text-secondary);margin-top:2px}
+</style>
+
+<div class="nav">
+  <button class="nt on" onclick="show('overview')">Overview</button>
+  <button class="nt" onclick="show('metrics')">Metrics system</button>
+  <button class="nt" onclick="show('mesh')">Mesh & 3D model</button>
+  <button class="nt" onclick="show('mapping')">Metric → shape</button>
+  <button class="nt" onclick="show('rendering')">Rendering & CG</button>
+  <button class="nt" onclick="show('ui')">UI / UX design</button>
+  <button class="nt" onclick="show('screens')">Screen map</button>
+  <button class="nt" onclick="show('data')">Data architecture</button>
+  <button class="nt" onclick="show('privacy')">Privacy & gender</button>
+  <button class="nt" onclick="show('roadmap')">Roadmap</button>
+</div>
+
+<!-- OVERVIEW -->
+<div id="pg-overview" class="pg on">
+  <div class="sl">What this plan delivers</div>
+  <div class="c">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="ct">The fundamental contract of this app</div>
+        <div class="cs">Whatever you look like in the real world — your height, weight, body shape, skin tone, face, hair — the 3D model must reflect that. Not approximately. Not generically. Actually you.<br><br>Every metric you add improves a specific zone. Every missing metric falls back to a sensible default — never breaks anything else.</div>
+      </div>
+      <span class="bk bk-r">No compromises</span>
+    </div>
+  </div>
+
+  <div class="sl">Core principles (rules that govern every decision)</div>
+  <div class="rule"><div class="rule-t">Graceful degradation — always</div><div class="rule-d">If hair color is missing → black. If thigh circumference is missing → derived from weight + height. If everything is missing → gender-appropriate population-average defaults. The model ALWAYS renders. Never broken, never empty.</div></div>
+  <div class="rule"><div class="rule-t">Progressive precision</div><div class="rule-d">The more metrics a user adds, the more accurate the avatar. Empty zones are visually indicated (subtle desaturation or a soft glow) — not broken. Each metric input triggers an instant animated morph on that body zone only.</div></div>
+  <div class="rule"><div class="rule-t">Dual state — Current Self + Goal Self</div><div class="rule-d">Two completely independent metric stores. Two independent 3D model states. The user switches between them, or views them side-by-side. Goal state metrics are editable separately from current state metrics at all times.</div></div>
+  <div class="rule"><div class="rule-t">Gender defines the mesh, not just a texture</div><div class="rule-d">Male and female are different GLB files with different blendshape sets, different fat distribution logic, different shoulder/hip ratios. Choosing gender at profile setup loads the correct base mesh. It never changes mid-session.</div></div>
+  <div class="rule"><div class="rule-t">The 3D scene IS the app</div><div class="rule-d">Following Lusion's philosophy: there is no "3D widget inside a page." The 3D canvas is the entire viewport. UI elements float over it as translucent layers (Apple Liquid Glass). The model is always present, always interactive.</div></div>
+
+  <div class="sl">Stack — no changes, only upgrades</div>
+  <div class="g3">
+    <div class="mc"><div class="mn">3D engine</div><div class="mv">Three.js + R3F</div><div class="ms">Keep exactly as is</div></div>
+    <div class="mc"><div class="mn">Model format</div><div class="mv">GLB / glTF</div><div class="ms">Keep — upgrade asset quality</div></div>
+    <div class="mc"><div class="mn">Scene helpers</div><div class="mv">@react-three/drei</div><div class="ms">Keep — use more features</div></div>
+    <div class="mc"><div class="mn">Post-processing</div><div class="mv">@react-three/postprocessing</div><div class="ms">Add / upgrade</div></div>
+    <div class="mc"><div class="mn">UI motion</div><div class="mv">Framer Motion + GSAP</div><div class="ms">Add for Liquid Glass</div></div>
+    <div class="mc"><div class="mn">State</div><div class="mv">Zustand</div><div class="ms">Metric + goal stores</div></div>
+    <div class="mc"><div class="mn">Asset pipeline</div><div class="mv">MakeHuman + Blender</div><div class="ms">New GLB with blendshapes</div></div>
+    <div class="mc"><div class="mn">Database</div><div class="mv">Existing backend</div><div class="ms">Add new metric schema</div></div>
+    <div class="mc"><div class="mn">Electron</div><div class="mv">Electron / Tauri</div><div class="ms">Desktop exe wrapper</div></div>
+  </div>
+</div>
+
+<!-- METRICS SYSTEM -->
+<div id="pg-metrics" class="pg">
+  <div class="sl">The metric system — every metric, what it controls, default if missing</div>
+
+  <div class="c" style="margin-bottom:14px">
+    <div class="ct">Design contract for metrics</div>
+    <div class="cs">Every metric maps to exactly one or more blendshape targets. If a metric is absent, a default value is calculated from existing metrics using a fallback formula. The 3D model never waits for all metrics — it renders with whatever it has.</div>
+  </div>
+
+  <div class="zone-grid">
+    <div class="zone">
+      <div class="zone-title"><div class="zone-dot" style="background:#6366f1"></div>Core / global shape</div>
+      <div class="zone-items">
+        Height · sets full body scale<br>
+        Weight · global fullness<br>
+        Age · posture + skin tone shift<br>
+        Body fat % · lean vs soft<br>
+        Gender · mesh selection<br>
+        Ethnicity / skin tone · texture
+      </div>
+    </div>
+    <div class="zone">
+      <div class="zone-title"><div class="zone-dot" style="background:#f59e0b"></div>Torso zone</div>
+      <div class="zone-items">
+        Chest / bust circumference<br>
+        Underbust circumference (F)<br>
+        Waist circumference<br>
+        Hip circumference<br>
+        Shoulder width (biacromial)<br>
+        Torso length (shoulder→hip)
+      </div>
+    </div>
+    <div class="zone">
+      <div class="zone-title"><div class="zone-dot" style="background:#10b981"></div>Upper limbs</div>
+      <div class="zone-items">
+        Upper arm circumference<br>
+        Forearm circumference<br>
+        Wrist circumference<br>
+        Arm length (shoulder→wrist)<br>
+        Hand size (optional)
+      </div>
+    </div>
+    <div class="zone">
+      <div class="zone-title"><div class="zone-dot" style="background:#ef4444"></div>Lower limbs</div>
+      <div class="zone-items">
+        Thigh circumference<br>
+        Knee circumference<br>
+        Calf circumference<br>
+        Ankle circumference<br>
+        Inseam / leg length<br>
+        Foot size (EU/US)
+      </div>
+    </div>
+    <div class="zone">
+      <div class="zone-title"><div class="zone-dot" style="background:#a855f7"></div>Face + head</div>
+      <div class="zone-items">
+        Face shape (6 presets)<br>
+        Neck circumference<br>
+        Head size<br>
+        Jaw width (optional)<br>
+        Eye shape (optional)<br>
+        Nose shape (optional)
+      </div>
+    </div>
+    <div class="zone">
+      <div class="zone-title"><div class="zone-dot" style="background:#0ea5e9"></div>Hair + accessories</div>
+      <div class="zone-items">
+        Hair length (bald→very long)<br>
+        Hair texture (straight/wavy/curly)<br>
+        Hair color (picker + presets)<br>
+        Facial hair (M: 5 levels)<br>
+        Eyebrow thickness<br>
+        Beard color (M)
+      </div>
+    </div>
+    <div class="zone">
+      <div class="zone-title"><div class="zone-dot" style="background:#f43f5e"></div>Muscle definition</div>
+      <div class="zone-items">
+        Overall muscularity (0–100)<br>
+        Chest definition (M specific)<br>
+        Arm definition<br>
+        Leg definition<br>
+        Core / ab definition<br>
+        Back width (V-taper 0–100)
+      </div>
+    </div>
+    <div class="zone">
+      <div class="zone-title"><div class="zone-dot" style="background:#64748b"></div>Dress / appearance</div>
+      <div class="zone-items">
+        Outfit type (nude/underwear/casual/sport)<br>
+        Outfit color<br>
+        Accessories (glasses/watch)<br>
+        Tattoo overlay (optional)<br>
+        Body hair density (M/F)<br>
+        Skin condition (tone/marks)
+      </div>
+    </div>
+  </div>
+
+  <div class="sl" style="margin-top:20px">Goal-only metrics (separate store — does not overwrite current)</div>
+  <div class="g2">
+    <div class="mc"><div class="mn">Target weight</div><div class="mv">kg / lbs</div><div class="ms">Drives global goal shape</div></div>
+    <div class="mc"><div class="mn">Target body fat %</div><div class="mv">%</div><div class="ms">Lean vs bulk goal</div></div>
+    <div class="mc"><div class="mn">Target waist</div><div class="mv">cm</div><div class="ms">Waistline goal</div></div>
+    <div class="mc"><div class="mn">Target chest</div><div class="mv">cm</div><div class="ms">Chest volume goal</div></div>
+    <div class="mc"><div class="mn">Goal muscle levels</div><div class="mv">per zone slider</div><div class="ms">Chest / arms / legs / core</div></div>
+    <div class="mc"><div class="mn">Goal intervention type</div><div class="mv">Workout / Diet / Surgery / Style</div><div class="ms">Filters which zones are editable</div></div>
+    <div class="mc"><div class="mn">Surgery type</div><div class="mv">8 zone options</div><div class="ms">Nose / jaw / chest / liposuction zones / chin / ears</div></div>
+    <div class="mc"><div class="mn">Goal hair</div><div class="mv">all hair metrics</div><div class="ms">Independent from current hair</div></div>
+  </div>
+
+  <div class="sl" style="margin-top:20px">Fallback formula — what happens when a metric is missing</div>
+  <div class="c">
+    <div class="cs">
+      <strong>Height + Weight → BMI → baseline fullness</strong> (always available after first two metrics)<br>
+      <strong>Waist missing</strong> → estimated from: 0.447 × height + 0.294 × weight − 28.4 (Rexford formula, R²=0.81)<br>
+      <strong>Hip missing</strong> → estimated from: 0.541 × waist + 0.308 × weight + 12.3<br>
+      <strong>Thigh missing</strong> → estimated from: 0.268 × hip + 0.189 × weight + 8.1<br>
+      <strong>Calf missing</strong> → estimated from: 0.38 × thigh − 4.2<br>
+      <strong>Upper arm missing</strong> → estimated from: 0.29 × weight + 5.8 (gender-adjusted)<br>
+      <strong>Shoulder width missing</strong> → M: height × 0.259, F: height × 0.228<br>
+      <strong>Hair color missing</strong> → black (#1a0a00)<br>
+      <strong>Face shape missing</strong> → oval (most common, neutral)<br>
+      <strong>Skin tone missing</strong> → mid-warm neutral (#C68642)<br>
+      <strong>All missing (first launch)</strong> → WHO population-median for entered gender + age 25
+    </div>
+  </div>
+</div>
+
+<!-- MESH & 3D MODEL -->
+<div id="pg-mesh" class="pg">
+  <div class="sl">GLB asset architecture</div>
+
+  <div class="c">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="ct">Two base meshes — not one</div>
+      <span class="bk bk-r">Critical change</span>
+    </div>
+    <div class="cs">
+      <strong>male_base.glb</strong> — built in MakeHuman, exported via MPFB (MakeHuman Plugin for Blender). Contains:<br>
+      — 40+ morph targets (blendshapes) for body shape dimensions<br>
+      — 8 morph targets for muscle definition zones<br>
+      — Separate mesh layers: body skin, underwear, casual wear, sport wear<br>
+      — Rigged skeleton with 54 joints for idle animation<br>
+      — UV-mapped skin texture atlas (4K) with normal + roughness maps<br><br>
+      <strong>female_base.glb</strong> — same structure, different topology:<br>
+      — Different shoulder/hip ratio baseline<br>
+      — Breast volume blendshape (controlled by chest circumference + cup size)<br>
+      — Gynoid fat distribution (fat deposits lower body preferentially)<br>
+      — Different waist-hip ratio range<br>
+      — Same 54-joint skeleton (compatible animations)
+    </div>
+  </div>
+
+  <div class="sl">Blendshape naming convention — the full list</div>
+  <div class="c">
+    <div class="cs">
+      Every blendshape follows: <code>zone_property_direction</code><br><br>
+      <strong>Body scale:</strong> height_tall, height_short, weight_heavy, weight_light<br>
+      <strong>Torso:</strong> waist_wide, waist_narrow, hip_wide, hip_narrow, chest_large, chest_flat, shoulder_wide, shoulder_narrow, torso_long, torso_short<br>
+      <strong>Fat distribution:</strong> belly_large, belly_flat, lovehandles_present, lovehandles_flat, thigh_fat_large, thigh_fat_small<br>
+      <strong>Muscle:</strong> chest_muscle_defined, arm_muscle_defined, leg_muscle_defined, back_wide, abs_visible<br>
+      <strong>Limbs:</strong> arm_long, arm_short, leg_long, leg_short, thigh_wide, thigh_narrow, calf_wide, calf_narrow<br>
+      <strong>Face:</strong> face_round, face_square, face_oval, face_heart, face_diamond, neck_wide, neck_narrow<br>
+      <strong>Age:</strong> age_young, age_middle, age_senior (affects posture, skin, muscle tone)<br>
+      <strong>Female-specific:</strong> breast_volume_0 through breast_volume_5, hip_gynoid_wide<br>
+      <strong>Male-specific:</strong> chest_pectoral_defined, beard_volume (face mesh)
+    </div>
+  </div>
+
+  <div class="sl">Hair system — separate from body mesh</div>
+  <div class="c">
+    <div class="cs">
+      Hair is a separate GLB or mesh group loaded on demand, parented to the head bone.<br><br>
+      <strong>Variants (pre-built assets):</strong><br>
+      — bald / buzz cut / short crop / medium / long straight / long wavy / long curly / afro / braids (F) / bun (F) / undercut (M) / fade (M) / medium textured (M)<br><br>
+      <strong>Color system:</strong> Each hair mesh has a single MeshStandardMaterial with color property. Color is set programmatically at runtime from the user's hair color selection. No texture swap needed — just material.color.<br><br>
+      <strong>Facial hair (M):</strong> Separate facial hair mesh overlay. Variants: none / stubble / goatee / short beard / full beard. Also color-matched at runtime.
+    </div>
+  </div>
+
+  <div class="sl">Clothing / outfit layers</div>
+  <div class="c">
+    <div class="cs">
+      Outfit is a separate set of mesh layers that sit on top of the body mesh. They are toggled via visibility, not re-loaded.<br><br>
+      <strong>Layer stack (bottom to top):</strong><br>
+      1. Body skin (always visible — clipped by clothing above)<br>
+      2. Underwear layer — gender-appropriate, always tasteful, not explicit. Male: fitted briefs/boxers. Female: bra + briefs. Sized dynamically to body proportions via vertex skinning.<br>
+      3. Casual wear — t-shirt, jeans/leggings. Selectable color.<br>
+      4. Sport wear — compression shirt/leggings. Shows muscle definition better.<br>
+      5. Accessories — glasses mesh, watch mesh, jewelry (optional future)<br><br>
+      <strong>Default for new user:</strong> Underwear layer only. User can switch freely.
+    </div>
+  </div>
+
+  <div class="sl">Idle animation + breathing</div>
+  <div class="c">
+    <div class="cs">
+      The model is never completely static. An idle animation loop is baked into the GLB:<br>
+      — Breathing: chest/abdomen scale oscillates ±0.3% over 4s sine wave<br>
+      — Subtle weight shift: left/right hip offset ±0.1 every 8s<br>
+      — Head micro-movement: ±2° Y rotation over 12s (barely perceptible)<br><br>
+      These are driven by AnimationMixer in Three.js. They make the model feel alive and real.
+    </div>
+  </div>
+</div>
+
+<!-- METRIC → SHAPE MAPPING -->
+<div id="pg-mapping" class="pg">
+  <div class="sl">The pipeline — how a number becomes a 3D shape change</div>
+
+  <div class="c">
+    <div class="ct">Pipeline overview</div>
+    <div class="cs">
+      <strong>Step 1 — Normalize:</strong> Every raw metric is normalized to 0→1 relative to population min/max for that gender+age group. (Height 140cm→210cm maps to 0→1. Waist 55cm→140cm maps to 0→1.)<br><br>
+      <strong>Step 2 — Blendshape weight calculation:</strong> Each normalized metric drives one or more blendshape weights via a piecewise linear or polynomial function. Multiple metrics can influence the same blendshape (additive, clamped 0→1).<br><br>
+      <strong>Step 3 — Apply to morphTargetInfluences:</strong> mesh.morphTargetInfluences[targetIndex] = calculatedWeight. Three.js handles the actual vertex interpolation.<br><br>
+      <strong>Step 4 — GSAP tween:</strong> Changes don't snap — they animate over 0.4–0.8s with ease. The user sees the body shape change smoothly when they adjust a slider.
+    </div>
+  </div>
+
+  <div class="sl">Exact mapping — metric to blendshape (selected examples, full table in data sheet)</div>
+  <div class="c">
+    <div class="cs">
+      <strong>Height:</strong> Controls global scale via Object3D.scale.set(heightFactor, heightFactor, heightFactor). heightFactor = 0.75 + (normalized_height × 0.5). Simultaneously applies to torso_long/torso_short and leg_long/leg_short blendshapes for proportionate scaling.<br><br>
+      <strong>Weight:</strong> Drives: weight_heavy (0→1), belly_large (threshold-gated above BMI 25), lovehandles_present (threshold-gated above BMI 28). Also adjusts all limb circumference fallback estimates.<br><br>
+      <strong>Waist circumference:</strong> Primary driver of waist_wide/waist_narrow. Also cross-correlates: if waist > hip (android shape), belly_large gets +0.2 bonus. If hip > waist × 1.35 (gynoid shape), hip_gynoid_wide gets +0.3.<br><br>
+      <strong>Hip circumference:</strong> Drives hip_wide/hip_narrow and thigh_fat_large (because hip width correlates with thigh girth in gynoid distribution). Gender-split: female baseline hip is wider at same normalized value.<br><br>
+      <strong>Chest circumference:</strong> Male: drives chest_pectoral_defined (partial — combined with muscularity slider). Female: drives breast_volume_0 through breast_volume_5 via 6-step piecewise mapping based on circumference difference (bust−underbust).<br><br>
+      <strong>Body fat % → shape distribution:</strong> Below 15% (M) / 22% (F): muscle definition visible (abs_visible=1, chest_muscle_defined scaling up). 15–25% (M) / 22–32% (F): average. Above 25% (M) / 32% (F): belly_large increases, lovehandles activate, thigh_fat increases. This is what makes "same weight, different fat%" look genuinely different.<br><br>
+      <strong>Age:</strong> Affects: age_young/age_middle/age_senior morphs (posture shifts). Also shifts roughness on skin material (older → higher roughness, lower metallicity). Subtle wrinkle normal map blend-in above age 45.<br><br>
+      <strong>Muscle sliders (0–100):</strong> Each zone independently drives its definition blendshape. At 0: soft, rounded. At 100: defined musculature. These stack on top of the anthropometric shape — so a high-body-fat user can have muscle sliders at 50 and see bulk, while a lean user at 50 sees cut definition.
+    </div>
+  </div>
+
+  <div class="sl">Shape classification — body type detection for UI feedback</div>
+  <div class="c">
+    <div class="cs">
+      From waist + hip + chest metrics, the system automatically classifies:<br>
+      <strong>Male:</strong> Ectomorph / Mesomorph / Endomorph / Athletic V-taper / Rectangle<br>
+      <strong>Female:</strong> Pear / Apple / Hourglass / Rectangle / Inverted triangle<br><br>
+      This label is shown as a subtle badge in the UI (not judgemental — purely informational). It also helps the goal system suggest relevant workout/diet types.
+    </div>
+  </div>
+</div>
+
+<!-- RENDERING & CG -->
+<div id="pg-rendering" class="pg">
+  <div class="sl">The rendering stack — from GLB to Apple/Lusion quality</div>
+
+  <div class="sl" style="margin-top:0">Layer 1 — environment & lighting</div>
+  <div class="c">
+    <div class="ct">HDRI environment map</div>
+    <div class="cs">
+      <strong>HDR file:</strong> "photo_studio_01" or "studio_small" from Poly Haven (CC0 licensed). Loaded via pmremGenerator → scene.environment. Provides realistic ambient reflections on skin.<br><br>
+      <strong>Key light:</strong> DirectionalLight, intensity 1.2, position [3, 5, 3] — slightly above and to the right. Casts soft shadows (shadow.mapSize 2048).<br><br>
+      <strong>Fill light:</strong> DirectionalLight, intensity 0.4, position [−3, 2, −1]. No shadows. Prevents harsh falloff.<br><br>
+      <strong>Rim light:</strong> DirectionalLight, intensity 0.3, position [0, 2, −5]. Behind-left of model. Creates the separation from background that gives depth.<br><br>
+      <strong>Background:</strong> NOT the HDRI — transparent/dark. The background is a custom Three.js shader (animated aurora / deep space particle field). The model floats in cinematic space.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Skin material — MeshStandardMaterial + custom touches</div>
+    <div class="cs">
+      <strong>Base:</strong> MeshStandardMaterial. roughness: 0.6, metalness: 0.0.<br><br>
+      <strong>Skin subsurface scattering (SSS) approximation:</strong> A thin layer of MeshPhysicalMaterial with transmission: 0.05, thickness: 0.3, attenuationColor: #ff8866 on face/hands/ears only. This makes skin translucent in a realistic way where light passes through (ears glow slightly, nose bridge softens). Full SSS shaders are too expensive — this is the right approximation for web.<br><br>
+      <strong>Skin texture atlas:</strong> 4K diffuse map, 2K normal map (pore detail), 1K roughness map (shinier on nose/forehead, matte on cheeks/body). These textures should be swapped for 6 ethnicity variants from a library like Renderpeople or custom-made.<br><br>
+      <strong>Tone mapping:</strong> ACESFilmicToneMapping + exposure 1.1. This is the Hollywood standard for making skin look cinematic.
+    </div>
+  </div>
+
+  <div class="sl">Layer 2 — post-processing</div>
+  <div class="c">
+    <div class="ct">Effect composer chain (order matters)</div>
+    <div class="cs">
+      <strong>1. N8AO (ambient occlusion):</strong> halfRes: true, aoRadius: 5, intensity: 1.5, color: black. Darkens armpits, groin, neck underside, knuckles. Adds massive depth without performance cost. Use N8AO over SSAO — it's more stable.<br><br>
+      <strong>2. SMAA (antialiasing):</strong> Quality: High. Replaces WebGL's MSAA which doesn't work with post-processing.<br><br>
+      <strong>3. Bloom:</strong> luminanceThreshold: 0.8, luminanceSmoothing: 0.025, intensity: 0.3. Very subtle — just catches skin highlights and rim light edges. Never bloom the whole model.<br><br>
+      <strong>4. ToneMapping:</strong> ACESFilmic via ToneMappingEffect. Exposure: 1.1.<br><br>
+      <strong>5. Vignette:</strong> offset: 0.5, darkness: 0.3. Focuses eye toward the model center.<br><br>
+      <strong>6. DepthOfField (optional, on idle):</strong> focusDistance: 0.0, focalLength: 0.02, bokehScale: 2.0. Blurs the background particle field. Deactivate during user interaction for performance.
+    </div>
+  </div>
+
+  <div class="sl">Layer 3 — background scene (the Lusion touch)</div>
+  <div class="c">
+    <div class="ct">Animated background shader</div>
+    <div class="cs">
+      Behind the model (and behind the UI layers) lives a full-screen custom fragment shader running on a plane geometry that fills the canvas. It creates depth and premium atmosphere without distracting from the model.<br><br>
+      <strong>Option A — Deep space / aurora:</strong> Procedural noise-based aurora borealis. Slow drifting bands of deep indigo, violet, teal. Very low frequency — changes over 60s. Looks extraordinary on dark displays.<br><br>
+      <strong>Option B — Studio gradient + dust:</strong> Dark charcoal radial gradient (center slightly lighter). Floating fine particle dust lit from above. Premium studio photography feel.<br><br>
+      <strong>The background responds to model state:</strong> Current Self → neutral indigo/grey. Goal Self → warm amber-gold tones. Comparison mode → split — left side current colours, right side goal colours. This is subtle but powerfully communicates which state you're looking at.
+    </div>
+  </div>
+
+  <div class="sl">Performance budget</div>
+  <div class="c">
+    <div class="cs">
+      <strong>Desktop target:</strong> 60fps, 1440p, full post-processing chain.<br>
+      <strong>Laptop target:</strong> 60fps, 1080p, N8AO at halfRes, no DepthOfField.<br>
+      <strong>Mobile/low-end:</strong> 30fps target, no post-processing, lower poly hair, disable idle animation if <30fps detected. GPU tier detection via detect-gpu library → automatically selects rendering profile.
+    </div>
+  </div>
+</div>
+
+<!-- UI / UX DESIGN -->
+<div id="pg-ui" class="pg">
+  <div class="sl">Design language — Apple Liquid Glass + Lusion motion</div>
+
+  <div class="c">
+    <div class="ct">What "Apple + Lusion" actually means for this app</div>
+    <div class="cs">
+      <strong>From Apple Liquid Glass:</strong> Translucent surfaces that refract what's behind them. All UI panels, controls, and overlays appear as if made of backlit frosted glass floating above the 3D scene. Light from the 3D scene bleeds through and shifts the panel tone dynamically. Controls feel physical — pressing a button has weight.<br><br>
+      <strong>From Lusion:</strong> The 3D scene is narrative, not just decoration. Every UI interaction causes a visual response in the 3D space. Mouse/cursor position subtly rotates the avatar. Scrolling through metrics creates a camera parallax. The model is reactive — it's looking at you, responding to you.
+    </div>
+  </div>
+
+  <div class="sl">Color system</div>
+  <div class="c">
+    <div class="cs">
+      <strong>Scene background:</strong> #070710 (near black, slightly blue-shifted)<br>
+      <strong>Primary accent:</strong> #6366f1 → #a855f7 (indigo to violet gradient)<br>
+      <strong>Current Self state:</strong> Indigo/violet palette — cool, present-tense<br>
+      <strong>Goal Self state:</strong> Amber/gold palette (#f59e0b → #f97316) — warm, aspirational<br>
+      <strong>Success / achieved:</strong> Emerald #10b981<br>
+      <strong>Glass panel — light mode:</strong> rgba(255,255,255,0.12) + backdrop-filter blur(28px) + 1px inset rgba(255,255,255,0.25) border<br>
+      <strong>Glass panel — dark mode:</strong> rgba(255,255,255,0.07) + blur(28px) + 1px inset rgba(255,255,255,0.12) border<br>
+      <strong>Typography:</strong> SF Pro (system-ui on macOS, Inter fallback on Windows/web). Numbers: tabular-nums, light weight for large values. Labels: 10px uppercase tracked 0.1em.
+    </div>
+  </div>
+
+  <div class="sl">Motion system — spring physics</div>
+  <div class="c">
+    <div class="cs">
+      <strong>All layout transitions:</strong> Framer Motion spring — stiffness 200, damping 28, mass 1<br>
+      <strong>Panel open/close:</strong> y: [30→0], opacity: [0→1], blur: [4px→0px]. Feels like a card lifting off a surface.<br>
+      <strong>Metric number changes:</strong> Animated count-up/down with react-countup. 0.4s duration.<br>
+      <strong>Body morph on metric change:</strong> GSAP to() on morphTargetInfluences values. Duration 0.6s, ease: power2.inOut. Only the affected zone morphs — others hold position.<br>
+      <strong>Avatar camera:</strong> OrbitControls with damping 0.06. Camera position changes tween with GSAP, not snap. Auto-rotate at 0.003 rad/s when idle >10s.<br>
+      <strong>Mode switch (Current ↔ Goal):</strong> Shared-element transition. The avatar scales down 0.95, cross-dissolves mesh state, scales back up. Background color transitions simultaneously. Duration: 0.7s.
+    </div>
+  </div>
+
+  <div class="sl">Interaction design</div>
+  <div class="c">
+    <div class="cs">
+      <strong>Tap a body zone on the 3D model:</strong> Raycasting detects which named mesh was clicked (e.g. "waist_mesh", "chest_mesh"). Relevant metric input panel opens from the bottom. Camera smoothly zooms/tilts to that zone.<br><br>
+      <strong>Slider interaction:</strong> Dragging a metric slider → the corresponding body zone animates in real time (GSAP morph tween on mouseMove, debounced 16ms). The model zone glows with a color overlay while being edited (warm amber for fat reduction zones, violet for muscle zones).<br><br>
+      <strong>Long-press on avatar:</strong> Context menu appears: "Edit metrics / Switch to goal / Compare / Share / Reset to defaults"<br><br>
+      <strong>Swipe left/right on avatar:</strong> Switches between Current Self and Goal Self with the shared-element transition.<br><br>
+      <strong>Mouse cursor effect (desktop):</strong> Cursor position causes subtle parallax — avatar head tracks cursor (±8°), slight camera lean (±2°). Lusion-style "alive" feel.
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN MAP -->
+<div id="pg-screens" class="pg">
+  <div class="sl">Complete screen hierarchy — every screen, what it does, how it connects</div>
+
+  <div class="ph">
+    <div class="pn">0</div>
+    <div class="pc">
+      <div class="pt">Onboarding — "Who are you?" <span class="bk bk-b" style="margin-left:6px">First launch only</span></div>
+      <div class="pd">Full-screen dark canvas. Animated particle field. 3 steps:<br>1. Gender selection (M / F / Other — selects base GLB)<br>2. Age input (sets age blendshapes + defaults)<br>3. Unit preference (metric / imperial)<br>Immediately loads default avatar after step 1. Steps 2–3 refine it in real time. Skip allowed — fills defaults.</div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">1</div>
+    <div class="pc">
+      <div class="pt">Home — Avatar stage <span class="bk bk-g" style="margin-left:6px">Core screen</span></div>
+      <div class="pd">Full canvas 3D scene. Avatar rotating slowly. Bottom: floating glass pill bar with "Current Self / Goal Self" toggle. Top-right: compact metric completeness ring (how many zones have data). Tap any body part → metric input sheet rises. Cursor parallax on desktop. No other chrome — pure immersion.</div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">2</div>
+    <div class="pc">
+      <div class="pt">Metrics input — Body editor</div>
+      <div class="pd">Split layout (desktop): Left = live 3D preview updating in real time. Right = metric panel as glass card. Organized in collapsible zones (Core → Torso → Limbs → Face → Hair → Appearance). Each metric = a labeled slider + tap-to-type field. Saving closes the panel with a morph animation.</div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">3</div>
+    <div class="pc">
+      <div class="pt">Compare — Current Self vs Goal Self</div>
+      <div class="pd">Side-by-side dual WebGL canvas. Drag divider to expand either side. Bottom sheet: goal type selector (Workout / Diet / Surgery / Style). Each type reveals relevant editable sliders. Morph diff heat map toggle: shows zones in amber (losing fat) or violet (gaining muscle) or teal (changing shape).</div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">4</div>
+    <div class="pc">
+      <div class="pt">Goal studio — Intervention planner</div>
+      <div class="pd">
+        <strong>Workout:</strong> Select muscle zones to target. Goal sliders for each zone. Suggested exercise plan based on delta.<br>
+        <strong>Diet:</strong> Target weight + body fat %. Timeline projection ("at this rate, 12 weeks"). Caloric deficit calculator.<br>
+        <strong>Surgery:</strong> Select procedure type. Before/after blendshape morph preview. Realistic expectation messaging.<br>
+        <strong>Style:</strong> Hair, beard, accessories, outfit. Purely cosmetic goal — no body change needed.
+      </div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">5</div>
+    <div class="pc">
+      <div class="pt">Progress timeline</div>
+      <div class="pd">Horizontal scroll of avatar snapshots over time. Each card = a date + key metrics delta. Tap a card → main avatar morphs to that state (with animation). Zoom out to see full journey arc. Share button on each snapshot.</div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">6</div>
+    <div class="pc">
+      <div class="pt">Profile settings</div>
+      <div class="pd">Unit preferences, privacy settings, metric history, account. Gender change here triggers a confirmation ("This will reset your current avatar base mesh. Your metric data will be preserved."). Outfit preferences. Notification settings for goal milestones.</div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn gray">+</div>
+    <div class="pc">
+      <div class="pt">Share sheet (overlay)</div>
+      <div class="pd">Renders the current avatar state as a static PNG or short animated MP4 (720p, 3s loop, auto-rotate). Privacy-safe: no measurements visible in the export, just the visual model. User can add a caption.</div>
+    </div>
+  </div>
+</div>
+
+<!-- DATA ARCHITECTURE -->
+<div id="pg-data" class="pg">
+  <div class="sl">Data architecture — stores, schema, flow</div>
+
+  <div class="c">
+    <div class="ct">Two independent metric stores</div>
+    <div class="cs">
+      <strong>currentMetrics</strong> (Zustand store + synced to DB):<br>
+      All current-state measurements. Height, weight, all circumferences, all appearance metrics. This drives the Current Self avatar.<br><br>
+      <strong>goalMetrics</strong> (Zustand store + synced to DB):<br>
+      All goal-state measurements. Inherits missing values from currentMetrics (you don't need to re-enter height for your goal). Only delta values are stored — if a goal metric equals the current metric, it's null in DB. This drives the Goal Self avatar.<br><br>
+      <strong>avatarPreferences</strong> (Zustand store):<br>
+      Outfit, hair, accessories, camera position, lighting mode. Not body measurements — appearance choices.
+    </div>
+  </div>
+
+  <div class="sl">Database schema (additions to existing)</div>
+  <div class="c">
+    <div class="cs">
+      <strong>user_metrics table:</strong> user_id, session_date, height_cm, weight_kg, age, gender, ethnicity_code, body_fat_pct, chest_cm, waist_cm, hip_cm, underbust_cm, shoulder_width_cm, torso_length_cm, upper_arm_cm, forearm_cm, wrist_cm, arm_length_cm, thigh_cm, knee_cm, calf_cm, ankle_cm, inseam_cm, foot_size_eu, neck_cm, face_shape_code, muscularity_chest, muscularity_arms, muscularity_legs, muscularity_core, muscularity_back, skin_tone_hex, hair_style_code, hair_length_code, hair_color_hex, hair_texture_code, beard_style_code, beard_color_hex, eyebrow_thickness, outfit_code<br><br>
+      <strong>user_goals table:</strong> user_id, goal_type (workout/diet/surgery/style), target_weight_kg, target_body_fat_pct, target_waist_cm, target_chest_cm, target_muscularity_chest, target_muscularity_arms, target_muscularity_legs, target_muscularity_core, surgery_type_code, goal_hair_style_code, goal_hair_color_hex, goal_outfit_code, created_at, target_date<br><br>
+      <strong>metric_snapshots table:</strong> All current metrics captured at user-defined milestones. Drives the progress timeline.
+    </div>
+  </div>
+
+  <div class="sl">Blendshape weight computation — where it runs</div>
+  <div class="c">
+    <div class="cs">
+      All computation is client-side (browser/Electron). No backend API call needed to render the avatar. The mapping function (metric → blendshape weight) is a pure JS module (~200 lines of math). It runs on every slider drag event, batched via requestAnimationFrame. GSAP handles the smooth animation from current weight to target weight.
+    </div>
+  </div>
+</div>
+
+<!-- PRIVACY & GENDER -->
+<div id="pg-privacy" class="pg">
+  <div class="sl">Gender, anatomy and privacy — the complete rules</div>
+
+  <div class="c">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="ct">Base mesh selection — gender is a mesh decision</div>
+      <span class="bk bk-p">Architecture rule</span>
+    </div>
+    <div class="cs">
+      Gender (Male / Female / Other) is selected at onboarding. "Other" lets the user choose which base mesh they prefer, then apply any blendshapes from either set.<br><br>
+      Gender selection is not a preference — it determines which GLB file loads (male_base.glb or female_base.glb). This cannot be changed without confirming a mesh reset (metric data is preserved, avatar restarts from the new base).
+    </div>
+  </div>
+
+  <div class="sl">Anatomy — what is shown and when</div>
+  <div class="c">
+    <div class="ct">Default state — always appropriate</div>
+    <div class="cs">
+      By default, the model is clothed. Default outfit on first load is sport wear (shows body shape well, always tasteful).<br><br>
+      <strong>Underwear mode:</strong> Available in settings under "Body view" → "Detailed body composition view." Requires confirming gender in profile. Shows gender-appropriate underwear mesh — fitted briefs (M), bra + briefs (F). This is the minimum clothing level at all times. No nudity, ever.<br><br>
+      <strong>Why underwear mode exists:</strong> It's the only way to accurately visualize body fat distribution in all zones (thighs, glutes, abdomen, chest). Fitness apps that only show clothed models lose this accuracy. This is the same standard as medical body composition tools.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Female-specific anatomy handling</div>
+    <div class="cs">
+      <strong>Breast volume blendshapes:</strong> Driven by chest circumference (bust) and underbust circumference, computing cup size equivalent (bust − underbust in cm → volume). 6 blendshape levels (0→5). These affect silhouette and proportion, visible in underwear mode as a bra-enclosed form. Always tasteful — this is body composition data, not explicit content.<br><br>
+      <strong>Hip and glute blendshapes:</strong> Driven by hip circumference and body fat %. Gynoid fat distribution (female typical) deposits more in hips, glutes, thighs. The model reflects this correctly.<br><br>
+      <strong>Female face:</strong> Different face baseline (softer jaw, different brow arch, different neck taper). Same face shape selector (6 options) but different base proportions.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Male-specific anatomy handling</div>
+    <div class="cs">
+      <strong>Chest definition:</strong> Male chest has pectoral muscle definition blendshapes separate from female breast volume. These are driven by the muscularity slider, not circumference.<br><br>
+      <strong>Android fat distribution:</strong> Male fat deposits preferentially in abdomen (belly, love handles). Above body fat threshold, belly_large and lovehandles_present blendshapes activate more aggressively than in female model.<br><br>
+      <strong>Facial hair:</strong> Male model has a separate facial hair mesh layer. Stubble is a texture-based roughness overlay; beard variants are geometry meshes.<br><br>
+      <strong>Male anatomy:</strong> Male underwear shows fitted briefs/boxers that are anatomically proportioned but non-explicit. The form is indicated by the silhouette and underwear mesh, not explicit geometry.
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="ct">Data privacy</div>
+    <div class="cs">
+      Body measurements are sensitive personal data. Architecture rules:<br>
+      — All metric data encrypted at rest in DB<br>
+      — No metrics visible in any share export (export = visual only)<br>
+      — Local computation (no metrics sent to third-party APIs)<br>
+      — User can delete all metric data at any time (full wipe)<br>
+      — If app is used on shared device, avatar session can be PIN-locked
+    </div>
+  </div>
+</div>
+
+<!-- ROADMAP -->
+<div id="pg-roadmap" class="pg">
+  <div class="sl">Build phases — structural sequence</div>
+
+  <div class="ph">
+    <div class="pn">1</div>
+    <div class="pc">
+      <div class="pt">Phase 1 — Asset pipeline rebuild <span class="bk bk-r" style="margin-left:6px">Foundation</span></div>
+      <div class="pd">
+        <strong>What:</strong> Produce male_base.glb and female_base.glb from MakeHuman + MPFB (Blender plugin). Bake 40+ morph targets per mesh. Export with UV maps, normal maps, rigged skeleton, idle animation. Test in Three.js that all morphTargetInfluences are accessible and named correctly.<br>
+        <strong>Output:</strong> Two GLB files that load correctly in R3F and respond to morphTargetInfluences. Default neutral avatar renders for each gender.<br>
+        <strong>Success criteria:</strong> Setting any morph target 0→1 visually changes the correct body zone. No broken vertices, no Z-fighting, correct UV mapping.
+      </div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">2</div>
+    <div class="pc">
+      <div class="pt">Phase 2 — Metric mapping engine <span class="bk bk-a" style="margin-left:6px">Core logic</span></div>
+      <div class="pd">
+        <strong>What:</strong> Build the pure JS mapping module. Input: metric object. Output: blendshape weight object (all 40+ targets, 0→1). Include all fallback formulas. Unit conversion. Gender-specific normalization tables. Test every metric independently — does the right zone change? Does changing only one metric affect only its zone?<br>
+        <strong>Output:</strong> metricsToBlendshapes(metrics, gender) → { [targetName]: weight }<br>
+        <strong>Success criteria:</strong> Changing height only → body scales, nothing else. Changing waist only → waist zone changes, nothing else. Changing body fat % → whole body shifts tone, belly/thigh activates at thresholds. Zero broken states when any single metric is missing.
+      </div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">3</div>
+    <div class="pc">
+      <div class="pt">Phase 3 — Rendering upgrade <span class="bk bk-a" style="margin-left:6px">Visual quality</span></div>
+      <div class="pd">
+        <strong>What:</strong> Replace current lighting setup with: HDRI environment (pmremGenerator), 3-point lighting rig, N8AO, SMAA, Bloom, ToneMapping, Vignette. Upgrade skin material to MeshPhysicalMaterial with SSS approximation on face mesh. Add idle breathing animation loop via AnimationMixer. Build aurora/particle background shader. Test at 60fps on target hardware.<br>
+        <strong>Success criteria:</strong> Model looks cinematic — skin has depth, rim light separates from background, ambient occlusion in body crevices, bloom on highlights. Aurora background moves slowly and beautifully.
+      </div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">4</div>
+    <div class="pc">
+      <div class="pt">Phase 4 — Dual model + goal system <span class="bk bk-p" style="margin-left:6px">Core feature</span></div>
+      <div class="pd">
+        <strong>What:</strong> Implement two independent metric stores (Zustand). Two WebGL canvases for compare mode. Shared-element transition between states. Goal type selector (Workout/Diet/Surgery/Style). Diff heat map overlay using vertex color shader. Background color state system (indigo = current, amber = goal). DB schema updates for goal metrics.
+      </div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">5</div>
+    <div class="pc">
+      <div class="pt">Phase 5 — Apple Liquid Glass UI <span class="bk bk-p" style="margin-left:6px">Design system</span></div>
+      <div class="pd">
+        <strong>What:</strong> Full Liquid Glass component library (glass panels, glass buttons, glass sliders). Full-screen avatar stage as home. All metric input panels as bottom sheets with glass surface. Framer Motion spring transitions everywhere. Cursor parallax on desktop. Raycasting for tap-body-zone interaction. Number roll-up on metric changes.
+      </div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">6</div>
+    <div class="pc">
+      <div class="pt">Phase 6 — Hair, clothing, accessories <span class="bk bk-g" style="margin-left:6px">Completeness</span></div>
+      <div class="pd">
+        <strong>What:</strong> Hair system (12+ style variants as separate GLBs, runtime color setting). Facial hair system (M). Clothing layer system (toggle visibility, color customization). Accessories. Gender-appropriate underwear mesh as default body view. All appearance metrics wired up to avatar.
+      </div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn">7</div>
+    <div class="pc">
+      <div class="pt">Phase 7 — Progress timeline + sharing <span class="bk bk-g" style="margin-left:6px">Journey</span></div>
+      <div class="pd">
+        <strong>What:</strong> Metric snapshot system (take snapshot, store to DB). Progress timeline screen with horizontal scroll of avatar states. Tap to travel to any historical state. Share export (PNG/MP4 render of avatar, no metrics visible).
+      </div>
+    </div>
+  </div>
+
+  <div class="ph">
+    <div class="pn gray">P</div>
+    <div class="pc">
+      <div class="pt">Performance + Electron packaging <span class="bk bk-b" style="margin-left:6px">Desktop exe</span></div>
+      <div class="pd">GPU tier detection → adaptive rendering profile. LOD system for lower-end hardware. Electron/Tauri wrapper for desktop exe with native window chrome. Auto-updater. Local SQLite for offline metric storage. Menu bar icon for quick metric logging.
+      </div>
+    </div>
+  </div>
+
+  <button class="cta-btn" onclick="sendPrompt('Start Phase 1: tell me exactly how to build the MakeHuman + Blender + MPFB pipeline to produce male_base.glb and female_base.glb with 40 morph targets')">Start Phase 1 now ↗</button>
+  <button class="cta-btn" onclick="sendPrompt('Show me the complete metricsToBlendshapes() mapping engine in JavaScript')">Build the mapping engine ↗</button>
+  <button class="cta-btn" onclick="sendPrompt('Design the complete Liquid Glass component system for this app in CSS + React')">Design the UI system ↗</button>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nt').forEach(t=>t.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  event.target.classList.add('on');
+}
+</script>

@@ -180,6 +180,7 @@ const clothFragmentShader = /* glsl */ `
   uniform vec2  uCovBand1;    // [yMin, yMax], vec2(-1,-1) = unused
   uniform vec2  uCovBand2;    // [yMin, yMax]
   uniform float uEdgeFeather; // blend width at fabric edges
+  uniform float uStripeStrength;
 
   // ── Micro-fabric weave patterns ────────────────────────────────────────────
   // Returns a surface variation value 0–1 that modulates roughness + color.
@@ -273,7 +274,7 @@ const clothFragmentShader = /* glsl */ `
 
     // ── Stripe pattern for swimwear secondary color ────────────────────────
     float stripe = step(0.82, fract(vUv.x * 6.0 + vUv.y * 2.0));
-    vec3  baseColor = mix(uPrimaryColor, uSecondaryColor, stripe * 0.4);
+    vec3  baseColor = mix(uPrimaryColor, uSecondaryColor, stripe * uStripeStrength);
 
     // ── Studio lights (mirror of Layer 2) ─────────────────────────────────
     vec3  lights[3];
@@ -348,6 +349,7 @@ export function createClothMaterial(preset = "GYM") {
       uCovBand1:       { value: band1 },
       uCovBand2:       { value: band2 },
       uEdgeFeather:    { value: 0.04 },
+      uStripeStrength: { value: preset === "SWIMWEAR" ? 0.4 : 0.0 },
     },
     transparent:  true,   // needed for coverage alpha + edge fade
     depthWrite:   true,
@@ -378,6 +380,7 @@ export function switchWardrobePreset(mat, preset) {
   mat.uniforms.uWeaveType.value   = config.weaveType;
   mat.uniforms.uCovBand1.value.copy(band1);
   mat.uniforms.uCovBand2.value.copy(band2);
+  mat.uniforms.uStripeStrength.value = preset === "SWIMWEAR" ? 0.4 : 0.0;
 }
 
 /**

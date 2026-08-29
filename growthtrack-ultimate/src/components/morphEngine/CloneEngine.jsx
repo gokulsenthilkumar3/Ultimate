@@ -28,15 +28,14 @@ import { useFrame, useThree }                 from "@react-three/fiber";
 import * as THREE                             from "three";
 
 import HumanoidClone from "./HumanoidClone";
+import BodyPartInteraction from "./BodyPartInteraction";
 import use3DStore, { VIEW_MODES } from "../../store/use3DStore";
 import SplitStencilScene from "./SplitStencilPass";
+import { getDualSeparation } from "./sceneLayout";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** X-axis separation between clones in DUAL mode (world units) */
-const DUAL_SEPARATION = 0.9;
 
 /** Measurements shown as floating labels in DUAL mode */
 const DELTA_LABEL_MEASUREMENTS = [
@@ -59,71 +58,65 @@ const MEASUREMENT_UNITS = {
 // DELTA LABELS — floating HTML overlays in DUAL mode
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LABEL_Y_POSITIONS = {
-  weight:    1.85,
-  bodyFat:   1.65,
-  chest:     1.35,
-  shoulders: 1.5,
-  arms:      1.1,
-  waist:     0.95,
-  thighs:    0.6,
-};
-
-function DeltaLabel({ measurement, delta, yPosition }) {
-  const unit     = MEASUREMENT_UNITS[measurement] ?? "";
-  const isGain   = delta > 0;
-  const isLoss   = delta < 0;
-  const sign     = isGain ? "+" : "";
-  const color    = isGain ? "#10B981" : isLoss ? "#F43F5E" : "#888";
-  const label    = measurement.charAt(0).toUpperCase() + measurement.slice(1);
+function DualDeltaLabels({ deltas }) {
+  if (!deltas) return null;
+  const visibleDeltas = DELTA_LABEL_MEASUREMENTS
+    .map((measurement) => ({ measurement, delta: deltas[measurement] }))
+    .filter(({ delta }) => Number.isFinite(delta) && Math.abs(delta) >= 0.5)
+    .slice(0, 4);
+  if (!visibleDeltas.length) return null;
 
   return (
-    <Html
-      position={[0, yPosition, 0.2]}
-      center
-      style={{ pointerEvents: "none", userSelect: "none" }}
-    >
-      <div
-        style={{
-          display:        "flex",
-          flexDirection:  "column",
-          alignItems:     "center",
-          gap:            "2px",
-          fontFamily:     'var(--font-display)',
-          color,
-          filter:         `drop-shadow(0 0 6px ${color}88)`,
-          whiteSpace:     "nowrap",
-        }}
-      >
-        <span style={{ fontSize: "11px", opacity: 0.7, letterSpacing: "0.1em" }}>
-          {label}
-        </span>
-        <span style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.02em" }}>
-          {sign}{delta.toFixed(1)}{unit}
-        </span>
+    <Html position={[0, 1.16, 0.34]} center style={{ pointerEvents: "none", userSelect: "none" }}>
+      <div className="chamber-delta-summary">
+        <span className="chamber-delta-summary__eyebrow">GOAL CHANGE</span>
+        {visibleDeltas.map(({ measurement, delta }) => {
+          const unit = MEASUREMENT_UNITS[measurement] ?? "";
+          const label = measurement === 'bodyFat'
+            ? 'Body fat'
+            : measurement.charAt(0).toUpperCase() + measurement.slice(1);
+          return (
+            <div key={measurement} className="chamber-delta-summary__row">
+              <span>{label}</span>
+              <strong className={delta > 0 ? 'positive' : 'negative'}>
+                {delta > 0 ? '+' : ''}{delta.toFixed(1)}{unit}
+              </strong>
+            </div>
+          );
+        })}
       </div>
     </Html>
   );
 }
 
-function DualDeltaLabels({ deltas }) {
-  if (!deltas) return null;
+function DualFigure({ cloneKey, side, separation, goal = false }) {
+  const groupRef = useRef(null);
+  const cameraRight = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(({ camera }) => {
+    if (!groupRef.current) return;
+    cameraRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize().multiplyScalar(side * separation);
+    groupRef.current.position.copy(cameraRight);
+    groupRef.current.position.y = 0;
+  });
 
   return (
-    <>
-      {DELTA_LABEL_MEASUREMENTS.map((key) => {
-        const delta = deltas[key];
-        if (delta === null || delta === undefined || Math.abs(delta) < 0.5) return null;
-        return (
-          <DeltaLabel
-            key={key}
-            measurement={key}
-            delta={delta}
-            yPosition={LABEL_Y_POSITIONS[key] ?? 1.0}
-          />
-        );
-      })}
-    </>
+    <group ref={groupRef} position={[side * separation, 0, 0]} name={`dual-figure-${cloneKey}`}>
+      <HumanoidClone
+        cloneKey={cloneKey}
+        position={[0, 0, 0]}
+        snapWeights={goal}
+        renderMode="normal"
+        visible
+        showAura={goal}
+      />
+      {!goal && <BodyPartInteraction cloneKey={cloneKey} clonePosition={[0, 0, 0]} />}
+      <Html position={[0, 0.08, 0.24]} center style={{ pointerEvents: "none" }}>
+        <div className={`chamber-clone-label${goal ? ' chamber-clone-label--goal' : ''}`}>
+          {goal ? 'YOUR GOAL' : 'YOU NOW'}
+        </div>
+      </Html>
+    </group>
   );
 }
 
@@ -207,6 +200,8 @@ function TimelineClone() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CloneEngine() {
+  const canvasWidth = useThree((state) => state.size.width);
+  const dualSeparation = getDualSeparation(canvasWidth);
   const viewMode      = use3DStore((s) => s.viewMode);
   const splitDividerX = use3DStore((s) => s.splitDividerX);
   // Live delta subscription — updates on every metric change, not just viewMode
@@ -227,68 +222,27 @@ export default function CloneEngine() {
     // ── SOLO MODE ────────────────────────────────────────────────────────────
     case VIEW_MODES.SOLO:
       return (
-        <HumanoidClone
-          cloneKey="A"
-          position={[0, 0, 0]}
-          renderMode="normal"
-          visible={true}
-        />
+        <>
+          <HumanoidClone
+            cloneKey="A"
+            position={[0, 0, 0]}
+            renderMode="normal"
+            visible={true}
+          />
+          <BodyPartInteraction cloneKey="A" clonePosition={[0, 0, 0]} />
+        </>
       );
 
     // ── DUAL MODE ────────────────────────────────────────────────────────────
     case VIEW_MODES.DUAL:
       return (
         <>
-          {/* YOU NOW — left */}
-          <HumanoidClone
-            cloneKey="A"
-            position={[-DUAL_SEPARATION, 0, 0]}
-            renderMode="normal"
-            visible={true}
-          />
-
-          {/* YOUR GOAL — right, instant weights */}
-          <HumanoidClone
-            cloneKey="B"
-            position={[DUAL_SEPARATION, 0, 0]}
-            snapWeights={true}
-            renderMode="normal"
-            visible={true}
-            showAura={true}
-          />
+          <DualFigure cloneKey="A" side={-1} separation={dualSeparation} />
+          <DualFigure cloneKey="B" side={1} separation={dualSeparation} goal />
 
           {/* Floating delta labels between the two clones */}
           <DualDeltaLabels deltas={deltas} />
 
-          {/* "YOU NOW" label */}
-          <Html position={[-DUAL_SEPARATION, -0.1, 0]} center style={{ pointerEvents: "none" }}>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              color: "#4FC3F7",
-              fontSize: "12px",
-              fontWeight: 600,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              filter: "drop-shadow(0 0 8px #4FC3F788)",
-            }}>
-              YOU NOW
-            </div>
-          </Html>
-
-          {/* "YOUR GOAL" label */}
-          <Html position={[DUAL_SEPARATION, -0.1, 0]} center style={{ pointerEvents: "none" }}>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              color: "#22D3EE",
-              fontSize: "12px",
-              fontWeight: 600,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              filter: "drop-shadow(0 0 8px #22D3EE88)",
-            }}>
-              YOUR GOAL
-            </div>
-          </Html>
         </>
       );
 

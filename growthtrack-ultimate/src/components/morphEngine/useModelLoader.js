@@ -27,13 +27,14 @@ import { SkeletonUtils } from 'three-stdlib';
 import use3DStore from '../../store/use3DStore';
 
 import { GEOMETRY_MORPH_TARGETS } from './morphMath';
+import { DEFAULT_ASSETS, resolveModelAsset } from './modelAssetRegistry';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const MODEL_PATH = `${import.meta.env.BASE_URL}assets/models/humanoid-base.glb`;
-export const MODEL_PATH_LITE = `${import.meta.env.BASE_URL}assets/models/humanoid-base-lite.glb`;
+export const MODEL_PATH = DEFAULT_ASSETS.production;
+export const MODEL_PATH_LITE = DEFAULT_ASSETS.lite;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PRELOAD — call this at app root to start loading immediately
@@ -63,12 +64,9 @@ export function buildMorphIndexMap(mesh) {
     if (name in dict) {
       map[name] = dict[name];
     }
-    // Missing targets are handled gracefully by ProceduralHumanoid fallback
   }
-  const missing = GEOMETRY_MORPH_TARGETS.filter((n) => !(n in map));
-  if (missing.length > 0 && import.meta.env.DEV) {
-    console.debug(`[useModelLoader] ${missing.length} morph targets not in GLB — using ProceduralHumanoid fallback`);
-  }
+  // Also accept any morph target present in the GLB dict (even if not in our named list)
+  // This allows partial morph override — GLB morphs + procedural fallback for the rest
   return map;
 }
 
@@ -85,12 +83,14 @@ function buildDiagnosticsFromScene(scene, bodyMesh, morphIndexMap, bounds, priva
 
   const missingMorphTargets = GEOMETRY_MORPH_TARGETS.filter((name) => !(name in morphIndexMap));
   const vertexCount = bodyMesh?.geometry?.attributes?.position?.count ?? 0;
+  // Only mark suspicious if the mesh itself is fundamentally broken —
+  // morph target count is NOT a suspicious indicator (GLBs may use different naming).
   const isSuspicious =
     !bodyMesh ||
-    vertexCount < 1200 ||
-    meshNames.length > 24 ||
-    (bounds?.height ? bounds.height < 1.25 || bounds.height > 2.45 : true) ||
-    (bounds?.radius ? bounds.radius < 0.15 || bounds.radius > 1.15 : true);
+    vertexCount < 800 ||
+    meshNames.length > 48 ||
+    (bounds?.height ? bounds.height < 1.10 || bounds.height > 2.65 : true) ||
+    (bounds?.radius ? bounds.radius < 0.10 || bounds.radius > 1.25 : true);
 
   return {
     hasScene: !!scene,
@@ -157,9 +157,14 @@ function buildFallbackBounds() {
  *   isDev:        boolean,
  * }}
  */
-export function useModelLoader() {
+export function useModelLoader(modelPreference = {}) {
   const gpuTier = use3DStore((state) => state.gpuTier);
-  const modelPath = gpuTier === 'LOW' ? MODEL_PATH_LITE : MODEL_PATH;
+  const { avatarAsset, biologicalSex, modelPreset } = modelPreference;
+  const modelAsset = useMemo(
+    () => resolveModelAsset({ avatarAsset, biologicalSex, modelPreset }, gpuTier),
+    [avatarAsset, biologicalSex, gpuTier, modelPreset],
+  );
+  const modelPath = modelAsset.path;
   // useGLTF must be called unconditionally (Rules of Hooks).
   // Suspense promises must be re-thrown so React Suspense can catch them.
   // Network / parse errors are caught and we fall through to the dev fallback.
@@ -191,7 +196,7 @@ export function useModelLoader() {
           skeleton: null,
           scene: group,
           bounds,
-          diagnostics: buildDiagnosticsFromScene(group, mesh, {}, bounds),
+          diagnostics: { ...buildDiagnosticsFromScene(group, mesh, {}, bounds), modelAsset },
           isDev: true,
         };
       }
@@ -236,38 +241,50 @@ export function useModelLoader() {
 
         if (isSensitive) {
           privateAnatomyMesh = node;
-          // Never allow an authored asset to reveal this mesh on first paint.
-          // HumanoidClone may reveal it only after an explicit session action.
           node.visible = false;
           return;
         }
 
-        // The GLB Body node may be a plain Mesh (morph-only) or a SkinnedMesh.
-        // Accept both. The name check is case-insensitive.
-        if (!bodyMesh && lowerName.includes('body')) {
+        // Accept: nodes explicitly named body, OR the first SkinnedMesh with significant vertex count,
+        // OR the largest Mesh by vertex count as a last resort.
+        const isBodyNamed = lowerName.includes('body') || lowerName === 'mesh' || lowerName === 'human' || lowerName === 'character';
+        const vertCount = node.geometry?.attributes?.position?.count ?? 0;
+        const isLargeEnough = vertCount > 2000;
+
+        if (!bodyMesh && (isBodyNamed || (node.isSkinnedMesh && isLargeEnough))) {
           bodyMesh      = node;
           morphIndexMap = nodeMorphIndexMap;
           skeleton      = node.skeleton ?? null;
-          if (skeleton?.bones?.length) {
-            console.log('[useModelLoader] Found skeleton bones:', skeleton.bones.map(b => b.name));
-          } else {
-            console.log(`[useModelLoader] Body mesh "${node.name}" loaded (morph-only, no skeleton).`);
+          if (import.meta.env.DEV) {
+            console.log(`[useModelLoader] Body mesh found: "${node.name}" (${vertCount} verts, ${Object.keys(nodeMorphIndexMap).length} morphs mapped)`);
           }
         }
       });
 
+      // Second pass: if still no body mesh found, take the largest skinned mesh
       if (!bodyMesh) {
-        // GLB loaded OK but no mesh named "body" found — log what IS there
-        const meshNames = [];
-        clonedScene.traverse(n => { if (n.isMesh || n.isSkinnedMesh) meshNames.push(n.name); });
-        console.warn('[useModelLoader] No "body" mesh found. All meshes in GLB:', meshNames);
-        // Fall through to dev fallback below
-      } else {
+        let largestVerts = 0;
+        clonedScene.traverse((node) => {
+          if (!(node.isMesh || node.isSkinnedMesh)) return;
+          const lowerName = String(node.name || '').toLowerCase();
+          if (lowerName.includes('privateanatomy')) return;
+          const vertCount = node.geometry?.attributes?.position?.count ?? 0;
+          if (vertCount > largestVerts) {
+            largestVerts = vertCount;
+            bodyMesh = node;
+            morphIndexMap = buildMorphIndexMap(node);
+            skeleton = node.skeleton ?? null;
+          }
+        });
+        if (bodyMesh && import.meta.env.DEV) {
+          console.log(`[useModelLoader] Body mesh selected by largest vertex count: "${bodyMesh.name}" (${largestVerts} verts)`);
+        }
+      }
+
+      if (bodyMesh) {
         // Normalize the model so the humanoid reads like a full body figure.
         // Many GLBs arrive with an offset origin or inconsistent scale, which
         // makes the human look cropped even when the mesh itself is correct.
-        // Normalize from the body only. Optional hair/eye accessories must not
-        // change the body's scale or make metric landmarks drift between builds.
         const box = new THREE.Box3().setFromObject(bodyMesh);
         const size = new THREE.Vector3();
         const center = new THREE.Vector3();
@@ -295,7 +312,7 @@ export function useModelLoader() {
           skeleton,
           scene: clonedScene,
           bounds,
-          diagnostics: buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh),
+          diagnostics: { ...buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh), modelAsset },
           isDev: false,
         };
       }
@@ -319,8 +336,8 @@ export function useModelLoader() {
       skeleton: null,
       scene: group,
       bounds,
-      diagnostics: buildDiagnosticsFromScene(group, mesh, {}, bounds),
+      diagnostics: { ...buildDiagnosticsFromScene(group, mesh, {}, bounds), modelAsset },
       isDev: true,
     };
-  }, [gltf]);
+  }, [gltf, modelAsset]);
 }

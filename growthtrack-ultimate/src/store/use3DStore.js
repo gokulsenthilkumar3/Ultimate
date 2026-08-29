@@ -12,7 +12,9 @@
 
 import { create } from "zustand";
 import { subscribeWithSelector, devtools } from "zustand/middleware";
-import { constrainMorphWeights } from "../components/morphEngine/morphMath";
+import { buildMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
+
+export { computeMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -227,190 +229,8 @@ const sanitizeCinematicState = (value = {}) => {
 // Converts raw measurements → normalised blend shape weights (0–1)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MORPH_RANGES = {
-  weight:    { min: 45,  max: 130 },
-  bodyFat:   { min: 5,   max: 40  },
-  leanMass:  { min: 35,  max: 95  },
-  skeletalMuscle: { min: 20, max: 65 },
-  chest:     { min: 80,  max: 130 },
-  chestDepth: { min: 15, max: 38 },
-  shoulders: { min: 90,  max: 140 },
-  shoulderBreadth: { min: 32, max: 58 },
-  bideltoidBreadth: { min: 36, max: 65 },
-  waist:     { min: 65,  max: 110 },
-  arms:      { min: 28,  max: 55  },
-  forearm:   { min: 22,  max: 40  },
-  thighs:    { min: 45,  max: 75  },
-  hips:      { min: 80,  max: 115 },
-  pelvicBreadth: { min: 25, max: 45 },
-  glutes:    { min: 80,  max: 120 },
-  calves:    { min: 30,  max: 50  },
-  neck:      { min: 32,  max: 48  },
-  underbust: { min: 65, max: 120 },
-  highHip:   { min: 70, max: 120 },
-  wrist:     { min: 13, max: 24 },
-  elbow:     { min: 20, max: 38 },
-  torsoLength:{ min: 44,  max: 58  },
-  neckLength: { min: 7, max: 16 },
-  upperArm:  { min: 28,  max: 40  },
-  lowerArm:  { min: 24,  max: 35  },
-  handLength:{ min: 17,  max: 22  },
-  legLength: { min: 82,  max: 98  },
-  footLength:{ min: 24,  max: 31  },
-  headCirc:  { min: 52,  max: 62  },
-  sittingHeight: { min: 70, max: 110 },
-  inseam:    { min: 65, max: 100 },
-  faceWidth: { min: 12, max: 20 },
-  faceHeight: { min: 16, max: 26 },
-  eyeSpacing: { min: 2.5, max: 8 },
-  earLength: { min: 4, max: 8 },
-  earWidth: { min: 2, max: 5 },
-  noseLength: { min: 3, max: 7 },
-  noseWidth: { min: 2, max: 5 },
-  brow_depth: { min: 0, max: 1 },
-  nose_bridge_width: { min: 0, max: 1 },
-  nose_tip_size: { min: 0, max: 1 },
-  ear_prominence: { min: 0, max: 1 },
-  jaw_width: { min: 0, max: 1 },
-  chin_projection: { min: 0, max: 1 },
-  lip_fullness: { min: 0, max: 1 },
-  eye_size: { min: 0, max: 1 },
-  d_size:    { min: 3,   max: 9   },
-  d_girth:   { min: 3,   max: 7   },
-  ankle:     { min: 18,  max: 28  },
-};
-
-/**
- * Maps a raw measurement value to a normalised 0–1 morph weight.
- * Clamps at boundaries.
- */
-const normalise = (value, key) => {
-  const range = MORPH_RANGES[key];
-  const numericValue = Number(value);
-  if (!range || !Number.isFinite(numericValue)) return 0;
-  return Math.max(0, Math.min(1, (numericValue - range.min) / (range.max - range.min)));
-};
-
-const averageMetric = (...values) => {
-  const valid = values.map(Number).filter(Number.isFinite);
-  return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : undefined;
-};
-
-const firstMetric = (...values) => values.find((value) => value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value)));
-
-/**
- * Computes the canonical body and shader channel weights from a BodyMetrics
- * object. Geometry channels map to authored/procedural morph targets; shader
- * channels are consumed by the material layer.
- *
- * @param {BodyMetrics} metrics
- * @returns {Object} blend shape weights
- */
-export const computeMorphWeights = (metrics = {}) => {
-  const armCirc = firstMetric(averageMetric(metrics.leftUpperArm, metrics.rightUpperArm), metrics.arms);
-  const forearmCirc = firstMetric(averageMetric(metrics.leftForearm, metrics.rightForearm), metrics.forearm);
-  const thighCirc = firstMetric(averageMetric(metrics.leftThigh, metrics.rightThigh), metrics.thighs);
-  const calfCirc = firstMetric(averageMetric(metrics.leftCalf, metrics.rightCalf), metrics.calves);
-  const hipCirc = firstMetric(averageMetric(metrics.leftHip, metrics.rightHip), metrics.hips);
-  const shoulderValue = firstMetric(metrics.shoulderBreadth, metrics.bideltoidBreadth, metrics.shoulders);
-  const shoulderRange = metrics.shoulderBreadth != null ? 'shoulderBreadth' : metrics.bideltoidBreadth != null ? 'bideltoidBreadth' : 'shoulders';
-  const hipValue = firstMetric(metrics.pelvicBreadth, hipCirc);
-  const hipRange = metrics.pelvicBreadth != null ? 'pelvicBreadth' : 'hips';
-  const chestDepthValue = metrics.chestDepth != null ? normalise(metrics.chestDepth, 'chestDepth') : normalise(metrics.chest, 'chest');
-  const legLengthValue = metrics.inseam != null ? normalise(metrics.inseam, 'inseam') : normalise(metrics.legLength ?? (metrics.height ? metrics.height * 0.52 : undefined), 'legLength');
-  const torsoValue = firstMetric(metrics.torsoLength, metrics.sittingHeight, metrics.height ? metrics.height * 0.28 : undefined);
-  const torsoRange = metrics.torsoLength != null ? 'torsoLength' : metrics.sittingHeight != null ? 'sittingHeight' : 'torsoLength';
-
-  return constrainMorphWeights({
-  // MASS / FAT
-  overall_mass:    normalise(metrics.weight,    "weight"),
-  gut_volume:      Math.max(
-                     normalise(metrics.weight,  "weight") * 0.6,
-                     normalise(metrics.bodyFat, "bodyFat") * 0.4
-                   ),
-  face_roundness:  normalise(metrics.bodyFat,   "bodyFat") * 0.7,
-
-  // CHEST / UPPER BODY
-  chest_depth:     chestDepthValue,
-  pec_thickness:   normalise(metrics.chest,     "chest") * 0.85,
-
-  // SHOULDERS
-  deltoid_width:   normalise(shoulderValue, shoulderRange),
-  trap_swell:      normalise(shoulderValue, shoulderRange) * 0.6,
-
-  // WAIST / CORE
-  waist_narrow:    1 - normalise(metrics.waist, "waist"), // inverted: smaller waist = more narrow
-  oblique_def:     1 - normalise(metrics.waist, "waist") * 0.7,
-
-  // ARMS
-  bicep_peak:      normalise(armCirc,           "arms"),
-  tricep_horse:    normalise(armCirc,           "arms") * 0.9,
-  forearm_girth:   normalise(forearmCirc,       "forearm"),
-
-  // HIPS / GLUTES
-  glute_volume:    normalise(metrics.glutes,    "glutes"),
-  hip_width:       normalise(hipValue,           hipRange),
-
-  // THIGHS / LOWER
-  quad_sweep:      normalise(thighCirc,          "thighs"),
-  ham_thickness:   normalise(thighCirc,          "thighs") * 0.8,
-
-  // CALVES
-  calf_diamond:    normalise(calfCirc,           "calves"),
-  ankle_width:     normalise(metrics.ankle,     "ankle"),
-
-  // NECK
-  neck_thickness:  normalise(metrics.neck,      "neck"),
-  trap_rise:       normalise(metrics.neck,      "neck") * 0.5,
-  torso_length:    normalise(torsoValue, torsoRange),
-  shoulder_slope:   normalise(shoulderValue, shoulderRange) * 0.5,
-  clavicle_width:   normalise(shoulderValue, shoulderRange) * 0.8,
-  ribcage_depth:    chestDepthValue * 0.75,
-  pelvis_width:     normalise(hipValue, hipRange) * 0.85,
-  neck_length:      normalise(metrics.neckLength ?? metrics.neck, metrics.neckLength != null ? "neckLength" : "neck") * 0.45,
-  upper_arm_length: normalise(metrics.upperArm ?? 34, "upperArm"),
-  forearm_length:   normalise(metrics.lowerArm ?? 29, "lowerArm"),
-  hand_length:      normalise(metrics.handLength ?? 19, "handLength"),
-  leg_length:       legLengthValue,
-  foot_length:      normalise(metrics.footLength ?? 27, "footLength"),
-  head_circumference: normalise(metrics.headCirc ?? 57, "headCirc"),
-  brow_depth:        normalise(metrics.brow_depth ?? 0.35, "brow_depth"),
-  nose_bridge_width: normalise(metrics.nose_bridge_width ?? 0.32, "nose_bridge_width"),
-  nose_tip_size:     normalise(metrics.nose_tip_size ?? 0.33, "nose_tip_size"),
-  ear_prominence:    normalise(metrics.ear_prominence ?? 0.38, "ear_prominence"),
-  jaw_width:         normalise(metrics.jaw_width ?? 0.36, "jaw_width"),
-  chin_projection:   normalise(metrics.chin_projection ?? 0.30, "chin_projection"),
-  lip_fullness:      normalise(metrics.lip_fullness ?? 0.42, "lip_fullness"),
-  eye_size:          normalise(metrics.eye_size ?? 0.40, "eye_size"),
-  cheekbone_width:   normalise(metrics.bodyFat,   "bodyFat") * 0.35 + normalise(shoulderValue, shoulderRange) * 0.15,
-  forehead_height:   normalise(metrics.headCirc ?? 57, "headCirc") * 0.25,
-  temple_narrowing:  1 - normalise(metrics.headCirc ?? 57, "headCirc") * 0.15,
-  nose_length:       normalise(metrics.bodyFat,   "bodyFat") * 0.18 + 0.15,
-  jaw_angle:         normalise(metrics.bodyFat,   "bodyFat") * 0.2,
-  shoulder_drop:     1 - normalise(shoulderValue, shoulderRange) * 0.3,
-  knee_spacing:     normalise(hipValue,           hipRange) * 0.22,
-  ankle_taper:      1 - normalise(metrics.ankle, "ankle") * 0.3,
-  hand_splay:       normalise(metrics.handLength ?? 19, "handLength") * 0.25,
-  foot_arch:        normalise(metrics.footLength ?? 27, "footLength") * 0.2,
-
-  // PRIVATE (rendered in anatomical/underwear mode only)
-  d_length:        normalise(metrics.d_length ?? metrics.d_size, "d_size"),
-  d_girth:         normalise(metrics.d_girth,   "d_girth"),
-
-  // VASCULARITY (auto-triggered when bodyFat < 15%)
-  vascularity_intensity: metrics.bodyFat < 15
-    ? Math.max(0, (15 - metrics.bodyFat) / 10)
-    : 0,
-
-  // SKIN TONE — passed to shader as Fitzpatrick index 0–5
-  fitzpatrick_index: ["I","II","III","IV","V","VI"].indexOf(metrics.skinTone),
-  });
-};
-
-const buildMorphWeights = (metrics = {}, overrides = {}) => constrainMorphWeights({
-  ...computeMorphWeights(metrics),
-  ...overrides,
-});
+// The pure metric mapping lives in metricsToBlendshapes.js. The store only
+// owns persistence, orchestration, and user overrides.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Empty initial state: persisted profile metrics are hydrated by the viewer.
@@ -462,7 +282,9 @@ const use3DStore = create(
       viewMode: VIEW_MODES.DUAL,
 
       /** Wardrobe / surface state */
-      wardrobeState: WARDROBE_PRESETS.GYM,
+      // Use the validated skin surface by default. Shader-only outfits remain
+      // selectable previews until authored clothing geometry is available.
+      wardrobeState: WARDROBE_PRESETS.BODY_COMP,
 
       /** Camera preset name key */
       cameraPreset: "FRONT",
@@ -558,12 +380,17 @@ const use3DStore = create(
       setCurrentMetric: (key, value) => {
         const prev = get().cloneA;
         const updatedMetrics = { ...prev.metrics, [key]: value };
+        const goal = get().cloneB;
         set(
           {
             cloneA: {
               ...prev,
               metrics: updatedMetrics,
               weights: buildMorphWeights(updatedMetrics, get().morphOverrides.current),
+            },
+            cloneB: {
+              ...goal,
+              weights: buildMorphWeights(goal.metrics, get().morphOverrides.goal, updatedMetrics),
             },
           },
           false,
@@ -584,7 +411,7 @@ const use3DStore = create(
             cloneB: {
               ...prev,
               metrics: updatedMetrics,
-              weights: buildMorphWeights(updatedMetrics, get().morphOverrides.goal),
+              weights: buildMorphWeights(updatedMetrics, get().morphOverrides.goal, get().cloneA.metrics),
             },
           },
           false,
@@ -609,6 +436,13 @@ const use3DStore = create(
           false,
           "setCurrentMetrics"
         );
+        const goal = get().cloneB;
+        set({
+          cloneB: {
+            ...goal,
+            weights: buildMorphWeights(goal.metrics, get().morphOverrides.goal, metrics),
+          },
+        }, false, "refreshGoalFallbacks");
       },
 
       /**
@@ -622,7 +456,7 @@ const use3DStore = create(
             cloneB: {
               ...prev,
               metrics,
-              weights: buildMorphWeights(metrics, get().morphOverrides.goal),
+              weights: buildMorphWeights(metrics, get().morphOverrides.goal, get().cloneA.metrics),
             },
           },
           false,
@@ -652,7 +486,7 @@ const use3DStore = create(
             morphOverrides: { ...state.morphOverrides, [overrideKey]: overrides },
             [cloneKey]: {
               ...clone,
-              weights: buildMorphWeights(clone.metrics, overrides),
+              weights: buildMorphWeights(clone.metrics, overrides, overrideKey === "goal" ? state.cloneA.metrics : {}),
             },
           };
         }, false, `setMorphOverride:${overrideKey}:${key}`);
@@ -664,7 +498,7 @@ const use3DStore = create(
         set((state) => ({
           morphOverrides: { current, goal },
           cloneA: { ...state.cloneA, weights: buildMorphWeights(state.cloneA.metrics, current) },
-          cloneB: { ...state.cloneB, weights: buildMorphWeights(state.cloneB.metrics, goal) },
+          cloneB: { ...state.cloneB, weights: buildMorphWeights(state.cloneB.metrics, goal, state.cloneA.metrics) },
         }), false, "setMorphOverrides");
       },
 
@@ -675,7 +509,7 @@ const use3DStore = create(
           morphOverrides: { ...state.morphOverrides, [overrideKey]: {} },
           [cloneKey]: {
             ...state[cloneKey],
-            weights: buildMorphWeights(state[cloneKey].metrics),
+            weights: buildMorphWeights(state[cloneKey].metrics, {}, overrideKey === "goal" ? state.cloneA.metrics : {}),
           },
         }), false, `clearMorphOverrides:${overrideKey}`);
       },
