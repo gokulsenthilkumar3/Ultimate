@@ -53,7 +53,9 @@ All durable user records follow this path. React Query is used for remote, refre
 - **Finance:** transactions, budgets, subscriptions, analytics, CSV import/export, and local CRUD.
 - **Shopping:** shopping item CRUD and purchase state.
 - **SIP calculator:** investment projection calculator.
-- **Portfolio:** portfolio views and investment organization.
+- **Portfolio:** normalized investment holdings, allocation/performance views,
+  validated add/edit/delete flows, and authenticated persistence through the
+  user singleton API.
 
 ### Life
 
@@ -135,7 +137,8 @@ Animations should communicate state changes, not run continuously without purpos
 ### Priority 0 — verification and correctness
 
 - Sign in and run authenticated end-to-end checks for every module, CRUD action, dialog, light theme, mobile width, and keyboard flow.
-- Keep the current automated baseline green: 107 unit/component tests pass, including the 1,000-task stress case.
+- Keep the current automated baseline green: 158 unit/component tests pass,
+  including the 1,000-task stress case and portfolio/3D safety guards.
 - Add integration tests for authentication, CSRF, PATCH ownership, CRUD audit creation, CSV import, avatar limits, and custom-table ownership.
 - Add automated accessibility checks and visible focus/keyboard tests.
 
@@ -152,7 +155,8 @@ Animations should communicate state changes, not run continuously without purpos
 
 ### Priority 2 — real external integrations
 
-- Replace the malformed humanoid GLB with a production rigged model containing proper joints, morph coverage, orientation, and PBR textures.
+- Upgrade the structurally valid humanoid GLB with a human-grade authored pass:
+  proper deformation review, morph coverage, orientation, and PBR textures.
 - Implement OAuth/provider adapters for Google Drive, OneDrive, Dropbox, Calendar, GitHub, Trakt, and other catalog apps.
 - Implement a native HealthKit/Health Connect companion for Apple/Android health sync; a browser cannot directly access these stores.
 - Implement a supported bank/Open Finance provider. CSV import/export works locally; simulated bank sync is intentionally not presented as real.
@@ -170,4 +174,9 @@ Animations should communicate state changes, not run continuously without purpos
 
 ## Current release assessment
 
-The local core is interconnected, production-buildable, and covered by 107 passing tests. Persistence, authentication boundaries, CRUD auditing, module routing, configuration, and motion preferences now share one architecture. External services that require provider authorization, native device APIs, or a replacement 3D asset remain explicit follow-up work rather than simulated functionality.
+The local core is interconnected, production-buildable, and covered by 158
+passing tests. Persistence, authentication boundaries, CRUD auditing, module
+routing, configuration, and motion preferences now share one architecture.
+External services that require provider authorization, native device APIs, or
+the human-grade 3D asset pass remain explicit follow-up work rather than
+simulated functionality.

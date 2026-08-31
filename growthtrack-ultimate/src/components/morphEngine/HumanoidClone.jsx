@@ -13,6 +13,8 @@
  *   renderMode      "normal" | "ghost" | "delta" | "xray"
  *   visible         boolean
  *   showAura        boolean          — goal clone rim glow
+ *   metricsOverride  object|null      — optional read-only render snapshot
+ *   weightsOverride  object|null      — optional precomputed snapshot weights
  */
 
 import React, { useRef, useEffect, useMemo } from "react";
@@ -28,7 +30,7 @@ import use3DStore               from "../../store/use3DStore";
 import { createSkinMaterial, updateSkinUniforms, createRimAuraMaterial, updateAuraUniforms } from "./UberShader";
 import { createClothMaterial, isClothPreset } from "./WardrobeShader";
 import { resolveBodyMetrics } from "../../lib/bodyMetricFallbacks";
-import { computeHeightScale } from "./metricsToBlendshapes";
+import { computeHeightScale, resolveSkinTone } from "./metricsToBlendshapes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MATERIAL FACTORY
@@ -72,6 +74,8 @@ export default function HumanoidClone({
   renderMode  = "normal",
   visible     = true,
   showAura    = false,
+  metricsOverride = null,
+  weightsOverride = null,
 }) {
   const groupRef = useRef();
   const auraRef = useRef();
@@ -102,8 +106,8 @@ export default function HumanoidClone({
     useShallow((s) => {
       const clone = cloneKey === "B" ? s.cloneB : s.cloneA;
       return {
-        weights: clone.weights,
-        metrics: clone.metrics,
+        weights: weightsOverride || clone.weights,
+        metrics: metricsOverride || clone.metrics,
         posture: clone.posture,
         inheritedMetrics: cloneKey === "B" ? s.cloneA.metrics : null,
       };
@@ -117,6 +121,7 @@ export default function HumanoidClone({
     () => computeHeightScale(renderMetrics),
     [renderMetrics],
   );
+  const skinTone = useMemo(() => resolveSkinTone(renderMetrics), [renderMetrics]);
 
   // ── Morph interpolator ──────────────────────────────────────────────────────
   const { interpolator, updateWeights } = useMorphInterpolator(snapWeights);
@@ -155,7 +160,7 @@ export default function HumanoidClone({
       case "ghost": return createGhostMaterial();
       case "delta": return createDeltaMaterial();
       default: {
-        const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[renderMetrics?.skinTone] ?? 3;
+        const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[skinTone] ?? 3;
         const variant = toneIndex <= 1
           ? skinVariantMaterials?.SkinVariant_Light
           : toneIndex >= 4
@@ -168,16 +173,16 @@ export default function HumanoidClone({
         });
       }
     }
-  }, [bodyMesh, renderMetrics, renderMode, skinVariantMaterials]);
+  }, [bodyMesh, renderMetrics, renderMode, skinTone, skinVariantMaterials]);
 
   // The protected anatomy surface uses the same tone but no body atlas. The
   // atlas is laid out for the MakeHuman body UV islands and would otherwise
   // paint unrelated chest/face pixels across the private mesh.
   const privateMaterial = useMemo(() => {
     if (renderMode !== "normal") return material;
-    const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[renderMetrics?.skinTone] ?? 3;
+    const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[skinTone] ?? 3;
     return createSkinMaterial(toneIndex, null, { skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex });
-  }, [material, renderMetrics, renderMode]);
+  }, [material, renderMetrics, renderMode, skinTone]);
 
   // The authored GLB carries real MakeHuman eye and hair-card textures. Clone
   // their materials per figure so the two comparison models can customize
@@ -230,6 +235,15 @@ export default function HumanoidClone({
       : null
   ), [renderMode, wardrobe]);
 
+  // Aura materials are GPU resources. Creating one in JSX would allocate a
+  // fresh material on every parent render and leak the old shader until the
+  // WebGL context is reclaimed. Keep one material per aura lifecycle and
+  // dispose it when the lifecycle ends.
+  const auraMaterial = useMemo(
+    () => (showAura && bodyMesh && skeleton ? createRimAuraMaterial() : null),
+    [bodyMesh, showAura, skeleton],
+  );
+
   const mouthMaterials = useMemo(() => ({
     interior: new THREE.MeshStandardMaterial({ color: "#190b0d", roughness: 0.72 }),
     teeth: new THREE.MeshPhysicalMaterial({ color: "#fff8e8", roughness: 0.24, clearcoat: 0.32 }),
@@ -243,6 +257,10 @@ export default function HumanoidClone({
   useEffect(() => () => {
     clothMaterial?.dispose?.();
   }, [clothMaterial]);
+
+  useEffect(() => () => {
+    auraMaterial?.dispose?.();
+  }, [auraMaterial]);
 
   useEffect(() => () => {
     material?.dispose?.();
@@ -374,7 +392,7 @@ export default function HumanoidClone({
         opacity={opacity}
         visible={visible}
         showAura={showAura}
-        skinTone={renderMetrics?.skinTone ?? "IV"}
+        skinTone={skinTone}
         skinColorHex={renderMetrics?.skinColor ?? renderMetrics?.skinColorHex}
         lipColorHex={renderMetrics?.lipColor}
         nailColorHex={renderMetrics?.nailColor}
@@ -428,7 +446,7 @@ export default function HumanoidClone({
         <skinnedMesh
           ref={auraRef}
           geometry={bodyMesh.geometry}
-          material={createRimAuraMaterial()}
+          material={auraMaterial}
           skeleton={skeleton}
           morphTargetDictionary={bodyMesh.morphTargetDictionary}
           morphTargetInfluences={bodyMesh.morphTargetInfluences || []}

@@ -380,6 +380,32 @@ const normalizeBodyProfilePayload = source => Object.fromEntries(
   [...bodyProfileFields].filter(field => source?.[field] !== undefined).map(field => [field, normalizeBodyField(field, source[field])]),
 );
 
+const portfolioTypes = new Set(['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other']);
+const normalizePortfolioPayload = source => {
+  if (!Array.isArray(source)) return [];
+  return source.slice(0, 200).map((holding, index) => {
+    if (!holding || typeof holding !== 'object') return null;
+    const name = String(holding.name ?? '').trim().slice(0, 120);
+    const units = Number(holding.units);
+    const buyPrice = Number(holding.buyPrice);
+    const currentPrice = holding.currentPrice === '' || holding.currentPrice == null ? buyPrice : Number(holding.currentPrice);
+    const buyDate = String(holding.buyDate ?? '').trim();
+    if (!name || !Number.isFinite(units) || units <= 0 || units > 1_000_000_000) return null;
+    if (!Number.isFinite(buyPrice) || buyPrice <= 0 || buyPrice > 1_000_000_000_000) return null;
+    if (!Number.isFinite(currentPrice) || currentPrice <= 0 || currentPrice > 1_000_000_000_000) return null;
+    return {
+      id: String(holding.id ?? `holding-${index + 1}`).slice(0, 80),
+      name,
+      symbol: String(holding.symbol ?? '').trim().slice(0, 32).toUpperCase(),
+      type: portfolioTypes.has(holding.type) ? holding.type : 'Other',
+      units,
+      buyPrice,
+      currentPrice,
+      buyDate: /^\d{4}-\d{2}-\d{2}$/.test(buyDate) ? buyDate : '',
+    };
+  }).filter(Boolean);
+};
+
 const mapClientFields = (source, mapping, numberFields = new Set(), booleanFields = new Set()) => Object.fromEntries(
   Object.entries(mapping).filter(([clientField]) => source[clientField] !== undefined).map(([clientField, databaseField]) => {
     const value = source[clientField];
@@ -553,7 +579,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
       socialLinks: socialProfiles.map(profile => ({ id: profile.id, platform: profile.provider, url: profile.profileUrl || '' })),
       trainingPlan: parseStoredJson(user.trainingPlan), nutritionStrategy: parseStoredJson(user.nutritionStrategy), lifestyleTips: parseStoredJson(user.lifestyleTips, []),
       medicalData: parseStoredJson(user.medicalData), physiqueTargets: parseStoredJson(user.physiqueTargets), assessmentQA: parseStoredJson(user.assessmentQA, []),
-      skills: parseStoredJson(user.skills, []), calendar_events: parseStoredJson(user.calendarEvents, []), wellnessData: parseStoredJson(user.wellnessData), healthExtras: parseStoredJson(user.healthExtras),
+      skills: parseStoredJson(user.skills, []), calendar_events: parseStoredJson(user.calendarEvents, []), wellnessData: parseStoredJson(user.wellnessData), healthExtras: parseStoredJson(user.healthExtras), portfolio: parseStoredJson(user.portfolio, []),
     },
     preference: preference ? { ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) } : null,
     bodyProfile, healthProfile: parseStoredJson(healthProfile?.data, {}), socialProfiles, tasks, finance, budgets, metric_logs: metric_logs.map(metricToClient), nutrition_logs, workout_sessions, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions, moodLogs, vitalsLogs, medications,
@@ -568,11 +594,20 @@ app.post('/api/user', authMiddleware, async (req, res) => {
   try {
     const data = req.body;
     const updateData = {};
-    const singletonFields = ['trainingPlan', 'nutritionStrategy', 'lifestyleTips', 'medicalData', 'physiqueTargets', 'assessmentQA', 'skills', 'calendarEvents', 'wellnessData', 'healthExtras'];
+    const singletonFields = ['trainingPlan', 'nutritionStrategy', 'lifestyleTips', 'medicalData', 'physiqueTargets', 'assessmentQA', 'skills', 'calendarEvents', 'wellnessData', 'healthExtras', 'portfolio'];
 
-    singletonFields.forEach(field => {
+    if (data.portfolio !== undefined) {
+      if (!Array.isArray(data.portfolio)) return res.status(400).json({ error: 'Portfolio must be an array.' });
+      if (jsonSize(data.portfolio) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      const portfolio = normalizePortfolioPayload(data.portfolio);
+      if (jsonSize(portfolio) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      updateData.portfolio = JSON.stringify(portfolio);
+    }
+
+    singletonFields.filter(field => field !== 'portfolio').forEach(field => {
       if (data[field] !== undefined) {
-        updateData[field] = typeof data[field] === 'object' ? JSON.stringify(data[field]) : data[field];
+        const value = data[field];
+        updateData[field] = typeof value === 'object' ? JSON.stringify(value) : value;
       }
     });
 
@@ -616,16 +651,20 @@ app.post('/api/user', authMiddleware, async (req, res) => {
 // Single endpoints mapping to user JSON fields
 const singletons = [
   'training_plan', 'nutrition_strategy', 'lifestyle_tips', 'medical_data', 
-  'physique_targets', 'assessment_qa', 'skills', 'calendar_events', 'wellness_data', 'health_extras'
+  'physique_targets', 'assessment_qa', 'skills', 'calendar_events', 'wellness_data', 'health_extras', 'portfolio'
 ];
 
 singletons.forEach(route => {
   app.post(`/api/${route}`, authMiddleware, async (req, res) => {
     try {
       const camelCaseField = route.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+      if (route === 'portfolio' && !Array.isArray(req.body)) return res.status(400).json({ error: 'Portfolio must be an array.' });
+      if (route === 'portfolio' && jsonSize(req.body) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      const value = route === 'portfolio' ? normalizePortfolioPayload(req.body) : req.body;
+      if (route === 'portfolio' && jsonSize(value) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
       const user = await prisma.user.update({
         where: { id: req.user.id },
-        data: { [camelCaseField]: typeof req.body === 'object' ? JSON.stringify(req.body) : req.body }
+        data: { [camelCaseField]: typeof value === 'object' ? JSON.stringify(value) : value }
       });
       res.json(user);
     } catch(e) { sendInternalError(res, e, `${route} update`); }
@@ -634,9 +673,13 @@ singletons.forEach(route => {
   app.put(`/api/${route}`, authMiddleware, async (req, res) => {
     try {
       const camelCaseField = route.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+      if (route === 'portfolio' && !Array.isArray(req.body)) return res.status(400).json({ error: 'Portfolio must be an array.' });
+      if (route === 'portfolio' && jsonSize(req.body) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      const value = route === 'portfolio' ? normalizePortfolioPayload(req.body) : req.body;
+      if (route === 'portfolio' && jsonSize(value) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
       const user = await prisma.user.update({
         where: { id: req.user.id },
-        data: { [camelCaseField]: typeof req.body === 'object' ? JSON.stringify(req.body) : req.body }
+        data: { [camelCaseField]: typeof value === 'object' ? JSON.stringify(value) : value }
       });
       res.json(user);
     } catch(e) { sendInternalError(res, e, `${route} update`); }

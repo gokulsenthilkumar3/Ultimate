@@ -4,6 +4,7 @@ import {
   computeHeightScale,
   computeMorphWeights,
   normaliseMetric,
+  resolveSkinTone,
 } from '../components/morphEngine/metricsToBlendshapes';
 
 const changedChannels = (before, after, epsilon = 1e-8) => Object.keys(after)
@@ -65,10 +66,19 @@ describe('pure metric-to-blendshape engine', () => {
 
   it('produces finite constrained output even when metrics are missing', () => {
     const weights = computeMorphWeights({});
-    Object.values(weights).forEach((value) => {
+    Object.entries(weights).filter(([key]) => key !== 'fitzpatrick_index').forEach(([, value]) => {
       expect(Number.isFinite(value)).toBe(true);
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(1);
     });
+    expect(resolveSkinTone({})).toBe('IV');
+    expect(weights.fitzpatrick_index).toBe(3);
+  });
+
+  it('keeps appearance channels consistent for named and legacy tone values', () => {
+    expect(resolveSkinTone({ skinTone: 'VI' })).toBe('VI');
+    expect(computeMorphWeights({ skinTone: 'VI' }).fitzpatrick_index).toBe(5);
+    expect(resolveSkinTone({ skinFitzpatrickIndex: 4 })).toBe('V');
+    expect(computeMorphWeights({ skinFitzpatrickIndex: 4 }).fitzpatrick_index).toBe(4);
   });
 });

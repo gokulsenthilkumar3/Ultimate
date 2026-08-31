@@ -30,6 +30,10 @@ model User {
   calendarEvents    String?
   wellnessData      String?
   healthExtras      String?
+  // Investment holdings are stored as a validated JSON array so the
+  // portfolio module shares the same authenticated persistence path as the
+  // other user-owned singleton records.
+  portfolio         String?
 
   // Relations
   tasks                  Task[]

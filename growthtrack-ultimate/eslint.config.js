@@ -5,7 +5,13 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Keep lint focused on authored application code. These folders are build
+  // output, local reports, generated fixtures, or bundled plugin sources and
+  // should never hide real regressions in `src/`.
+  globalIgnores([
+    'dist', '.agents', '.build_test', 'coverage', 'logs', 'playwright-report',
+    'test-results', '.tmp', '.vite', '.claude', '.windsurf',
+  ]),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
