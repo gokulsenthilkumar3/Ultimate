@@ -243,6 +243,18 @@ const buildMorphState = (metrics = {}, posture = {}, overrides = {}) => ({
   weights: buildMorphWeights(metrics, overrides),
 });
 
+const normalizeTimelineSnapshot = (snapshot, index = 0) => {
+  if (!snapshot || typeof snapshot !== 'object' || !snapshot.metrics || typeof snapshot.metrics !== 'object') return null;
+  const parsedDate = new Date(snapshot.date || Date.now());
+  return {
+    id: String(snapshot.id ?? `snapshot-${index + 1}`),
+    date: Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString(),
+    label: String(snapshot.label ?? `Snapshot ${index + 1}`).trim().slice(0, 120),
+    metrics: { ...snapshot.metrics },
+    ...(snapshot.note ? { note: String(snapshot.note).trim().slice(0, 500) } : {}),
+  };
+};
+
 export const computeFitCameraZoom = (radius) => {
   const safeRadius = Math.max(Number(radius) || 0, 0.6);
   return Math.max(0.45, Math.min(1.8, 1.72 / safeRadius));
@@ -538,8 +550,10 @@ const use3DStore = create(
        * @param {TimelineSnapshot} snap
        */
       addTimelineSnap: (snap) => {
+        const normalized = normalizeTimelineSnapshot(snap, get().timelineSnaps.length);
+        if (!normalized) return;
         set(
-          (state) => ({ timelineSnaps: [...state.timelineSnaps, snap] }),
+          (state) => ({ timelineSnaps: [...state.timelineSnaps, normalized] }),
           false,
           "addTimelineSnap"
         );
@@ -551,7 +565,14 @@ const use3DStore = create(
        * @param {number|null} index
        */
       scrubTimeline: (index) => {
-        set({ timelineScrubIndex: index }, false, "scrubTimeline");
+        if (index === null || index === undefined) {
+          set({ timelineScrubIndex: null }, false, "scrubTimeline");
+          return;
+        }
+        const numericIndex = Number(index);
+        if (!Number.isFinite(numericIndex)) return;
+        const maxIndex = Math.max(0, get().timelineSnaps.length - 1);
+        set({ timelineScrubIndex: Math.max(0, Math.min(maxIndex, numericIndex)) }, false, "scrubTimeline");
       },
 
       /**
@@ -594,15 +615,29 @@ const use3DStore = create(
        * @param {keyof typeof CAMERA_PRESETS} preset
        */
       setCameraPreset: (preset) => {
+        if (!Object.prototype.hasOwnProperty.call(CAMERA_PRESETS, preset)) {
+          console.warn(`[use3DStore] Unknown camera preset: ${preset}`);
+          return;
+        }
         set({ cameraPreset: preset }, false, `setCameraPreset:${preset}`);
       },
 
       setTimelineSnaps: (snaps) => {
-        set({ timelineSnaps: Array.isArray(snaps) ? snaps : [] }, false, "setTimelineSnaps");
+        const normalized = Array.isArray(snaps)
+          ? snaps.map(normalizeTimelineSnapshot).filter(Boolean)
+          : [];
+        set({ timelineSnaps: normalized }, false, "setTimelineSnaps");
+        const maxIndex = Math.max(0, normalized.length - 1);
+        const currentIndex = get().timelineScrubIndex;
+        if (currentIndex != null && currentIndex > maxIndex) {
+          set({ timelineScrubIndex: maxIndex }, false, "clampTimelineScrub");
+        }
       },
 
       setCameraZoom: (zoom) => {
-        const next = Math.max(0.35, Math.min(3.4, zoom));
+        const numericZoom = Number(zoom);
+        if (!Number.isFinite(numericZoom)) return;
+        const next = Math.max(0.35, Math.min(3.4, numericZoom));
         set({ cameraZoom: next }, false, "setCameraZoom");
       },
 
@@ -663,8 +698,10 @@ const use3DStore = create(
        * @param {number} depth
        */
       setAnatomyDepth: (depth) => {
+        const numericDepth = Number(depth);
+        if (!Number.isFinite(numericDepth)) return;
         set(
-          { anatomyDepth: Math.max(0, Math.min(100, depth)) },
+          { anatomyDepth: Math.max(0, Math.min(100, numericDepth)) },
           false,
           "setAnatomyDepth"
         );
@@ -719,6 +756,10 @@ const use3DStore = create(
        * @param {keyof typeof GPU_TIERS} tier
        */
       setGpuTier: (tier) => {
+        if (!Object.values(GPU_TIERS).includes(tier)) {
+          console.warn(`[use3DStore] Unknown gpuTier: ${tier}`);
+          return;
+        }
         if (get().gpuTier === tier) return;
         set({ gpuTier: tier }, false, `setGpuTier:${tier}`);
       },
@@ -732,8 +773,10 @@ const use3DStore = create(
        * @param {number} x — fraction 0–1 of viewport width
        */
       setSplitDividerX: (x) => {
+        const numericX = Number(x);
+        if (!Number.isFinite(numericX)) return;
         set(
-          { splitDividerX: Math.max(0.05, Math.min(0.95, x)) },
+          { splitDividerX: Math.max(0.05, Math.min(0.95, numericX)) },
           false,
           "setSplitDividerX"
         );
@@ -756,15 +799,23 @@ const use3DStore = create(
       // ───────────────────────────────────────────────────────────────────────
 
       setAutoRotate: (val) =>
-        set({ autoRotate: val }, false, "setAutoRotate"),
+        set({ autoRotate: Boolean(val) }, false, "setAutoRotate"),
 
       /** Toggle between 3D WebGL canvas and 2D sprite viewer */
-      setRenderMode: (mode) =>
-        set({ renderMode: mode }, false, `setRenderMode:${mode}`),
+      setRenderMode: (mode) => {
+        if (!['WEBGL', 'SPRITE'].includes(mode)) {
+          console.warn(`[use3DStore] Unknown renderMode: ${mode}`);
+          return;
+        }
+        set({ renderMode: mode }, false, `setRenderMode:${mode}`);
+      },
 
       /** Update bio-feedback stress level (0–100) */
-      setStressLevel: (level) =>
-        set({ stressLevel: Math.max(0, Math.min(100, level)) }, false, "setStressLevel"),
+      setStressLevel: (level) => {
+        const numericLevel = Number(level);
+        if (!Number.isFinite(numericLevel)) return;
+        set({ stressLevel: Math.max(0, Math.min(100, numericLevel)) }, false, "setStressLevel");
+      },
 
       // ───────────────────────────────────────────────────────────────────────
       // ACTIONS — AMBITION PATH
@@ -829,11 +880,16 @@ const use3DStore = create(
        * @param {number} monthIndex
        */
       setCurrentMonthIndex: (monthIndex) => {
+        const numericMonth = Number(monthIndex);
+        if (!Number.isFinite(numericMonth)) return;
         set(
           (state) => ({
             ambitionPath: {
               ...state.ambitionPath,
-              currentMonthIndex: monthIndex,
+              currentMonthIndex: Math.max(0, Math.min(
+                Number(state.ambitionPath.targetMonthIndex) || 0,
+                Math.round(numericMonth),
+              )),
             },
           }),
           false,
@@ -867,10 +923,12 @@ const use3DStore = create(
        */
       getProgressPercent: () => {
         const { ambitionPath } = get();
+        const targetMonthIndex = Number(ambitionPath.targetMonthIndex);
+        if (!Number.isFinite(targetMonthIndex) || targetMonthIndex <= 0) return 0;
         return Math.min(
           100,
           Math.round(
-            (ambitionPath.currentMonthIndex / ambitionPath.targetMonthIndex) * 100
+            (Number(ambitionPath.currentMonthIndex) / targetMonthIndex) * 100
           )
         );
       },

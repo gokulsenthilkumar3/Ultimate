@@ -60,6 +60,23 @@ export const MORPH_RANGES = Object.freeze({
 });
 
 export const REFERENCE_HEIGHT_CM = 175;
+export const SKIN_TONES = Object.freeze(['I', 'II', 'III', 'IV', 'V', 'VI']);
+
+/**
+ * Resolve the appearance value used by both the shader and the procedural
+ * fallback. Profile data can arrive as either the named tone or the legacy
+ * numeric index; an incomplete profile always renders as neutral IV instead
+ * of sending -1 (which previously clamped to tone I in the shader).
+ */
+export function resolveSkinTone(metrics = {}) {
+  const direct = String(metrics?.skinTone ?? '').trim().toUpperCase();
+  if (SKIN_TONES.includes(direct)) return direct;
+  const numeric = Number(metrics?.skinFitzpatrickIndex);
+  if (Number.isFinite(numeric)) {
+    return SKIN_TONES[Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(numeric)))] || 'IV';
+  }
+  return 'IV';
+}
 
 export function normaliseMetric(value, key) {
   const range = MORPH_RANGES[key];
@@ -163,7 +180,7 @@ export function computeMorphWeights(metrics = {}, inheritedMetrics = {}) {
     d_length: normalise(renderMetrics.d_length ?? renderMetrics.d_size, 'd_size'),
     d_girth: normalise(renderMetrics.d_girth, 'd_girth'),
     vascularity_intensity: renderMetrics.bodyFat < 15 ? Math.max(0, (15 - renderMetrics.bodyFat) / 10) : 0,
-    fitzpatrick_index: ['I', 'II', 'III', 'IV', 'V', 'VI'].indexOf(renderMetrics.skinTone),
+    fitzpatrick_index: SKIN_TONES.indexOf(resolveSkinTone(renderMetrics)),
   });
 }
 

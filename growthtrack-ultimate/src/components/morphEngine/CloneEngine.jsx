@@ -22,7 +22,7 @@
  * This component mounts inside CanvasScene in HumanoidViewer.jsx (Layer 2).
  */
 
-import React, { useMemo, useEffect, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { Html }                               from "@react-three/drei";
 import { useFrame, useThree }                 from "@react-three/fiber";
 import * as THREE                             from "three";
@@ -32,6 +32,7 @@ import BodyPartInteraction from "./BodyPartInteraction";
 import use3DStore, { VIEW_MODES } from "../../store/use3DStore";
 import SplitStencilScene from "./SplitStencilPass";
 import { getDualSeparation } from "./sceneLayout";
+import { buildMorphWeights } from "./metricsToBlendshapes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -155,6 +156,7 @@ function TimelineClone() {
   // WITHOUT permanently mutating cloneA — we pass scrubbedMetrics as local state
   const scrubIndex = use3DStore((s) => s.timelineScrubIndex);
   const snapshots  = use3DStore((s) => s.timelineSnaps);
+  const currentOverrides = use3DStore((s) => s.morphOverrides.current);
 
   // Compute scrubbed metrics locally (no store mutation)
   const scrubbedMetrics = useMemo(() => {
@@ -174,13 +176,13 @@ function TimelineClone() {
     );
   }, [scrubIndex, snapshots]);
 
-  // Push scrubbed metrics into cloneA temporarily; restore on unmount
-  useEffect(() => {
-    if (!scrubbedMetrics) return;
-    const prev = use3DStore.getState().cloneA.metrics;
-    use3DStore.getState().setCurrentMetrics(scrubbedMetrics);
-    return () => use3DStore.getState().setCurrentMetrics(prev); // restore
-  }, [scrubbedMetrics]);
+  // Timeline is a read-only render projection. Older code temporarily wrote
+  // snapshots into cloneA and restored them on unmount, which could overwrite
+  // a real measurement edited while the scrubber was open.
+  const scrubbedWeights = useMemo(
+    () => (scrubbedMetrics ? buildMorphWeights(scrubbedMetrics, currentOverrides) : null),
+    [currentOverrides, scrubbedMetrics],
+  );
 
   return (
     <HumanoidClone
@@ -191,6 +193,8 @@ function TimelineClone() {
       renderMode="normal"
       visible={true}
       showAura={false}
+      metricsOverride={scrubbedMetrics}
+      weightsOverride={scrubbedWeights}
     />
   );
 }

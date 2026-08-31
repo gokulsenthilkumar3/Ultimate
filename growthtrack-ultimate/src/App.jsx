@@ -223,11 +223,25 @@ export default function App() {
     const pathTab = location.pathname.substring(1);
     const locChanged = location.pathname !== prevLocationRef.current;
     const storeChanged = storeActiveTab !== prevStoreTabRef.current;
+    const hashTab = location.hash.substring(1).toLowerCase();
+
+    // Overview quick links can carry a nested Finance destination in the
+    // hash. Treat that deep link as navigation even when Finance is already
+    // the store's active module (a hash-only click otherwise leaves the page
+    // visually on Overview).
+    if (pathTab !== 'finance' && (hashTab === 'portfolio' || hashTab === 'sip')) {
+      setActiveTab('finance');
+      navigate(`/finance#${hashTab}`, { replace: true });
+      return;
+    }
 
     if (pathTab === 'portfolio' || pathTab === 'sip') {
       setActiveTab('finance');
-      window.location.hash = pathTab;
-      navigate('/finance', { replace: true });
+      // Preserve the nested finance destination in the same history update.
+      // Navigating to `/finance` first and assigning the hash afterwards races
+      // Finance's initial tab read, which used to land Portfolio users on the
+      // Overview tab and require a second click.
+      navigate(`/finance#${pathTab}`, { replace: true });
       return;
     }
 
@@ -261,7 +275,7 @@ export default function App() {
     const moduleName = GLOBAL_MODULES[storeActiveTab];
     if (moduleName) document.title = `GrowthTrack — ${moduleName}`;
     else document.title = 'GrowthTrack Ultimate';
-  }, [location.pathname, storeActiveTab, setActiveTab, navigate, session]);
+  }, [location.hash, location.pathname, storeActiveTab, setActiveTab, navigate, session]);
 
 
   useEffect(() => {

@@ -14,6 +14,51 @@ export async function apiSync(endpoint: string, method: string = 'POST', data: a
   });
 }
 
+const PORTFOLIO_TYPES = new Set(['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other']);
+
+export function normalizePortfolioHolding(holding: any, fallbackId = Date.now().toString()) {
+  if (!holding || typeof holding !== 'object') return null;
+  const name = String(holding.name ?? '').trim().slice(0, 120);
+  const units = Number(holding.units);
+  const buyPrice = Number(holding.buyPrice);
+  const currentPrice = holding.currentPrice === '' || holding.currentPrice == null
+    ? buyPrice
+    : Number(holding.currentPrice);
+  if (!name || !Number.isFinite(units) || units <= 0 || units > 1_000_000_000) return null;
+  if (!Number.isFinite(buyPrice) || buyPrice <= 0 || buyPrice > 1_000_000_000_000) return null;
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0 || currentPrice > 1_000_000_000_000) return null;
+  const buyDate = String(holding.buyDate ?? '').trim();
+  return {
+    id: String(holding.id ?? fallbackId),
+    name,
+    symbol: String(holding.symbol ?? '').trim().slice(0, 32).toUpperCase(),
+    type: PORTFOLIO_TYPES.has(holding.type) ? holding.type : 'Other',
+    units,
+    buyPrice,
+    currentPrice,
+    buyDate: /^\d{4}-\d{2}-\d{2}$/.test(buyDate) ? buyDate : '',
+  };
+}
+
+export function normalizePortfolio(rows: any) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row, index) => normalizePortfolioHolding(row, `holding-${index + 1}`)).filter(Boolean);
+}
+
+// Keep optimistic writes ordered. Without a tiny queue, two quick edits could
+// reach the API out of order and let an older snapshot overwrite the newest
+// one even though the UI already shows the latest state.
+let portfolioSyncQueue: Promise<any> = Promise.resolve();
+
+function persistPortfolio(next: any[]) {
+  const request = portfolioSyncQueue.then(() => apiSync('/portfolio', 'PUT', next));
+  portfolioSyncQueue = request.catch((error) => {
+    console.error('[useStore] portfolio persistence failed:', error);
+    return null;
+  });
+  return request;
+}
+
 const useStore = create<any>()(
   persist(
     (set, get, api) => ({
@@ -69,6 +114,7 @@ const useStore = create<any>()(
       documents: [],
       habits: [],
       subscriptions: [],
+      portfolio: [],
 
       addTimesheetEntry: (entry: any) => set((state: any) => ({ timesheetEntries: [entry, ...state.timesheetEntries] })),
       deleteTimesheetEntry: (id: string) => set((state: any) => ({ timesheetEntries: state.timesheetEntries.filter((e: any) => e.id !== id) })),
@@ -129,6 +175,34 @@ const useStore = create<any>()(
         });
       },
 
+      setPortfolio: (nextOrUpdater: any) => {
+        const previous = get().portfolio || [];
+        const proposed = typeof nextOrUpdater === 'function' ? nextOrUpdater(previous) : nextOrUpdater;
+        const next = normalizePortfolio(proposed);
+        set({ portfolio: next });
+        // Portfolio is a user-owned singleton. Keep the optimistic UI usable
+        // offline while reporting persistence failures for diagnostics.
+        return persistPortfolio(next);
+      },
+
+      addHolding: (holding: any) => {
+        const normalized = normalizePortfolioHolding(holding);
+        if (!normalized) return Promise.resolve(null);
+        return get().setPortfolio([...(get().portfolio || []), normalized]);
+      },
+
+      updateHolding: (id: string | number, updates: any) => {
+        const current = get().portfolio || [];
+        return get().setPortfolio(current.map((holding: any) => (
+          String(holding.id) === String(id) ? { ...holding, ...updates } : holding
+        )));
+      },
+
+      deleteHolding: (id: string | number) => {
+        const current = get().portfolio || [];
+        return get().setPortfolio(current.filter((holding: any) => String(holding.id) !== String(id)));
+      },
+
       updateBodyProfile: async (data: any) => {
         const previous = get().bodyProfile || {};
         const optimistic = { ...previous, ...data };
@@ -165,6 +239,7 @@ const useStore = create<any>()(
             shopping: { items: stored.shopping || [] }, entertainment: { media: stored.entertainment || [] },
             timesheetEntries: stored.timesheet || [], sleep_logs: stored.sleep_logs || [], nutrition_logs: stored.nutrition_logs || [],
             notes: stored.notes || [], goals: stored.goals || [], documents: stored.documents || [], habits: stored.habits || [], subscriptions: stored.subscriptions || [],
+            portfolio: Array.isArray(stored.user?.portfolio) ? normalizePortfolio(stored.user.portfolio) : get().portfolio,
             metric_logs: stored.metric_logs || [], moodLogs: stored.moodLogs || [], vitalsLogs: stored.vitalsLogs || [], medications: stored.medications || [],
             workouts: { sessions: stored.workout_sessions || [], exercisesBySession: {} },
             trainingPlan: stored.user?.trainingPlan || null, nutritionStrategy: stored.user?.nutritionStrategy || null, lifestyleTips: stored.user?.lifestyleTips || [], medicalData: stored.user?.medicalData || null, physiqueTargets: stored.user?.physiqueTargets || null, assessmentQA: stored.user?.assessmentQA || [], skills: stored.user?.skills || [], calendar_events: stored.user?.calendar_events || [], wellnessData: stored.user?.wellnessData || null,
@@ -503,7 +578,7 @@ const useStore = create<any>()(
       version: 4,
       // Persist every user-owned data domain. The previous whitelist only
       // saved a handful of modules, so a restart looked like a data reset.
-      partialize: (state: any) => ({ theme: state.theme, palette: state.palette, activeTab: state.activeTab, navigationOrder: state.navigationOrder, navigationTabOrder: state.navigationTabOrder, sidebarCollapsed: state.sidebarCollapsed, reducedMotion: state.reducedMotion }),
+      partialize: (state: any) => ({ theme: state.theme, palette: state.palette, activeTab: state.activeTab, navigationOrder: state.navigationOrder, navigationTabOrder: state.navigationTabOrder, sidebarCollapsed: state.sidebarCollapsed, reducedMotion: state.reducedMotion, portfolio: state.portfolio }),
       migrate: (persistedState: any, version) => {
         try {
           if (version < 4) {

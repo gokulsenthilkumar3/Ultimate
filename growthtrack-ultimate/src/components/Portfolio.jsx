@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   AreaChart, Area, LineChart, Line, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
@@ -10,14 +10,18 @@ import EmptyState from './ui/EmptyState';
 const ASSET_TYPES = ['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other'];
 const ASSET_COLORS = { Stock: '#6366f1', ETF: '#0ea5e9', 'Mutual Fund': '#10b981', Crypto: '#f59e0b', Gold: '#fbbf24', 'Real Estate': '#ec4899', Bond: '#8b5cf6', FD: '#34d399', Cash: '#6b7280', Other: '#94a3b8' };
 const CURRENCY = '₹';
+const EMPTY_PORTFOLIO = Object.freeze([]);
 
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
 
 function fmt(v, decimals = 0) {
-  if (!v || isNaN(v)) return `${CURRENCY}0`;
-  if (v >= 10000000) return `${CURRENCY}${(v / 10000000).toFixed(2)}Cr`;
-  if (v >= 100000)   return `${CURRENCY}${(v / 100000).toFixed(2)}L`;
-  return `${CURRENCY}${v.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  const value = Number(v);
+  if (!Number.isFinite(value)) return `${CURRENCY}0`;
+  const sign = value < 0 ? '-' : '';
+  const absolute = Math.abs(value);
+  if (absolute >= 10000000) return `${sign}${CURRENCY}${(absolute / 10000000).toFixed(2)}Cr`;
+  if (absolute >= 100000)   return `${sign}${CURRENCY}${(absolute / 100000).toFixed(2)}L`;
+  return `${sign}${CURRENCY}${absolute.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 }
 
 // Mini sparkline
@@ -34,7 +38,9 @@ function Sparkline({ data, color = '#10b981', width = 80, height = 32 }) {
 
 // Generate simulated price history for an asset (seed-based)
 function generateHistory(asset) {
-  const seed  = (asset.id || 0) % 100;
+  const seed = String(asset.id ?? asset.symbol ?? asset.name ?? 'holding')
+    .split('')
+    .reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 100, 7);
   const base  = Number(asset.buyPrice) || 100;
   const pts   = 30;
   const hist  = [base];
@@ -60,7 +66,7 @@ function ROIBadge({ roi }) {
 
 export default function Portfolio() {
   const toast = useToast();
-  const portfolio     = useStore(s => s.portfolio) || [];
+  const portfolio     = useStore(s => s.portfolio) ?? EMPTY_PORTFOLIO;
   const setPortfolio  = useStore(s => s.setPortfolio);
   const updateHolding = useStore(s => s.updateHolding);
   const deleteHolding = useStore(s => s.deleteHolding);
@@ -72,6 +78,18 @@ export default function Portfolio() {
   const [editForm, setEditForm] = useState({});
   const [form,     setForm]     = useState({ name: '', symbol: '', type: 'Stock', units: '', buyPrice: '', currentPrice: '', buyDate: '' });
   const [refreshing, setRefreshing] = useState(false);
+  const refreshTimerRef = useRef(null);
+  const addNameRef = useRef(null);
+
+  useEffect(() => () => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (!showAdd) return;
+    const focusTimer = globalThis.setTimeout(() => addNameRef.current?.focus(), 0);
+    return () => globalThis.clearTimeout(focusTimer);
+  }, [showAdd]);
 
   // Derived metrics
   const holdings = useMemo(() => (portfolio || []).map(h => {
@@ -107,8 +125,15 @@ export default function Portfolio() {
   }, [holdings]);
 
   const handleAdd = () => {
-    if (!form.name || !form.units || !form.buyPrice) { toast.error('Name, units, and buy price are required.'); return; }
-    const newHolding = { ...form, id: Date.now(), units: Number(form.units), buyPrice: Number(form.buyPrice), currentPrice: Number(form.currentPrice || form.buyPrice) };
+    const name = String(form.name || '').trim();
+    const units = Number(form.units);
+    const buyPrice = Number(form.buyPrice);
+    const currentPrice = form.currentPrice === '' ? buyPrice : Number(form.currentPrice);
+    if (!name) { toast.error('Asset name is required.'); return; }
+    if (!Number.isFinite(units) || units <= 0) { toast.error('Units must be greater than zero.'); return; }
+    if (!Number.isFinite(buyPrice) || buyPrice <= 0) { toast.error('Buy price must be greater than zero.'); return; }
+    if (!Number.isFinite(currentPrice) || currentPrice <= 0) { toast.error('Current price must be greater than zero.'); return; }
+    const newHolding = { ...form, id: Date.now().toString(), name, units, buyPrice, currentPrice };
     if (typeof addHolding === 'function') addHolding(newHolding);
     else if (typeof setPortfolio === 'function') setPortfolio([...(portfolio || []), newHolding]);
     setForm({ name: '', symbol: '', type: 'Stock', units: '', buyPrice: '', currentPrice: '', buyDate: '' });
@@ -124,14 +149,23 @@ export default function Portfolio() {
   };
 
   const saveEdit = () => {
-    if (typeof updateHolding === 'function') updateHolding(editId, editForm);
-    else if (typeof setPortfolio === 'function') setPortfolio((portfolio || []).map(h => h.id === editId ? { ...h, ...editForm } : h));
+    const name = String(editForm.name || '').trim();
+    const units = Number(editForm.units);
+    const buyPrice = Number(editForm.buyPrice);
+    const currentPrice = editForm.currentPrice === '' ? buyPrice : Number(editForm.currentPrice);
+    if (!name || !Number.isFinite(units) || units <= 0 || !Number.isFinite(buyPrice) || buyPrice <= 0 || !Number.isFinite(currentPrice) || currentPrice <= 0) {
+      toast.error('Enter a name, positive units, and positive prices.');
+      return;
+    }
+    const normalizedEdit = { ...editForm, name, units, buyPrice, currentPrice };
+    if (typeof updateHolding === 'function') updateHolding(editId, normalizedEdit);
+    else if (typeof setPortfolio === 'function') setPortfolio((portfolio || []).map(h => h.id === editId ? { ...h, ...normalizedEdit } : h));
     setEditId(null); toast.success('Holding updated');
   };
 
   const simulateRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
+    refreshTimerRef.current = setTimeout(() => {
       // Slightly randomize current prices to simulate market update
       if (typeof setPortfolio === 'function') {
         setPortfolio((portfolio || []).map(h => ({
@@ -156,10 +190,10 @@ export default function Portfolio() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={simulateRefresh} disabled={refreshing} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
-            <RefreshCw size={13} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} /> Refresh
+          <button onClick={simulateRefresh} disabled={refreshing} aria-busy={refreshing} title="Refresh simulated prices" style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+            <RefreshCw size={13} aria-hidden="true" style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} /> {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
-          <button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Add Holding</button>
+          <button onClick={() => setShowAdd(s => !s)} className="btn-primary" aria-expanded={showAdd} aria-controls="portfolio-add-form"><Plus size={14} aria-hidden="true" /> Add Holding</button>
         </div>
       </div>
 
@@ -168,7 +202,7 @@ export default function Portfolio() {
         {[
           { label: 'Total Invested', val: fmt(totalInvested), color: 'var(--text-1)' },
           { label: 'Current Value',  val: fmt(totalCurrent),  color: 'var(--accent)' },
-          { label: 'Total Gain',     val: fmt(Math.abs(totalGain)), color: totalGain >= 0 ? '#10b981' : '#f87171' },
+          { label: 'Total Gain',     val: fmt(totalGain),            color: totalGain >= 0 ? '#10b981' : '#f87171' },
           { label: 'Overall ROI',    val: `${totalROI >= 0 ? '+' : ''}${totalROI.toFixed(2)}%`, color: totalROI >= 0 ? '#10b981' : '#f87171' },
         ].map(m => (
           <div key={m.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
@@ -179,50 +213,50 @@ export default function Portfolio() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
+      <div role="tablist" aria-label="Portfolio views" style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
         {['holdings', 'allocation', 'performance'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === t ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{t}</button>
+          <button key={t} type="button" role="tab" onClick={() => setTab(t)} aria-selected={tab === t} aria-controls={`portfolio-${t}-panel`} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === t ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{t}</button>
         ))}
       </div>
 
       {/* Add form */}
       {showAdd && (
-        <div className="glass-card mb-lg">
+        <form id="portfolio-add-form" className="glass-card mb-lg" onSubmit={(event) => { event.preventDefault(); handleAdd(); }}>
           <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>New Holding</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
             {[
-              { key: 'name',         placeholder: 'Asset name *' },
+              { key: 'name',         placeholder: 'Asset name *', ref: addNameRef },
               { key: 'symbol',       placeholder: 'Ticker (e.g. RELIANCE)' },
               { key: 'units',        placeholder: 'Units / Qty *', type: 'number' },
               { key: 'buyPrice',     placeholder: 'Buy price *', type: 'number' },
               { key: 'currentPrice', placeholder: 'Current price', type: 'number' },
             ].map(f => (
-              <input key={f.key} type={f.type || 'text'} placeholder={f.placeholder}
+              <input key={f.key} ref={f.ref} type={f.type || 'text'} placeholder={f.placeholder} aria-label={f.placeholder.replace(' *', '')}
                 value={form[f.key]} onChange={e => setForm(ff => ({ ...ff, [f.key]: e.target.value }))}
                 className="form-input" />
             ))}
-            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="form-input">
+            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="form-input" aria-label="Asset type">
               {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
             <div>
               <label style={{ fontSize: '0.62rem', color: 'var(--text-3)', display: 'block', marginBottom: '4px' }}>Buy Date</label>
-              <input type="date" value={form.buyDate} onChange={e => setForm(f => ({ ...f, buyDate: e.target.value }))} className="form-input" />
+              <input type="date" value={form.buyDate} onChange={e => setForm(f => ({ ...f, buyDate: e.target.value }))} className="form-input" aria-label="Buy date" />
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-            <button onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-            <button onClick={handleAdd} className="btn-primary">Add</button>
+            <button type="button" onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+            <button type="submit" className="btn-primary">Add</button>
           </div>
-        </div>
+        </form>
       )}
 
       {/* Holdings tab */}
       {tab === 'holdings' && (
-        <div className="glass-card" style={{ overflowX: 'auto' }}>
+        <div id="portfolio-holdings-panel" role="tabpanel" aria-label="Holdings" className="glass-card" style={{ overflowX: 'auto' }}>
           {holdings.length === 0 ? (
             <EmptyState icon={DollarSign} title="No Holdings" description="Add your first investment to start tracking your portfolio." ctaLabel="Add Holding" onAction={() => setShowAdd(true)} />
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <table aria-label="Investment holdings" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {['Asset', 'Type', 'Units', 'Buy Price', 'Current', 'Invested', 'Value', 'Gain', 'ROI', 'Trend', ''].map(h => (
@@ -235,17 +269,17 @@ export default function Portfolio() {
                   <tr key={h.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     {editId === h.id ? (
                       <td colSpan={11} style={{ padding: '0.75rem 0.6rem' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                          <input value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Name" className="form-input" style={{ width: '140px' }} />
-                          <input value={editForm.units || ''} onChange={e => setEditForm(f => ({ ...f, units: e.target.value }))} placeholder="Units" type="number" className="form-input" style={{ width: '80px' }} />
-                          <input value={editForm.buyPrice || ''} onChange={e => setEditForm(f => ({ ...f, buyPrice: e.target.value }))} placeholder="Buy price" type="number" className="form-input" style={{ width: '100px' }} />
-                          <input value={editForm.currentPrice || ''} onChange={e => setEditForm(f => ({ ...f, currentPrice: e.target.value }))} placeholder="Current" type="number" className="form-input" style={{ width: '100px' }} />
-                          <select value={editForm.type || 'Stock'} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))} className="form-input">
+                        <form onSubmit={(event) => { event.preventDefault(); saveEdit(); }} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                          <input value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Name" aria-label="Holding name" className="form-input" style={{ width: '140px' }} />
+                          <input value={editForm.units || ''} onChange={e => setEditForm(f => ({ ...f, units: e.target.value }))} placeholder="Units" aria-label="Holding units" type="number" min="0" step="any" className="form-input" style={{ width: '80px' }} />
+                          <input value={editForm.buyPrice || ''} onChange={e => setEditForm(f => ({ ...f, buyPrice: e.target.value }))} placeholder="Buy price" aria-label="Holding buy price" type="number" min="0" step="any" className="form-input" style={{ width: '100px' }} />
+                          <input value={editForm.currentPrice || ''} onChange={e => setEditForm(f => ({ ...f, currentPrice: e.target.value }))} placeholder="Current" aria-label="Holding current price" type="number" min="0" step="any" className="form-input" style={{ width: '100px' }} />
+                          <select value={editForm.type || 'Stock'} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))} aria-label="Holding asset type" className="form-input">
                             {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
                           </select>
-                          <button onClick={saveEdit} className="btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}><Check size={12} /></button>
-                          <button onClick={() => setEditId(null)} style={{ padding: '0.4rem 0.75rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}><X size={12} /></button>
-                        </div>
+                          <button type="submit" aria-label="Save holding" title="Save holding" className="btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}><Check size={12} aria-hidden="true" /></button>
+                          <button type="button" onClick={() => setEditId(null)} aria-label="Cancel editing" title="Cancel editing" style={{ padding: '0.4rem 0.75rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}><X size={12} aria-hidden="true" /></button>
+                        </form>
                       </td>
                     ) : (
                       <>
@@ -272,8 +306,8 @@ export default function Portfolio() {
                         </td>
                         <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                            <button onClick={() => { setEditId(h.id); setEditForm({ ...h }); }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={12} /></button>
-                            <button onClick={() => handleDelete(h.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '3px' }}><Trash2 size={12} /></button>
+                            <button onClick={() => { setEditId(h.id); setEditForm({ ...h }); }} aria-label={`Edit ${h.name}`} title={`Edit ${h.name}`} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={12} aria-hidden="true" /></button>
+                            <button onClick={() => handleDelete(h.id)} aria-label={`Delete ${h.name}`} title={`Delete ${h.name}`} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '3px' }}><Trash2 size={12} aria-hidden="true" /></button>
                           </div>
                         </td>
                       </>
@@ -300,7 +334,7 @@ export default function Portfolio() {
 
       {/* Allocation tab */}
       {tab === 'allocation' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+        <div id="portfolio-allocation-panel" role="tabpanel" aria-label="Allocation" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
           <div className="glass-card">
             <span className="card-title">Allocation by Type</span>
             {byType.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginTop: '1rem' }}>No holdings yet.</p> : (
@@ -337,7 +371,7 @@ export default function Portfolio() {
 
       {/* Performance tab */}
       {tab === 'performance' && (
-        <div className="glass-card">
+        <div id="portfolio-performance-panel" role="tabpanel" aria-label="Performance" className="glass-card">
           <span className="card-title">Estimated Portfolio Value — Last 30 Days</span>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Simulated based on buy prices and current values.</p>
           {portfolioHistory.length < 2 ? (
