@@ -464,6 +464,7 @@ model Task {
   priority    String?
   done        Boolean  @default(false)
   completedAt String?
+  data        String?
   createdAt   DateTime @default(now())
   createdBy   String?
   updatedBy   String?
@@ -656,6 +657,7 @@ model Note {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String?
   content   String?
+  data      String?
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
@@ -709,6 +711,7 @@ model Habit {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String?
   streak    Int        @default(0)
+  data      String?
   logs      HabitLog[]
   createdAt DateTime   @default(now())
   createdBy String?

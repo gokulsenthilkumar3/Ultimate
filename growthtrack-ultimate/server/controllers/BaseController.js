@@ -1,3 +1,5 @@
+import { collectionHasData, collectionPayload, collectionToClient } from '../collectionPayload.js';
+
 class BaseController {
   constructor(model, name, metricPayloadFn = null, stripProtectedFieldsFn = null, auditCrudFn = null) {
     this.model = model;
@@ -11,7 +13,7 @@ class BaseController {
     try {
       const items = await this.model.findMany({ where: { userId: req.user.id } });
       // Example of formatting output. Subclasses can override if needed.
-      res.json(items);
+      res.json(items.map(item => collectionToClient(this.name, item)));
     } catch (e) {
       this.sendError(res, e, `${this.name} list`);
     }
@@ -20,20 +22,14 @@ class BaseController {
   async create(req, res) {
     try {
       const { id, ...rawData } = req.body;
-      let data = this.stripProtectedFields ? this.stripProtectedFields(rawData) : rawData;
-      
-      // Clean up relations or arrays that might be in the payload
-      Object.keys(data).forEach(k => {
-        if (typeof data[k] === 'object' && data[k] !== null) {
-          data[k] = JSON.stringify(data[k]);
-        }
-      });
+      const source = this.stripProtectedFields ? this.stripProtectedFields(rawData) : rawData;
+      const data = collectionPayload(this.name, source);
       
       const item = await this.model.create({
         data: { 
           ...data, 
           userId: req.user.id, 
-          id: id || undefined,
+          id: id == null ? undefined : String(id),
           createdBy: req.user.id,
           updatedBy: req.user.id
         }
@@ -41,7 +37,7 @@ class BaseController {
       if (this.auditCrud) {
         await this.auditCrud({ action: 'create', table_name: this.name, item_id: item.id, details: `Created ${this.name} record`, userId: req.user.id, req });
       }
-      res.json(item);
+      res.json(collectionToClient(this.name, item));
     } catch (e) {
       this.sendError(res, e, `${this.name} create`);
     }
@@ -49,12 +45,12 @@ class BaseController {
 
   async update(req, res) {
     try {
-      let data = this.stripProtectedFields ? this.stripProtectedFields(req.body) : req.body;
-      Object.keys(data).forEach(k => {
-        if (typeof data[k] === 'object' && data[k] !== null) {
-          data[k] = JSON.stringify(data[k]);
-        }
-      });
+      const source = this.stripProtectedFields ? this.stripProtectedFields(req.body) : req.body;
+      const existing = collectionHasData(this.name)
+        ? await this.model.findFirst({ where: { id: req.params.id, userId: req.user.id } })
+        : null;
+      if (collectionHasData(this.name) && !existing) return res.status(404).json({ error: 'Record not found.' });
+      const data = collectionPayload(this.name, source, existing);
       
       const item = await this.model.updateMany({
         where: { id: req.params.id, userId: req.user.id },
@@ -89,6 +85,7 @@ class BaseController {
   }
 
   sendError(res, error, context) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
     console.error(`[${context}]`, error);
     res.status(500).json({ error: `Internal server error during ${context}.` });
   }

@@ -3,6 +3,8 @@ import { Plus, Trash2, Edit3, Check, X, Download, RefreshCw, ChevronLeft, Chevro
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import { localDateKey } from '../lib/metricSeries';
+import { expandRecurring, validateCalendarEvent, buildCalendarExport } from '../lib/calendarDates';
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -20,32 +22,7 @@ function isSameDay(d1, d2) {
   return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 }
 
-function expandRecurring(event, viewStart, viewEnd) {
-  const start = new Date(event.date);
-  const dates = [];
 
-  if (!event.recurrence || event.recurrence === 'none') {
-    if (start >= viewStart && start <= viewEnd) dates.push(event.date);
-    return dates;
-  }
-
-  let cur = new Date(start);
-  const end = new Date(viewEnd);
-  let safety = 0;
-
-  while (cur <= end && safety < 400) {
-    safety++;
-    if (cur >= viewStart) dates.push(cur.toISOString().slice(0, 10));
-
-    if (event.recurrence === 'daily')   cur.setDate(cur.getDate() + 1);
-    else if (event.recurrence === 'weekly') cur.setDate(cur.getDate() + 7);
-    else if (event.recurrence === 'monthly') cur.setMonth(cur.getMonth() + 1);
-    else if (event.recurrence === 'yearly') cur.setFullYear(cur.getFullYear() + 1);
-    else break;
-  }
-
-  return dates;
-}
 
 export default function Calendar() {
   const toast = useToast();
@@ -61,11 +38,12 @@ export default function Calendar() {
   const [view,  setView]  = useState('month');
   const [selectedDate, setSelectedDate] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editId,  setEditId]  = useState(null);
   const [editForm, setEditForm] = useState({});
 
   const [form, setForm] = useState({
-    title: '', date: today.toISOString().slice(0, 10), endDate: '',
+    title: '', date: localDateKey(today), endDate: '',
     startTime: '', endTime: '', type: 'Event', color: EVENT_COLORS[0],
     description: '', location: '', recurrence: 'none', allDay: true,
   });
@@ -84,7 +62,7 @@ export default function Calendar() {
       days.push(d);
     }
 
-    const ve = new Date(vs); ve.setDate(vs.getDate() + totalCells);
+    const ve = new Date(vs); ve.setDate(vs.getDate() + totalCells - 1);
     return { calDays: days, viewStart: vs, viewEnd: ve };
   }, [year, month]);
 
@@ -93,64 +71,47 @@ export default function Calendar() {
     const result = [];
     events.forEach(ev => {
       const dates = expandRecurring(ev, viewStart, viewEnd);
-      dates.forEach(d => result.push({ ...ev, date: d, _recurring: ev.recurrence !== 'none' }));
+      dates.forEach(d => result.push({ ...ev, date: d, _recurring: Boolean(ev.recurrence && ev.recurrence !== 'none') }));
     });
     return result;
   }, [events, viewStart, viewEnd]);
 
   const eventsOnDay = useCallback((day) => {
-    const key = day.toISOString().slice(0, 10);
+    const key = localDateKey(day);
     return expandedEvents.filter(e => e.date === key);
   }, [expandedEvents]);
 
-  const doAdd = () => {
-    if (!form.title.trim()) { toast.error('Title required'); return; }
-    const ev = { ...form, id: Date.now() };
-    if (typeof addEvent === 'function') addEvent(ev);
-    setForm({ title: '', date: today.toISOString().slice(0, 10), endDate: '', startTime: '', endTime: '', type: 'Event', color: EVENT_COLORS[0], description: '', location: '', recurrence: 'none', allDay: true });
+  const doAdd = async () => {
+    const error = validateCalendarEvent(form);
+    if (error) { toast.error(error); return; }
+    if (saving) return;
+    const ev = { ...form, title: form.title.trim(), id: crypto.randomUUID() };
+    setSaving(true);
+    try {
+    await addEvent(ev);
+    setForm({ title: '', date: localDateKey(today), endDate: '', startTime: '', endTime: '', type: 'Event', color: EVENT_COLORS[0], description: '', location: '', recurrence: 'none', allDay: true });
     setShowAdd(false);
     toast.success(`📅 "${ev.title}" added`);
+    } catch { toast.error('Event could not be saved. Your draft is still here.'); }
+    finally { setSaving(false); }
   };
 
-  const doDelete = (id) => {
+  const doDelete = async (id) => {
     const ev = events.find(e => e.id === id);
-    if (typeof deleteEvent === 'function') deleteEvent(id);
-    toast.info(`${ev?.title} deleted`);
+    try { await deleteEvent(id); toast.info(`${ev?.title} deleted`); }
+    catch { toast.error('Event could not be deleted. Try again.'); }
   };
 
-  const saveEdit = () => {
-    if (typeof updateEvent === 'function') updateEvent(editId, editForm);
-    setEditId(null); toast.success('Event updated');
+  const saveEdit = async () => {
+    const error = validateCalendarEvent(editForm);
+    if (error) { toast.error(error); return; }
+    try { await updateEvent(editId, editForm); setEditId(null); toast.success('Event updated'); }
+    catch { toast.error('Event could not be updated. Your draft is still here.'); }
   };
 
   // iCal export
   const exportICal = useCallback(() => {
-    const esc = (s = '') => s.replace(/[,;\\]/g, c => '\\' + c).replace(/\n/g, '\\n');
-    const dtStr = (dateStr, timeStr = '') => {
-      if (!dateStr) return '';
-      const dt = new Date(dateStr + (timeStr ? 'T' + timeStr : 'T00:00:00'));
-      return dt.toISOString().replace(/[-:]/g, '').replace('.000', '');
-    };
-    const lines = [
-      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GrowthTrack//Digital Twin//EN', 'CALSCALE:GREGORIAN',
-    ];
-    events.forEach(ev => {
-      const uid = `${ev.id}@growthtrack`;
-      lines.push('BEGIN:VEVENT');
-      lines.push(`UID:${uid}`);
-      lines.push(`SUMMARY:${esc(ev.title)}`);
-      lines.push(`DTSTART:${dtStr(ev.date, ev.startTime)}`);
-      if (ev.endDate || ev.endTime) lines.push(`DTEND:${dtStr(ev.endDate || ev.date, ev.endTime || '23:59')}`);
-      if (ev.description) lines.push(`DESCRIPTION:${esc(ev.description)}`);
-      if (ev.location)    lines.push(`LOCATION:${esc(ev.location)}`);
-      if (ev.recurrence && ev.recurrence !== 'none') {
-        const rmap = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY', yearly: 'YEARLY' };
-        lines.push(`RRULE:FREQ=${rmap[ev.recurrence]}`);
-      }
-      lines.push('END:VEVENT');
-    });
-    lines.push('END:VCALENDAR');
-    const ical = lines.join('\r\n');
+    const ical = buildCalendarExport(events);
     const url = URL.createObjectURL(new Blob([ical], { type: 'text/calendar;charset=utf-8' }));
     const a = document.createElement('a'); a.href = url; a.download = 'growthtrack-calendar.ics'; a.click();
     URL.revokeObjectURL(url);
@@ -163,12 +124,12 @@ export default function Calendar() {
 
   const selectedDayEvents = useMemo(() => {
     if (!selectedDate) return [];
-    const key = selectedDate.toISOString().slice(0, 10);
+    const key = localDateKey(selectedDate);
     return expandedEvents.filter(e => e.date === key).sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
   }, [selectedDate, expandedEvents]);
 
   const upcomingEvents = useMemo(() => {
-    const todayKey = today.toISOString().slice(0, 10);
+    const todayKey = localDateKey(today);
     return expandedEvents.filter(e => e.date >= todayKey).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
   }, [expandedEvents, today]);
 
@@ -221,9 +182,9 @@ export default function Calendar() {
 
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <div onClick={() => setForm(f => ({ ...f, allDay: !f.allDay }))} style={{ width: '32px', height: '18px', borderRadius: '99px', background: form.allDay ? 'var(--accent)' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
+              <button type="button" role="switch" aria-checked={form.allDay} aria-label="All day event" onClick={() => setForm(f => ({ ...f, allDay: !f.allDay }))} style={{ width: '32px', height: '18px', borderRadius: '99px', background: form.allDay ? 'var(--accent)' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
                 <div style={{ position: 'absolute', top: '2px', left: form.allDay ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-              </div>
+              </button>
               All day
             </label>
             <div style={{ display: 'flex', gap: '4px', marginLeft: '0.5rem' }}>
@@ -235,7 +196,7 @@ export default function Calendar() {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-            <button onClick={doAdd} className="btn-primary">Add Event</button>
+            <button onClick={doAdd} disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Add Event'}</button>
           </div>
         </div>
       )}
@@ -243,9 +204,9 @@ export default function Calendar() {
       {/* Nav + view toggle */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button onClick={prevMonth} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: 'var(--text-2)' }}><ChevronLeft size={14} /></button>
+          <button aria-label="Previous month" onClick={prevMonth} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: 'var(--text-2)' }}><ChevronLeft size={14} /></button>
           <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-1)', minWidth: '160px', textAlign: 'center' }}>{MONTHS[month]} {year}</span>
-          <button onClick={nextMonth} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: 'var(--text-2)' }}><ChevronRight size={14} /></button>
+          <button aria-label="Next month" onClick={nextMonth} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: 'var(--text-2)' }}><ChevronRight size={14} /></button>
           <button onClick={goToday} style={{ padding: '5px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>Today</button>
         </div>
         <div style={{ display: 'flex', gap: '0.3rem' }}>
@@ -255,7 +216,7 @@ export default function Calendar() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selectedDate ? '1fr 280px' : '1fr', gap: '1rem' }}>
+      <div className="calendar-layout" style={{ display: 'grid', gridTemplateColumns: selectedDate ? 'minmax(0, 1fr) minmax(220px, 280px)' : 'minmax(0, 1fr)', gap: '1rem' }}>
         {/* Month grid */}
         {view === 'month' && (
           <div>
@@ -389,7 +350,7 @@ export default function Calendar() {
               {selectedDayEvents.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-3)' }}>
                   <p style={{ fontSize: '0.78rem' }}>No events</p>
-                  <button onClick={() => { setForm(f => ({ ...f, date: selectedDate.toISOString().slice(0, 10) })); setShowAdd(true); }} className="btn-primary" style={{ marginTop: '0.75rem', padding: '5px 12px', fontSize: '0.72rem' }}><Plus size={11} /> Add</button>
+                  <button onClick={() => { setForm(f => ({ ...f, date: localDateKey(selectedDate) })); setShowAdd(true); }} className="btn-primary" style={{ marginTop: '0.75rem', padding: '5px 12px', fontSize: '0.72rem' }}><Plus size={11} /> Add</button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -411,3 +372,4 @@ export default function Calendar() {
     </div>
   );
 }
+

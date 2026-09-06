@@ -18,6 +18,7 @@ import {
   EffectPass,
   NoiseEffect,
   RenderPass,
+  SSAOEffect,
   ToneMappingEffect,
   ToneMappingMode,
   VignetteEffect,
@@ -93,6 +94,24 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       addEffectPass(composer, camera, bloom, passes);
     }
 
+    if (fullEffects && cinematic.ssao) {
+      const ssao = new SSAOEffect(camera, new THREE.Texture(), {
+        blendFunction: BlendFunction.MULTIPLY,
+        samples: 16,
+        rings: 7,
+        distanceThreshold: 1.0,
+        distanceFalloff: 0.1,
+        rangeThreshold: 0.015,
+        rangeFalloff: 0.002,
+        luminanceInfluence: 0.7,
+        radius: 0.15,
+        intensity: 1.8,
+        bias: 0.025,
+      });
+      effects.push(ssao);
+      addEffectPass(composer, camera, ssao, passes);
+    }
+
     const finishingEffects = [];
     if (fullEffects && cinematic.chromaticAberration) {
       const chromatic = new ChromaticAberrationEffect({
@@ -159,6 +178,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     cinematic.chromaticAberration,
     cinematic.depthOfField,
     cinematic.filmGrain,
+    cinematic.ssao,
     cinematic.vignette,
     gl,
     fullEffects,

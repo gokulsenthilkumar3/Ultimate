@@ -1,5 +1,5 @@
 import {
-  Activity, Bot, BriefcaseBusiness, CalendarDays, CircleUserRound, Clapperboard,
+  Activity, Bell, Bot, BriefcaseBusiness, CalendarDays, CircleUserRound, Clapperboard,
   Cloud, Database, Dumbbell, FileText, Goal, HandCoins, HeartPulse, HelpCircle,
   History, Home, Landmark, LayoutDashboard, ListChecks, Map, PieChart, Ruler,
   Settings, ShieldCheck, ShoppingBag, Sparkles, Target, TrendingUp, Trophy,
@@ -43,17 +43,19 @@ export const TABS = {
   logs: { label: 'Logs', group: 'system', icon: FileText, emoji: '📊', keywords: ['audit', 'sessions'] },
   apps: { label: 'Apps', group: 'system', icon: Cloud, emoji: '🚀', keywords: ['connectors', 'integrations'] },
   about: { label: 'About', group: 'system', icon: Sparkles, emoji: 'ℹ️', keywords: ['version'] },
+  notifications: { label: 'Notifications', group: 'system', icon: Bell, emoji: '🔔', keywords: ['alerts', 'reminders'] },
+  pricing: { label: 'Plans', group: 'system', icon: ShieldCheck, emoji: '✨', keywords: ['pricing', 'subscription'] },
 };
 
 export const GROUPS = {
   today: { label: 'Today', icon: Home, tabs: ['overview', 'current'] },
   body: { label: 'Body', icon: Dumbbell, tabs: ['physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration'] },
   wellness: { label: 'Wellness', icon: HeartPulse, tabs: ['sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits'] },
-  insights: { label: 'Insights', icon: TrendingUp, tabs: ['insights'] },
+  insights: { label: 'Insights', icon: TrendingUp, tabs: ['insights', 'progress', 'goals'] },
   work: { label: 'Workspace', icon: BriefcaseBusiness, tabs: ['workspace', 'tasks', 'projects', 'timesheet', 'skills'] },
   money: { label: 'Money', icon: WalletCards, tabs: ['finance', 'shopping', 'sip', 'portfolio'] },
   life: { label: 'Life', icon: Users, tabs: ['social', 'entertainment', 'maps'] },
-  system: { label: 'More', icon: LayoutDashboard, tabs: ['ai', 'databases', 'profile', 'help', 'logs', 'apps', 'about'] },
+  system: { label: 'More', icon: LayoutDashboard, tabs: ['apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
 };
 
 export const GROUP_ORDER = Object.keys(GROUPS);
@@ -67,7 +69,25 @@ export const NAVIGABLE_MODULES = {
 };
 
 export function normalizeGroupOrder(saved = []) {
-  return [...saved.filter(id => GROUPS[id]), ...GROUP_ORDER.filter(id => !saved.includes(id))];
+  const valid = Array.isArray(saved) ? saved.filter(id => Object.hasOwn(GROUPS, id)) : [];
+  return [...new Set([...valid, ...GROUP_ORDER])];
+}
+
+export function normalizeTabOrder(saved, available) {
+  const valid = [...new Set((Array.isArray(available) ? available : []).filter(id => Object.hasOwn(TABS, id)))];
+  return [...new Set([...(Array.isArray(saved) ? saved : []).filter(id => valid.includes(id)), ...valid])];
+}
+
+export function navigationGroups(configured = []) {
+  return Object.fromEntries(Object.entries(GROUPS).map(([id, group]) => {
+    const custom = Array.isArray(configured) ? configured.find(item => item?.id === id) : null;
+    return [id, {
+      ...group,
+      label: typeof custom?.label === 'string' && custom.label.trim() ? custom.label : group.label,
+      // Configuration may reorder modules, but must never hide built-in destinations.
+      tabs: normalizeTabOrder(custom?.tabs, group.tabs),
+    }];
+  }));
 }
 
 export function tabMeta(id) {

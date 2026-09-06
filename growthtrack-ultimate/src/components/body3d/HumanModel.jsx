@@ -108,7 +108,7 @@ function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, s
     });
   }, [clonedScene, morphs, hairPreset, wardrobe, stressLevel, user, skinMat]);
 
-  useFrame(() => {
+  useEffect(() => {
     const d = depth / 100;
     clonedScene.traverse((node) => {
       if (!node.isMesh) return;
@@ -131,7 +131,7 @@ function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, s
 
       if (d > 0.1) node.visible = true;
     });
-  });
+  }, [clonedScene, depth, skinMat, muscleMat]);
 
   return (
     <primitive

@@ -22,6 +22,7 @@ import CommandPalette      from './components/CommandPalette';
 import DailyCheckIn        from './components/DailyCheckIn';
 import FloatingPillDock    from './components/FloatingPillDock';
 import PremiumSidebar      from './components/PremiumSidebar';
+import Header              from './components/Header';
 import SettingsModal       from './components/SettingsModal';
 import NotificationCenter  from './components/NotificationCenter';
 import LoadingSkeleton     from './components/ui/LoadingSkeleton';
@@ -187,6 +188,7 @@ export default function App() {
   const fetchInitialData   = useStore(selectFetchInitialData);
   const checkServerHealth  = useStore(selectCheckServerHealth);
   const isLoading          = useStore(selectIsLoading);
+  const serverStatus       = useStore(state => state.serverStatus);
   const onboardingComplete = useStore((state) => state.onboardingComplete);
   const lastCheckIn        = useStore((state) => state.lastCheckIn);
   const checkInAlertDismissedDate = useStore((state) => state.checkInAlertDismissedDate);
@@ -202,7 +204,7 @@ export default function App() {
   const location = useLocation();
 
   // Use URL path as source of truth if valid, else fallback to store
-  const pathTabRaw = location.pathname.substring(1);
+  const pathTabRaw = location.pathname.replace(/^\/+|\/+$/g, '');
   const activeTab = (pathTabRaw && GLOBAL_MODULES[pathTabRaw]) ? pathTabRaw : storeActiveTab;
   const isNotFound = Boolean(pathTabRaw && !GLOBAL_MODULES[pathTabRaw]);
 
@@ -220,7 +222,7 @@ export default function App() {
   // ── Sync URL ↔ Store ──
   useEffect(() => {
     if (!session) return;
-    const pathTab = location.pathname.substring(1);
+    const pathTab = location.pathname.replace(/^\/+|\/+$/g, '');
     const locChanged = location.pathname !== prevLocationRef.current;
     const storeChanged = storeActiveTab !== prevStoreTabRef.current;
     const hashTab = location.hash.substring(1).toLowerCase();
@@ -308,6 +310,11 @@ export default function App() {
     document.documentElement.setAttribute('data-reduced-motion', String(reducedMotion));
   }, [theme, palette, reducedMotion]);
 
+  // New modules start at the top; a long previous page must not hide their heading.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [activeTab]);
+
   if (!session) {
     return location.pathname === '/login'
       ? <LoginPage />
@@ -338,11 +345,21 @@ export default function App() {
         )}
 
         <div className="app-shell" data-theme={theme} data-palette={palette} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed}>
+          <a className="skip-to-content" href="#main-content">Skip to content</a>
           <div className="mesh-bg" />
 
 
           {/* ── Main workspace: content + navigation ── */}
           <div className="main-area">
+            <Header
+              activeTab={activeTab}
+              user={user}
+              theme={theme}
+              setTheme={setTheme}
+              serverStatus={serverStatus}
+              onOpenSettings={() => setShowSettings(true)}
+              onOpenNotifications={() => setActiveTab('notifications')}
+            />
             {/* ── Navbar Check-In Alert Banner ── */}
             {showCheckInAlert && onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr && (
               <NavbarCheckInAlert
@@ -358,7 +375,7 @@ export default function App() {
             )}
 
             {/* ── Single content area: shows skeleton during load, tab after ── */}
-            <main className="content-area">
+            <main id="main-content" className="content-area" tabIndex={-1} aria-busy={isLoading}>
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
                   <ProductPageTransition key={activeTab} reducedMotion={reducedMotion}>

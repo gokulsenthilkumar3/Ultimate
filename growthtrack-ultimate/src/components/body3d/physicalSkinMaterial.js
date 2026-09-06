@@ -88,28 +88,34 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
   const surfaceDetail = Boolean(sourceMaterial && options.surfaceDetail !== false);
   const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(...tone.base),
-    roughness: Math.min(0.62, sourceMaterial?.roughness ?? 0.55),
+    roughness: THREE.MathUtils.clamp(sourceMaterial?.roughness ?? 0.56, 0.44, 0.72),
     metalness: 0,
     map,
     normalMap: sourceMaterial?.normalMap || null,
     normalScale: sourceMaterial?.normalScale?.clone?.() || new THREE.Vector2(0.52, 0.52),
     roughnessMap: sourceMaterial?.roughnessMap || null,
     metalnessMap: sourceMaterial?.metalnessMap || null,
-    clearcoat: 0.22,
-    clearcoatRoughness: 0.42,
-    sheen: 0.28,
-    sheenColor: new THREE.Color(...tone.sss),
-    sheenRoughness: 0.68,
-    transmission: 0.032,
+    // Improved SSS simulation:
+    // clearcoat = wet micro-film on skin surface (sweat, oil)
+    clearcoat: 0.08,
+    clearcoatRoughness: 0.50,
+    // sheen = back-scatter approximation (fibrous skin texture)
+    sheen: 0.22,
+    sheenColor: new THREE.Color(...tone.sss).offsetHSL(0.02, 0.08, 0.06),
+    sheenRoughness: 0.62,
+    // Warm emissive simulates indirect subsurface light bleeding through skin
+    emissive: new THREE.Color(...tone.sss),
+    emissiveIntensity: 0.028,
+    // Skin is opaque. Transmission made the body look waxy and added an
+    // unnecessary full-scene refraction render for every figure.
+    transmission: 0,
     thickness: 0.18,
     attenuationColor: new THREE.Color(...tone.sss),
     attenuationDistance: 0.62,
     ior: 1.42,
-    specularIntensity: 0.44,
-    specularColor: new THREE.Color(...tone.spec),
-    emissive: new THREE.Color(...tone.sss),
-    emissiveIntensity: 0.012,
-    envMapIntensity: sourceMaterial?.envMapIntensity ?? 1.12,
+    specularIntensity: 0.38,
+    specularColor: new THREE.Color('#fff3e8'),  // warm specular tint for skin
+    envMapIntensity: sourceMaterial?.envMapIntensity ?? 1.18,
     side: THREE.FrontSide,
     transparent: false,
     depthWrite: true,
@@ -152,7 +158,7 @@ export function updatePhysicalSkinMaterial(material, {
   material.emissive?.setRGB(...tone.sss);
   material.attenuationColor?.setRGB(...tone.sss);
   material.sheenColor?.setRGB(...tone.sss);
-  material.specularColor?.setRGB(...tone.spec);
+  material.specularColor?.set('#fff5ef');
   material.uniforms.uBaseColor.value.setRGB(...tone.base);
   material.uniforms.uSSSColor.value.setRGB(...tone.sss);
   material.uniforms.uSpecColor.value.setRGB(...tone.spec);

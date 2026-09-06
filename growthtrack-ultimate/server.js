@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { logToFile } from './logger.js';
 import { createSecurity } from './server/security.js';
 import BaseController from './server/controllers/BaseController.js';
+import { collectionToClient } from './server/collectionPayload.js';
 import MetricLogController from './server/controllers/MetricLogController.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -582,7 +583,11 @@ app.get('/api/state', authMiddleware, async (req, res) => {
       skills: parseStoredJson(user.skills, []), calendar_events: parseStoredJson(user.calendarEvents, []), wellnessData: parseStoredJson(user.wellnessData), healthExtras: parseStoredJson(user.healthExtras), portfolio: parseStoredJson(user.portfolio, []),
     },
     preference: preference ? { ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) } : null,
-    bodyProfile, healthProfile: parseStoredJson(healthProfile?.data, {}), socialProfiles, tasks, finance, budgets, metric_logs: metric_logs.map(metricToClient), nutrition_logs, workout_sessions, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions, moodLogs, vitalsLogs, medications,
+    bodyProfile, healthProfile: parseStoredJson(healthProfile?.data, {}), socialProfiles, finance, budgets, metric_logs: metric_logs.map(metricToClient), workout_sessions,
+    ...Object.fromEntries(Object.entries({ tasks, nutrition_logs, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions }).map(([name, rows]) => [name, rows.map(row => collectionToClient(name, row))])),
+    moodLogs: moodLogs.map(row => collectionToClient('mood_logs', row)),
+    vitalsLogs: vitalsLogs.map(row => collectionToClient('vitals_logs', row)),
+    medications: medications.map(row => collectionToClient('medications', row)),
     databases: customTables.map(table => ({ ...table, fields: parseStoredJson(table.schema, []), rows: parseStoredJson(table.rows, []) })),
     config: Object.fromEntries(configRows.map(row => [row.key, parseStoredJson(row.value, row.value)])),
   });
