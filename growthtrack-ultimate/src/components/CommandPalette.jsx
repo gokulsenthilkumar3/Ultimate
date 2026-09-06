@@ -2,10 +2,11 @@ import { Z_INDEX } from '../constants';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Search, ArrowRight, Target, CheckSquare, FileText, Flame, Star,
-  BarChart2, Layout, Zap, Clock, Hash,
+  Layout, Zap, X,
 } from 'lucide-react';
 import useStore, { selectSetActiveTab } from '../store/useStore';
 import { TABS } from '../config/navigation';
+import useDialogFocus from '../hooks/useDialogFocus';
 
 // ── Module icon map ───────────────────────────────────────────────────────────
 const MODULE_ICONS = {
@@ -25,7 +26,7 @@ const MODULE_ICONS = {
 // ── Fuzzy scorer: returns 0-1 relevance score ─────────────────────────────────
 function fuzzyScore(str, query) {
   if (!query) return 0.5;
-  const s = str.toLowerCase();
+  const s = String(str ?? '').toLowerCase();
   const q = query.toLowerCase();
   if (s === q) return 1;
   if (s.startsWith(q)) return 0.9;
@@ -84,6 +85,7 @@ export default function CommandPalette() {
   const [query, setQuery]   = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef(null);
+  const dialogRef = useDialogFocus(isOpen, () => setIsOpen(false));
 
   const setActiveTab = useStore(selectSetActiveTab);
 
@@ -97,21 +99,24 @@ export default function CommandPalette() {
   // ── Open / close ──────────────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsOpen(prev => !prev);
       }
-      if (e.key === 'Escape' && isOpen) setIsOpen(false);
     };
+    const openPalette = () => setIsOpen(true);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-command-palette', openPalette);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-command-palette', openPalette);
+    };
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setSelectedIdx(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen]);
 
@@ -148,8 +153,9 @@ export default function CommandPalette() {
     // Notes
     const notesList = Array.isArray(notes) ? notes : [];
     notesList.slice(0, 30).forEach(n => {
-      const score = Math.max(fuzzyScore(n.title || '', q), fuzzyScore((n.tags || []).join(' '), q), fuzzyScore(n.content?.slice(0, 100) || '', q));
-      if (!q || score > 0) candidates.push({ type: 'note', id: `note-${n.id}`, label: n.title || 'Untitled note', icon: '📝', score, detail: (n.tags || []).join(', ') || 'note', tab: 'notes' });
+      const tags = Array.isArray(n.tags) ? n.tags : [];
+      const score = Math.max(fuzzyScore(n.title || '', q), fuzzyScore(tags.join(' '), q), fuzzyScore(typeof n.content === 'string' ? n.content.slice(0, 100) : '', q));
+      if (!q || score > 0) candidates.push({ type: 'note', id: `note-${n.id}`, label: n.title || 'Untitled note', icon: '📝', score, detail: tags.join(', ') || 'note', tab: 'notes' });
     });
 
     // Habits
@@ -178,7 +184,7 @@ export default function CommandPalette() {
       .filter(c => !q || c.score > 0)
       .sort((a, b) => {
         if (Math.abs(b.score - a.score) > 0.05) return b.score - a.score;
-        return (typePriority[a.type] || 9) - (typePriority[b.type] || 9);
+        return (typePriority[a.type] ?? 9) - (typePriority[b.type] ?? 9);
       })
       .slice(0, 40);
   }, [query, tasks, goals, notes, habits, skills]);
@@ -199,26 +205,30 @@ export default function CommandPalette() {
   }, [results]);
 
   useEffect(() => { setSelectedIdx(0); }, [query]);
+  useEffect(() => {
+    if (isOpen) document.getElementById(`command-result-${selectedIdx}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [selectedIdx, isOpen]);
 
   const handleSelect = useCallback((item) => {
     setActiveTab(item.tab || item.id);
     setIsOpen(false);
     // Fire custom event to open relevant form
-    if (item.type === 'action' || item.type !== 'module') {
+    if (item.type === 'action') {
       window.dispatchEvent(new CustomEvent('open-add-form', { detail: item.tab }));
     }
   }, [setActiveTab]);
 
   const handleKeyDown = (e) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, results.length - 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.max(0, Math.min(i + 1, results.length - 1))); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
-    else if (e.key === 'Enter' && results[selectedIdx]) handleSelect(results[selectedIdx]);
+    else if (e.key === 'Enter' && results[selectedIdx]) { e.preventDefault(); handleSelect(results[selectedIdx]); }
   };
 
   if (!isOpen) return null;
 
   return (
     <div
+      className="command-palette-backdrop"
       style={{
         position: 'fixed', inset: 0, zIndex: Z_INDEX.PALETTE || 9999,
         background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)',
@@ -228,7 +238,11 @@ export default function CommandPalette() {
       onClick={() => setIsOpen(false)}
     >
       <div
-        className="glass-card fade-in"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search your workspace"
+        className="glass-card fade-in command-palette-dialog"
         style={{ width: '92%', maxWidth: '580px', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.2)' }}
         onClick={e => e.stopPropagation()}
       >
@@ -237,6 +251,13 @@ export default function CommandPalette() {
           <Search size={18} color="var(--text-3)" style={{ flexShrink: 0 }} />
           <input
             ref={inputRef}
+            data-dialog-autofocus
+            aria-label="Search modules, tasks, goals, notes, habits"
+            role="combobox"
+            aria-expanded="true"
+            aria-autocomplete="list"
+            aria-controls="command-results"
+            aria-activedescendant={results[selectedIdx] ? `command-result-${selectedIdx}` : undefined}
             type="text"
             placeholder="Search modules, tasks, goals, notes, habits…"
             value={query}
@@ -244,14 +265,11 @@ export default function CommandPalette() {
             onKeyDown={handleKeyDown}
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-1)', fontSize: '1rem', fontFamily: 'var(--font-body)' }}
           />
-          <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-            <kbd style={{ padding: '2px 6px', background: 'var(--bg-elevated)', borderRadius: '4px', fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, border: '1px solid var(--border)' }}>⌘K</kbd>
-            <kbd style={{ padding: '2px 6px', background: 'var(--bg-elevated)', borderRadius: '4px', fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, border: '1px solid var(--border)' }}>ESC</kbd>
-          </div>
+          <button className="header-control" onClick={() => setIsOpen(false)} aria-label="Close search"><X size={18} /></button>
         </div>
 
         {/* Results */}
-        <div style={{ maxHeight: '420px', overflowY: 'auto', padding: '6px' }}>
+        <div id="command-results" role="listbox" aria-label="Search results" style={{ maxHeight: '420px', overflowY: 'auto', padding: '6px' }}>
           {results.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.85rem' }}>
               No results for <strong style={{ color: 'var(--text-2)' }}>"{query}"</strong>
@@ -268,6 +286,10 @@ export default function CommandPalette() {
                 {group.items.map(({ item, idx }) => (
                   <button
                     key={item.id}
+                    id={`command-result-${idx}`}
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={idx === selectedIdx}
                     onClick={() => handleSelect(item)}
                     onMouseEnter={() => setSelectedIdx(idx)}
                     style={{

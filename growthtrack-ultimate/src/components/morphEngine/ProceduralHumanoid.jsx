@@ -47,39 +47,52 @@ function makeMat(mode,opacity,tone,quality="HIGH",skinColorHex=null) {
   if (mode==="xray")  return new THREE.MeshStandardMaterial({color:"#818CF8",roughness:0.05,metalness:0.8,transparent:true,opacity:0.4,depthWrite:false});
   if (mode==="delta") return new THREE.MeshStandardMaterial({color:"#F59E0B",emissive:"#7A4800",emissiveIntensity:0.12,roughness:0.55,metalness:0.1});
   // Always use MeshPhysicalMaterial for skin — SSS sheen is crucial for realism
+  // Subsurface approximation: sheen simulates back-scatter, clearcoat simulates
+  // the wet micro-surface gloss, specularColor tinted warm to mimic SSS scatter.
+  const sssColor = skin.clone().offsetHSL(0.02, 0.12, 0.08); // warm subsurface scatter
+  const specColor = skin.clone().offsetHSL(0, -0.08, 0.30); // slightly bright specular
   const m = new THREE.MeshPhysicalMaterial({
     color:skin,
-    roughness: quality === "LOW" ? 0.62 : 0.52,
+    roughness: quality === "LOW" ? 0.60 : 0.48,
     metalness:0.0,
-    emissive:skin.clone().multiplyScalar(0.006),
-    emissiveIntensity:0.28,
-    clearcoat: quality === "LOW" ? 0 : 0.055,
-    clearcoatRoughness:0.52,
-    sheen: quality === "LOW" ? 0 : 0.14,
-    sheenRoughness:0.68,
-    sheenColor:skin.clone().offsetHSL(0.01,0.06,0.10),
-    transmission: quality === "HIGH" ? 0.012 : 0,
-    thickness: quality === "HIGH" ? 0.08 : 0,
-    attenuationColor: skin.clone().offsetHSL(0, -0.05, -0.10),
-    attenuationDistance: quality === "HIGH" ? 0.5 : Infinity,
-    ior: 1.4,
-    specularIntensity: 0.32,
-    specularColor: skin.clone().offsetHSL(0, -0.12, 0.28),
-    envMapIntensity: 0.88,
+    // Warm emissive glow simulates indirect subsurface light bleeding
+    emissive: sssColor,
+    emissiveIntensity: quality === "LOW" ? 0.018 : 0.032,
+    // Clearcoat = oil/sweat micro-film on skin surface
+    clearcoat: quality === "LOW" ? 0 : 0.08,
+    clearcoatRoughness: 0.48,
+    // Sheen = fabric-like back-scatter / limbal SSS approximation
+    sheen: quality === "LOW" ? 0 : 0.22,
+    sheenRoughness: 0.62,
+    sheenColor: sssColor,
+    // Thin transmission: deep tissues scatter light back through skin
+    transmission: quality === "HIGH" ? 0.018 : 0,
+    thickness: quality === "HIGH" ? 0.12 : 0,
+    attenuationColor: skin.clone().offsetHSL(0.02, 0.15, -0.08),
+    attenuationDistance: quality === "HIGH" ? 0.45 : Infinity,
+    ior: 1.38, // skin IOR (slightly lower than glass)
+    specularIntensity: 0.38,
+    specularColor: specColor,
+    envMapIntensity: quality === "LOW" ? 0.72 : 1.05,
   });
   if (opacity<1){m.transparent=true;m.opacity=opacity;m.depthWrite=false;}
   return m;
 }
 function makeDetailMat(tone,quality="HIGH") {
   const skin = new THREE.Color(FITZPATRICK[tone]||FITZPATRICK.IV).offsetHSL(0.005, -0.04, -0.028);
+  const emissiveCol = skin.clone().offsetHSL(0.02, 0.10, 0.06);
   return new THREE.MeshPhysicalMaterial({
     color:skin,
-    roughness: quality === "LOW" ? 0.68 : 0.58,
+    roughness: quality === "LOW" ? 0.66 : 0.54,
     metalness:0,
-    sheen: quality === "LOW" ? 0 : 0.08,
-    sheenRoughness:0.76,
-    clearcoat: quality === "HIGH" ? 0.035 : 0,
-    clearcoatRoughness: 0.55,
+    emissive: emissiveCol,
+    emissiveIntensity: quality === "LOW" ? 0 : 0.018,
+    sheen: quality === "LOW" ? 0 : 0.12,
+    sheenRoughness:0.70,
+    sheenColor: skin.clone().offsetHSL(0.02, 0.14, 0.10),
+    clearcoat: quality === "HIGH" ? 0.055 : 0,
+    clearcoatRoughness: 0.50,
+    specularIntensity: quality === "LOW" ? 0 : 0.22,
   });
 }
 // Sclera: wet surface with realistic clearcoat
@@ -101,7 +114,16 @@ const makeLipMat    = (tone, customColor) => {
   return new THREE.MeshPhysicalMaterial({color:/^#[0-9a-f]{6}$/i.test(String(customColor || '')) ? customColor : (t[tone]||t.IV),roughness:0.40,clearcoat:0.14,clearcoatRoughness:0.48,sheen:0.12,sheenRoughness:0.62});
 };
 const makeNailMat   = (customColor) => new THREE.MeshPhysicalMaterial({color:/^#[0-9a-f]{6}$/i.test(String(customColor || '')) ? customColor : "#e8d8c8",roughness:0.08,metalness:0.04,clearcoat:0.38,clearcoatRoughness:0.22,transparent:true,opacity:0.92});
-const makeHairMat   = (hex) => new THREE.MeshStandardMaterial({color:hex,roughness:0.82,metalness:0.04,side:THREE.DoubleSide,alphaTest:0.38,transparent:true});
+const makeHairMat   = (hex) => new THREE.MeshPhysicalMaterial({
+  color:hex, roughness:0.78, metalness:0.02,
+  side:THREE.DoubleSide, alphaTest:0.32, transparent:true,
+  // Sheen gives hair that fibrous sheen catchlight
+  sheen:0.18, sheenRoughness:0.72,
+  sheenColor: new THREE.Color(hex).offsetHSL(0, -0.08, 0.22),
+  // Subtle spec for hair highlight
+  specularIntensity: 0.18,
+  clearcoat:0.04, clearcoatRoughness:0.58,
+});
 
 // == Geometry builders =========================================================
 function bldLathe(pts,segs){
@@ -144,7 +166,8 @@ function computeDimensions(w={}) {
   // Anatomically correct segment lengths (1.78m total height in 3D units ≈ 1.78)
   // 7.5-head canon: foot=0.5h, calf=1.0h, thigh=1.25h, hip=0.65h, torso=1.5h, neck=0.4h, head=0.5h
   // where h = headR*2 (1 head unit)
-  const headR=0.101+fat*0.012+mass*0.003+foreheadH*0.003;
+  // Slightly larger base head for better face feature proportions
+  const headR=0.102+fat*0.013+mass*0.003+foreheadH*0.004;
   const oneHead = headR * 2; // ~0.184m per head unit
 
   const footH   = oneHead * 0.25;
@@ -165,19 +188,21 @@ function computeDimensions(w={}) {
   const crotchY= footH + calfH + thighH;
 
   // Shoulder width: anatomically ≈ 2× hip width for athletic male
-  const shoulderW = 0.176 + delt*0.082 + clavicle*0.020 + mass*0.010 - shoulderSlope*0.005;
-  const chestW    = 0.145 + chD*0.052 + ribDepth*0.018 + mass*0.012;
-  const waistW    = 0.104 - wst*0.014 + gut*0.030 + mass*0.012;
-  const bellyW    = 0.108 + gut*0.032 + mass*0.014;
-  const hipW      = 0.132 + hip*0.032 + pelvis*0.016 + glut*0.022 + mass*0.008;
+  // Base widths slightly increased for a more realistic athletic baseline physique
+  const shoulderW = 0.185 + delt*0.086 + clavicle*0.022 + mass*0.010 - shoulderSlope*0.005;
+  const chestW    = 0.152 + chD*0.055 + ribDepth*0.020 + mass*0.012;
+  const waistW    = 0.102 - wst*0.015 + gut*0.030 + mass*0.012;
+  const bellyW    = 0.108 + gut*0.033 + mass*0.015;
+  const hipW      = 0.134 + hip*0.033 + pelvis*0.016 + glut*0.023 + mass*0.009;
   const neckR     = 0.034 + neck*0.014;
   const torsoDepthScale = 0.50 + chD*0.14 + gut*0.05 + mass*0.02;
 
   // Limb radii — toned but not bulky by default
-  const uArmR  = 0.035 + bic*0.024 + mass*0.004;
-  const fArmR  = 0.026 + fore*0.015;
-  const thighR = 0.052 + quad*0.026 + mass*0.004;
-  const calfR  = 0.034 + cal*0.017;
+  // Slightly increased base radii for less "stick figure" look at low mass
+  const uArmR  = 0.037 + bic*0.026 + mass*0.004;
+  const fArmR  = 0.028 + fore*0.016;
+  const thighR = 0.054 + quad*0.027 + mass*0.004;
+  const calfR  = 0.035 + cal*0.018;
 
   // Arm positioning: shoulder is at shoulderW + clearance
   const thighX    = hipW * (0.56 + kneeSpacing * 0.10);
@@ -438,33 +463,59 @@ function SculptedSurface({ d, detailMat, segments }) {
   const half = Math.max(12, Math.round(segments * 0.55));
   return (
     <group name="anatomical-surface-definition">
-      {/* Low-relief landmarks: enough form to read under rim light without a plated torso. */}
+      {/* Pectoral plates — large surface catches rim light for that defined chest look */}
       {[-1, 1].map((side) => (
         <React.Fragment key={`chest-${side}`}>
-          <mesh position={[side * d.chestW * 0.31, d.nippleY + d.torsoH * 0.025, d.chestW * 0.78]} scale={[1.08, 0.44, 0.055]} material={detailMat}>
-            <sphereGeometry args={[d.chestW * 0.34, segments, half]} />
+          {/* Main pec pad */}
+          <mesh position={[side * d.chestW * 0.34, d.nippleY + d.torsoH * 0.030, d.chestW * 0.82]} scale={[1.12, 0.52, 0.068]} material={detailMat}>
+            <sphereGeometry args={[d.chestW * 0.36, segments, half]} />
           </mesh>
-          <mesh position={[side * d.chestW * 0.22, d.nippleY + d.torsoH * 0.145, d.chestW * 0.72]} rotation={[0, 0, side * -0.94]} material={detailMat}>
-            <capsuleGeometry args={[0.0045, d.chestW * 0.25, 4, Math.max(8, Math.round(segments * 0.45))]} />
+          {/* Lower pec definition crease */}
+          <mesh position={[side * d.chestW * 0.24, d.nippleY + d.torsoH * 0.135, d.chestW * 0.74]} rotation={[0, 0, side * -1.02]} material={detailMat}>
+            <capsuleGeometry args={[0.0042, d.chestW * 0.28, 4, Math.max(8, Math.round(segments * 0.45))]} />
           </mesh>
+          {/* Serratus anterior (rib cage side fingers) — adds realism under arms */}
+          {[0, 1, 2].map((i) => (
+            <mesh key={i} position={[side * d.chestW * (0.90 + i * 0.03), d.nippleY - d.torsoH * (0.01 + i * 0.07), d.chestW * 0.62]} rotation={[0, 0, side * 0.45]} scale={[0.42, 0.38, 0.12]} material={detailMat}>
+              <sphereGeometry args={[d.chestW * 0.22, Math.max(8, segments - 4), Math.max(6, half - 4)]} />
+            </mesh>
+          ))}
         </React.Fragment>
       ))}
       {/* Deltoid, biceps, quadriceps and calf landmarks merge into the base volumes. */}
       {[-1, 1].map((side) => (
         <React.Fragment key={`limb-${side}`}>
-          <mesh position={[side * d.shoulderX, d.uArmY - d.uArmH * 0.17, d.uArmR * 0.52]} scale={[0.96, 0.92, 0.20]} material={detailMat}>
-            <sphereGeometry args={[d.uArmR * 0.82, segments, half]} />
+          {/* Anterior deltoid cap */}
+          <mesh position={[side * d.shoulderX, d.uArmY - d.uArmH * 0.12, d.uArmR * 0.62]} scale={[1.02, 0.95, 0.24]} material={detailMat}>
+            <sphereGeometry args={[d.uArmR * 0.88, segments, half]} />
           </mesh>
-          <mesh position={[side * d.shoulderX, d.uArmY - d.uArmH * 0.61, d.uArmR * 0.52]} scale={[0.82, 1.02, 0.18]} material={detailMat}>
-            <sphereGeometry args={[d.uArmR * 0.68, segments, half]} />
+          {/* Bicep peak */}
+          <mesh position={[side * d.shoulderX, d.uArmY - d.uArmH * 0.58, d.uArmR * 0.58]} scale={[0.86, 1.08, 0.20]} material={detailMat}>
+            <sphereGeometry args={[d.uArmR * 0.72, segments, half]} />
           </mesh>
-          <mesh position={[side * d.thighX, d.thighY + d.thighH * 0.16, d.thighR * 0.62]} scale={[0.84, 1.18, 0.16]} material={detailMat}>
-            <sphereGeometry args={[d.thighR * 0.80, segments, half]} />
+          {/* Forearm extensor mass */}
+          <mesh position={[side * d.shoulderX, d.fArmY - d.fArmH * 0.26, d.fArmR * 0.48]} scale={[0.72, 0.90, 0.16]} material={detailMat}>
+            <sphereGeometry args={[d.fArmR * 0.62, Math.max(8, segments - 4), half]} />
           </mesh>
-          <mesh position={[side * d.thighX * 0.94, d.calfY + d.calfH * 0.08, d.calfR * 0.54]} scale={[0.82, 1.10, 0.17]} material={detailMat}>
-            <sphereGeometry args={[d.calfR * 0.68, segments, half]} />
+          {/* Vastus lateralis (outer quad sweep) */}
+          <mesh position={[side * d.thighX * 1.04, d.thighY + d.thighH * 0.18, d.thighR * 0.65]} scale={[0.86, 1.22, 0.18]} material={detailMat}>
+            <sphereGeometry args={[d.thighR * 0.82, segments, half]} />
+          </mesh>
+          {/* Vastus medialis (teardrop) */}
+          <mesh position={[side * d.thighX * 0.78, d.calfY + d.calfH * 0.78, d.thighR * 0.58]} scale={[0.72, 0.96, 0.16]} material={detailMat}>
+            <sphereGeometry args={[d.thighR * 0.52, Math.max(8, segments - 4), half]} />
+          </mesh>
+          {/* Gastrocnemius (calf diamond) */}
+          <mesh position={[side * d.thighX * 0.90, d.calfY + d.calfH * 0.10, d.calfR * 0.60]} scale={[0.84, 1.14, 0.19]} material={detailMat}>
+            <sphereGeometry args={[d.calfR * 0.72, segments, half]} />
           </mesh>
         </React.Fragment>
+      ))}
+      {/* Trapezius upper back — subtle ridge down spine */}
+      {[-1, 1].map((side) => (
+        <mesh key={`trap-${side}`} position={[side * d.shoulderW * 0.52, d.torsoY + d.torsoH * 0.90, d.chestW * 0.22]} scale={[0.62, 0.68, 0.14]} material={detailMat}>
+          <sphereGeometry args={[d.shoulderW * 0.18, Math.max(8, segments - 6), half]} />
+        </mesh>
       ))}
     </group>
   );

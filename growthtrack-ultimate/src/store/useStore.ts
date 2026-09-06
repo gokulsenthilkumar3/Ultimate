@@ -463,10 +463,14 @@ const useStore = create<any>()(
       },
 
       saveSleepLog: async (log: any) => {
-        await apiSync('/sleep_logs', 'POST', log);
+        const existing = get().sleep_logs.find((entry: any) => entry.date === log.date);
+        const saved = existing?.id
+          ? (await apiSync(`/sleep_logs/${existing.id}`, 'PUT', log), { ...existing, ...log })
+          : await apiSync('/sleep_logs', 'POST', log);
         set((state: any) => ({
-          sleep_logs: [log, ...state.sleep_logs.filter((l: any) => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date))
+          sleep_logs: [{ ...log, ...saved }, ...state.sleep_logs.filter((l: any) => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date))
         }));
+        return saved;
       },
 
       addDocument: async (doc: any) => {
@@ -542,7 +546,7 @@ const useStore = create<any>()(
       updatePhysiqueTargets: async (data: any) => { set({ physiqueTargets: data }); apiSync('/physique_targets', 'POST', data); },
       updateAssessmentQA: async (data: any) => { set({ assessmentQA: data }); apiSync('/assessment_qa', 'POST', data); },
       updateSkills: async (data: any) => { set({ skills: data }); apiSync('/skills', 'POST', data); },
-      updateCalendarEvents: async (data: any) => { set({ calendar_events: data }); apiSync('/calendar_events', 'POST', data); },
+      updateCalendarEvents: async (data: any) => { await apiSync('/calendar_events', 'POST', data); set({ calendar_events: data }); },
       setDatabases: (data: any[]) => { set({ databases: data }); apiSync('/custom-tables', 'PUT', data); },
       updateWellnessData: async (data: any) => { set({ wellnessData: data }); apiSync('/wellness_data', 'POST', data); },
 

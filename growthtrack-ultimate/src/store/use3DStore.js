@@ -303,6 +303,7 @@ const use3DStore = create(
 
       /** Human-view framing multiplier; 1 = default fit */
       cameraZoom: 1,
+      cameraRevision: 0,
       /** Actual model bounds from the loaded GLB / procedural fallback */
       modelFrame: null,
       /** Loader diagnostics for the active humanoid asset */
@@ -619,7 +620,7 @@ const use3DStore = create(
           console.warn(`[use3DStore] Unknown camera preset: ${preset}`);
           return;
         }
-        set({ cameraPreset: preset }, false, `setCameraPreset:${preset}`);
+        set((state) => ({ cameraPreset: preset, focusedBodyPart: null, cameraRevision: state.cameraRevision + 1 }), false, `setCameraPreset:${preset}`);
       },
 
       setTimelineSnaps: (snaps) => {
@@ -646,12 +647,8 @@ const use3DStore = create(
       },
 
       fitCameraToBody: () => {
-        const frame = get().modelFrame;
-        const height = frame?.height || 1.92;
-        const radius = frame?.radius || 0.72;
-        const zoom = computeFitCameraZoom(radius);
-        const preset = height > 2.05 ? "FRONT" : "FRONT";
-        set({ cameraPreset: preset, cameraZoom: zoom }, false, "fitCameraToBody");
+        // CameraRig calculates the fit from FOV, viewport and comparison mode.
+        set((state) => ({ cameraPreset: 'FRONT', cameraZoom: 1, focusedBodyPart: null, cameraRevision: state.cameraRevision + 1 }), false, "fitCameraToBody");
       },
 
       setModelFrame: (frame) => {

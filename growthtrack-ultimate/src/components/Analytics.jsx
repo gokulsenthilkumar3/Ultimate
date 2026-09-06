@@ -11,8 +11,14 @@ const Logs = lazy(() => import('./Logs'));
 const TransformationPredictor = lazy(() => import('./TransformationPredictor'));
 
 const TOOLTIP_STYLE = {
-  background: 'var(--bg-glass)', border: '1px solid var(--border)',
-  borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem',
+  background: 'rgba(5, 10, 19, 0.85)',
+  border: '1px solid rgba(148, 210, 230, 0.16)',
+  borderRadius: '12px',
+  color: '#ecfeff',
+  backdropFilter: 'blur(16px)',
+  fontSize: '0.75rem',
+  boxShadow: '0 12px 24px rgba(0,0,0,0.25)',
+  padding: '10px 14px'
 };
 
 // ── Correlation coefficient (Pearson) ─────────────────────────────────────
@@ -124,17 +130,35 @@ function CrossDomainTrend({ metrics, sleepLogs }) {
       <span className="card-title">Cross-Domain Trend</span>
       <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Sleep, mood, and energy across time — spot patterns and correlations.</p>
       <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: -20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <AreaChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: -20 }}>
+          <defs>
+            <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+            </linearGradient>
+            <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#ec4899" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
+            </linearGradient>
+            <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+            </linearGradient>
+            <linearGradient id="colorWorkout" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
           <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={Math.floor(chartData.length / 8)} />
           <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
           <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => v?.toFixed(2)} />
           <Legend wrapperStyle={{ fontSize: '0.7rem' }} />
-          {chartData.some(d => d.sleep != null) && <Line type="monotone" dataKey="sleep"   name="Sleep (hrs)"  stroke="#0ea5e9" strokeWidth={2} dot={false} />}
-          {chartData.some(d => d.mood != null)  && <Line type="monotone" dataKey="mood"    name="Mood (1-10)"  stroke="#ec4899" strokeWidth={2} dot={false} />}
-          {chartData.some(d => d.energy != null)&& <Line type="monotone" dataKey="energy"  name="Energy (1-10)"stroke="#f59e0b" strokeWidth={2} dot={false} />}
-          {chartData.some(d => d.workout != null)&& <Line type="monotone" dataKey="workout" name="Workout"      stroke="#10b981" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />}
-        </LineChart>
+          {chartData.some(d => d.sleep != null) && <Area type="monotone" dataKey="sleep"   name="Sleep (hrs)"  stroke="#0ea5e9" fillOpacity={1} fill="url(#colorSleep)" strokeWidth={2} dot={false} />}
+          {chartData.some(d => d.mood != null)  && <Area type="monotone" dataKey="mood"    name="Mood (1-10)"  stroke="#ec4899" fillOpacity={1} fill="url(#colorMood)" strokeWidth={2} dot={false} />}
+          {chartData.some(d => d.energy != null)&& <Area type="monotone" dataKey="energy"  name="Energy (1-10)"stroke="#f59e0b" fillOpacity={1} fill="url(#colorEnergy)" strokeWidth={2} dot={false} />}
+          {chartData.some(d => d.workout != null)&& <Area type="monotone" dataKey="workout" name="Workout"      stroke="#10b981" fillOpacity={1} fill="url(#colorWorkout)" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />}
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

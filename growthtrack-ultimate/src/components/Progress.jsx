@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import MetricLogger from './MetricLogger';
 import TransformationPredictor from './TransformationPredictor';
+import { datedLogs, latestMetrics, metricDelta, metricSeries } from '../lib/metricSeries';
 
 // ── Delta badge
 function DeltaBadge({ delta, unit = '' }) {
@@ -22,8 +23,8 @@ function DeltaBadge({ delta, unit = '' }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: '3px',
       fontSize: '0.72rem', fontWeight: 800,
-      color: zero ? 'var(--text-3)' : pos ? '#f87171' : '#34d399',
-      background: zero ? 'rgba(255,255,255,0.05)' : pos ? 'rgba(248,113,113,0.12)' : 'rgba(52,211,153,0.12)',
+      color: zero ? 'var(--text-3)' : 'var(--accent)',
+      background: 'var(--accent-dim)',
       padding: '2px 7px', borderRadius: '10px',
     }}>
       {zero ? <Minus size={10} /> : pos ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
@@ -73,42 +74,20 @@ export default function Progress() {
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))), [storeLogs]);
 
   // ── Build chart data from DB metric_logs (store)
-  const chartData = useMemo(() => {
-    return [...storeLogs]
-      .filter(l => l.date)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map(l => ({
-        date:    l.date?.slice(5),
-        weight:  l.weight  ? Number(l.weight)  : undefined,
-        sleep:   l.sleep   ? Number(l.sleep)   : undefined,
-        water:   l.water   ? Number(l.water)   : undefined,
-        stamina: l.stamina ? Number(l.stamina) : undefined,
-        hr:      l.hr      ? Number(l.hr)      : undefined,
-      }));
-  }, [storeLogs]);
+  const chartData = useMemo(() => metricSeries(storeLogs, activeMetric)
+    .map(point => ({ ...point, [activeMetric]: point.value })), [storeLogs, activeMetric]);
 
   // ── 30-day delta: compare latest log vs log ~30 days ago
   const deltas = useMemo(() => {
     const result = {};
-    const sorted = [...storeLogs]
-      .filter(l => l.date)
-      .sort((a, b) => b.date.localeCompare(a.date));
-    if (sorted.length < 2) return result;
-    const latest = sorted[0];
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-    // Find the entry closest to 30 days ago
-    const old = sorted.find(l => l.date <= cutoffStr) || sorted[sorted.length - 1];
     METRICS.forEach(m => {
-      const curr = latest[m.key] !== undefined ? Number(latest[m.key]) : null;
-      const prev = old[m.key]   !== undefined ? Number(old[m.key])    : null;
-      if (curr !== null && prev !== null) result[m.key] = parseFloat((curr - prev).toFixed(1));
+      const delta = metricDelta(storeLogs, m.key);
+      if (delta !== null) result[m.key] = delta;
     });
     return result;
   }, [storeLogs]);
 
-  const latestLog = storeLogs[0] || { weight: user?.weight || '—', sleep: '—', water: '—', stamina: '—', hr: '—' };
+  const latestLog = useMemo(() => latestMetrics(storeLogs, [...METRICS.map(metric => metric.key), 'memoryPower', 'eyePower']), [storeLogs]);
   const selected  = METRICS.find(m => m.key === activeMetric) || METRICS[0];
 
   // ── Photos only (entries with photo_url)
@@ -169,7 +148,7 @@ export default function Progress() {
           <p className="text-secondary" style={{ fontSize: '0.9rem' }}>Log what changed, leave everything else blank, and follow the trend over time.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn-secondary" onClick={fetchProgressEntries} title="Refresh entries"
+          <button className="btn-secondary" onClick={fetchProgressEntries} disabled={loadingEntries} title="Refresh entries"
             style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: loadingEntries ? 0.5 : 1 }}>
             <RefreshCw size={14} className={loadingEntries ? 'spin' : ''} /> Refresh
           </button>
@@ -182,10 +161,10 @@ export default function Progress() {
       {/* Snapshot Vitals Grid ─ with 30-day delta badges */}
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
         {[
-          { label: 'Current Weight', val: latestLog.weight,  unit: 'KG',  metricKey: 'weight',  sub: 'LIVE DATA' },
-          { label: 'Avg Sleep',      val: latestLog.sleep,   unit: 'HRS', metricKey: 'sleep',   sub: latestLog.sleep < 7 ? 'RECOVERY NEEDED' : 'OPTIMAL' },
-          { label: 'Hydration',      val: latestLog.water,   unit: 'L',   metricKey: 'water',   sub: 'DAILY TARGET' },
-          { label: 'Stamina',        val: latestLog.stamina, unit: '%',   metricKey: 'stamina', sub: 'CAPACITY' },
+          { label: 'Latest Weight', val: latestLog.weight,  unit: 'KG',  metricKey: 'weight', sub: latestLog.weight == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
+          { label: 'Latest Sleep', val: latestLog.sleep, unit: 'HRS', metricKey: 'sleep', sub: latestLog.sleep == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
+          { label: 'Hydration', val: latestLog.water, unit: 'L', metricKey: 'water', sub: latestLog.water == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
+          { label: 'Stamina', val: latestLog.stamina, unit: '%', metricKey: 'stamina', sub: latestLog.stamina == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
         ].map((card, i) => (
           <div key={i} className="glass-card" style={{ textAlign: 'center', padding: '1.5rem' }}>
             <p className="label-caps">{card.label}</p>
@@ -211,16 +190,16 @@ export default function Progress() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Activity size={18} color="var(--accent)" />
-            <p className="label-caps">Metric Trend — Real Data</p>
-            <span className="badge">{storeLogs.length} entries</span>
+            <p className="label-caps">{selected.label} trend</p>
+            <span className="badge">{chartData.length} recorded values</span>
           </div>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {METRICS.map(m => (
-              <button key={m.key} onClick={() => setActiveMetric(m.key)}
+              <button key={m.key} onClick={() => setActiveMetric(m.key)} aria-pressed={activeMetric === m.key}
                 style={{
                   padding: '4px 12px', borderRadius: '20px',
                   border: `1px solid ${activeMetric === m.key ? m.color : 'var(--border)'}`,
-                  background: activeMetric === m.key ? `${m.color}22` : 'transparent',
+                  background: activeMetric === m.key ? 'var(--accent-dim)' : 'transparent',
                   color: activeMetric === m.key ? m.color : 'var(--text-3)',
                   cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', transition: 'all 0.2s',
                 }}>
@@ -232,10 +211,11 @@ export default function Progress() {
             ))}
           </div>
         </div>
-        {chartData.length < 2 ? (
+        {chartData.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-3)' }}>
             <TrendingUp size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
-            <p style={{ fontWeight: 700 }}>Log your first metrics to see trends here</p>
+            <p style={{ fontWeight: 700 }}>No {selected.label.toLowerCase()} check-ins yet</p>
+            <button className="btn-secondary" onClick={() => setIsLogging(true)} style={{ marginTop: '1rem' }}>Add a check-in</button>
           </div>
         ) : (
           <div style={{ width: '100%', height: '280px' }}>
@@ -248,7 +228,7 @@ export default function Progress() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="date" stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <XAxis dataKey="date" tickFormatter={date => date.slice(5)} stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                 <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} domain={selected.yDomain} />
                 <Tooltip
                   contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '0.82rem' }}
@@ -267,7 +247,7 @@ export default function Progress() {
         {[
           { label: 'Cognitive',  val: latestLog.memoryPower ?? '—', unit: '%',  icon: '🧠', color: '#8b5cf6', metricKey: null },
           { label: 'Eye Power',  val: latestLog.eyePower    ?? '—', unit: 'dp', icon: '👁️', color: '#06b6d4', metricKey: null },
-          { label: 'Stamina',    val: latestLog.stamina     ?? '—', unit: 'm',  icon: '🏃', color: '#f43f5e', metricKey: 'stamina' },
+          { label: 'Stamina',    val: latestLog.stamina     ?? '—', unit: '%',  icon: '🏃', color: '#f43f5e', metricKey: 'stamina' },
           { label: 'Heart Rate', val: latestLog.hr          ?? '—', unit: 'bpm',icon: '❤️', color: '#10b981', metricKey: 'hr' },
         ].map((m, i) => (
           <div key={i} className="glass-card" style={{ padding: '1rem', borderLeft: `3px solid ${m.color}` }}>

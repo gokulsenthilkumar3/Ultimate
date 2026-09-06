@@ -5,6 +5,7 @@ import useStore, {
 } from '../store/useStore';
 import { Plus, Trash2, Flame, Check, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import EmptyState from './ui/EmptyState';
+import { currentStreak, localDateKey } from '../lib/metricSeries';
 import { useToast } from '../hooks/useToast';
 
 const MATRIX_DAYS = 364;
@@ -15,34 +16,12 @@ function getDateRange(daysBack) {
   for (let i = daysBack - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().slice(0, 10));
+    dates.push(localDateKey(d));
   }
   return dates;
 }
 
-function getStreakCount(logs = []) {
-  const logSet = new Set(logs.filter(l => l.completed !== false).map(l => l.date));
-  let streak = 0;
-  let missedConsecutive = 0;
-  let started = false;
-  let d = new Date();
-  while (true) {
-    const key = d.toISOString().slice(0, 10);
-    if (logSet.has(key)) {
-      streak++;
-      missedConsecutive = 0;
-      started = true;
-    } else {
-      if (started) {
-        missedConsecutive++;
-        if (missedConsecutive > 1) break;
-      }
-    }
-    d.setDate(d.getDate() - 1);
-    if (streak > 365) break;
-  }
-  return streak;
-}
+const getStreakCount = currentStreak;
 
 // ── Month labels for the 365-day grid ────────────────────────────────────
 function buildMonthLabels(dates) {
@@ -161,7 +140,7 @@ function GlobalHeatmap({ dates, habits, habitLogsByHabit }) {
             {dates.map(d => {
               const count = countByDate[d] || 0;
               const bg = getCellColor(d);
-              const today = new Date().toISOString().slice(0, 10);
+              const today = localDateKey();
               return (
                 <div
                   key={d}
@@ -236,7 +215,7 @@ function HabitHeatmap({ habit, dates, habitLogsByHabit, cat, toggleHabitForDate 
           }}>
             {dates.map(d => {
               const logged = logSet.has(d);
-              const today  = new Date().toISOString().slice(0, 10);
+              const today  = localDateKey();
               return (
                 <button
                   key={d}
@@ -294,7 +273,7 @@ export default React.memo(function HabitsMatrix() {
 
   const dates = useMemo(() => getDateRange(MATRIX_DAYS), []);
   const recentDates = useMemo(() => getDateRange(RECENT_DAYS), []);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
 
   useEffect(() => {
     habits.forEach(h => { fetchHabitLogsForHabit(h.id); });
@@ -686,3 +665,4 @@ export default React.memo(function HabitsMatrix() {
     </div>
   );
 });
+

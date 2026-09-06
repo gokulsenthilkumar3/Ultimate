@@ -7,14 +7,6 @@ import ErrorBoundary from "../ErrorBoundary";
 import use3DStore from "../../store/use3DStore";
 import { getCinematicSceneProfile } from "./cinematicProfiles";
 
-// Map our scene environment IDs to drei Environment presets
-// These use internally-cached HDR maps — no external file needed.
-const ENVIRONMENT_PRESET_MAP = {
-  studio:  "studio",
-  outdoor: "sunset",
-  night:   "night",
-};
-
 function applyAtmosphere(scene, profile) {
   const previous = { background: scene.background, fog: scene.fog };
   scene.background = new THREE.Color(profile.background);
@@ -40,27 +32,24 @@ function Atmosphere({ profile }) {
 
 function EnvironmentRig({ profile, lodConfig }) {
   const resolution = lodConfig?.environmentResolution ?? 128;
-  const preset = ENVIRONMENT_PRESET_MAP[profile.id] || "studio";
 
   return (
     <>
       <Atmosphere profile={profile} />
-      {/* Primary: drei built-in HDR preset for proper IBL — key for skin SSS */}
-      <Environment
-        preset={preset}
-        background={false}
-        resolution={resolution}
-        environmentIntensity={profile.environmentIntensity * 0.72}
-      />
-      {/* Secondary: custom lightformers to reinforce the three-point portrait rig */}
-      <Environment background={false} resolution={Math.min(resolution, 96)}>
-        <Lightformer intensity={3.2} color={profile.key} position={[-1.5, 4.2, 2.2]} rotation={[0.25, 0.15, 0]} scale={[4.6, 1.4, 1]} />
-        <Lightformer intensity={2.2} color={profile.fill} position={[-4, 1.6, 0.4]} rotation={[0, Math.PI / 2, 0]} scale={[4, 1.5, 1]} />
-        <Lightformer intensity={2.8} color={profile.rim} position={[4, 2.4, -1]} rotation={[0, -Math.PI / 2, 0]} scale={[3.2, 1.1, 1]} />
-        {/* Hair / top light — separates head from background */}
-        <Lightformer intensity={1.6} color={profile.key} position={[0, 5.5, 0.5]} rotation={[Math.PI / 2, 0, 0]} scale={[2.4, 2.4, 1]} />
-        {/* Ground bounce — warms up legs and reduces under-chin shadow */}
-        <Lightformer intensity={0.7} color="#fff4e0" position={[0, -0.6, 2.5]} rotation={[Math.PI / 2, 0, 0]} scale={[3, 3, 1]} />
+      {/* One local studio capture owns scene.environment; no network HDR dependency. */}
+      <Environment key={profile.id} background={false} resolution={resolution} frames={1} environmentIntensity={profile.environmentIntensity ?? 0.42}>
+        {/* Key: primary studio spot — left-high, large area for soft wraparound */}
+        <Lightformer intensity={4.0} color={profile.key} position={[-1.5, 4.2, 2.2]} rotation={[0.25, 0.15, 0]} scale={[5.0, 1.6, 1]} />
+        {/* Fill: right-side large soft box — reduces harsh shadow areas */}
+        <Lightformer intensity={2.6} color={profile.fill} position={[-4, 1.6, 0.4]} rotation={[0, Math.PI / 2, 0]} scale={[4.4, 1.8, 1]} />
+        {/* Primary rim — separates body silhouette from dark bg */}
+        <Lightformer intensity={3.4} color={profile.rim} position={[4, 2.4, -1]} rotation={[0, -Math.PI / 2, 0]} scale={[3.6, 1.2, 1]} />
+        {/* Warm opposite rim — adds skin-tone warmth to shadow side */}
+        <Lightformer intensity={1.2} color="#ffe8d0" position={[-3.5, 1.8, -2.4]} rotation={[0.1, Math.PI * 0.62, 0]} scale={[2.8, 1.0, 1]} />
+        {/* Hair / top kicker — separates head from background */}
+        <Lightformer intensity={2.0} color={profile.key} position={[0, 5.5, 0.5]} rotation={[Math.PI / 2, 0, 0]} scale={[2.8, 2.8, 1]} />
+        {/* Ground bounce — warms up legs, reduces under-chin shadow */}
+        <Lightformer intensity={1.0} color="#fff4e0" position={[0, -0.6, 2.5]} rotation={[Math.PI / 2, 0, 0]} scale={[3.6, 3.6, 1]} />
       </Environment>
     </>
   );

@@ -7,7 +7,7 @@ import { GROUPS, tabMeta } from '../config/navigation';
 export default function Header({ activeTab, user, theme, setTheme, onOpenSettings, unreadCount = 0, onOpenNotifications, serverStatus }) {
   const meta = tabMeta(activeTab);
   const group = GROUPS[meta.group];
-  const openCommandPalette = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+  const openCommandPalette = () => window.dispatchEvent(new CustomEvent('open-command-palette'));
 
   return (
     <header className="app-header" style={{ zIndex: Z_INDEX.HEADER }}>
@@ -26,6 +26,7 @@ export default function Header({ activeTab, user, theme, setTheme, onOpenSetting
       </button>
 
       <div className="app-header__controls">
+        <button className="header-control app-header__mobile-search" onClick={openCommandPalette} aria-label="Search everything" title="Search everything"><Search size={18} /></button>
         <button className="header-control header-control--theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
           {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}<span>{theme === 'dark' ? 'Dark' : 'Light'}</span>
         </button>
@@ -33,7 +34,7 @@ export default function Header({ activeTab, user, theme, setTheme, onOpenSetting
           <Bell size={16} />{unreadCount > 0 && <span className="header-control__badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
         </button>
         <div className="app-header__health"><HealthScoreRing size={30} /></div>
-        {serverStatus && serverStatus !== 'unknown' && <span className={`app-header__status is-${serverStatus}`}><i />{serverStatus === 'online' ? 'Synced' : 'Local'}</span>}
+        {serverStatus && serverStatus !== 'unknown' && <span className={`app-header__status is-${serverStatus}`} title={serverStatus === 'online' ? 'Server connected' : 'Server unavailable'}><i />{serverStatus === 'online' ? 'Connected' : 'Offline'}</span>}
         <button className="app-header__profile" onClick={onOpenSettings} aria-label="Open profile and settings">
           <span><strong>{user?.name || 'Athlete'}</strong><small>Ultimate member</small></span>
           <b>{user?.name?.[0]?.toUpperCase() || 'G'}</b>

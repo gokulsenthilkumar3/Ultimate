@@ -8,7 +8,7 @@ import {
   Settings,
 } from 'lucide-react';
 import useStore from '../store/useStore';
-import { GROUPS, GROUP_ORDER, normalizeGroupOrder, tabMeta } from '../config/navigation';
+import { GROUP_ORDER, normalizeGroupOrder, normalizeTabOrder, navigationGroups, ROUTE_ALIASES, tabMeta } from '../config/navigation';
 import { animateIndicator } from '../lib/navMotion';
 
 export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSettings, onLogout }) {
@@ -16,10 +16,8 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
   const itemsRef = useRef({});
   const savedOrder = useStore(state => state.navigationOrder) || GROUP_ORDER;
   const databaseNavigation = useStore(state => state.appConfig?.navigation?.groups) || [];
-  const runtimeGroups = useMemo(() => Object.fromEntries(Object.entries(GROUPS).map(([id, group]) => {
-    const configured = databaseNavigation.find(item => item.id === id);
-    return [id, configured ? { ...group, label: configured.label || group.label, tabs: configured.tabs || group.tabs } : group];
-  })), [databaseNavigation]);
+  const runtimeGroups = useMemo(() => navigationGroups(databaseNavigation), [databaseNavigation]);
+  const highlightedTab = ROUTE_ALIASES[activeTab] || activeTab;
   const setNavigationOrder = useStore(state => state.setNavigationOrder);
   const navigationTabOrder = useStore(state => state.navigationTabOrder) || {};
   const setNavigationTabOrder = useStore(state => state.setNavigationTabOrder);
@@ -28,15 +26,15 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
   const [dragged, setDragged] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const navigationOrder = useMemo(() => normalizeGroupOrder(savedOrder), [savedOrder]);
-  const ownerName = user?.name || user?.fullName || 'Owner';
+  const ownerName = String(user?.name || user?.fullName || 'Owner');
 
   useEffect(() => {
-    if (navigationOrder.join('|') !== savedOrder.join('|')) setNavigationOrder(navigationOrder);
+    if (!Array.isArray(savedOrder) || navigationOrder.join('|') !== savedOrder.join('|')) setNavigationOrder(navigationOrder);
   }, [navigationOrder, savedOrder, setNavigationOrder]);
 
   useEffect(() => {
-    animateIndicator(indicatorRef.current, itemsRef.current[activeTab]);
-  }, [activeTab, collapsed, navigationOrder, navigationTabOrder]);
+    animateIndicator(indicatorRef.current, itemsRef.current[highlightedTab]);
+  }, [highlightedTab, collapsed, navigationOrder, navigationTabOrder]);
 
   const finishDrag = () => {
     setDragged(null);
@@ -60,7 +58,7 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
     if (!dragged?.includes(':')) return finishDrag();
     const [fromGroup, fromTab] = dragged.split(':');
     if (fromGroup !== groupId || fromTab === targetTab) return finishDrag();
-    const tabs = [...(navigationTabOrder[groupId] || runtimeGroups[groupId].tabs)];
+    const tabs = normalizeTabOrder(navigationTabOrder[groupId], runtimeGroups[groupId].tabs);
     const from = tabs.indexOf(fromTab);
     const to = tabs.indexOf(targetTab);
     if (from >= 0 && to >= 0) {
@@ -81,6 +79,7 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
             className="sidebar-collapse"
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+            aria-expanded={!collapsed}
             title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
           >
             {collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
@@ -100,8 +99,7 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
         <div className="magic-indicator" ref={indicatorRef} />
         {navigationOrder.map(groupId => {
           const group = runtimeGroups[groupId];
-          const savedTabs = navigationTabOrder[groupId] || [];
-          const tabs = [...savedTabs.filter(tabId => group.tabs.includes(tabId)), ...group.tabs.filter(tabId => !savedTabs.includes(tabId))];
+          const tabs = normalizeTabOrder(navigationTabOrder[groupId], group.tabs);
           return (
             <section
               key={groupId}
@@ -127,10 +125,10 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
                     <button
                       key={tabId}
                       ref={element => { itemsRef.current[tabId] = element; }}
-                      className={`premium-sidebar-item ${activeTab === tabId ? 'active' : ''}`}
-                      aria-current={activeTab === tabId ? 'page' : undefined}
+                      className={`premium-sidebar-item ${highlightedTab === tabId ? 'active' : ''}`}
+                      aria-current={highlightedTab === tabId ? 'page' : undefined}
                       aria-label={collapsed ? meta.label : undefined}
-                      title={collapsed ? meta.label : 'Drag to reorder'}
+                      title={meta.label}
                       draggable={!collapsed}
                       onDragStart={event => { event.stopPropagation(); setDragged(`${groupId}:${tabId}`); }}
                       onDragEnd={finishDrag}
@@ -154,10 +152,10 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
       </nav>
 
       <div className="premium-sidebar-footer">
-        <button className="premium-sidebar-action" onClick={onOpenSettings} title="Settings">
+        <button className="premium-sidebar-action" onClick={onOpenSettings} title="Settings" aria-label="Settings">
           <Settings size={18} /><span>Settings</span>
         </button>
-        <button className="premium-sidebar-action premium-sidebar-action--danger" onClick={onLogout} title="Sign out">
+        <button className="premium-sidebar-action premium-sidebar-action--danger" onClick={onLogout} title="Sign out" aria-label="Sign out">
           <LogOut size={18} /><span>Sign out</span>
         </button>
       </div>

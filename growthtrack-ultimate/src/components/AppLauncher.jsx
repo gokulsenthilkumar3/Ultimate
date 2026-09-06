@@ -1,285 +1,126 @@
+import React, { useMemo, useState } from 'react';
+import { ArrowUpRight, Grid, List, Pin, Search, Star, X } from 'lucide-react';
 import safeLocalStorage from '../utils/safeLocalStorage';
-import React, { useState, useMemo, useRef, useEffect } from 'react';
 import useStore, { selectPinnedTabs, selectTogglePinnedTab } from '../store/useStore';
-import { Pin, PinOff, Search, Grid, Star } from 'lucide-react';
+import { GROUPS, NAVIGABLE_MODULES, TABS, tabMeta } from '../config/navigation';
 
-const DOCK_APP_IDS = ['overview', 'training', 'tasks', 'finance', 'ai', 'habits', 'notes'];
+const DOCK_APP_IDS = ['overview', 'physique', 'tasks', 'finance', 'insights', 'habits', 'workspace'];
 const CLICK_KEY = 'gtd_app_click_counts';
+const EMPTY_CONFIG = {};
+const DEFAULT_APPS = Object.entries(TABS).map(([id, meta]) => ({
+  id, label: meta.label, icon: meta.emoji, group: GROUPS[meta.group]?.label || 'More',
+  description: meta.keywords.join(' · '), color: '#879cf2',
+}));
 
 function getClickCounts() {
-  try { return JSON.parse(safeLocalStorage.getItem(CLICK_KEY) || '{}'); } catch { return {}; }
-}
-function incrementClick(id) {
   try {
-    const counts = getClickCounts();
-    counts[id] = (counts[id] || 0) + 1;
-    safeLocalStorage.setItem(CLICK_KEY, JSON.stringify(counts));
-  } catch { /* ignore */ }
-}
-
-// ── Dock (magnifying hover effect) ────────────────────────────────────────
-function Dock({ dockApps, onNavigate, pinnedTabs }) {
-  const [hoverIdx, setHoverIdx] = useState(null);
-
-  const getScale = (idx) => {
-    if (hoverIdx === null) return 1;
-    const dist = Math.abs(idx - hoverIdx);
-    if (dist === 0) return 1.55;
-    if (dist === 1) return 1.22;
-    if (dist === 2) return 1.08;
-    return 1;
-  };
-
-  return (
-    <div className="glass-card" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '8px', padding: '16px 24px' }}>
-      {dockApps.map((app, idx) => {
-        const scale  = getScale(idx);
-        const isPinned = pinnedTabs?.includes(app.id);
-        return (
-          <div key={app.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', transition: 'transform 0.15s cubic-bezier(.34,1.56,.64,1)' }}
-            onMouseEnter={() => setHoverIdx(idx)}
-            onMouseLeave={() => setHoverIdx(null)}
-            onClick={() => { onNavigate(app.id); incrementClick(app.id); }}>
-            <div style={{ width: `${40 + (scale - 1) * 18}px`, height: `${40 + (scale - 1) * 18}px`, borderRadius: '12px',
-                          background: `${app.color}22`, border: `1.5px solid ${app.color}55`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: `${18 + (scale - 1) * 8}px`,
-                          transition: 'all 0.15s cubic-bezier(.34,1.56,.64,1)',
-                          boxShadow: scale > 1.4 ? `0 8px 24px ${app.color}44` : 'none',
-                          transform: `translateY(${-(scale - 1) * 12}px)`,
-                        }}>
-              {app.icon}
-            </div>
-            {scale > 1.2 && (
-              <span style={{ fontSize: '0.58rem', color: 'var(--text-2)', fontWeight: 700, whiteSpace: 'nowrap', transform: `translateY(${-(scale-1)*10}px)`, transition: 'all 0.15s' }}>
-                {app.label}
-              </span>
-            )}
-            {isPinned && (
-              <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: app.color, marginTop: '-4px' }} />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
+    const parsed = JSON.parse(safeLocalStorage.getItem(CLICK_KEY) || '{}');
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, count]) => Number.isFinite(count) && count >= 0));
+  } catch { return {}; }
 }
 
 export default function AppLauncher({ setActiveTab }) {
-  const appConfig = useStore(s => s.appConfig || {});
-  const allApps = Array.isArray(appConfig.appCatalog) ? appConfig.appCatalog : [];
-  const groupOrder = useMemo(() => [...new Set(allApps.map(app => app.group).filter(Boolean))], [allApps]);
-  const pinnedTabs     = useStore(selectPinnedTabs)     || [];
+  const appConfig = useStore(state => state.appConfig) || EMPTY_CONFIG;
+  const allApps = useMemo(() => {
+    const catalog = Array.isArray(appConfig.appCatalog) ? appConfig.appCatalog : [];
+    const configured = new Map(catalog.filter(app => app && Object.hasOwn(NAVIGABLE_MODULES, app.id)).map(app => [app.id, app]));
+    const ids = [...new Set([...configured.keys(), ...DEFAULT_APPS.map(app => app.id)])];
+    return ids.map(id => {
+      const meta = tabMeta(id);
+      const app = configured.get(id) || DEFAULT_APPS.find(item => item.id === id) || {};
+      return {
+        id,
+        label: typeof app.label === 'string' && app.label.trim() ? app.label : meta.label,
+        description: typeof app.description === 'string' ? app.description : meta.keywords.join(' · '),
+        group: typeof app.group === 'string' && app.group.trim() ? app.group : GROUPS[meta.group]?.label || 'More',
+        icon: typeof app.icon === 'string' ? app.icon : meta.emoji,
+        color: typeof app.color === 'string' && /^#[\da-f]{6}$/i.test(app.color) ? app.color : '#879cf2',
+      };
+    });
+  }, [appConfig.appCatalog]);
+  const groupOrder = useMemo(() => [...new Set(allApps.map(app => app.group))], [allApps]);
+  const pinnedTabs = useStore(selectPinnedTabs) || [];
   const togglePinnedTab = useStore(selectTogglePinnedTab);
-
-  const [search,  setSearch]  = useState('');
+  const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [groupFilter, setGroupFilter] = useState('all');
-  const searchRef = useRef(null);
-
-  useEffect(() => { searchRef.current?.focus(); }, []);
-
-  const clickCounts = useMemo(() => getClickCounts(), []);
-
-  const frequentApps = useMemo(() => {
-    return [...allApps].sort((a, b) => (clickCounts[b.id] || 0) - (clickCounts[a.id] || 0)).slice(0, 8).filter(a => (clickCounts[a.id] || 0) > 0);
-  }, [allApps, clickCounts]);
-
-  const pinnedApps = useMemo(() => allApps.filter(a => pinnedTabs.includes(a.id)), [allApps, pinnedTabs]);
-  const dockApps   = useMemo(() => {
-    const dockSet = new Set(DOCK_APP_IDS);
-    pinnedApps.forEach(a => dockSet.add(a.id));
-    return allApps.filter(a => dockSet.has(a.id));
+  const [clickCounts, setClickCounts] = useState(getClickCounts);
+  const frequentApps = useMemo(() => [...allApps].sort((a, b) => (clickCounts[b.id] || 0) - (clickCounts[a.id] || 0)).filter(app => clickCounts[app.id] > 0).slice(0, 6), [allApps, clickCounts]);
+  const pinnedApps = useMemo(() => allApps.filter(app => pinnedTabs.includes(app.id)), [allApps, pinnedTabs]);
+  const dockApps = useMemo(() => {
+    const ids = [...new Set([...pinnedApps.map(app => app.id), ...DOCK_APP_IDS])].slice(0, 8);
+    return ids.map(id => allApps.find(app => app.id === id)).filter(Boolean);
   }, [allApps, pinnedApps]);
+  const filtered = useMemo(() => allApps.filter(app =>
+    (groupFilter === 'all' || app.group === groupFilter)
+    && `${app.label} ${app.description} ${app.group}`.toLowerCase().includes(search.trim().toLowerCase()),
+  ), [allApps, search, groupFilter]);
+  const portfolioUrl = useMemo(() => {
+    try {
+      const url = new URL(appConfig.portfolioUrl);
+      return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+    } catch { return null; }
+  }, [appConfig.portfolioUrl]);
 
-  const filtered = useMemo(() => {
-    let apps = allApps;
-    if (groupFilter !== 'all') apps = apps.filter(a => a.group === groupFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      apps = apps.filter(a => a.label.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.group.toLowerCase().includes(q));
-    }
-    return apps;
-  }, [allApps, search, groupFilter]);
-
-  const grouped = useMemo(() => {
-    const g = {};
-    groupOrder.forEach(gr => { g[gr] = []; });
-    filtered.forEach(a => { if (!g[a.group]) g[a.group] = []; g[a.group].push(a); });
-    return g;
-  }, [filtered, groupOrder]);
-
-  const onNavigate = (id) => {
-    if (setActiveTab) setActiveTab(id);
-    incrementClick(id);
+  const onNavigate = id => {
+    const counts = { ...clickCounts, [id]: (clickCounts[id] || 0) + 1 };
+    safeLocalStorage.setItem(CLICK_KEY, JSON.stringify(counts));
+    setClickCounts(counts);
+    setActiveTab?.(id);
   };
 
   return (
     <div className="app-hub-shell">
       <div className="app-hub-hero">
         <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Navigation</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', margin: 0 }}>App Hub</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.88rem', marginTop: '0.4rem' }}>
-            {allApps.length} modules, organized for quick launch.
-          </p>
+          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '.35rem' }}>Your workspace</p>
+          <h1 className="text-display" style={{ fontSize: '2rem', margin: 0 }}>App Hub</h1>
+          <p className="app-hub-copy" style={{ marginTop: '.4rem' }}>{allApps.length} modules, organized for quick launch.</p>
         </div>
-        <div className="app-hub-hero__meta">
-          <span className="app-hub-kpi">{pinnedApps.length} pinned</span>
-          <span className="app-hub-kpi">{frequentApps.length} frequent</span>
-        </div>
+        <div className="app-hub-hero__meta"><span className="app-hub-kpi">{pinnedApps.length} pinned</span></div>
       </div>
-
-      <div className="app-hub-panel">
-        <p className="app-hub-label">Quick Dock</p>
-        <Dock dockApps={dockApps} onNavigate={onNavigate} pinnedTabs={pinnedTabs} />
-        <p className="app-hub-note">
-          Pin the tools you open most. Keep <strong>Profile</strong> for your portfolio and about-me content.
-        </p>
-      </div>
-
-      <div className="app-hub-panel app-hub-panel--split">
-        <div>
-          <p className="app-hub-label">Personal Portfolio</p>
-          <p className="app-hub-copy">Your external website lives there. Edit the site directly from the linked portfolio.</p>
-        </div>
-        {appConfig.portfolioUrl && <a href={appConfig.portfolioUrl} target="_blank" rel="noreferrer" className="btn btn--ghost">
-          Open Website
-        </a>}
-      </div>
-
-      {/* Frequent apps */}
-      {frequentApps.length > 0 && (
-        <div style={{ marginBottom: '1.25rem' }}>
-          <p className="app-hub-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <Star size={11} color="#fbbf24" /> Frequently Used
-          </p>
-          <div className="chip-row">
-            {frequentApps.map(app => (
-              <button key={app.id} onClick={() => onNavigate(app.id)} style={{
-                display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-                borderRadius: '99px', background: 'var(--bg-elevated)', border: `1px solid ${app.color}28`,
-                cursor: 'pointer', color: 'var(--text-1)', fontSize: '0.78rem', fontWeight: 600,
-                transition: 'background 0.15s',
-              }}>
-                <span>{app.icon}</span> {app.label}
-                <span style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginLeft: '2px' }}>{clickCounts[app.id]}×</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Pinned */}
-      {pinnedApps.length > 0 && (
-        <div style={{ marginBottom: '1.25rem' }}>
-          <p className="app-hub-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <Pin size={11} color="var(--accent)" /> Pinned
-          </p>
-          <div className="chip-row">
-            {pinnedApps.map(app => (
-              <button key={app.id} onClick={() => onNavigate(app.id)} style={{
-                display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-                borderRadius: '99px', background: `${app.color}10`, border: `1px solid ${app.color}33`,
-                cursor: 'pointer', color: 'var(--text-1)', fontSize: '0.78rem', fontWeight: 700,
-              }}>
-                <span>{app.icon}</span> {app.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
+      <section className="app-hub-panel" aria-label="Quick launch">
+        <h2 className="app-hub-label">Quick launch</h2>
+        <div className="app-launch-dock">{dockApps.map(app => <button key={app.id} onClick={() => onNavigate(app.id)} className="app-launch-dock__item" style={{ '--app-color': app.color }} aria-label={`Open ${app.label}`}>
+          <span className="app-launch-dock__icon" aria-hidden="true">{app.icon}</span><span>{app.label}</span>
+        </button>)}</div>
+        <p className="app-hub-note">Pin a module below to keep it at the front of quick launch.</p>
+      </section>
+      {portfolioUrl && <div className="app-hub-panel app-hub-panel--split">
+        <div><p className="app-hub-label">Personal website</p><p className="app-hub-copy">Visit your linked portfolio.</p></div>
+        <a href={portfolioUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">Open website <ArrowUpRight size={15} /></a>
+      </div>}
+      {frequentApps.length > 0 && <section className="app-hub-frequent" aria-label="Frequently used modules">
+        <h2 className="app-hub-label"><Star size={13} /> Frequently used</h2>
+        <div className="chip-row">{frequentApps.map(app => <button className="app-hub-kpi" key={app.id} onClick={() => onNavigate(app.id)}>{app.icon} {app.label}</button>)}</div>
+      </section>}
       <div className="app-hub-toolbar">
-        <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-          <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
-          <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search apps…"
-            className="form-input" style={{ paddingLeft: '32px', width: '100%' }} />
+        <label className="app-hub-search"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search apps…" aria-label="Search apps" />{search && <button onClick={() => setSearch('')} aria-label="Clear app search"><X size={16} /></button>}</label>
+        <div className="app-hub-view-switch" role="group" aria-label="App display">
+          {[['grid', Grid], ['list', List]].map(([mode, Icon]) => <button key={mode} onClick={() => setViewMode(mode)} aria-label={`${mode === 'grid' ? 'Grid' : 'List'} view`} aria-pressed={viewMode === mode}><Icon size={18} /></button>)}
         </div>
-        <div className="segmented segmented--compact">
-          {['all', ...groupOrder].map(g => (
-            <button key={g} onClick={() => setGroupFilter(g)} style={{
-              padding: '4px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
-              background: groupFilter === g ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
-              color: groupFilter === g ? '#000' : 'var(--text-3)',
-              border: groupFilter === g ? 'none' : '1px solid rgba(255,255,255,0.1)',
-            }}>{g}</button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: '0.3rem' }}>
-          {[{ v: 'grid', i: <Grid size={13} /> }, { v: 'list', i: '≡' }].map(({ v, i }) => (
-            <button key={v} onClick={() => setViewMode(v)} style={{
-              width: '30px', height: '30px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: viewMode === v ? 'var(--accent)' : 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer',
-              color: viewMode === v ? '#000' : 'var(--text-3)', fontSize: '0.8rem',
-            }}>{i}</button>
-          ))}
-        </div>
+        <div className="app-hub-filters" role="group" aria-label="Filter apps by group">{['all', ...groupOrder].map(group => <button key={group} onClick={() => setGroupFilter(group)} aria-pressed={groupFilter === group}>{group === 'all' ? 'All modules' : group}</button>)}</div>
       </div>
-
-      {/* All apps */}
+      <p className="app-hub-result-count" role="status">{filtered.length} module{filtered.length === 1 ? '' : 's'}{search.trim() ? ` matching “${search.trim()}”` : ''}</p>
+      {filtered.length === 0 && <div className="app-hub-empty"><Search size={28} /><h2>No matching modules</h2><p>Try another name or reset your filters.</p><button className="btn-secondary" onClick={() => { setSearch(''); setGroupFilter('all'); }}>Reset filters</button></div>}
       {groupOrder.map(group => {
-        const apps = grouped[group];
-        if (!apps?.length) return null;
-        return (
-          <div key={group} style={{ marginBottom: '1.25rem' }}>
-            <p className="app-hub-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ flex: 1 }}>{group}</span>
-              <span style={{ opacity: 0.6 }}>{apps.length} apps</span>
-            </p>
-            {viewMode === 'grid' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '0.7rem' }}>
-                {apps.map(app => {
-                  const isPinned = pinnedTabs.includes(app.id);
-                  return (
-                    <div key={app.id} className="glass-card hover-lift card-shine-wrap" style={{ borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
-                      onClick={() => onNavigate(app.id)}>
-                      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: `${app.color}12`, border: `1px solid ${app.color}26`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem' }}>{app.icon}</div>
-                          <button onClick={e => { e.stopPropagation(); togglePinnedTab(app.id); }}
-                            title={isPinned ? 'Unpin' : 'Pin to dock'}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: isPinned ? app.color : 'rgba(255,255,255,0.15)', padding: '2px', transition: 'color 0.2s' }}>
-                            {isPinned ? <Pin size={13} /> : <PinOff size={13} />}
-                          </button>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-1)' }}>{app.label}</p>
-                          <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '2px', lineHeight: 1.4 }}>{app.description}</p>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.58rem', fontWeight: 700, color: app.color, background: `${app.color}10`, padding: '2px 6px', borderRadius: '99px' }}>{app.group}</span>
-                          {clickCounts[app.id] > 0 && <span style={{ fontSize: '0.58rem', color: 'var(--text-3)' }}>{clickCounts[app.id]} uses</span>}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {apps.map(app => {
-                  const isPinned = pinnedTabs.includes(app.id);
-                  return (
-                    <div key={app.id} className="glass-card hover-lift card-shine-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: '14px', cursor: 'pointer' }}
-                      onClick={() => onNavigate(app.id)}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: `${app.color}12`, border: `1px solid ${app.color}26`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.98rem', flexShrink: 0 }}>{app.icon}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-1)' }}>{app.label}</p>
-                        <p style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{app.description}</p>
-                      </div>
-                      <span style={{ fontSize: '0.58rem', fontWeight: 700, color: app.color, background: `${app.color}10`, padding: '2px 6px', borderRadius: '99px', flexShrink: 0 }}>{app.group}</span>
-                      <button onClick={e => { e.stopPropagation(); togglePinnedTab(app.id); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: isPinned ? app.color : 'rgba(255,255,255,0.15)', padding: '4px' }}>
-                        {isPinned ? <Pin size={12} /> : <PinOff size={12} />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
+        const apps = filtered.filter(app => app.group === group);
+        if (!apps.length) return null;
+        return <section key={group} className="app-hub-group">
+          <h2 className="app-hub-label">{group}<span>{apps.length}</span></h2>
+          <div className={`app-hub-cards app-hub-cards--${viewMode}`}>{apps.map(app => {
+            const isPinned = pinnedTabs.includes(app.id);
+            return <article key={app.id} className="glass-card app-hub-card" style={{ '--app-color': app.color }}>
+              <button className="app-hub-card__launch" onClick={() => onNavigate(app.id)} aria-label={`Open ${app.label}`}>
+                <span className="app-hub-card__icon" aria-hidden="true">{app.icon}</span>
+                <span className="app-hub-card__copy"><strong>{app.label}</strong><span>{app.description}</span></span>
+                <ArrowUpRight className="app-hub-card__arrow" size={15} aria-hidden="true" />
+              </button>
+              <button className="app-hub-card__pin" onClick={() => togglePinnedTab(app.id)} aria-label={`${isPinned ? 'Unpin' : 'Pin'} ${app.label}`} aria-pressed={isPinned} title={isPinned ? 'Unpin module' : 'Pin to quick launch'}><Pin size={16} /></button>
+            </article>;
+          })}</div>
+        </section>;
       })}
     </div>
   );
