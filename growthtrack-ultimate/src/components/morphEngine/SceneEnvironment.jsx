@@ -31,7 +31,7 @@ function Atmosphere({ profile }) {
 }
 
 function EnvironmentRig({ profile, lodConfig }) {
-  const resolution = lodConfig?.environmentResolution ?? 128;
+  const resolution = lodConfig?.environmentResolution ?? 256;
 
   return (
     <>
@@ -48,8 +48,8 @@ function EnvironmentRig({ profile, lodConfig }) {
         <Lightformer intensity={1.2} color="#ffe8d0" position={[-3.5, 1.8, -2.4]} rotation={[0.1, Math.PI * 0.62, 0]} scale={[2.8, 1.0, 1]} />
         {/* Hair / top kicker — separates head from background */}
         <Lightformer intensity={2.0} color={profile.key} position={[0, 5.5, 0.5]} rotation={[Math.PI / 2, 0, 0]} scale={[2.8, 2.8, 1]} />
-        {/* Ground bounce — warms up legs, reduces under-chin shadow */}
-        <Lightformer intensity={1.0} color="#fff4e0" position={[0, -0.6, 2.5]} rotation={[Math.PI / 2, 0, 0]} scale={[3.6, 3.6, 1]} />
+        {/* Ground bounce — reduced to maintain deep shadows while keeping slight contact fill */}
+        <Lightformer intensity={0.25} color="#fff4e0" position={[0, -0.6, 2.5]} rotation={[Math.PI / 2, 0, 0]} scale={[3.6, 3.6, 1]} />
       </Environment>
     </>
   );

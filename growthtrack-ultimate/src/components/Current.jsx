@@ -1,3 +1,4 @@
+import { EMPTY_RECORD } from '../lib/emptyValues';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Cloud, Sun, Droplets, Wind, Eye, Thermometer, Newspaper, RefreshCw, MapPin, AlertTriangle } from 'lucide-react';
@@ -25,7 +26,7 @@ function timeAgo(ms) {
 
 export default function Current() {
   const toast = useToast();
-  const sources = useStore(s => s.appConfig?.currentSources || {});
+  const sources = useStore(s => s.appConfig?.currentSources ?? EMPTY_RECORD);
   const weatherCodes = sources.weatherCodes || {};
   const newsSource = (sources.newsSources || []).find(source => source.enabled !== false);
 

@@ -18,7 +18,7 @@ export function metricValue(log, key) {
     if (canonical === key && finiteMetric(log?.[alias]) !== null) return finiteMetric(log[alias]);
   }
   const type = String(log?.type || log?.metric || '').toLowerCase();
-  return (ALIASES[type] || type) === key.toLowerCase() ? finiteMetric(log?.value) : null;
+  return (ALIASES[type] || type).toLowerCase() === key.toLowerCase() ? finiteMetric(log?.value) : null;
 }
 
 export function datedLogs(logs) {

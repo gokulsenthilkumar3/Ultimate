@@ -1,3 +1,4 @@
+import { fitModelFeatures } from './fitModelFeatures';
 /**
  * GrowthTrack Ultimate — Layer 3: Parametric Morph Engine
  * useModelLoader.js
@@ -282,6 +283,7 @@ export function useModelLoader(modelPreference = {}) {
       }
 
       if (bodyMesh) {
+        fitModelFeatures(bodyMesh, featureMeshes);
         // Normalize the model so the humanoid reads like a full body figure.
         // Many GLBs arrive with an offset origin or inconsistent scale, which
         // makes the human look cropped even when the mesh itself is correct.

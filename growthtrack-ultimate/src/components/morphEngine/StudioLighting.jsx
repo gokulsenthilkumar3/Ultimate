@@ -40,6 +40,8 @@ function PortraitFill({ profile, lighting }) {
     <>
       <rectAreaLight position={[2.8, 2.4, 2.5]} rotation={[0, -0.72, 0]} width={3.2} height={4.4} intensity={lighting.fill} color={profile.fill} />
       <pointLight position={[0, 0.55, 1.8]} intensity={lighting.point} color={profile.key} distance={4.5} decay={2} />
+      {/* Negative fill light under chin for deeper cavity shadows */}
+      <pointLight position={[0, -0.4, 0.6]} intensity={-0.6} color="#ffffff" distance={2} decay={2} />
     </>
   );
 }
@@ -48,10 +50,10 @@ function EdgeLights({ profile, lighting }) {
   if (!lighting.edge) return null;
   return (
     <>
-      {/* Primary rim — separates body silhouette from background (reduced intensity for natural look) */}
-      <spotLight position={[2.7, 3.0, -3.4]} intensity={lighting.edge} color={profile.rim} distance={9} decay={2} angle={0.40} penumbra={0.90} />
+      {/* Primary rim — separates body silhouette from background (increased intensity for cinematic contrast) */}
+      <spotLight position={[2.7, 3.0, -3.4]} intensity={lighting.edge * 1.35} color={profile.rim} distance={9} decay={2} angle={0.40} penumbra={0.90} />
       {/* Secondary rim — opposite side fill for dimensionality */}
-      <spotLight position={[-2.5, 2.0, -2.8]} intensity={lighting.edgeSecondary} color={profile.accent} distance={8} decay={2} angle={0.50} penumbra={0.88} />
+      <spotLight position={[-2.5, 2.0, -2.8]} intensity={lighting.edgeSecondary * 1.25} color={profile.accent} distance={8} decay={2} angle={0.50} penumbra={0.88} />
       {/* Warm opposite rim kicker — peach/amber warmth on shadow side for skin-tone naturalness */}
       {lighting.warmRim > 0 && (
         <spotLight position={[-3.2, 1.6, 2.0]} intensity={lighting.warmRim} color="#ffe0c8" distance={7} decay={2} angle={0.55} penumbra={0.92} />
@@ -76,7 +78,7 @@ export default function StudioLighting({ lodConfig }) {
   return (
     <group name="cinematic-portrait-lighting">
       <ambientLight intensity={lighting.ambient} color={profile.fill} />
-      <hemisphereLight skyColor={profile.key} groundColor={profile.fog} intensity={lighting.hemisphere} />
+      <hemisphereLight skyColor={profile.key} groundColor={"#030508"} intensity={lighting.hemisphere * 0.7} />
       <CinematicKey profile={profile} shadowMapSize={lodConfig?.shadowMapSize} lighting={lighting} />
       <PortraitFill profile={profile} lighting={lighting} />
       <EdgeLights profile={profile} lighting={lighting} />

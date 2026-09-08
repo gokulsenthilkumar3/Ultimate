@@ -25,7 +25,7 @@ import * as THREE                             from "three";
 import { useModelLoader }       from "./useModelLoader";
 import { useMorphInterpolator } from "./MorphInterpolator";
 import PostureRig               from "./PostureRig";
-import ProceduralHumanoid, { ProceduralFaceOverlay } from "./ProceduralHumanoid";
+import ProceduralHumanoid from "./ProceduralHumanoid";
 import use3DStore               from "../../store/use3DStore";
 import { createSkinMaterial, updateSkinUniforms, createRimAuraMaterial, updateAuraUniforms } from "./UberShader";
 import { createClothMaterial, isClothPreset } from "./WardrobeShader";
@@ -198,14 +198,25 @@ export default function HumanoidClone({
           map: source?.map || null,
           normalMap: source?.normalMap || null,
           normalScale: source?.normalScale?.clone?.() || new THREE.Vector2(0.08, 0.08),
-          color: eyeColor,
+          color: '#ffffff',
           roughness: 0.16,
           clearcoat: 0.78,
           clearcoatRoughness: 0.06,
-          transparent: true,
+          transparent: false,
           alphaTest: 0.12,
           side: THREE.DoubleSide,
         });
+        // Keep the sclera white and pupil dark; tint only the coloured iris.
+        materials.eyes.onBeforeCompile = (shader) => {
+          shader.uniforms.uIrisColor = { value: new THREE.Color(eyeColor) };
+          shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uIrisColor;')
+            .replace('#include <map_fragment>', `#include <map_fragment>
+              float irisMax = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b));
+              float irisMin = min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
+              float irisMask = smoothstep(0.025, 0.15, irisMax - irisMin) * smoothstep(0.015, 0.08, irisMax);
+              diffuseColor.rgb = mix(diffuseColor.rgb, uIrisColor * (0.4 + irisMax), irisMask * 0.65);`);
+        };
+        materials.eyes.customProgramCacheKey = () => `iris-${eyeColor}`;
       }
       if (feature === 'hair') {
         materials.hair = new THREE.MeshPhysicalMaterial({
@@ -231,9 +242,9 @@ export default function HumanoidClone({
 
   const clothMaterial = useMemo(() => (
     renderMode === "normal" && isClothPreset(wardrobe)
-      ? createClothMaterial(wardrobe)
+      ? createClothMaterial(wardrobe, bodyMesh?.geometry)
       : null
-  ), [renderMode, wardrobe]);
+  ), [bodyMesh, renderMode, wardrobe]);
 
   // Aura materials are GPU resources. Creating one in JSX would allocate a
   // fresh material on every parent render and leak the old shader until the
@@ -289,7 +300,9 @@ export default function HumanoidClone({
     overlay.morphTargetDictionary = bodyMesh.morphTargetDictionary;
     overlay.morphTargetInfluences = new Float32Array(bodyMesh.morphTargetInfluences?.length || 0);
     overlay.bind(skeleton, bodyMesh.bindMatrix);
-    overlay.scale.setScalar(1.004);
+    overlay.position.copy(bodyMesh.position);
+    overlay.quaternion.copy(bodyMesh.quaternion);
+    overlay.scale.copy(bodyMesh.scale);
     overlay.renderOrder = 1;
     overlay.frustumCulled = false;
     overlay.castShadow = true;
@@ -302,6 +315,26 @@ export default function HumanoidClone({
       if (clothOverlayRef.current === overlay) clothOverlayRef.current = null;
     };
   }, [bodyMesh, cloneKey, clothMaterial, scene, skeleton, useProcedural]);
+
+  // An aura must share the body's parent, bind matrix and morphs. A sibling
+  // outside the normalized scene produces detached glowing face/hand patches.
+  useEffect(() => {
+    if (useProcedural || !bodyMesh || !skeleton || !auraMaterial) return undefined;
+    const parent = bodyMesh.parent || scene;
+    const aura = new THREE.SkinnedMesh(bodyMesh.geometry, auraMaterial);
+    aura.name = `GrowthTrackAura_${cloneKey}`;
+    aura.position.copy(bodyMesh.position);
+    aura.quaternion.copy(bodyMesh.quaternion);
+    aura.scale.copy(bodyMesh.scale);
+    aura.bind(skeleton, bodyMesh.bindMatrix);
+    aura.morphTargetDictionary = bodyMesh.morphTargetDictionary;
+    aura.morphTargetInfluences = new Float32Array(bodyMesh.morphTargetInfluences?.length || 0);
+    aura.frustumCulled = false;
+    aura.renderOrder = 2;
+    parent.add(aura);
+    auraRef.current = aura;
+    return () => { parent.remove(aura); auraRef.current = null; };
+  }, [auraMaterial, bodyMesh, cloneKey, scene, skeleton, useProcedural]);
 
   // Apply one coherent skin material to every authored surface, including the
   // separately gated private-anatomy mesh.
@@ -343,6 +376,7 @@ export default function HumanoidClone({
     if (clothOverlayRef.current) {
       interpolator.applyToMesh(clothOverlayRef.current, morphIndexMap);
     }
+    if (auraRef.current) interpolator.applyToMesh(auraRef.current, morphIndexMap);
 
     const blink = interpolator.getWeight("blink");
     const smile = interpolator.getWeight("smile");
@@ -426,31 +460,8 @@ export default function HumanoidClone({
               <sphereGeometry args={[0.024, 24, 14]} />
             </mesh>
           </group>
-          {renderMode === "normal" && (
-            <ProceduralFaceOverlay 
-              metrics={renderMetrics}
-              skinMaterial={material}
-              detailMaterial={material}
-              lipMaterial={mouthMaterials.lips || mouthMaterials.tongue}
-              eyeColorHex={renderMetrics.eyeColor || '#6b3b20'}
-              hairColorHex={renderMetrics.hairColor || '#21140f'}
-              expressionWeights={weights}
-            />
-          )}
         </>,
         headBone,
-      )}
-
-      {/* Aura rim — goal clone only */}
-      {showAura && bodyMesh && skeleton && (
-        <skinnedMesh
-          ref={auraRef}
-          geometry={bodyMesh.geometry}
-          material={auraMaterial}
-          skeleton={skeleton}
-          morphTargetDictionary={bodyMesh.morphTargetDictionary}
-          morphTargetInfluences={bodyMesh.morphTargetInfluences || []}
-        />
       )}
 
       {/* Posture bone rig */}

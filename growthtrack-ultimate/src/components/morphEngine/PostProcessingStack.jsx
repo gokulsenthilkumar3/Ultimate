@@ -60,7 +60,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       multisampling: fullEffects ? 4 : 0,
       frameBufferType: THREE.HalfFloatType,
       depthBuffer: true,
-      stencilBuffer: false,
+      stencilBuffer: true,
     });
     const passes = [];
     const effects = [];

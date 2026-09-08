@@ -1,3 +1,4 @@
+import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore, { selectAssessmentQA, apiSync } from '../store/useStore';
 import { ChevronDown, ChevronUp, Search, ClipboardList, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
@@ -6,7 +7,7 @@ import { useToast } from '../hooks/useToast';
 export default function Assessment() {
   const assessmentQA  = useStore(selectAssessmentQA) || [];
   const saveAssessment = useStore(s => s.saveAssessmentQA);
-  const configuredQuestions = useStore(s => s.appConfig?.assessmentQuestions || []);
+  const configuredQuestions = useStore(s => s.appConfig?.assessmentQuestions ?? EMPTY_LIST);
   const toast = useToast();
 
   const [questions, setQuestions] = useState(configuredQuestions);

@@ -1,3 +1,4 @@
+import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell,
@@ -91,7 +92,7 @@ export default function SleepDashboard() {
   const saveSleepLog = useStore(selectSaveSleepLog);
   const isLoading = useStore(s => s.isLoading);
   const toast = useToast();
-  const configuredTips = useStore(s => s.appConfig?.sleepTips || []);
+  const configuredTips = useStore(s => s.appConfig?.sleepTips ?? EMPTY_LIST);
 
   const [activeView, setActiveView] = useState('trend');
   const [logForm, setLogForm] = useState({
