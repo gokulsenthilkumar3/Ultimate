@@ -1,6 +1,6 @@
 import { Z_INDEX } from '../constants';
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import useStore, { selectUser } from '../store/useStore';
+import React, { useState, useMemo, useCallback } from 'react';
+import useStore from '../store/useStore';
 import {
   XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, AreaChart, Area
@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import MetricLogger from './MetricLogger';
 import TransformationPredictor from './TransformationPredictor';
-import { datedLogs, latestMetrics, metricDelta, metricSeries } from '../lib/metricSeries';
+import { latestMetrics, metricDelta, metricSeries } from '../lib/metricSeries';
+import { EMPTY_LIST } from '../lib/emptyValues';
 
 // ── Delta badge
 function DeltaBadge({ delta, unit = '' }) {
@@ -42,8 +43,7 @@ const METRICS = [
 ];
 
 export default function Progress() {
-  const user           = useStore(selectUser);
-  const storeLogs      = useStore(state => state.metric_logs) || [];
+  const storeLogs      = useStore(state => state.metric_logs) || EMPTY_LIST;
   const saveMetricLog  = useStore(state => state.saveMetricLog);
   const fetchInitialData = useStore(state => state.fetchInitialData);
 

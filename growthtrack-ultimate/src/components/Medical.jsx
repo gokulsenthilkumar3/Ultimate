@@ -9,6 +9,7 @@ import useStore, {
 } from '../store/useStore';
 import { AlertCircle, Activity, Droplets, Stethoscope, Plus, Trash2, Printer, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import { EMPTY_LIST } from '../lib/emptyValues';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip,
   CartesianGrid, ReferenceLine,
@@ -226,12 +227,12 @@ function EventTimeline({ vitalsLogs, medications }) {
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────
-export default function Medical({ user }) {
+export default function Medical() {
   const dbMedical = useStore(selectMedicalData);
   const medicalData = dbMedical || { testsRequired: [] };
-  const vitalsLogs = useStore(selectVitalsLogs) || [];
+  const vitalsLogs = useStore(selectVitalsLogs) || EMPTY_LIST;
   const addVitalLog = useStore(selectAddVitalLog);
-  const medications = useStore(selectMedications) || [];
+  const medications = useStore(selectMedications) || EMPTY_LIST;
   const addMedication = useStore(selectAddMedication);
   const deleteMedication = useStore(selectDeleteMedication);
   const toast = useToast();
@@ -310,10 +311,10 @@ export default function Medical({ user }) {
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
           <AlertCircle color="var(--danger)" size={22} style={{ flexShrink: 0, marginTop: '2px' }} />
           <div>
-            <h3 style={{ color: 'var(--danger)', fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.25rem' }}>Medical Warning</h3>
+            <h3 style={{ color: 'var(--danger)', fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.25rem' }}>Medical context</h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-2)', lineHeight: 1.6 }}>
-              At age {user?.age || 23} with symptomatic fatigue and low libido, clinical bloodwork is the #1 non-negotiable step.
-              Do not attempt advanced supplementation without a baseline.
+              Keep clinician-provided results and care instructions here so your health history stays current.
+              If you have symptoms or concerns, discuss them with a licensed clinician before changing medication or supplements.
             </p>
           </div>
         </div>
@@ -416,7 +417,7 @@ export default function Medical({ user }) {
 
           <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(245,158,11,0.06)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245,158,11,0.15)' }}>
             <p style={{ fontSize: '0.72rem', color: 'var(--warning)', fontWeight: 700 }}>Pro-Tip:</p>
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-2)' }}>Purchase a home BP cuff (~₹1000) for morning/evening tracking.</p>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-2)' }}>For home blood-pressure tracking, use a validated device and follow the schedule recommended by your clinician.</p>
           </div>
         </div>
       </div>

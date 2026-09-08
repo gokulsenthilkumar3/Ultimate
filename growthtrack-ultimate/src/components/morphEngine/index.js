@@ -220,4 +220,4 @@ export {
 
 export {
   applyStencilRead,
-} from "./SplitStencilPass";
+} from "./splitStencilUtils";

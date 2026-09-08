@@ -16,9 +16,13 @@ export function fitModelFeatures(body, features) {
     const center = before.getCenter(new THREE.Vector3());
     const target = center.clone();
     if (feature === 'eyes') {
-      const scale = THREE.MathUtils.clamp(height * .063 / Math.max(size.x, .001), .5, 1.2);
+      // The bundled eye pair was authored too large and was previously moved
+      // to 92.5% of body height, which puts it around the mouth on this rig.
+      // A human eye line sits closer to 95% of the rest-pose body bounds.
+      const scale = THREE.MathUtils.clamp(height * .048 / Math.max(size.x, .001), .42, 1.0);
       mesh.scale.multiplyScalar(scale);
-      target.y = bodyBox.min.y + height * .925;
+      target.x = (bodyBox.min.x + bodyBox.max.x) / 2;
+      target.y = bodyBox.min.y + height * .947;
     } else if (feature === 'hair') {
       mesh.scale.x *= THREE.MathUtils.clamp(height * .115 / Math.max(size.x, .001), .5, 1.2);
       mesh.scale.y *= .86;

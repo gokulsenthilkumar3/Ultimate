@@ -2,19 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import HumanoidClone from './HumanoidClone';
-
-export function applyStencilRead(material, reference) {
-  // Three enables stencil testing only when stencilWrite is true. Keep ops
-  // and a zero write mask let us test without changing the existing mask.
-  material.stencilWrite = true;
-  material.stencilWriteMask = 0;
-  material.stencilFunc = THREE.EqualStencilFunc;
-  material.stencilRef = reference;
-  material.stencilFail = THREE.KeepStencilOp;
-  material.stencilZFail = THREE.KeepStencilOp;
-  material.stencilZPass = THREE.KeepStencilOp;
-  return material;
-}
+import { applyStencilRead } from './splitStencilUtils';
 
 function ScreenMask({ left, dividerX }) {
   const material = useMemo(() => new THREE.ShaderMaterial({
@@ -53,8 +41,7 @@ function Divider({ dividerX }) {
     vertexShader: 'uniform float split; uniform float width; void main() { gl_Position = vec4(split * 2.0 - 1.0 + position.x * 2.0 / width, position.y * 2.0, 0.0, 1.0); }',
     fragmentShader: 'void main() { gl_FragColor = vec4(0.4, 0.85, 0.95, 0.85); }',
     transparent: true, depthTest: false, depthWrite: false,
-  }), []);
-  useEffect(() => { material.uniforms.split.value = dividerX; material.uniforms.width.value = size.width; }, [dividerX, material, size.width]);
+  }), [dividerX, size.width]);
   useEffect(() => () => material.dispose(), [material]);
   return <mesh material={material} renderOrder={1000} frustumCulled={false}><planeGeometry args={[1, 1]} /></mesh>;
 }
