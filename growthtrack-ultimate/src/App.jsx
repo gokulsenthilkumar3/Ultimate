@@ -196,6 +196,7 @@ export default function App() {
   const metricLogs         = useStore((state) => state.metric_logs);
 
   const [showCheckIn,       setShowCheckIn]       = React.useState(false);
+  const [initialDataReady, setInitialDataReady] = React.useState(false);
   const [showSettings,      setShowSettings]      = React.useState(false);
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
 
@@ -284,10 +285,13 @@ export default function App() {
     if (!session) return undefined;
     trackEvent('App Opened');
     logSession('start', 'Application opened');
-    fetchInitialData();
+    let disposed = false;
+    setInitialDataReady(false);
+    fetchInitialData().finally(() => { if (!disposed) setInitialDataReady(true); });
     checkServerHealth();
     const interval = setInterval(checkServerHealth, TIMING.SERVER_HEALTH_POLL_MS);
     return () => {
+      disposed = true;
       clearInterval(interval);
       logSession('end', 'Application closed');
     };
@@ -330,7 +334,7 @@ export default function App() {
         <CommandPalette />
 
         {/* Onboarding — only when not yet completed */}
-        {!onboardingComplete && <OnboardingWizard />}
+        {initialDataReady && !isLoading && !onboardingComplete && <OnboardingWizard />}
 
         {/* Daily Check-In modal */}
         {showCheckIn && onboardingComplete && (
@@ -381,7 +385,7 @@ export default function App() {
                   <ProductPageTransition key={activeTab} reducedMotion={reducedMotion}>
                     {isNotFound
                       ? <NotFound />
-                      : isLoading
+                      : isLoading || !initialDataReady
                       ? <LoadingSkeleton />
                       : <TabRenderer
                           tab={activeTab}

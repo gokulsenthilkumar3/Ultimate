@@ -1,3 +1,4 @@
+import { EMPTY_LIST } from '../lib/emptyValues';
 import { Z_INDEX } from '../constants';
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
@@ -156,7 +157,7 @@ function UploadModal({ onUpload, onClose }) {
 
 // ── Main Documents Component ────────────────────────────────────────────────────
 export default function Documents() {
-  const documentProviders = useStore(s => s.appConfig?.documentProviders || []);
+  const documentProviders = useStore(s => s.appConfig?.documentProviders ?? EMPTY_LIST);
   const documents = useStore(selectDocuments);
   const addDocument = useStore(selectAddDocument);
   const deleteDocument = useStore(selectDeleteDocument);

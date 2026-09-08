@@ -345,7 +345,7 @@ export default function ChamberCanvas({ className = "", style = {} }) {
           preserveDrawingBuffer: true,
         }}
         dpr={lodConfig.dpr}
-        camera={{ fov: 36, near: 0.1, far: 100 }}
+        camera={{ fov: 30, near: 0.1, far: 100 }}
         shadows={lodConfig.shadowType ? { type: lodConfig.shadowType } : false}
         frameloop={shouldRender ? "always" : "never"}
         onCreated={onCreated}

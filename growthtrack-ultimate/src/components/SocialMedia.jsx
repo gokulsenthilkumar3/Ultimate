@@ -1,3 +1,4 @@
+import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   Globe, Link2, ExternalLink, Save, Copy, Check, Trash2,
@@ -144,7 +145,7 @@ function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatf
 // ── Main SocialMedia Component ─────────────────────────────────────────────────
 export default function SocialMedia() {
   const user = useStore(state => state.user);
-  const socialProfiles = useStore(state => state.socialProfiles || []);
+  const socialProfiles = useStore(state => state.socialProfiles ?? EMPTY_LIST);
   const fetchInitialData = useStore(state => state.fetchInitialData);
   const [socialData, setSocialData] = useState(() => socialProfiles.length
     ? Object.fromEntries(socialProfiles.map(profile => [profile.provider, profile.profileUrl || '']))

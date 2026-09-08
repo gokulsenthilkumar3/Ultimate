@@ -128,194 +128,6 @@ export const WARDROBE_CONFIGS = {
 // VERTEX SHADER
 // ─────────────────────────────────────────────────────────────────────────────
 
-const clothVertexShader = /* glsl */ `
-  #include <morphtarget_pars_vertex>
-  #include <skinning_pars_vertex>
-
-  varying vec3  vWorldPosition;
-  varying vec3  vWorldNormal;
-  varying vec2  vUv;
-  varying vec3  vViewDir;
-
-  void main() {
-    vUv = uv;
-    #include <beginnormal_vertex>
-    #include <morphnormal_vertex>
-    #include <skinbase_vertex>
-    #include <skinnormal_vertex>
-    #include <defaultnormal_vertex>
-    #include <begin_vertex>
-    #include <morphtarget_vertex>
-    #include <skinning_vertex>
-    #include <project_vertex>
-
-    vec4 worldPos  = modelMatrix * vec4(transformed, 1.0);
-    vWorldPosition = worldPos.xyz;
-    vWorldNormal   = normalize(mat3(modelMatrix) * objectNormal);
-    vViewDir       = normalize(cameraPosition - worldPos.xyz);
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FRAGMENT SHADER
-// ─────────────────────────────────────────────────────────────────────────────
-
-const clothFragmentShader = /* glsl */ `
-  precision highp float;
-
-  varying vec3  vWorldPosition;
-  varying vec3  vWorldNormal;
-  varying vec2  vUv;
-  varying vec3  vViewDir;
-
-  uniform vec3  uPrimaryColor;
-  uniform vec3  uSecondaryColor;
-  uniform float uRoughness;
-  uniform float uSheen;
-  uniform vec3  uSheenColor;
-  uniform int   uWeaveType;      // 0=smooth, 1=knit, 2=woven, 3=jersey
-
-  // Coverage uniforms: cloth only renders in these Y bands
-  // Up to 2 covered bands (torso + lower, or just lower)
-  uniform vec2  uCovBand1;    // [yMin, yMax], vec2(-1,-1) = unused
-  uniform vec2  uCovBand2;    // [yMin, yMax]
-  uniform float uEdgeFeather; // blend width at fabric edges
-  uniform float uStripeStrength;
-
-  // ── Micro-fabric weave patterns ────────────────────────────────────────────
-  // Returns a surface variation value 0–1 that modulates roughness + color.
-
-  // Type 0: Smooth/compression — minimal texture, subtle sheen lines
-  float weaveSmooth(vec2 uv) {
-    float lines = abs(sin(uv.y * 280.0)) * 0.04;
-    return 1.0 - lines;
-  }
-
-  // Type 1: Knit/fleece — purl stitch loop pattern
-  float weaveKnit(vec2 uv) {
-    vec2  p   = uv * vec2(60.0, 90.0);
-    float col = floor(p.x);
-    float row = floor(p.y);
-    vec2  f   = fract(p) - 0.5;
-    // Offset alternate columns
-    if (mod(col, 2.0) < 1.0) f.y = fract(p.y + 0.5) - 0.5;
-    float loop = 1.0 - smoothstep(0.18, 0.30, length(f));
-    return 0.88 + loop * 0.12;
-  }
-
-  // Type 2: Woven/poplin — tight crosshatch
-  float weaveWoven(vec2 uv) {
-    vec2  p   = uv * 160.0;
-    float h   = abs(sin(p.x)) * abs(cos(p.y));
-    float v   = abs(sin(p.y)) * abs(cos(p.x));
-    float weave = max(h, v);
-    return 0.90 + weave * 0.10;
-  }
-
-  // Type 3: Jersey — angled rib
-  float weaveJersey(vec2 uv) {
-    float rib = abs(sin((uv.x * 45.0 + uv.y * 15.0) * 3.14159));
-    return 0.88 + rib * 0.12;
-  }
-
-  float sampleWeave(vec2 uv, int type) {
-    if (type == 1) return weaveKnit(uv);
-    if (type == 2) return weaveWoven(uv);
-    if (type == 3) return weaveJersey(uv);
-    return weaveSmooth(uv);
-  }
-
-  // ── Coverage alpha (1 = cloth, 0 = skin shows through) ───────────────────
-  float coverageAlpha(float y) {
-    float a1 = 0.0;
-    float a2 = 0.0;
-
-    if (uCovBand1.x > -0.5) {
-      a1 = smoothstep(uCovBand1.x, uCovBand1.x + uEdgeFeather, y) *
-           (1.0 - smoothstep(uCovBand1.y - uEdgeFeather, uCovBand1.y, y));
-    }
-    if (uCovBand2.x > -0.5) {
-      a2 = smoothstep(uCovBand2.x, uCovBand2.x + uEdgeFeather, y) *
-           (1.0 - smoothstep(uCovBand2.y - uEdgeFeather, uCovBand2.y, y));
-    }
-
-    return clamp(a1 + a2, 0.0, 1.0);
-  }
-
-  // ── Fabric lighting model ─────────────────────────────────────────────────
-  // Cloth uses a simplified Oren-Nayar diffuse + Ashikhmin-Shirley sheen.
-
-  float orenNayarDiffuse(vec3 N, vec3 L, vec3 V, float roughness) {
-    float NdL   = max(0.0, dot(N, L));
-    float NdV   = max(0.0, dot(N, V));
-    float r2    = roughness * roughness;
-    float A     = 1.0 - (0.5 * r2 / (r2 + 0.33));
-    float B     = 0.45 * r2 / (r2 + 0.09);
-    float gamma = dot(normalize(V - N * NdV), normalize(L - N * NdL));
-    float C     = max(0.0, gamma) * max(sin(acos(NdV)), sin(acos(NdL)));
-    return NdL * (A + B * C);
-  }
-
-  float sheenPeak(float NdH, float sheen) {
-    return sheen * pow(1.0 - NdH, 5.0) * 4.0;
-  }
-
-  void main() {
-    vec3  N   = normalize(vWorldNormal);
-    vec3  V   = normalize(vViewDir);
-
-    // ── Coverage check — discard fragments outside cloth bands ────────────
-    float covAlpha = coverageAlpha(vWorldPosition.y);
-    if (covAlpha < 0.01) discard;
-
-    // ── Weave texture ──────────────────────────────────────────────────────
-    float weave      = sampleWeave(vUv, uWeaveType);
-    float roughFinal = clamp(uRoughness * (2.0 - weave), 0.3, 1.0);
-
-    // ── Stripe pattern for swimwear secondary color ────────────────────────
-    float stripe = step(0.82, fract(vUv.x * 6.0 + vUv.y * 2.0));
-    vec3  baseColor = mix(uPrimaryColor, uSecondaryColor, stripe * uStripeStrength);
-
-    // ── Studio lights (mirror of Layer 2) ─────────────────────────────────
-    vec3  lights[3];
-    vec3  lightColors[3];
-    float lightInts[3];
-    lights[0]     = normalize(vec3(3.0, -5.0, -3.0));   // key
-    lights[1]     = normalize(vec3(-4.0, -2.0, -2.0));  // fill
-    lights[2]     = normalize(vec3(0.0, -1.0, 5.0));    // rim
-    lightColors[0] = vec3(1.00, 0.96, 0.88);
-    lightColors[1] = vec3(0.84, 0.93, 1.00);
-    lightColors[2] = vec3(0.53, 0.60, 1.00);
-    lightInts[0]  = 2.2;
-    lightInts[1]  = 0.7;
-    lightInts[2]  = 1.2;
-
-    vec3 diffuse = vec3(0.0);
-    vec3 sheen   = vec3(0.0);
-
-    for (int i = 0; i < 3; i++) {
-      vec3  L   = -lights[i];
-      vec3  H   = normalize(L + V);
-      float NdH = max(0.0, dot(N, H));
-      float od  = orenNayarDiffuse(N, L, V, roughFinal);
-      diffuse  += lightColors[i] * lightInts[i] * od;
-      sheen    += lightColors[i] * uSheenColor * sheenPeak(NdH, uSheen) * lightInts[i] * 0.25;
-    }
-
-    // ── Ambient ────────────────────────────────────────────────────────────
-    float ao      = 0.5 + 0.5 * dot(N, vec3(0.0, 1.0, 0.0));
-    vec3  ambient = vec3(0.04, 0.04, 0.06) * ao;
-
-    vec3 finalColor = baseColor * (diffuse + ambient) + sheen;
-
-    // ── Edge seam darkening (fabric fold shadow at coverage boundary) ──────
-    float seam  = 1.0 - smoothstep(0.85, 1.0, covAlpha);
-    finalColor *= mix(1.0, 0.75, seam * 0.4);
-
-    gl_FragColor = vec4(finalColor, covAlpha);
-  }
-`;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // MATERIAL FACTORY
 // ─────────────────────────────────────────────────────────────────────────────
@@ -327,34 +139,38 @@ const clothFragmentShader = /* glsl */ `
  * @param {string} preset - key from WARDROBE_PRESETS
  * @returns {THREE.ShaderMaterial | null}
  */
-export function createClothMaterial(preset = "GYM") {
+export function createClothMaterial(preset = 'GYM', geometry = null) {
   const config = WARDROBE_CONFIGS[preset];
-  if (!config) return null; // ANATOMICAL / BODY_COMP
-
-  // Parse coverage bands
-  const bands  = Object.values(config.coverage ?? {});
-  const band1  = bands[0] ? new THREE.Vector2(bands[0][0], bands[0][1]) : new THREE.Vector2(-1, -1);
-  const band2  = bands[1] ? new THREE.Vector2(bands[1][0], bands[1][1]) : new THREE.Vector2(-1, -1);
-
-  return new THREE.ShaderMaterial({
-    vertexShader:   clothVertexShader,
-    fragmentShader: clothFragmentShader,
-    uniforms: {
-      uPrimaryColor:   { value: new THREE.Color(...config.primaryColor) },
-      uSecondaryColor: { value: new THREE.Color(...config.secondaryColor) },
-      uRoughness:      { value: config.roughness },
-      uSheen:          { value: config.sheen },
-      uSheenColor:     { value: new THREE.Color(...config.sheenColor) },
-      uWeaveType:      { value: config.weaveType },
-      uCovBand1:       { value: band1 },
-      uCovBand2:       { value: band2 },
-      uEdgeFeather:    { value: 0.04 },
-      uStripeStrength: { value: preset === "SWIMWEAR" ? 0.4 : 0.0 },
-    },
-    transparent:  true,   // needed for coverage alpha + edge fade
-    depthWrite:   true,
-    side:         THREE.FrontSide,
+  if (!config) return null;
+  geometry?.computeBoundingBox();
+  const box = geometry?.boundingBox;
+  const material = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(...config.primaryColor), roughness: Math.max(.8, config.roughness),
+    metalness: 0, sheen: .06, sheenRoughness: .85, clearcoat: 0, envMapIntensity: .3,
+    side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
+  const uniforms = {
+    uClothMin: { value: box?.min.y ?? -.81676 },
+    uClothScale: { value: 1.92 / Math.max(.1, box ? box.max.y-box.min.y : 1.66589) },
+    uTorsoBand: { value: new THREE.Vector2(...(config.coverage.torso || [-1,-1])) },
+    uLowerBand: { value: new THREE.Vector2(...(config.coverage.lower || [-1,-1])) },
+    uTorsoWidth: { value: preset === 'GYM' ? .245 : .53 },
+    uLowerColor: { value: new THREE.Color(...(preset === 'FORMAL' ? config.secondaryColor : config.primaryColor)) },
+  };
+  material.customProgramCacheKey = () => 'cloth-pbr-' + preset;
+  material.onBeforeCompile = shader => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nuniform float uClothMin;\nuniform float uClothScale;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvClothPosition = vec3(position.x * uClothScale, (position.y-uClothMin) * uClothScale, position.z * uClothScale);');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nuniform vec2 uTorsoBand;\nuniform vec2 uLowerBand;\nuniform float uTorsoWidth;\nuniform vec3 uLowerColor;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        bool lowerCloth = vClothPosition.y >= uLowerBand.x && vClothPosition.y <= uLowerBand.y;
+        bool torsoCloth = vClothPosition.y >= uTorsoBand.x && vClothPosition.y <= uTorsoBand.y && abs(vClothPosition.x) < uTorsoWidth;
+        if (!lowerCloth && !torsoCloth) discard;
+        if (lowerCloth) diffuseColor.rgb = uLowerColor;
+        diffuseColor.rgb *= .97 + .03 * abs(sin(vClothPosition.y * 700.0));`);
+  };
+  return material;
 }
 
 /**

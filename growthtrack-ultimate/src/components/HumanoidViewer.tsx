@@ -296,6 +296,7 @@ export default function HumanoidViewer() {
   const globalMetricLogs = metricLogsState || EMPTY_ARRAY;
   const persistedPhysique = persistedPhysiqueState || EMPTY_OBJECT;
   const qualityGate = useMemo(() => buildRendererQualityGate({
+    // @ts-expect-error diagnostics is passed to the underlying JS function
     diagnostics: modelDiagnostics,
     telemetry: rendererTelemetry,
     renderMode,
@@ -467,10 +468,10 @@ export default function HumanoidViewer() {
   // ── Keyboard shortcuts: 1–6 for view modes, Escape for settings
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement)?.closest('input, textarea, select, [contenteditable="true"]')) return;
       const mode = VIEW_MODES.find((m) => m.key === e.key);
       if (mode) setViewMode(mode.id);
-      if (e.key === 'Escape') setShowSettings(false);
+      if (e.key === 'Escape') { setShowSettings(false); setShowEditor(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -645,7 +646,7 @@ export default function HumanoidViewer() {
               title={`${qualityGate.passed} of ${qualityGate.total} quality checks passing`}
             >
               {qualityGate.releaseReady ? <CheckCircle size={10} /> : <AlertTriangle size={10} />}
-              {qualityGate.releaseReady ? 'QUALITY GATE READY' : qualityGate.status === 'pending' ? 'QUALITY CHECKING' : 'QUALITY BLOCKED'}
+              {qualityGate.releaseReady ? 'RENDERER READY' : qualityGate.status === 'pending' ? 'LOADING MODEL' : 'RENDERER DETAILS'}
             </span>
             {overallScore > 0 && (
               <span className="hud-chip healthy" style={{ '--hud-delay': '0.36s' } as React.CSSProperties}>
@@ -677,6 +678,9 @@ export default function HumanoidViewer() {
         <div className="chamber-viewport">
           {/* Top overlay bar */}
           <div className="chamber-overlay-top">
+            <div className="chamber-view-modes" role="group" aria-label="Comparison mode">
+              {VIEW_MODES.map(mode => <button key={mode.id} className={`chamber-pill${viewMode === mode.id ? ' active' : ''}`} aria-pressed={viewMode === mode.id} title={`${mode.label} view (${mode.key})`} onClick={() => setViewMode(mode.id)}>{mode.id === 'SOLO' ? 'Current body' : mode.id === 'DUAL' ? 'Side by side' : mode.label}</button>)}
+            </div>
             <div className="chamber-overlay-row">
               {/* Camera presets */}
               <div className="chamber-pill-group">
@@ -710,7 +714,7 @@ export default function HumanoidViewer() {
             <div className="chamber-readout__label">LIVE READOUT</div>
             <div className="chamber-readout__focus">
               <span className="chamber-readout__pulse" />
-              <strong>{selectedPart?.label || 'Full-body scan'}</strong>
+              <strong>{selectedPart?.label || 'Body overview'}</strong>
               <span>{viewMode === 'DUAL' ? 'Now vs destination' : `${viewMode} inspection`}</span>
             </div>
             <div className="chamber-readout__metrics">
@@ -722,7 +726,7 @@ export default function HumanoidViewer() {
               })() : <strong>—</strong>}</div>
             </div>
             <div className="chamber-readout__footer" title={metricCompleteness.missing.length ? `Add ${metricCompleteness.missing.join(', ')} for a more accurate digital twin.` : 'All high-value measurements are present.'}>
-              <span>PROFILE PRECISION</span><strong>{metricCompleteness.percent}%</strong>
+              <span>MEASUREMENTS ADDED</span><strong>{metricCompleteness.percent}%</strong>
             </div>
           </aside>
 
@@ -795,14 +799,14 @@ export default function HumanoidViewer() {
                 </div>
                 <div className="chamber-timeline__track">
                   {milestones.map((m: any, i: number) => (
-                    <div key={i} className={`chamber-milestone${m.achieved ? ' achieved' : ''}`}
+                    <div key={m.id} className={`chamber-milestone${m.achieved ? ' achieved' : ''}`}
                       style={{ left: `${((m.monthIndex ?? 0) / 20) * 100}%` }}
                       title={m.label}>
                       <div className="chamber-milestone__dot" />
                       <span className="chamber-milestone__label">{m.label.split('—')[0]}</span>
                     </div>
                   ))}
-                  <input type="range" min="0" max={Math.max(snapshots.length - 1, 1)} value={timelinePos as number}
+                  <input type="range" aria-label="Timeline position" min="0" max={Math.max(snapshots.length - 1, 1)} value={timelinePos as number}
                     onChange={(e) => { setTimelinePos(parseInt(e.target.value)); setTimelinePlaying(false); }}
                     className="chamber-timeline__slider" />
                 </div>
@@ -886,7 +890,7 @@ export default function HumanoidViewer() {
                           </div>
                           {/* NOW slider */}
                           <div style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: 2 }}>NOW</div>
-                          <input type="range"
+                          <input type="range" aria-label={`Current ${meta.label}`}
                             min={key === 'bodyFat' ? 5 : 30}
                             max={key === 'bodyFat' ? 40 : key === 'weight' ? 130 : 150}
                             step={1} value={cur}
@@ -896,7 +900,7 @@ export default function HumanoidViewer() {
                           <div style={{ fontSize: '0.6rem', color: 'var(--chamber-glow)', marginBottom: 2, marginTop: 4 }}>
                             GOAL <span style={{ float: 'right' }}>{goal}{meta.unit}</span>
                           </div>
-                          <input type="range"
+                          <input type="range" aria-label={`Goal ${meta.label}`}
                             min={key === 'bodyFat' ? 5 : 30}
                             max={key === 'bodyFat' ? 40 : key === 'weight' ? 130 : 150}
                             step={1} value={goal}
@@ -929,7 +933,7 @@ export default function HumanoidViewer() {
                         {stressLevel}%
                       </span>
                     </div>
-                    <input type="range" min="0" max="100" value={stressLevel}
+                    <input type="range" aria-label="Stress Level" min="0" max="100" value={stressLevel}
                       onChange={(e) => setStressLevel(parseInt(e.target.value))}
                       className="chamber-slider" style={{ accentColor: '#ef4444' }} />
                     <p style={{ fontSize: '0.68rem', color: stressLevel > 60 ? '#ef4444' : 'var(--text-3)', marginTop: '4px' }}>
@@ -966,7 +970,7 @@ export default function HumanoidViewer() {
                               <span>{s.label}</span>
                               <span className="chamber-morph-row__value">{Math.round(value * 100)}%</span>
                             </div>
-                            <input type="range"
+                            <input type="range" aria-label={s.label}
                               min={0} max={1} step={0.01}
                               value={value}
                               onChange={(e) => setAdvancedMorph(s.id, parseFloat(e.target.value))}
@@ -990,7 +994,7 @@ export default function HumanoidViewer() {
                           <span>{label}</span>
                           <span className="chamber-morph-row__value">{Math.round(value * 100)}%</span>
                         </div>
-                        <input type="range" min={0} max={1} step={0.01} value={value}
+                        <input type="range" aria-label={label} min={0} max={1} step={0.01} value={value}
                           onChange={(e) => setAdvancedMorph(key, parseFloat(e.target.value))}
                           className="chamber-slider" />
                       </div>
@@ -1023,7 +1027,7 @@ export default function HumanoidViewer() {
                           <span>{s.label}</span>
                           <span className="chamber-morph-row__value">{(val * 100).toFixed(0)}%</span>
                         </div>
-                        <input type="range" min={s.min} max={s.max} step={s.step}
+                        <input type="range" aria-label={s.label} min={s.min} max={s.max} step={s.step}
                           value={val}
                           onChange={(e) => setAdvancedMorph(s.key, parseFloat(e.target.value))}
                           className="chamber-slider" />
@@ -1048,7 +1052,7 @@ export default function HumanoidViewer() {
                           <span>{s.label}</span>
                           <span className="chamber-morph-row__value">{Math.round(val * 100)}%</span>
                         </div>
-                        <input type="range" min={0} max={1} step={0.01} value={val}
+                        <input type="range" aria-label={s.label} min={0} max={1} step={0.01} value={val}
                           onChange={(e) => setAdvancedMorph(s.key, parseFloat(e.target.value))}
                           className="chamber-slider" />
                       </div>
@@ -1168,7 +1172,7 @@ export default function HumanoidViewer() {
                           }} />
                       ))}
                     </div>
-                    <input type="range" min="0" max="100" value={anatomyDepth}
+                    <input type="range" aria-label="Anatomical peel depth" min="0" max="100" value={anatomyDepth}
                       onChange={(e) => setAnatomyDepth(parseInt(e.target.value))}
                       className="chamber-slider" style={{ accentColor: 'var(--chamber-glow)' }} />
                     <div className="chamber-anatomy-scale">
@@ -1344,7 +1348,7 @@ export default function HumanoidViewer() {
               </div>
               <label className="chamber-exposure-control">
                 <span>Exposure <strong>{cinematic.exposure.toFixed(2)}</strong></span>
-                <input type="range" min="0.72" max="1.35" step="0.01" value={cinematic.exposure}
+                <input type="range" aria-label="Exposure" min="0.72" max="1.35" step="0.01" value={cinematic.exposure}
                   onChange={(e) => handleCinematicSetting('exposure', parseFloat(e.target.value))}
                   className="chamber-slider" />
               </label>

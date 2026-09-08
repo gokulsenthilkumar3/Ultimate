@@ -1,9 +1,10 @@
+import { EMPTY_RECORD } from '../lib/emptyValues';
 import React, { useEffect, useRef, useState } from 'react';
 import { Map, Navigation, Compass, ShieldCheck, RefreshCw, ExternalLink } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 
 export default function Maps() {
-  const mapsConfig = useStore(s => s.appConfig?.maps || {});
+  const mapsConfig = useStore(s => s.appConfig?.maps ?? EMPTY_RECORD);
   const [syncing, setSyncing] = useState(false);
   const [tracking, setTracking] = useState(Boolean(mapsConfig.browserTrackingEnabled));
   const [locations, setLocations] = useState([]);

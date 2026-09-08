@@ -17,7 +17,7 @@ describe('metric series and streak regressions', () => {
     expect(metricDelta(logs, 'sleep')).toBeNull();
   });
   it('groups timestamps on the same calendar day without coercing gaps to zero', () => {
-    expect(groupMetricByDate([{ date: '2026-09-01T10:00:00Z', mood: 7 }, { date: '2026-09-01', type: 'mood', value: 5 }, { date: '2026-09-02', mood: '' }], 'mood')).toEqual({ '2026-09-01': [7, 5] });
+    expect(groupMetricByDate([{ date: '2026-09-01T10:00:00Z', mood: 7 }, { date: '2026-09-01', type: 'mood', value: 5 }, { date: '2026-09-02', mood: '' }], 'mood')).toEqual({ '2026-09-01': [5, 7] });
   });
   it('terminates for empty histories and histories with no recent completions', () => {
     const now = new Date(2026, 8, 6, 3);

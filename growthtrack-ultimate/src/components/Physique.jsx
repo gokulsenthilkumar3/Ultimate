@@ -1,4 +1,7 @@
+import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useMemo, lazy, Suspense } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { datedLogs, finiteMetric, metricValue } from '../lib/metricSeries';
 import {
   Zap, Target, Layers, Activity, User, Ruler, Scale, Info,
   Shield, Save, Edit3, X, ToggleLeft, ToggleRight, TrendingDown, TrendingUp,
@@ -129,6 +132,8 @@ function convertValue(val, toIn) {
 }
 
 export default function Physique({ user }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const toast = useToast();
   const physiqueTargets = useStore(selectPhysiqueTargets);
   const updatePhysiqueTargets = useStore(selectUpdatePhysiqueTargets);
@@ -142,10 +147,8 @@ export default function Physique({ user }) {
   const [targetDraft,   setTargetDraft]   = useState({});
   const [unitMode] = useState('cm');
   // Sub-tab: 'blueprint' (default body metrics) | '3d' (HumanoidViewer embedded)
-  const [subTab, setSubTab] = useState(
-    () => ['3d', 'targets', 'history'].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'blueprint'
-  );
-  const metricLogs = useStore(s => s.metric_logs || []);
+  const subTab = ['3d', 'targets', 'history'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'blueprint';
+  const metricLogs = useStore(s => s.metric_logs ?? EMPTY_LIST);
 
   // ── Body-fat calculator state ─────────────────────────────────────────
   const [bfGender, setBfGender] = useState(user?.gender || 'M');
@@ -181,10 +184,14 @@ export default function Physique({ user }) {
     : null;
 
   const handleSaveTarget = (idx) => {
+    const current = parseFloat(targetDraft.current);
+    const target = parseFloat(targetDraft.target);
+    if (!Number.isFinite(current) || !Number.isFinite(target) || current <= 0 || target <= 0) {
+      toast.error('Enter positive current and target measurements.');
+      return;
+    }
     const updated = targets.map((t, i) => i === idx ? { ...t, ...targetDraft } : t);
-    const progress = targetDraft.current && targetDraft.target
-      ? Math.min(100, Math.round((parseFloat(targetDraft.current) / parseFloat(targetDraft.target)) * 100))
-      : targets[idx].progress;
+    const progress = Math.max(0, Math.min(100, Math.round((targets[idx].type === 'Reduction' ? target / current : current / target) * 100)));
     updated[idx] = { ...updated[idx], progress };
     updatePhysiqueTargets({ ...(physiqueTargets || {}), targets: updated });
     setEditingTarget(null);
@@ -217,14 +224,14 @@ export default function Physique({ user }) {
           <h2 className="text-display physique-matrix-header__title">Physique Matrix</h2>
         </div>
         {/* Sub-tab pill toggle */}
-        <div className="physique-segmented-nav">
+        <div className="physique-segmented-nav" role="group" aria-label="Physique views">
           {[{ id: 'blueprint', label: 'Blueprint' }, { id: '3d', label: '3D Mirror' }, { id: 'targets', label: 'Targets' }, { id: 'history', label: 'History' }].map(tab => (
             <button
               key={tab.id}
+              aria-pressed={subTab === tab.id}
               className={`physique-segmented-nav__item${subTab === tab.id ? ' is-active' : ''}`}
               onClick={() => {
-                setSubTab(tab.id);
-                window.location.hash = tab.id === 'blueprint' ? '' : `#${tab.id}`;
+                navigate({ pathname: location.pathname, hash: tab.id === 'blueprint' ? '' : `#${tab.id}` });
               }}
             >
               {tab.label}
@@ -247,7 +254,7 @@ export default function Physique({ user }) {
 
       {subTab === 'targets' && <div className="glass-card physique-subpanel"><PhysiqueRoadmap targets={targets} user={user} /></div>}
 
-      {subTab === 'history' && <div className="glass-card physique-subpanel"><div className="eyebrow"><TrendingUp size={14} /> Measurement history</div><h3 className="text-display">Your body over time</h3>{metricLogs.length === 0 ? <p className="text-secondary">Save metric check-ins in Progress to build a history timeline.</p> : <div className="physique-history-list">{[...metricLogs].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20).map((log, index) => <div className="physique-history-row" key={log.id || `${log.date}-${index}`}><strong>{new Date(log.date).toLocaleDateString()}</strong><span>{log.metric || 'Metric'} · {log.value ?? '—'}</span></div>)}</div>}</div>}
+      {subTab === 'history' && <div className="glass-card physique-subpanel"><div className="eyebrow"><TrendingUp size={14} /> Measurement history</div><h3 className="text-display">Your body over time</h3>{datedLogs(metricLogs).length === 0 ? <p className="text-secondary">Save metric check-ins in Progress to build a history timeline.</p> : <div className="physique-history-list">{datedLogs(metricLogs).reverse().slice(0, 20).map((log, index) => <div className="physique-history-row" key={log.id || `${log.date}-${index}`}><strong>{new Date(`${log.date.slice(0, 10)}T12:00:00`).toLocaleDateString()}</strong><span>{[['weight', 'kg'], ['bodyFat', '%'], ['waist', 'cm'], ['chest', 'cm']].filter(([key]) => metricValue(log, key) !== null).map(([key, unit]) => `${key === 'bodyFat' ? 'Body fat' : key} ${metricValue(log, key)} ${unit}`).join(' · ') || `${log.metric || log.type || 'Check-in'} · ${finiteMetric(log.value) ?? 'Saved'}`}</span></div>)}</div>}</div>}
 
       {/* ── Blueprint sub-tab (original content) ───────────────────────────── */}
       {subTab === 'blueprint' && (<>

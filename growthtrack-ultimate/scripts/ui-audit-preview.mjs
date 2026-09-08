@@ -11,7 +11,7 @@ export function createAuditState(empty = false) {
   return {
     user: { id: 'ui-review', name: 'Alex Morgan', email: 'review@example.test', gender: 'M', height: 178, weight: 76, bodyFat: 18, age: 30 },
     preference: { onboardingComplete: true, theme: 'dark', palette: 'gold', reducedMotion: true },
-    bodyProfile: { height: 178, weight: 76, bodyFat: 18, chest: 99, waist: 84, shoulders: 116, arms: 34, thighs: 55, calves: 37, neck: 37, hips: 98 },
+    bodyProfile: { biologicalSex: 'male', heightCm: 178, weightKg: 76, bodyFatPct: 18, chestCm: 99, waistCm: 84, shouldersCm: 116, shoulderBreadthCm: 43, armsCm: 34, thighsCm: 55, calvesCm: 37, neckCm: 37, hipsCm: 98 },
     tasks: empty ? [] : [{ id: 'review-task', title: 'Plan next week', priority: 'high', status: 'todo', due_date: date(), done: false }],
     habits: empty ? [] : [{ id: 'review-habit', name: 'Evening walk', color: '#a78bfa', frequency: 'daily' }],
     goals: empty ? [] : [{ id: 'review-goal', title: 'Read twelve books', target_value: 12, current_value: 4, status: 'active' }],

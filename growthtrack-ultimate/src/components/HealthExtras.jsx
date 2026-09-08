@@ -1,3 +1,4 @@
+import { EMPTY_RECORD } from '../lib/emptyValues';
 import { Z_INDEX } from '../constants';
 import React, { useEffect, useState } from 'react';
 import { Eye, Ear, Wind, Fingerprint, Brain, Activity, ClipboardList, Target, Smile, Heart, Sparkles, Droplets, X, Battery, Plus, Trash2 } from 'lucide-react';
@@ -7,8 +8,8 @@ const SENSE_ICONS = { vision: Eye, hearing: Ear, smell: Wind, taste: Activity, t
 const SPECIAL_ICONS = [Target, Droplets, Sparkles];
 
 export default function HealthExtras() {
-  const healthProfile = useStore(s => s.healthProfile || {});
-  const healthTemplate = useStore(s => s.appConfig?.healthTemplates || {});
+  const healthProfile = useStore(s => s.healthProfile ?? EMPTY_RECORD);
+  const healthTemplate = useStore(s => s.appConfig?.healthTemplates ?? EMPTY_RECORD);
   const updateHealth = useStore(s => s.updateHealthExtras);
   const [senses, setSenses] = useState({});
 

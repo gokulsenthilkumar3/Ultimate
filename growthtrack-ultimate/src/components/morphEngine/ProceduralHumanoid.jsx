@@ -195,7 +195,7 @@ function computeDimensions(w={}) {
   const bellyW    = 0.108 + gut*0.033 + mass*0.015;
   const hipW      = 0.134 + hip*0.033 + pelvis*0.016 + glut*0.023 + mass*0.009;
   const neckR     = 0.034 + neck*0.014;
-  const torsoDepthScale = 0.50 + chD*0.14 + gut*0.05 + mass*0.02;
+  const torsoDepthScale = 0.42 + chD*0.14 + gut*0.05 + mass*0.02;
 
   // Limb radii — toned but not bulky by default
   // Slightly increased base radii for less "stick figure" look at low mass
@@ -205,8 +205,8 @@ function computeDimensions(w={}) {
   const calfR  = 0.035 + cal*0.018;
 
   // Arm positioning: shoulder is at shoulderW + clearance
-  const thighX    = hipW * (0.56 + kneeSpacing * 0.10);
-  const shoulderX = shoulderW + uArmR * 0.46 + shoulderSlope * 0.003;
+  const thighX    = hipW * (0.64 + kneeSpacing * 0.10);
+  const shoulderX = shoulderW + uArmR * 0.68 + shoulderSlope * 0.003;
   const shoulderY = torsoY + torsoH * (0.91 + shoulderSlope * 0.018) - shoulderDrop * 0.012;
   const uArmY     = shoulderY - uArmH / 2;
   const fArmY     = uArmY - uArmH/2 - fArmH/2;
@@ -389,12 +389,12 @@ function HandGroup({d,side,mat,nailMat}) {
   return (
     <group position={[sx*d.shoulderX,d.handY,0]}>
       <mesh material={mat} scale={[0.82,1,0.52]}><capsuleGeometry args={[d.palmW*0.58,d.palmH*0.54,7,14]}/></mesh>
-      <group position={[sx*d.palmW*0.55,-d.palmH*0.18,0]} rotation={[0,0,sx*0.52]}>
+      <group position={[sx*d.palmW*0.55,-d.palmH*0.18,0]} rotation={[0,0,sx*0.65]}>
         <mesh material={mat}><cylinderGeometry args={[d.thumbR,d.thumbR*0.82,d.thumbH,10]}/></mesh>
         <mesh position={[0,-d.thumbH*0.44,d.palmD*0.45]} material={nailMat}><boxGeometry args={[d.nailW*0.92,d.nailH,d.nailD]}/></mesh>
       </group>
       {FINGER_OX.map((ox,fi)=>{const len=d.fingerH*FINGER_LEN[fi];return(
-        <group key={fi} position={[sx*ox*d.handSpread,-d.palmH*0.53,0]}>
+        <group key={fi} position={[sx*ox*d.handSpread,-d.palmH*0.53,0]} rotation={[(0.15 + fi * 0.05), 0, sx * 0.08]}>
           <mesh material={mat}><cylinderGeometry args={[d.fingerR,d.fingerR*0.82,len,10]}/></mesh>
           <mesh position={[0,-len*0.43,d.palmD*0.44]} material={nailMat}><boxGeometry args={[d.nailW,d.nailH,d.nailD]}/></mesh>
         </group>
@@ -480,8 +480,18 @@ function SculptedSurface({ d, detailMat, segments }) {
               <sphereGeometry args={[d.chestW * 0.22, Math.max(8, segments - 4), Math.max(6, half - 4)]} />
             </mesh>
           ))}
+          {/* Abdominal rectus bumps */}
+          {[0, 1, 2].map((i) => (
+            <mesh key={`ab-${i}`} position={[side * d.waistW * 0.32, d.navelY + d.torsoH * (0.05 + i * 0.08), d.waistW * 0.94]} scale={[0.9, 0.75, 0.15]} material={detailMat}>
+              <sphereGeometry args={[d.waistW * 0.28, Math.max(8, segments - 6), half]} />
+            </mesh>
+          ))}
         </React.Fragment>
       ))}
+      {/* Linea alba (center ab crease) */}
+      <mesh position={[0, d.navelY + d.torsoH * 0.12, d.waistW * 0.92]} material={detailMat}>
+        <capsuleGeometry args={[0.003, d.torsoH * 0.22, 4, Math.max(8, Math.round(segments * 0.45))]} />
+      </mesh>
       {/* Deltoid, biceps, quadriceps and calf landmarks merge into the base volumes. */}
       {[-1, 1].map((side) => (
         <React.Fragment key={`limb-${side}`}>
@@ -615,8 +625,8 @@ export default function ProceduralHumanoid({
     <group ref={groupRef} position={position} scale={[d.bodyScale, d.bodyScale * heightScale, d.bodyScale]} name={"procedural-"+cloneKey}>
       {/* HEAD ASSEMBLY — all features share the same subtle head motion. */}
       <group ref={headRef} position={[0,d.headY,0]}>
-        {/* Main cranium — proper ellipsoid (narrower side-to-side) */}
-        <mesh renderOrder={0} material={mat} scale={[0.82,1.05,0.90]}>
+        {/* Main cranium — proper ellipsoid (narrower side-to-side, wider forehead) */}
+        <mesh renderOrder={0} material={mat} scale={[0.86,1.08,0.92]}>
           <sphereGeometry args={[d.headR,hs.head,Math.round(hs.head*.72)]}/>
         </mesh>
         {det&&<>
@@ -641,7 +651,7 @@ export default function ProceduralHumanoid({
         <HairCards d={d} hairStyle={hairStyle} hairColorHex={hHex}/>
       </group>
       {/* NECK */}
-      <mesh ref={neckRef} position={[0,d.neckY,0]} material={mat}><cylinderGeometry args={[d.neckR*.90,d.neckR,d.neckH*1.08,24,2]}/></mesh>
+      <mesh ref={neckRef} position={[0,d.neckY,0]} material={mat}><cylinderGeometry args={[d.neckR*.88,d.neckR*1.12,d.neckH*1.08,24,2]}/></mesh>
       {/* TORSO */}
       <mesh ref={torsoRef} position={[0,d.crotchY,0]} scale={[1,1,d.torsoDepthScale]} geometry={torsoGeo} material={mat}/>
       {/* SCULPTED LANDMARKS */}

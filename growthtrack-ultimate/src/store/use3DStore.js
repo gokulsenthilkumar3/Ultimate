@@ -76,9 +76,9 @@ export const CINEMATIC_PRESETS = Object.freeze({
     bloom: true,
     vignette: true,
     chromaticAberration: false,
-    depthOfField: true,
-    filmGrain: true,
-    cameraMotion: true,
+    depthOfField: false,
+    filmGrain: false,
+    cameraMotion: false,
     exposure: 1.08,
   }),
   ANALYTIC: Object.freeze({
@@ -291,12 +291,12 @@ const use3DStore = create(
       timelineScrubIndex: null,
 
       /** Current viewport comparison mode */
-      viewMode: VIEW_MODES.DUAL,
+      viewMode: VIEW_MODES.SOLO,
 
       /** Wardrobe / surface state */
       // Use the validated skin surface by default. Shader-only outfits remain
       // selectable previews until authored clothing geometry is available.
-      wardrobeState: WARDROBE_PRESETS.BODY_COMP,
+      wardrobeState: WARDROBE_PRESETS.GYM,
 
       /** Camera preset name key */
       cameraPreset: "FRONT",
@@ -360,7 +360,7 @@ const use3DStore = create(
       focusedBodyPart: null,
 
       /** Auto-rotate the scene (pauses on hover) */
-      autoRotate: true,
+      autoRotate: false,
 
       /** Render mode: 'WEBGL' = 3D canvas | 'SPRITE' = 2D sprite viewer */
       renderMode: 'WEBGL',
