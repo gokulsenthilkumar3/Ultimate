@@ -1331,6 +1331,19 @@
   .chamber-editor { top: auto; left: 10px; right: 10px; bottom: 62px; width: auto; max-height: 62%; border-radius: 20px; }
   .chamber-delta-summary { width: 104px; padding: 8px; }
   .chamber-delta-summary__row:nth-of-type(n+4) { display: none; }
+
+  /* Reserve a control band above the renderer on phones. The previous
+     full-bleed canvas let the comparison and camera pills cover the face and
+     shoulders, making the digital twin hard to inspect. */
+  .chamber-canvas-wrap {
+    position: absolute;
+    inset: 116px 0 0;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    border-radius: 0 0 22px 22px;
+  }
+  .chamber-overlay-top { top: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

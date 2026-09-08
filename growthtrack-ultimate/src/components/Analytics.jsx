@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { TrendingUp, BarChart2, Zap, Brain, Moon, Activity, Shield, Target } from 'lucide-react';
 import useStore from '../store/useStore';
+import { EMPTY_LIST, EMPTY_RECORD } from '../lib/emptyValues';
 
 // Lazy-load heavy sub-panels so they only download when selected
 const Logs = lazy(() => import('./Logs'));
@@ -167,13 +168,13 @@ function CrossDomainTrend({ metrics, sleepLogs }) {
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function Analytics() {
   const state     = useStore();
-  const metrics   = state.metric_logs  || [];
-  const sleepLogs = state.sleep_logs   || [];
-  const tasks     = state.tasks        || [];
-  const habits    = state.habits       || [];
-  const habitLogsByHabit = state.habitLogsByHabit || {};
-  const goals     = state.goals        || [];
-  const metricLogs = state.metric_logs || [];
+  const metrics   = state.metric_logs  || EMPTY_LIST;
+  const sleepLogs = state.sleep_logs   || EMPTY_LIST;
+  const tasks     = state.tasks        || EMPTY_LIST;
+  const habits    = state.habits       || EMPTY_LIST;
+  const habitLogsByHabit = state.habitLogsByHabit || EMPTY_RECORD;
+  const goals     = state.goals        || EMPTY_LIST;
+  const metricLogs = state.metric_logs || EMPTY_LIST;
 
   const [view, setView] = useState('correlations');
   // Top-level Command Center tab
@@ -183,8 +184,6 @@ export default function Analytics() {
   const sleepByDate  = useMemo(() => Object.fromEntries(sleepLogs.map(s => [s.date, Number(s.duration) || 0])), [sleepLogs]);
   const moodByDate   = useMemo(() => meanMap(groupMetricByDate(metrics, 'mood')), [metrics]);
   const energyByDate = useMemo(() => meanMap(groupMetricByDate(metrics, 'energy')), [metrics]);
-  const weightByDate = useMemo(() => meanMap(groupMetricByDate(metrics, 'weight')), [metrics]);
-
   // ── All dates where we have paired data ─────────────────────────────
   const allDates = useMemo(() => {
     const s = new Set([...Object.keys(sleepByDate), ...Object.keys(moodByDate), ...Object.keys(energyByDate)]);

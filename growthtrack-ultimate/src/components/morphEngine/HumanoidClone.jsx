@@ -29,6 +29,7 @@ import ProceduralHumanoid from "./ProceduralHumanoid";
 import use3DStore               from "../../store/use3DStore";
 import { createSkinMaterial, updateSkinUniforms, createRimAuraMaterial, updateAuraUniforms } from "./UberShader";
 import { createClothMaterial, isClothPreset } from "./WardrobeShader";
+import { createDeltaMaterial as createDeltaHeatmapMaterial, updateDeltaUniforms } from "./DeltaHeatmapShader";
 import { resolveBodyMetrics } from "../../lib/bodyMetricFallbacks";
 import { computeHeightScale, resolveSkinTone } from "./metricsToBlendshapes";
 
@@ -52,16 +53,6 @@ function createGhostMaterial() {
   });
 }
 
-function createDeltaMaterial() {
-  return new THREE.MeshStandardMaterial({
-    color:             new THREE.Color("#F59E0B"),
-    emissive:          new THREE.Color("#7A4800"),
-    emissiveIntensity: 0.12,
-    roughness:         0.55,
-    metalness:         0.1,
-  });
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // HUMANOID CLONE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,6 +67,7 @@ export default function HumanoidClone({
   showAura    = false,
   metricsOverride = null,
   weightsOverride = null,
+  deltaMetrics = null,
 }) {
   const groupRef = useRef();
   const auraRef = useRef();
@@ -158,7 +150,7 @@ export default function HumanoidClone({
   const material = useMemo(() => {
     switch (renderMode) {
       case "ghost": return createGhostMaterial();
-      case "delta": return createDeltaMaterial();
+      case "delta": return createDeltaHeatmapMaterial();
       default: {
         const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[skinTone] ?? 3;
         const variant = toneIndex <= 1
@@ -410,6 +402,9 @@ export default function HumanoidClone({
         time: _.clock.elapsedTime,
         intensity: 1.0 // TODO: map this to ambition progress if needed
       });
+    }
+    if (renderMode === "delta") {
+      updateDeltaUniforms(material, { deltas: deltaMetrics || {}, time: _.clock.elapsedTime });
     }
   });
 

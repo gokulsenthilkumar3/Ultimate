@@ -220,6 +220,17 @@ export default function CloneEngine() {
     }
     return d;
   }, [cloneAMetrics, cloneBMetrics]);
+  const regionDeltas = useMemo(() => ({
+    chest: deltas.chest,
+    shoulders: deltas.shoulders ?? deltas.shoulderBreadth,
+    waist: deltas.waist,
+    arms: deltas.arms ?? deltas.arm,
+    thighs: deltas.thighs ?? deltas.thigh,
+    glutes: deltas.glutes ?? deltas.hips,
+    calves: deltas.calves,
+    neck: deltas.neck,
+  }), [deltas]);
+  const hasRegionDelta = Object.values(regionDeltas).some((value) => Number.isFinite(value) && Math.abs(value) >= 0.5);
 
   switch (viewMode) {
 
@@ -287,7 +298,8 @@ export default function CloneEngine() {
         <HumanoidClone
           cloneKey="A"
           position={[0, 0, 0]}
-          renderMode="delta"
+          renderMode={hasRegionDelta ? "delta" : "normal"}
+          deltaMetrics={regionDeltas}
           visible={true}
         />
       );

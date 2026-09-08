@@ -182,21 +182,29 @@ export function createClothMaterial(preset = 'GYM', geometry = null) {
  */
 export function switchWardrobePreset(mat, preset) {
   const config = WARDROBE_CONFIGS[preset];
-  if (!config || !mat?.uniforms) return;
+  if (!config || !mat) return;
+
+  // Cloth materials are rebuilt when the body geometry changes, but this
+  // helper remains safe for callers that want to update an existing material.
+  // MeshPhysicalMaterial keeps its visible colour on `color`; shader uniforms
+  // are only available after `onBeforeCompile` has run.
+  if (mat.color?.setRGB) mat.color.setRGB(...config.primaryColor);
+  mat.userData = { ...mat.userData, wardrobePreset: preset, wardrobeConfig: config };
+  if (!mat.uniforms) return;
 
   const bands = Object.values(config.coverage ?? {});
   const band1 = bands[0] ? new THREE.Vector2(bands[0][0], bands[0][1]) : new THREE.Vector2(-1, -1);
   const band2 = bands[1] ? new THREE.Vector2(bands[1][0], bands[1][1]) : new THREE.Vector2(-1, -1);
 
-  mat.uniforms.uPrimaryColor.value.setRGB(...config.primaryColor);
-  mat.uniforms.uSecondaryColor.value.setRGB(...config.secondaryColor);
-  mat.uniforms.uRoughness.value   = config.roughness;
-  mat.uniforms.uSheen.value       = config.sheen;
-  mat.uniforms.uSheenColor.value.setRGB(...config.sheenColor);
-  mat.uniforms.uWeaveType.value   = config.weaveType;
-  mat.uniforms.uCovBand1.value.copy(band1);
-  mat.uniforms.uCovBand2.value.copy(band2);
-  mat.uniforms.uStripeStrength.value = preset === "SWIMWEAR" ? 0.4 : 0.0;
+  mat.uniforms.uPrimaryColor?.value?.setRGB?.(...config.primaryColor);
+  mat.uniforms.uSecondaryColor?.value?.setRGB?.(...config.secondaryColor);
+  if (mat.uniforms.uRoughness) mat.uniforms.uRoughness.value = config.roughness;
+  if (mat.uniforms.uSheen) mat.uniforms.uSheen.value = config.sheen;
+  mat.uniforms.uSheenColor?.value?.setRGB?.(...config.sheenColor);
+  if (mat.uniforms.uWeaveType) mat.uniforms.uWeaveType.value = config.weaveType;
+  mat.uniforms.uCovBand1?.value?.copy?.(band1);
+  mat.uniforms.uCovBand2?.value?.copy?.(band2);
+  if (mat.uniforms.uStripeStrength) mat.uniforms.uStripeStrength.value = preset === "SWIMWEAR" ? 0.4 : 0.0;
 }
 
 /**
