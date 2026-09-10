@@ -175,12 +175,19 @@ const LANDMARKS = [
 
 function MeasurementLandmarks() {
   const viewMode = use3DStore((state) => state.viewMode);
+  const focusedBodyPart = use3DStore((state) => state.focusedBodyPart);
   const canvasWidth = useThree((state) => state.size.width);
   const currentMetrics = use3DStore((state) => state.cloneA?.metrics || {});
   const measured = LANDMARKS.filter(({ key }) => Number.isFinite(Number(currentMetrics[key]))).length;
   const confidence = Math.round((measured / LANDMARKS.length) * 100);
+  const focusedMetric = focusedBodyPart?.toLowerCase().includes('arm')
+    ? 'arms'
+    : focusedBodyPart?.toLowerCase().includes('thigh')
+      ? 'thighs'
+      : focusedBodyPart;
+  const visibleLandmarks = LANDMARKS.filter(({ key }) => key === focusedMetric);
 
-  if (viewMode !== 'SOLO' || canvasWidth < 920) return null;
+  if (viewMode !== 'SOLO' || canvasWidth < 920 || !visibleLandmarks.length) return null;
 
   return (
     <>
@@ -190,7 +197,7 @@ function MeasurementLandmarks() {
           LANDMARK SCAN <strong>{confidence}%</strong>
         </div>
       </Html>
-      {LANDMARKS.map(({ key, label, position }) => {
+      {visibleLandmarks.map(({ key, label, position }) => {
         const value = Number(currentMetrics[key]);
         const ready = Number.isFinite(value);
         return (

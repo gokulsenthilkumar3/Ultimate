@@ -1,10 +1,10 @@
-import safeLocalStorage from '../utils/safeLocalStorage';
 import { Z_INDEX } from '../constants';
 import React, { useState } from 'react';
 import { Sun, Moon, Zap, Scale, X, CheckCircle2, AlertTriangle, Flame } from 'lucide-react';
 import useStore, { selectSaveSleepLog, selectAddMoodLog } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import SavedIndicator from './ui/SavedIndicator';
+import { dismissNotificationIds } from '../lib/notifications';
 
 const MOODS = ['\ud83d\ude22', '\ud83d\ude15', '\ud83d\ude10', '\ud83d\ude0a', '\ud83d\ude01'];
 const ENERGY = ['\ud83e\udeb4', '\ud83d\ude34', '\u26a1', '\ud83d\udd25', '\ud83d\ude80'];
@@ -174,14 +174,10 @@ export default function DailyCheckIn({ onClose }) {
     }
 
     // ── NEW: auto-dismiss matching habit notifications ──
-    try {
-      const dismissed = JSON.parse(safeLocalStorage.getItem('notif_dismissed') || '[]');
-      // build IDs that NotificationCenter would generate for today's missed habits
-      // Those IDs are: `missed-habit-${h.id}-${today}` (see NotificationCenter)
-      const habitNotifIds = (habits || []).map(h => `missed-habit-${h.id}-${checkInDate}`);
-      const merged = [...new Set([...dismissed, ...habitNotifIds])];
-      safeLocalStorage.setItem('notif_dismissed', JSON.stringify(merged));
-    } catch { /* silent */ }
+    dismissNotificationIds(
+      (habits || []).map(habit => `missed-habit-${habit.id}-${checkInDate}`),
+      user?.id || user?.email,
+    );
 
     if (setUser) setUser(updatedUser);
     if (setLastCheckIn) setLastCheckIn(checkInDate);

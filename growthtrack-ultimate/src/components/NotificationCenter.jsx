@@ -1,12 +1,9 @@
-import safeLocalStorage from '../utils/safeLocalStorage';
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Bell, BellOff, CheckCheck, Trash2, RefreshCw,
   AlertCircle, Clock, Target, Flame, TrendingDown, Info, X
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-import { apiSync } from '../store/useStore';
-import useStore from '../store/useStore';
 
 // ── Notification type config ────────────────────────────────────────────────
 const TYPE_CONFIG = {
@@ -19,106 +16,20 @@ const TYPE_CONFIG = {
 
 const PRIORITY_ORDER = ['habit_missed', 'task_overdue', 'goal_deadline', 'metric_alert', 'general'];
 
-// ── Generate local notifications from store state ────────────────────────────────
-function generateLocalNotifications(user) {
-  const notifs = [];
-  const today  = new Date().toISOString().slice(0, 10);
-
-  // 1️⃣  Missed habits (not logged today)
-  const habits = user?.habits || [];
-  habits.forEach(h => {
-    const lastLog = h.lastLog || h.last_log;
-    if (!lastLog || lastLog < today) {
-      notifs.push({
-        id:      `habit_${h.id}`,
-        type:    'habit_missed',
-        title:   `Missed: ${h.name}`,
-        body:    `You haven't logged "${h.name}" today. Current streak: ${h.streak || 0} day${h.streak !== 1 ? 's' : ''}.`,
-        time:    today,
-        read:    false,
-        link:    'habits',
-      });
-    }
-  });
-
-  // 2️⃣  Overdue tasks
-  const pending = user?.tasks?.pending || [];
-  pending.forEach(t => {
-    const due = t.dueDate || t.due_date;
-    if (due && due < today) {
-      const daysOver = Math.ceil((new Date(today) - new Date(due)) / 86400000);
-      notifs.push({
-        id:   `task_${t.id}`,
-        type: 'task_overdue',
-        title: `Overdue: ${t.title}`,
-        body:  `Due ${daysOver === 1 ? 'yesterday' : `${daysOver} days ago`} (${due}). Priority: ${(t.priority||'p3').toUpperCase()}.`,
-        time:  due,
-        read:  false,
-        link:  'tasks',
-      });
-    }
-  });
-
-  // 3️⃣  Goal deadlines within 7 days
-  const goals = user?.goals || [];
-  goals.forEach(g => {
-    if (g.status === 'completed') return;
-    const deadline = g.deadline || g.target_date;
-    if (!deadline) return;
-    const daysLeft = Math.ceil((new Date(deadline) - new Date(today)) / 86400000);
-    if (daysLeft <= 7 && daysLeft >= 0) {
-      notifs.push({
-        id:   `goal_${g.id}`,
-        type: 'goal_deadline',
-        title: `Goal deadline soon: ${g.title}`,
-        body:  daysLeft === 0
-          ? `"${g.title}" deadline is today! Progress: ${g.progress || 0}%.`
-          : `"${g.title}" is due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Progress: ${g.progress || 0}%.`,
-        time:  deadline,
-        read:  false,
-        link:  'goals',
-      });
-    }
-    // overdue goal
-    if (daysLeft < 0) {
-      notifs.push({
-        id:   `goal_over_${g.id}`,
-        type: 'goal_deadline',
-        title: `Goal overdue: ${g.title}`,
-        body:  `Missed deadline by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) !== 1 ? 's' : ''}. Progress: ${g.progress || 0}%.`,
-        time:  deadline,
-        read:  false,
-        link:  'goals',
-      });
-    }
-  });
-
-  // sort by PRIORITY_ORDER then time desc
-  notifs.sort((a, b) => {
-    const pa = PRIORITY_ORDER.indexOf(a.type);
-    const pb = PRIORITY_ORDER.indexOf(b.type);
-    if (pa !== pb) return pa - pb;
-    return b.time > a.time ? 1 : -1;
-  });
-
-  return notifs;
-}
-
 // ── NotifCard ─────────────────────────────────────────────────────────────────────
 function NotifCard({ notif, onRead, onDismiss, onNavigate }) {
   const cfg = TYPE_CONFIG[notif.type] || TYPE_CONFIG.general;
   const Icon = cfg.icon;
 
   return (
-    <div
-      onClick={() => onRead(notif.id)}
+    <article
+      aria-label={`${notif.read ? 'Read' : 'Unread'} notification: ${notif.title}`}
       style={{
         display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
         padding: '0.9rem 1rem',
         borderRadius: '14px',
         background: notif.read ? 'rgba(255,255,255,0.02)' : cfg.bg,
         border: `1px solid ${notif.read ? 'rgba(255,255,255,0.06)' : cfg.color + '40'}`,
-        cursor: 'pointer',
         transition: 'background 0.2s, border-color 0.2s',
         opacity: notif.read ? 0.65 : 1,
         position: 'relative',
@@ -158,9 +69,22 @@ function NotifCard({ notif, onRead, onDismiss, onNavigate }) {
         <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-1)',
                     margin: '0 0 3px 0', lineHeight: 1.3 }}>{notif.title}</p>
         <p style={{ fontSize: '0.76rem', color: 'var(--text-3)', margin: 0, lineHeight: 1.5 }}>{notif.body}</p>
-        {notif.link && (
-          <button
-            onClick={e => { e.stopPropagation(); onNavigate && onNavigate(notif.link); }}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          {!notif.read && (
+            <button
+              onClick={() => onRead(notif.id)}
+              style={{
+                marginTop: '6px', fontSize: '0.68rem', fontWeight: 700,
+                color: cfg.color, background: 'none', border: 'none',
+                cursor: 'pointer', padding: 0,
+              }}
+            >
+              Mark as read
+            </button>
+          )}
+          {notif.link && (
+            <button
+            onClick={() => { onRead(notif.id); onNavigate && onNavigate(notif.link); }}
             style={{
               marginTop: '6px', fontSize: '0.68rem', fontWeight: 700,
               color: cfg.color, background: 'none', border: 'none',
@@ -169,13 +93,15 @@ function NotifCard({ notif, onRead, onDismiss, onNavigate }) {
           >
             Go to {notif.link} →
           </button>
-        )}
+          )}
+        </div>
       </div>
 
       {/* dismiss */}
       <button
-        onClick={e => { e.stopPropagation(); onDismiss(notif.id); }}
+        onClick={() => onDismiss(notif.id)}
         title="Dismiss"
+        aria-label={`Dismiss ${notif.title}`}
         className="hover-btn-close"
         style={{
           width: '24px', height: '24px', padding: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
@@ -184,97 +110,50 @@ function NotifCard({ notif, onRead, onDismiss, onNavigate }) {
           color: 'var(--text-3)', flexShrink: 0
         }}
       ><X size={13} /></button>
-    </div>
+    </article>
   );
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────────────
-export default function NotificationCenter({ onNavigate }) {
-  const user    = useStore(s => s.user);
-  const toast   = useToast();
-
-  // Server notifications (from /api/notifications if available)
-  const [serverNotifs, setServerNotifs] = useState([]);
-  const [loading,      setLoading]      = useState(false);
-
-  // Dismissed IDs (persisted to localStorage)
-  const [dismissed, setDismissed] = useState(() => {
-    try { return new Set(JSON.parse(safeLocalStorage.getItem('notif_dismissed') || '[]')); }
-    catch { return new Set(); }
-  });
-
-  // Read IDs (session only)
-  const [readIds, setReadIds] = useState(new Set());
-
+export default function NotificationCenter({ onNavigate, notificationState }) {
+  const toast = useToast();
+  const {
+    notifications = [],
+    unreadCount = 0,
+    loading = false,
+    refresh = () => {},
+    markRead = () => {},
+    markAllRead = () => {},
+    dismiss = () => {},
+    clearAll = () => {},
+  } = notificationState || {};
   // Active type filter
   const [typeFilter, setTypeFilter] = useState('all');
 
-  const fetchServerNotifs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await apiSync('/notifications', 'GET');
-      if (Array.isArray(data)) setServerNotifs(data);
-    } catch { /* endpoint may not exist yet */ }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchServerNotifs(); }, [fetchServerNotifs]);
-
-  // Generate local notifs from store
-  const localNotifs = useMemo(() => generateLocalNotifications(user), [user]);
-
-  // Merge: server first, then local (dedup by id)
-  const allNotifs = useMemo(() => {
-    const merged = [...serverNotifs];
-    const serverIds = new Set(serverNotifs.map(n => n.id));
-    localNotifs.forEach(n => { if (!serverIds.has(n.id)) merged.push(n); });
-    return merged;
-  }, [serverNotifs, localNotifs]);
-
-  // Apply dismissed + type filter
   const visible = useMemo(() => {
-    let list = allNotifs.filter(n => !dismissed.has(n.id));
+    let list = notifications;
     if (typeFilter !== 'all') list = list.filter(n => n.type === typeFilter);
     return list;
-  }, [allNotifs, dismissed, typeFilter]);
-
-  const unreadCount = useMemo(() => visible.filter(n => !readIds.has(n.id) && !n.read).length, [visible, readIds]);
+  }, [notifications, typeFilter]);
 
   // Counts per type for filter chips
   const typeCounts = useMemo(() => {
     const counts = {};
-    allNotifs.filter(n => !dismissed.has(n.id)).forEach(n => {
+    notifications.forEach(n => {
       counts[n.type] = (counts[n.type] || 0) + 1;
     });
     return counts;
-  }, [allNotifs, dismissed]);
+  }, [notifications]);
 
-  const markRead = useCallback((id) => {
-    setReadIds(prev => new Set([...prev, id]));
-  }, []);
-
-  const markAllRead = useCallback(() => {
-    setReadIds(new Set(visible.map(n => n.id)));
+  const handleMarkAllRead = useCallback(() => {
+    markAllRead();
     toast.success('All notifications marked as read');
-  }, [visible, toast]);
+  }, [markAllRead, toast]);
 
-  const dismiss = useCallback((id) => {
-    setDismissed(prev => {
-      const next = new Set([...prev, id]);
-      try { safeLocalStorage.setItem('notif_dismissed', JSON.stringify([...next])); } catch {}
-      return next;
-    });
-  }, []);
-
-  const clearAll = useCallback(() => {
-    const ids = visible.map(n => n.id);
-    setDismissed(prev => {
-      const next = new Set([...prev, ...ids]);
-      try { safeLocalStorage.setItem('notif_dismissed', JSON.stringify([...next])); } catch {}
-      return next;
-    });
+  const handleClearAll = useCallback(() => {
+    clearAll();
     toast.info('All notifications cleared');
-  }, [visible, toast]);
+  }, [clearAll, toast]);
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', padding: '1rem' }}>
@@ -306,15 +185,15 @@ export default function NotificationCenter({ onNavigate }) {
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={fetchServerNotifs} title="Refresh"
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button onClick={refresh} title="Refresh" aria-label="Refresh notifications" disabled={loading}
             style={{ padding: '7px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)',
                      border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
                      color: 'var(--text-3)', opacity: loading ? 0.5 : 1 }}>
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
           </button>
           {unreadCount > 0 && (
-            <button onClick={markAllRead}
+            <button onClick={handleMarkAllRead}
               style={{ display: 'flex', alignItems: 'center', gap: '5px',
                        padding: '7px 13px', borderRadius: '10px', fontSize: '0.75rem',
                        fontWeight: 700, background: 'rgba(255,255,255,0.06)',
@@ -324,7 +203,7 @@ export default function NotificationCenter({ onNavigate }) {
             </button>
           )}
           {visible.length > 0 && (
-            <button onClick={clearAll}
+            <button onClick={handleClearAll}
               style={{ display: 'flex', alignItems: 'center', gap: '5px',
                        padding: '7px 13px', borderRadius: '10px', fontSize: '0.75rem',
                        fontWeight: 700, background: 'rgba(239,68,68,0.08)',
@@ -338,7 +217,7 @@ export default function NotificationCenter({ onNavigate }) {
 
       {/* Type filter chips */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.25rem' }}>
-        {[['all', 'All', visible.length], ...PRIORITY_ORDER.map(t => [
+        {[['all', 'All', notifications.length], ...PRIORITY_ORDER.map(t => [
           t,
           TYPE_CONFIG[t].label,
           typeCounts[t] || 0,
@@ -346,7 +225,7 @@ export default function NotificationCenter({ onNavigate }) {
           const active = typeFilter === v;
           const cfg = TYPE_CONFIG[v];
           return (
-            <button key={v} onClick={() => setTypeFilter(v)}
+            <button key={v} onClick={() => setTypeFilter(v)} aria-pressed={active}
               style={{
                 padding: '4px 12px', borderRadius: 99, fontSize: '0.72rem', fontWeight: 700,
                 border: `1px solid ${active ? (cfg?.color || 'var(--accent)') + '60' : 'rgba(255,255,255,0.1)'}`,
@@ -378,7 +257,7 @@ export default function NotificationCenter({ onNavigate }) {
           {visible.map(notif => (
             <NotifCard
               key={notif.id}
-              notif={{ ...notif, read: notif.read || readIds.has(notif.id) }}
+              notif={notif}
               onRead={markRead}
               onDismiss={dismiss}
               onNavigate={onNavigate}

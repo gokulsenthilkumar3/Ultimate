@@ -150,7 +150,10 @@ export function updatePhysicalSkinMaterial(material, {
   bodyHairIntensity = 0,
   time = 0,
 } = {}) {
-  if (!material?.uniforms) return;
+  // Delta, aura and other diagnostic ShaderMaterials also expose `uniforms`.
+  // Only mutate materials created by this factory; otherwise a missing skin
+  // uniform can throw once per animation frame and stall mode transitions.
+  if (!material?.userData?.growthTrackSkinMaterial || !material?.uniforms) return;
   const tone = /^#[0-9a-f]{6}$/i.test(String(skinColorHex || ''))
     ? toneFrom(String(skinColorHex))
     : toneFrom(fitzpatrickIndex);

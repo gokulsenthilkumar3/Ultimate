@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis 
 } from 'recharts';
-import { Layout, TrendingUp, Zap, Activity, Heart, Brain, DollarSign, Target, CheckCircle2, Download } from 'lucide-react';
+import { TrendingUp, Zap, Activity, Heart, Brain, DollarSign, Target, CheckCircle2, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import useStore from '../store/useStore';
 
@@ -16,7 +16,10 @@ const TOOLTIP_STYLE = {
   fontSize: '0.8rem'
 };
 
-function SectionMeta({ icon: Icon, title, detail }) {
+const EMPTY_ARRAY = Object.freeze([]);
+const EMPTY_RECORD = Object.freeze({});
+
+function SectionMeta({ icon, title, detail }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -30,7 +33,7 @@ function SectionMeta({ icon: Icon, title, detail }) {
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border)'
         }}>
-          <Icon size={18} color="var(--accent)" />
+          {React.createElement(icon, { size: 18, color: 'var(--accent)' })}
         </div>
         <div>
           <h3 className="text-display" style={{ fontSize: '1.05rem', margin: 0, lineHeight: 1.15 }}>{title}</h3>
@@ -41,11 +44,24 @@ function SectionMeta({ icon: Icon, title, detail }) {
   );
 }
 
+function ChartEmpty({ children }) {
+  return (
+    <div role="status" style={{ flex: 1, minHeight: 170, display: 'grid', placeItems: 'center', padding: '1.25rem', border: '1px dashed var(--border)', borderRadius: 14, color: 'var(--text-3)', fontSize: '0.78rem', lineHeight: 1.55, textAlign: 'center' }}>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+const boundedScore = value => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, Math.min(100, Math.round(numeric))) : null;
+};
+
 export default function Dashboards() {
-  const user = useStore(state => state.user);
-  const logs = useStore(state => state.metric_logs) || [];
-  const sleepLogs = useStore(s => s.sleep_logs) || [];
-  const habitLogs = useStore(s => s.habit_logs) || [];
+  const logs = useStore(state => state.metric_logs ?? EMPTY_ARRAY);
+  const sleepLogs = useStore(s => s.sleep_logs ?? EMPTY_ARRAY);
+  const habitLogsByHabit = useStore(s => s.habitLogsByHabit ?? EMPTY_RECORD);
+  const habitLogs = Object.values(habitLogsByHabit).flat();
 
   const handleExport = (id, filename) => {
     const el = document.getElementById(id);
@@ -60,9 +76,7 @@ export default function Dashboards() {
 
   // ── Derived real KPIs ─────────────────────────────────────────────────────
   const latestLog = logs[0] || {};
-  const prevLog   = logs[1] || {};
-
-  // Core Efficiency: avg of sleep quality + (habit consistency for today)
+  // Core efficiency comes from actual sleep duration and quality logs.
   const recent7 = logs.slice(0, 7);
   const avgSleep = recent7.length
     ? (recent7.reduce((a, l) => a + (parseFloat(l.sleep) || 0), 0) / recent7.length)
@@ -86,12 +100,18 @@ export default function Dashboards() {
   const cardiacLabel = rhr ? (rhr < 60 ? 'Elite' : rhr < 72 ? 'Optimal' : rhr < 85 ? 'Fair' : 'Needs Work') : null;
 
   // Radar data wired from real domain scores
-  const strengthScore = recentWeightLogs.length ? Math.min(100, Math.round(((latestLog.weight || 60) / 90) * 100)) : 85;
-  const vascularScore = latestLog.resting_hr ? Math.min(100, Math.round(((100 - latestLog.resting_hr) / 40) * 100)) : 60;
-  const recoveryScore = avgQuality ? Math.round((avgQuality / 10) * 100) : 90;
-  const endurScore    = latestLog.vo2max ? Math.min(100, Math.round((latestLog.vo2max / 55) * 100)) : 45;
-  const cognitiveScore = latestLog.stress ? Math.min(100, Math.round(100 - latestLog.stress * 10)) : 72;
-  const mobilityScore = latestLog.flexibility ?? 55;
+  const strengthScore = boundedScore(latestLog.strength_score ?? latestLog.strengthScore);
+  const vascularScore = Number.isFinite(Number(latestLog.resting_hr))
+    ? boundedScore(((100 - Number(latestLog.resting_hr)) / 40) * 100)
+    : null;
+  const recoveryScore = avgQuality > 0 ? boundedScore((avgQuality / 10) * 100) : null;
+  const endurScore = Number.isFinite(Number(latestLog.vo2max))
+    ? boundedScore((Number(latestLog.vo2max) / 55) * 100)
+    : null;
+  const cognitiveScore = Number.isFinite(Number(latestLog.stress))
+    ? boundedScore(100 - Number(latestLog.stress) * 10)
+    : null;
+  const mobilityScore = boundedScore(latestLog.flexibility);
 
   const radarData = [
     { subject: 'Strength',  A: strengthScore, fullMark: 100 },
@@ -100,14 +120,13 @@ export default function Dashboards() {
     { subject: 'Endurance', A: endurScore,      fullMark: 100 },
     { subject: 'Recovery',  A: recoveryScore,  fullMark: 100 },
     { subject: 'Mobility',  A: mobilityScore,  fullMark: 100 },
-  ];
+  ].filter(item => item.A != null);
 
-  const correlationData = logs.slice(0, 10).map(l => ({
-    date: l.date,
-    sleep: l.sleep,
-    stress: l.stress || 5,
-    weight: l.weight
-  })).reverse();
+  const correlationData = logs
+    .filter(l => l.date && Number.isFinite(Number(l.sleep)) && Number.isFinite(Number(l.stress)))
+    .slice(0, 10)
+    .map(l => ({ date: l.date, sleep: Number(l.sleep), stress: Number(l.stress) }))
+    .reverse();
 
   const financeState = useStore(s => s.finance) || { transactions: {} };
   const financeTxs = Array.isArray(financeState.transactions)
@@ -140,7 +159,7 @@ export default function Dashboards() {
   const goalChartData = Object.values(goalData).map(d => ({ date: d.date, progress: d.progress / d.count })).sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+    <div id="dashboard-overview" className="fade-in module-page" style={{ padding: '1rem 0' }}>
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -160,8 +179,8 @@ export default function Dashboards() {
             A cleaner command surface for body, habit, finance, and goal signals.
           </p>
         </div>
-        <button className="btn-primary">
-           <Layout size={18} /> CUSTOMIZE VIEW
+        <button className="btn-primary" onClick={() => handleExport('dashboard-overview', 'growthtrack-dashboard')}>
+           <Download size={18} /> EXPORT DASHBOARD
         </button>
       </div>
 
@@ -174,7 +193,7 @@ export default function Dashboards() {
              title="Physiological Balance"
              detail="Body signal overview across strength, recovery, mobility, and endurance."
            />
-           <div style={{ flex: 1, minHeight: 0 }}>
+           {radarData.length >= 3 ? <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                   <PolarGrid stroke="var(--border-strong)" />
@@ -190,10 +209,10 @@ export default function Dashboards() {
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </RadarChart>
               </ResponsiveContainer>
-           </div>
-           <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '0.9rem' }}>
+           </div> : <ChartEmpty>Log at least three supported body signals to build a truthful balance view.</ChartEmpty>}
+           {radarData.length >= 3 && <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '0.9rem' }}>
               Systemic balance across core biological domains.
-           </p>
+           </p>}
         </div>
 
         {/* Sleep vs Stress Correlation */}
@@ -203,7 +222,7 @@ export default function Dashboards() {
              title="Recovery Correlation"
              detail="Sleep quality tracked against stress patterns over time."
            />
-           <div style={{ flex: 1, minHeight: 0 }}>
+           {correlationData.length >= 2 ? <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={correlationData}>
                   <defs>
@@ -220,10 +239,10 @@ export default function Dashboards() {
                   <Line type="monotone" dataKey="stress" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} name="Stress Index" />
                 </AreaChart>
               </ResponsiveContainer>
-           </div>
-           <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '0.9rem' }}>
+           </div> : <ChartEmpty>Log sleep and stress on at least two matching days to reveal their relationship.</ChartEmpty>}
+           {correlationData.length >= 2 && <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '0.9rem' }}>
               The lower the stress curve, the cleaner the recovery window.
-           </p>
+           </p>}
         </div>
 
         {/* Finance Flow */}
@@ -233,7 +252,7 @@ export default function Dashboards() {
              title="Cash Flow"
              detail="Income and expense rhythm across the last six months."
            />
-           <div style={{ flex: 1, minHeight: 0 }}>
+           {financeChartData.length ? <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={financeChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -244,7 +263,7 @@ export default function Dashboards() {
                   <Bar dataKey="expense" fill="var(--danger)" radius={[6, 6, 0, 0]} name="Expense" />
                 </BarChart>
               </ResponsiveContainer>
-           </div>
+           </div> : <ChartEmpty>Add an income or expense to see monthly cash flow.</ChartEmpty>}
         </div>
 
         {/* Habit Consistency */}
@@ -254,7 +273,7 @@ export default function Dashboards() {
              title="Habit Consistency"
              detail="Daily completion density across the last two weeks."
            />
-           <div style={{ flex: 1, minHeight: 0 }}>
+           {habitChartData.length ? <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={habitChartData}>
                   <defs>
@@ -270,7 +289,7 @@ export default function Dashboards() {
                   <Area type="monotone" dataKey="completed" stroke="var(--info)" fillOpacity={1} fill="url(#colorHabit)" strokeWidth={3} name="Completed Habits" />
                 </AreaChart>
               </ResponsiveContainer>
-           </div>
+           </div> : <ChartEmpty>Complete a habit to start the consistency chart.</ChartEmpty>}
         </div>
 
         {/* Goal Progress velocity */}
@@ -280,7 +299,7 @@ export default function Dashboards() {
              title="Goal Progress Velocity"
              detail="Rolling average of goal progress additions across the recent window."
            />
-           <div style={{ flex: 1, minHeight: 0 }}>
+           {goalChartData.length ? <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={goalChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -290,7 +309,7 @@ export default function Dashboards() {
                   <Line type="monotone" dataKey="progress" stroke="var(--warning)" strokeWidth={3} dot={{ r: 4 }} name="Avg Progress Added" />
                 </LineChart>
               </ResponsiveContainer>
-           </div>
+           </div> : <ChartEmpty>Update a goal to begin tracking progress velocity.</ChartEmpty>}
         </div>
       </div>
 

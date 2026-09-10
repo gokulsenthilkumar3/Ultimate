@@ -17,6 +17,7 @@ const RECUR_OPTIONS = [
   { value: 'yearly',  label: 'Yearly' },
 ];
 const EVENT_TYPES = ['Event', 'Meeting', 'Reminder', 'Task', 'Birthday', 'Holiday', 'Personal', 'Work'];
+const EMPTY_EVENTS = Object.freeze([]);
 
 function isSameDay(d1, d2) {
   return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
@@ -26,13 +27,13 @@ function isSameDay(d1, d2) {
 
 export default function Calendar() {
   const toast = useToast();
-  const events              = useStore(s => s.calendar_events) || [];
+  const events              = useStore(s => s.calendar_events ?? EMPTY_EVENTS);
   const _updateAll          = useStore(s => s.updateCalendarEvents);
   const addEvent            = (ev) => _updateAll && _updateAll([...events, ev]);
   const updateEvent         = (id, updates) => _updateAll && _updateAll(events.map(e => e.id === id ? { ...e, ...updates } : e));
   const deleteEvent         = (id) => _updateAll && _updateAll(events.filter(e => e.id !== id));
 
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
   const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [view,  setView]  = useState('month');
@@ -155,29 +156,36 @@ export default function Calendar() {
         <div className="glass-card mb-lg">
           <p style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>New Event</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
-            <input placeholder="Title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="form-input" style={{ gridColumn: 'span 2' }} />
+            <label className="sr-only" htmlFor="calendar-event-title">Event title</label>
+            <input id="calendar-event-title" aria-required="true" placeholder="Title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="form-input" style={{ gridColumn: 'span 2' }} />
             <div>
-              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Start Date *</label>
-              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="form-input" />
+              <label htmlFor="calendar-event-start-date" style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Start Date *</label>
+              <input id="calendar-event-start-date" aria-required="true" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="form-input" />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>End Date</label>
-              <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className="form-input" />
+              <label htmlFor="calendar-event-end-date" style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>End Date</label>
+              <input id="calendar-event-end-date" type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className="form-input" />
             </div>
             {!form.allDay && (
               <>
-                <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} className="form-input" placeholder="Start time" />
-                <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} className="form-input" placeholder="End time" />
+                <label className="sr-only" htmlFor="calendar-event-start-time">Start time</label>
+                <input id="calendar-event-start-time" type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} className="form-input" />
+                <label className="sr-only" htmlFor="calendar-event-end-time">End time</label>
+                <input id="calendar-event-end-time" type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} className="form-input" />
               </>
             )}
-            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="form-input">
+            <label className="sr-only" htmlFor="calendar-event-type">Event type</label>
+            <select id="calendar-event-type" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="form-input">
               {EVENT_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
-            <select value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))} className="form-input">
+            <label className="sr-only" htmlFor="calendar-event-recurrence">Recurrence</label>
+            <select id="calendar-event-recurrence" value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))} className="form-input">
               {RECUR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <input placeholder="Location (optional)" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="form-input" />
-            <input placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input" />
+            <label className="sr-only" htmlFor="calendar-event-location">Location</label>
+            <input id="calendar-event-location" placeholder="Location (optional)" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="form-input" />
+            <label className="sr-only" htmlFor="calendar-event-description">Description</label>
+            <input id="calendar-event-description" placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input" />
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -189,7 +197,9 @@ export default function Calendar() {
             </label>
             <div style={{ display: 'flex', gap: '4px', marginLeft: '0.5rem' }}>
               {EVENT_COLORS.map(c => (
-                <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))} style={{ width: '18px', height: '18px', borderRadius: '50%', background: c, border: form.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0 }} />
+                <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
+                  aria-label={`Use ${c} for this event`} aria-pressed={form.color === c}
+                  style={{ width: '18px', height: '18px', borderRadius: '50%', background: c, border: form.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0 }} />
               ))}
             </div>
           </div>
@@ -211,7 +221,7 @@ export default function Calendar() {
         </div>
         <div style={{ display: 'flex', gap: '0.3rem' }}>
           {['month', 'list'].map(v => (
-            <button key={v} onClick={() => setView(v)} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', background: view === v ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === v ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{v}</button>
+            <button key={v} onClick={() => setView(v)} aria-pressed={view === v} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', background: view === v ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === v ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{v}</button>
           ))}
         </div>
       </div>
@@ -237,9 +247,12 @@ export default function Calendar() {
                 const hasBirthday = dayEvents.some(e => e.type === 'Birthday');
 
                 return (
-                  <div key={idx} onClick={() => setSelectedDate(isSameDay(day, selectedDate || new Date(0)) ? null : day)}
+                  <button key={idx} type="button" onClick={() => setSelectedDate(isSameDay(day, selectedDate || new Date(0)) ? null : day)}
+                    aria-label={`${day.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}${dayEvents.length ? `, ${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : ', no events'}`}
+                    aria-pressed={Boolean(isSelected)}
                     style={{
                       minHeight: '80px', borderRadius: '8px', padding: '4px', cursor: 'pointer',
+                      width: '100%', textAlign: 'left', font: 'inherit',
                       background: isSelected ? 'rgba(99,102,241,0.15)' : isToday ? 'rgba(99,102,241,0.07)' : 'rgba(255,255,255,0.02)',
                       border: `1px solid ${isSelected ? 'rgba(99,102,241,0.5)' : isToday ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.05)'}`,
                       opacity: isThisMonth ? 1 : 0.35,
@@ -248,7 +261,6 @@ export default function Calendar() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
                       <span style={{
                         fontSize: '0.75rem', fontWeight: isToday ? 900 : 600,
-                        color: isToday ? 'var(--accent)' : 'var(--text-2)',
                         width: '22px', height: '22px', borderRadius: '50%',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: isToday ? 'var(--accent)' : 'transparent',
@@ -271,7 +283,7 @@ export default function Calendar() {
                     {dayEvents.length > 3 && (
                       <div style={{ fontSize: '0.55rem', color: 'var(--text-3)', paddingLeft: '4px' }}>+{dayEvents.length - 3} more</div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -284,7 +296,7 @@ export default function Calendar() {
             {upcomingEvents.length === 0 ? (
               <EmptyState icon={RefreshCw} title="No upcoming events" description="Add events using the button above." />
             ) : (
-              upcomingEvents.map((e, idx) => {
+              upcomingEvents.map((e) => {
                 const isEditingThis = editId === e.id;
                 return (
                   <div key={e.id + e.date} style={{ display: 'flex', gap: '0.75rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${e.color || '#6366f1'}33`, borderLeft: `3px solid ${e.color || '#6366f1'}` }}>
@@ -322,8 +334,8 @@ export default function Calendar() {
                           {e.description && <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '3px' }}>{e.description}</p>}
                         </div>
                         <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
-                          <button onClick={() => { setEditId(e.id); setEditForm({ ...events.find(ev => ev.id === e.id) }); }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={12} /></button>
-                          <button onClick={() => doDelete(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '3px' }}><Trash2 size={12} /></button>
+                          <button aria-label={`Edit ${e.title}`} onClick={() => { setEditId(e.id); setEditForm({ ...events.find(ev => ev.id === e.id) }); }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={12} /></button>
+                          <button aria-label={`Delete ${e.title}`} onClick={() => doDelete(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '3px' }}><Trash2 size={12} /></button>
                         </div>
                       </>
                     )}

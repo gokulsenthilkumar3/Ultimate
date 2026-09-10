@@ -155,17 +155,24 @@ export function createClothMaterial(preset = 'GYM', geometry = null) {
     uTorsoBand: { value: new THREE.Vector2(...(config.coverage.torso || [-1,-1])) },
     uLowerBand: { value: new THREE.Vector2(...(config.coverage.lower || [-1,-1])) },
     uTorsoWidth: { value: preset === 'GYM' ? .245 : .53 },
+    uTankStyle: { value: preset === 'GYM' ? 1 : 0 },
     uLowerColor: { value: new THREE.Color(...(preset === 'FORMAL' ? config.secondaryColor : config.primaryColor)) },
   };
   material.customProgramCacheKey = () => 'cloth-pbr-' + preset;
   material.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nuniform float uClothMin;\nuniform float uClothScale;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvClothPosition = vec3(position.x * uClothScale, (position.y-uClothMin) * uClothScale, position.z * uClothScale);');
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nuniform vec2 uTorsoBand;\nuniform vec2 uLowerBand;\nuniform float uTorsoWidth;\nuniform vec3 uLowerColor;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += objectNormal * 0.0018;\nvClothPosition = vec3(position.x * uClothScale, (position.y-uClothMin) * uClothScale, position.z * uClothScale);');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nuniform vec2 uTorsoBand;\nuniform vec2 uLowerBand;\nuniform float uTorsoWidth;\nuniform float uTankStyle;\nuniform vec3 uLowerColor;')
       .replace('#include <color_fragment>', `#include <color_fragment>
         bool lowerCloth = vClothPosition.y >= uLowerBand.x && vClothPosition.y <= uLowerBand.y;
-        bool torsoCloth = vClothPosition.y >= uTorsoBand.x && vClothPosition.y <= uTorsoBand.y && abs(vClothPosition.x) < uTorsoWidth;
+        bool torsoBand = vClothPosition.y >= uTorsoBand.x && vClothPosition.y <= uTorsoBand.y;
+        bool torsoCloth = torsoBand && abs(vClothPosition.x) < uTorsoWidth;
+        if (uTankStyle > 0.5) {
+          bool tankBody = vClothPosition.y <= 1.43 && abs(vClothPosition.x) < uTorsoWidth;
+          bool tankStraps = vClothPosition.y > 1.43 && abs(vClothPosition.x) > 0.155 && abs(vClothPosition.x) < 0.230;
+          torsoCloth = torsoBand && (tankBody || tankStraps);
+        }
         if (!lowerCloth && !torsoCloth) discard;
         if (lowerCloth) diffuseColor.rgb = uLowerColor;
         diffuseColor.rgb *= .97 + .03 * abs(sin(vClothPosition.y * 700.0));`);

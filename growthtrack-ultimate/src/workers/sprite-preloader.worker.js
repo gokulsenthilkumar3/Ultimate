@@ -18,6 +18,7 @@ self.onmessage = (e) => {
     requestIdle(async () => {
       try {
         const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const blob = await response.blob();
         const bitmap = await createImageBitmap(blob);
         

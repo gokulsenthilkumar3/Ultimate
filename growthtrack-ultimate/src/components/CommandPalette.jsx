@@ -7,6 +7,7 @@ import {
 import useStore, { selectSetActiveTab } from '../store/useStore';
 import { TABS } from '../config/navigation';
 import useDialogFocus from '../hooks/useDialogFocus';
+import { queuePendingUiAction } from '../lib/pendingUiAction';
 
 // ── Module icon map ───────────────────────────────────────────────────────────
 const MODULE_ICONS = {
@@ -69,15 +70,18 @@ const GROUP_LABELS = {
   action:  { label: 'Actions',  icon: <Zap       size={11} /> },
 };
 
+const EMPTY_ARRAY = Object.freeze([]);
+const EMPTY_TASKS = Object.freeze({});
+
 const QUICK_ACTIONS = [
-  { id: 'qa-task',    type: 'action', label: 'Add new task',       icon: '✅', tab: 'tasks',     detail: 'Opens task form' },
-  { id: 'qa-note',    type: 'action', label: 'New note',           icon: '📝', tab: 'notes',     detail: 'Opens note editor' },
-  { id: 'qa-habit',   type: 'action', label: 'Log a habit',        icon: '🔥', tab: 'habits',    detail: 'Open habit matrix' },
-  { id: 'qa-finance', type: 'action', label: 'Log transaction',    icon: '💰', tab: 'finance',   detail: 'Opens finance' },
-  { id: 'qa-workout', type: 'action', label: 'Start workout',      icon: '💪', tab: 'training',  detail: 'Opens training' },
-  { id: 'qa-ai',      type: 'action', label: 'Ask the AI',         icon: '🤖', tab: 'ai',        detail: 'Opens AI assistant' },
-  { id: 'qa-cal',     type: 'action', label: 'Add calendar event', icon: '📅', tab: 'calendar',  detail: 'Opens calendar' },
-  { id: 'qa-sleep',   type: 'action', label: 'Log sleep',          icon: '😴', tab: 'sleep',     detail: 'Opens sleep log' },
+  { id: 'qa-task',    type: 'action', label: 'Add new task',  icon: '✅', tab: 'tasks',    detail: 'Open the task form', openForm: true },
+  { id: 'qa-habit',   type: 'action', label: 'Add a habit',   icon: '🔥', tab: 'habits',   detail: 'Open the habit form', openForm: true },
+  { id: 'qa-note',    type: 'action', label: 'Open notes',     icon: '📝', tab: 'notes',    detail: 'Browse and edit notes' },
+  { id: 'qa-finance', type: 'action', label: 'Open finance',   icon: '💰', tab: 'finance',  detail: 'Review transactions and budgets' },
+  { id: 'qa-workout', type: 'action', label: 'Open training',  icon: '💪', tab: 'training', detail: 'Review the workout planner' },
+  { id: 'qa-ai',      type: 'action', label: 'Open Agent',     icon: '🤖', tab: 'ai',       detail: 'Ask the local assistant' },
+  { id: 'qa-cal',     type: 'action', label: 'Open calendar',  icon: '📅', tab: 'calendar', detail: 'Review your schedule' },
+  { id: 'qa-sleep',   type: 'action', label: 'Open sleep log', icon: '😴', tab: 'sleep',    detail: 'Review sleep history' },
 ];
 
 export default function CommandPalette() {
@@ -88,36 +92,40 @@ export default function CommandPalette() {
   const dialogRef = useDialogFocus(isOpen, () => setIsOpen(false));
 
   const setActiveTab = useStore(selectSetActiveTab);
+  const activeTab = useStore(s => s.activeTab);
 
   // Data sources for cross-entity search
-  const tasks  = useStore(s => s.tasks)  || [];
-  const goals  = useStore(s => s.goals)  || [];
-  const notes  = useStore(s => s.notes)  || [];
-  const habits = useStore(s => s.habits) || [];
-  const skills = useStore(s => s.skills) || [];
+  const tasks  = useStore(s => s.user?.tasks ?? EMPTY_TASKS);
+  const goals  = useStore(s => s.goals ?? EMPTY_ARRAY);
+  const notes  = useStore(s => s.notes ?? EMPTY_ARRAY);
+  const habits = useStore(s => s.habits ?? EMPTY_ARRAY);
+  const skills = useStore(s => s.skills ?? EMPTY_ARRAY);
 
   // ── Open / close ──────────────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsOpen(prev => !prev);
+        if (isOpen) {
+          setIsOpen(false);
+        } else {
+          setQuery('');
+          setSelectedIdx(0);
+          setIsOpen(true);
+        }
       }
     };
-    const openPalette = () => setIsOpen(true);
+    const openPalette = () => {
+      setQuery('');
+      setSelectedIdx(0);
+      setIsOpen(true);
+    };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('open-command-palette', openPalette);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('open-command-palette', openPalette);
     };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setQuery('');
-      setSelectedIdx(0);
-    }
   }, [isOpen]);
 
   // ── Build result list ─────────────────────────────────────────────────────
@@ -204,19 +212,23 @@ export default function CommandPalette() {
     return groups;
   }, [results]);
 
-  useEffect(() => { setSelectedIdx(0); }, [query]);
   useEffect(() => {
     if (isOpen) document.getElementById(`command-result-${selectedIdx}`)?.scrollIntoView?.({ block: 'nearest' });
   }, [selectedIdx, isOpen]);
 
   const handleSelect = useCallback((item) => {
+    if (item.type === 'action' && item.openForm) {
+      if (activeTab === item.tab) {
+        window.requestAnimationFrame(() => {
+          window.dispatchEvent(new CustomEvent('open-add-form', { detail: item.tab }));
+        });
+      } else {
+        queuePendingUiAction(item.tab);
+      }
+    }
     setActiveTab(item.tab || item.id);
     setIsOpen(false);
-    // Fire custom event to open relevant form
-    if (item.type === 'action') {
-      window.dispatchEvent(new CustomEvent('open-add-form', { detail: item.tab }));
-    }
-  }, [setActiveTab]);
+  }, [activeTab, setActiveTab]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.max(0, Math.min(i + 1, results.length - 1))); }
@@ -261,7 +273,10 @@ export default function CommandPalette() {
             type="text"
             placeholder="Search modules, tasks, goals, notes, habits…"
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => {
+              setQuery(e.target.value);
+              setSelectedIdx(0);
+            }}
             onKeyDown={handleKeyDown}
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-1)', fontSize: '1rem', fontFamily: 'var(--font-body)' }}
           />

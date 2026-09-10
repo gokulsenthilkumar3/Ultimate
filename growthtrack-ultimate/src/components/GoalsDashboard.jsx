@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import useStore, {
   selectGoals, selectAddGoal, selectDeleteGoal, selectUpdateGoal,
 } from '../store/useStore';
@@ -47,7 +47,7 @@ function ProgressRing({ value = 0, size = 54, stroke = 4, color = '#6366f1' }) {
   const offset = circ - (value / 100) * circ;
   const ringColor = value >= 100 ? '#10b981' : value >= 60 ? '#f59e0b' : color;
   return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+    <svg role="img" aria-label={`${value}% complete`} width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={ringColor} strokeWidth={stroke}
               strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
@@ -116,7 +116,7 @@ function MilestoneSubtasks({ goal, updateGoal, cat }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.5rem' }}>
           {subtasks.map(t => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button onClick={() => toggleSubtask(t.id)} style={{
+              <button type="button" aria-pressed={t.done} aria-label={`${t.done ? 'Mark incomplete' : 'Mark complete'}: ${t.text}`} onClick={() => toggleSubtask(t.id)} style={{
                 width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0, cursor: 'pointer',
                 border: `2px solid ${t.done ? cat.color : 'rgba(255,255,255,0.2)'}`,
                 background: t.done ? cat.color : 'transparent',
@@ -128,7 +128,7 @@ function MilestoneSubtasks({ goal, updateGoal, cat }) {
                 flex: 1, fontSize: '0.78rem', color: t.done ? 'var(--text-3)' : 'var(--text-1)',
                 textDecoration: t.done ? 'line-through' : 'none',
               }}>{t.text}</span>
-              <button onClick={() => deleteSubtask(t.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.5)', cursor: 'pointer', padding: '1px' }}>
+              <button type="button" aria-label={`Delete sub-task: ${t.text}`} onClick={() => deleteSubtask(t.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.5)', cursor: 'pointer', padding: '1px' }}>
                 <X size={11} />
               </button>
             </div>
@@ -145,6 +145,7 @@ function MilestoneSubtasks({ goal, updateGoal, cat }) {
       {/* Add sub-task input */}
       <div style={{ display: 'flex', gap: '6px' }}>
         <input
+          aria-label={`Add a sub-task to ${goal.title}`}
           value={newTask}
           onChange={e => setNewTask(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addSubtask()}
@@ -155,7 +156,7 @@ function MilestoneSubtasks({ goal, updateGoal, cat }) {
             borderRadius: '6px', color: 'var(--text-1)', outline: 'none',
           }}
         />
-        <button onClick={addSubtask} style={{
+        <button type="button" aria-label={`Add sub-task to ${goal.title}`} onClick={addSubtask} style={{
           padding: '5px 10px', background: cat.color, border: 'none',
           borderRadius: '6px', cursor: 'pointer', color: '#fff',
           display: 'flex', alignItems: 'center',
@@ -205,7 +206,7 @@ export default function GoalsDashboard() {
     }
   }, [logHistory]);
 
-  useEffect(() => { if (expandedId) fetchProgressLogs(expandedId); }, [expandedId]);
+  useEffect(() => { if (expandedId) fetchProgressLogs(expandedId); }, [expandedId, fetchProgressLogs]);
 
   const handleLogProgress = useCallback(async (goal) => {
     const lf = logForm[goal.id] || {};
@@ -309,7 +310,7 @@ export default function GoalsDashboard() {
           <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Goals</h2>
           <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{stats.active} active · {stats.completed} completed</p>
         </div>
-        <button onClick={() => setShowAdd(s => !s)} className="btn-primary">
+        <button type="button" aria-expanded={showAdd} aria-controls="new-goal-form" onClick={() => setShowAdd(s => !s)} className="btn-primary">
           <Plus size={14} /> New Goal
         </button>
       </div>
@@ -331,28 +332,37 @@ export default function GoalsDashboard() {
 
       {/* Add form */}
       {showAdd && (
-        <div className="glass-card mb-lg">
+        <div id="new-goal-form" className="glass-card mb-lg">
           <p style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>New Goal</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
             {[
-              { placeholder: 'Goal title *', key: 'title' },
-              { placeholder: 'Description', key: 'description' },
-              { placeholder: 'Target value (e.g. 75)', key: 'target_value', type: 'number' },
-              { placeholder: 'Unit (e.g. kg, pages, hrs)', key: 'unit' },
+              { label: 'Goal title', placeholder: 'Goal title *', key: 'title' },
+              { label: 'Description', placeholder: 'Description', key: 'description' },
+              { label: 'Target value', placeholder: 'Target value (e.g. 75)', key: 'target_value', type: 'number' },
+              { label: 'Unit', placeholder: 'Unit (e.g. kg, pages, hrs)', key: 'unit' },
             ].map(f => (
-              <input key={f.key} type={f.type || 'text'} placeholder={f.placeholder}
-                value={form[f.key]} onChange={e => setForm(ff => ({ ...ff, [f.key]: e.target.value }))}
-                className="form-input" />
+              <div key={f.key}>
+                <label className="sr-only" htmlFor={`new-goal-${f.key}`}>{f.label}</label>
+                <input id={`new-goal-${f.key}`} type={f.type || 'text'} placeholder={f.placeholder}
+                  value={form[f.key]} onChange={e => setForm(ff => ({ ...ff, [f.key]: e.target.value }))}
+                  className="form-input" />
+              </div>
             ))}
-            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="form-input">
-              {CATEGORY_CONFIG.map(c => <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}
-            </select>
-            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="form-input">
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
             <div>
-              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Deadline</label>
-              <input type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} className="form-input" />
+              <label className="sr-only" htmlFor="new-goal-category">Category</label>
+              <select id="new-goal-category" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="form-input">
+                {CATEGORY_CONFIG.map(c => <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="sr-only" htmlFor="new-goal-status">Status</label>
+              <select id="new-goal-status" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="form-input">
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="new-goal-deadline" style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Deadline</label>
+              <input id="new-goal-deadline" type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} className="form-input" />
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -370,7 +380,7 @@ export default function GoalsDashboard() {
             const sc = STATUS_COLORS[f];
             const active = statusFilter === f;
             return (
-              <button key={f} onClick={() => setStatusFilter(f)} style={{
+              <button key={f} type="button" aria-pressed={active} onClick={() => setStatusFilter(f)} style={{
                 padding: '3px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
                 background: active ? (sc ? sc.bg : 'var(--accent)') : 'rgba(255,255,255,0.05)',
                 color: active ? (sc ? sc.text : '#000') : 'var(--text-3)',
@@ -382,7 +392,7 @@ export default function GoalsDashboard() {
         </div>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', minWidth: '50px' }}>Category</span>
-          <button onClick={() => setCatFilter('all')} style={{
+          <button type="button" aria-pressed={catFilter === 'all'} onClick={() => setCatFilter('all')} style={{
             padding: '3px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700,
             background: catFilter === 'all' ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
             color: catFilter === 'all' ? '#000' : 'var(--text-3)',
@@ -392,7 +402,7 @@ export default function GoalsDashboard() {
             const count = goals.filter(g => g.category === c.key).length;
             if (count === 0) return null;
             return (
-              <button key={c.key} onClick={() => setCatFilter(c.key)} style={{
+              <button key={c.key} type="button" aria-pressed={catFilter === c.key} onClick={() => setCatFilter(c.key)} style={{
                 padding: '3px 10px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700,
                 background: catFilter === c.key ? c.color : 'rgba(255,255,255,0.05)',
                 color: catFilter === c.key ? '#fff' : 'var(--text-3)',
@@ -444,22 +454,22 @@ export default function GoalsDashboard() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {isEditing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                      <input aria-label="Goal title" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
                         className="form-input" style={{ fontSize: '0.88rem' }} />
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <input value={editForm.current_value || ''} placeholder="Current" type="number"
+                        <input aria-label="Current value" value={editForm.current_value || ''} placeholder="Current" type="number"
                           onChange={e => setEditForm(f => ({ ...f, current_value: e.target.value }))}
                           className="form-input" style={{ width: '90px', fontSize: '0.82rem' }} />
-                        <input value={editForm.target_value || ''} placeholder="Target" type="number"
+                        <input aria-label="Target value" value={editForm.target_value || ''} placeholder="Target" type="number"
                           onChange={e => setEditForm(f => ({ ...f, target_value: e.target.value }))}
                           className="form-input" style={{ width: '90px', fontSize: '0.82rem' }} />
-                        <select value={editForm.status || 'active'} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                        <select aria-label="Goal status" value={editForm.status || 'active'} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
                           className="form-input" style={{ fontSize: '0.82rem' }}>
                           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
-                        <input type="date" value={editForm.deadline || ''} onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
+                        <input type="date" aria-label="Goal deadline" value={editForm.deadline || ''} onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
                           className="form-input" style={{ fontSize: '0.82rem' }} />
-                        <select value={editForm.category || 'other'} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                        <select aria-label="Goal category" value={editForm.category || 'other'} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
                           className="form-input" style={{ fontSize: '0.82rem' }}>
                           {CATEGORY_CONFIG.map(c => <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}
                         </select>
@@ -506,7 +516,7 @@ export default function GoalsDashboard() {
                       </div>
 
                       {/* Progress bar */}
-                      <div style={{ height: '5px', background: 'rgba(255,255,255,0.07)', borderRadius: '99px', overflow: 'hidden' }}>
+                      <div role="progressbar" aria-label={`${g.title} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={prog} style={{ height: '5px', background: 'rgba(255,255,255,0.07)', borderRadius: '99px', overflow: 'hidden' }}>
                         <div style={{
                           height: '100%', borderRadius: '99px', transition: 'width 0.5s ease',
                           width: `${prog}%`,
@@ -520,18 +530,18 @@ export default function GoalsDashboard() {
                 {/* Action buttons */}
                 {!isEditing && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-                    <button onClick={() => startEdit(g)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={13} /></button>
-                    <button onClick={() => setExpandedId(isExpanded ? null : g.id)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}>
+                    <button type="button" aria-label={`Edit ${g.title}`} onClick={() => startEdit(g)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={13} /></button>
+                    <button type="button" aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${g.title}`} aria-expanded={isExpanded} aria-controls={`goal-details-${g.id}`} onClick={() => setExpandedId(isExpanded ? null : g.id)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}>
                       {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     </button>
-                    <button onClick={() => handleDelete(g.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.6)', cursor: 'pointer', padding: '3px' }}><Trash2 size={13} /></button>
+                    <button type="button" aria-label={`Delete ${g.title}`} onClick={() => handleDelete(g.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.6)', cursor: 'pointer', padding: '3px' }}><Trash2 size={13} /></button>
                   </div>
                 )}
               </div>
 
               {/* Expanded panel */}
               {isExpanded && !isEditing && (
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '1rem', marginTop: '0.75rem' }}>
+                <div id={`goal-details-${g.id}`} style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '1rem', marginTop: '0.75rem' }}>
 
                   {/* Log Progress */}
                   <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -539,20 +549,20 @@ export default function GoalsDashboard() {
                   </p>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '1rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Value {g.unit ? `(${g.unit})` : ''}</label>
-                      <input type="number" placeholder={`e.g. ${g.current_value || 0}`}
+                      <label htmlFor={`goal-log-value-${g.id}`} style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Value {g.unit ? `(${g.unit})` : ''}</label>
+                      <input id={`goal-log-value-${g.id}`} type="number" placeholder={`e.g. ${g.current_value || 0}`}
                         value={lf.value || ''} onChange={e => setLogForm(f => ({ ...f, [g.id]: { ...lf, value: e.target.value } }))}
                         style={{ width: '100px' }} className="form-input" />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Date</label>
-                      <input type="date" value={lf.date || new Date().toISOString().slice(0, 10)}
+                      <label htmlFor={`goal-log-date-${g.id}`} style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Date</label>
+                      <input id={`goal-log-date-${g.id}`} type="date" value={lf.date || new Date().toISOString().slice(0, 10)}
                         onChange={e => setLogForm(f => ({ ...f, [g.id]: { ...lf, date: e.target.value } }))}
                         className="form-input" />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Note</label>
-                      <input type="text" placeholder="Optional note" value={lf.note || ''}
+                      <label htmlFor={`goal-log-note-${g.id}`} style={{ display: 'block', fontSize: '0.58rem', color: 'var(--text-3)', marginBottom: '3px' }}>Note</label>
+                      <input id={`goal-log-note-${g.id}`} type="text" placeholder="Optional note" value={lf.note || ''}
                         onChange={e => setLogForm(f => ({ ...f, [g.id]: { ...lf, note: e.target.value } }))}
                         className="form-input" style={{ width: '100%' }} />
                     </div>

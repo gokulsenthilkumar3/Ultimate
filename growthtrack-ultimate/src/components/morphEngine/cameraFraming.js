@@ -16,7 +16,10 @@ export function fitHumanFrame({ frame, width = 1000, height = 700, fov = 30, vie
   const totalWidth = widthAtAngle + (viewMode === 'DUAL' ? 2 * getDualSeparation(width) : 0);
   const verticalTangent = Math.tan(Math.min(80, positive(fov, 30)) * Math.PI / 360);
   const horizontalTangent = verticalTangent * positive(width, 1000) / positive(height, 700);
-  const distance = Math.max(projectedHeight * 0.61 / verticalTangent, totalWidth * 0.60 / horizontalTangent) + halfDepth;
+  // Leave portrait-safe breathing room around hair, hands, feet and the goal
+  // aura. A mathematically exact fit placed the forehead against the control
+  // band and clipped the floor contact on short canvases.
+  const distance = Math.max(projectedHeight * 0.68 / verticalTangent, totalWidth * 0.66 / horizontalTangent) + halfDepth;
   return { distance, center: [0, bodyHeight * 0.51, 0] };
 }
 

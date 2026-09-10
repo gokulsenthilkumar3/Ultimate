@@ -25,7 +25,6 @@ import * as THREE                             from "three";
 import { useModelLoader }       from "./useModelLoader";
 import { useMorphInterpolator } from "./MorphInterpolator";
 import PostureRig               from "./PostureRig";
-import ProceduralHumanoid from "./ProceduralHumanoid";
 import use3DStore               from "../../store/use3DStore";
 import { createSkinMaterial, updateSkinUniforms, createRimAuraMaterial, updateAuraUniforms } from "./UberShader";
 import { createClothMaterial, isClothPreset } from "./WardrobeShader";
@@ -33,22 +32,27 @@ import { createDeltaMaterial as createDeltaHeatmapMaterial, updateDeltaUniforms 
 import { resolveBodyMetrics } from "../../lib/bodyMetricFallbacks";
 import { computeHeightScale, resolveSkinTone } from "./metricsToBlendshapes";
 
+const ProceduralHumanoid = React.lazy(() => import("./ProceduralHumanoid"));
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MATERIAL FACTORY
 // ─────────────────────────────────────────────────────────────────────────────
 
 // We'll use createSkinMaterial from UberShader directly.
 
-function createGhostMaterial() {
+function createGhostMaterial(opacity = 0.24) {
   return new THREE.MeshStandardMaterial({
-    color:             new THREE.Color("#22D3EE"),
-    emissive:          new THREE.Color("#22D3EE"),
-    emissiveIntensity: 0.35,
-    roughness:         0.15,
-    metalness:         0.2,
+    color:             new THREE.Color("#67E8F9"),
+    emissive:          new THREE.Color("#0EA5E9"),
+    emissiveIntensity: 0.26,
+    roughness:         0.28,
+    metalness:         0.05,
     transparent:       true,
-    opacity:           0.30,
+    opacity,
     depthWrite:        false,
+    polygonOffset:     true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
     side:              THREE.DoubleSide,
   });
 }
@@ -73,6 +77,7 @@ export default function HumanoidClone({
   const auraRef = useRef();
   const clothOverlayRef = useRef();
   const mouthRef = useRef();
+  const scalpRef = useRef();
 
   const modelPreference = use3DStore(useShallow((s) => {
     const metrics = cloneKey === "B" ? s.cloneB.metrics : s.cloneA.metrics;
@@ -149,7 +154,7 @@ export default function HumanoidClone({
   // ── Material ────────────────────────────────────────────────────────────────
   const material = useMemo(() => {
     switch (renderMode) {
-      case "ghost": return createGhostMaterial();
+      case "ghost": return createGhostMaterial(opacity);
       case "delta": return createDeltaHeatmapMaterial();
       default: {
         const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[skinTone] ?? 3;
@@ -165,7 +170,7 @@ export default function HumanoidClone({
         });
       }
     }
-  }, [bodyMesh, renderMetrics, renderMode, skinTone, skinVariantMaterials]);
+  }, [bodyMesh, opacity, renderMetrics, renderMode, skinTone, skinVariantMaterials]);
 
   // The protected anatomy surface uses the same tone but no body atlas. The
   // atlas is laid out for the MakeHuman body UV islands and would otherwise
@@ -232,6 +237,68 @@ export default function HumanoidClone({
     [skeleton],
   );
 
+  const hairStyle = renderMetrics?.hairStyle || 'short';
+  const hairColor = renderMetrics?.hairColor || '#21140f';
+  const scalpMaterial = useMemo(() => {
+    const scalp = new THREE.MeshPhysicalMaterial({
+      color: hairColor,
+      roughness: 0.62,
+      metalness: 0,
+      clearcoat: 0.14,
+      clearcoatRoughness: 0.42,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+    });
+    const frontHairline = hairStyle === 'buzz' ? 0.860 : 0.854;
+    const backHairline = hairStyle === 'buzz' ? 0.824 : 0.812;
+    scalp.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vGrowthTrackHairPosition;')
+        .replace('#include <project_vertex>', 'vGrowthTrackHairPosition = transformed;\n#include <project_vertex>');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vGrowthTrackHairPosition;')
+        .replace('#include <alphatest_fragment>', `
+          float hairFront = smoothstep(-0.025, 0.13, vGrowthTrackHairPosition.z);
+          float hairline = mix(${backHairline.toFixed(3)}, ${frontHairline.toFixed(3)}, hairFront);
+          float centrePeak = 1.0 - smoothstep(0.0, 0.038, abs(vGrowthTrackHairPosition.x));
+          float templeLift = smoothstep(0.035, 0.072, abs(vGrowthTrackHairPosition.x));
+          hairline += templeLift * hairFront * 0.004;
+          hairline -= centrePeak * hairFront * 0.006;
+          if (vGrowthTrackHairPosition.y < hairline) discard;
+          #include <alphatest_fragment>
+        `);
+    };
+    scalp.customProgramCacheKey = () => `growthtrack-scalp-${hairStyle}`;
+    return scalp;
+  }, [hairColor, hairStyle]);
+
+  useEffect(() => () => scalpMaterial.dispose(), [scalpMaterial]);
+
+  useEffect(() => {
+    if (useProcedural || !bodyMesh || !skeleton || hairStyle === 'bald' || renderMode !== 'normal') return undefined;
+    const parent = bodyMesh.parent || scene;
+    const scalp = new THREE.SkinnedMesh(bodyMesh.geometry, scalpMaterial);
+    scalp.name = 'GrowthTrackScalpCap';
+    scalp.position.copy(bodyMesh.position);
+    scalp.quaternion.copy(bodyMesh.quaternion);
+    scalp.scale.copy(bodyMesh.scale);
+    scalp.morphTargetDictionary = bodyMesh.morphTargetDictionary;
+    scalp.morphTargetInfluences = new Float32Array(bodyMesh.morphTargetInfluences?.length || 0);
+    scalp.bind(skeleton, bodyMesh.bindMatrix);
+    scalp.renderOrder = 2;
+    scalp.castShadow = false;
+    scalp.receiveShadow = false;
+    scalp.frustumCulled = false;
+    parent.add(scalp);
+    scalpRef.current = scalp;
+    return () => {
+      parent.remove(scalp);
+      if (scalpRef.current === scalp) scalpRef.current = null;
+    };
+  }, [bodyMesh, hairStyle, renderMode, scalpMaterial, scene, skeleton, useProcedural]);
+
   const clothMaterial = useMemo(() => (
     renderMode === "normal" && isClothPreset(wardrobe)
       ? createClothMaterial(wardrobe, bodyMesh?.geometry)
@@ -272,14 +339,18 @@ export default function HumanoidClone({
 
   useEffect(() => {
     (featureMeshes || []).forEach(({ mesh, feature }) => {
-      const next = featureMaterials[feature];
+      const next = renderMode === 'normal' ? featureMaterials[feature] : material;
       if (next) mesh.material = next;
-      if (feature === 'hair') mesh.visible = (renderMetrics?.hairStyle || 'short') !== 'bald';
-      mesh.castShadow = true;
+      if (feature === 'hair') mesh.visible = ['medium', 'long'].includes(hairStyle);
+      mesh.renderOrder = renderMode === 'ghost' ? 3 : 0;
+      mesh.castShadow = renderMode === 'normal';
       mesh.receiveShadow = false;
     });
-    return () => Object.values(featureMaterials).forEach((featureMaterial) => featureMaterial.dispose());
-  }, [featureMeshes, featureMaterials, renderMetrics]);
+  }, [featureMeshes, featureMaterials, hairStyle, material, renderMode]);
+
+  useEffect(() => () => {
+    Object.values(featureMaterials).forEach((featureMaterial) => featureMaterial.dispose());
+  }, [featureMaterials]);
 
   // WardrobeShader is intentionally a surface overlay: it reuses the authored
   // body's exact geometry, skinning and morph targets, so clothing cannot drift
@@ -337,6 +408,7 @@ export default function HumanoidClone({
         mesh.material = sensitive ? privateMaterial : material;
         mesh.castShadow = renderMode === "normal";
         mesh.receiveShadow = false;
+        mesh.renderOrder = renderMode === "ghost" ? 3 : 0;
       });
       // eslint-disable-next-line react-hooks/immutability
       bodyMesh.material = material;
@@ -368,6 +440,7 @@ export default function HumanoidClone({
     if (clothOverlayRef.current) {
       interpolator.applyToMesh(clothOverlayRef.current, morphIndexMap);
     }
+    if (scalpRef.current) interpolator.applyToMesh(scalpRef.current, morphIndexMap);
     if (auraRef.current) interpolator.applyToMesh(auraRef.current, morphIndexMap);
 
     const blink = interpolator.getWeight("blink");

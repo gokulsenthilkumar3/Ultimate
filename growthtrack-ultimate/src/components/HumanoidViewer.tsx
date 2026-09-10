@@ -254,6 +254,23 @@ export default function HumanoidViewer() {
   const timelinePos       = use3DStore((s) => s.timelineScrubIndex || 0);
   const stressLevel       = use3DStore((s) => s.stressLevel);
   const ambitionPath      = use3DStore((s) => s.ambitionPath);
+  const hasGoalComparison = useMemo(() => Object.keys(METRIC_LABELS).some((key) => (
+    Number.isFinite(Number((currentMetrics as any)[key]))
+    && Number.isFinite(Number((goalMetrics as any)[key]))
+  )), [currentMetrics, goalMetrics]);
+  const hasTimelineData = snapshots.length > 0;
+  const canUseViewMode = useCallback((mode: string) => {
+    if (['DUAL', 'GHOST', 'SPLIT', 'DELTA'].includes(mode)) return hasGoalComparison;
+    if (mode === 'TIMELINE') return hasTimelineData;
+    return true;
+  }, [hasGoalComparison, hasTimelineData]);
+  const modeUnavailableReason = useCallback((mode: string) => (
+    mode === 'TIMELINE'
+      ? 'Save a physique snapshot to unlock Timeline.'
+      : ['DUAL', 'GHOST', 'SPLIT', 'DELTA'].includes(mode)
+        ? 'Add at least one goal measurement to unlock comparison.'
+        : ''
+  ), []);
 
   // ── Actions
   const setViewMode       = use3DStore((s) => s.setViewMode);
@@ -451,6 +468,7 @@ export default function HumanoidViewer() {
   }, []);
 
   const handleStoryStage = useCallback((stage: string) => {
+    if ((stage === 'goal' && !hasGoalComparison) || (stage !== 'current' && stage !== 'goal' && !hasTimelineData)) return;
     setStoryStage(stage);
     if (stage === 'baseline') {
       setViewMode('TIMELINE');
@@ -463,19 +481,19 @@ export default function HumanoidViewer() {
       setViewMode('TIMELINE');
       setTimelinePos(Math.max(0, snapshots.length - 1));
     }
-  }, [setTimelinePos, setViewMode, snapshots.length]);
+  }, [hasGoalComparison, hasTimelineData, setTimelinePos, setViewMode, snapshots.length]);
 
   // ── Keyboard shortcuts: 1–6 for view modes, Escape for settings
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement)?.closest('input, textarea, select, [contenteditable="true"]')) return;
       const mode = VIEW_MODES.find((m) => m.key === e.key);
-      if (mode) setViewMode(mode.id);
+      if (mode && canUseViewMode(mode.id)) setViewMode(mode.id);
       if (e.key === 'Escape') { setShowSettings(false); setShowEditor(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setViewMode]);
+  }, [canUseViewMode, setViewMode]);
 
   // ── Hydrate the renderer cache from persisted physique records.
   useEffect(() => {
@@ -679,7 +697,17 @@ export default function HumanoidViewer() {
           {/* Top overlay bar */}
           <div className="chamber-overlay-top">
             <div className="chamber-view-modes" role="group" aria-label="Comparison mode">
-              {VIEW_MODES.map(mode => <button key={mode.id} className={`chamber-pill${viewMode === mode.id ? ' active' : ''}`} aria-pressed={viewMode === mode.id} title={`${mode.label} view (${mode.key})`} onClick={() => setViewMode(mode.id)}>{mode.id === 'SOLO' ? 'Current body' : mode.id === 'DUAL' ? 'Side by side' : mode.label}</button>)}
+              {VIEW_MODES.map((mode) => {
+                const available = canUseViewMode(mode.id);
+                const label = mode.id === 'SOLO' ? 'Current body' : mode.id === 'DUAL' ? 'Side by side' : mode.label;
+                return (
+                  <button key={mode.id} className={`chamber-pill${viewMode === mode.id ? ' active' : ''}`}
+                    aria-pressed={viewMode === mode.id} aria-disabled={!available}
+                    aria-label={available ? label : `${label} view unavailable. ${modeUnavailableReason(mode.id)}`}
+                    title={available ? `${mode.label} view (${mode.key})` : modeUnavailableReason(mode.id)}
+                    onClick={() => { if (available) setViewMode(mode.id); }}>{label}</button>
+                );
+              })}
             </div>
             <div className="chamber-overlay-row">
               {/* Camera presets */}
@@ -735,7 +763,14 @@ export default function HumanoidViewer() {
             <small>PARAMETRIC BODY ANALYSIS</small>
           </div>
 
-          <nav className="chamber-storyline" aria-label="Transformation story">
+          {viewMode === 'DELTA' && (
+            <div className="chamber-delta-legend" aria-label="Delta color legend">
+              <span><i className="gain" /> Goal measurement is larger</span>
+              <span><i className="loss" /> Goal measurement is smaller</span>
+            </div>
+          )}
+
+          <nav className={`chamber-storyline${viewMode === 'TIMELINE' ? ' chamber-storyline--with-timeline' : ''}`} aria-label="Transformation story">
             <span className="chamber-storyline__title">TRANSFORMATION STORY</span>
             {[
               ['baseline', 'Baseline'],
@@ -745,7 +780,20 @@ export default function HumanoidViewer() {
             ].map(([id, label], index) => (
               <React.Fragment key={id}>
                 {index > 0 && <span className="chamber-storyline__connector" aria-hidden="true" />}
-                <button className={storyStage === id ? 'active' : ''} aria-pressed={storyStage === id} onClick={() => handleStoryStage(id)}>{label}</button>
+                {(() => {
+                  const unavailable = (id === 'goal' && !hasGoalComparison) || (id !== 'current' && id !== 'goal' && !hasTimelineData);
+                  const reason = id === 'goal' && !hasGoalComparison
+                    ? modeUnavailableReason('GHOST')
+                    : id !== 'current' && id !== 'goal' && !hasTimelineData
+                      ? modeUnavailableReason('TIMELINE')
+                      : '';
+                  return (
+                    <button className={storyStage === id ? 'active' : ''} aria-pressed={storyStage === id}
+                      aria-disabled={unavailable} aria-label={unavailable ? `${label} unavailable. ${reason}` : label}
+                      title={reason || undefined}
+                      onClick={() => { if (!unavailable) handleStoryStage(id); }}>{label}</button>
+                  );
+                })()}
               </React.Fragment>
             ))}
           </nav>
@@ -866,11 +914,7 @@ export default function HumanoidViewer() {
                     {Object.entries(METRIC_LABELS).map(([key, meta]) => {
                       const cur = currentMetrics[key] as number ?? 0;
                       const goal = goalMetrics[key] as number ?? 0;
-                      const dir = meta.direction;
-                      const pctRaw = goal > 0 ? (dir === 'decrease'
-                        ? cur <= goal ? 100 : Math.max(0, Math.min(100, ((Math.max(cur, goal) - cur) / (Math.max(cur, goal) - goal)) * 100))
-                        : Math.min(100, Math.max(0, (cur / goal) * 100))
-                      ) : 0;
+                      const pctRaw = Number((progressSummary as any).byMetric?.[key]) || 0;
                       const pct = Math.round(pctRaw);
                       const progressColor = pct >= 75 ? 'var(--chamber-success)' : pct >= 40 ? 'var(--chamber-gold)' : 'var(--chamber-glow)';
                       return (
@@ -894,7 +938,7 @@ export default function HumanoidViewer() {
                             min={key === 'bodyFat' ? 5 : 30}
                             max={key === 'bodyFat' ? 40 : key === 'weight' ? 130 : 150}
                             step={1} value={cur}
-                            onChange={(e) => updateCurrentMetric(key, parseFloat(e.target.value))}
+                            onChange={(e) => handleCurrentValue(key, e.target.value)}
                             className="chamber-slider" />
                           {/* GOAL slider */}
                           <div style={{ fontSize: '0.6rem', color: 'var(--chamber-glow)', marginBottom: 2, marginTop: 4 }}>
@@ -904,7 +948,7 @@ export default function HumanoidViewer() {
                             min={key === 'bodyFat' ? 5 : 30}
                             max={key === 'bodyFat' ? 40 : key === 'weight' ? 130 : 150}
                             step={1} value={goal}
-                            onChange={(e) => updateGoalMetric(key, parseFloat(e.target.value))}
+                            onChange={(e) => handleGoalValue(key, e.target.value)}
                             className="chamber-slider"
                             style={{ accentColor: 'var(--chamber-glow)', opacity: 0.75 }} />
                           {/* Progress bar */}
