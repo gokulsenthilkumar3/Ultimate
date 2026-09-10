@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
   ReferenceLine,
@@ -19,17 +19,19 @@ function formatINR(val) {
 }
 
 function Slider({ label, min, max, step, value, onChange, format, color = 'var(--accent)' }) {
+  const inputId = React.useId();
   const pct = ((value - min) / (max - min)) * 100;
   return (
     <div style={{ marginBottom: '1.1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-        <label style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 700 }}>{label}</label>
+        <label htmlFor={inputId} style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 700 }}>{label}</label>
         <span style={{ fontSize: '0.88rem', fontWeight: 900, color, fontFamily: 'var(--font-mono, monospace)' }}>{format(value)}</span>
       </div>
       <div style={{ position: 'relative', height: '6px' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.08)', borderRadius: '99px' }} />
         <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`, background: color, borderRadius: '99px', transition: 'width 0.1s' }} />
-        <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))}
+        <input id={inputId} type="range" min={min} max={max} step={step} value={value}
+          aria-valuetext={format(value)} onChange={e => onChange(Number(e.target.value))}
           style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', cursor: 'pointer', height: '100%' }} />
         <div style={{ position: 'absolute', top: '50%', left: `${pct}%`, transform: 'translate(-50%, -50%)', width: '14px', height: '14px', borderRadius: '50%', background: color, border: '2px solid var(--bg-card)', boxShadow: `0 0 8px ${color}66`, pointerEvents: 'none' }} />
       </div>
@@ -39,7 +41,6 @@ function Slider({ label, min, max, step, value, onChange, format, color = 'var(-
 
 function buildSIPData({ monthly, rate, years, inflation, lumpsum, lumpsumRate }) {
   const monthlyRate   = rate / 12 / 100;
-  const inflationRate = inflation / 12 / 100;
   const data = [];
   let corpus     = lumpsum  || 0;
   let lumpsumVal = lumpsum  || 0;
@@ -100,7 +101,6 @@ export default function SIPCalculator() {
   const realValue   = final.realValue || 0;
   const lumpOnlyFinal = lumpsum ? final.lumpsum : null;
 
-  const stepSize = (v) => v > 1000000 ? 10000 : v > 100000 ? 5000 : v > 10000 ? 1000 : 500;
 
   return (
     <div style={{ padding: '0.5rem 0' }}>
@@ -110,7 +110,7 @@ export default function SIPCalculator() {
         <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Systematic Investment Plan · Inflation-adjusted projections</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 380px) 1fr', gap: '1.5rem', flexWrap: 'wrap' }}>
+      <div className="sip-calculator-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 380px) minmax(0, 1fr)', gap: '1.5rem' }}>
         {/* Controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="glass-card">
@@ -128,12 +128,13 @@ export default function SIPCalculator() {
           <div className="glass-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <p style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Lump Sum (Optional)</p>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <div onClick={() => setShowLumpsum(v => !v)} style={{ width: '32px', height: '18px', borderRadius: '99px', background: showLumpsum ? 'var(--accent)' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button type="button" role="switch" aria-checked={showLumpsum} aria-label="Include a lump sum investment"
+                  onClick={() => setShowLumpsum(v => !v)} style={{ width: '32px', height: '18px', padding: 0, border: 'none', borderRadius: '99px', background: showLumpsum ? 'var(--accent)' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
                   <div style={{ position: 'absolute', top: '2px', left: showLumpsum ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-                </div>
+                </button>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{showLumpsum ? 'On' : 'Off'}</span>
-              </label>
+              </div>
             </div>
             {showLumpsum && (
               <>
@@ -148,12 +149,13 @@ export default function SIPCalculator() {
 
           {/* Chart toggles */}
           <div className="glass-card" style={{ padding: '0.75rem 1rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <div onClick={() => setShowReal(v => !v)} style={{ width: '32px', height: '18px', borderRadius: '99px', background: showReal ? '#f59e0b' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button type="button" role="switch" aria-checked={showReal} aria-label="Show inflation-adjusted real value"
+                onClick={() => setShowReal(v => !v)} style={{ width: '32px', height: '18px', padding: 0, border: 'none', borderRadius: '99px', background: showReal ? '#f59e0b' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
                 <div style={{ position: 'absolute', top: '2px', left: showReal ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-              </div>
+              </button>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', fontWeight: 600 }}>Show inflation-adjusted real value</span>
-            </label>
+            </div>
           </div>
         </div>
 
@@ -196,9 +198,9 @@ export default function SIPCalculator() {
           <div className="glass-card" style={{ flexGrow: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <span className="card-title" style={{ margin: 0 }}>Growth Projection</span>
-              <div style={{ display: 'flex', gap: '0.3rem' }}>
+              <div role="group" aria-label="Projection chart type" style={{ display: 'flex', gap: '0.3rem' }}>
                 {['area', 'bar'].map(v => (
-                  <button key={v} onClick={() => setView(v)} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', background: view === v ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === v ? '#000' : 'var(--text-3)', border: 'none' }}>{v}</button>
+                  <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} style={{ padding: '3px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', background: view === v ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === v ? '#000' : 'var(--text-3)', border: 'none' }}>{v}</button>
                 ))}
               </div>
             </div>

@@ -62,4 +62,16 @@ describe('physical skin material', () => {
 
     material.dispose();
   });
+
+  it('ignores unrelated shader materials used by diagnostic modes', () => {
+    const material = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 7 } },
+      vertexShader: 'void main(){gl_Position=vec4(position,1.0);}',
+      fragmentShader: 'void main(){gl_FragColor=vec4(1.0);}',
+    });
+
+    expect(() => updatePhysicalSkinMaterial(material, { time: 12 })).not.toThrow();
+    expect(material.uniforms.uTime.value).toBe(7);
+    material.dispose();
+  });
 });

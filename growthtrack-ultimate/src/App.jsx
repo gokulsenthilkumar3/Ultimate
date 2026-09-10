@@ -34,6 +34,7 @@ import { GLOBAL_MODULES } from './constants/modules';
 import { trackEvent } from './lib/analytics';
 import { logSession, logPageView } from './lib/logger';
 import { useStaggeredEntrance } from './hooks/useProductMotion';
+import useNotifications from './hooks/useNotifications';
 
 // ── Lazy modules ──────────────────────────────────────────────────────────────
 const Overview           = lazy(() => import('./components/Overview'));
@@ -98,7 +99,7 @@ function TabSpinner() {
 }
 
 // ── Memoized tab renderer — prevents re-creation on every App render ──────────
-const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme, setTheme, setActiveTab, metricLogs }) {
+const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme, setTheme, setActiveTab, metricLogs, notificationState }) {
   const props = { user, setUser, theme, setTheme };
   switch (tab) {
     case 'overview':       return <Overview {...props} />;
@@ -147,7 +148,7 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
     case 'forecast':       return <InsightsHub initialTab="forecast" logs={metricLogs} />;
     case 'insights':       return <InsightsHub logs={metricLogs} />;
     case 'apps':           return <AppLauncher setActiveTab={setActiveTab} />;
-    case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} />;
+    case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} notificationState={notificationState} />;
     default:               return <Overview {...props} />;
   }
 });
@@ -175,7 +176,7 @@ function ProductPageTransition({ children, reducedMotion }) {
 
 
 export default function App() {
-  const { session, signOut } = useAuth();
+  const { session, signOut, user: authenticatedUser } = useAuth();
   const user         = useStore(selectUser);
   const setUser      = useStore(selectSetUser);
   const theme        = useStore(selectTheme);
@@ -196,9 +197,12 @@ export default function App() {
   const metricLogs         = useStore((state) => state.metric_logs);
 
   const [showCheckIn,       setShowCheckIn]       = React.useState(false);
-  const [initialDataReady, setInitialDataReady] = React.useState(false);
+  const [loadedSessionId, setLoadedSessionId] = React.useState(null);
   const [showSettings,      setShowSettings]      = React.useState(false);
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
+  const sessionId = authenticatedUser?.id || authenticatedUser?.email || session?.expiresAt || null;
+  const initialDataReady = Boolean(sessionId && loadedSessionId === sessionId);
+  const notificationState  = useNotifications({ enabled: Boolean(session && initialDataReady) });
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const navigate = useNavigate();
@@ -286,8 +290,7 @@ export default function App() {
     trackEvent('App Opened');
     logSession('start', 'Application opened');
     let disposed = false;
-    setInitialDataReady(false);
-    fetchInitialData().finally(() => { if (!disposed) setInitialDataReady(true); });
+    fetchInitialData().finally(() => { if (!disposed) setLoadedSessionId(sessionId); });
     checkServerHealth();
     const interval = setInterval(checkServerHealth, TIMING.SERVER_HEALTH_POLL_MS);
     return () => {
@@ -295,7 +298,7 @@ export default function App() {
       clearInterval(interval);
       logSession('end', 'Application closed');
     };
-  }, [session, fetchInitialData, checkServerHealth]);
+  }, [session, sessionId, fetchInitialData, checkServerHealth]);
 
   // ── Daily Check-In alert: show slim banner (not auto-modal) ──
   useEffect(() => {
@@ -361,6 +364,7 @@ export default function App() {
               theme={theme}
               setTheme={setTheme}
               serverStatus={serverStatus}
+              unreadCount={notificationState.unreadCount}
               onOpenSettings={() => setShowSettings(true)}
               onOpenNotifications={() => setActiveTab('notifications')}
             />
@@ -395,6 +399,7 @@ export default function App() {
                           setTheme={setTheme}
                           setActiveTab={setActiveTab}
                           metricLogs={metricLogs}
+                          notificationState={activeTab === 'notifications' ? notificationState : null}
                         />
                     }
                   </ProductPageTransition>

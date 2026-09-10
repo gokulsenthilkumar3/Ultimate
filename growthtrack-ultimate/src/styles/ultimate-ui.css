@@ -868,6 +868,20 @@ tbody td { border-bottom-color: var(--ui-line) !important; }
   backdrop-filter: blur(26px) saturate(130%) !important;
 }
 .pill-dock-item.active { color: var(--text-1) !important; background: var(--ui-highlight) !important; }
+.pill-dock-item.active { flex: 1.55; }
+.pill-dock-item.active .pill-dock-label {
+  width: auto;
+  margin-left: 6px;
+  opacity: 1;
+}
+
+@media (max-width: 760px) {
+  .calendar-layout { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+@media (max-width: 900px) {
+  .sip-calculator-layout { grid-template-columns: minmax(0, 1fr) !important; }
+}
 
 /* Wizards and dialogs: stable sheets with clear steps and no layout jumps. */
 .onboarding-wizard,
@@ -1024,4 +1038,16 @@ tbody td { border-bottom-color: var(--ui-line) !important; }
   animation-iteration-count: 1 !important;
   transition-duration: .001ms !important;
   scroll-behavior: auto !important;
+}
+/* Keep accessible names available to assistive technology without changing layout. */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }

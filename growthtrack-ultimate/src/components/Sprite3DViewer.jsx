@@ -1,4 +1,113 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+
+function drawFallbackBody(ctx, width, height, row, frame, statusLabel) {
+  const cx = width / 2;
+  const cy = height / 2 + 18;
+  const angle = ((frame - 1) / 36) * Math.PI * 2;
+  const facing = 0.38 + Math.abs(Math.cos(angle)) * 0.62;
+  const elevation = row === 2 ? 0.62 : row === 1 ? 0.9 : row === -1 ? 1.08 : 1;
+  const skin = ctx.createLinearGradient(cx - 110, cy - 260, cx + 120, cy + 280);
+  skin.addColorStop(0, '#d7a782');
+  skin.addColorStop(0.46, '#b97756');
+  skin.addColorStop(1, '#754733');
+
+  ctx.save();
+  const backdrop = ctx.createRadialGradient(cx, cy - 70, 20, cx, cy, height * 0.48);
+  backdrop.addColorStop(0, 'rgba(35, 45, 61, 0.92)');
+  backdrop.addColorStop(0.58, 'rgba(13, 17, 24, 0.98)');
+  backdrop.addColorStop(1, '#08090d');
+  ctx.fillStyle = backdrop;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = 'rgba(103, 232, 249, 0.12)';
+  ctx.lineWidth = 2;
+  for (const radius of [150, 220, 290]) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 270, radius, radius * 0.18, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+  ctx.beginPath();
+  ctx.moveTo(cx, 42);
+  ctx.lineTo(cx, height - 46);
+  ctx.stroke();
+
+  ctx.translate(cx, cy);
+  ctx.scale(1, elevation);
+  ctx.shadowColor = 'rgba(34, 211, 238, 0.18)';
+  ctx.shadowBlur = 28;
+  ctx.fillStyle = skin;
+  ctx.strokeStyle = skin;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const shoulder = 94 * facing;
+  const waist = 54 * facing;
+  const hip = 67 * facing;
+  const headWidth = 38 * (0.72 + facing * 0.28);
+
+  ctx.beginPath();
+  ctx.ellipse(0, -244, headWidth, 49, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(-16 * facing, -205, 32 * facing, 27);
+
+  ctx.beginPath();
+  ctx.moveTo(-18 * facing, -188);
+  ctx.bezierCurveTo(-shoulder * .55, -187, -shoulder, -168, -shoulder, -145);
+  ctx.bezierCurveTo(-shoulder * .9, -91, -waist, -64, -waist, 7);
+  ctx.bezierCurveTo(-waist, 38, -hip, 54, -hip, 70);
+  ctx.lineTo(hip, 70);
+  ctx.bezierCurveTo(hip, 54, waist, 38, waist, 7);
+  ctx.bezierCurveTo(waist, -64, shoulder * .9, -91, shoulder, -145);
+  ctx.bezierCurveTo(shoulder, -168, shoulder * .55, -187, 18 * facing, -188);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.lineWidth = 25;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * shoulder * .88, -151);
+    ctx.lineTo(side * (shoulder + 24), -57);
+    ctx.lineTo(side * (shoulder + 15), 35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(side * (shoulder + 14), 48, 12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.lineWidth = 35;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * hip * .56, 61);
+    ctx.lineTo(side * (hip * .63), 174);
+    ctx.lineTo(side * (hip * .60), 272);
+    ctx.stroke();
+  }
+  ctx.lineWidth = 22;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * hip * .60, 268);
+    ctx.lineTo(side * (hip * .67 + 7), 282);
+    ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(66, 41, 35, 0.26)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -170);
+  ctx.lineTo(0, 54);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = 'rgba(8, 12, 18, 0.78)';
+  ctx.fillRect(22, height - 62, width - 44, 36);
+  ctx.fillStyle = '#dbeafe';
+  ctx.font = '600 13px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(statusLabel, cx, height - 44);
+}
 
 // Pure function — no closure over component state, stale closure safe
 function generateSpriteUrl(modelPrefix, row, frame) {
@@ -18,6 +127,8 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
   // State: image map
   const [images, setImages] = useState(new Map());
   const [loadedCount, setLoadedCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+  const [loadComplete, setLoadComplete] = useState(() => typeof Worker === 'undefined');
   const totalFrames = 109; // 36 * 3 + 1
   
   // State: interaction
@@ -40,23 +151,37 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
     });
     allUrls.push(generateSpriteUrl(modelPrefix, 2, 1));
 
+    if (typeof Worker === 'undefined') {
+      return undefined;
+    }
+
     const worker = new Worker(new URL('../workers/sprite-preloader.worker.js', import.meta.url));
+    const bitmaps = new Set();
     
     worker.onmessage = (e) => {
       if (e.data.type === 'PROGRESS') {
         const { url, bitmap } = e.data;
+        bitmaps.add(bitmap);
         setImages(prev => {
           const next = new Map(prev);
           next.set(url, bitmap);
           return next;
         });
         setLoadedCount(prev => prev + 1);
+      } else if (e.data.type === 'ERROR') {
+        setFailedCount(prev => prev + 1);
+      } else if (e.data.type === 'COMPLETE') {
+        setLoadComplete(true);
       }
     };
 
     worker.postMessage({ urls: allUrls });
 
-    return () => worker.terminate();
+    return () => {
+      worker.terminate();
+      bitmaps.forEach((bitmap) => bitmap.close?.());
+      bitmaps.clear();
+    };
   }, [modelPrefix]);
 
   // Render loop
@@ -125,31 +250,13 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
         ctx.restore();
       }
     } else {
-      // Draw placeholder
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
-      ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = 'var(--text-3)';
-      ctx.font = '14px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      if (loadedCount < 36) {
-         ctx.fillText(`Loading Assets... ${Math.round((loadedCount/totalFrames)*100)}%`, width / 2, height / 2);
-      } else {
-         // Create a synthetic placeholder visually approximating a skeleton
-         ctx.beginPath();
-         ctx.ellipse(width/2, height/2 - 50, 40, 60, 0, 0, 2*Math.PI);
-         ctx.fillStyle = 'rgba(14, 165, 233, 0.1)';
-         ctx.fill();
-         ctx.beginPath();
-         ctx.ellipse(width/2, height/2 + 70, 70, 110, 0, 0, 2*Math.PI);
-         ctx.fill();
-         
-         ctx.fillStyle = 'var(--text-3)';
-         ctx.fillText(`Missing 360° asset: fallback rendered`, width / 2, height - 30);
-         ctx.fillText(`[Row ${currRow}, Frame ${currentFrame}]`, width/2, height - 10);
-      }
+      const settled = loadedCount + failedCount;
+      const status = loadComplete || failedCount > 0
+        ? 'Interactive body fallback · drag to rotate'
+        : `Preparing 2D body view · ${Math.round((settled / totalFrames) * 100)}%`;
+      drawFallbackBody(ctx, width, height, currRow, currentFrame, status);
     }
-  }, [currentFrame, currRow, images, loadedCount, modelPrefix]);
+  }, [currentFrame, currRow, failedCount, images, isMagnifier, loadComplete, loadedCount, modelPrefix, startPos.x, startPos.y]);
 
   const handlePointerDown = (e) => {
     setIsDragging(true);
@@ -220,6 +327,8 @@ export default function Sprite3DViewer({ modelPrefix = 'current' }) {
       onPointerLeave={handlePointerUp}
       onWheel={handleWheel}
       onDoubleClick={handleDoubleClick}
+      role="img"
+      aria-label="Interactive two-dimensional physique fallback. Drag horizontally to rotate and use the mouse wheel to zoom."
     >
       <canvas 
         ref={canvasRef}

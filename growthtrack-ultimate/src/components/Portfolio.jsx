@@ -6,11 +6,13 @@ import { TrendingUp, TrendingDown, Plus, Trash2, Edit3, Check, X, DollarSign, Ba
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import { handleTabKeyDown } from '../hooks/useHashTab';
 
 const ASSET_TYPES = ['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other'];
 const ASSET_COLORS = { Stock: '#6366f1', ETF: '#0ea5e9', 'Mutual Fund': '#10b981', Crypto: '#f59e0b', Gold: '#fbbf24', 'Real Estate': '#ec4899', Bond: '#8b5cf6', FD: '#34d399', Cash: '#6b7280', Other: '#94a3b8' };
 const CURRENCY = '₹';
 const EMPTY_PORTFOLIO = Object.freeze([]);
+const PORTFOLIO_TABS = ['holdings', 'allocation', 'performance'].map(id => ({ id }));
 
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
 
@@ -213,9 +215,13 @@ export default function Portfolio() {
       </div>
 
       {/* Tabs */}
-      <div role="tablist" aria-label="Portfolio views" style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
-        {['holdings', 'allocation', 'performance'].map(t => (
-          <button key={t} type="button" role="tab" onClick={() => setTab(t)} aria-selected={tab === t} aria-controls={`portfolio-${t}-panel`} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === t ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{t}</button>
+      <div role="tablist" aria-label="Portfolio views"
+        onKeyDown={event => handleTabKeyDown(event, { tabs: PORTFOLIO_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'portfolio-tab' })}
+        style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
+        {PORTFOLIO_TABS.map(({ id }) => (
+          <button key={id} id={`portfolio-tab-${id}`} type="button" role="tab" onClick={() => setTab(id)}
+            aria-selected={tab === id} aria-controls={`portfolio-${id}-panel`} tabIndex={tab === id ? 0 : -1}
+            style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === id ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === id ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{id}</button>
         ))}
       </div>
 
@@ -252,7 +258,7 @@ export default function Portfolio() {
 
       {/* Holdings tab */}
       {tab === 'holdings' && (
-        <div id="portfolio-holdings-panel" role="tabpanel" aria-label="Holdings" className="glass-card" style={{ overflowX: 'auto' }}>
+        <div id="portfolio-holdings-panel" role="tabpanel" aria-labelledby="portfolio-tab-holdings" className="glass-card" style={{ overflowX: 'auto' }}>
           {holdings.length === 0 ? (
             <EmptyState icon={DollarSign} title="No Holdings" description="Add your first investment to start tracking your portfolio." ctaLabel="Add Holding" onAction={() => setShowAdd(true)} />
           ) : (
@@ -334,7 +340,7 @@ export default function Portfolio() {
 
       {/* Allocation tab */}
       {tab === 'allocation' && (
-        <div id="portfolio-allocation-panel" role="tabpanel" aria-label="Allocation" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+        <div id="portfolio-allocation-panel" role="tabpanel" aria-labelledby="portfolio-tab-allocation" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
           <div className="glass-card">
             <span className="card-title">Allocation by Type</span>
             {byType.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginTop: '1rem' }}>No holdings yet.</p> : (
@@ -371,7 +377,7 @@ export default function Portfolio() {
 
       {/* Performance tab */}
       {tab === 'performance' && (
-        <div id="portfolio-performance-panel" role="tabpanel" aria-label="Performance" className="glass-card">
+        <div id="portfolio-performance-panel" role="tabpanel" aria-labelledby="portfolio-tab-performance" className="glass-card">
           <span className="card-title">Estimated Portfolio Value — Last 30 Days</span>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Simulated based on buy prices and current values.</p>
           {portfolioHistory.length < 2 ? (

@@ -1,6 +1,6 @@
-const { app, BrowserWindow } = require('electron');
-const path = require('path');
-const expressApp = require('./server.js'); // This runs the express server
+import { app, BrowserWindow } from 'electron';
+import path from 'path';
+import './server.js'; // This runs the express server
 
 let mainWindow;
 

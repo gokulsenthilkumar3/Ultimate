@@ -183,8 +183,9 @@ const deltaFragmentShader = /* glsl */ `
       if (mask < 0.001 || abs(sign) < 0.001) continue;
 
       vec3 color  = sign > 0.0 ? GAIN_COLOR : LOSS_COLOR;
-      float p     = pulse(mask, uTime, uPulseSpeed);
-      float w     = mask * mag * p;
+      float p         = pulse(mask, uTime, uPulseSpeed);
+      float intensity = min(1.0, sqrt(mag) * 1.35);
+      float w         = mask * intensity * p;
 
       regionColor  = mix(regionColor, color, w);
       regionWeight = max(regionWeight, w);

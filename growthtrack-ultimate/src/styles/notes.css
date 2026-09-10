@@ -175,6 +175,25 @@
   width: 6px;
 }
 
+.note-card-open {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.note-card-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .note-card-title-row {
   display: flex;
   justify-content: space-between;
@@ -704,4 +723,20 @@
 
 [data-theme='light'] .notes-markdown-preview code {
   background: rgba(0, 0, 0, 0.02);
+}
+
+@media (max-width: 760px) {
+  .notes-container {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    min-height: 0;
+  }
+
+  .notes-sidebar {
+    max-height: min(440px, 58dvh);
+  }
+
+  .notes-detail-pane {
+    min-height: 560px;
+  }
 }

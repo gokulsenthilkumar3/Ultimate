@@ -4,6 +4,7 @@ import { GitBranch, Star, GitFork, ExternalLink, Code2, Clock, Circle, Search, A
 import PageHeader from './ui/PageHeader';
 import { useToast } from '../hooks/useToast';
 import useStore from '../store/useStore';
+import { handleTabKeyDown } from '../hooks/useHashTab';
 
 const LANGUAGE_COLORS = {
   JavaScript: '#f1e05a',
@@ -31,6 +32,10 @@ const STATUS_COLOR = {
 };
 
 const EMPTY_FORM = { title: '', description: '', stack: '', status: 'Active', url: '', startDate: new Date().toISOString().split('T')[0], endDate: '' };
+const PROJECT_TABS = [
+  { id: 'github', label: 'GitHub Repos' },
+  { id: 'manual', label: 'My Projects' },
+];
 
 export default function Projects() {
   const user = useStore(s => s.user);
@@ -47,8 +52,6 @@ export default function Projects() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [noteInput, setNoteInput]       = useState('');
-  const [editingUsername, setEditingUsername] = useState(false);
-  const [usernameInput, setUsernameInput] = useState('');
 
   // Manual projects state
   const [showForm, setShowForm]         = useState(false);
@@ -244,9 +247,13 @@ export default function Projects() {
       />
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        {[['github', 'GitHub Repos'], ['manual', 'My Projects']].map(([key, label]) => (
-          <button key={key} className={`btn-sm ${activeTab === key ? 'active' : ''}`}
+      <div role="tablist" aria-label="Project sources"
+        onKeyDown={event => handleTabKeyDown(event, { tabs: PROJECT_TABS, activeTab, selectTab: setActiveTab, idPrefix: 'projects-tab' })}
+        style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        {PROJECT_TABS.map(({ id: key, label }) => (
+          <button key={key} id={`projects-tab-${key}`} type="button" role="tab" aria-selected={activeTab === key}
+            aria-controls={`projects-panel-${key}`} tabIndex={activeTab === key ? 0 : -1}
+            className={`btn-sm ${activeTab === key ? 'active' : ''}`}
             onClick={() => setActiveTab(key)} style={{ padding: '0.5rem 1.2rem', fontWeight: 800 }}>
             {label} {key === 'github' ? `(${repos.length})` : `(${manualProjects.length})`}
           </button>
@@ -255,7 +262,7 @@ export default function Projects() {
 
       {/* ── GitHub tab ── */}
       {activeTab === 'github' && (
-        <>
+        <div id="projects-panel-github" role="tabpanel" aria-labelledby="projects-tab-github">
           {/* Toolbar */}
           <div className="glass-card mb-lg" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -285,12 +292,12 @@ export default function Projects() {
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '0 0.5rem', width: '220px' }}>
                 <Search size={14} color="var(--text-3)" />
-                <input type="text" placeholder="Search repositories..." value={searchTerm}
+                <input type="text" aria-label="Search repositories" placeholder="Search repositories..." value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   style={{ background: 'transparent', border: 'none', color: 'var(--text-1)', padding: '0.5rem', outline: 'none', width: '100%', fontSize: '0.8rem' }} />
               </div>
               <div className="sort-dropdown-container" style={{ position: 'relative' }}>
-                <button 
+                <button type="button" aria-haspopup="menu" aria-expanded={showSortDropdown} aria-controls="project-sort-menu"
                   onClick={() => setShowSortDropdown(!showSortDropdown)}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '0.45rem 0.75rem', cursor: 'pointer', color: 'var(--text-2)', fontSize: '0.8rem', outline: 'none' }}
                 >
@@ -299,35 +306,35 @@ export default function Projects() {
                 </button>
                 
                 {showSortDropdown && (
-                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '6px', background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.4rem', minWidth: '160px', zIndex: 20, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div id="project-sort-menu" role="menu" aria-label="Sort repositories" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '6px', background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.4rem', minWidth: '160px', zIndex: 20, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     {[
                       { value: 'updated', label: 'Recently Updated' },
                       { value: 'stars', label: 'Most Stars' },
                       { value: 'forks', label: 'Most Forks' },
                       { value: 'name', label: 'Alphabetical' }
                     ].map(opt => (
-                      <div 
+                      <button type="button" role="menuitemradio" aria-checked={sortBy === opt.value}
                         key={opt.value}
                         onClick={() => { setSortBy(opt.value); setShowSortDropdown(false); }}
-                        style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', fontWeight: 600, color: sortBy === opt.value ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', borderRadius: '4px', background: sortBy === opt.value ? 'rgba(99,102,241,0.1)' : 'transparent', transition: 'all 0.2s' }}
+                        style={{ padding: '0.5rem 0.75rem', border: 'none', textAlign: 'left', fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: sortBy === opt.value ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', borderRadius: '4px', background: sortBy === opt.value ? 'rgba(99,102,241,0.1)' : 'transparent', transition: 'all 0.2s' }}
                         onMouseEnter={e => e.currentTarget.style.background = sortBy === opt.value ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)'}
                         onMouseLeave={e => e.currentTarget.style.background = sortBy === opt.value ? 'rgba(99,102,241,0.1)' : 'transparent'}
                       >
                         {opt.label}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
-                <button className={`btn-sm ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
-                <button className={`btn-sm ${filter === 'source' ? 'active' : ''}`} onClick={() => setFilter('source')}>Sources</button>
-                <button className={`btn-sm ${filter === 'fork' ? 'active' : ''}`} onClick={() => setFilter('fork')}>Forks</button>
+              <div role="group" aria-label="Repository filter" style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
+                <button aria-pressed={filter === 'all'} className={`btn-sm ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
+                <button aria-pressed={filter === 'source'} className={`btn-sm ${filter === 'source' ? 'active' : ''}`} onClick={() => setFilter('source')}>Sources</button>
+                <button aria-pressed={filter === 'fork'} className={`btn-sm ${filter === 'fork' ? 'active' : ''}`} onClick={() => setFilter('fork')}>Forks</button>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
-                <button className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>Grid</button>
-                <button className={`btn-sm ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>List</button>
+              <div role="group" aria-label="Repository layout" style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
+                <button aria-pressed={viewMode === 'grid'} className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>Grid</button>
+                <button aria-pressed={viewMode === 'list'} className={`btn-sm ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>List</button>
               </div>
 
               {githubManageEnabled && githubToken && (
@@ -348,20 +355,20 @@ export default function Projects() {
           {/* GitHub Create/Edit Repo Modal */}
           {showGithubModal && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="glass-card" style={{ width: '400px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.2s' }}>
+              <div className="glass-card" role="dialog" aria-modal="true" aria-labelledby="github-repo-dialog-title" style={{ width: '400px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.2s' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{githubRepoForm.editMode ? 'Edit Repository' : 'Create New Repository'}</h3>
-                  <button className="btn-icon" onClick={() => setShowGithubModal(false)}><X size={18} /></button>
+                  <h3 id="github-repo-dialog-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{githubRepoForm.editMode ? 'Edit Repository' : 'Create New Repository'}</h3>
+                  <button type="button" className="btn-icon" aria-label="Close repository form" onClick={() => setShowGithubModal(false)}><X size={18} /></button>
                 </div>
                 
                 <div>
-                  <label className="form-label">Repository Name *</label>
-                  <input className="form-input" value={githubRepoForm.name} onChange={e => setGithubRepoForm({...githubRepoForm, name: e.target.value})}  placeholder="awesome-project" />
+                  <label className="form-label" htmlFor="github-repo-name">Repository Name *</label>
+                  <input id="github-repo-name" className="form-input" value={githubRepoForm.name} onChange={e => setGithubRepoForm({...githubRepoForm, name: e.target.value})}  placeholder="awesome-project" />
                 </div>
                 
                 <div>
-                  <label className="form-label">Description (Optional)</label>
-                  <textarea className="form-input" value={githubRepoForm.description} onChange={e => setGithubRepoForm({...githubRepoForm, description: e.target.value})} style={{ width: '100%', minHeight: '80px', resize: 'vertical' }} placeholder="What does this repository do?" />
+                  <label className="form-label" htmlFor="github-repo-description">Description (Optional)</label>
+                  <textarea id="github-repo-description" className="form-input" value={githubRepoForm.description} onChange={e => setGithubRepoForm({...githubRepoForm, description: e.target.value})} style={{ width: '100%', minHeight: '80px', resize: 'vertical' }} placeholder="What does this repository do?" />
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -400,15 +407,15 @@ export default function Projects() {
                     <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                       {githubManageEnabled && githubToken && repo.permissions?.admin && (
                         <>
-                          <button className="btn-icon" onClick={() => { setGithubRepoForm({ name: repo.name, description: repo.description || '', private: repo.private, editMode: true, oldName: repo.name, owner: repo.owner.login }); setShowGithubModal(true); }} style={{ padding: '4px' }} title="Edit Repo Settings">
+                          <button type="button" className="btn-icon" aria-label={`Edit ${repo.name} repository settings`} onClick={() => { setGithubRepoForm({ name: repo.name, description: repo.description || '', private: repo.private, editMode: true, oldName: repo.name, owner: repo.owner.login }); setShowGithubModal(true); }} style={{ padding: '4px' }} title="Edit Repo Settings">
                             <Edit2 size={14} color="var(--text-3)" />
                           </button>
-                          <button className="btn-icon" onClick={() => handleDeleteGithubRepo(repo.owner.login, repo.name, repo.id)} style={{ padding: '4px' }} title="Delete Repo">
+                          <button type="button" className="btn-icon" aria-label={`Delete ${repo.name} repository`} onClick={() => handleDeleteGithubRepo(repo.owner.login, repo.name, repo.id)} style={{ padding: '4px' }} title="Delete Repo">
                             <Trash2 size={14} color="var(--danger)" />
                           </button>
                         </>
                       )}
-                      <a href={repo.html_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-3)', padding: '4px', display: 'flex', alignItems: 'center' }}>
+                      <a href={repo.html_url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${repo.name} on GitHub`} style={{ color: 'var(--text-3)', padding: '4px', display: 'flex', alignItems: 'center' }}>
                         <ExternalLink size={16} />
                       </a>
                     </div>
@@ -425,19 +432,20 @@ export default function Projects() {
                           autoFocus
                           value={noteInput}
                           onChange={e => setNoteInput(e.target.value)}
+                          aria-label={`Comment for ${repo.name}`}
                           placeholder="Add a comment..."
                           style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.4rem 0.5rem', color: 'var(--text-1)', fontSize: '0.75rem', outline: 'none' }}
                           onKeyDown={e => e.key === 'Enter' && saveNote(repo.id)}
                         />
-                        <button className="btn-icon" onClick={() => saveNote(repo.id)} style={{ padding: '4px', background: 'rgba(16,185,129,0.1)' }}><Check size={14} color="var(--success)" /></button>
-                        <button className="btn-icon" onClick={() => setEditingNoteId(null)} style={{ padding: '4px', background: 'rgba(244,63,94,0.1)' }}><X size={14} color="var(--danger)" /></button>
+                        <button type="button" className="btn-icon" aria-label={`Save comment for ${repo.name}`} onClick={() => saveNote(repo.id)} style={{ padding: '4px', background: 'rgba(16,185,129,0.1)' }}><Check size={14} color="var(--success)" /></button>
+                        <button type="button" className="btn-icon" aria-label="Cancel comment editing" onClick={() => setEditingNoteId(null)} style={{ padding: '4px', background: 'rgba(244,63,94,0.1)' }}><X size={14} color="var(--danger)" /></button>
                       </div>
                     ) : repoNotes[repo.id] ? (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.6rem', background: 'rgba(99,102,241,0.06)', borderRadius: '6px', border: '1px solid rgba(99,102,241,0.15)' }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-1)', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>"{repoNotes[repo.id]}"</span>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                          <button className="btn-icon" onClick={() => { setEditingNoteId(repo.id); setNoteInput(repoNotes[repo.id]); }} style={{ padding: '4px' }}><Edit2 size={12} color="var(--text-3)" /></button>
-                          <button className="btn-icon" onClick={() => { const newNotes = {...repoNotes}; delete newNotes[repo.id]; updateUserSlice('repoNotes', newNotes); }} style={{ padding: '4px' }}><Trash2 size={12} color="var(--danger)" /></button>
+                          <button type="button" className="btn-icon" aria-label={`Edit comment for ${repo.name}`} onClick={() => { setEditingNoteId(repo.id); setNoteInput(repoNotes[repo.id]); }} style={{ padding: '4px' }}><Edit2 size={12} color="var(--text-3)" /></button>
+                          <button type="button" className="btn-icon" aria-label={`Delete comment for ${repo.name}`} onClick={() => { const newNotes = {...repoNotes}; delete newNotes[repo.id]; updateUserSlice('repoNotes', newNotes); }} style={{ padding: '4px' }}><Trash2 size={12} color="var(--danger)" /></button>
                         </div>
                       </div>
                     ) : (
@@ -490,19 +498,20 @@ export default function Projects() {
                             autoFocus
                             value={noteInput}
                             onChange={e => setNoteInput(e.target.value)}
+                            aria-label={`Comment for ${repo.name}`}
                             placeholder="Add a comment..."
                             style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.3rem 0.5rem', color: 'var(--text-1)', fontSize: '0.75rem', outline: 'none' }}
                             onKeyDown={e => e.key === 'Enter' && saveNote(repo.id)}
                           />
-                          <button className="btn-icon" onClick={() => saveNote(repo.id)} style={{ padding: '4px', background: 'rgba(16,185,129,0.1)' }}><Check size={14} color="var(--success)" /></button>
-                          <button className="btn-icon" onClick={() => setEditingNoteId(null)} style={{ padding: '4px', background: 'rgba(244,63,94,0.1)' }}><X size={14} color="var(--danger)" /></button>
+                          <button type="button" className="btn-icon" aria-label={`Save comment for ${repo.name}`} onClick={() => saveNote(repo.id)} style={{ padding: '4px', background: 'rgba(16,185,129,0.1)' }}><Check size={14} color="var(--success)" /></button>
+                          <button type="button" className="btn-icon" aria-label="Cancel comment editing" onClick={() => setEditingNoteId(null)} style={{ padding: '4px', background: 'rgba(244,63,94,0.1)' }}><X size={14} color="var(--danger)" /></button>
                         </div>
                       ) : repoNotes[repo.id] ? (
                         <div style={{ display: 'inline-flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0.5rem', background: 'rgba(99,102,241,0.06)', borderRadius: '4px', border: '1px solid rgba(99,102,241,0.15)', gap: '1rem' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-1)', fontStyle: 'italic' }}>"{repoNotes[repo.id]}"</span>
                           <div style={{ display: 'flex', gap: '2px' }}>
-                            <button className="btn-icon" onClick={() => { setEditingNoteId(repo.id); setNoteInput(repoNotes[repo.id]); }} style={{ padding: '2px' }}><Edit2 size={12} color="var(--text-3)" /></button>
-                            <button className="btn-icon" onClick={() => { const newNotes = {...repoNotes}; delete newNotes[repo.id]; updateUserSlice('repoNotes', newNotes); }} style={{ padding: '2px' }}><Trash2 size={12} color="var(--danger)" /></button>
+                            <button type="button" className="btn-icon" aria-label={`Edit comment for ${repo.name}`} onClick={() => { setEditingNoteId(repo.id); setNoteInput(repoNotes[repo.id]); }} style={{ padding: '2px' }}><Edit2 size={12} color="var(--text-3)" /></button>
+                            <button type="button" className="btn-icon" aria-label={`Delete comment for ${repo.name}`} onClick={() => { const newNotes = {...repoNotes}; delete newNotes[repo.id]; updateUserSlice('repoNotes', newNotes); }} style={{ padding: '2px' }}><Trash2 size={12} color="var(--danger)" /></button>
                           </div>
                         </div>
                       ) : (
@@ -536,15 +545,15 @@ export default function Projects() {
                     </div>
                     {githubManageEnabled && githubToken && repo.permissions?.admin && (
                       <div style={{ display: 'flex', gap: '4px' }}>
-                        <button className="btn-icon" onClick={() => { setGithubRepoForm({ name: repo.name, description: repo.description || '', private: repo.private, editMode: true, oldName: repo.name, owner: repo.owner.login }); setShowGithubModal(true); }} style={{ padding: '6px' }} title="Edit Repo Settings">
+                        <button type="button" className="btn-icon" aria-label={`Edit ${repo.name} repository settings`} onClick={() => { setGithubRepoForm({ name: repo.name, description: repo.description || '', private: repo.private, editMode: true, oldName: repo.name, owner: repo.owner.login }); setShowGithubModal(true); }} style={{ padding: '6px' }} title="Edit Repo Settings">
                           <Edit2 size={14} color="var(--text-3)" />
                         </button>
-                        <button className="btn-icon" onClick={() => handleDeleteGithubRepo(repo.owner.login, repo.name, repo.id)} style={{ padding: '6px' }} title="Delete Repo">
+                        <button type="button" className="btn-icon" aria-label={`Delete ${repo.name} repository`} onClick={() => handleDeleteGithubRepo(repo.owner.login, repo.name, repo.id)} style={{ padding: '6px' }} title="Delete Repo">
                           <Trash2 size={14} color="var(--danger)" />
                         </button>
                       </div>
                     )}
-                    <a href={repo.html_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-3)', display: 'flex', alignItems: 'center' }}>
+                    <a href={repo.html_url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${repo.name} on GitHub`} style={{ color: 'var(--text-3)', display: 'flex', alignItems: 'center' }}>
                       <ExternalLink size={18} />
                     </a>
                   </div>
@@ -552,54 +561,54 @@ export default function Projects() {
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ── My Projects (manual) tab ── */}
       {activeTab === 'manual' && (
-        <>
+        <div id="projects-panel-manual" role="tabpanel" aria-labelledby="projects-tab-manual">
           {/* Add / Edit form */}
           {showForm ? (
             <div className="glass-card mb-lg" style={{ padding: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <span className="card-title">{editId ? 'Edit Project' : 'Add New Project'}</span>
-                <button className="btn-icon" onClick={() => { setShowForm(false); setForm(EMPTY_FORM); setEditId(null); }}><X size={16} /></button>
+                <button type="button" className="btn-icon" aria-label="Close project form" onClick={() => { setShowForm(false); setForm(EMPTY_FORM); setEditId(null); }}><X size={16} /></button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">Project Title *</label>
-                  <input className="form-input" placeholder="e.g. Personal Finance App" value={form.title}
+                  <label className="form-label" htmlFor="project-title">Project Title *</label>
+                  <input id="project-title" className="form-input" placeholder="e.g. Personal Finance App" value={form.title}
                     onChange={e => setForm({ ...form, title: e.target.value })}  />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">Description</label>
-                  <input className="form-input" placeholder="What does this project do?" value={form.description}
+                  <label className="form-label" htmlFor="project-description">Description</label>
+                  <input id="project-description" className="form-input" placeholder="What does this project do?" value={form.description}
                     onChange={e => setForm({ ...form, description: e.target.value })}  />
                 </div>
                 <div>
-                  <label className="form-label">Tech Stack / Language</label>
-                  <input className="form-input" placeholder="e.g. React, Python, PostgreSQL" value={form.stack}
+                  <label className="form-label" htmlFor="project-stack">Tech Stack / Language</label>
+                  <input id="project-stack" className="form-input" placeholder="e.g. React, Python, PostgreSQL" value={form.stack}
                     onChange={e => setForm({ ...form, stack: e.target.value })}  />
                 </div>
                 <div>
-                  <label className="form-label">Status</label>
-                  <select className="form-input" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} >
+                  <label className="form-label" htmlFor="project-status">Status</label>
+                  <select id="project-status" className="form-input" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} >
                     {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">Project URL</label>
-                  <input className="form-input" placeholder="https://your-project-url.com" value={form.url}
+                  <label className="form-label" htmlFor="project-url">Project URL</label>
+                  <input id="project-url" className="form-input" placeholder="https://your-project-url.com" value={form.url}
                     onChange={e => setForm({ ...form, url: e.target.value })}  />
                 </div>
                 <div>
-                  <label className="form-label">Start Date</label>
-                  <input type="date" className="form-input" value={form.startDate}
+                  <label className="form-label" htmlFor="project-start-date">Start Date</label>
+                  <input id="project-start-date" type="date" className="form-input" value={form.startDate}
                     onChange={e => setForm({ ...form, startDate: e.target.value })}  />
                 </div>
                 <div>
-                  <label className="form-label">Target End Date</label>
-                  <input type="date" className="form-input" value={form.endDate}
+                  <label className="form-label" htmlFor="project-end-date">Target End Date</label>
+                  <input id="project-end-date" type="date" className="form-input" value={form.endDate}
                     onChange={e => setForm({ ...form, endDate: e.target.value })}  />
                 </div>
               </div>
@@ -616,10 +625,10 @@ export default function Projects() {
                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Plus size={16} /> Add Project
               </button>
-              <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
-                <button className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>Grid</button>
-                <button className={`btn-sm ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')}>Kanban</button>
-                <button className={`btn-sm ${viewMode === 'gantt' ? 'active' : ''}`} onClick={() => setViewMode('gantt')}>Timeline</button>
+              <div role="group" aria-label="Project layout" style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
+                <button aria-pressed={viewMode === 'grid'} className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>Grid</button>
+                <button aria-pressed={viewMode === 'kanban'} className={`btn-sm ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')}>Kanban</button>
+                <button aria-pressed={viewMode === 'gantt'} className={`btn-sm ${viewMode === 'gantt' ? 'active' : ''}`} onClick={() => setViewMode('gantt')}>Timeline</button>
               </div>
             </div>
           )}
@@ -639,8 +648,8 @@ export default function Projects() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <h3 style={{ fontWeight: 800, fontSize: '1.05rem', margin: 0, flex: 1 }}>{p.title}</h3>
                         <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
-                          <button className="btn-icon" style={{ padding: '4px' }} onClick={() => startEdit(p)} title="Edit"><Edit2 size={14} /></button>
-                          <button className="btn-icon" style={{ padding: '4px', color: 'var(--danger)' }} onClick={() => handleDelete(p.id)} title="Delete"><Trash2 size={14} /></button>
+                          <button type="button" className="btn-icon" aria-label={`Edit ${p.title}`} style={{ padding: '4px' }} onClick={() => startEdit(p)} title="Edit"><Edit2 size={14} /></button>
+                          <button type="button" className="btn-icon" aria-label={`Delete ${p.title}`} style={{ padding: '4px', color: 'var(--danger)' }} onClick={() => handleDelete(p.id)} title="Delete"><Trash2 size={14} /></button>
                         </div>
                       </div>
                       {p.description && <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>}
@@ -666,14 +675,15 @@ export default function Projects() {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {manualProjects.filter(p => p.status === status).map(p => (
-                          <div key={p.id} className="glass-card" style={{ padding: '1rem', cursor: 'pointer', transition: 'transform 0.2s', ':hover': { transform: 'translateY(-2px)' } }} onClick={() => startEdit(p)}>
+                          <button key={p.id} type="button" className="glass-card" aria-label={`Edit ${p.title}`}
+                            style={{ width: '100%', padding: '1rem', cursor: 'pointer', textAlign: 'left', color: 'inherit', font: 'inherit', transition: 'transform 0.2s' }} onClick={() => startEdit(p)}>
                             <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>{p.title}</h4>
                             {p.stack && (
                               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                 {p.stack.split(',').map(s => <span key={s} style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'var(--bg-input)', borderRadius: '4px', border: '1px solid var(--border)' }}>{s.trim()}</span>)}
                               </div>
                             )}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -737,7 +747,8 @@ export default function Projects() {
                             const isAfterWindow  = projEnd.getTime()   > windowEnd.getTime();
 
                             return (
-                              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '10px' }} onClick={() => startEdit(p)}>
+                              <button key={p.id} type="button" aria-label={`Edit ${p.title}`}
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '10px', padding: 0, border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }} onClick={() => startEdit(p)}>
                                 <div style={{ width: '180px', fontSize: '0.82rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', color: 'var(--text-1)', flexShrink: 0 }}>
                                   <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: STATUS_COLOR[p.status] || 'var(--accent)', marginRight: '6px', flexShrink: 0, verticalAlign: 'middle' }} />
                                   {p.title}
@@ -762,7 +773,7 @@ export default function Projects() {
                                   </div>
                                 </div>
                                 <div style={{ width: '65px', fontSize: '0.65rem', color: STATUS_COLOR[p.status], fontWeight: 800, flexShrink: 0 }}>{p.status}</div>
-                              </div>
+                              </button>
                             );
                           })}
                         </>
@@ -773,7 +784,7 @@ export default function Projects() {
               )}
             </>
           )}
-        </>
+        </div>
       )}
     </div>
   );

@@ -296,7 +296,10 @@ const use3DStore = create(
       /** Wardrobe / surface state */
       // Use the validated skin surface by default. Shader-only outfits remain
       // selectable previews until authored clothing geometry is available.
-      wardrobeState: WARDROBE_PRESETS.GYM,
+      // Physique inspection should reveal the torso silhouette on first load.
+      // Boxer briefs keep the default modest while leaving body composition,
+      // posture and proportional changes visible without opening the editor.
+      wardrobeState: WARDROBE_PRESETS.UNDERWEAR,
 
       /** Camera preset name key */
       cameraPreset: "FRONT",

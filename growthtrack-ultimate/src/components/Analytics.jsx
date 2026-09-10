@@ -6,6 +6,7 @@ import {
 import { TrendingUp, BarChart2, Zap, Brain, Moon, Activity, Shield, Target } from 'lucide-react';
 import useStore from '../store/useStore';
 import { EMPTY_LIST, EMPTY_RECORD } from '../lib/emptyValues';
+import { currentStreak } from '../lib/metricSeries';
 
 // Lazy-load heavy sub-panels so they only download when selected
 const Logs = lazy(() => import('./Logs'));
@@ -230,17 +231,7 @@ export default function Analytics() {
   const habitStreakData = useMemo(() => {
     return habits.map(h => {
       const logs  = habitLogsByHabit[h.id] || [];
-      const logSet = new Set(logs.filter(l => l.completed !== false).map(l => l.date));
-      let streak = 0;
-      let d = new Date();
-      while (true) {
-        const k = d.toISOString().slice(0, 10);
-        if (logSet.has(k)) streak++;
-        else if (streak > 0) break;
-        d.setDate(d.getDate() - 1);
-        if (streak > 365) break;
-      }
-      return { name: h.name, streak };
+      return { name: h.name, streak: currentStreak(logs) };
     }).sort((a, b) => b.streak - a.streak);
   }, [habits, habitLogsByHabit]);
 

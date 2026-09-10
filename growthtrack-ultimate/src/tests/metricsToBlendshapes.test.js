@@ -44,6 +44,23 @@ describe('pure metric-to-blendshape engine', () => {
     expect(changedChannels(before, after)).toEqual(['bicep_peak', 'tricep_horse']);
   });
 
+  it('does not infer shoulder slope or drop from shoulder width', () => {
+    const narrow = computeMorphWeights({ shoulders: 96 });
+    const broad = computeMorphWeights({ shoulders: 136 });
+
+    expect(broad.shoulder_slope).toBe(narrow.shoulder_slope);
+    expect(broad.shoulder_drop).toBe(narrow.shoulder_drop);
+    expect(computeMorphWeights({ shoulderSlope: 0.7 }).shoulder_slope).toBeCloseTo(0.7);
+    expect(computeMorphWeights({ shoulderDrop: 0.4 }).shoulder_drop).toBeCloseTo(0.4);
+  });
+
+  it('keeps finger spread independent from hand length', () => {
+    expect(computeMorphWeights({ handLength: 17 }).hand_splay).toBe(
+      computeMorphWeights({ handLength: 22 }).hand_splay,
+    );
+    expect(computeMorphWeights({ handSplay: 0.65 }).hand_splay).toBeCloseTo(0.65);
+  });
+
   it('inherits unspecified goal values before calculating goal morphs', () => {
     const current = { biologicalSex: 'female', height: 168, weight: 64, chest: 94, waist: 78 };
     const goal = { weight: 58 };

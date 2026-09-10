@@ -70,8 +70,12 @@ describe('physique profile mapping', () => {
   });
 
   it('calculates progress from the baseline rather than current divided by goal', () => {
-    expect(calculateGoalProgress({ baseline: { weight: 60 }, current: { weight: 70 }, goal: { weight: 80 } }).score).toBe(50);
-    expect(calculateGoalProgress({ baseline: { bodyFat: 20 }, current: { bodyFat: 15 }, goal: { bodyFat: 10 } }).score).toBe(50);
+    const gain = calculateGoalProgress({ baseline: { weight: 60 }, current: { weight: 70 }, goal: { weight: 80 } });
+    const loss = calculateGoalProgress({ baseline: { bodyFat: 20 }, current: { bodyFat: 15 }, goal: { bodyFat: 10 } });
+    expect(gain.score).toBe(50);
+    expect(gain.byMetric.weight).toBe(50);
+    expect(loss.score).toBe(50);
+    expect(loss.byMetric.bodyFat).toBe(50);
   });
 
   it('builds ordered snapshots from database logs', () => {

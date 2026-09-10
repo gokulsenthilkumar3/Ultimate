@@ -12,6 +12,7 @@ import { useToast } from '../hooks/useToast';
 import { apiSync } from '../store/useStore';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
+import { consumePendingUiAction } from '../lib/pendingUiAction';
 
 // ── P1-P4 priority config ─────────────────────────────────────────────────────────────
 const PRIORITIES = [
@@ -378,7 +379,16 @@ export default function Tasks() {
       }
     };
     window.addEventListener('open-add-form', handleOpen);
-    return () => window.removeEventListener('open-add-form', handleOpen);
+    const pendingFrame = window.requestAnimationFrame(() => {
+      if (consumePendingUiAction('tasks')) {
+        setShowForm(true);
+        setEditId(null);
+      }
+    });
+    return () => {
+      window.removeEventListener('open-add-form', handleOpen);
+      window.cancelAnimationFrame(pendingFrame);
+    };
   }, []);
 
   // 'N' key shortcut: open new task form when no input is focused

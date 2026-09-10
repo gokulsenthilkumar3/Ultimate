@@ -5,10 +5,12 @@ import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
+import { handleTabKeyDown } from '../hooks/useHashTab';
 
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
 const PROJECTS_LIST = ['General', 'Development', 'Design', 'Research', 'Meetings', 'Admin', 'Marketing', 'Other'];
 const DEFAULT_RATE = 50; // USD/hr
+const TIMESHEET_TABS = ['timer', 'log', 'analytics'].map(id => ({ id }));
 
 function padTime(n) { return String(n).padStart(2, '0'); }
 function formatDuration(seconds) {
@@ -238,15 +240,19 @@ export default function Timesheet() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
-        {['timer', 'log', 'analytics'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === t ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{t}</button>
+      <div role="tablist" aria-label="Timesheet views"
+        onKeyDown={event => handleTabKeyDown(event, { tabs: TIMESHEET_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'timesheet-tab' })}
+        style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
+        {TIMESHEET_TABS.map(({ id }) => (
+          <button key={id} type="button" role="tab" id={`timesheet-tab-${id}`}
+            aria-selected={tab === id} aria-controls={`timesheet-panel-${id}`} tabIndex={tab === id ? 0 : -1}
+            onClick={() => setTab(id)} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === id ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === id ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{id}</button>
         ))}
       </div>
 
       {/* Timer tab */}
       {tab === 'timer' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div id="timesheet-panel-timer" role="tabpanel" aria-labelledby="timesheet-tab-timer" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Stopwatch */}
           <div className="glass-card" style={{ textAlign: 'center', padding: '2rem' }}>
             {/* Big clock */}
@@ -291,26 +297,27 @@ export default function Timesheet() {
             {/* Session metadata */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.6rem', maxWidth: '540px', margin: '0 auto' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px', fontWeight: 700 }}>Project</label>
-                <select value={project} onChange={e => setProject(e.target.value)} className="form-input" style={{ fontSize: '0.82rem' }}>
+                <label htmlFor="timesheet-project" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px', fontWeight: 700 }}>Project</label>
+                <select id="timesheet-project" value={project} onChange={e => setProject(e.target.value)} className="form-input" style={{ fontSize: '0.82rem' }}>
                   {PROJECTS_LIST.map(p => <option key={p}>{p}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px', fontWeight: 700 }}>Task / Description</label>
-                <input value={task} onChange={e => setTask(e.target.value)} placeholder="What are you working on?" className="form-input" style={{ fontSize: '0.82rem' }} />
+                <label htmlFor="timesheet-task" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px', fontWeight: 700 }}>Task / Description</label>
+                <input id="timesheet-task" value={task} onChange={e => setTask(e.target.value)} placeholder="What are you working on?" className="form-input" style={{ fontSize: '0.82rem' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px', fontWeight: 700 }}>Hourly Rate ($)</label>
-                <input type="number" value={rate} onChange={e => setRate(Number(e.target.value))} className="form-input" style={{ fontSize: '0.82rem' }} />
+                <label htmlFor="timesheet-rate" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px', fontWeight: 700 }}>Hourly Rate ($)</label>
+                <input id="timesheet-rate" type="number" value={rate} onChange={e => setRate(Number(e.target.value))} className="form-input" style={{ fontSize: '0.82rem' }} />
               </div>
               <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', paddingTop: '1.2rem' }}>
-                  <div onClick={() => setBillable(v => !v)} style={{ width: '32px', height: '18px', borderRadius: '99px', background: billable ? '#10b981' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
-                    <div style={{ position: 'absolute', top: '2px', left: billable ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-                  </div>
+                <button type="button" role="switch" aria-checked={billable} aria-label="Billable session"
+                  onClick={() => setBillable(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '1.2rem 0 0', background: 'none', border: 'none' }}>
+                  <span aria-hidden="true" style={{ width: '32px', height: '18px', borderRadius: '99px', background: billable ? '#10b981' : 'rgba(255,255,255,0.1)', position: 'relative', transition: 'background 0.2s' }}>
+                    <span style={{ position: 'absolute', top: '2px', left: billable ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                  </span>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: billable ? '#10b981' : 'var(--text-3)' }}>Billable</span>
-                </label>
+                </button>
               </div>
             </div>
           </div>
@@ -359,17 +366,17 @@ export default function Timesheet() {
             <div className="glass-card">
               <p style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.75rem' }}>Manual Entry</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
-                <select value={manualForm.project} onChange={e => setManualForm(f => ({ ...f, project: e.target.value }))} className="form-input">
+                <select aria-label="Project" value={manualForm.project} onChange={e => setManualForm(f => ({ ...f, project: e.target.value }))} className="form-input">
                   {PROJECTS_LIST.map(p => <option key={p}>{p}</option>)}
                 </select>
-                <input placeholder="Task description" value={manualForm.task} onChange={e => setManualForm(f => ({ ...f, task: e.target.value }))} className="form-input" />
+                <input aria-label="Task description" placeholder="Task description" value={manualForm.task} onChange={e => setManualForm(f => ({ ...f, task: e.target.value }))} className="form-input" />
                 <div>
-                  <label style={{ fontSize: '0.62rem', color: 'var(--text-3)', display: 'block', marginBottom: '4px' }}>Date</label>
-                  <input type="date" value={manualForm.date} onChange={e => setManualForm(f => ({ ...f, date: e.target.value }))} className="form-input" />
+                  <label htmlFor="timesheet-manual-date" style={{ fontSize: '0.62rem', color: 'var(--text-3)', display: 'block', marginBottom: '4px' }}>Date</label>
+                  <input id="timesheet-manual-date" type="date" value={manualForm.date} onChange={e => setManualForm(f => ({ ...f, date: e.target.value }))} className="form-input" />
                 </div>
-                <input type="number" placeholder="Hours" value={manualForm.hours} onChange={e => setManualForm(f => ({ ...f, hours: e.target.value }))} className="form-input" />
-                <input type="number" placeholder="Minutes" value={manualForm.minutes} onChange={e => setManualForm(f => ({ ...f, minutes: e.target.value }))} className="form-input" />
-                <input placeholder="Notes" value={manualForm.notes} onChange={e => setManualForm(f => ({ ...f, notes: e.target.value }))} className="form-input" />
+                <input type="number" aria-label="Hours" placeholder="Hours" value={manualForm.hours} onChange={e => setManualForm(f => ({ ...f, hours: e.target.value }))} className="form-input" />
+                <input type="number" aria-label="Minutes" placeholder="Minutes" value={manualForm.minutes} onChange={e => setManualForm(f => ({ ...f, minutes: e.target.value }))} className="form-input" />
+                <input aria-label="Notes" placeholder="Notes" value={manualForm.notes} onChange={e => setManualForm(f => ({ ...f, notes: e.target.value }))} className="form-input" />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button onClick={() => setShowManual(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
@@ -382,7 +389,7 @@ export default function Timesheet() {
 
       {/* Log tab */}
       {tab === 'log' && (
-        <div className="glass-card" style={{ overflowX: 'auto' }}>
+        <div id="timesheet-panel-log" role="tabpanel" aria-labelledby="timesheet-tab-log" className="glass-card" style={{ overflowX: 'auto' }}>
           {recentEntries.length === 0 ? (
             <EmptyState icon={Clock} title="No Entries" description="Start the timer to log your first session." />
           ) : (<>
@@ -416,7 +423,7 @@ export default function Timesheet() {
                     </div>
                     <div style={{ width: '10%', padding: '0 0.6rem', fontFamily: 'monospace', color: '#fbbf24', fontWeight: 700, fontSize: '0.78rem' }}>{e.earnings ? `$${e.earnings.toFixed(2)}` : '—'}</div>
                     <div style={{ width: '5%', padding: '0 0.6rem', display: 'flex', justifyContent: 'center' }}>
-                      <button onClick={() => deleteTimesheetEntry(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} /></button>
+                      <button type="button" aria-label={`Delete ${e.project} entry from ${e.date}`} onClick={() => deleteTimesheetEntry(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} /></button>
                     </div>
                   </div>
                 );
@@ -430,7 +437,7 @@ export default function Timesheet() {
 
       {/* Analytics tab */}
       {tab === 'analytics' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div id="timesheet-panel-analytics" role="tabpanel" aria-labelledby="timesheet-tab-analytics" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="glass-card">
             <span className="card-title">Hours by Day — Last 7 Days</span>
             <ResponsiveContainer width="100%" height={200}>

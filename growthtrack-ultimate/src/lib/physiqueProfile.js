@@ -228,11 +228,12 @@ export function calculateGoalProgress({ baseline = {}, current = {}, goal = {} }
     const progress = Math.abs(span) < 0.0001 ? (Math.abs(now - target) < 0.0001 ? 100 : 0) : ((now - start) / span) * 100;
     return [{ key: metric.key, progress: Math.max(0, Math.min(100, progress)) }];
   });
-  if (!entries.length) return { score: null, completed: 0, total: 0 };
+  if (!entries.length) return { score: null, completed: 0, total: 0, byMetric: {} };
   return {
     score: Math.round(entries.reduce((sum, entry) => sum + entry.progress, 0) / entries.length),
     completed: entries.filter((entry) => entry.progress >= 100).length,
     total: entries.length,
+    byMetric: Object.fromEntries(entries.map((entry) => [entry.key, entry.progress])),
   };
 }
 

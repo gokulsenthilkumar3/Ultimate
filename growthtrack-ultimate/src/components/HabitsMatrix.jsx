@@ -7,9 +7,11 @@ import { Plus, Trash2, Flame, Check, ChevronDown, ChevronUp, Calendar } from 'lu
 import EmptyState from './ui/EmptyState';
 import { currentStreak, localDateKey } from '../lib/metricSeries';
 import { useToast } from '../hooks/useToast';
+import { consumePendingUiAction } from '../lib/pendingUiAction';
 
 const MATRIX_DAYS = 364;
 const RECENT_DAYS = 28;
+const EMPTY_LOGS = Object.freeze([]);
 
 function getDateRange(daysBack) {
   const dates = [];
@@ -68,7 +70,6 @@ function getStreakMilestone(streak) {
 
 // ── Global 365-day Heatmap (all habits combined) ──────────────────────────
 function GlobalHeatmap({ dates, habits, habitLogsByHabit }) {
-  const [tooltip, setTooltip] = useState(null);
   const totalHabits = habits.length;
 
   const countByDate = useMemo(() => {
@@ -152,8 +153,6 @@ function GlobalHeatmap({ dates, habits, habitLogsByHabit }) {
                     transition: 'transform 0.1s',
                   }}
                   title={`${d}: ${count}/${totalHabits} habits completed`}
-                  onMouseEnter={e => setTooltip({ date: d, count, x: e.clientX, y: e.clientY })}
-                  onMouseLeave={() => setTooltip(null)}
                 />
               );
             })}
@@ -180,7 +179,7 @@ function GlobalHeatmap({ dates, habits, habitLogsByHabit }) {
 function HabitHeatmap({ habit, dates, habitLogsByHabit, cat, toggleHabitForDate }) {
   const CELL = 14;
   const GAP  = 3;
-  const logs = habitLogsByHabit[habit.id] || [];
+  const logs = habitLogsByHabit[habit.id] ?? EMPTY_LOGS;
   const logSet = useMemo(() => new Set(logs.filter(l => l.completed !== false).map(l => l.date)), [logs]);
   const weeks = Math.ceil(dates.length / 7);
   const monthLabels = useMemo(() => buildMonthLabels(dates), [dates]);
@@ -268,7 +267,13 @@ export default React.memo(function HabitsMatrix() {
   useEffect(() => {
     const handleOpen = (e) => { if (e.detail === 'habits') setShowAdd(true); };
     window.addEventListener('open-add-form', handleOpen);
-    return () => window.removeEventListener('open-add-form', handleOpen);
+    const pendingFrame = window.requestAnimationFrame(() => {
+      if (consumePendingUiAction('habits')) setShowAdd(true);
+    });
+    return () => {
+      window.removeEventListener('open-add-form', handleOpen);
+      window.cancelAnimationFrame(pendingFrame);
+    };
   }, []);
 
   const dates = useMemo(() => getDateRange(MATRIX_DAYS), []);

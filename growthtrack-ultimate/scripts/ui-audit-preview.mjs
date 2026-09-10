@@ -9,13 +9,20 @@ export function createAuditState(empty = false) {
     return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
   };
   return {
-    user: { id: 'ui-review', name: 'Alex Morgan', email: 'review@example.test', gender: 'M', height: 178, weight: 76, bodyFat: 18, age: 30 },
+    user: {
+      id: 'ui-review', name: 'Alex Morgan', email: 'review@example.test', gender: 'M', height: 178, weight: 76, bodyFat: 18, age: 30,
+      physiqueTargets: { goalMetrics: { weight: 79, bodyFat: 14, chest: 104, waist: 79, shoulders: 121, arms: 37, thighs: 58, calves: 39, neck: 38, hips: 99 } },
+    },
     preference: { onboardingComplete: true, theme: 'dark', palette: 'gold', reducedMotion: true },
     bodyProfile: { biologicalSex: 'male', heightCm: 178, weightKg: 76, bodyFatPct: 18, chestCm: 99, waistCm: 84, shouldersCm: 116, shoulderBreadthCm: 43, armsCm: 34, thighsCm: 55, calvesCm: 37, neckCm: 37, hipsCm: 98 },
     tasks: empty ? [] : [{ id: 'review-task', title: 'Plan next week', priority: 'high', status: 'todo', due_date: date(), done: false }],
     habits: empty ? [] : [{ id: 'review-habit', name: 'Evening walk', color: '#a78bfa', frequency: 'daily' }],
     goals: empty ? [] : [{ id: 'review-goal', title: 'Read twelve books', target_value: 12, current_value: 4, status: 'active' }],
-    metric_logs: empty ? [] : Array.from({ length: 12 }, (_, i) => ({ id: `metric-${i}`, date: date(-i * 3), weight: 76 + i * .2, water: i === 0 ? 0 : 1.5 + (i % 3) * .3, sleep: 6.5 + (i % 4) * .4, stamina: 60 + i, hr: 64 + i, mood: 6 + i % 4, energy: 5 + i % 5 })),
+    metric_logs: empty ? [] : [
+      { id: 'physique-baseline', date: date(-84), metric: 'physique_snapshot', label: 'Baseline', metrics: { weight: 82, bodyFat: 23, chest: 97, waist: 92, shoulders: 112, arms: 32, thighs: 57, calves: 36, neck: 38, hips: 101 } },
+      { id: 'physique-midpoint', date: date(-35), metric: 'physique_snapshot', label: 'Midpoint', metrics: { weight: 78.5, bodyFat: 20, chest: 98, waist: 87, shoulders: 114, arms: 33, thighs: 56, calves: 36.5, neck: 37.5, hips: 99 } },
+      ...Array.from({ length: 12 }, (_, i) => ({ id: `metric-${i}`, date: date(-i * 3), weight: 76 + i * .2, water: i === 0 ? 0 : 1.5 + (i % 3) * .3, sleep: 6.5 + (i % 4) * .4, stamina: 60 + i, hr: 64 + i, mood: 6 + i % 4, energy: 5 + i % 5 })),
+    ],
     sleep_logs: empty ? [] : Array.from({ length: 12 }, (_, i) => ({ id: `sleep-${i}`, date: date(-i * 3), duration: 6.5 + (i % 4) * .4, quality: 4 })),
     finance: [], budgets: [], shopping: [], entertainment: [], timesheet: [], notes: [], documents: [], subscriptions: [], nutrition_logs: [], moodLogs: [], vitalsLogs: [], medications: [], workout_sessions: [], databases: [], socialProfiles: [], config: {}, healthProfile: {},
   };
