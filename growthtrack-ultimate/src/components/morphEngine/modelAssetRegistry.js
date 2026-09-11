@@ -5,6 +5,16 @@ const DEFAULT_ASSETS = Object.freeze({
   lite: `${base}assets/models/humanoid-base-lite.glb`,
 });
 
+// v2 assets are opt-in until the authored topology and calibration gates pass.
+// Keeping them in the same registry lets the viewer promote an asset without
+// changing camera, morph, comparison, or persistence code.
+const V2_ASSETS = Object.freeze({
+  male: import.meta.env.VITE_HUMANOID_V2_MALE_MODEL || '',
+  female: import.meta.env.VITE_HUMANOID_V2_FEMALE_MODEL || '',
+  neutral: import.meta.env.VITE_HUMANOID_V2_NEUTRAL_MODEL || '',
+  mobile: import.meta.env.VITE_HUMANOID_V2_MOBILE_MODEL || '',
+});
+
 const configuredAssets = Object.freeze({
   male: import.meta.env.VITE_HUMANOID_MALE_MODEL || DEFAULT_ASSETS.production,
   female: import.meta.env.VITE_HUMANOID_FEMALE_MODEL || DEFAULT_ASSETS.production,
@@ -39,14 +49,19 @@ export function resolveModelAsset(preference = {}, gpuTier = 'HIGH') {
   );
   const customAsset = safeAvatarAsset(preference.avatarAsset);
   const configuredAsset = configuredAssets[preset] || configuredAssets.neutral;
+  const configuredV2 = safeAvatarAsset(V2_ASSETS[preset]);
+  const configuredV2Mobile = safeAvatarAsset(V2_ASSETS.mobile);
+  const preferV2 = preference.modelVersion === 'v2' || preference.preferV2 === true;
+  const selectedV2 = preferV2 && (gpuTier === 'LOW' ? configuredV2Mobile || configuredV2 : configuredV2);
   const useLiteDefault = gpuTier === 'LOW' && !customAsset && configuredAsset === DEFAULT_ASSETS.production;
   return {
-    path: customAsset || (useLiteDefault ? DEFAULT_ASSETS.lite : configuredAsset),
+    path: customAsset || selectedV2 || (useLiteDefault ? DEFAULT_ASSETS.lite : configuredAsset),
     preset,
-    source: customAsset ? 'profile' : configuredAsset !== DEFAULT_ASSETS.production ? 'environment' : 'default',
-    isVariantReady: Boolean(customAsset || configuredAsset !== DEFAULT_ASSETS.production),
+    version: customAsset ? 'profile' : selectedV2 ? 'v2' : 'legacy',
+    source: customAsset ? 'profile' : selectedV2 ? 'environment-v2' : configuredAsset !== DEFAULT_ASSETS.production ? 'environment' : 'default',
+    isVariantReady: Boolean(customAsset || selectedV2 || configuredAsset !== DEFAULT_ASSETS.production),
+    v2Ready: Boolean(selectedV2),
   };
 }
 
-export { DEFAULT_ASSETS };
-
+export { DEFAULT_ASSETS, V2_ASSETS };

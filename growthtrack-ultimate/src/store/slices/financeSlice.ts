@@ -98,9 +98,9 @@ export const createFinanceSlice: StateCreator<any, [], [], FinanceSlice> = (set,
     try {
       const result = await apiSync('/finance/sync/bank', 'POST', { provider });
       if (result && result.data && Array.isArray(result.data.transactions)) {
+        let added = 0;
         set((state: any) => {
           const newTxs = { ...(state.finance?.transactions || {}) };
-          let added = 0;
           result.data.transactions.forEach((tx: any) => {
             if (!newTxs[tx.id]) {
               newTxs[tx.id] = tx;

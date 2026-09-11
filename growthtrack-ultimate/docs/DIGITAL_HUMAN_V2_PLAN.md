@@ -32,6 +32,13 @@ The remaining realism ceiling is the source mesh, head anatomy, deformation
 quality, and measurement calibration. More shader patches cannot reliably fix
 those asset-level limits.
 
+The first v2 runtime slice is now in place: the registry accepts opt-in
+`VITE_HUMANOID_V2_*` hero and mobile assets, reports the selected model version,
+and the loader exposes bone counts for readiness checks. The pure
+`digitalHumanV2` contract validates required anatomical parts, bone and morph
+budgets, and deterministic calibration error. Until authored v2 GLBs are
+provided, the shipped defaults intentionally remain the validated legacy asset.
+
 ## Product contract
 
 The viewer must communicate three different kinds of truth clearly:

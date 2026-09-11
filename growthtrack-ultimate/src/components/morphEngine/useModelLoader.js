@@ -160,10 +160,10 @@ function buildFallbackBounds() {
  */
 export function useModelLoader(modelPreference = {}) {
   const gpuTier = use3DStore((state) => state.gpuTier);
-  const { avatarAsset, biologicalSex, modelPreset } = modelPreference;
+  const { avatarAsset, biologicalSex, modelPreset, modelVersion } = modelPreference;
   const modelAsset = useMemo(
-    () => resolveModelAsset({ avatarAsset, biologicalSex, modelPreset }, gpuTier),
-    [avatarAsset, biologicalSex, gpuTier, modelPreset],
+    () => resolveModelAsset({ avatarAsset, biologicalSex, modelPreset, modelVersion }, gpuTier),
+    [avatarAsset, biologicalSex, gpuTier, modelPreset, modelVersion],
   );
   const modelPath = modelAsset.path;
   // useGLTF must be called unconditionally (Rules of Hooks).
@@ -197,7 +197,7 @@ export function useModelLoader(modelPreference = {}) {
           skeleton: null,
           scene: group,
           bounds,
-          diagnostics: { ...buildDiagnosticsFromScene(group, mesh, {}, bounds), modelAsset },
+          diagnostics: { ...buildDiagnosticsFromScene(group, mesh, {}, bounds), modelAsset, boneCount: 0 },
           isDev: true,
         };
       }
@@ -314,7 +314,7 @@ export function useModelLoader(modelPreference = {}) {
           skeleton,
           scene: clonedScene,
           bounds,
-          diagnostics: { ...buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh), modelAsset },
+          diagnostics: { ...buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh), modelAsset, boneCount: skeleton?.bones?.length ?? 0 },
           isDev: false,
         };
       }
@@ -338,7 +338,7 @@ export function useModelLoader(modelPreference = {}) {
       skeleton: null,
       scene: group,
       bounds,
-      diagnostics: { ...buildDiagnosticsFromScene(group, mesh, {}, bounds), modelAsset },
+      diagnostics: { ...buildDiagnosticsFromScene(group, mesh, {}, bounds), modelAsset, boneCount: 0 },
       isDev: true,
     };
   }, [gltf, modelAsset]);

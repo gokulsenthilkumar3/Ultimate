@@ -313,7 +313,6 @@ export default function HumanoidViewer() {
   const globalMetricLogs = metricLogsState || EMPTY_ARRAY;
   const persistedPhysique = persistedPhysiqueState || EMPTY_OBJECT;
   const qualityGate = useMemo(() => buildRendererQualityGate({
-    // @ts-expect-error diagnostics is passed to the underlying JS function
     diagnostics: modelDiagnostics,
     telemetry: rendererTelemetry,
     renderMode,
