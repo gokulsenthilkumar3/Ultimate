@@ -31,6 +31,7 @@ import { createClothMaterial, isClothPreset } from "./WardrobeShader";
 import { createDeltaMaterial as createDeltaHeatmapMaterial, updateDeltaUniforms } from "./DeltaHeatmapShader";
 import { resolveBodyMetrics } from "../../lib/bodyMetricFallbacks";
 import { computeHeightScale, resolveSkinTone } from "./metricsToBlendshapes";
+import { inspectDigitalHumanV2 } from './digitalHumanV2';
 
 const ProceduralHumanoid = React.lazy(() => import("./ProceduralHumanoid"));
 
@@ -86,6 +87,7 @@ export default function HumanoidClone({
       biologicalSex: metrics.biologicalSex || current.biologicalSex,
       modelPreset: metrics.modelPreset || current.modelPreset,
       avatarAsset: metrics.avatarAsset || current.avatarAsset,
+      modelVersion: metrics.modelVersion || current.modelVersion,
     };
   }));
 
@@ -147,6 +149,7 @@ export default function HumanoidClone({
   useEffect(() => {
     setModelDiagnostics(diagnostics ? {
       ...diagnostics,
+      v2: inspectDigitalHumanV2(diagnostics),
       activeRenderer: useProcedural ? 'procedural-production' : 'authored-glb',
     } : null);
   }, [diagnostics, setModelDiagnostics, useProcedural]);

@@ -180,7 +180,7 @@ const precisionUnit = (field) => ['leanMass', 'skeletalMuscle', 'boneMass'].incl
       : 'cm';
 
 const BODY_PROFILE_APPEARANCE_DEFAULTS = Object.freeze({
-  biologicalSex: '', modelPreset: '', skinFitzpatrickIndex: '', skinUndertone: '', skinColorHex: '', skinTextureVariant: '', skinFreckleDensity: '', skinFeatureMap: '',
+  biologicalSex: '', modelVersion: '', modelPreset: '', skinFitzpatrickIndex: '', skinUndertone: '', skinColorHex: '', skinTextureVariant: '', skinFreckleDensity: '', skinFeatureMap: '',
   hairStyle: '', hairColorHex: '', hairTexture: '', hairlineStyle: '', hairPart: '', hairDensity: '', hairLength: '', facialHairStyle: '', facialHairColorHex: '', facialHairDensity: '',
   eyebrowStyle: '', eyebrowColorHex: '', eyeColorHex: '', eyePattern: '', eyelidShape: '', eyelashStyle: '', scleraColorHex: '', irisLimbalRing: false, lipColorHex: '',
   bodyHairPattern: '', bodyHairColorHex: '', bodyHairTexture: '', bodyHairDensity: '', nailColorHex: '', nailShape: '', nailLengthMm: '', avatarAsset: '', tattooAsset: '', anatomyPreset: '', anatomyVisibility: '', anatomyRevealConsent: false,
@@ -193,6 +193,7 @@ const getBodyProfileFormDefaults = (profile = {}) => ({
 
 const BODY_APPEARANCE_SELECT_FIELDS = Object.freeze([
   { field: 'biologicalSex', label: 'Biological sex', options: ['', 'female', 'male', 'intersex', 'nonbinary', 'prefer_not_to_say'] },
+  { field: 'modelVersion', label: '3D model version', options: ['', 'legacy', 'v2'] },
   { field: 'modelPreset', label: 'Model asset preset', options: ['', 'auto', 'neutral', 'female', 'male'] },
   { field: 'skinUndertone', label: 'Skin undertone', options: ['', 'cool', 'neutral', 'warm', 'olive'] },
   { field: 'skinTextureVariant', label: 'Skin texture', options: ['', 'natural', 'smooth', 'detailed', 'mature'] },

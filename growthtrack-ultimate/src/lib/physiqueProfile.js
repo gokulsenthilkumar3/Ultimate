@@ -121,7 +121,7 @@ export const BODY_APPEARANCE_FIELDS = Object.freeze([
   ['hairDensity', 'hairDensity'], ['hairLength', 'hairLengthCm'], ['facialHairStyle', 'facialHairStyle'], ['facialHairColor', 'facialHairColorHex'],
   ['facialHairDensity', 'facialHairDensity'], ['eyebrowStyle', 'eyebrowStyle'], ['eyebrowColor', 'eyebrowColorHex'], ['bodyHairPattern', 'bodyHairPattern'],
   ['bodyHairColor', 'bodyHairColorHex'], ['bodyHairTexture', 'bodyHairTexture'], ['bodyHairDensity', 'bodyHairDensity'], ['nailColor', 'nailColorHex'], ['nailShape', 'nailShape'], ['nailLengthMm', 'nailLengthMm'], ['biologicalSex', 'biologicalSex'],
-  ['modelPreset', 'modelPreset'], ['avatarAsset', 'avatarAsset'], ['tattooAsset', 'tattooAsset'], ['anatomyPreset', 'anatomyPreset'], ['anatomyVisibility', 'anatomyVisibility'],
+  ['modelVersion', 'modelVersion'], ['modelPreset', 'modelPreset'], ['avatarAsset', 'avatarAsset'], ['tattooAsset', 'tattooAsset'], ['anatomyPreset', 'anatomyPreset'], ['anatomyVisibility', 'anatomyVisibility'],
   ['anatomyRevealConsent', 'anatomyRevealConsent'],
 ]);
 

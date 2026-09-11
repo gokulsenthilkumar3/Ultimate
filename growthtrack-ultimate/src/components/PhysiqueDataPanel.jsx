@@ -92,8 +92,8 @@ export default function PhysiqueDataPanel({ current = {}, goal = {}, baseline = 
 
       {tab === 'model' && (
         <div className="physique-model-info">
-          <article><Cpu size={20} /><div><strong>{diagnostics?.activeRenderer === 'authored-glb' ? 'Validated authored 3D asset' : 'Production procedural digital human'}</strong><p>High-density anatomy, live measurement morphs, material response, pose motion and GPU-aware detail are active in this viewport.</p></div></article>
-          {import.meta.env.DEV && diagnostics && <details><summary>Developer asset diagnostics</summary><dl><div><dt>Status</dt><dd>{diagnostics.health}</dd></div><div><dt>Vertices</dt><dd>{diagnostics.vertexCount || 0}</dd></div><div><dt>Morph targets</dt><dd>{diagnostics.morphTargetCount || 0}</dd></div><div><dt>Missing</dt><dd>{diagnostics.missingMorphTargets?.length || 0}</dd></div></dl></details>}
+          <article><Cpu size={20} /><div><strong>{diagnostics?.modelAsset?.version === 'v2' ? 'Digital Human v2 asset' : diagnostics?.activeRenderer === 'authored-glb' ? 'Validated authored 3D asset' : 'Production procedural digital human'}</strong><p>{diagnostics?.modelAsset?.version === 'v2' ? (diagnostics.v2?.ready ? 'v2 anatomy contract is satisfied and the calibrated asset is active.' : 'v2 asset selected; readiness checks are still incomplete.') : 'The validated current asset remains active until a contract-complete v2 model is configured.'}</p></div></article>
+          {diagnostics && <details><summary>Asset diagnostics</summary><dl><div><dt>Version</dt><dd>{diagnostics.modelAsset?.version || 'legacy'}</dd></div><div><dt>Status</dt><dd>{diagnostics.v2?.ready ? 'v2 ready' : diagnostics.health}</dd></div><div><dt>Vertices</dt><dd>{diagnostics.vertexCount || 0}</dd></div><div><dt>Morph targets</dt><dd>{diagnostics.morphTargetCount || 0}</dd></div><div><dt>Bones</dt><dd>{diagnostics.boneCount || 0}</dd></div><div><dt>Missing v2 parts</dt><dd>{diagnostics.v2?.missingParts?.length ?? '—'}</dd></div></dl></details>}
         </div>
       )}
     </section>

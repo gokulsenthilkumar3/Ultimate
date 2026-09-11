@@ -221,7 +221,7 @@ const useStore = create<any>()(
         set({ isLoading: true });
 
         try {
-          const stored = await apiRequest('/api/state');
+          const stored: any = await apiRequest('/api/state');
           const pending = (stored.tasks || []).filter((item: any) => !item?.done && item?.status !== 'done');
           const completed = (stored.tasks || []).filter((item: any) => item?.done || item?.status === 'done');
           const preference = stored.preference || {};
