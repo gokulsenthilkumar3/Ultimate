@@ -254,7 +254,7 @@ export default function About() {
       <div style={{ animation: 'slideUpFade 0.9s ease-out 0.4s both' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <GitBranch size={20} color="var(--accent)" /> Mission Log
+            <GitBranch size={20} color="var(--accent)" /> Release History
           </h3>
           <button onClick={() => setShowAll(v => !v)} style={{ 
             background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-1)', 

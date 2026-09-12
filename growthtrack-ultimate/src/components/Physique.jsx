@@ -9,6 +9,7 @@ import {
 import useStore, { selectPhysiqueTargets, selectUpdatePhysiqueTargets } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import PhysiqueRoadmap from './PhysiqueRoadmap';
+import { formatDate, formatMeasurement, formatNumber, getMeasurementUnit, convertMeasurement, convertMeasurementToMetric } from '../utils/userFormatters';
 
 // Lazy-load the immersive 3D experience only when the 3D Mirror is selected.
 const ScrollShowcase = lazy(() => import('./ScrollShowcase'));
@@ -145,28 +146,33 @@ export default function Physique({ user }) {
   const [activeZone,    setActiveZone]    = useState(zones[0]?.name || '');
   const [editingTarget, setEditingTarget] = useState(null);
   const [targetDraft,   setTargetDraft]   = useState({});
-  const [unitMode] = useState('cm');
+  const unitMode = String(user?.measurementSystem || '').toLowerCase().startsWith('imperial') ? 'in' : 'cm';
   // Sub-tab: 'blueprint' (default body metrics) | '3d' (HumanoidViewer embedded)
   const subTab = ['3d', 'targets', 'history'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'blueprint';
   const metricLogs = useStore(s => s.metric_logs ?? EMPTY_LIST);
 
   // ── Body-fat calculator state ─────────────────────────────────────────
   const [bfGender, setBfGender] = useState(user?.gender || 'M');
-  const [bfHeight, setBfHeight] = useState(user?.height || '');
-  const [bfWeight, setBfWeight] = useState(user?.weight || '');
+  const [bfHeight, setBfHeight] = useState(() => user?.height ? convertMeasurement(user.height, 'cm', user) : '');
+  const [bfWeight, setBfWeight] = useState(() => user?.weight ? convertMeasurement(user.weight, 'kg', user) : '');
   const [bfNeck,   setBfNeck]   = useState('');
   const [bfWaist,  setBfWaist]  = useState('');
   const [bfHip,    setBfHip]    = useState('');
   const [activeMeas, setActiveMeas] = useState('');
 
+  const bfHeightMetric = convertMeasurementToMetric(bfHeight, 'cm', user);
+  const bfWeightMetric = convertMeasurementToMetric(bfWeight, 'kg', user);
+  const bfNeckMetric = convertMeasurementToMetric(bfNeck, 'cm', user);
+  const bfWaistMetric = convertMeasurementToMetric(bfWaist, 'cm', user);
+  const bfHipMetric = convertMeasurementToMetric(bfHip, 'cm', user);
   const bfRaw = useMemo(
-    () => calcNavyBF(bfGender, bfWaist, bfNeck, bfHeight, bfHip),
-    [bfGender, bfWaist, bfNeck, bfHeight, bfHip]
+    () => calcNavyBF(bfGender, bfWaistMetric, bfNeckMetric, bfHeightMetric, bfHipMetric),
+    [bfGender, bfWaistMetric, bfNeckMetric, bfHeightMetric, bfHipMetric]
   );
   const bfPercent = bfRaw && bfRaw > 0 && bfRaw < 70 ? bfRaw : null;
   const bfCategory = bfPercent ? getBFCategory(bfPercent, bfGender) : null;
 
-  const bmi = useMemo(() => calcBMI(bfWeight, bfHeight), [bfWeight, bfHeight]);
+  const bmi = useMemo(() => calcBMI(bfWeightMetric, bfHeightMetric), [bfWeightMetric, bfHeightMetric]);
   const bmiCategory = useMemo(() => {
     if (!bmi) return null;
     if (bmi < 18.5) return { label: 'Underweight', color: '#a78bfa' };
@@ -176,11 +182,11 @@ export default function Physique({ user }) {
   }, [bmi]);
 
   // Lean / fat mass
-  const leanMass = bfPercent && bfWeight
-    ? ((1 - bfPercent / 100) * parseFloat(bfWeight)).toFixed(1)
+  const leanMass = bfPercent !== null && Number.isFinite(Number(bfWeightMetric))
+    ? (1 - bfPercent / 100) * Number(bfWeightMetric)
     : null;
-  const fatMass = bfPercent && bfWeight
-    ? (bfPercent / 100 * parseFloat(bfWeight)).toFixed(1)
+  const fatMass = bfPercent !== null && Number.isFinite(Number(bfWeightMetric))
+    ? (bfPercent / 100) * Number(bfWeightMetric)
     : null;
 
   const handleSaveTarget = (idx) => {
@@ -207,10 +213,14 @@ export default function Physique({ user }) {
     updatePhysiqueTargets({ ...(physiqueTargets || {}), zones: updated });
   };
 
-  const saveToProfile = () => {
+  const saveToProfile = async () => {
     if (!bfPercent) return;
-    updateUser({ bodyFat: parseFloat(bfPercent.toFixed(1)) });
-    toast.success(`Body fat ${bfPercent.toFixed(1)}% saved to profile`);
+    try {
+      await updateUser({ bodyFat: parseFloat(bfPercent.toFixed(1)) });
+      toast.success(`Body fat ${formatNumber(bfPercent, user, { maximumFractionDigits: 1 })}% saved to profile`);
+    } catch (error) {
+      toast.error(error?.message || 'Could not save body fat to your profile');
+    }
   };
 
   const displayVal = (val) => unitMode === 'in' ? convertValue(val, true) : convertValue(val, false);
@@ -254,7 +264,7 @@ export default function Physique({ user }) {
 
       {subTab === 'targets' && <div className="glass-card physique-subpanel"><PhysiqueRoadmap targets={targets} user={user} /></div>}
 
-      {subTab === 'history' && <div className="glass-card physique-subpanel"><div className="eyebrow"><TrendingUp size={14} /> Measurement history</div><h3 className="text-display">Your body over time</h3>{datedLogs(metricLogs).length === 0 ? <p className="text-secondary">Save metric check-ins in Progress to build a history timeline.</p> : <div className="physique-history-list">{datedLogs(metricLogs).reverse().slice(0, 20).map((log, index) => <div className="physique-history-row" key={log.id || `${log.date}-${index}`}><strong>{new Date(`${log.date.slice(0, 10)}T12:00:00`).toLocaleDateString()}</strong><span>{[['weight', 'kg'], ['bodyFat', '%'], ['waist', 'cm'], ['chest', 'cm']].filter(([key]) => metricValue(log, key) !== null).map(([key, unit]) => `${key === 'bodyFat' ? 'Body fat' : key} ${metricValue(log, key)} ${unit}`).join(' · ') || `${log.metric || log.type || 'Check-in'} · ${finiteMetric(log.value) ?? 'Saved'}`}</span></div>)}</div>}</div>}
+      {subTab === 'history' && <div className="glass-card physique-subpanel"><div className="eyebrow"><TrendingUp size={14} /> Measurement history</div><h3 className="text-display">Your body over time</h3>{datedLogs(metricLogs).length === 0 ? <p className="text-secondary">Save metric check-ins in Progress to build a history timeline.</p> : <div className="physique-history-list">{datedLogs(metricLogs).reverse().slice(0, 20).map((log, index) => <div className="physique-history-row" key={log.id || `${log.date}-${index}`}><strong>{formatDate(log.date, user)}</strong><span>{[['weight', 'kg'], ['bodyFat', '%'], ['waist', 'cm'], ['chest', 'cm']].filter(([key]) => metricValue(log, key) !== null).map(([key, unit]) => `${key === 'bodyFat' ? 'Body fat' : key} ${['kg', 'cm'].includes(unit) ? formatMeasurement(metricValue(log, key), unit, user) : `${metricValue(log, key)}${unit}`}`).join(' · ') || `${log.metric || log.type || 'Check-in'} · ${finiteMetric(log.value) ?? 'Saved'}`}</span></div>)}</div>}</div>}
 
       {/* ── Blueprint sub-tab (original content) ───────────────────────────── */}
       {subTab === 'blueprint' && (<>
@@ -378,7 +388,7 @@ export default function Physique({ user }) {
               {bfPercent !== null ? (
                 <div style={{ marginTop: '1.25rem', textAlign: 'center', zIndex: 1, animation: 'fadeIn 0.4s ease' }}>
                   <span style={{ fontSize: '2.5rem', fontWeight: 900, color: bfCategory?.color, lineHeight: 1, textShadow: `0 0 20px ${bfCategory?.color}60` }}>
-                    {bfPercent.toFixed(1)}%
+                    {formatNumber(bfPercent, user, { maximumFractionDigits: 1 })}%
                   </span>
                   <div style={{ background: `${bfCategory?.color}15`, border: `1px solid ${bfCategory?.color}40`, padding: '4px 12px', borderRadius: '99px', marginTop: '10px', display: 'inline-block', backdropFilter: 'blur(4px)' }}>
                     <p style={{ fontSize: '0.65rem', color: bfCategory?.color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
@@ -409,7 +419,7 @@ export default function Physique({ user }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
-                    <Ruler size={12} /> Height (cm)
+                      <Ruler size={12} /> Height ({getMeasurementUnit('cm', user)})
                   </label>
                   <input className="form-input" type="number" value={bfHeight} placeholder="e.g., 180"
                     onChange={e => setBfHeight(e.target.value)}
@@ -423,7 +433,7 @@ export default function Physique({ user }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1.25rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
-                      <Scale size={12} /> Weight (kg)
+                      <Scale size={12} /> Weight ({getMeasurementUnit('kg', user)})
                     </label>
                     <input className="form-input" type="number" value={bfWeight} placeholder="Optional"
                       onChange={e => setBfWeight(e.target.value)} 
@@ -431,7 +441,7 @@ export default function Physique({ user }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
-                      Neck (cm)
+                      Neck ({getMeasurementUnit('cm', user)})
                     </label>
                     <input className="form-input" type="number" value={bfNeck} placeholder="e.g., 40"
                       onChange={e => setBfNeck(e.target.value)}
@@ -440,7 +450,7 @@ export default function Physique({ user }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
-                      Waist (cm)
+                      Waist ({getMeasurementUnit('cm', user)})
                     </label>
                     <input className="form-input" type="number" value={bfWaist} placeholder="e.g., 85"
                       onChange={e => setBfWaist(e.target.value)}
@@ -450,7 +460,7 @@ export default function Physique({ user }) {
                   {bfGender === 'F' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '0.65rem' }}>
-                        Hips (cm)
+                        Hips ({getMeasurementUnit('cm', user)})
                       </label>
                       <input className="form-input" type="number" value={bfHip} placeholder="e.g., 95"
                         onChange={e => setBfHip(e.target.value)}
@@ -482,18 +492,18 @@ export default function Physique({ user }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
                 <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 100%)', borderRadius: '16px', border: '1px solid rgba(16,185,129,0.15)', textAlign: 'center', boxShadow: 'inset 0 2px 10px rgba(16,185,129,0.05)' }}>
                   <p className="label-caps" style={{ fontSize: '0.65rem', color: '#10b981', marginBottom: '8px' }}>Lean Body Mass</p>
-                  <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#10b981', textShadow: '0 2px 15px rgba(16,185,129,0.3)' }}>{leanMass} <span style={{ fontSize: '1rem', opacity: 0.7, fontWeight: 700 }}>kg</span></p>
+                    <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#10b981', textShadow: '0 2px 15px rgba(16,185,129,0.3)' }}>{formatMeasurement(leanMass, 'kg', user, { maximumFractionDigits: 1 })}</p>
                   <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Muscle, bone, organs</p>
                 </div>
                 <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.02) 100%)', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.15)', textAlign: 'center', boxShadow: 'inset 0 2px 10px rgba(245,158,11,0.05)' }}>
                   <p className="label-caps" style={{ fontSize: '0.65rem', color: '#f59e0b', marginBottom: '8px' }}>Fat Mass</p>
-                  <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#f59e0b', textShadow: '0 2px 15px rgba(245,158,11,0.3)' }}>{fatMass} <span style={{ fontSize: '1rem', opacity: 0.7, fontWeight: 700 }}>kg</span></p>
+                    <p style={{ fontSize: '1.8rem', fontWeight: 900, color: '#f59e0b', textShadow: '0 2px 15px rgba(245,158,11,0.3)' }}>{formatMeasurement(fatMass, 'kg', user, { maximumFractionDigits: 1 })}</p>
                   <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Adipose tissue</p>
                 </div>
                 {bmi && (
                   <div style={{ padding: '1.5rem', background: `linear-gradient(135deg, ${bmiCategory?.color}15 0%, ${bmiCategory?.color}05 100%)`, borderRadius: '16px', border: `1px solid ${bmiCategory?.color}30`, textAlign: 'center', boxShadow: `inset 0 2px 10px ${bmiCategory?.color}15` }}>
                     <p className="label-caps" style={{ fontSize: '0.65rem', color: bmiCategory?.color, marginBottom: '8px' }}>BMI ({bmiCategory?.label})</p>
-                    <p style={{ fontSize: '1.8rem', fontWeight: 900, color: bmiCategory?.color, textShadow: `0 2px 15px ${bmiCategory?.color}40` }}>{bmi.toFixed(1)}</p>
+                    <p style={{ fontSize: '1.8rem', fontWeight: 900, color: bmiCategory?.color, textShadow: `0 2px 15px ${bmiCategory?.color}40` }}>{formatNumber(bmi, user, { maximumFractionDigits: 1 })}</p>
                     <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '6px' }}>Body Mass Index</p>
                   </div>
                 )}
@@ -504,7 +514,7 @@ export default function Physique({ user }) {
           {/* Save to profile */}
           {bfPercent !== null && (
             <button className="btn-primary btn-full" onClick={saveToProfile} style={{ marginTop: '0.5rem', padding: '1.25rem', fontSize: '1rem', borderRadius: '14px', gap: '10px' }}>
-              <Save size={18} /> Save {bfPercent.toFixed(1)}% to Profile
+              <Save size={18} /> Save {formatNumber(bfPercent, user, { maximumFractionDigits: 1 })}% to Profile
             </button>
           )}
 

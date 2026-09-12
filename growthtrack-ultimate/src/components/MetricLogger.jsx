@@ -5,6 +5,7 @@ import { BODY_METRICS_LIST, VITALS_METRICS_LIST, HOLISTIC_METRICS_LIST } from '.
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import { trackEvent } from '../lib/analytics';
+import { getMeasurementUnit } from '../utils/userFormatters';
 
 export default function MetricLogger({ onClose, onSave }) {
   const toast = useToast();
@@ -31,6 +32,11 @@ export default function MetricLogger({ onClose, onSave }) {
 
   const storeUser    = useStore(state => state.user);
   const storeSetUser = useStore(state => state.setUser);
+  const displayUnit = unit => {
+    const normalized = String(unit || '').toLowerCase();
+    if (normalized === 'in') return getMeasurementUnit('cm', storeUser) === 'cm' ? 'cm' : 'in';
+    return getMeasurementUnit(normalized, storeUser);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -186,7 +192,7 @@ export default function MetricLogger({ onClose, onSave }) {
                         value={formData[field.id]} onChange={handleChange}
                         style={inputStyle}
                       />
-                      <span style={unitStyle}>{field.unit.toUpperCase()}</span>
+                      <span style={unitStyle}>{displayUnit(field.unit).toUpperCase()}</span>
                     </div>
                   </div>
                 ))}

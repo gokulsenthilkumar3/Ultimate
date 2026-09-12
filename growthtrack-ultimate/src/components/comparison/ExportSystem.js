@@ -32,6 +32,8 @@
  *   The LensFlareFlash component mounts outside the canvas.
  */
 
+import { formatDate, formatMeasurement, formatNumber } from '../../utils/userFormatters';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY — get R3F canvas element
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,7 +119,7 @@ export function LensFlareOverlay() {
  * @param {{ metrics: Object, phase: string }} context - from store
  */
 export async function exportQuickSnapshot(context = {}) {
-  const { metrics = {}, phase = "Phase 1" } = context;
+  const { metrics = {}, phase = "Phase 1", user } = context;
 
   // 1. Trigger lens flare VFX
   triggerLensFlareFlash(250);
@@ -155,7 +157,7 @@ export async function exportQuickSnapshot(context = {}) {
   ctx.fillStyle = "rgba(2, 3, 7, 0.82)";
   ctx.fillRect(0, img.height - barH, img.width, barH);
 
-  const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const dateStr = formatDate(new Date(), user, { month: "short" });
   ctx.fillStyle = "#22D3EE";
   ctx.font      = `bold ${Math.round(barH * 0.38)}px "Outfit", sans-serif`;
   ctx.textBaseline = "middle";
@@ -165,7 +167,7 @@ export async function exportQuickSnapshot(context = {}) {
   ctx.font      = `${Math.round(barH * 0.30)}px "Outfit", sans-serif`;
   ctx.textAlign = "right";
   ctx.fillText(
-    `${metrics.weight ?? "--"}kg · ${metrics.bodyFat ?? "--"}% BF · ${dateStr}`,
+    `${Number.isFinite(Number(metrics.weight)) ? formatMeasurement(metrics.weight, 'kg', user) : '--'} · ${Number.isFinite(Number(metrics.bodyFat)) ? `${formatNumber(metrics.bodyFat, user)}% BF` : '--% BF'} · ${dateStr}`,
     img.width * 0.97,
     img.height - barH / 2
   );
@@ -216,6 +218,7 @@ export async function exportComparisonCard({
   progressPercent = 0,
   deadline        = "Dec 2026",
   snapshotDataUrl = null,
+  user            = null,
 } = {}) {
   const canvas = document.createElement("canvas");
   canvas.width  = CARD_W;
@@ -322,7 +325,7 @@ export async function exportComparisonCard({
     ctx.font      = "bold 22px Outfit, sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = "#4FC3F7";
-    ctx.fillText(`${curr}${row.unit}`, 120, y + 14);
+    ctx.fillText(`${row.unit === 'kg' || row.unit === 'cm' ? formatMeasurement(curr, row.unit, user) : `${formatNumber(curr, user)} ${row.unit}`}`, 120, y + 14);
 
     // Label
     ctx.font      = "600 13px Outfit, sans-serif";
@@ -333,13 +336,13 @@ export async function exportComparisonCard({
     // Delta
     ctx.font      = "bold 12px Outfit, sans-serif";
     ctx.fillStyle = dColor;
-    ctx.fillText(`${sign}${delta.toFixed(1)}${row.unit}`, CARD_W / 2, y + 26);
+    ctx.fillText(`${sign}${row.unit === 'kg' || row.unit === 'cm' ? formatMeasurement(Math.abs(delta), row.unit, user) : `${formatNumber(Math.abs(delta), user)} ${row.unit}`}`, CARD_W / 2, y + 26);
 
     // Goal value
     ctx.font      = "bold 22px Outfit, sans-serif";
     ctx.textAlign = "right";
     ctx.fillStyle = "#22D3EE";
-    ctx.fillText(`${goal}${row.unit}`, CARD_W - 120, y + 14);
+    ctx.fillText(`${row.unit === 'kg' || row.unit === 'cm' ? formatMeasurement(goal, row.unit, user) : `${formatNumber(goal, user)} ${row.unit}`}`, CARD_W - 120, y + 14);
   });
 
   // ── Footer ─────────────────────────────────────────────────────────────────
@@ -348,7 +351,7 @@ export async function exportComparisonCard({
   roundRect(ctx, 60, footerY, CARD_W - 120, 2, 1);
   ctx.fill();
 
-  const dateStr = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const dateStr = formatDate(new Date(), user, { month: "long" });
   ctx.font         = "500 13px Outfit, sans-serif";
   ctx.textAlign    = "center";
   ctx.fillStyle    = "#334455";
@@ -453,6 +456,7 @@ import use3DStore                from "../store/use3DStore";
  * Returns handlers and loading state for all 3 export types.
  */
 export function useExportSystem() {
+  const user = useStore((state) => state.user);
   const [loading, setLoading] = useState(null); // null | "snapshot" | "card" | "reel"
   const [reelProgress, setReelProgress] = useState(0);
 
@@ -463,6 +467,7 @@ export function useExportSystem() {
       await exportQuickSnapshot({
         metrics: s.cloneA.metrics,
         phase:   `Month ${s.ambitionPath?.currentMonthIndex ?? 0}`,
+        user,
       });
     } finally {
       setLoading(null);
@@ -478,8 +483,9 @@ export function useExportSystem() {
         goalMetrics:     s.cloneB.metrics,
         deltas:          s.getDeltas(),
         progressPercent: s.getProgressPercent(),
+        user,
         deadline:        s.ambitionPath?.deadline
-          ? new Date(s.ambitionPath.deadline).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+          ? formatDate(s.ambitionPath.deadline, user, { month: "short" })
           : "Dec 2026",
       });
     } finally {

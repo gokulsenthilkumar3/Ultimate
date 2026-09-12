@@ -59,6 +59,23 @@ function persistPortfolio(next: any[]) {
   return request;
 }
 
+// User profile writes use the same ordered queue as portfolio writes. Profile
+// screens can update several fields in one interaction (and the GitHub link
+// is one of those fields), so allowing requests to race makes an older
+// snapshot overwrite a newer one on the server. The catch is attached here so
+// fire-and-forget callers remain safe while awaited callers can still surface
+// the original error to the UI.
+let userSyncQueue: Promise<any> = Promise.resolve();
+
+function persistUser(nextUser: any) {
+  const request = userSyncQueue.then(() => apiSync('/user', 'POST', nextUser));
+  userSyncQueue = request.catch((error) => {
+    console.error('[useStore] user persistence failed:', error);
+    return null;
+  });
+  return request;
+}
+
 const useStore = create<any>()(
   persist(
     (set, get, api) => ({
@@ -66,7 +83,9 @@ const useStore = create<any>()(
       ...createTaskSlice(set, get, api),
       ...createHealthSlice(set, get, api),
 
-      theme: 'dark',
+      // New workspaces begin in the calm, light-first product theme. Existing
+      // persisted preferences still win during hydration.
+      theme: 'light',
       palette: 'gold',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'logs'],
@@ -74,6 +93,7 @@ const useStore = create<any>()(
       navigationTabOrder: {},
       sidebarCollapsed: false,
       reducedMotion: false,
+      density: 'comfortable',
 
       togglePinnedTab: (tabId: string) => {
         set((state: any) => {
@@ -89,6 +109,7 @@ const useStore = create<any>()(
       setNavigationTabOrder: (navigationTabOrder: Record<string, string[]>) => { set({ navigationTabOrder }); apiSync('/preferences', 'PUT', { navigationTabOrder }); },
       setSidebarCollapsed: (sidebarCollapsed: boolean) => { set({ sidebarCollapsed }); apiSync('/preferences', 'PUT', { sidebarCollapsed }); },
       setReducedMotion: (reducedMotion: boolean) => { set({ reducedMotion }); apiSync('/preferences', 'PUT', { reducedMotion }); },
+      setDensity: (density: 'comfortable' | 'compact') => { set({ density }); apiSync('/preferences', 'PUT', { density }); },
       isLoading: false,
       serverStatus: 'unknown',
       onboardingComplete: false,
@@ -147,32 +168,33 @@ const useStore = create<any>()(
       setPalette: (palette: string) => { set({ palette }); apiSync('/preferences', 'PUT', { palette }); },
 
       setUser: (userOrUpdater: any) => {
-        set((state: any) => {
-          const newUser = typeof userOrUpdater === 'function'
-            ? userOrUpdater(state.user)
-            : userOrUpdater;
-          apiSync('/user', 'POST', newUser);
-          return { user: newUser };
-        });
+        const currentUser = get().user;
+        const newUser = typeof userOrUpdater === 'function'
+          ? userOrUpdater(currentUser)
+          : userOrUpdater;
+        set({ user: newUser });
+        return persistUser(newUser);
       },
 
       updateUser: (data: any) => {
-        set((state: any) => {
-          const newUser = { ...state.user, ...data };
-          apiSync('/user', 'POST', newUser);
-          return { user: newUser };
-        });
+        const newUser = { ...(get().user || {}), ...(data || {}) };
+        set({ user: newUser });
+        return persistUser(newUser);
       },
 
       updateUserSlice: (key: string, data: any) => {
-        set((state: any) => {
-          const newUser = {
-            ...state.user,
-            [key]: { ...(state.user?.[key] || {}), ...data },
-          };
-          apiSync('/user', 'POST', newUser);
-          return { user: newUser };
-        });
+        const currentUser = get().user || {};
+        const currentValue = currentUser[key];
+        // Object slices (for example repoNotes) merge so a single key edit
+        // does not discard its siblings. Arrays and scalar values must be
+        // replaced as-is; spreading manualProjects into an object was the
+        // reason the Projects tab stopped rendering after adding a project.
+        const canMergeObjects = data && typeof data === 'object' && !Array.isArray(data)
+          && currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue);
+        const nextValue = canMergeObjects ? { ...currentValue, ...data } : data;
+        const newUser = { ...currentUser, [key]: nextValue };
+        set({ user: newUser });
+        return persistUser(newUser);
       },
 
       setPortfolio: (nextOrUpdater: any) => {
@@ -228,9 +250,10 @@ const useStore = create<any>()(
           set({
             isLoading: false,
             user: { ...(stored.user || {}), tasks: { pending, completed } },
-            theme: preference.theme || 'dark', palette: preference.palette || 'gold',
+            theme: preference.theme || 'light', palette: preference.palette || 'gold',
             sidebarCollapsed: Boolean(preference.sidebarCollapsed), onboardingComplete: Boolean(preference.onboardingComplete),
             reducedMotion: Boolean(preference.reducedMotion),
+            density: preference.density === 'compact' ? 'compact' : 'comfortable',
             navigationOrder: preference.navigationOrder?.length ? preference.navigationOrder : get().navigationOrder,
             navigationTabOrder: preference.navigationTabOrder || {},
             bodyProfile: stored.bodyProfile || null, socialProfiles: stored.socialProfiles || [],
@@ -546,6 +569,21 @@ const useStore = create<any>()(
       updatePhysiqueTargets: async (data: any) => { set({ physiqueTargets: data }); apiSync('/physique_targets', 'POST', data); },
       updateAssessmentQA: async (data: any) => { set({ assessmentQA: data }); apiSync('/assessment_qa', 'POST', data); },
       updateSkills: async (data: any) => { set({ skills: data }); apiSync('/skills', 'POST', data); },
+      addSkill: async (skill: any) => {
+        const next = [...(get().skills || []), skill];
+        set({ skills: next });
+        try { await apiSync('/skills', 'POST', next); } catch { /* optimistic local state remains */ }
+      },
+      updateSkill: async (id: any, updates: any) => {
+        const next = (get().skills || []).map((item: any) => item.id === id ? { ...item, ...updates } : item);
+        set({ skills: next });
+        try { await apiSync('/skills', 'POST', next); } catch { /* optimistic local state remains */ }
+      },
+      deleteSkill: async (id: any) => {
+        const next = (get().skills || []).filter((item: any) => item.id !== id);
+        set({ skills: next });
+        try { await apiSync('/skills', 'POST', next); } catch { /* optimistic local state remains */ }
+      },
       updateCalendarEvents: async (data: any) => { await apiSync('/calendar_events', 'POST', data); set({ calendar_events: data }); },
       setDatabases: (data: any[]) => { set({ databases: data }); apiSync('/custom-tables', 'PUT', data); },
       updateWellnessData: async (data: any) => { set({ wellnessData: data }); apiSync('/wellness_data', 'POST', data); },
@@ -580,9 +618,10 @@ const useStore = create<any>()(
       name: 'growthtrack-ultimate-v4',
       storage: createJSONStorage(() => safeLocalStorage),
       version: 4,
-      // Persist every user-owned data domain. The previous whitelist only
-      // saved a handful of modules, so a restart looked like a data reset.
-      partialize: (state: any) => ({ theme: state.theme, palette: state.palette, activeTab: state.activeTab, navigationOrder: state.navigationOrder, navigationTabOrder: state.navigationTabOrder, sidebarCollapsed: state.sidebarCollapsed, reducedMotion: state.reducedMotion, portfolio: state.portfolio }),
+      // Persist shell preferences and the portfolio cache locally. Profile
+      // and collection records remain server-owned and are hydrated through
+      // fetchInitialData so stale local copies cannot overwrite the account.
+      partialize: (state: any) => ({ theme: state.theme, palette: state.palette, activeTab: state.activeTab, navigationOrder: state.navigationOrder, navigationTabOrder: state.navigationTabOrder, sidebarCollapsed: state.sidebarCollapsed, reducedMotion: state.reducedMotion, density: state.density, portfolio: state.portfolio }),
       migrate: (persistedState: any, version) => {
         try {
           if (version < 4) {

@@ -13,6 +13,7 @@ import useStore, {
 } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import { formatDateTime } from '../utils/userFormatters';
 
 const TYPES    = ['Anime', 'Series', 'Movie', 'Documentary'];
 const STATUSES = ['Watching', 'Plan to Watch', 'Completed', 'Dropped'];
@@ -203,6 +204,7 @@ function MediaCard({ item, onDelete, onProgress }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function Entertainment() {
+  const user                = useStore(s => s.user);
   const { media }           = useStore(selectEntertainment);
   const addMediaItem        = useStore(selectAddMediaItem);
   const deleteMediaItem     = useStore(selectDeleteMediaItem);
@@ -270,9 +272,9 @@ export default function Entertainment() {
         }
       });
 
-      const now = new Date().toLocaleString();
+      const now = new Date().toISOString();
       safeLocalStorage.setItem('gt_trakt_last_sync', now);
-      setTraktLastSync(now);
+      setTraktLastSync(formatDateTime(now, user));
       toast.success(`Trakt sync complete! ${added} new titles imported.`);
     } catch (err) {
       toast.error(err.message || 'Trakt sync failed.');

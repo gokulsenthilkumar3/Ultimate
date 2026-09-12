@@ -8,6 +8,7 @@ import EmptyState from './ui/EmptyState';
 import { currentStreak, localDateKey } from '../lib/metricSeries';
 import { useToast } from '../hooks/useToast';
 import { consumePendingUiAction } from '../lib/pendingUiAction';
+import { formatDate, getUserLocale } from '../utils/userFormatters';
 
 const MATRIX_DAYS = 364;
 const RECENT_DAYS = 28;
@@ -26,7 +27,7 @@ function getDateRange(daysBack) {
 const getStreakCount = currentStreak;
 
 // ── Month labels for the 365-day grid ────────────────────────────────────
-function buildMonthLabels(dates) {
+function buildMonthLabels(dates, user) {
   const labels = [];
   let lastMonth = null;
   // dates is ordered oldest→newest, displayed column-by-column (7 rows per col)
@@ -37,7 +38,7 @@ function buildMonthLabels(dates) {
     if (!d) continue;
     const month = d.slice(0, 7); // YYYY-MM
     if (month !== lastMonth) {
-      labels.push({ col: w, label: new Date(d).toLocaleDateString('en', { month: 'short' }) });
+      labels.push({ col: w, label: new Intl.DateTimeFormat(getUserLocale(user), { month: 'short' }).format(new Date(d)) });
       lastMonth = month;
     }
   }
@@ -69,7 +70,7 @@ function getStreakMilestone(streak) {
 }
 
 // ── Global 365-day Heatmap (all habits combined) ──────────────────────────
-function GlobalHeatmap({ dates, habits, habitLogsByHabit }) {
+function GlobalHeatmap({ dates, habits, habitLogsByHabit, user }) {
   const totalHabits = habits.length;
 
   const countByDate = useMemo(() => {
@@ -83,7 +84,7 @@ function GlobalHeatmap({ dates, habits, habitLogsByHabit }) {
     return map;
   }, [dates, habits, habitLogsByHabit]);
 
-  const monthLabels = useMemo(() => buildMonthLabels(dates), [dates]);
+  const monthLabels = useMemo(() => buildMonthLabels(dates, user), [dates, user]);
   const weeks = Math.ceil(dates.length / 7);
   const CELL = 13;
   const GAP  = 3;
@@ -152,7 +153,7 @@ function GlobalHeatmap({ dates, habits, habitLogsByHabit }) {
                     border: d === today ? '2px solid var(--accent)' : '1px solid rgba(255,255,255,0.04)',
                     transition: 'transform 0.1s',
                   }}
-                  title={`${d}: ${count}/${totalHabits} habits completed`}
+                  title={`${formatDate(d, user)}: ${count}/${totalHabits} habits completed`}
                 />
               );
             })}
@@ -176,13 +177,13 @@ function GlobalHeatmap({ dates, habits, habitLogsByHabit }) {
 }
 
 // ── Per-habit 365-day heatmap (expanded view) ─────────────────────────────
-function HabitHeatmap({ habit, dates, habitLogsByHabit, cat, toggleHabitForDate }) {
+function HabitHeatmap({ habit, dates, habitLogsByHabit, cat, toggleHabitForDate, user }) {
   const CELL = 14;
   const GAP  = 3;
   const logs = habitLogsByHabit[habit.id] ?? EMPTY_LOGS;
   const logSet = useMemo(() => new Set(logs.filter(l => l.completed !== false).map(l => l.date)), [logs]);
   const weeks = Math.ceil(dates.length / 7);
-  const monthLabels = useMemo(() => buildMonthLabels(dates), [dates]);
+  const monthLabels = useMemo(() => buildMonthLabels(dates, user), [dates, user]);
 
   return (
     <div style={{ paddingLeft: '1rem', paddingRight: '1rem', paddingBottom: '1rem' }}>
@@ -218,7 +219,7 @@ function HabitHeatmap({ habit, dates, habitLogsByHabit, cat, toggleHabitForDate 
               return (
                 <button
                   key={d}
-                  title={`${d}${logged ? ' (Done)' : ''}`}
+                  title={`${formatDate(d, user)}${logged ? ' (Done)' : ''}`}
                   onClick={() => toggleHabitForDate(habit.id, d)}
                   style={{
                     width: `${CELL}px`, height: `${CELL}px`,
@@ -238,8 +239,8 @@ function HabitHeatmap({ habit, dates, habitLogsByHabit, cat, toggleHabitForDate 
 
       {/* Date range labels */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-        <span style={{ fontSize: '0.58rem', color: 'var(--text-3)' }}>{dates[0]}</span>
-        <span style={{ fontSize: '0.58rem', color: 'var(--text-3)' }}>{dates[dates.length - 1]}</span>
+        <span style={{ fontSize: '0.58rem', color: 'var(--text-3)' }}>{formatDate(dates[0], user)}</span>
+        <span style={{ fontSize: '0.58rem', color: 'var(--text-3)' }}>{formatDate(dates[dates.length - 1], user)}</span>
       </div>
     </div>
   );
@@ -247,6 +248,7 @@ function HabitHeatmap({ habit, dates, habitLogsByHabit, cat, toggleHabitForDate 
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default React.memo(function HabitsMatrix() {
+  const user              = useStore(s => s.user);
   const habits             = useStore(selectHabits);
   const addHabit           = useStore(selectAddHabit);
   const deleteHabit        = useStore(selectDeleteHabit);
@@ -412,7 +414,7 @@ export default React.memo(function HabitsMatrix() {
       </div>
 
       {/* Global 365-day heatmap */}
-      <GlobalHeatmap dates={dates} habits={habits} habitLogsByHabit={habitLogsByHabit} />
+      <GlobalHeatmap dates={dates} habits={habits} habitLogsByHabit={habitLogsByHabit} user={user} />
 
       {/* Add Habit Form */}
       {showAdd && (
@@ -599,7 +601,7 @@ export default React.memo(function HabitsMatrix() {
                           <HabitHeatmap
                             habit={habit} dates={dates}
                             habitLogsByHabit={habitLogsByHabit}
-                            cat={cat} toggleHabitForDate={toggleHabitForDate}
+                            cat={cat} toggleHabitForDate={toggleHabitForDate} user={user}
                           />
                         </div>
                       )}

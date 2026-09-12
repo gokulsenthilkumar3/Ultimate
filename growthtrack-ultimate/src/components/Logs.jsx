@@ -6,6 +6,7 @@ import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { formatDateTime } from '../utils/userFormatters';
 
 const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error', 'login_success', 'login_failed', 'signup', 'logout', 'session_start', 'session_end', 'page_view'];
 const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];
@@ -32,11 +33,10 @@ function getSentiment(text = '') {
   return 'neutral';
 }
 
-function formatTimestamp(ts) {
+function formatTimestamp(ts, user) {
   if (!ts) return '—';
   try {
-    const d = new Date(ts);
-    return d.toLocaleString();
+    return formatDateTime(ts, user);
   } catch { return String(ts); }
 }
 
@@ -293,7 +293,7 @@ export default function Logs() {
                   <div style={{ ...style, display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
                     onClick={() => setExpandedId(log.id)}>
                     <div style={{ width: '150px', padding: '0 0.75rem', color: 'var(--text-3)', whiteSpace: 'nowrap', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={10} /> {formatTimestamp(log.timestamp)}
+                      <Clock size={10} /> {formatTimestamp(log.timestamp, user)}
                     </div>
                     <div style={{ width: '100px', padding: '0 0.75rem' }}>
                       <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700, background: `${ac}20`, color: ac, textTransform: 'capitalize' }}>

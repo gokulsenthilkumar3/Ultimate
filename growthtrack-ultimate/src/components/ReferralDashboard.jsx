@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import { Link, Copy, CheckCircle, Clock, Users, Gift } from 'lucide-react';
+import { formatCurrency, formatDate } from '../utils/userFormatters';
 
 export default function ReferralDashboard() {
   const user = useStore(state => state.user);
@@ -38,7 +39,7 @@ export default function ReferralDashboard() {
         </div>
         <div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>Refer a Friend</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>Get $10 when they sync their first device.</p>
+        <p style={{ color: 'var(--text-3)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>Get {formatCurrency(10, user)} when they sync their first device.</p>
         </div>
       </div>
 
@@ -46,7 +47,7 @@ export default function ReferralDashboard() {
         <div className="glass-card fade-in" style={{ padding: '1.5rem' }}>
           <p className="label-caps" style={{ color: 'var(--text-3)', marginBottom: '8px' }}>Your Credit Balance</p>
           <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#10b981' }}>
-            ${data.creditBalance}
+            {formatCurrency(data.creditBalance, user)}
           </div>
         </div>
         <div className="glass-card fade-in" style={{ padding: '1.5rem' }}>
@@ -90,12 +91,12 @@ export default function ReferralDashboard() {
             }}>
               <div>
                 <p style={{ fontWeight: 600, color: 'var(--text-1)', marginBottom: '4px' }}>Invited User</p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>{new Date(ref.createdAt).toLocaleDateString()}</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>{formatDate(ref.createdAt, user)}</p>
               </div>
               <div>
                 {ref.status === 'completed' ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.85rem', fontWeight: 700, background: 'rgba(16,185,129,0.1)', padding: '6px 12px', borderRadius: '20px' }}>
-                    <CheckCircle size={14} /> +$10 Earned
+                    <CheckCircle size={14} /> +{formatCurrency(10, user)} Earned
                   </span>
                 ) : (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'orange', fontSize: '0.85rem', fontWeight: 700, background: 'rgba(255,165,0,0.1)', padding: '6px 12px', borderRadius: '20px' }}>

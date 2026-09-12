@@ -10,6 +10,8 @@ import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis } from 'recharts';
 import { useToast } from '../hooks/useToast';
 import { trackEvent } from '../lib/analytics';
 import EmptyState from './ui/EmptyState';
+import { formatNumber } from '../utils/userFormatters';
+import { apiRequest } from '../lib/apiClient';
 
 // ── Confetti helper (canvas-confetti) ────────────────────────────────────
 async function fireConfetti() {
@@ -22,6 +24,12 @@ async function fireConfetti() {
 }
 
 const STATUS_OPTIONS = ['active', 'completed', 'paused', 'cancelled'];
+const PRIORITIES = [
+  { key: 'high', label: 'High', color: '#f87171' },
+  { key: 'medium', label: 'Medium', color: '#fbbf24' },
+  { key: 'low', label: 'Low', color: '#60a5fa' },
+];
+const PRIORITY_MAP = Object.fromEntries(PRIORITIES.map(priority => [priority.key, priority]));
 
 const CATEGORY_CONFIG = [
   { key: 'fitness',  label: 'Fitness',  emoji: '💪', color: '#3b82f6' },
@@ -66,7 +74,7 @@ function daysLeft(deadline) {
   return Math.ceil((new Date(deadline) - new Date()) / 86400000);
 }
 
-function generateMilestones(goal) {
+function generateMilestones(goal, user) {
   if (!goal.target_value) return [];
   const start = goal.created_at ? new Date(goal.created_at) : new Date(Date.now() - 30 * 86400000);
   const end = goal.deadline ? new Date(goal.deadline) : new Date(start.getTime() + 90 * 86400000);
@@ -75,7 +83,7 @@ function generateMilestones(goal) {
     const targetDate = new Date(start.getTime() + totalDays * (pct/100) * 86400000);
     const targetVal  = Number(goal.target_value) * (pct/100);
     const achieved   = Number(goal.current_value || 0) >= targetVal;
-    return { pct, targetDate, targetVal: targetVal.toLocaleString(undefined, { maximumFractionDigits: 1 }), achieved };
+    return { pct, targetDate, targetVal: formatNumber(targetVal, user, { maximumFractionDigits: 1 }), achieved };
   });
 }
 
@@ -170,6 +178,7 @@ function MilestoneSubtasks({ goal, updateGoal, cat }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function GoalsDashboard() {
+  const user = useStore(s => s.user);
   const toast = useToast();
   const goals      = useStore(selectGoals);
   const addGoal    = useStore(selectAddGoal);
@@ -181,9 +190,10 @@ export default function GoalsDashboard() {
   const [showAdd,    setShowAdd]    = useState(false);
   const [editId,     setEditId]     = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [query, setQuery] = useState('');
 
   const [form, setForm] = useState({
-    title: '', description: '', category: 'personal', status: 'active',
+    title: '', description: '', category: 'personal', status: 'active', priority: 'medium',
     target_value: '', current_value: '', unit: '', deadline: '',
   });
   const [editForm, setEditForm] = useState({});
@@ -195,9 +205,7 @@ export default function GoalsDashboard() {
     if (logHistory[goalId]) return;
     setLoadingLog(l => ({ ...l, [goalId]: true }));
     try {
-      const res = await fetch(`/api/goal_progress_logs?goal_id=${goalId}`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = await apiRequest(`/api/goal_progress_logs?goal_id=${encodeURIComponent(goalId)}`);
       setLogHistory(h => ({ ...h, [goalId]: Array.isArray(data) ? data : [] }));
     } catch {
       setLogHistory(h => ({ ...h, [goalId]: [] }));
@@ -218,12 +226,10 @@ export default function GoalsDashboard() {
         note: lf.note || '',
         date: lf.date || new Date().toISOString().slice(0, 10),
       };
-      const res = await fetch('/api/goal_progress_logs', {
+      await apiRequest('/api/goal_progress_logs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error();
       const updates = { current_value: val };
       const wasCompleted = goal.status === 'completed';
       if (goal.target_value && val >= Number(goal.target_value)) {
@@ -253,8 +259,21 @@ export default function GoalsDashboard() {
     let list = goals;
     if (statusFilter !== 'all') list = list.filter(g => g.status === statusFilter);
     if (catFilter    !== 'all') list = list.filter(g => g.category === catFilter);
-    return list;
-  }, [goals, statusFilter, catFilter]);
+    if (query.trim()) {
+      const term = query.trim().toLowerCase();
+      list = list.filter(g => `${g.title || ''} ${g.description || ''}`.toLowerCase().includes(term));
+    }
+    const priorityWeight = { high: 3, medium: 2, low: 1 };
+    return [...list].sort((a, b) => Number(Boolean(b.is_focus)) - Number(Boolean(a.is_focus)) || (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2) || (daysLeft(a.deadline) ?? Infinity) - (daysLeft(b.deadline) ?? Infinity));
+  }, [goals, statusFilter, catFilter, query]);
+
+  const focusGoal = useMemo(() => goals.find(g => g.is_focus && g.status === 'active'), [goals]);
+  const toggleFocus = useCallback(async (goal) => {
+    const becomingFocus = !goal.is_focus;
+    if (becomingFocus) await Promise.all(goals.filter(g => g.is_focus && g.id !== goal.id).map(g => updateGoal(g.id, { is_focus: false })));
+    await updateGoal(goal.id, { is_focus: becomingFocus });
+    toast.success(becomingFocus ? `"${goal.title}" is your focus goal.` : 'Focus goal cleared.');
+  }, [goals, updateGoal, toast]);
 
   const handleDelete = useCallback((id) => {
     const goalToRestore = goals.find(g => g.id === id);
@@ -269,6 +288,7 @@ export default function GoalsDashboard() {
     active:    goals.filter(g => g.status === 'active').length,
     completed: goals.filter(g => g.status === 'completed').length,
     avgProgress: goals.length ? Math.round(goals.reduce((s, g) => s + getProgress(g), 0) / goals.length) : 0,
+    dueSoon: goals.filter(g => g.status === 'active' && daysLeft(g.deadline) !== null && daysLeft(g.deadline) >= 0 && daysLeft(g.deadline) <= 7).length,
   }), [goals]);
 
   const handleAdd = async () => {
@@ -284,7 +304,7 @@ export default function GoalsDashboard() {
       created_at: new Date().toISOString(),
       subtasks: [],
     });
-    setForm({ title: '', description: '', category: 'personal', status: 'active', target_value: '', current_value: '', unit: '', deadline: '' });
+    setForm({ title: '', description: '', category: 'personal', status: 'active', priority: 'medium', target_value: '', current_value: '', unit: '', deadline: '' });
     setShowAdd(false);
     trackEvent('Set Goal', { type: form.category || 'other' });
     toast.success('Goal added!');
@@ -316,12 +336,13 @@ export default function GoalsDashboard() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
         {[
           { label: 'Total',     val: stats.total,              color: 'var(--text-1)' },
           { label: 'Active',    val: stats.active,             color: '#34d399' },
           { label: 'Done',      val: stats.completed,          color: '#60a5fa' },
           { label: 'Avg %',     val: `${stats.avgProgress}%`,  color: '#fbbf24' },
+          { label: 'Due this week', val: stats.dueSoon,         color: '#fb923c' },
         ].map(s => (
           <div key={s.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
             <p style={{ fontSize: '1.75rem', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</p>
@@ -329,6 +350,7 @@ export default function GoalsDashboard() {
           </div>
         ))}
       </div>
+      {focusGoal && <div className="glass-card" style={{ marginBottom: '1rem', padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--accent)' }}><div><p className="label-caps" style={{ color: 'var(--accent)', marginBottom: 2 }}>Focus goal</p><strong>{focusGoal.title}</strong><span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}> · {getProgress(focusGoal)}% complete</span></div><button type="button" className="btn-sm" onClick={() => setExpandedId(focusGoal.id)}>Open plan</button></div>}
 
       {/* Add form */}
       {showAdd && (
@@ -361,6 +383,12 @@ export default function GoalsDashboard() {
               </select>
             </div>
             <div>
+              <label className="sr-only" htmlFor="new-goal-priority">Priority</label>
+              <select id="new-goal-priority" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="form-input">
+                {PRIORITIES.map(priority => <option key={priority.key} value={priority.key}>{priority.label} priority</option>)}
+              </select>
+            </div>
+            <div>
               <label htmlFor="new-goal-deadline" style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Deadline</label>
               <input id="new-goal-deadline" type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} className="form-input" />
             </div>
@@ -374,6 +402,7 @@ export default function GoalsDashboard() {
 
       {/* Filter bar */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.25rem' }}>
+        <label className="sr-only" htmlFor="goal-search">Search goals</label><input id="goal-search" className="form-input" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search goals…" style={{ maxWidth: '360px' }} />
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', minWidth: '50px' }}>Status</span>
           {['all', ...STATUS_OPTIONS].map(f => {
@@ -473,6 +502,10 @@ export default function GoalsDashboard() {
                           className="form-input" style={{ fontSize: '0.82rem' }}>
                           {CATEGORY_CONFIG.map(c => <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}
                         </select>
+                        <select aria-label="Goal priority" value={editForm.priority || 'medium'} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))}
+                          className="form-input" style={{ fontSize: '0.82rem' }}>
+                          {PRIORITIES.map(priority => <option key={priority.key} value={priority.key}>{priority.label} priority</option>)}
+                        </select>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button onClick={saveEdit} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.75rem' }}>
@@ -503,7 +536,7 @@ export default function GoalsDashboard() {
                         <span style={{ color: cat.color, fontWeight: 700 }}>{cat.label}</span>
                         {g.target_value && (
                           <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <Target size={10} /> {g.current_value || 0}/{g.target_value} {g.unit}
+                            <Target size={10} /> {formatNumber(g.current_value || 0, user)}/{formatNumber(g.target_value, user)} {g.unit}
                           </span>
                         )}
                         {dlLabel && (
@@ -530,6 +563,7 @@ export default function GoalsDashboard() {
                 {/* Action buttons */}
                 {!isEditing && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
+                    <button type="button" aria-label={`${g.is_focus ? 'Remove' : 'Set'} focus goal: ${g.title}`} title={g.is_focus ? 'Remove focus goal' : 'Set as focus goal'} onClick={() => toggleFocus(g)} style={{ background: 'none', border: 'none', color: g.is_focus ? '#fbbf24' : 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Target size={13} fill={g.is_focus ? 'currentColor' : 'none'} /></button>
                     <button type="button" aria-label={`Edit ${g.title}`} onClick={() => startEdit(g)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={13} /></button>
                     <button type="button" aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${g.title}`} aria-expanded={isExpanded} aria-controls={`goal-details-${g.id}`} onClick={() => setExpandedId(isExpanded ? null : g.id)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}>
                       {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -587,7 +621,7 @@ export default function GoalsDashboard() {
                         <LineChart data={chartData}>
                           <XAxis dataKey="date" tick={{ fontSize: '0.52rem', fill: '#6b7280' }} axisLine={false} tickLine={false} />
                           <Line type="monotone" dataKey="v" stroke={cat.color} strokeWidth={2} dot={{ r: 3, fill: cat.color }} />
-                          <Tooltip formatter={v => [`${v} ${g.unit || ''}`, 'Value']}
+                          <Tooltip formatter={v => [`${formatNumber(v, user)} ${g.unit || ''}`, 'Value']}
                             contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.68rem' }} />
                         </LineChart>
                       </ResponsiveContainer>
@@ -607,7 +641,7 @@ export default function GoalsDashboard() {
                         <div style={{ position: 'absolute', top: '6px', left: '4px', right: '4px', height: '2px', background: 'rgba(255,255,255,0.08)', borderRadius: '99px' }} />
                         <div style={{ position: 'absolute', top: '6px', left: '4px', height: '2px', borderRadius: '99px', transition: 'width 0.5s ease', background: cat.color,
                                       width: `calc(${Math.min(100, prog)}% - 8px)` }} />
-                        {generateMilestones(g).map(m => (
+                        {generateMilestones(g, user).map(m => (
                           <div key={m.pct} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                             <div style={{
                               width: '14px', height: '14px', borderRadius: '50%', zIndex: 1,

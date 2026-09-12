@@ -12,6 +12,7 @@ import useDialogFocus from '../hooks/useDialogFocus';
 import { fetchIpInfo } from '../hooks/useGeolocation';
 import DeviceSyncModal from './DeviceSyncModal';
 import ReferralDashboard from './ReferralDashboard';
+import { formatTime } from '../utils/userFormatters';
 
 export default function SettingsModal({ onClose }) {
   const dialogRef = useDialogFocus(true, onClose);
@@ -283,7 +284,7 @@ export default function SettingsModal({ onClose }) {
                       <div key={i} style={{ marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', marginBottom: '4px' }}>
                           <span style={{ color: 'var(--accent)', fontWeight: 800 }}>[{log.action}] {log.table_name}</span>
-                          <span style={{ color: 'var(--text-3)' }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                          <span style={{ color: 'var(--text-3)' }}>{formatTime(log.timestamp, user)}</span>
                         </div>
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-2)', wordBreak: 'break-all' }}>
                           ID: {log.item_id} | {log.details ? log.details.slice(0, 80) + '...' : 'Verified update'}

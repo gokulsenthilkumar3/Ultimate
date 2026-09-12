@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import { formatNumber } from '../utils/userFormatters';
 
 // ── Brand config ───────────────────────────────────────────────────────────────
 const PLATFORM_CONFIG = {
@@ -47,7 +48,7 @@ function Sparkline({ data = [] }) {
 }
 
 // ── Analytics Card per platform ────────────────────────────────────────────────
-function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatform, onCopy, onDelete, isDefault, onChange }) {
+function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatform, onCopy, onDelete, isDefault, onChange, user }) {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const isLinked = !!link?.trim();
 
@@ -124,9 +125,9 @@ function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatf
       {showAnalytics && analyticsData && (
         <div className="platform-analytics-card__metrics" style={{ animation: 'fadeInUp 0.3s ease both' }}>
           {[
-            { icon: Users, label: cfg.followerLabel, value: analyticsData.followers?.toLocaleString(), color: cfg.color },
-            { icon: Heart, label: cfg.likeLabel, value: analyticsData.avgLikes?.toLocaleString(), color: '#ef4444' },
-            { icon: Eye, label: 'Avg Views', value: analyticsData.avgViews?.toLocaleString(), color: '#8b5cf6' },
+            { icon: Users, label: cfg.followerLabel, value: formatNumber(analyticsData.followers, user, { maximumFractionDigits: 0 }), color: cfg.color },
+            { icon: Heart, label: cfg.likeLabel, value: formatNumber(analyticsData.avgLikes, user, { maximumFractionDigits: 0 }), color: '#ef4444' },
+            { icon: Eye, label: 'Avg Views', value: formatNumber(analyticsData.avgViews, user, { maximumFractionDigits: 0 }), color: '#8b5cf6' },
           ].map(({ icon: Icon, label, value, color }) => (
             <div key={label} className="platform-analytics-card__metric">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '4px' }}>
@@ -241,7 +242,7 @@ export default function SocialMedia() {
           {[
             { label: 'Linked Platforms', value: linkedPlatforms.length, icon: Globe, color: 'var(--accent)' },
             { label: 'Avg Engagement Rate', value: avgER ? `${avgER}%` : '—', icon: TrendingUp, color: '#22c55e' },
-            { label: 'Total Followers', value: Object.values(analyticsData).reduce((a, d) => a + (d?.followers || 0), 0).toLocaleString() || '—', icon: Users, color: '#6366f1' },
+            { label: 'Total Followers', value: formatNumber(Object.values(analyticsData).reduce((a, d) => a + (d?.followers || 0), 0), user, { maximumFractionDigits: 0 }), icon: Users, color: '#6366f1' },
           ].map(({ label, value, icon: Icon, color }) => (
             <div key={label} className="glass-card card-shine-wrap" style={{ padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -296,6 +297,7 @@ export default function SocialMedia() {
                 onCopy={handleCopy}
                 onDelete={() => setSocialData(prev => { const n = { ...prev }; delete n[platform]; return n; })}
                 isDefault={isDefault}
+                user={user}
                 onChange={val => setSocialData(prev => ({ ...prev, [platform]: val }))}
               />
             );
