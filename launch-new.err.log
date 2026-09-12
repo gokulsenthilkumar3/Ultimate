@@ -1,0 +1,26 @@
+[41544:0912/010111.696:ERROR:components\os_crypt\sync\os_crypt_win.cc:105] Failed to decrypt: Key not valid for use in specified state. (0x8009000B)
+[41544:0912/010112.640:ERROR:content\browser\gpu\gpu_process_host.cc:1035] GPU process exited unexpectedly: exit_code=-1073741515
+[41544:0912/010112.641:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: Access is denied. (0x5)
+[41544:0912/010112.641:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: Access is denied. (0x5)
+[41544:0912/010112.642:WARNING:content\browser\gpu\gpu_process_host.cc:1479] The GPU process has crashed 1 time(s)
+[41544:0912/010112.642:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: Access is denied. (0x5)
+[41544:0912/010112.657:ERROR:net\disk_cache\disk_cache.cc:290] Unable to create cache
+[41544:0912/010112.658:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[41544:0912/010112.659:ERROR:net\disk_cache\disk_cache.cc:290] Unable to create cache
+[41544:0912/010112.659:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[41544:0912/010112.660:ERROR:net\disk_cache\disk_cache.cc:290] Unable to create cache
+[41544:0912/010112.661:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[41544:0912/010112.717:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: Access is denied. (0x5)
+[41544:0912/010112.717:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: Access is denied. (0x5)
+[41544:0912/010112.717:ERROR:net\disk_cache\cache_util_win.cc:25] Unable to move the cache: Access is denied. (0x5)
+[41544:0912/010112.731:ERROR:net\disk_cache\disk_cache.cc:290] Unable to create cache
+[41544:0912/010112.733:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[41544:0912/010112.733:ERROR:net\disk_cache\disk_cache.cc:290] Unable to create cache
+[41544:0912/010112.734:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[41544:0912/010112.735:ERROR:net\disk_cache\disk_cache.cc:290] Unable to create cache
+[41544:0912/010112.735:ERROR:gpu\ipc\host\gpu_disk_cache.cc:737] Gpu Cache Creation failed: -2
+[41544:0912/010112.744:ERROR:content\browser\gpu\gpu_process_host.cc:1035] GPU process exited unexpectedly: exit_code=-1073741515
+[41544:0912/010112.749:WARNING:content\browser\gpu\gpu_process_host.cc:1479] The GPU process has crashed 2 time(s)
+[41544:0912/010112.787:ERROR:content\browser\gpu\gpu_process_host.cc:1035] GPU process exited unexpectedly: exit_code=-1073741515
+[41544:0912/010112.787:WARNING:content\browser\gpu\gpu_process_host.cc:1479] The GPU process has crashed 3 time(s)
+[41544:0912/010112.788:FATAL:content\browser\gpu\gpu_data_manager_impl_private.cc:417] GPU process isn't usable. Goodbye.

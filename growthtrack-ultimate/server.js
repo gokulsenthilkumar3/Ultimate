@@ -4,6 +4,7 @@ import { createRequire } from 'module';
 import Stripe from 'stripe';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { logToFile } from './logger.js';
 import { createSecurity } from './server/security.js';
@@ -16,7 +17,8 @@ const __dirname = path.dirname(__filename);
 
 const require = createRequire(import.meta.url);
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-const { PrismaClient } = require('@prisma/client');
+const bundledPrisma = path.join(__dirname, 'prisma-generated', 'client', 'default.js');
+const { PrismaClient } = require(fs.existsSync(bundledPrisma) ? path.dirname(bundledPrisma) : '@prisma/client');
 
 // Resolve the database from this file, not the process working directory.
 // This prevents `npm run dev` launched from another folder from creating a
@@ -54,9 +56,7 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-app.get('/', (req, res) => {
-  res.status(200).json({ service: 'GrowthTrack API', status: 'online' });
-});
+// Root path is reserved for the frontend (dist/index.html)
 
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'online', service: 'GrowthTrack API' }));
 
@@ -943,6 +943,26 @@ app.get('/api/habit_logs/:habitId', authMiddleware, async (req, res) => {
     res.json(items);
   } catch(e) { sendInternalError(res, e, 'Habit log list'); }
 });
+
+if (process.env.SERVE_FRONTEND === 'true' || process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'dist')));
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
+      return res.status(404).json({ error: 'Endpoint not found.' });
+    }
+    if (req.method === 'GET') {
+      return res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    }
+    next();
+  });
+} else {
+  app.use((req, res, next) => {
+    if (!req.path.startsWith('/api/') && !req.path.startsWith('/auth/') && req.path !== '/') {
+      return res.status(404).json({ error: 'Endpoint not found.' });
+    }
+    next();
+  });
+}
 
 app.listen(PORT, () => {
   logToFile('info', `GrowthTrack server started`, { port: PORT, env: process.env.NODE_ENV || 'development' });

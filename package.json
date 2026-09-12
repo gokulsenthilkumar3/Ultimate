@@ -1,0 +1,10 @@
+{
+  "name": "growthtrack-workspace",
+  "private": true,
+  "scripts": {
+    "build:desktop": "npm --prefix growthtrack-ultimate run build:desktop",
+    "build": "npm --prefix growthtrack-ultimate run build",
+    "test": "npm --prefix growthtrack-ultimate run test",
+    "db:sync": "npm --prefix growthtrack-ultimate run db:sync"
+  }
+}

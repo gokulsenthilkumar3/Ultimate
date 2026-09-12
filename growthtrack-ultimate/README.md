@@ -19,6 +19,28 @@
 
 </div>
 
+## Windows desktop build
+
+The desktop target is self-contained: packaging synchronises the Prisma schema,
+builds the web UI, and creates a Windows installer. On first launch Electron
+copies the packaged seed database into its writable per-user data directory, so
+the installed app never tries to write inside `Program Files`.
+
+```powershell
+npm run build:desktop
+```
+
+The generated installer is written to a fresh timestamped folder next to the
+project, such as `../growthtrack-release-20260911184500`. For a local
+database-only check, run `npm run db:sync`; the server resolves `file:./dev.db`
+relative to the project directory rather than the shell's current directory.
+
+The desktop build bundles the generated Prisma client into
+`prisma-generated/client`, avoiding hidden `.prisma` packaging issues.
+
+If npm itself is unavailable on the machine, run `..\build-desktop.ps1` from
+PowerShell at the repository root.
+
 ---
 
 **GrowthTrack Ultimate** is a high-density, minimal personal operations hub. It merges daily task tracking, habits, and finance with a **live, parametric 3D Humanoid Twin**. Built on the custom **v4 Deep Space Design System**, it delivers a cinematic, animatic experience with holographic HUDs, scan-line boot sequences, and ambient cosmic particle fields.
