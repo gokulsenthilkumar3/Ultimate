@@ -1,0 +1,5 @@
+
+undefined [[32minfo[39m]: Winston logger initialized {"logsDir":"D:\\Projects\\Tracker\\growthtrack-release-20260911192605\\win-unpacked\\resources\\app\\logs","retentionDays":14,"maxFileSize":"20MB"}
+◇ injected env (6) from growthtrack-release-20260911192605\win-unpacked\resources\app\.env // tip: ◈ secrets for agents [www.dotenvx.com]
+undefined [[32minfo[39m]: GrowthTrack server started {"port":3001,"env":"development","service":"growthtrack-server"}
+Local Auth Server running on http://localhost:3001

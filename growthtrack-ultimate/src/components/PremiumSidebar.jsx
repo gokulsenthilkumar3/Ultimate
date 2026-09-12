@@ -6,25 +6,33 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Search,
+  ChevronDown,
+  X,
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { GROUP_ORDER, normalizeGroupOrder, normalizeTabOrder, navigationGroups, ROUTE_ALIASES, tabMeta } from '../config/navigation';
 import { animateIndicator } from '../lib/navMotion';
+const EMPTY_LIST = Object.freeze([]);
+const EMPTY_ORDER = Object.freeze({});
 
 export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSettings, onLogout }) {
   const indicatorRef = useRef(null);
   const itemsRef = useRef({});
   const savedOrder = useStore(state => state.navigationOrder) || GROUP_ORDER;
-  const databaseNavigation = useStore(state => state.appConfig?.navigation?.groups) || [];
+  const databaseNavigation = useStore(state => state.appConfig?.navigation?.groups) || EMPTY_LIST;
   const runtimeGroups = useMemo(() => navigationGroups(databaseNavigation), [databaseNavigation]);
   const highlightedTab = ROUTE_ALIASES[activeTab] || activeTab;
   const setNavigationOrder = useStore(state => state.setNavigationOrder);
-  const navigationTabOrder = useStore(state => state.navigationTabOrder) || {};
+  const navigationTabOrder = useStore(state => state.navigationTabOrder) || EMPTY_ORDER;
   const setNavigationTabOrder = useStore(state => state.setNavigationTabOrder);
   const collapsed = useStore(state => state.sidebarCollapsed);
   const setCollapsed = useStore(state => state.setSidebarCollapsed);
   const [dragged, setDragged] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [query, setQuery] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const activeGroup = tabMeta(highlightedTab).group;
   const navigationOrder = useMemo(() => normalizeGroupOrder(savedOrder), [savedOrder]);
   const ownerName = String(user?.name || user?.fullName || 'Owner');
 
@@ -34,7 +42,7 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
 
   useEffect(() => {
     animateIndicator(indicatorRef.current, itemsRef.current[highlightedTab]);
-  }, [highlightedTab, collapsed, navigationOrder, navigationTabOrder]);
+  }, [highlightedTab, collapsed, navigationOrder, navigationTabOrder, expandedGroups, query]);
 
   const finishDrag = () => {
     setDragged(null);
@@ -95,11 +103,18 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
         </button>
       </div>
 
+      {!collapsed && <label className="sidebar-search"><Search size={15} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Find a tool…" aria-label="Search navigation" />{query && <button onClick={() => setQuery('')} aria-label="Clear navigation search"><X size={14} /></button>}</label>}
       <nav className="premium-sidebar-nav" aria-label="Modules">
         <div className="magic-indicator" ref={indicatorRef} />
         {navigationOrder.map(groupId => {
           const group = runtimeGroups[groupId];
-          const tabs = normalizeTabOrder(navigationTabOrder[groupId], group.tabs);
+          const tabs = normalizeTabOrder(navigationTabOrder[groupId], group.tabs).filter(id => {
+            const meta = tabMeta(id);
+            return `${group.label} ${meta.label} ${meta.keywords.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase());
+          });
+          if (!tabs.length) return null;
+          const expanded = collapsed || Boolean(query.trim()) || (expandedGroups[groupId] ?? groupId === activeGroup);
+          const GroupIcon = group.icon;
           return (
             <section
               key={groupId}
@@ -113,11 +128,12 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
               onDragOver={event => event.preventDefault()}
               onDrop={() => moveGroup(groupId)}
             >
-              <div className="sidebar-nav-group__label" aria-hidden={collapsed}>
-                <GripVertical size={12} className="drag-grip" />
+              <button className="sidebar-nav-group__label sidebar-group-toggle" aria-hidden={collapsed} tabIndex={collapsed ? -1 : 0} aria-expanded={expanded} aria-controls={`sidebar-group-${groupId}`} onClick={() => setExpandedGroups(current => ({ ...current, [groupId]: !expanded }))}>
+                <GroupIcon size={15} />
                 <span>{group.label}</span>
-              </div>
-              <div className="sidebar-nav-group__items">
+                <ChevronDown size={14} className="sidebar-group-chevron" />
+              </button>
+              <div id={`sidebar-group-${groupId}`} className="sidebar-nav-group__items" hidden={!expanded}>
                 {tabs.map(tabId => {
                   const meta = tabMeta(tabId);
                   const Icon = meta.icon;
@@ -149,6 +165,7 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
             </section>
           );
         })}
+        {query.trim() && !Object.values(runtimeGroups).some(group => group.tabs.some(id => { const meta = tabMeta(id); return `${group.label} ${meta.label} ${meta.keywords.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase()); })) && <p className="sidebar-search-empty" role="status">No tools found. Try “tasks”, “sleep”, or “budget”.</p>}
       </nav>
 
       <div className="premium-sidebar-footer">

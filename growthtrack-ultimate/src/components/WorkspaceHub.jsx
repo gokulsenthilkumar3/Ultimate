@@ -7,8 +7,8 @@ const Notes = lazy(() => import('./Notes'));
 
 const TABS = [
   { id: 'calendar', label: 'Calendar', description: 'Plan the day' },
-  { id: 'documents', label: 'Documents', description: 'Cloud-ready files' },
-  { id: 'notes', label: 'Notes', description: 'Markdown knowledge' },
+  { id: 'documents', label: 'Documents', description: 'Keep files together' },
+  { id: 'notes', label: 'Notes', description: 'Capture an idea' },
 ];
 const TAB_IDS = TABS.map(item => item.id);
 
@@ -19,8 +19,8 @@ export default function WorkspaceHub({ initialTab = 'calendar' }) {
     <section className="module-page hub-page">
       <div className="page-hero glass-card">
         <span className="eyebrow">Workspace</span>
-        <h1 className="text-display">Your operating context</h1>
-        <p className="text-secondary">Calendar, documents, and notes are connected as one place to plan, capture, and retrieve.</p>
+        <h1 className="text-display">Space for your best work.</h1>
+        <p className="text-secondary">Plan your schedule, keep important files close, and capture ideas before they slip away.</p>
       </div>
 
       <div

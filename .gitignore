@@ -26,3 +26,8 @@ growthtrack-ultimate/.env.local
 .idea/
 .pnpm-store/
 *.db-journal
+growthtrack-release/
+growthtrack-release-v2/
+growthtrack-release-*/
+growthtrack-ultimate/release-v2/
+growthtrack-ultimate/prisma-generated/

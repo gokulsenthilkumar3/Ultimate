@@ -31,7 +31,7 @@ export function createSecurity({ prisma, logToFile }) {
   const attempts = new Map();
   const isProduction = process.env.NODE_ENV === 'production';
   const configuredOrigins = (process.env.APP_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean);
-  const localOrigins = ['http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:5001', 'http://127.0.0.1:5001', 'http://localhost:5173', 'http://127.0.0.1:5173'];
+  const localOrigins = ['http://localhost:3001', 'http://127.0.0.1:3001', 'http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:5001', 'http://127.0.0.1:5001', 'http://localhost:5173', 'http://127.0.0.1:5173'];
   const allowedOrigins = new Set(configuredOrigins.length ? configuredOrigins : (isProduction ? [] : localOrigins));
 
   const corsOptions = {

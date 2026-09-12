@@ -45,8 +45,8 @@ export default function InsightsHub({ initialTab = 'analytics', logs = [] }) {
     <section className="module-page hub-page">
       <div className="page-hero glass-card">
         <span className="eyebrow">Growthcast · Insights</span>
-        <h1 className="text-display">One place for your signal</h1>
-        <p className="text-secondary">Dashboard, analytics, logs, goals, and forecasting share one workspace.</p>
+        <h1 className="text-display">See how far you’ve come.</h1>
+        <p className="text-secondary">Explore your trends, review your goals, and decide what to focus on next.</p>
       </div>
 
       <div className="growthcast-card glass-card">

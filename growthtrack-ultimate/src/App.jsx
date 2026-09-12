@@ -14,6 +14,8 @@ import './styles/chamber.css';
 import './styles/premium.css';
 import './styles/ui-components.css';
 import './styles/ultimate-ui.css';
+import './styles/experience.css';
+import SectionNavigation from './components/SectionNavigation';
 
 import LoginPage from './pages/LoginPage';
 
@@ -384,6 +386,7 @@ export default function App() {
 
             {/* ── Single content area: shows skeleton during load, tab after ── */}
             <main id="main-content" className="content-area" tabIndex={-1} aria-busy={isLoading}>
+              {!isNotFound && <SectionNavigation activeTab={activeTab} onNavigate={setActiveTab} />}
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
                   <ProductPageTransition key={activeTab} reducedMotion={reducedMotion}>
