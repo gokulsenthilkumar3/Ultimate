@@ -7,6 +7,7 @@ import {
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import useStore from '../store/useStore';
 import AnimatedNumber from './ui/AnimatedNumber';
+import { formatDate } from '../utils/userFormatters';
 
 const TOOLTIP_STYLE = {
   background: 'var(--bg-glass)', border: '1px solid var(--border)',
@@ -85,7 +86,7 @@ function HealthScoreRing({ score }) {
 }
 
 // ── Day-at-a-Glance hero ───────────────────────────────────────────────────
-function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setActiveTab }) {
+function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setActiveTab, user }) {
   const today   = new Date().toISOString().slice(0, 10);
   const tod     = getTimeOfDay();
 
@@ -129,7 +130,7 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
             Day at a Glance
           </h2>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', lineHeight: 1.5 }}>
-            {new Date().toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {formatDate(new Date(), user, { style: 'long', weekday: true })}
           </p>
         </div>
 
@@ -183,6 +184,7 @@ function DayAtAGlance({ tasks, habits, goals, sleepLogs, habitLogsByHabit, setAc
 
 export default function Overview({ setActiveTab }) {
   const state            = useStore();
+  const user             = state.user;
   const metric_logs      = state.metric_logs      ?? EMPTY_LIST;
   const tasks            = state.tasks            ?? EMPTY_LIST;
   const habits           = state.habits           ?? EMPTY_LIST;
@@ -350,7 +352,7 @@ export default function Overview({ setActiveTab }) {
       </div>
 
       {/* Day at a Glance hero */}
-      <DayAtAGlance tasks={tasks} habits={habits} goals={goals} sleepLogs={sleep_logs} habitLogsByHabit={habitLogsByHabit} setActiveTab={setActiveTab} />
+      <DayAtAGlance tasks={tasks} habits={habits} goals={goals} sleepLogs={sleep_logs} habitLogsByHabit={habitLogsByHabit} setActiveTab={setActiveTab} user={user} />
 
       {/* Top row: Health Score + Environmental */}
       <div className="overview-snapshot-grid" style={{ display: 'grid', gridTemplateColumns: '280px 1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>

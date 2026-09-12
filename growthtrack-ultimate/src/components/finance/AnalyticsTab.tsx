@@ -4,7 +4,7 @@ import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarCha
 import StatCard from '../ui/StatCard';
 import EmptyState from '../ui/EmptyState';
 
-const renderActiveShape = (props: any) => {
+const renderActiveShape = (props: any, fmtINR: (value: number) => string) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
   return (
     <g>
@@ -12,7 +12,7 @@ const renderActiveShape = (props: any) => {
         {payload.name}
       </text>
       <text x={cx} y={cy + 12} dy={8} textAnchor="middle" fill="var(--text-2)" style={{ fontSize: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-mono, monospace)' }}>
-        ₹{value.toLocaleString()} ({(percent * 100).toFixed(0)}%)
+        {fmtINR(value)} ({(percent * 100).toFixed(0)}%)
       </text>
       <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} />
       <Sector cx={cx} cy={cy} startAngle={startAngle} endAngle={endAngle} innerRadius={outerRadius + 12} outerRadius={outerRadius + 15} fill={fill} />
@@ -35,7 +35,7 @@ const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pi
                   <ResponsiveContainer width="100%" height="100%">
                     <RePieChart>
                       {/* @ts-ignore - Recharts types might be missing activeIndex depending on version */}
-                      <Pie data={pieData} innerRadius={65} outerRadius={90} paddingAngle={4} dataKey="value" activeIndex={activeIndex} activeShape={renderActiveShape} onMouseEnter={onPieEnter} onClick={(entry: any) => onCategorySelect?.(entry?.name)}>
+                      <Pie data={pieData} innerRadius={65} outerRadius={90} paddingAngle={4} dataKey="value" activeIndex={activeIndex} activeShape={(props: any) => renderActiveShape(props, fmtINR)} onMouseEnter={onPieEnter} onClick={(entry: any) => onCategorySelect?.(entry?.name)}>
                         {pieData.map((_, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
                       </Pie>
                       <Tooltip formatter={(val: number) => fmtINR(val)} contentStyle={TOOLTIP_STYLE} />
@@ -64,7 +64,7 @@ const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pi
                   <BarChart data={pieData.slice(0, 8)}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis dataKey="name" stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v/1000}k`} />
+                    <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => fmtINR(v)} />
                     <Tooltip cursor={{ fill: 'var(--bg-elevated)' }} contentStyle={TOOLTIP_STYLE} formatter={(val) => fmtINR(val)} />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]} onClick={(entry: any) => onCategorySelect?.(entry?.name)}>
                       {pieData.slice(0, 8).map((_, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}

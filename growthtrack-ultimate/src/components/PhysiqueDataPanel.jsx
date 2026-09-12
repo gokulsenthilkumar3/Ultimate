@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, CheckCircle2, ChevronDown, Cpu, Flag, LockKeyhole, Plus, Ruler, ShieldCheck, Target, TrendingUp } from 'lucide-react';
+import useStore from '../store/useStore';
+import { formatMeasurement, formatDate, getMeasurementUnit } from '../utils/userFormatters';
 import { BODY_METRIC_GROUPS, BODY_METRICS } from '../lib/physiqueProfile';
 
 const TABS = [
@@ -9,9 +11,14 @@ const TABS = [
   { id: 'model', label: 'Model', icon: Cpu },
 ];
 
-const format = (value, unit) => Number.isFinite(Number(value)) ? `${Number(value).toFixed(unit === '%' ? 1 : 1)}${unit}` : '—';
+const format = (value, unit, user) => {
+  if (!Number.isFinite(Number(value))) return '—';
+  if (['cm', 'kg', 'in', 'lb', 'g', 'oz'].includes(String(unit).toLowerCase())) return formatMeasurement(value, unit, user, { maximumFractionDigits: 1 });
+  return `${Number(value).toFixed(unit === '%' ? 1 : 1)}${unit}`;
+};
 
 export default function PhysiqueDataPanel({ current = {}, goal = {}, baseline = {}, snapshots = [], milestones = [], progress, diagnostics, onCurrentChange, onGoalChange, onSaveSnapshot, onToggleMilestone }) {
+  const user = useStore(state => state.user);
   const [tab, setTab] = useState('summary');
   const [changedOnly, setChangedOnly] = useState(false);
   const [query, setQuery] = useState('');
@@ -44,7 +51,7 @@ export default function PhysiqueDataPanel({ current = {}, goal = {}, baseline = 
             <p>{progress.total ? `${progress.completed} of ${progress.total} tracked measurements reached` : 'Add a baseline and goal to calculate progress.'}</p>
           </article>
           <article className="physique-summary-card"><TrendingUp size={18} /><span>Tracked changes</span><strong>{changed.length}</strong><p>Measurements with a current and goal value.</p></article>
-          <article className="physique-summary-card"><Activity size={18} /><span>Latest check-in</span><strong>{recentDate && !Number.isNaN(recentDate.getTime()) ? recentDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'Not logged'}</strong><p>{snapshots.length ? `${snapshots.length} database snapshot${snapshots.length === 1 ? '' : 's'}` : 'Save a snapshot to begin the journey.'}</p></article>
+            <article className="physique-summary-card"><Activity size={18} /><span>Latest check-in</span><strong>{recentDate && !Number.isNaN(recentDate.getTime()) ? formatDate(recentDate, user, { month: 'short' }) : 'Not logged'}</strong><p>{snapshots.length ? `${snapshots.length} database snapshot${snapshots.length === 1 ? '' : 's'}` : 'Save a snapshot to begin the journey.'}</p></article>
           <article className="physique-summary-card"><Target size={18} /><span>Next milestone</span><strong>{nextMilestone?.label || 'Not set'}</strong><p>{nextMilestone?.month || 'Create milestones in Physique Targets.'}</p></article>
           <div className="physique-summary__action"><button className="physique-action" onClick={onSaveSnapshot}><Plus size={15} /> Save today’s snapshot</button></div>
         </div>
@@ -65,10 +72,10 @@ export default function PhysiqueDataPanel({ current = {}, goal = {}, baseline = 
                 const start = Number(baseline[metric.key]); const now = Number(current[metric.key]); const target = Number(goal[metric.key]);
                 const delta = Number.isFinite(now) && Number.isFinite(target) ? target - now : null;
                 return <div className="physique-metric-table__row" key={metric.key}>
-                  <strong>{metric.label}</strong><span data-label="Baseline">{format(start, metric.unit)}</span>
-                  <label data-label="Current"><input type="number" step="0.1" value={Number.isFinite(now) ? now : ''} aria-label={`Current ${metric.label}`} onChange={(event) => onCurrentChange(metric.key, event.target.value)} /><small>{metric.unit}</small></label>
-                  <label data-label="Goal"><input type="number" step="0.1" value={Number.isFinite(target) ? target : ''} aria-label={`Goal ${metric.label}`} onChange={(event) => onGoalChange(metric.key, event.target.value)} /><small>{metric.unit}</small></label>
-                  <span data-label="Change" className={delta == null ? '' : 'has-value'}>{delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta.toFixed(1)}${metric.unit}`}</span>
+                  <strong>{metric.label}</strong><span data-label="Baseline">{format(start, metric.unit, user)}</span>
+                  <label data-label="Current"><input type="number" step="0.1" value={Number.isFinite(now) ? now : ''} aria-label={`Current ${metric.label}`} onChange={(event) => onCurrentChange(metric.key, event.target.value)} /><small>{getMeasurementUnit(metric.unit, user)}</small></label>
+                  <label data-label="Goal"><input type="number" step="0.1" value={Number.isFinite(target) ? target : ''} aria-label={`Goal ${metric.label}`} onChange={(event) => onGoalChange(metric.key, event.target.value)} /><small>{getMeasurementUnit(metric.unit, user)}</small></label>
+                  <span data-label="Change" className={delta == null ? '' : 'has-value'}>{delta == null ? '—' : format(delta, metric.unit, user)}</span>
                 </div>;
               })}
             </div></section>;
@@ -86,7 +93,7 @@ export default function PhysiqueDataPanel({ current = {}, goal = {}, baseline = 
             <button onClick={() => onToggleMilestone?.(milestone)} aria-label={`${milestone.achieved ? 'Reopen' : 'Complete'} ${milestone.label}`}><CheckCircle2 size={18} /></button>
             <div><span>{milestone.month || milestone.targetDate || `Step ${index + 1}`}</span><strong>{milestone.label}</strong></div>
           </li>)}</ol> : <div className="physique-empty"><Flag size={24} /><strong>No journey milestones yet</strong><p>Add milestones in the Targets tab. They will appear here automatically.</p></div>}
-          <div className="physique-snapshots"><h4>Database snapshots</h4>{snapshots.length ? snapshots.slice().reverse().map((snapshot) => <div key={snapshot.id}><strong>{new Date(snapshot.date).toLocaleDateString()}</strong><span>{Object.keys(snapshot.metrics || {}).length} measurements</span></div>) : <p>No snapshots have been logged.</p>}</div>
+          <div className="physique-snapshots"><h4>Database snapshots</h4>{snapshots.length ? snapshots.slice().reverse().map((snapshot) => <div key={snapshot.id}><strong>{formatDate(snapshot.date, user)}</strong><span>{Object.keys(snapshot.metrics || {}).length} measurements</span></div>) : <p>No snapshots have been logged.</p>}</div>
         </div>
       )}
 

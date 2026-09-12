@@ -20,7 +20,17 @@ Sentry.init({
 });
 if ('serviceWorker' in navigator && import.meta.env.PROD) window.addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      retry: (attempt, error) => error?.status !== 401 && error?.status !== 403 && attempt < 2,
+      refetchOnWindowFocus: false,
+    },
+    mutations: { retry: false },
+  },
+});
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

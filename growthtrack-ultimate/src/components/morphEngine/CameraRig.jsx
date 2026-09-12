@@ -3,6 +3,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import use3DStore, { CAMERA_PRESETS } from '../../store/use3DStore';
+import useStore from '../../store/useStore';
 import { BODY_PART_MAP } from './BodyPartInteraction';
 import { fitHumanFrame, nearestOrbitAngle } from './cameraFraming';
 
@@ -17,7 +18,9 @@ export default function CameraRig() {
   const cameraMotion = use3DStore((s) => s.cinematicState.cameraMotion);
   const focusedBodyPart = use3DStore((s) => s.focusedBodyPart);
   const modelFrame = use3DStore((s) => s.modelFrame);
-  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+  const profileReducedMotion = useStore((s) => s.reducedMotion);
+  const [systemReducedMotion, setSystemReducedMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+  const reducedMotion = Boolean(profileReducedMotion || systemReducedMotion);
   const animation = useRef(null);
   const offset = useRef(new THREE.Vector3());
   const initialFrame = useRef(true);
@@ -25,7 +28,7 @@ export default function CameraRig() {
 
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-    const change = () => setReducedMotion(media?.matches ?? false);
+    const change = () => setSystemReducedMotion(media?.matches ?? false);
     media?.addEventListener('change', change);
     return () => media?.removeEventListener('change', change);
   }, []);

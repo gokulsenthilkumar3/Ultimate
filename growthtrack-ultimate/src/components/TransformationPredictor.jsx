@@ -8,13 +8,15 @@ import {
   Target, TrendingUp, AlertTriangle, CheckCircle2, Zap, Clock,
   ChevronRight, Activity, Award,
 } from 'lucide-react';
+import useStore from '../store/useStore';
+import { formatDate, formatMeasurement, formatNumber } from '../utils/userFormatters';
 
 const METRICS = [
   { id: 'weight',      label: 'Bodyweight',     target: 73,    unit: 'kg',  shrink: false, domain: 'body'     },
-  { id: 'shoulders',   label: 'Shoulders',      target: 48.5,  unit: 'in',  shrink: false, domain: 'body'     },
-  { id: 'chest',       label: 'Chest',          target: 43,    unit: 'in',  shrink: false, domain: 'body'     },
-  { id: 'waist',       label: 'Waist',          target: 30.5,  unit: 'in',  shrink: true,  domain: 'body'     },
-  { id: 'arms',        label: 'Arms',           target: 16.25, unit: 'in',  shrink: false, domain: 'body'     },
+  { id: 'shoulders',   label: 'Shoulders',      target: 123.2, unit: 'cm',  shrink: false, domain: 'body'     },
+  { id: 'chest',       label: 'Chest',          target: 109.2, unit: 'cm',  shrink: false, domain: 'body'     },
+  { id: 'waist',       label: 'Waist',          target: 77.5,  unit: 'cm',  shrink: true,  domain: 'body'     },
+  { id: 'arms',        label: 'Arms',           target: 41.3,  unit: 'cm',  shrink: false, domain: 'body'     },
   { id: 'memoryPower', label: 'Cognition',      target: 95,    unit: '%',   shrink: false, domain: 'neuro'    },
   { id: 'stamina',     label: 'Stamina',        target: 90,    unit: 'min', shrink: false, domain: 'fitness'  },
   { id: 'eyePower',    label: 'Eye Power',      target: 0,     unit: 'dp',  shrink: true,  domain: 'sensory'  },
@@ -75,14 +77,15 @@ function computePredictions(logs) {
     ));
 
     const etaDate = isFinite(daysToTarget)
-      ? new Date(Date.now() + daysToTarget * 86_400_000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-      : 'TBD';
+      ? new Date(Date.now() + daysToTarget * 86_400_000)
+      : null;
 
     // Build 6-week projection for the timeline chart
     const weeks = Array.from({ length: 7 }, (_, i) => ({
       week: i === 0 ? 'Now' : `W${i}`,
       value: parseFloat((current + velocity * i * 7).toFixed(2)),
       target: metric.target,
+      unit: metric.unit,
     }));
 
     // Radar: pct toward target (0-100)
@@ -109,7 +112,7 @@ function computePredictions(logs) {
   });
 }
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, user }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
@@ -120,7 +123,9 @@ const CustomTooltip = ({ active, payload, label }) => {
       <p style={{ color: 'var(--text-3)', marginBottom: '4px' }}>{label}</p>
       {payload.map(p => (
         <p key={p.dataKey} style={{ color: p.color, fontWeight: 700 }}>
-          {p.name}: {p.value} {p.payload?.unit || ''}
+          {p.name}: {['kg', 'cm'].includes(p.payload?.unit)
+            ? formatMeasurement(p.value, p.payload.unit, user)
+            : `${formatNumber(p.value, user)} ${p.payload?.unit || ''}`}
         </p>
       ))}
     </div>
@@ -128,6 +133,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default React.memo(function TransformationPredictor({ logs }) {
+  const user = useStore(s => s.user);
   const predictions = useMemo(() => computePredictions(logs), [logs]);
   const [selected, setSelected] = useState(null);
   const [view, setView]         = useState('cards'); // 'cards' | 'radar' | 'timeline'
@@ -220,13 +226,12 @@ export default React.memo(function TransformationPredictor({ logs }) {
                 <div>
                   <p className="label-caps" style={{ fontSize: '0.65rem', color: DOMAIN_COLORS[p.domain] }}>{p.label}</p>
                   <h4 className="text-display" style={{ fontSize: '1.3rem', color: 'var(--text-1)', lineHeight: 1 }}>
-                    {p.predicted30}&thinsp;
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 500 }}>{p.unit}</span>
+                    {['kg', 'cm'].includes(p.unit) ? formatMeasurement(p.predicted30, p.unit, user) : `${formatNumber(p.predicted30, user)} ${p.unit}`}
                   </h4>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>Target</p>
-                  <p style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent)' }}>{p.target} {p.unit}</p>
+                  <p style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent)' }}>{['kg', 'cm'].includes(p.unit) ? formatMeasurement(p.target, p.unit, user) : `${formatNumber(p.target, user)} ${p.unit}`}</p>
                 </div>
               </div>
 
@@ -250,7 +255,7 @@ export default React.memo(function TransformationPredictor({ logs }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Velocity</span>
                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: p.velocity !== 0 ? (p.shrink ? (p.velocity < 0 ? '#22c55e' : '#f43f5e') : (p.velocity > 0 ? '#22c55e' : '#f43f5e')) : 'var(--text-3)' }}>
-                  {p.velocity > 0 ? '+' : ''}{p.velocity} {p.unit}/wk
+                  {p.velocity > 0 ? '+' : ''}{['kg', 'cm'].includes(p.unit) ? formatMeasurement(Math.abs(p.velocity), p.unit, user) : `${formatNumber(Math.abs(p.velocity), user)} ${p.unit}`}/wk
                 </span>
               </div>
 
@@ -265,7 +270,7 @@ export default React.memo(function TransformationPredictor({ logs }) {
                   ? <CheckCircle2 size={12} color="#22c55e" />
                   : <AlertTriangle size={12} color="#f43f5e" />}
                 <span style={{ fontSize: '0.7rem', fontWeight: 700, color: p.isOnTrack ? '#22c55e' : '#f43f5e' }}>
-                  {p.isOnTrack ? `ETA ${p.etaDate}` : 'Velocity below target'}
+                  {p.isOnTrack ? `ETA ${p.etaDate ? formatDate(p.etaDate, user, { month: 'short' }) : 'TBD'}` : 'Velocity below target'}
                 </span>
                 <ChevronRight size={12} color="var(--text-3)" style={{ marginLeft: 'auto', transform: selected === p.id ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
@@ -340,8 +345,8 @@ export default React.memo(function TransformationPredictor({ logs }) {
                   <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{p.label}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Now: <strong style={{ color: 'var(--text-1)' }}>{p.current} {p.unit}</strong></span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Target: <strong style={{ color: 'var(--accent)' }}>{p.target} {p.unit}</strong></span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Now: <strong style={{ color: 'var(--text-1)' }}>{['kg', 'cm'].includes(p.unit) ? formatMeasurement(p.current, p.unit, user) : `${formatNumber(p.current, user)} ${p.unit}`}</strong></span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Target: <strong style={{ color: 'var(--accent)' }}>{['kg', 'cm'].includes(p.unit) ? formatMeasurement(p.target, p.unit, user) : `${formatNumber(p.target, user)} ${p.unit}`}</strong></span>
                   {p.isOnTrack
                     ? <span style={{ fontSize: '0.65rem', color: '#22c55e', fontWeight: 800, background: 'rgba(34,197,94,0.1)', padding: '2px 8px', borderRadius: '10px' }}>ON TRACK</span>
                     : <span style={{ fontSize: '0.65rem', color: '#f43f5e', fontWeight: 800, background: 'rgba(244,63,94,0.1)', padding: '2px 8px', borderRadius: '10px' }}>LAGGING</span>
@@ -353,7 +358,7 @@ export default React.memo(function TransformationPredictor({ logs }) {
                   <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="week" stroke="var(--text-3)" tick={{ fontSize: 9 }} />
                   <YAxis stroke="var(--text-3)" tick={{ fontSize: 9 }} domain={['auto', 'auto']} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<CustomTooltip user={user} />} />
                   <ReferenceLine y={p.target} stroke={DOMAIN_COLORS[p.domain]} strokeDasharray="4 2" strokeWidth={1.5} label={{ value: 'Target', fill: DOMAIN_COLORS[p.domain], fontSize: 9 }} />
                   <Line type="monotone" dataKey="value" stroke={DOMAIN_COLORS[p.domain]}
                     strokeWidth={2.5} dot={{ r: 3, fill: DOMAIN_COLORS[p.domain] }}

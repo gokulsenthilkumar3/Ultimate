@@ -6,6 +6,7 @@ import ConfirmDialog from './ui/ConfirmDialog';
 import useStore, {
   selectHabits, selectAddHabit, selectDeleteHabit, selectUpdateHabit
 } from '../store/useStore';
+import { formatNumber, getUserLocale } from '../utils/userFormatters';
 
 const EMOJIS = ['🏃','💤','🧘','📚','🌳','💧','🍎','🧠','🏋️','☀️','🎵','🚴','🚿','🥑','🚶','🏊','✍️','🎯','🧊','🌿'];
 
@@ -123,6 +124,7 @@ function AnalyticsPanel({ habits }) {
 }
 
 export default function Lifestyle() {
+  const user              = useStore(s => s.user);
   const habits           = useStore(selectHabits);
   const addHabitAction   = useStore(selectAddHabit);
   const deleteHabitAction = useStore(selectDeleteHabit);
@@ -258,7 +260,7 @@ export default function Lifestyle() {
                 <div style={{ display: 'flex', gap: '4px' }}>
                   {days.map(d => (
                     <div key={d} style={{ width: '28px', textAlign: 'center', fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>
-                      {new Date(d).toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1)}
+                      {new Intl.DateTimeFormat(getUserLocale(user), { weekday: 'short' }).format(new Date(d)).slice(0, 1)}
                     </div>
                   ))}
                 </div>
@@ -392,7 +394,7 @@ export default function Lifestyle() {
                 Consistency is the only variable that compounds. Your current average atomic consistency is{' '}
                 <span style={{ fontWeight: 800, color: 'var(--text-1)' }}>
                   {habits.length > 0
-                    ? (habits.reduce((acc, h) => acc + (h.streak || 0), 0) / habits.length).toFixed(1)
+                    ? formatNumber(habits.reduce((acc, h) => acc + (h.streak || 0), 0) / habits.length, user, { maximumFractionDigits: 1 })
                     : 0} days
                 </span>.
               </p>

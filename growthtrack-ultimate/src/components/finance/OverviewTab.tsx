@@ -5,7 +5,7 @@ import StatCard from '../ui/StatCard';
 import EmptyState from '../ui/EmptyState';
 
 
-export default function OverviewTab({ statCards, savingsRate, methodData, COLORS, fmtINR, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, selectedCategory, onClearCategory, handleDeleteTransaction, expenses, selectedMonth }) {
+export default function OverviewTab({ statCards, savingsRate, methodData, COLORS, fmtINR, currencySymbol, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, selectedCategory, onClearCategory, handleDeleteTransaction, expenses, selectedMonth }) {
   {/* ── OVERVIEW ── */}
       return (
     <>
@@ -67,7 +67,7 @@ export default function OverviewTab({ statCards, savingsRate, methodData, COLORS
                 </div>
                 <div className="finance-overview-form-grid">
                   <input type="date" title="Select Date" aria-label="Select Date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="form-input" />
-                  <input type="number" title="Amount" placeholder="Amount (₹)" aria-label="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="form-input" min="0" />
+                  <input type="number" title="Amount" placeholder={`Amount (${currencySymbol})`} aria-label="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="form-input" min="0" />
                 </div>
                 <input type="text" placeholder="Description / Note" title="Description / Note" aria-label="Description / Note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="form-input" onKeyDown={(e) => e.key === 'Enter' && handleAdd()} />
                 <button title="Add Ledger Entry" aria-label="Add Ledger Entry" onClick={handleAdd} className="btn-primary btn-full"><Plus size={16} /> ADD LEDGER ENTRY</button>

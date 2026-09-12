@@ -6,6 +6,7 @@
 | Theme/preferences | Profile / shell | `/api/preferences` | `theme`, `palette` |
 | GitHub profile link | Profile | `/api/user` → `socialLinks` | `user.socialLinks` |
 | GitHub repositories | Projects | GitHub REST API / OAuth | Projects query state |
+| Manual projects and repository notes | Projects | `/api/user` JSON singletons | `user.manualProjects`, `user.repoNotes` |
 | Body measurements | Physique / Progress | body-profile and metric routes | `bodyProfile`, `metric_logs` |
 | Tasks | Tasks | `/api/tasks` | `user.tasks` plus query cache |
 | Training sessions and sets | Training | workout routes | `workouts` |

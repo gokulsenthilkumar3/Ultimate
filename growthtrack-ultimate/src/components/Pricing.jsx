@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import { Check, Zap, Star, AlertCircle, ArrowRight } from 'lucide-react';
-import { AUTH_API_BASE } from '../constants';
+import { apiRequest } from '../lib/apiClient';
 
 export default function Pricing() {
   const user = useStore(state => state.user);
@@ -18,13 +18,11 @@ export default function Pricing() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${AUTH_API_BASE}/api/create-checkout-session`, {
+      const data = await apiRequest('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({}),
       });
-      const data = await res.json();
-      if (res.ok && data.url) {
+      if (data.url) {
         window.location.href = data.url;
       } else {
         throw new Error(data.error || 'Failed to create checkout session');

@@ -39,7 +39,7 @@ const TrendsTab = React.memo(function TrendsTab({ fmtINR, form, TOOLTIP_STYLE, t
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="month" stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+                  <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => fmtINR(v)} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val, name) => [fmtINR(val), name.charAt(0).toUpperCase() + name.slice(1)]} />
                   <Legend wrapperStyle={{ fontSize: '0.78rem' }} />
                   <Area type="monotone" dataKey="income" stroke="#10b981" fill="url(#colorIncome)" strokeWidth={2} dot={{ r: 3 }} />
@@ -80,7 +80,7 @@ const TrendsTab = React.memo(function TrendsTab({ fmtINR, form, TOOLTIP_STYLE, t
                 <AreaChart data={(() => { let cum = 0; return trendData.map(d => { cum += d.investments; return { month: d.month, cumulative: cum }; }); })()}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="month" stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+                  <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => fmtINR(v)} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val) => [fmtINR(val), 'Cumulative Invested']} />
                   <Area type="monotone" dataKey="cumulative" stroke="#8b5cf6" fill="rgba(139,92,246,0.2)" strokeWidth={2} dot={{ r: 3 }} />
                 </AreaChart>

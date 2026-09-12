@@ -23,7 +23,11 @@ describe('useStore API Integration', () => {
   });
 
   it('fetchInitialData populates store with backend data', async () => {
-    const mockUser = { name: 'Test User' };
+    const mockUser = {
+      name: 'Test User',
+      manualProjects: [{ id: 'p-1', title: 'Persisted project' }],
+      repoNotes: { 'repo-1': 'Ship the README' },
+    };
     const mockTasks = [{ id: 1, title: 'Test Task', done: false }];
     const mockShopping = [{ id: 1, name: 'Apple' }];
     const mockTimesheet = [{ id: 1, task: 'Coding' }];
@@ -48,6 +52,8 @@ describe('useStore API Integration', () => {
     expect(state.user.tasks.pending[0].title).toBe('Test Task');
     expect(state.shopping.items).toEqual(mockShopping);
     expect(state.timesheetEntries).toEqual(mockTimesheet);
+    expect(state.user.manualProjects).toEqual(mockUser.manualProjects);
+    expect(state.user.repoNotes).toEqual(mockUser.repoNotes);
   });
 
   it('addTask sends POST request and updates store', async () => {
@@ -88,5 +94,28 @@ describe('useStore API Integration', () => {
     expect(state.shopping.items.length).toBe(1);
     expect(state.shopping.items[0].id).toBe(42);
     expect(state.shopping.items[0].name).toBe('Whey Protein');
+  });
+
+  it('keeps profile links and manual project data in their native shapes', async () => {
+    const responseBody = { success: true };
+    global.fetch.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(JSON.stringify(responseBody)),
+      json: () => Promise.resolve(responseBody),
+    });
+
+    await useStore.getState().updateUser({
+      socialLinks: [{ platform: 'GitHub', url: 'https://github.com/example' }],
+    });
+    await useStore.getState().updateUserSlice('manualProjects', [{ id: 'p-1', title: 'Example' }]);
+
+    const state = useStore.getState();
+    expect(state.user.socialLinks).toEqual([{ platform: 'GitHub', url: 'https://github.com/example' }]);
+    expect(state.user.manualProjects).toEqual([{ id: 'p-1', title: 'Example' }]);
+    expect(Array.isArray(state.user.manualProjects)).toBe(true);
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      expect.stringContaining('/user'),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 });

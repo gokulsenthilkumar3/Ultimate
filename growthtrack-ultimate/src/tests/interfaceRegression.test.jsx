@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import TextField from '../components/ui/TextField';
@@ -11,8 +11,21 @@ import { ApiClient } from '../lib/apiClient';
 import { uiMessages } from '../lib/uiMessages';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { UploadModal } from '../components/Documents';
+import { ToastProvider, useToast } from '../hooks/useToast';
 
 describe('interface regressions', () => {
+  it('separates persistent errors from routine CRUD confirmations', async () => {
+    function Probe() {
+      const toast = useToast();
+      return <><button onClick={() => toast.error('Could not save the profile')}>Error</button><button onClick={() => toast.crud('Task saved', 'update')}>Saved</button></>;
+    }
+    render(<ToastProvider><Probe /></ToastProvider>);
+    await userEvent.click(screen.getByRole('button', { name: 'Error' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Saved' }));
+    expect(screen.getByLabelText('Errors')).toContainElement(screen.getByRole('alert'));
+    expect(within(screen.getByLabelText('Activity confirmations')).getByRole('status')).toHaveTextContent('Task saved');
+  });
+
   it('focuses the safe action when confirming deletion', () => {
     render(<ConfirmDialog open title="Delete record?" onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
@@ -74,6 +87,12 @@ describe('interface regressions', () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{"error":"SQL secret stack"}', { status: 500 }));
     try {
       await expect(new ApiClient({ retries: 0 }).get('/test')).rejects.toMatchObject({ message: uiMessages.server, payload: { error: 'SQL secret stack' } });
+    } finally { fetch.mockRestore(); }
+  });
+  it('rejects a malformed successful response instead of trusting partial data', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('<html>upstream error</html>', { status: 200 }));
+    try {
+      await expect(new ApiClient({ retries: 0 }).get('/test')).rejects.toMatchObject({ message: uiMessages.server, status: 200 });
     } finally { fetch.mockRestore(); }
   });
   it('does not retry writes after a connection failure', async () => {

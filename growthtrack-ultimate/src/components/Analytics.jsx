@@ -7,19 +7,20 @@ import { TrendingUp, BarChart2, Zap, Brain, Moon, Activity, Shield, Target } fro
 import useStore from '../store/useStore';
 import { EMPTY_LIST, EMPTY_RECORD } from '../lib/emptyValues';
 import { currentStreak } from '../lib/metricSeries';
+import { formatNumber } from '../utils/userFormatters';
 
 // Lazy-load heavy sub-panels so they only download when selected
 const Logs = lazy(() => import('./Logs'));
 const TransformationPredictor = lazy(() => import('./TransformationPredictor'));
 
 const TOOLTIP_STYLE = {
-  background: 'rgba(5, 10, 19, 0.85)',
-  border: '1px solid rgba(148, 210, 230, 0.16)',
+  background: 'var(--gt-surface)',
+  border: '1px solid var(--gt-border)',
   borderRadius: '12px',
-  color: '#ecfeff',
-  backdropFilter: 'blur(16px)',
+  color: 'var(--gt-text)',
+  backdropFilter: 'blur(12px)',
   fontSize: '0.75rem',
-  boxShadow: '0 12px 24px rgba(0,0,0,0.25)',
+  boxShadow: 'var(--gt-shadow-floating)',
   padding: '10px 14px'
 };
 
@@ -38,10 +39,10 @@ function pearson(xs, ys) {
 
 function corrStrength(r) {
   const abs = Math.abs(r || 0);
-  if (abs >= 0.7) return { label: 'Strong',   color: r > 0 ? '#10b981' : '#f87171' };
-  if (abs >= 0.4) return { label: 'Moderate', color: r > 0 ? '#f59e0b' : '#fb923c' };
-  if (abs >= 0.2) return { label: 'Weak',     color: '#94a3b8' };
-  return           { label: 'Negligible', color: '#475569' };
+  if (abs >= 0.7) return { label: 'Strong',   color: r > 0 ? 'var(--gt-success)' : 'var(--gt-danger)' };
+  if (abs >= 0.4) return { label: 'Moderate', color: 'var(--gt-warning)' };
+  if (abs >= 0.2) return { label: 'Weak',     color: 'var(--gt-muted)' };
+  return           { label: 'Negligible', color: 'var(--gt-muted)' };
 }
 
 // ── Aggregation helpers ───────────────────────────────────────────────────
@@ -64,7 +65,7 @@ function meanMap(map) {
 }
 
 // ── Correlation panel ────────────────────────────────────────────────────
-function CorrelationPanel({ title, xLabel, yLabel, color, data, r }) {
+function CorrelationPanel({ title, xLabel, yLabel, color, data, r, user }) {
   const cs = corrStrength(r);
   return (
     <div className="glass-card">
@@ -73,7 +74,7 @@ function CorrelationPanel({ title, xLabel, yLabel, color, data, r }) {
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Pearson r:</span>
           <span style={{ fontWeight: 900, fontFamily: 'monospace', color: cs.color, fontSize: '0.9rem' }}>
-            {r !== null ? (r >= 0 ? '+' : '') + r : 'N/A'}
+            {r !== null ? (r >= 0 ? '+' : '') + formatNumber(r, user, { maximumFractionDigits: 3 }) : 'N/A'}
           </span>
           {r !== null && (
             <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.62rem', fontWeight: 700, background: `${cs.color}20`, color: cs.color, border: `1px solid ${cs.color}44` }}>{cs.label}</span>
@@ -89,7 +90,7 @@ function CorrelationPanel({ title, xLabel, yLabel, color, data, r }) {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="x" name={xLabel} tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} label={{ value: xLabel, position: 'insideBottom', offset: -6, fontSize: 10, fill: 'var(--text-3)' }} />
               <YAxis dataKey="y" name={yLabel} tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, n) => [v.toFixed(2), n]} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, n) => [formatNumber(v, user, { maximumFractionDigits: 2 }), n]} />
               <Scatter data={data} fill={color} opacity={0.75} />
             </ScatterChart>
           </ResponsiveContainer>
@@ -103,7 +104,7 @@ function CorrelationPanel({ title, xLabel, yLabel, color, data, r }) {
 }
 
 // ── Cross-domain trend view ───────────────────────────────────────────────
-function CrossDomainTrend({ metrics, sleepLogs }) {
+function CrossDomainTrend({ metrics, sleepLogs, user }) {
   const dates = useMemo(() => {
     const set = new Set();
     (metrics || []).forEach(m => { if (m.date) set.add(m.date.slice(0, 10)); });
@@ -154,7 +155,7 @@ function CrossDomainTrend({ metrics, sleepLogs }) {
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
           <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={Math.floor(chartData.length / 8)} />
           <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
-          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => v?.toFixed(2)} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => formatNumber(v, user, { maximumFractionDigits: 2 })} />
           <Legend wrapperStyle={{ fontSize: '0.7rem' }} />
           {chartData.some(d => d.sleep != null) && <Area type="monotone" dataKey="sleep"   name="Sleep (hrs)"  stroke="#0ea5e9" fillOpacity={1} fill="url(#colorSleep)" strokeWidth={2} dot={false} />}
           {chartData.some(d => d.mood != null)  && <Area type="monotone" dataKey="mood"    name="Mood (1-10)"  stroke="#ec4899" fillOpacity={1} fill="url(#colorMood)" strokeWidth={2} dot={false} />}
@@ -176,6 +177,7 @@ export default function Analytics() {
   const habitLogsByHabit = state.habitLogsByHabit || EMPTY_RECORD;
   const goals     = state.goals        || EMPTY_LIST;
   const metricLogs = state.metric_logs || EMPTY_LIST;
+  const user = state.user;
 
   const [view, setView] = useState('correlations');
   // Top-level Command Center tab
@@ -309,9 +311,9 @@ export default function Analytics() {
       {/* Correlations */}
       {view === 'correlations' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <CorrelationPanel title="Sleep → Mood" xLabel="Sleep (hrs)" yLabel="Mood (1-10)" color="#0ea5e9" data={sleepMoodData} r={rSleepMood} />
-          <CorrelationPanel title="Sleep → Energy" xLabel="Sleep (hrs)" yLabel="Energy (1-10)" color="#f59e0b" data={sleepEnergyData} r={rSleepEnergy} />
-          <CorrelationPanel title="Energy → Mood" xLabel="Energy (1-10)" yLabel="Mood (1-10)" color="#ec4899" data={energyMoodData} r={rEnergyMood} />
+          <CorrelationPanel title="Sleep → Mood" xLabel="Sleep (hrs)" yLabel="Mood (1-10)" color="#0ea5e9" data={sleepMoodData} r={rSleepMood} user={user} />
+          <CorrelationPanel title="Sleep → Energy" xLabel="Sleep (hrs)" yLabel="Energy (1-10)" color="#f59e0b" data={sleepEnergyData} r={rSleepEnergy} user={user} />
+          <CorrelationPanel title="Energy → Mood" xLabel="Energy (1-10)" yLabel="Mood (1-10)" color="#ec4899" data={energyMoodData} r={rEnergyMood} user={user} />
 
           {/* Interpretation guide */}
           <div className="glass-card">
@@ -338,7 +340,7 @@ export default function Analytics() {
       {/* Trends */}
       {view === 'trends' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <CrossDomainTrend metrics={metrics} sleepLogs={sleepLogs} />
+          <CrossDomainTrend metrics={metrics} sleepLogs={sleepLogs} user={user} />
           <div className="glass-card">
             <span className="card-title">Task Completion Rate — 30 Days</span>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '0.75rem' }}>% of due tasks completed each day</p>
@@ -356,7 +358,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={6} />
                   <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} domain={[0, 100]} unit="%" />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v}%`, 'Completion']} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${formatNumber(v, user, { maximumFractionDigits: 0 })}%`, 'Completion']} />
                   <ReferenceLine y={80} stroke="#f59e0b" strokeDasharray="4 2" label={{ value: '80% target', fill: '#f59e0b', fontSize: 9, position: 'insideTopRight' }} />
                   <Area type="monotone" dataKey="rate" name="Completion" stroke="#10b981" fill="url(#gTask)" strokeWidth={2} />
                 </AreaChart>

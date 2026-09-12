@@ -4,6 +4,7 @@ import { PieChart, Pie } from 'recharts';
 import { Droplets, Plus, Minus, Award, Clock, RefreshCw } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import { formatNumber } from '../utils/userFormatters';
 
 const DONUT_COLORS = ['var(--accent)', 'var(--bg-elevated)'];
 const DAILY_GOAL = 3000;
@@ -128,10 +129,10 @@ export default function HydrationTracker() {
             ))}
           </div>
           <p style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-1)', fontFamily: 'var(--font-display)', lineHeight: 1 }}>
-            {current.toLocaleString()}<span style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontWeight: 500 }}> ml</span>
+            {formatNumber(current, user, { maximumFractionDigits: 0 })}<span style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontWeight: 500 }}> ml</span>
           </p>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '4px' }}>
-            {Math.max(0, goal - current).toLocaleString()} ml remaining · Goal: {goal.toLocaleString()} ml
+            {formatNumber(Math.max(0, goal - current), user, { maximumFractionDigits: 0 })} ml remaining · Goal: {formatNumber(goal, user, { maximumFractionDigits: 0 })} ml
           </p>
           <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <Clock size={10} /> Rolling last 24 hours

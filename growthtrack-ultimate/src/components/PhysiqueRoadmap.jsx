@@ -1,12 +1,13 @@
 import React from 'react';
 import { Target, Activity, Dumbbell, ArrowRight } from 'lucide-react';
+import { formatNumber } from '../utils/userFormatters';
 
 export default function PhysiqueRoadmap({ targets, user }) {
   const getRatio = () => {
     if (user?.shoulders && user?.waist) {
-      return (user.shoulders / user.waist).toFixed(2);
+      return formatNumber(user.shoulders / user.waist, user, { maximumFractionDigits: 2 });
     }
-    return '1.31'; // Fallback to provided ratio
+    return formatNumber(1.31, user, { maximumFractionDigits: 2 }); // Fallback to provided ratio
   };
 
   return (

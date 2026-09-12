@@ -4,6 +4,8 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { TrendingUp, DollarSign, PiggyBank, Info } from 'lucide-react';
+import { formatCurrency } from '../utils/userFormatters';
+import useStore from '../store/useStore';
 
 const TOOLTIP_STYLE = {
   background: 'var(--bg-glass)', border: '1px solid var(--border)',
@@ -11,11 +13,9 @@ const TOOLTIP_STYLE = {
   backdropFilter: 'blur(12px)', fontSize: '0.8rem',
 };
 
-function formatINR(val) {
-  if (!val || isNaN(val)) return '₹0';
-  if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
-  if (val >= 100000)   return `₹${(val / 100000).toFixed(2)}L`;
-  return `₹${Math.round(val).toLocaleString('en-IN')}`;
+function formatINR(val, user) {
+  if (!val || isNaN(val)) return formatCurrency(0, user);
+  return formatCurrency(Math.round(val), user);
 }
 
 function Slider({ label, min, max, step, value, onChange, format, color = 'var(--accent)' }) {
@@ -79,6 +79,7 @@ function estimateXIRR(data, monthly, years, lumpsum) {
 }
 
 export default function SIPCalculator() {
+  const user = useStore(s => s.user);
   const [monthly,     setMonthly]     = useState(10000);
   const [rate,        setRate]        = useState(12);
   const [years,       setYears]       = useState(20);
@@ -89,6 +90,7 @@ export default function SIPCalculator() {
   const [showLumpsum, setShowLumpsum] = useState(false);
   const [view, setView] = useState('area');
 
+  const money = val => formatINR(val, user);
   const data = useMemo(
     () => buildSIPData({ monthly, rate, years, inflation, lumpsum, lumpsumRate }),
     [monthly, rate, years, inflation, lumpsum, lumpsumRate]
@@ -116,7 +118,7 @@ export default function SIPCalculator() {
           <div className="glass-card">
             <p style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-2)', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>SIP Parameters</p>
             <Slider label="Monthly SIP Amount" min={500} max={500000} step={500} value={monthly}
-              onChange={setMonthly} format={v => formatINR(v)} color="var(--accent)" />
+              onChange={setMonthly} format={money} color="var(--accent)" />
             <Slider label="Expected Return Rate (p.a.)" min={1} max={30} step={0.5} value={rate}
               onChange={setRate} format={v => `${v}%`} color="#10b981" />
             <Slider label="Investment Duration" min={1} max={40} step={1} value={years}
@@ -139,7 +141,7 @@ export default function SIPCalculator() {
             {showLumpsum && (
               <>
                 <Slider label="Lump Sum Investment" min={0} max={10000000} step={10000} value={lumpsum}
-                  onChange={setLumpsum} format={formatINR} color="#8b5cf6" />
+                  onChange={setLumpsum} format={money} color="#8b5cf6" />
                 <Slider label="Lump Sum Return Rate" min={1} max={20} step={0.5} value={lumpsumRate}
                   onChange={setLumpsumRate} format={v => `${v}%`} color="#a78bfa" />
               </>
@@ -164,10 +166,10 @@ export default function SIPCalculator() {
           {/* KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
             {[
-              { label: 'Projected Corpus',    val: formatINR(final.corpus),     icon: <TrendingUp size={16} color="var(--accent)" />,  color: 'var(--accent)' },
-              { label: 'Total Invested',      val: formatINR(totalInvested),    icon: <PiggyBank  size={16} color="#10b981" />,         color: '#10b981'       },
-              { label: 'Estimated Gains',     val: formatINR(realGain),         icon: <DollarSign size={16} color="#f59e0b" />,         color: '#f59e0b'       },
-              { label: `Real Value (${inflation}% inf.)`, val: formatINR(realValue), icon: <Info size={16} color="#f97316" />,          color: '#f97316'       },
+              { label: 'Projected Corpus',    val: money(final.corpus),     icon: <TrendingUp size={16} color="var(--accent)" />,  color: 'var(--accent)' },
+              { label: 'Total Invested',      val: money(totalInvested),    icon: <PiggyBank  size={16} color="#10b981" />,         color: '#10b981'       },
+              { label: 'Estimated Gains',     val: money(realGain),         icon: <DollarSign size={16} color="#f59e0b" />,         color: '#f59e0b'       },
+              { label: `Real Value (${inflation}% inf.)`, val: money(realValue), icon: <Info size={16} color="#f97316" />,          color: '#f97316'       },
             ].map(m => (
               <div key={m.label} className="glass-card" style={{ padding: '1rem', textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.35rem' }}>{m.icon}</div>
@@ -183,8 +185,8 @@ export default function SIPCalculator() {
               {[
                 { label: 'Annualized Return (XIRR est.)', val: `${xirr}%` },
                 { label: 'Wealth Multiplier', val: totalInvested > 0 ? `${((final.corpus || 0) / totalInvested).toFixed(2)}×` : '—' },
-                { label: 'Inflation Erosion', val: formatINR((final.corpus || 0) - realValue) },
-                ...(lumpOnlyFinal ? [{ label: 'Lump Sum Only Final', val: formatINR(lumpOnlyFinal) }] : []),
+                { label: 'Inflation Erosion', val: money((final.corpus || 0) - realValue) },
+                ...(lumpOnlyFinal ? [{ label: 'Lump Sum Only Final', val: money(lumpOnlyFinal) }] : []),
               ].map(m => (
                 <div key={m.label} style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-1)', fontFamily: 'var(--font-mono, monospace)' }}>{m.val}</p>
@@ -222,8 +224,8 @@ export default function SIPCalculator() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={Math.floor(years / 8)} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => formatINR(v)} width={68} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => [formatINR(v), name]} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => money(v)} width={68} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => [money(v), name]} />
                 <Legend wrapperStyle={{ fontSize: '0.72rem', paddingTop: '8px' }} />
                 <Area type="monotone" dataKey="corpus"   name="Corpus"    stroke="var(--accent)" fill="url(#gCorpus)"   strokeWidth={2} />
                 <Area type="monotone" dataKey="invested" name="Invested"  stroke="#10b981"       fill="url(#gInvested)" strokeWidth={2} />
@@ -250,10 +252,10 @@ export default function SIPCalculator() {
             {data.filter((_, i) => i % Math.max(1, Math.floor(years / 10)) === 0 || i === years).map(row => (
               <tr key={row.year} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 <td style={{ padding: '0.5rem 0.6rem', textAlign: 'center', fontWeight: 800, color: 'var(--accent)' }}>{row.year}</td>
-                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)' }}>{formatINR(row.invested)}</td>
-                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', fontWeight: 700, color: 'var(--accent)' }}>{formatINR(row.corpus)}</td>
-                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', color: '#10b981' }}>{formatINR(row.gains)}</td>
-                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', color: '#f59e0b' }}>{formatINR(row.realValue)}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)' }}>{money(row.invested)}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', fontWeight: 700, color: 'var(--accent)' }}>{money(row.corpus)}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', color: '#10b981' }}>{money(row.gains)}</td>
+                <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontFamily: 'var(--font-mono,monospace)', color: '#f59e0b' }}>{money(row.realValue)}</td>
                 <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontWeight: 700 }}>{row.invested > 0 ? `${(row.corpus / row.invested).toFixed(2)}×` : '—'}</td>
               </tr>
             ))}

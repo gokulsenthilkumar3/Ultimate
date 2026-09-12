@@ -5,7 +5,7 @@ import StatCard from '../ui/StatCard';
 import EmptyState from '../ui/EmptyState';
 
 
-export default function BudgetingTab({ fmtINR, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }) {
+export default function BudgetingTab({ fmtINR, currencySymbol, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }) {
   {/* ── BUDGETING ── */}
       return (
     <div className="glass-card">
@@ -20,7 +20,7 @@ export default function BudgetingTab({ fmtINR, form, CATEGORIES, pieData, budget
               </select>
             </div>
             <div style={{ flex: '1 1 200px' }}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Limit Amount (₹)</label>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Limit Amount ({currencySymbol})</label>
               <input type="number" className="form-input" placeholder="e.g. 5000" value={budgetForm.limit_amount} onChange={e => setBudgetForm({...budgetForm, limit_amount: e.target.value})} />
             </div>
             <button className="btn-primary" onClick={() => {
@@ -38,7 +38,7 @@ export default function BudgetingTab({ fmtINR, form, CATEGORIES, pieData, budget
                 ? <EmptyState icon={Activity} title="No Budgets" description="No budgets defined. Add one above to start tracking." />
                 : budgets.map(b => {
                   const actual = pieData.find(d => d.name === b.category)?.value || 0;
-                  return renderBudgetRow({ id: b.id, name: b.category, actual, limit: b.limit_amount, onDelete: () => handleDeleteBudget(b.id) });
+                  return renderBudgetRow({ id: b.id, name: b.category, actual, limit: b.limit_amount, fmtINR, onDelete: () => handleDeleteBudget(b.id) });
                 })}
             </div>
             <div>

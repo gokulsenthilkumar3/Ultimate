@@ -1,19 +1,20 @@
 import { EMPTY_RECORD } from '../lib/emptyValues';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Cloud, Sun, Droplets, Wind, Eye, Thermometer, Newspaper, RefreshCw, MapPin, AlertTriangle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import useStore from '../store/useStore';
+import { formatDate, formatTime, formatTemperature, formatDistance, formatSpeed } from '../utils/userFormatters';
+import Button from './ui/Button';
+import Card from './ui/Card';
+import EmptyState from './ui/EmptyState';
 
 // Time-of-day gradient based on current hour
 function getTimeGradient(hour) {
-  if (hour >= 5  && hour < 7)  return { from: '#1a1035', to: '#f97316', label: 'Dawn',      emoji: '🌅' };
-  if (hour >= 7  && hour < 11) return { from: '#1e3a5f', to: '#f59e0b', label: 'Morning',   emoji: '🌄' };
-  if (hour >= 11 && hour < 14) return { from: '#0c4a6e', to: '#38bdf8', label: 'Midday',    emoji: '☀️' };
-  if (hour >= 14 && hour < 17) return { from: '#1e3a5f', to: '#6366f1', label: 'Afternoon', emoji: '🌇' };
-  if (hour >= 17 && hour < 20) return { from: '#1a1035', to: '#f43f5e', label: 'Evening',   emoji: '🌆' };
-  if (hour >= 20 && hour < 22) return { from: '#0f0a2a', to: '#7c3aed', label: 'Night',     emoji: '🌃' };
-  return { from: '#030712',  to: '#1e1b4b', label: 'Late Night', emoji: '🌙' };
+  if (hour >= 5 && hour < 11) return { from: '#1769AA', to: '#5AC8FA', label: 'Morning', emoji: '🌤️' };
+  if (hour >= 11 && hour < 17) return { from: '#007AFF', to: '#64D2FF', label: 'Afternoon', emoji: '☀️' };
+  if (hour >= 17 && hour < 21) return { from: '#5E5CE6', to: '#FF9F0A', label: 'Evening', emoji: '🌇' };
+  return { from: '#1C1C1E', to: '#3A3A3C', label: 'Night', emoji: '🌙' };
 }
 
 function timeAgo(ms) {
@@ -26,6 +27,7 @@ function timeAgo(ms) {
 
 export default function Current() {
   const toast = useToast();
+  const user = useStore(s => s.user);
   const sources = useStore(s => s.appConfig?.currentSources ?? EMPTY_RECORD);
   const weatherCodes = sources.weatherCodes || {};
   const newsSource = (sources.newsSources || []).find(source => source.enabled !== false);
@@ -60,7 +62,7 @@ export default function Current() {
   const { data: weather, isLoading: weatherLoading, error: weatherError, refetch: fetchWeather } = useQuery({
     queryKey: ['current-weather', location?.lat, location?.lon],
     enabled: !!location,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const params = [
         'temperature_2m', 'weathercode', 'relativehumidity_2m', 'windspeed_10m',
         'apparent_temperature', 'visibility', 'precipitation_probability',
@@ -68,7 +70,7 @@ export default function Current() {
       ].join(',');
       if (!sources.weatherUrl) throw new Error('Weather source is not configured');
       const url = `${sources.weatherUrl}?latitude=${location.lat}&longitude=${location.lon}&current_weather=true&current=${params}&hourly=temperature_2m&timezone=auto&forecast_days=1`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal });
       if (!res.ok) throw new Error('Weather fetch failed');
       const data = await res.json();
       setLastUpdated(Date.now());
@@ -80,9 +82,9 @@ export default function Current() {
   const { data: city } = useQuery({
     queryKey: ['reverse-geo', location?.lat, location?.lon],
     enabled: !!location,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.lon}&format=json`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.lon}&format=json`, { signal });
         const data = await res.json();
         const addr = data.address;
         return [addr.city || addr.town || addr.village || addr.county, addr.country].filter(Boolean).join(', ');
@@ -97,11 +99,16 @@ export default function Current() {
   const { data: news = [], isLoading: newsLoading, refetch: fetchNews } = useQuery({
     queryKey: ['news', newsSource?.url],
     enabled: Boolean(newsSource?.url),
-    queryFn: async () => {
-      const ids = await fetch(newsSource.url).then(r => r.json());
+    queryFn: async ({ signal }) => {
+      const idsResponse = await fetch(newsSource.url, { signal });
+      if (!idsResponse.ok) throw new Error('News is unavailable');
+      const ids = await idsResponse.json();
       const top = ids.slice(0, 12);
       const stories = await Promise.all(top.map(id =>
-        fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json())
+        fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { signal }).then(async r => {
+          if (!r.ok) throw new Error('News is unavailable');
+          return r.json();
+        })
       ));
       return stories.filter(s => s && s.title).map(s => ({
         id: s.id, title: s.title, url: s.url, score: s.score, comments: s.descendants || 0,
@@ -117,10 +124,10 @@ export default function Current() {
   const wmo = configuredWmo ? { label: configuredWmo[0], icon: configuredWmo[1] } : { label: 'Unknown', icon: '🌡️' };
 
   const weatherCards = cur ? [
-    { label: 'Feels Like',  val: `${Math.round(cur.apparent_temperature)}°C`, icon: <Thermometer size={16} color="#f43f5e" /> },
+    { label: 'Feels Like',  val: formatTemperature(cur.apparent_temperature, user), icon: <Thermometer size={16} color="#f43f5e" /> },
     { label: 'Humidity',    val: `${cur.relativehumidity_2m}%`,               icon: <Droplets size={16} color="#0ea5e9" /> },
-    { label: 'Wind',        val: `${Math.round(cur.windspeed_10m)} km/h`,     icon: <Wind size={16} color="#8b5cf6" /> },
-    { label: 'Visibility',  val: `${Math.round((cur.visibility || 0) / 1000)} km`, icon: <Eye size={16} color="#10b981" /> },
+    { label: 'Wind',        val: formatSpeed(cur.windspeed_10m, 'km/h', user),     icon: <Wind size={16} color="#8b5cf6" /> },
+    { label: 'Visibility',  val: formatDistance((cur.visibility || 0) / 1000, 'km', user), icon: <Eye size={16} color="#10b981" /> },
     { label: 'UV Index',    val: String(cur.uv_index || '—'),                 icon: <Sun size={16} color="#f59e0b" /> },
     { label: 'Rain Prob.',  val: `${cur.precipitation_probability || 0}%`,    icon: <Cloud size={16} color="#60a5fa" /> },
   ] : [];
@@ -134,26 +141,14 @@ export default function Current() {
         position: 'relative', padding: '2.5rem 2rem',
         boxShadow: `0 8px 40px ${tg.to}33`,
       }}>
-        {/* Stars / ambient dots */}
-        {hour < 6 || hour >= 20 ? (
-          <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-            {Array.from({ length: 30 }).map((_, i) => (
-              <div key={i} style={{
-                position: 'absolute', width: '2px', height: '2px', borderRadius: '50%', background: '#fff',
-                left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`, opacity: Math.random() * 0.6 + 0.2,
-              }} />
-            ))}
-          </div>
-        ) : null}
-
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <p style={{ fontSize: '0.72rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                {tg.emoji} {tg.label} · {now.toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {tg.emoji} {tg.label} · {formatDate(now, user, { style: 'long', weekday: true })}
               </p>
               <p style={{ fontSize: '3rem', fontWeight: 900, color: '#fff', lineHeight: 1, fontFamily: 'var(--font-display, system-ui)', marginBottom: '0.25rem' }}>
-                {now.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+                {formatTime(now, user, { hour: '2-digit', minute: '2-digit' })}
               </p>
               {city && (
                 <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -167,14 +162,14 @@ export default function Current() {
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>Loading weather…</div>
             ) : weatherError ? (
               <div style={{ color: 'rgba(255,100,100,0.9)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <AlertTriangle size={14} /> {weatherError}
+                <AlertTriangle size={14} /> Weather is unavailable right now. Try again when you are ready.
               </div>
             ) : !location ? (
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>Location required</div>
             ) : cur && (
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '3rem', lineHeight: 1 }}>{wmo.icon}</p>
-                <p style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{Math.round(cur.temperature_2m)}°C</p>
+                <p style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{formatTemperature(cur.temperature_2m, user)}</p>
                 <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.8)', marginTop: '4px' }}>{wmo.label}</p>
               </div>
             )}
@@ -214,26 +209,20 @@ export default function Current() {
           {lastUpdated && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Weather updated {timeAgo(lastUpdated)}</p>}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => fetchWeather()} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>
-            <RefreshCw size={12} /> Weather
-          </button>
-          <button onClick={fetchNews} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>
-            <RefreshCw size={12} /> News
-          </button>
+          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={() => fetchWeather()} loading={weatherLoading} loadingLabel="Refreshing weather…">Weather</Button>
+          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={fetchNews} loading={newsLoading} loadingLabel="Refreshing news…">News</Button>
         </div>
       </div>
 
       {/* News */}
-      <div className="glass-card">
+      <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <Newspaper size={16} color="var(--accent)" />
           <span className="card-title" style={{ margin: 0 }}>{newsSource?.label || 'News'} — Top Stories</span>
           {newsLoading && <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginLeft: 'auto' }}>Loading…</span>}
         </div>
 
-        {news.length === 0 && !newsLoading && (
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', textAlign: 'center', padding: '2rem 0' }}>No stories loaded. Click Refresh to retry.</p>
-        )}
+        {news.length === 0 && !newsLoading && <EmptyState icon="FileText" title="No stories right now." description="Try refreshing when you are ready." actionLabel="Refresh news" onAction={fetchNews} />}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           {news.map((story, idx) => (
@@ -251,7 +240,7 @@ export default function Current() {
             </a>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Environmental context */}
       {cur && (

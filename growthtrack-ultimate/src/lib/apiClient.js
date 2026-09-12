@@ -48,7 +48,13 @@ export class ApiClient {
         const response = await fetch(`${this.baseUrl}${path}`, { ...requestOptions, method, headers, signal: controller.signal, credentials: 'include' });
         const text = await response.text();
         let payload = {};
-        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { error: text || 'Invalid server response.' }; }
+        try {
+          payload = text ? JSON.parse(text) : {};
+        } catch {
+          // A successful HTTP status is not enough: never treat an unexpected
+          // response as valid application data.
+          throw new ApiError(uiMessages.server, { status: response.status || 500, path });
+        }
         if (response.status === 401) window.dispatchEvent(new CustomEvent('growthtrack:auth-expired'));
         if (!response.ok) throw new ApiError(requestErrorMessage(response.status, path), { status: response.status, payload, path });
         return payload;

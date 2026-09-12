@@ -37,6 +37,7 @@ import { getMetricCompleteness } from '../lib/bodyMetricFallbacks';
 import { USER, BODY_PARTS, STATUS } from '../data/userData';
 import { useToast } from '../hooks/useToast';
 import { trackEvent } from '../lib/analytics';
+import { formatDate, formatMeasurement, formatNumber } from '../utils/userFormatters';
 
 // Lazy load the heavy 3D canvas
 const ChamberCanvas = lazy(() => import('./ChamberCanvas'));
@@ -218,6 +219,7 @@ function AnatomySVG({ depth }: { depth: number }) {
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HumanoidViewer() {
+  const user = useStore((state: any) => state.user);
   const toast: any = useToast();
   const legacyUser = useStore((s: any) => s.user || EMPTY_OBJECT);
 
@@ -610,8 +612,8 @@ export default function HumanoidViewer() {
   const scrubDateLabel = useMemo(() => {
     if (!snapshots.length || timelinePos == null) return null;
     const snap = snapshots[Math.min(timelinePos as number, snapshots.length - 1)] as any;
-    return snap?.date ? new Date(snap.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
-  }, [snapshots, timelinePos]);
+    return snap?.date ? formatDate(snap.date, user, { month: 'short' }) : null;
+  }, [snapshots, timelinePos, user]);
 
   useEffect(() => {
     const unsubscribe = use3DStore.subscribe(
@@ -745,11 +747,11 @@ export default function HumanoidViewer() {
               <span>{viewMode === 'DUAL' ? 'Now vs destination' : `${viewMode} inspection`}</span>
             </div>
             <div className="chamber-readout__metrics">
-              <div><span>Weight</span><strong>{Number.isFinite(Number(currentMetrics.weight)) ? Number(currentMetrics.weight).toFixed(1) : '—'}{Number.isFinite(Number(currentMetrics.weight)) && <small> kg</small>}</strong></div>
-              <div><span>Body fat</span><strong>{Number.isFinite(Number(currentMetrics.bodyFat)) ? Number(currentMetrics.bodyFat).toFixed(1) : '—'}{Number.isFinite(Number(currentMetrics.bodyFat)) && <small>%</small>}</strong></div>
+              <div><span>Weight</span><strong>{Number.isFinite(Number(currentMetrics.weight)) ? formatMeasurement(currentMetrics.weight, 'kg', user) : '—'}</strong></div>
+              <div><span>Body fat</span><strong>{Number.isFinite(Number(currentMetrics.bodyFat)) ? formatNumber(currentMetrics.bodyFat, user, { maximumFractionDigits: 1 }) : '—'}{Number.isFinite(Number(currentMetrics.bodyFat)) && <small>%</small>}</strong></div>
               <div><span>Goal delta</span>{Number.isFinite(Number(goalMetrics.weight)) && Number.isFinite(Number(currentMetrics.weight)) ? (() => {
                 const delta = Number(goalMetrics.weight) - Number(currentMetrics.weight);
-                return <strong className={delta >= 0 ? 'positive' : 'negative'}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}<small> kg</small></strong>;
+                return <strong className={delta >= 0 ? 'positive' : 'negative'}>{delta >= 0 ? '+' : ''}{formatMeasurement(Math.abs(delta), 'kg', user)}</strong>;
               })() : <strong>—</strong>}</div>
             </div>
             <div className="chamber-readout__footer" title={metricCompleteness.missing.length ? `Add ${metricCompleteness.missing.join(', ')} for a more accurate digital twin.` : 'All high-value measurements are present.'}>
@@ -824,10 +826,10 @@ export default function HumanoidViewer() {
             const firstSnap = snapshots[0] as any;
             const lastSnap  = snapshots[snapshots.length - 1] as any;
             const startLabel = firstSnap
-              ? new Date(firstSnap.date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+              ? formatDate(firstSnap.date, user, { month: 'short' })
               : 'Start';
             const endLabel = lastSnap
-              ? new Date(lastSnap.date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+              ? formatDate(lastSnap.date, user, { month: 'short' })
               : 'Goal';
             return (
               <div className="chamber-timeline">
@@ -922,7 +924,9 @@ export default function HumanoidViewer() {
                             <span className="chamber-metric-row__label">{meta.label}</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span className="chamber-metric-row__value">
-                                {cur}{meta.unit}
+                                {meta.unit === 'kg' || meta.unit === 'cm'
+                                  ? formatMeasurement(cur, meta.unit, user)
+                                  : `${cur}${meta.unit}`}
                               </span>
                               <span style={{
                                 fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px',
@@ -941,7 +945,9 @@ export default function HumanoidViewer() {
                             className="chamber-slider" />
                           {/* GOAL slider */}
                           <div style={{ fontSize: '0.6rem', color: 'var(--chamber-glow)', marginBottom: 2, marginTop: 4 }}>
-                            GOAL <span style={{ float: 'right' }}>{goal}{meta.unit}</span>
+                            GOAL <span style={{ float: 'right' }}>{meta.unit === 'kg' || meta.unit === 'cm'
+                              ? formatMeasurement(goal, meta.unit, user)
+                              : `${goal}${meta.unit}`}</span>
                           </div>
                           <input type="range" aria-label={`Goal ${meta.label}`}
                             min={key === 'bodyFat' ? 5 : 30}

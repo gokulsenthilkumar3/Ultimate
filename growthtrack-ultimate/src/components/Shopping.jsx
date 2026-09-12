@@ -3,6 +3,7 @@ import { ShoppingCart, Plus, Trash2, Check, Tag, Star, AlertTriangle, ArrowDown,
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import { formatCurrency, formatDate, getCurrencySymbol } from '../utils/userFormatters';
 
 const CATEGORIES = ['Groceries', 'Electronics', 'Clothing', 'Health', 'Books', 'Home', 'Fitness', 'Food', 'Other'];
 const PRIORITIES = ['high', 'medium', 'low'];
@@ -17,12 +18,15 @@ const CAT_EMOJIS = { Groceries: '🛒', Electronics: '📱', Clothing: '👕', H
 
 export default function Shopping() {
   const toast = useToast();
+  const user           = useStore(s => s.user);
   const shoppingList  = useStore(s => s.shoppingList)  || [];
   const setShoppingList = useStore(s => s.setShoppingList);
   const addShoppingItem    = useStore(s => s.addShoppingItem);
   const updateShoppingItem = useStore(s => s.updateShoppingItem);
   const deleteShoppingItem = useStore(s => s.deleteShoppingItem);
   const toggleShoppingItem = useStore(s => s.toggleShoppingItem);
+  const currencySymbol = getCurrencySymbol(user);
+  const money = value => formatCurrency(value, user);
 
   const [form, setForm] = useState({ name: '', category: 'Other', priority: 'medium', estimatedCost: '', notes: '', url: '', targetPrice: '' });
   const [showAdd,   setShowAdd]   = useState(false);
@@ -78,9 +82,9 @@ export default function Shopping() {
     doUpdate(id, { estimatedCost: p, priceHistory: history });
     setPriceInput(pp => { const n = { ...pp }; delete n[id]; return n; });
     if (item?.targetPrice && p <= item.targetPrice) {
-      toast.success(`🎯 Price target hit! ${item.name} is now ₹${p} (target: ₹${item.targetPrice})`);
+      toast.success(`🎯 Price target hit! ${item.name} is now ${money(p)} (target: ${money(item.targetPrice)})`);
     } else {
-      toast.success(`Price updated: ₹${p}`);
+      toast.success(`Price updated: ${money(p)}`);
     }
   };
 
@@ -126,7 +130,7 @@ export default function Shopping() {
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Shopping</p>
           <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Shopping List</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{stats.pending} pending · ₹{stats.totalCost.toLocaleString()} estimated</p>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{stats.pending} pending · {money(stats.totalCost)} estimated</p>
         </div>
         <button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Add Item</button>
       </div>
@@ -158,8 +162,8 @@ export default function Shopping() {
             <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="form-input">
               {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)} Priority</option>)}
             </select>
-            <input type="number" placeholder="Estimated cost (₹)" value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))} className="form-input" />
-            <input type="number" placeholder="Target price (₹) — alert when hit" value={form.targetPrice} onChange={e => setForm(f => ({ ...f, targetPrice: e.target.value }))} className="form-input" />
+            <input type="number" placeholder={`Estimated cost (${currencySymbol})`} value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))} className="form-input" />
+            <input type="number" placeholder={`Target price (${currencySymbol}) — alert when hit`} value={form.targetPrice} onChange={e => setForm(f => ({ ...f, targetPrice: e.target.value }))} className="form-input" />
             <input placeholder="URL / Link" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="form-input" />
             <input placeholder="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="form-input" style={{ gridColumn: 'span 2' }} />
           </div>
@@ -219,7 +223,7 @@ export default function Shopping() {
                         <input value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="form-input" style={{ fontSize: '0.85rem' }} />
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                           <input type="number" value={editForm.estimatedCost || ''} onChange={e => setEditForm(f => ({ ...f, estimatedCost: e.target.value }))} placeholder="Cost" className="form-input" style={{ width: '100px' }} />
-                          <input type="number" value={editForm.targetPrice || ''} onChange={e => setEditForm(f => ({ ...f, targetPrice: e.target.value }))} placeholder="Target ₹" className="form-input" style={{ width: '100px' }} />
+                          <input type="number" value={editForm.targetPrice || ''} onChange={e => setEditForm(f => ({ ...f, targetPrice: e.target.value }))} placeholder={`Target ${currencySymbol}`} className="form-input" style={{ width: '100px' }} />
                           <select value={editForm.priority || 'medium'} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))} className="form-input">
                             {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
                           </select>
@@ -240,8 +244,8 @@ export default function Shopping() {
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-3)' }}>
-                          {item.estimatedCost && <span style={{ fontWeight: 700, color: 'var(--text-2)', fontFamily: 'monospace' }}>₹{Number(item.estimatedCost).toLocaleString()}</span>}
-                          {item.targetPrice && <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '3px' }}><Star size={10} /> Target: ₹{Number(item.targetPrice).toLocaleString()}</span>}
+                          {item.estimatedCost && <span style={{ fontWeight: 700, color: 'var(--text-2)', fontFamily: 'monospace' }}>{money(item.estimatedCost)}</span>}
+                          {item.targetPrice && <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '3px' }}><Star size={10} /> Target: {money(item.targetPrice)}</span>}
                           {pdi && pdi.dropped && <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}><ArrowDown size={10} /> {pdi.pct}% price drop!</span>}
                           {item.targetPrice && item.estimatedCost && Number(item.estimatedCost) <= Number(item.targetPrice) && <span style={{ color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}><AlertTriangle size={10} /> Target hit!</span>}
                           {item.notes && <span style={{ color: 'var(--text-3)' }}>— {item.notes}</span>}
@@ -251,7 +255,7 @@ export default function Shopping() {
                         {/* Price drop log */}
                         {!item.purchased && (
                           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: '0.4rem' }}>
-                            <input type="number" placeholder="Log new price ₹" value={priceInput[item.id] || ''}
+                            <input type="number" placeholder={`Log new price ${currencySymbol}`} value={priceInput[item.id] || ''}
                               onChange={e => setPriceInput(pp => ({ ...pp, [item.id]: e.target.value }))}
                               onKeyDown={e => e.key === 'Enter' && logPrice(item.id, priceInput[item.id])}
                               style={{ width: '130px', padding: '3px 8px', fontSize: '0.72rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'var(--text-1)', outline: 'none' }}
@@ -263,7 +267,7 @@ export default function Shopping() {
                         {/* Price history mini chart */}
                         {(item.priceHistory || []).length >= 2 && (
                           <div style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginTop: '4px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                            📊 History: {item.priceHistory.slice(-4).map(p => `₹${p.price}@${p.date.slice(5)}`).join(' → ')}
+                            📊 History: {item.priceHistory.slice(-4).map(p => `${money(p.price)}@${formatDate(p.date, user)}`).join(' → ')}
                           </div>
                         )}
                       </>
@@ -295,7 +299,7 @@ export default function Shopping() {
             {stats.pending} pending items
           </p>
           <p style={{ fontSize: '0.88rem', fontWeight: 900, color: 'var(--accent)', fontFamily: 'monospace' }}>
-            Est. Total: ₹{stats.totalCost.toLocaleString()}
+            Est. Total: {money(stats.totalCost)}
           </p>
         </div>
       )}

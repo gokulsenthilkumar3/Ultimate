@@ -60,3 +60,634 @@
   .growthcast-actions input { width: 100%; min-width: 0; font-size: 16px; }
   .main-area { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important; }
 }
+
+/* Legacy shell compatibility ----------------------------------------------
+   Older modules still use these semantic class names. The strict admin
+   dashboard layer at the end of this file supplies the final visual values. */
+:root {
+  --ui-canvas: #0A0E14;
+  --ui-canvas-2: #0E131C;
+  --ui-panel: rgba(18, 22, 31, .96);
+  --ui-panel-solid: #12161F;
+  --ui-panel-hover: #171D28;
+  --ui-line: rgba(255, 255, 255, .08);
+  --ui-line-strong: rgba(255, 255, 255, .14);
+  --ui-highlight: rgba(255, 255, 255, .045);
+  --ui-shadow-sm: 0 1px 2px rgba(0, 0, 0, .22), 0 8px 24px rgba(0, 0, 0, .16);
+  --ui-shadow-lg: 0 20px 56px rgba(0, 0, 0, .3);
+  --ui-radius-card: 18px;
+  --ui-radius-control: 12px;
+}
+
+/* The design-system layer is intentionally semantic: feature CSS should use
+   these roles instead of inventing one-off measurements or transition curves. */
+.app-shell {
+  --native-space: var(--gt-space-4);
+  --native-control: var(--gt-control-height);
+  --native-motion: var(--gt-motion-standard);
+  --native-spring: var(--gt-motion-spring);
+}
+.app-shell[data-density='compact'] { --native-space: var(--gt-space-3); --native-control: 38px; }
+.app-shell[data-density='compact'] :is(.glass-card, .gt-modal__body) { padding: var(--gt-space-4); }
+.app-shell[data-density='compact'] :is(.hub-tab, .wellness-command__tabs button) { min-height: 36px; }
+
+[data-theme='light'] {
+  --ui-canvas: #F4F5F8;
+  --ui-canvas-2: #EDF0F5;
+  --ui-panel: rgba(255, 255, 255, .98);
+  --ui-panel-solid: #FFFFFF;
+  --ui-panel-hover: #F8F9FB;
+  --ui-line: rgba(18, 22, 31, .08);
+  --ui-line-strong: rgba(18, 22, 31, .14);
+  --ui-highlight: rgba(18, 22, 31, .035);
+  --ui-shadow-sm: 0 1px 2px rgba(18, 22, 31, .04), 0 8px 24px rgba(18, 22, 31, .06);
+  --ui-shadow-lg: 0 22px 60px rgba(18, 22, 31, .12);
+}
+
+.app-shell[data-domain] {
+  --accent: var(--domain-accent) !important;
+  --accent-secondary: color-mix(in srgb, var(--domain-accent) 72%, white) !important;
+  --accent-soft: var(--domain-accent-soft) !important;
+  --border-glow: color-mix(in srgb, var(--domain-accent) 32%, transparent) !important;
+  --action-primary: var(--domain-accent) !important;
+  --action-primary-hover: color-mix(in srgb, var(--domain-accent) 82%, white) !important;
+}
+
+html,
+body,
+.app-shell { background: var(--ui-canvas) !important; }
+.app-shell { background-image: none !important; }
+.app-shell::before,
+.app-shell::after { display: none !important; }
+.mesh-bg { opacity: .08 !important; filter: blur(120px) !important; animation: none !important; }
+[data-theme='light'] .mesh-bg { opacity: .04 !important; }
+
+.app-header {
+  top: 8px;
+  margin-top: 8px;
+  border-radius: 14px;
+  border-color: var(--ui-line) !important;
+  background: var(--ui-panel-solid) !important;
+  box-shadow: var(--ui-shadow-sm) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.app-header__mark,
+.premium-sidebar-brand > span,
+.app-header__profile b {
+  color: var(--ui-panel-solid) !important;
+  background: var(--domain-accent) !important;
+  box-shadow: none !important;
+}
+.app-header__brand-copy small,
+.premium-sidebar-brand small { text-transform: none; letter-spacing: .01em; }
+.app-header__context span { text-transform: none; letter-spacing: .02em; }
+.app-header__search,
+.header-control,
+.app-header__profile { border-radius: 10px; }
+.app-header__search { background: var(--ui-highlight); border-color: var(--ui-line); }
+
+.premium-sidebar {
+  background: var(--ui-panel-solid) !important;
+  border-right-color: var(--ui-line) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.premium-sidebar-user { background: var(--ui-highlight) !important; box-shadow: none !important; }
+.premium-sidebar-avatar { background: var(--domain-accent-soft) !important; border-color: var(--border-glow) !important; }
+.sidebar-nav-group__label { text-transform: none; letter-spacing: .02em; font-size: .68rem; }
+.premium-sidebar-item.active { background: var(--domain-accent-soft) !important; box-shadow: inset 3px 0 var(--domain-accent) !important; }
+.premium-sidebar-item.active .premium-sidebar-icon { color: var(--domain-accent) !important; }
+.premium-sidebar[data-collapsed='true'] .sidebar-collapse { background: var(--domain-accent) !important; box-shadow: none !important; }
+
+.main-area { padding-top: 0 !important; }
+.content-area { padding-top: clamp(20px, 2.5vw, 36px) !important; }
+.section-navigation {
+  margin-bottom: 22px;
+  border-radius: 14px;
+  border-color: var(--ui-line) !important;
+  background: var(--ui-panel-solid) !important;
+  box-shadow: var(--ui-shadow-sm);
+}
+.section-navigation__intro { padding: 15px 18px; }
+.section-navigation__icon { width: 38px; height: 38px; border-radius: 10px; background: var(--domain-accent-soft); color: var(--domain-accent); }
+.section-navigation__label { font-size: .9rem; }
+.section-navigation__sections { border-color: var(--ui-line); }
+.section-navigation nav button { border-radius: 8px; }
+.section-navigation__sections button[aria-current],
+.section-navigation__tools button[aria-current] { color: var(--domain-accent); background: var(--domain-accent-soft); }
+.section-navigation__tools button[aria-current] { box-shadow: inset 0 -2px var(--domain-accent); }
+
+.page-header-block__accent,
+.label-caps,
+.eyebrow { text-transform: none !important; letter-spacing: .02em !important; }
+.page-header-block__title { letter-spacing: -.035em !important; }
+.page-hero { background: var(--ui-panel-solid) !important; border-color: var(--ui-line) !important; box-shadow: var(--ui-shadow-sm) !important; }
+.glass-card,
+.app-hub-hero,
+.app-hub-panel,
+.platform-analytics-card,
+.soft-neumorphism,
+.glassmorphism {
+  background: var(--ui-panel) !important;
+  border-color: var(--ui-line) !important;
+  box-shadow: var(--ui-shadow-sm) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.glass-card:hover,
+.platform-analytics-card:hover,
+.soft-neumorphism:hover { background: var(--ui-panel-hover) !important; border-color: var(--ui-line-strong) !important; box-shadow: var(--ui-shadow-sm) !important; }
+.page-transition-wrapper .glass-card:hover { transform: none !important; }
+.btn-primary,
+.btn--primary,
+.gt-button--primary { background: var(--domain-accent) !important; border-color: var(--domain-accent) !important; box-shadow: 0 6px 16px color-mix(in srgb, var(--domain-accent) 20%, transparent) !important; }
+.btn-primary:hover:not(:disabled),
+.btn--primary:hover:not(:disabled),
+.gt-button--primary:hover:not(:disabled) { filter: brightness(1.06); }
+
+/* Keep the one intentional material moment scoped to the 3D physique view. */
+.physique-page .card-3d,
+.physique-page .physique-canvas,
+.physique-page .chamber-canvas { -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.sync-icon--spinning { animation: gt-sync-spin .8s linear infinite; }
+@keyframes gt-sync-spin { to { transform: rotate(360deg); } }
+
+/* Task creation is a sheet over the current page. Its surface follows the
+   active theme so opening the form never turns the whole workspace muddy. */
+.task-drawer-backdrop {
+  background: color-mix(in srgb, var(--ui-canvas) 74%, transparent) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  animation: taskBackdropIn 180ms ease-out both !important;
+}
+.task-drawer {
+  background: var(--ui-panel-solid) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-left: 1px solid var(--ui-line-strong) !important;
+  box-shadow: -20px 0 60px rgba(0, 0, 0, .24) !important;
+  animation: taskDrawerIn 220ms var(--ease-emphasized) both !important;
+}
+@keyframes taskBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes taskDrawerIn { from { transform: translateX(28px); opacity: .86; } to { transform: translateX(0); opacity: 1; } }
+[data-theme='light'] .task-drawer-backdrop { background: color-mix(in srgb, var(--ui-canvas) 62%, transparent) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mesh-bg,
+  .page-transition-wrapper,
+  .app-shell::before,
+  .app-shell::after { animation: none !important; }
+  .sync-icon--spinning { animation: none !important; }
+  .task-drawer-backdrop,
+  .task-drawer { animation: none !important; }
+}
+
+/* Strict admin dashboard system ------------------------------------------
+   The shared shell follows one reusable business UI contract. This layer is
+   deliberately last so older module styles inherit the same surfaces,
+   typography, action colors, and spacing without a per-page rewrite. */
+:root {
+  --admin-primary: #059669;
+  --admin-primary-light: #34d399;
+  --admin-primary-dark: #047857;
+  --admin-blue: #0ea5e9;
+  --admin-purple: #6366f1;
+  --admin-yellow: #f59e0b;
+  --admin-red: #ef4444;
+  --admin-green: #10b981;
+
+  --ui-canvas: #0f172a;
+  --ui-canvas-2: #111c30;
+  --ui-panel: #1e293b;
+  --ui-panel-solid: #1e293b;
+  --ui-panel-hover: #26354a;
+  --ui-line: rgba(255, 255, 255, .08);
+  --ui-line-strong: rgba(255, 255, 255, .14);
+  --ui-highlight: rgba(255, 255, 255, .045);
+  --ui-shadow-sm: 0 2px 8px rgba(2, 6, 23, .22);
+  --ui-shadow-lg: 0 18px 45px rgba(2, 6, 23, .28);
+  --ui-radius-card: 14px;
+  --ui-radius-control: 10px;
+
+  --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  --text-1: #f8fafc;
+  --text-2: #cbd5e1;
+  --text-3: #94a3b8;
+  --bg-base: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-card: #1e293b;
+  --bg-glass: #1e293b;
+  --bg-elevated: rgba(255, 255, 255, .045);
+  --bg-input: rgba(255, 255, 255, .055);
+  --border: rgba(255, 255, 255, .08);
+  --border-strong: rgba(255, 255, 255, .14);
+  --border-glow: rgba(5, 150, 105, .28);
+  --accent: #059669;
+  --accent-secondary: #34d399;
+  --accent-soft: rgba(5, 150, 105, .14);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #0ea5e9;
+  --gt-canvas: #0f172a;
+  --gt-surface: #1e293b;
+  --gt-text: #f8fafc;
+  --gt-muted: #cbd5e1;
+  --gt-border: rgba(255, 255, 255, .14);
+  --gt-action: #059669;
+  --gt-on-action: #ffffff;
+  --gt-danger: #ef4444;
+  --gt-success: #10b981;
+  --gt-focus: #34d399;
+}
+
+[data-theme='light'] {
+  --ui-canvas: #f1f5f9;
+  --ui-canvas-2: #f1f5f9;
+  --ui-panel: #ffffff;
+  --ui-panel-solid: #ffffff;
+  --ui-panel-hover: #f8fafc;
+  --ui-line: rgba(15, 23, 42, .07);
+  --ui-line-strong: rgba(15, 23, 42, .14);
+  --ui-highlight: rgba(15, 23, 42, .035);
+  --ui-shadow-sm: 0 2px 8px rgba(15, 23, 42, .07);
+  --ui-shadow-lg: 0 18px 45px rgba(15, 23, 42, .14);
+  --text-1: #0f172a;
+  --text-2: #475569;
+  --text-3: #64748b;
+  --bg-base: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-glass: #ffffff;
+  --bg-elevated: rgba(15, 23, 42, .035);
+  --bg-input: #ffffff;
+  --border: rgba(15, 23, 42, .07);
+  --border-strong: rgba(15, 23, 42, .14);
+  --border-glow: rgba(5, 150, 105, .28);
+  --gt-canvas: #f1f5f9;
+  --gt-surface: #ffffff;
+  --gt-text: #0f172a;
+  --gt-muted: #475569;
+  --gt-border: rgba(15, 23, 42, .14);
+  --gt-action: #059669;
+  --gt-danger: #ef4444;
+  --gt-success: #10b981;
+  --gt-focus: #047857;
+}
+
+/* Keep one brand/action color even when an older palette or a module domain
+   supplies its own accent. */
+.app-shell[data-domain] {
+  --domain-accent: var(--admin-primary) !important;
+  --domain-accent-soft: rgba(5, 150, 105, .14) !important;
+  --accent: var(--admin-primary) !important;
+  --accent-secondary: var(--admin-primary-light) !important;
+  --accent-soft: rgba(5, 150, 105, .14) !important;
+  --border-glow: rgba(5, 150, 105, .28) !important;
+  --action-primary: var(--admin-primary) !important;
+  --action-primary-hover: var(--admin-primary-dark) !important;
+  --success: var(--admin-green) !important;
+  --warning: var(--admin-yellow) !important;
+  --danger: var(--admin-red) !important;
+  --info: var(--admin-blue) !important;
+  --gt-action: var(--admin-primary) !important;
+}
+
+html,
+body,
+.app-shell {
+  background: var(--ui-canvas) !important;
+}
+
+html,
+body,
+.app-shell,
+.app-shell button,
+.app-shell input,
+.app-shell textarea,
+.app-shell select {
+  font-family: var(--font-body) !important;
+}
+
+body { letter-spacing: 0 !important; }
+.app-shell { background-image: none !important; }
+.app-shell::before,
+.app-shell::after,
+.mesh-bg { display: none !important; }
+
+/* The skip link is available to keyboard users without becoming a stray
+   underlined link in the normal shell layout. */
+.skip-to-content {
+  position: fixed;
+  z-index: 10000;
+  top: 12px;
+  left: -10000px;
+  width: max-content;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--admin-primary);
+  color: #fff;
+  font: 600 .8rem var(--font-body);
+  text-decoration: none;
+  box-shadow: var(--ui-shadow-lg);
+}
+.skip-to-content:focus,
+.skip-to-content:focus-visible { left: 16px; outline: 3px solid var(--admin-primary-light); outline-offset: 3px; }
+
+/* Classic admin frame: fixed rail, full-width command bar, focused canvas. */
+.main-area { padding: 0 24px 80px !important; }
+.content-area { max-width: 1440px; padding-top: 18px !important; }
+.app-header {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  max-width: none;
+  min-height: 64px;
+  margin: 0;
+  padding: 10px 24px;
+  border-radius: 0;
+  border-color: var(--ui-line) !important;
+  background: var(--ui-panel-solid) !important;
+  box-shadow: 0 1px 0 var(--ui-line) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.premium-sidebar {
+  background: var(--ui-panel-solid) !important;
+  border-right: 1px solid var(--ui-line) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.app-header__search,
+.header-control,
+.app-header__profile,
+.sidebar-search,
+.premium-sidebar-user { border-radius: 10px !important; }
+.app-header__search { background: var(--ui-highlight) !important; border-color: var(--ui-line) !important; }
+.premium-sidebar-user { background: var(--ui-highlight) !important; border-color: var(--ui-line) !important; box-shadow: none !important; }
+.app-header__mark,
+.premium-sidebar-brand > span,
+.app-header__profile b { background: var(--admin-primary) !important; box-shadow: none !important; }
+.premium-sidebar-avatar { background: rgba(5, 150, 105, .14) !important; border-color: rgba(5, 150, 105, .3) !important; color: var(--admin-primary-light) !important; }
+.premium-sidebar-item.active { background: rgba(5, 150, 105, .14) !important; box-shadow: inset 3px 0 var(--admin-primary) !important; }
+.premium-sidebar-item.active .premium-sidebar-icon { color: var(--admin-primary) !important; }
+
+/* Calm, readable surfaces across legacy modules. */
+.glass-card,
+.app-hub-hero,
+.app-hub-panel,
+.platform-analytics-card,
+.soft-neumorphism,
+.glassmorphism,
+.page-hero,
+.gt-modal,
+.gt-connection-notice {
+  background: var(--ui-panel) !important;
+  border: 1px solid var(--ui-line) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--ui-shadow-sm) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.glass-card:hover,
+.platform-analytics-card:hover,
+.soft-neumorphism:hover { background: var(--ui-panel-hover) !important; border-color: var(--ui-line-strong) !important; box-shadow: var(--ui-shadow-sm) !important; }
+.page-transition-wrapper .glass-card:hover { transform: none !important; }
+
+.btn-primary,
+.btn--primary,
+.gt-button--primary,
+.btn-accent {
+  color: #fff !important;
+  background: var(--admin-primary) !important;
+  border-color: var(--admin-primary) !important;
+  box-shadow: 0 4px 10px rgba(5, 150, 105, .2) !important;
+}
+.btn-primary:hover:not(:disabled),
+.btn--primary:hover:not(:disabled),
+.gt-button--primary:hover:not(:disabled),
+.btn-accent:hover:not(:disabled) { background: var(--admin-primary-dark) !important; filter: none !important; }
+.btn-secondary,
+.btn--secondary,
+.gt-button--secondary { background: var(--ui-panel) !important; border-color: var(--ui-line-strong) !important; color: var(--text-1) !important; }
+.form-input,
+.gt-field :is(input, select),
+.app-shell :is(input, textarea, select) { background: var(--bg-input); color: var(--text-1); border-color: var(--ui-line-strong); }
+
+/* Breadcrumbs provide location context without becoming a second nav bar. */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin: 0 0 16px;
+  color: var(--text-2);
+  font-size: .78rem;
+}
+.breadcrumbs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+}
+.breadcrumbs button:hover { color: var(--admin-primary); background: rgba(5, 150, 105, .08); }
+.breadcrumbs__separator { color: var(--text-3); }
+.breadcrumbs__current { color: var(--text-1); font-weight: 700; }
+
+@media (max-width: 768px) {
+  .main-area { padding: 0 14px calc(110px + env(safe-area-inset-bottom, 0px)) !important; }
+  .app-header { padding: 8px 9px; }
+  .breadcrumbs { margin-bottom: 12px; }
+}
+.app-header__subnav{width:100%;display:flex;align-items:center;gap:4px;padding:8px 18px 0;border-top:1px solid var(--border);overflow-x:auto}
+.app-header__subnav button{border:0;background:transparent;color:var(--text-3);padding:7px 12px;border-radius:8px 8px 0 0;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.app-header__subnav button:hover{color:var(--text-1);background:var(--bg-elevated)}
+.app-header__subnav button.is-active{color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 -2px var(--accent)}
+.command-subnav{display:flex;gap:6px;align-items:center;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--bg-surface);overflow-x:auto}
+.command-subnav button{border:0;background:transparent;color:var(--text-3);padding:8px 13px;border-radius:8px;font:700 .76rem 'Outfit','Inter',sans-serif;white-space:nowrap;cursor:pointer}
+.command-subnav button:hover{color:var(--text-1);background:var(--bg-elevated)}
+.command-subnav button.is-active{color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 -2px var(--accent)}
+.wellness-command__header{padding:1.5rem 1.75rem;border:1px solid var(--border);border-radius:20px;background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(99,102,241,.05));align-items:center}
+.wellness-command__pulse{display:flex;align-items:center;gap:8px;color:var(--accent);font-size:.75rem;font-weight:750;padding:.65rem .85rem;border:1px solid var(--border-glow);border-radius:10px;background:var(--accent-soft)}
+.wellness-command__tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 1.25rem;padding:.35rem;border-bottom:1px solid var(--border)}
+.wellness-command__tabs button{border:0;background:var(--bg-elevated);color:var(--text-2);padding:.55rem .8rem;border-radius:8px;font:700 .74rem 'Outfit','Inter',sans-serif;cursor:pointer}
+.wellness-command__tabs button:hover,.wellness-command__tabs button:focus-visible{color:var(--accent);background:var(--accent-soft);outline:2px solid var(--accent);outline-offset:1px}
+.wellness-command__tabs button.is-active{color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 -2px var(--accent)}
+.app-header__context strong,.app-header__brand-copy strong{font-family:'Outfit','Inter',sans-serif;letter-spacing:-.02em;font-weight:800}
+.app-header__context span{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+.premium-sidebar-nav-group__label,.sidebar-nav-group__label{font-family:'Outfit','Inter',sans-serif;font-size:.72rem;letter-spacing:.02em;font-weight:800}
+.premium-sidebar-label{font-family:'Outfit','Inter',sans-serif;font-size:.76rem;font-weight:650;letter-spacing:.005em}
+.app-header__subnav button{font-family:'Outfit','Inter',sans-serif;letter-spacing:.01em}
+
+/* Command bar refinement: give the active workspace and daily controls a clearer hierarchy. */
+@media (min-width: 769px) {
+  .app-header {
+    position: sticky;
+    isolation: isolate;
+    min-height: 68px;
+    padding: 9px 28px !important;
+    gap: 20px;
+    background: color-mix(in srgb, var(--ui-panel-solid) 94%, var(--domain-accent-soft)) !important;
+    box-shadow: 0 1px 0 var(--ui-line), 0 10px 28px rgba(15, 23, 42, .045) !important;
+  }
+  .app-header::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--domain-accent);
+  }
+  .app-header__context {
+    min-width: 148px;
+    padding-left: 2px;
+  }
+  .app-header__context span {
+    font-size: .62rem;
+    font-weight: 850;
+    letter-spacing: .12em;
+    color: var(--domain-accent);
+  }
+  .app-header__context strong {
+    font-size: 1rem;
+    letter-spacing: -.035em;
+    color: var(--text-1);
+  }
+  .app-header__search {
+    width: clamp(290px, 25vw, 410px);
+    min-height: 44px;
+    padding: 0 10px 0 15px;
+    border-radius: 12px !important;
+    background: color-mix(in srgb, var(--ui-highlight) 72%, transparent) !important;
+  }
+  .app-header__search:focus-visible,
+  .app-header__search:hover {
+    border-color: color-mix(in srgb, var(--domain-accent) 48%, var(--ui-line)) !important;
+    box-shadow: 0 0 0 3px var(--domain-accent-soft);
+    outline: none;
+  }
+  .app-header__controls { gap: 5px; }
+  .app-header__health { margin-inline: 3px; }
+  .app-header__status { padding: 7px 10px; background: var(--ui-highlight); }
+  .app-header__profile { padding-left: 12px; border-left: 1px solid var(--ui-line); border-radius: 0 !important; }
+  .app-header__profile:hover { border-left-color: var(--domain-accent); }
+}
+
+/* Native utility foundation — shared states deliberately stay quieter than content. */
+:root {
+  --native-radius-sm: 10px;
+  --native-radius-md: 14px;
+  --native-radius-lg: 20px;
+  --native-duration: 180ms;
+  --native-ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+.app-shell {
+  --ui-control-height: 42px;
+  letter-spacing: -.005em;
+}
+
+.app-shell :is(button, a, input, select, textarea) { -webkit-tap-highlight-color: transparent; }
+.app-shell button { touch-action: manipulation; }
+.app-shell :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--domain-accent) 48%, white);
+  outline-offset: 3px;
+}
+
+.app-shell .glass-card {
+  border-radius: var(--native-radius-lg);
+  border-color: color-mix(in srgb, var(--ui-line) 82%, transparent);
+  box-shadow: 0 1px 1px rgba(15, 23, 42, .02), 0 10px 26px rgba(15, 23, 42, .035);
+  transition: border-color var(--native-duration) var(--native-ease), box-shadow var(--native-duration) var(--native-ease), background var(--native-duration) var(--native-ease);
+}
+.app-shell .glass-card:hover {
+  transform: none;
+  border-color: color-mix(in srgb, var(--domain-accent) 24%, var(--ui-line));
+  box-shadow: 0 2px 3px rgba(15, 23, 42, .025), 0 14px 32px rgba(15, 23, 42, .06);
+}
+
+.app-shell :is(.btn-primary, .btn-sm, .btn-ghost, .hub-tab, .wellness-command__tabs button, .command-subnav button) {
+  transition: transform var(--native-duration) var(--native-ease), background var(--native-duration) var(--native-ease), border-color var(--native-duration) var(--native-ease), color var(--native-duration) var(--native-ease), box-shadow var(--native-duration) var(--native-ease);
+}
+.app-shell :is(.btn-primary, .btn-sm, .btn-ghost):active:not(:disabled),
+.app-shell :is(.hub-tab, .wellness-command__tabs button, .command-subnav button):active { transform: scale(.98); }
+.app-shell :is(button, input, select, textarea):disabled { cursor: not-allowed; opacity: .52; }
+
+.hub-tabs, .wellness-command__tabs {
+  gap: 4px;
+  padding: 5px;
+  margin: 0 0 20px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--native-radius-md);
+  background: color-mix(in srgb, var(--ui-highlight) 76%, transparent);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hub-tabs::-webkit-scrollbar, .wellness-command__tabs::-webkit-scrollbar { display: none; }
+.hub-tab, .wellness-command__tabs button {
+  min-height: 40px;
+  border-radius: var(--native-radius-sm) !important;
+  white-space: nowrap;
+}
+.hub-tab[aria-selected='true'], .wellness-command__tabs button.is-active {
+  background: var(--ui-panel-solid) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .08), inset 0 0 0 1px color-mix(in srgb, var(--domain-accent) 18%, transparent) !important;
+}
+
+.app-loading-skeleton { animation: native-skeleton-in 180ms var(--native-ease); }
+.app-loading-skeleton__tabs { display: flex; gap: 8px; padding: 5px; border: 1px solid var(--ui-line); border-radius: var(--native-radius-md); }
+.app-loading-skeleton__tabs span { width: 86px; height: 30px; border-radius: 9px; }
+.app-loading-skeleton__detail-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); gap: 1.5rem; }
+.gt-connection-notice {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: var(--native-radius-md);
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--warning) 9%, var(--ui-panel-solid));
+  border-color: color-mix(in srgb, var(--warning) 28%, var(--ui-line));
+}
+.empty-state { padding: clamp(28px, 5vw, 52px) !important; border-radius: var(--native-radius-lg); }
+.empty-state__icon { background: var(--domain-accent-soft) !important; color: var(--domain-accent) !important; }
+
+/* Command overviews are invitations to act, not dense dashboards. */
+.hub-page .dashboard-grid > button.glass-card {
+  min-height: 148px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  text-align: left;
+  color: var(--text-1);
+  cursor: pointer;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ui-panel-solid) 92%, var(--domain-accent-soft)), var(--ui-panel-solid));
+}
+.hub-page .dashboard-grid > button.glass-card strong { font-size: 1rem; letter-spacing: -.018em; }
+.hub-page .dashboard-grid > button.glass-card:hover { box-shadow: 0 12px 32px color-mix(in srgb, var(--domain-accent) 12%, transparent); }
+.hub-page .dashboard-grid > button.glass-card:focus-visible { outline-offset: 4px; }
+
+@keyframes native-skeleton-in { from { opacity: .55; } to { opacity: 1; } }
+@media (max-width: 768px) {
+  .hub-tabs, .wellness-command__tabs { margin-inline: -4px; border-radius: 12px; }
+  .hub-tab, .wellness-command__tabs button { min-height: 44px; }
+  .app-loading-skeleton__tabs span { min-width: 76px; }
+  .app-loading-skeleton__detail-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *, .app-shell *::before, .app-shell *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

@@ -16,8 +16,10 @@ import PostProcessingStack from "./morphEngine/PostProcessingStack";
 import { CloneEngine } from "./morphEngine";
 import ChamberVFX from "./morphEngine/ChamberVFX";
 import use3DStore, { GPU_TIERS }            from "../store/use3DStore";
+import useStore                             from "../store/useStore";
 import { detectAndSetGpuTier }              from "../store/use3DStore.usage";
 import TabErrorBoundary                     from "./TabErrorBoundary";
+import { formatMeasurement }                 from "../utils/userFormatters";
 
 const LOD_CONFIG = {
   [GPU_TIERS.HIGH]: {
@@ -174,6 +176,7 @@ const LANDMARKS = [
 ];
 
 function MeasurementLandmarks() {
+  const user = useStore((state) => state.user);
   const viewMode = use3DStore((state) => state.viewMode);
   const focusedBodyPart = use3DStore((state) => state.focusedBodyPart);
   const canvasWidth = useThree((state) => state.size.width);
@@ -205,7 +208,7 @@ function MeasurementLandmarks() {
             <div className={`chamber-landmark${ready ? '' : ' chamber-landmark--pending'}`}>
               <span className="chamber-landmark__line" />
               <span>{label}</span>
-              <strong>{ready ? `${value.toFixed(1)} cm` : 'Add measure'}</strong>
+              <strong>{ready ? formatMeasurement(value, 'cm', user, { maximumFractionDigits: 1 }) : 'Add measure'}</strong>
             </div>
           </Html>
         );
@@ -308,7 +311,9 @@ export default function ChamberCanvas({ className = "", style = {} }) {
   const [lodConfig, setLodConfig] = useState(LOD_CONFIG[GPU_TIERS.HIGH]);
   const [isIntersecting, setIsIntersecting] = useState(true);
   const [documentVisible, setDocumentVisible] = useState(() => document.visibilityState !== 'hidden');
-  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+  const profileReducedMotion = useStore((state) => state.reducedMotion);
+  const [systemReducedMotion, setSystemReducedMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+  const reducedMotion = Boolean(profileReducedMotion || systemReducedMotion);
   const onCreated = useGlCreated(setLodConfig);
 
   useEffect(() => use3DStore.subscribe(
@@ -327,7 +332,7 @@ export default function ChamberCanvas({ className = "", style = {} }) {
   useEffect(() => {
     if (!window.matchMedia) return undefined;
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const handleChange = () => setReducedMotion(media.matches);
+    const handleChange = () => setSystemReducedMotion(media.matches);
     media.addEventListener?.('change', handleChange);
     return () => media.removeEventListener?.('change', handleChange);
   }, []);

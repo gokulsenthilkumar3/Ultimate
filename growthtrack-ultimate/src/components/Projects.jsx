@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GitBranch, Star, GitFork, ExternalLink, Code2, Clock, Circle, Search, ArrowDownUp, Plus, Trash2, Edit2, Save, X, Check } from 'lucide-react';
+import { GitBranch, Star, GitFork, ExternalLink, Code2, Clock, Circle, Search, ArrowDownUp, Plus, Trash2, Edit2, Save, X, Check, RefreshCw } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import { useToast } from '../hooks/useToast';
 import useStore from '../store/useStore';
 import { handleTabKeyDown } from '../hooks/useHashTab';
+import { formatDate as formatProfileDate } from '../utils/userFormatters';
 
 const LANGUAGE_COLORS = {
   JavaScript: '#f1e05a',
@@ -33,7 +34,7 @@ const STATUS_COLOR = {
 
 const EMPTY_FORM = { title: '', description: '', stack: '', status: 'Active', url: '', startDate: new Date().toISOString().split('T')[0], endDate: '' };
 const PROJECT_TABS = [
-  { id: 'github', label: 'GitHub Repos' },
+  { id: 'github', label: 'Repositories' },
   { id: 'manual', label: 'My Projects' },
 ];
 
@@ -66,6 +67,8 @@ export default function Projects() {
   const [viewMode, setViewMode]         = useState('grid');
   const [repos, setRepos]               = useState([]);
   const [loading, setLoading]           = useState(true);
+  const [syncError, setSyncError]       = useState('');
+  const [refreshTick, setRefreshTick]   = useState(0);
   const [filter, setFilter]             = useState('all');
   const [searchTerm, setSearchTerm]     = useState('');
   const [sortBy, setSortBy]             = useState('updated');
@@ -108,8 +111,9 @@ export default function Projects() {
   }, [showSortDropdown]);
 
   useEffect(() => {
-    if (!githubManageEnabled && !githubUsername) { setRepos([]); setLoading(false); return; }
+    if (!githubManageEnabled && !githubUsername) { setRepos([]); setSyncError(''); setLoading(false); return; }
     setLoading(true);
+    setSyncError('');
     
     const endpoint = (githubManageEnabled && githubToken)
       ? `https://api.github.com/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator`
@@ -134,10 +138,17 @@ export default function Projects() {
         if (!res.ok) throw new Error('GitHub could not load repositories. Try again.');
         return res.json();
       })
-      .then(data => { setRepos(data); setLoading(false); })
-      .catch(error => { setLoading(false); if (error.name !== 'AbortError') toast.error(error.message || 'GitHub could not load repositories. Try again.'); })
+      .then(data => { setRepos(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(error => {
+        setLoading(false);
+        if (error.name !== 'AbortError') {
+          const message = error.message || 'GitHub could not load repositories. Try again.';
+          setSyncError(message);
+          toast.error(message);
+        }
+      })
       .finally(() => window.clearTimeout(timeout));
-  }, [githubManageEnabled, githubToken, githubUsername, toast]);
+  }, [githubManageEnabled, githubToken, githubUsername, refreshTick, toast]);
 
   const handleCreateOrEditGithubRepo = async () => {
     if (!githubRepoForm.name.trim()) { toast.error('Repository name is required'); return; }
@@ -227,7 +238,7 @@ export default function Projects() {
   });
 
   const getLanguageColor = lang => LANGUAGE_COLORS[lang] || '#8b949e';
-  const formatDate = d => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d));
+  const formatDate = d => formatProfileDate(d, user, { month: 'short' });
 
   // ── Manual project CRUD ──────────────────────────────────────────────
   const handleAddOrEdit = () => {
@@ -374,8 +385,21 @@ export default function Projects() {
                 style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
                 <Code2 size={12} /> {githubManageEnabled ? 'Manage Account' : (githubUsername ? `@${githubUsername}` : 'Set Username')}
               </button>
+              <button type="button" className="btn-sm" aria-label="Refresh GitHub repositories"
+                disabled={loading || (!githubManageEnabled && !githubUsername)}
+                onClick={() => setRefreshTick(value => value + 1)}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem' }}>
+                <RefreshCw size={12} className={loading ? 'sync-icon--spinning' : undefined} /> Sync
+              </button>
             </div>
           </div>
+
+          {syncError && (
+            <div className="gt-connection-notice" role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '1rem' }}>
+              <span>{syncError}</span>
+              <button type="button" className="btn-sm" onClick={() => setRefreshTick(value => value + 1)}>Try again</button>
+            </div>
+          )}
 
           {/* GitHub Create/Edit Repo Modal */}
           {showGithubModal && (
@@ -416,7 +440,7 @@ export default function Projects() {
             </div>
           ) : filteredRepos.length === 0 ? (
             <div className="glass-card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)' }}>
-              {githubUsername ? 'No repositories match your filters.' : 'Set your GitHub username above to load repositories.'}
+              {githubUsername || githubManageEnabled ? 'No repositories match your filters.' : 'Set your GitHub username above to load repositories.'}
             </div>
           ) : viewMode === 'grid' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
@@ -494,7 +518,7 @@ export default function Projects() {
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Star size={12} /> {repo.stargazers_count}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><GitFork size={12} /> {repo.forks_count}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}><Clock size={12} /> {formatDate(repo.pushed_at)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}><Clock size={12} /> {formatDate(repo.pushed_at, user)}</div>
                   </div>
                 </div>
               ))}
@@ -566,7 +590,7 @@ export default function Projects() {
                       <GitFork size={14} /> {repo.forks_count}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-3)', width: '100px' }}>
-                      <Clock size={14} /> {formatDate(repo.pushed_at)}
+                      <Clock size={14} /> {formatDate(repo.pushed_at, user)}
                     </div>
                     {githubManageEnabled && githubToken && repo.permissions?.admin && (
                       <div style={{ display: 'flex', gap: '4px' }}>
@@ -733,7 +757,7 @@ export default function Projects() {
                       tickCur.setMonth(tickCur.getMonth() + 1);
                       while (tickCur < windowEnd) {
                         const pct = ((tickCur.getTime() - windowStart.getTime()) / windowMs) * 100;
-                        ticks.push({ pct, label: tickCur.toLocaleDateString('en', { month: 'short', year: '2-digit' }) });
+                        ticks.push({ pct, label: formatProfileDate(tickCur, user, { month: 'short' }) });
                         tickCur.setMonth(tickCur.getMonth() + 1);
                       }
 

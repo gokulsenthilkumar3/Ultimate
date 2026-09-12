@@ -6,7 +6,7 @@ import useStore, {
 import {
   Plus, Check, Trash2, RotateCcw, Edit3, X, Clock,
   ChevronDown, ChevronRight, ListTodo, AlertCircle, RefreshCw, LayoutGrid, List as ListIcon,
-  Zap, Archive
+  Zap, Archive, Search
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { apiSync } from '../store/useStore';
@@ -153,6 +153,7 @@ function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete
                 border: '1px solid rgba(255,255,255,0.08)',
               }}>{task.category}</span>
             )}
+            {Array.isArray(task.tags) && task.tags.map(tag => <span key={tag} style={{ fontSize: '0.62rem', padding: '1px 7px', borderRadius: 99, color: 'var(--accent)', background: 'var(--accent-soft)', border: '1px solid var(--border-glow)' }}>#{tag}</span>)}
             {/* due-date urgency pill */}
             {dm && (
               <span style={{
@@ -163,6 +164,8 @@ function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete
                 <Clock size={9} /> {dm.label}
               </span>
             )}
+            {task.recurrence && task.recurrence !== 'none' && <span style={{ fontSize: '0.62rem', padding: '1px 7px', borderRadius: 99, color: '#6366f1', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)' }}>↻ {task.recurrence}</span>}
+            {task.reminderAt && <span title={`Reminder: ${task.reminderAt}`} style={{ fontSize: '0.62rem', padding: '1px 7px', borderRadius: 99, color: '#0ea5e9', background: 'rgba(14,165,233,0.12)', border: '1px solid rgba(14,165,233,0.3)' }}>⏰ Reminder</span>}
           </div>
 
           {task.description && (
@@ -371,6 +374,7 @@ export default function Tasks() {
   const [editId,   setEditId]   = useState<any>(null);
   const [filter,   setFilter]   = useState('all');
   const [sortBy,   setSortBy]   = useState('created');
+  const [query,    setQuery]    = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set()); // multi-select IDs
 
   useEffect(() => {
@@ -406,7 +410,7 @@ export default function Tasks() {
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  const EMPTY_FORM = { title: '', description: '', priority: 'p3', category: 'Work', dueDate: '', parent_task_id: '' };
+  const EMPTY_FORM = { title: '', description: '', priority: 'p3', category: 'Work', project: '', section: '', tags: '', dueDate: '', reminderAt: '', recurrence: 'none', parent_task_id: '' };
   const [form, setForm] = useState(EMPTY_FORM);
 
   const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(false); setSaving(false); setSaveError(''); };
@@ -414,9 +418,15 @@ export default function Tasks() {
   // ── CRUD helpers ──
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (saving || !form.title.trim()) return;
+    if (saving) return;
+    if (!form.title.trim()) {
+      setSaveError('A task title is required.');
+      toast.error('Add a title before saving.');
+      return;
+    }
     setSaving(true);
     setSaveError('');
+    const taskForm = { ...form, tags: String(form.tags || '').split(',').map(tag => tag.trim()).filter(Boolean).slice(0, 20) };
 
     if (form.parent_task_id) {
       if (form.parent_task_id === editId) {
@@ -434,16 +444,16 @@ export default function Tasks() {
     if (editId) {
       // PATCH to API
       // Optimistic update
-      setDbTasks((prev: any) => prev ? prev.map((t: any) => t.id === editId ? { ...t, ...form } : t) : null);
+      setDbTasks((prev: any) => prev ? prev.map((t: any) => t.id === editId ? { ...t, ...taskForm } : t) : null);
       try {
-        await apiSync(`/tasks/${editId}`, 'PATCH', form);
+        await apiSync(`/tasks/${editId}`, 'PATCH', taskForm);
         toast.success('Task updated');
       } catch {
         storeUpdateTask(editId, form);
         toast.info('Task updated on this device. We will retry sync when the connection returns.');
       }
     } else {
-      const payload = { ...form, status: 'pending', subtasks: [], created_at: new Date().toISOString() };
+      const payload = { ...taskForm, status: 'pending', subtasks: [], created_at: new Date().toISOString() };
       const tempId = Date.now();
       const newTask = { ...payload, id: tempId };
       // Optimistic update
@@ -517,6 +527,11 @@ export default function Tasks() {
       description: task.description || '',
       priority:    normPriority(task.priority),
       category:    task.category    || 'Work',
+      project:     task.project     || '',
+      section:     task.section     || '',
+      tags:        Array.isArray(task.tags) ? task.tags.join(', ') : (task.tags || ''),
+      reminderAt:  task.reminderAt || '',
+      recurrence:  task.recurrence || 'none',
       dueDate:     task.dueDate     || task.due_date || '',
       parent_task_id: task.parent_task_id || ''
     });
@@ -563,6 +578,9 @@ export default function Tasks() {
 
   const filteredPending = useMemo(() => {
     let list = [...pending];
+    const q = query.trim().toLowerCase();
+    if (q) list = list.filter(t => [t.title, t.description, t.category, t.priority, t.project, t.section, ...(Array.isArray(t.tags) ? t.tags : [])]
+      .filter(Boolean).some(value => String(value).toLowerCase().includes(q)));
     if (filter === 'overdue') list = list.filter(t => (t.dueDate || t.due_date) && (t.dueDate || t.due_date) < today);
     else if (filter === 'today')   list = list.filter(t => (t.dueDate || t.due_date) === today);
     else if (filter === 'p1')      list = list.filter(t => normPriority(t.priority) === 'p1');
@@ -572,7 +590,13 @@ export default function Tasks() {
     if (sortBy === 'priority') list.sort((a, b) => prioOrder.indexOf(normPriority(a.priority)) - prioOrder.indexOf(normPriority(b.priority)));
     if (sortBy === 'due')      list.sort((a, b) => ((a.dueDate||a.due_date||'9999') < (b.dueDate||b.due_date||'9999') ? -1 : 1));
     return list;
-  }, [pending, filter, sortBy, today]);
+  }, [pending, filter, sortBy, today, query]);
+  const filteredCompleted = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return completed;
+    return completed.filter(t => [t.title, t.description, t.category, t.priority, t.project, t.section, ...(Array.isArray(t.tags) ? t.tags : [])]
+      .filter(Boolean).some(value => String(value).toLowerCase().includes(q)));
+  }, [completed, query]);
 
   const catCounts = useMemo(() => {
     const counts = {};
@@ -724,7 +748,7 @@ export default function Tasks() {
 
       {/* Slide-over Drawer for Task Form */}
       {showForm && (
-        <div style={{
+        <div className="task-drawer-backdrop" style={{
           position: 'fixed',
           inset: 0,
           background: 'rgba(0, 0, 0, 0.6)',
@@ -734,7 +758,7 @@ export default function Tasks() {
           justifyContent: 'flex-end',
           animation: 'fadeIn 0.25s ease'
         }} onClick={resetForm}>
-          <form 
+          <form className="task-drawer"
             onSubmit={handleSubmit} 
             aria-busy={saving || undefined}
             onClick={e => e.stopPropagation()}
@@ -794,10 +818,21 @@ export default function Tasks() {
                 </div>
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div><label className="form-label" htmlFor="task-project">Project</label><input id="task-project" className="form-input" placeholder="e.g. Website redesign" value={form.project} onChange={e => setForm(f => ({ ...f, project: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="task-section">Section</label><input id="task-section" className="form-input" placeholder="e.g. This week" value={form.section} onChange={e => setForm(f => ({ ...f, section: e.target.value }))} /></div>
+              </div>
+              <div><label className="form-label" htmlFor="task-tags">Tags</label><input id="task-tags" className="form-input" placeholder="Comma separated, e.g. urgent, client" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} /></div>
+
               <div>
                 <label className="form-label" htmlFor="task-due-date">Due Date</label>
                 <input id="task-due-date" type="date" value={form.dueDate}
                   onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className="form-input"  />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div><label className="form-label" htmlFor="task-reminder">Reminder</label><input id="task-reminder" type="datetime-local" className="form-input" value={form.reminderAt} onChange={e => setForm(f => ({ ...f, reminderAt: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="task-recurrence">Repeat</label><select id="task-recurrence" className="form-input" value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}><option value="none">Does not repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div>
               </div>
 
               <div>
@@ -878,6 +913,17 @@ export default function Tasks() {
       {/* Filters + sort row */}
       {tab === 'pending' && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.25rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '200px', maxWidth: '320px' }}>
+            <Search size={15} aria-hidden="true" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
+            <input
+              aria-label="Search tasks"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search tasks..."
+              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 32px 8px 32px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-1)', fontSize: '0.8rem', outline: 'none' }}
+            />
+            {query && <button aria-label="Clear task search" onClick={() => setQuery('')} style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', border: 0, background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', fontSize: '1rem' }}>×</button>}
+          </div>
           {[['all','All'],['overdue',`Overdue${overdueCt ? ` (${overdueCt})` : ''}`],
             ['today',`Today${todayCt ? ` (${todayCt})` : ''}`],
             ['p1','P1 Critical'],['p2','P2 High']].map(([v, l]) => {
@@ -1148,13 +1194,13 @@ export default function Tasks() {
           </div>
         )}
 
-        {tab === 'completed' && completed.length > 0 && (
+        {tab === 'completed' && filteredCompleted.length > 0 && (
           <List
             height={600}
-            itemCount={completed.length}
+            itemCount={filteredCompleted.length}
             itemSize={65}
             width="100%"
-            itemData={completed}
+            itemData={filteredCompleted}
           >
             {({ index, style, data }: any) => {
               const task = data[index];
@@ -1257,9 +1303,9 @@ export default function Tasks() {
             />
           </div>
         )}
-        {tab === 'completed' && completed.length === 0 && (
+        {tab === 'completed' && filteredCompleted.length === 0 && (
           <div style={{ textAlign: 'center', padding: '3.5rem 0', color: 'var(--text-3)' }}>
-            <p style={{ fontSize: '0.82rem' }}>No completed tasks yet.</p>
+            <p style={{ fontSize: '0.82rem' }}>{query ? 'No completed tasks match your search.' : 'No completed tasks yet.'}</p>
           </div>
         )}
       </div>

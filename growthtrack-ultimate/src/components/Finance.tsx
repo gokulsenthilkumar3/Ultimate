@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon, ListTodo } from 'lucide-react';
+import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon, ListTodo, AlertTriangle } from 'lucide-react';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, AreaChart, Area } from 'recharts';
-import useStore, { selectFinance, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget, apiSync } from '../store/useStore';
+import useStore, { selectFinance, selectUser, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget, apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import '../styles/finance.css';
 import StatCard from './ui/StatCard';
 import SIPCalculator from './SIPCalculator';
+import Shopping from './Shopping';
 import EmptyState from './ui/EmptyState';
 import Portfolio from './Portfolio';
 import OverviewTab from './finance/OverviewTab';
@@ -15,12 +16,19 @@ import BudgetingTab from './finance/BudgetingTab';
 import SubscriptionsTab from './finance/SubscriptionsTab';
 import SyncTab from './finance/SyncTab';
 import { fmtINR } from '../utils/finance';
+import { formatTime, getCurrencySymbol } from '../utils/userFormatters';
+import Button from './ui/Button';
+import Card from './ui/Card';
+import LoadingSkeleton from './ui/LoadingSkeleton';
+import SelectField from './ui/SelectField';
+import Tabs from './ui/Tabs';
+import { handleTabKeyDown } from '../hooks/useHashTab';
 
 
 const CATEGORIES = ['Gym', 'Supplements', 'Food', 'Apparel', 'Equipment', 'Salary', 'Stocks', 'Crypto', 'Rent', 'Utilities', 'Transport', 'Medical', 'Entertainment', 'Learning'];
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'UPI (GPay/PhonePe)', 'Slice Card', 'Axio', 'HDFC Credit', 'SBI Debit'];
-const COLORS = ['#10b981', '#f43f5e', '#0ea5e9', '#8b5cf6', '#e5a50a', '#ec4899', '#22d3ee', '#f97316', '#a78bfa', '#34d399'];
-const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.82rem' };
+const COLORS = ['var(--gt-action)', 'var(--gt-danger)', 'var(--gt-success)', 'var(--gt-warning)', '#5E5CE6', '#BF5AF2', '#64D2FF', '#FF9F0A'];
+const TOOLTIP_STYLE = { background: 'var(--gt-surface)', border: '1px solid var(--gt-border)', borderRadius: 'var(--gt-radius-sm)', color: 'var(--gt-text)', backdropFilter: 'blur(12px)', fontSize: '0.82rem', boxShadow: 'var(--gt-shadow-floating)' };
 
 const EMPTY_FORM = { type: 'Expense', category: '', amount: '', note: '', method: 'UPI (GPay/PhonePe)', date: new Date().toISOString().split('T')[0] };
 const API_BASE = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.VITE_API_BASE || '';
@@ -64,6 +72,9 @@ function buildDayHeatmap(transactions: any[], month: string) {
 
 export default function Finance() {
   const finance = useStore(selectFinance);
+  const user = useStore(selectUser);
+  const formatMoney = useCallback((value: number) => fmtINR(value, user), [user]);
+  const currencySymbol = getCurrencySymbol(user);
   const transactions = useMemo(() => Object.values(finance?.transactions || {}) as any[], [finance?.transactions]);
   const budgets = useMemo(() => Object.values(finance?.budgets || {}) as any[], [finance?.budgets]);
   const addTransaction = useStore(selectAddTransaction);
@@ -149,11 +160,11 @@ export default function Finance() {
   }, [filteredTransactions]);
 
   const statCards = useMemo(() => [
-    { label: 'Net Monthly Balance', value: fmtINR(balance), icon: Wallet, color: balance >= 0 ? 'var(--success)' : 'var(--danger)' },
-    { label: 'Total Income', value: '+' + fmtINR(income), icon: ArrowUpRight, color: 'var(--success)' },
-    { label: 'Total Expenses', value: '-' + fmtINR(expenses), icon: ArrowDownRight, color: 'var(--danger)' },
-    { label: 'Invested / Saved', value: fmtINR(investments), icon: TrendingUp, color: 'var(--info)' },
-  ], [balance, income, expenses, investments]);
+    { label: 'Net Monthly Balance', value: formatMoney(balance), icon: Wallet, color: balance >= 0 ? 'var(--success)' : 'var(--danger)' },
+    { label: 'Total Income', value: '+' + formatMoney(income), icon: ArrowUpRight, color: 'var(--success)' },
+    { label: 'Total Expenses', value: '-' + formatMoney(expenses), icon: ArrowDownRight, color: 'var(--danger)' },
+    { label: 'Invested / Saved', value: formatMoney(investments), icon: TrendingUp, color: 'var(--info)' },
+  ], [balance, income, expenses, investments, formatMoney]);
 
   // Multi-month trend data
   const trendMonths = useMemo(() => lastNMonths(trendWindow), [trendWindow]);
@@ -181,7 +192,7 @@ export default function Finance() {
     if (!form.category) return toast.error('Please select a category.');
     if (!form.method) return toast.error('Please select a payment method.');
     const amt = parseFloat(form.amount);
-    if (!form.amount || isNaN(amt) || amt <= 0) return toast.error('Amount must be greater than ₹0.');
+    if (!form.amount || isNaN(amt) || amt <= 0) return toast.error(`Amount must be greater than ${formatMoney(0)}.`);
     try {
       await addTransaction({ ...form, amount: amt, id: Date.now().toString() });
       setForm(EMPTY_FORM);
@@ -189,7 +200,7 @@ export default function Finance() {
     } catch {
       toast.error('Could not save this entry. Your form data is still available.');
     }
-  }, [form, addTransaction, toast]);
+  }, [form, addTransaction, toast, formatMoney]);
 
   const handleDeleteTransaction = useCallback(async (id: any) => {
     const txToRestore = transactions.find((t: any) => t.id === id);
@@ -240,7 +251,7 @@ export default function Finance() {
     setAxioSyncing(true);
     try {
       const count = await useStore.getState().syncBankData('Axio');
-      setAxioLastSync(new Date().toLocaleTimeString());
+      setAxioLastSync(formatTime(new Date(), user));
       toast.success(`Axio sync complete — ${count} new transaction${count === 1 ? '' : 's'}.`);
     } catch {
       toast.error('Axio sync failed. Check the server connection and try again.');
@@ -251,82 +262,68 @@ export default function Finance() {
 
   const handleCsvExport = () => window.open(`${API_BASE}/api/finance/export`, '_blank');
 
+  const financeTabs = ['Overview', 'Analytics', 'Trends', 'Budgeting', 'Subscriptions', 'Portfolio', 'SIP', 'Shopping', 'Sync'];
+
   return (
     <div className="fade-in module-page finance-container">
       {/* Header */}
-      <div className="finance-header">
+      <Card className="finance-header">
         <div>
-          <p className="label-caps finance-header-label">Wealth Engine</p>
-          <h2 className="text-display finance-header-title">Financial Command</h2>
-          <p className="text-secondary">Track Axio, Slice, UPI, and bank flow month-to-month.</p>
+          <p className="label-caps finance-header-label">Finance</p>
+          <h2 className="text-display finance-header-title">A clearer view of your money.</h2>
+          <p className="text-secondary">Review your spending, plan ahead, and keep the next step simple.</p>
         </div>
         <div className="finance-header-actions">
-          <button onClick={handleCsvExport} className="btn-ghost finance-csv-btn" title="Export to CSV">
-            <ArrowDownRight size={14} className="finance-csv-icon" />CSV EXPORT
-          </button>
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="form-input finance-month-input" title="Select Month" aria-label="Select Month">
-            {lastNMonths(12).map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <Button variant="secondary" icon={<ArrowDownRight size={16} />} onClick={handleCsvExport}>Export CSV</Button>
+          <SelectField label="Month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="finance-month-input" options={lastNMonths(12).map(m => ({ value: m, label: m }))} />
         </div>
-      </div>
+      </Card>
 
       {/* Budget breach alerts */}
       {budgetAlerts.length > 0 && (
         <div className="finance-alerts-container">
           {budgetAlerts.map(b => (
-            <div key={b.id} className={`finance-alert ${b.pct >= 100 ? 'finance-alert-danger' : 'finance-alert-warning'}`}>
-              <span className="finance-alert-icon">{b.pct >= 100 ? '🚨' : '⚠️'}</span>
+            <div key={b.id} className={`finance-alert ${b.pct >= 100 ? 'finance-alert-danger' : 'finance-alert-warning'}`} role="status">
+              <AlertTriangle className="finance-alert-icon" size={18} aria-hidden="true" />
               <span className="finance-alert-text">
-                {b.category}: {fmtINR(b.actual)} / {fmtINR(b.limit_amount)} ({b.pct}%)
-                {b.pct >= 100 ? ' — BUDGET BREACHED' : ' — approaching limit'}
+                {b.category}: {formatMoney(b.actual)} / {formatMoney(b.limit_amount)} ({b.pct}%)
+                {b.pct >= 100 ? ' — this budget needs attention.' : ' — getting close to the limit.'}
               </span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="finance-tabs">
-        {['Overview', 'Analytics', 'Trends', 'Budgeting', 'Subscriptions', 'Portfolio', 'SIP', 'Sync'].map(tab => (
-          <button key={tab} className={`btn-sm finance-tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => handleTabClick(tab)}>
-            {tab === 'Overview' && <Wallet size={14} className="finance-tab-icon" />}
-            {tab === 'Analytics' && <BarChart2 size={14} className="finance-tab-icon" />}
-            {tab === 'Trends' && <LineIcon size={14} className="finance-tab-icon" />}
-            {tab === 'Budgeting' && <Activity size={14} className="finance-tab-icon" />}
-            {tab === 'Subscriptions' && <Calendar size={14} className="finance-tab-icon" />}
-            {tab === 'Portfolio' && <TrendingUp size={14} className="finance-tab-icon" />}
-            {tab === 'SIP' && <TrendingUp size={14} className="finance-tab-icon" />}
-            {tab === 'Sync' && <CreditCard size={14} className="finance-tab-icon" />}
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'Overview' && <OverviewTab {...{ statCards, savingsRate, methodData, COLORS, fmtINR, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions: visibleTransactions, selectedCategory, onClearCategory: () => setSelectedCategory(''), handleDeleteTransaction, expenses, selectedMonth }} />}
-      <React.Suspense fallback={<div className="spinner">Loading charting module...</div>}>
-        {activeTab === 'Analytics' && <AnalyticsTab {...{ COLORS, fmtINR, form, pieData, TOOLTIP_STYLE, expenses, onCategorySelect: (category: string) => setSelectedCategory((current) => current === category ? '' : category) }} />}
-        {activeTab === 'Trends' && <TrendsTab {...{ fmtINR, form, TOOLTIP_STYLE, trendWindow, setTrendWindow, trendData, expenses }} />}
+      <Tabs className="finance-tabs" label="Finance areas" idPrefix="finance-tab" tabs={financeTabs.map(tab => ({ value: tab, label: tab, panelId: 'finance-tabpanel' }))} value={activeTab} onChange={handleTabClick} onKeyDown={event => handleTabKeyDown(event, { tabs: financeTabs.map(id => ({ id })), activeTab, selectTab: handleTabClick, idPrefix: 'finance-tab' })} />
+      <section id="finance-tabpanel" role="tabpanel" aria-labelledby={`finance-tab-${activeTab}`}>
+      {activeTab === 'Overview' && <OverviewTab {...{ statCards, savingsRate, methodData, COLORS, fmtINR: formatMoney, currencySymbol, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions: visibleTransactions, selectedCategory, onClearCategory: () => setSelectedCategory(''), handleDeleteTransaction, expenses, selectedMonth }} />}
+      <React.Suspense fallback={<LoadingSkeleton variant="finance" />}>
+        {activeTab === 'Analytics' && <AnalyticsTab {...{ COLORS, fmtINR: formatMoney, currencySymbol, form, pieData, TOOLTIP_STYLE, expenses, onCategorySelect: (category: string) => setSelectedCategory((current) => current === category ? '' : category) }} />}
+        {activeTab === 'Trends' && <TrendsTab {...{ fmtINR: formatMoney, currencySymbol, form, TOOLTIP_STYLE, trendWindow, setTrendWindow, trendData, expenses }} />}
       </React.Suspense>
-      {activeTab === 'Budgeting' && <BudgetingTab {...{ fmtINR, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }} />}
-      {activeTab === 'Subscriptions' && <SubscriptionsTab {...{ fmtINR, form, showAddSub, setShowAddSub, subForm, setSubForm, addSubscription, subs, handleDeleteSubscription }} />}
+      {activeTab === 'Budgeting' && <BudgetingTab {...{ fmtINR: formatMoney, currencySymbol, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }} />}
+      {activeTab === 'Subscriptions' && <SubscriptionsTab {...{ fmtINR: formatMoney, currencySymbol, form, showAddSub, setShowAddSub, subForm, setSubForm, addSubscription, subs, handleDeleteSubscription }} />}
       {activeTab === 'Portfolio' && <div className="fade-in"><Portfolio /></div>}
       {activeTab === 'SIP' && <div className="fade-in"><SIPCalculator /></div>}
+      {activeTab === 'Shopping' && <div className="fade-in"><Shopping /></div>}
       {activeTab === 'Sync' && <SyncTab {...{ axioLastSync, axioSyncing, handleAxioSync, csvUploading, handleCsvImport }} />}
+      </section>
     </div>
   );
 }
 
-function renderBudgetRow({ id, name, actual, limit, onDelete }: any) {
+function renderBudgetRow({ id, name, actual, limit, onDelete, fmtINR: formatMoney }: any) {
   const percent = Math.min((actual / limit) * 100, 100);
   const isOver = actual > limit;
+  const money = typeof formatMoney === 'function' ? formatMoney : (value: number) => fmtINR(value);
   return (
     <div key={id || name} className="finance-budget-row">
       <div className="finance-budget-header">
         <span className="finance-budget-name">{name}</span>
         <div className="flex-center">
-          <span className={isOver ? 'finance-budget-actual-danger' : 'finance-budget-actual'}>{fmtINR(actual)}</span>
+          <span className={isOver ? 'finance-budget-actual-danger' : 'finance-budget-actual'}>{money(actual)}</span>
           <span className="finance-budget-slash">/</span>
-          <span>{fmtINR(limit)}</span>
+          <span>{money(limit)}</span>
           {onDelete && <button onClick={onDelete} className="btn-icon hover-text-danger finance-budget-delete" title="Delete budget" aria-label="Delete budget"><Trash2 size={12}/></button>}
         </div>
       </div>

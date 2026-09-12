@@ -2,8 +2,10 @@ import { EMPTY_RECORD } from '../lib/emptyValues';
 import React, { useEffect, useRef, useState } from 'react';
 import { Map, Navigation, Compass, ShieldCheck, RefreshCw, ExternalLink } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
+import { formatDateTime } from '../utils/userFormatters';
 
 export default function Maps() {
+  const user = useStore(s => s.user);
   const mapsConfig = useStore(s => s.appConfig?.maps ?? EMPTY_RECORD);
   const [syncing, setSyncing] = useState(false);
   const [tracking, setTracking] = useState(Boolean(mapsConfig.browserTrackingEnabled));
@@ -38,7 +40,7 @@ export default function Maps() {
   return <div className="fade-in module-page maps-page">
     <div className="page-hero glass-card"><p className="eyebrow"><Navigation size={14} /> Location timeline</p><h2 className="text-display">Maps & places</h2><p className="text-secondary">Location points are saved in your local database. Automatic browser tracking runs while GrowthTrack is open and location permission remains enabled.</p></div>
     <div className="maps-grid">
-      <section className="glass-card maps-sync-card"><div className="maps-icon"><Compass size={28} /></div><h3>Local timeline</h3><p className="text-secondary">{locations.length} saved point{locations.length === 1 ? '' : 's'}.</p><div className="maps-actions"><button className="btn-primary" onClick={syncLocation} disabled={syncing}><RefreshCw size={15} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing…' : 'Sync now'}</button><button className="btn-secondary" onClick={toggleTracking}>{tracking ? 'Stop automatic sync' : 'Start automatic sync'}</button></div><p className="maps-status"><ShieldCheck size={14} /> {message}</p>{locations[0] && <p className="maps-last-sync">Last sync: {new Date(locations[0].capturedAt).toLocaleString()}</p>}</section>
+      <section className="glass-card maps-sync-card"><div className="maps-icon"><Compass size={28} /></div><h3>Local timeline</h3><p className="text-secondary">{locations.length} saved point{locations.length === 1 ? '' : 's'}.</p><div className="maps-actions"><button className="btn-primary" onClick={syncLocation} disabled={syncing}><RefreshCw size={15} className={syncing ? 'spin' : ''} /> {syncing ? 'Syncing…' : 'Sync now'}</button><button className="btn-secondary" onClick={toggleTracking}>{tracking ? 'Stop automatic sync' : 'Start automatic sync'}</button></div><p className="maps-status"><ShieldCheck size={14} /> {message}</p>{locations[0] && <p className="maps-last-sync">Last sync: {formatDateTime(locations[0].capturedAt, user)}</p>}</section>
       <section className="glass-card maps-sync-card"><div className="maps-icon"><Map size={28} /></div><h3>Google Maps Timeline</h3><p className="text-secondary">Google does not expose a general Timeline-read API. GrowthTrack can record its own timeline, while this link opens your Google-managed history.</p>{mapsConfig.timelineUrl && <a className="btn-secondary" href={mapsConfig.timelineUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> Open Google Timeline</a>}</section>
     </div>
   </div>;

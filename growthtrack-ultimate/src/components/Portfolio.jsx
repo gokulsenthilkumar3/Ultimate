@@ -7,23 +7,17 @@ import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { handleTabKeyDown } from '../hooks/useHashTab';
+import { formatCurrency } from '../utils/userFormatters';
 
 const ASSET_TYPES = ['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other'];
 const ASSET_COLORS = { Stock: '#6366f1', ETF: '#0ea5e9', 'Mutual Fund': '#10b981', Crypto: '#f59e0b', Gold: '#fbbf24', 'Real Estate': '#ec4899', Bond: '#8b5cf6', FD: '#34d399', Cash: '#6b7280', Other: '#94a3b8' };
-const CURRENCY = '₹';
 const EMPTY_PORTFOLIO = Object.freeze([]);
 const PORTFOLIO_TABS = ['holdings', 'allocation', 'performance'].map(id => ({ id }));
 
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
 
-function fmt(v, decimals = 0) {
-  const value = Number(v);
-  if (!Number.isFinite(value)) return `${CURRENCY}0`;
-  const sign = value < 0 ? '-' : '';
-  const absolute = Math.abs(value);
-  if (absolute >= 10000000) return `${sign}${CURRENCY}${(absolute / 10000000).toFixed(2)}Cr`;
-  if (absolute >= 100000)   return `${sign}${CURRENCY}${(absolute / 100000).toFixed(2)}L`;
-  return `${sign}${CURRENCY}${absolute.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+function fmt(v, decimals = 0, user) {
+  return formatCurrency(v, user, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 // Mini sparkline
@@ -68,11 +62,13 @@ function ROIBadge({ roi }) {
 
 export default function Portfolio() {
   const toast = useToast();
+  const user         = useStore(s => s.user);
   const portfolio     = useStore(s => s.portfolio) ?? EMPTY_PORTFOLIO;
   const setPortfolio  = useStore(s => s.setPortfolio);
   const updateHolding = useStore(s => s.updateHolding);
   const deleteHolding = useStore(s => s.deleteHolding);
   const addHolding    = useStore(s => s.addHolding);
+  const formatMoney   = (value, decimals = 0) => fmt(value, decimals, user);
 
   const [tab,      setTab]      = useState('holdings');
   const [showAdd,  setShowAdd]  = useState(false);
@@ -202,9 +198,9 @@ export default function Portfolio() {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total Invested', val: fmt(totalInvested), color: 'var(--text-1)' },
-          { label: 'Current Value',  val: fmt(totalCurrent),  color: 'var(--accent)' },
-          { label: 'Total Gain',     val: fmt(totalGain),            color: totalGain >= 0 ? '#10b981' : '#f87171' },
+          { label: 'Total Invested', val: formatMoney(totalInvested), color: 'var(--text-1)' },
+          { label: 'Current Value',  val: formatMoney(totalCurrent),  color: 'var(--accent)' },
+          { label: 'Total Gain',     val: formatMoney(totalGain),            color: totalGain >= 0 ? '#10b981' : '#f87171' },
           { label: 'Overall ROI',    val: `${totalROI >= 0 ? '+' : ''}${totalROI.toFixed(2)}%`, color: totalROI >= 0 ? '#10b981' : '#f87171' },
         ].map(m => (
           <div key={m.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
@@ -297,12 +293,12 @@ export default function Portfolio() {
                           <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700, background: `${ASSET_COLORS[h.type] || '#6366f1'}20`, color: ASSET_COLORS[h.type] || '#6366f1' }}>{h.type}</span>
                         </td>
                         <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{h.units}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{fmt(h.buyPrice, 2)}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}>{fmt(h.currentPrice || h.buyPrice, 2)}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{fmt(h.invested)}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>{fmt(h.current)}</td>
+                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{formatMoney(h.buyPrice, 2)}</td>
+                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}>{formatMoney(h.currentPrice || h.buyPrice, 2)}</td>
+                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{formatMoney(h.invested)}</td>
+                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>{formatMoney(h.current)}</td>
                         <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', color: h.gain >= 0 ? '#10b981' : '#f87171' }}>
-                          {h.gain >= 0 ? '+' : ''}{fmt(Math.abs(h.gain))}
+                          {h.gain >= 0 ? '+' : ''}{formatMoney(Math.abs(h.gain))}
                         </td>
                         <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center' }}>
                           <ROIBadge roi={h.roi} />
@@ -324,10 +320,10 @@ export default function Portfolio() {
               <tfoot>
                 <tr style={{ borderTop: '2px solid rgba(255,255,255,0.1)', fontWeight: 900 }}>
                   <td colSpan={5} style={{ padding: '0.65rem 0.6rem', color: 'var(--text-2)', fontSize: '0.75rem' }}>TOTAL ({holdings.length} holdings)</td>
-                  <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{fmt(totalInvested)}</td>
-                  <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', color: 'var(--accent)' }}>{fmt(totalCurrent)}</td>
+                  <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{formatMoney(totalInvested)}</td>
+                  <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', color: 'var(--accent)' }}>{formatMoney(totalCurrent)}</td>
                   <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center', color: totalGain >= 0 ? '#10b981' : '#f87171', fontFamily: 'monospace' }}>
-                    {totalGain >= 0 ? '+' : ''}{fmt(Math.abs(totalGain))}
+                    {totalGain >= 0 ? '+' : ''}{formatMoney(Math.abs(totalGain))}
                   </td>
                   <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center' }}><ROIBadge roi={totalROI} /></td>
                   <td colSpan={2} />
@@ -349,7 +345,7 @@ export default function Portfolio() {
                   <Pie data={byType} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} paddingAngle={2} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {byType.map((entry, idx) => <Cell key={idx} fill={ASSET_COLORS[entry.name] || '#6366f1'} />)}
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => fmt(v)} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -393,8 +389,8 @@ export default function Portfolio() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="day" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} label={{ value: 'Day', position: 'insideBottom', offset: -4, fontSize: 10, fill: 'var(--text-3)' }} />
-                <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => fmt(v)} width={72} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [fmt(v), 'Portfolio Value']} />
+                <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => formatMoney(v)} width={72} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatMoney(v), 'Portfolio Value']} />
                 <Area type="monotone" dataKey="total" stroke="var(--accent)" fill="url(#gPort)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
@@ -404,3 +400,4 @@ export default function Portfolio() {
     </div>
   );
 }
+

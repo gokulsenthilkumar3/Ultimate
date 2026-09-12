@@ -2,7 +2,7 @@
 // Keep those fields in each record's JSON data, and use the same contract for
 // collection endpoints and the initial dashboard snapshot.
 const FIELDS = {
-  tasks: ['title', 'status', 'due_date', 'priority', 'done', 'completedAt'],
+  tasks: ['title', 'status', 'due_date', 'priority', 'done', 'completedAt', 'project', 'section', 'tags'],
   finance: ['amount', 'type', 'category', 'method', 'date', 'note'],
   budgets: ['category', 'limit_amount', 'month'],
   nutrition_logs: ['logged_at', 'date'],
@@ -49,6 +49,7 @@ export function collectionToClient(name, record) {
     result.created_at = record.createdAt ?? result.created_at;
     result.status = record.done || record.status === 'done' ? 'done' : (record.status || 'pending');
     result.done = result.status === 'done';
+    if (typeof result.tags === 'string') { try { result.tags = JSON.parse(result.tags); } catch { result.tags = result.tags ? [result.tags] : []; } }
   }
   if (name === 'sleep_logs') {
     result.duration = Number(record.hours ?? result.duration ?? 0);
@@ -77,6 +78,7 @@ export function collectionPayload(name, input, existing = null) {
     if ('completed_at' in source) source.completedAt = source.completed_at;
     if ('done' in source) source.status = source.done ? 'done' : 'pending';
     else if ('status' in source) source.done = source.status === 'done';
+    if (Array.isArray(source.tags)) source.tags = JSON.stringify(source.tags.map(String).map(v => v.trim()).filter(Boolean).slice(0, 20));
   }
   if (name === 'sleep_logs') {
     if ('duration' in source) source.hours = source.duration;

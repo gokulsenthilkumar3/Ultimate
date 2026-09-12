@@ -9,6 +9,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { useToast } from '../hooks/useToast';
+import { formatDate, formatTime, formatNumber, getUserLocale } from '../utils/userFormatters';
 
 const MOODS = [
   { value: 5, label: 'Excellent', icon: '😄', color: '#22c55e',  bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.3)' },
@@ -174,6 +175,7 @@ function loadJournal() {
 }
 
 function Journal() {
+  const user = useStore(s => s.user);
   const [entries,   setEntries]   = useState(() => loadJournal());
   const [text,      setText]      = useState('');
   const [expanded,  setExpanded]  = useState(null);
@@ -198,7 +200,7 @@ function Journal() {
     const entry = {
       id:   Date.now(),
       date: new Date().toISOString().slice(0, 10),
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toISOString(),
       text: text.trim(),
       prompt: prompt || null,
       wordCount: text.trim().split(/\s+/).filter(Boolean).length,
@@ -225,7 +227,7 @@ function Journal() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem' }}>
         {[
           { label: 'Entries',    value: entries.length,                    color: 'var(--accent)'  },
-          { label: 'Total Words', value: totalWords.toLocaleString(),      color: '#a78bfa'         },
+          { label: 'Total Words', value: formatNumber(totalWords, user, { maximumFractionDigits: 0 }), color: '#a78bfa'         },
           { label: 'This Month', value: entries.filter(e => e.date.slice(0,7) === new Date().toISOString().slice(0,7)).length, color: '#22c55e' },
         ].map(({ label, value, color }) => (
           <div key={label} className="glass-card" style={{ padding: '0.85rem', textAlign: 'center' }}>
@@ -293,8 +295,8 @@ function Journal() {
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <BookOpen size={14} color="#a78bfa" />
                     <div>
-                      <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>{e.date}</p>
-                      <p style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{e.time} · {e.wordCount} words</p>
+                      <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)' }}>{formatDate(e.date, user)}</p>
+                      <p style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>{formatTime(e.time, user)} · {e.wordCount} words</p>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -480,7 +482,7 @@ function MoodTrends({ moodLogs, sleepLogs }) {
                 }}>
                 {entry && <span style={{ fontSize: '1rem' }}>{MOODS.find(m => m.value === entry.mood)?.icon}</span>}
                 <span style={{ fontSize: '0.55rem', color: entry ? 'rgba(255,255,255,0.6)' : 'var(--text-3)', fontWeight: 700 }}>
-                  {new Date(date).toLocaleDateString('en-US', { weekday: 'short' }).slice(0,1)}
+                  {new Intl.DateTimeFormat(getUserLocale(user), { weekday: 'short' }).format(new Date(date)).slice(0,1)}
                   {date.slice(8)}
                 </span>
               </div>
@@ -494,6 +496,7 @@ function MoodTrends({ moodLogs, sleepLogs }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function MindWellness() {
+  const user        = useStore(s => s.user);
   const moodLogs    = useStore(selectMoodLogs);
   const addMoodLog  = useStore(selectAddMoodLog);
   const sleepLogs   = useStore(s => s.sleepLogs) || [];
@@ -590,7 +593,7 @@ export default function MindWellness() {
         <div className="glass-card" style={{ padding: '1.75rem', borderTop: '3px solid #a78bfa' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <span className="card-title" style={{ margin: 0 }}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {formatDate(new Date(), user, { style: 'long', weekday: true })}
             </span>
             {saved && (
               <span style={{ fontSize: '0.72rem', padding: '4px 12px', borderRadius: 'var(--radius-pill)', background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)', fontWeight: 800 }}>

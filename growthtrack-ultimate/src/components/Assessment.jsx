@@ -3,8 +3,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import useStore, { selectAssessmentQA, apiSync } from '../store/useStore';
 import { ChevronDown, ChevronUp, Search, ClipboardList, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import { formatDate } from '../utils/userFormatters';
 
 export default function Assessment() {
+  const user = useStore(s => s.user);
   const assessmentQA  = useStore(selectAssessmentQA) || [];
   const saveAssessment = useStore(s => s.saveAssessmentQA);
   const configuredQuestions = useStore(s => s.appConfig?.assessmentQuestions ?? EMPTY_LIST);
@@ -66,7 +68,7 @@ export default function Assessment() {
     setSubmitting(true);
     try {
       const round = {
-        round: `Assessment — ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`,
+        round: `Assessment — ${formatDate(new Date(), user, { month: 'short' })}`,
         color: 'var(--accent)',
         items: questions.map(q => ({ q: q.label, a: answers[q.key] || '—' })),
       };

@@ -9,10 +9,13 @@ import {
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import StunningDatePicker from './ui/StunningDatePicker';
+import SegmentedControl from './ui/SegmentedControl';
+import Switch from './ui/Switch';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../utils/cropImage';
 import { apiRequest } from '../lib/apiClient';
 import { metricsToBodyProfile } from '../lib/physiqueProfile';
+import { getCurrencySymbol } from '../utils/userFormatters';
 
 const TABS = [
   { id: 'personal', label: 'Personal', icon: User },
@@ -49,7 +52,7 @@ const Field = ({ label, type = 'text', field, placeholder, options, formData, ha
   const displayUnit = isImperial && unit === 'cm' ? 'in' : isImperial && unit === 'kg' ? 'lb' : unit;
   const rawValue = field.includes('.') ? formData[field.split('.')[0]]?.[field.split('.')[1]] : formData[field];
   const displayValue = type === 'number' && unit ? convertBodyValue(rawValue, unit, formData?.measurementSystem) : rawValue;
-  const displayLabel = displayUnit ? label.replace('(cm)', `(${displayUnit})`).replace('(kg)', `(${displayUnit})`) : label;
+  const displayLabel = displayUnit ? label.replace(/\((?:cm|kg|in|lbs)\)/i, `(${displayUnit})`) : label;
 
   return (
   <div style={{ marginBottom: '1.25rem' }}>
@@ -242,6 +245,8 @@ export default function ProfileEditor() {
   const setPalette = useStore(s => s.setPalette);
   const reducedMotion = useStore(s => s.reducedMotion);
   const setReducedMotion = useStore(s => s.setReducedMotion);
+  const density = useStore(s => s.density || 'comfortable');
+  const setDensity = useStore(s => s.setDensity);
   const documentProviders = useStore(s => s.appConfig?.documentProviders);
   const providerLabels = useMemo(() => (documentProviders || []).filter(provider => provider.enabled !== false).map(provider => provider.label), [documentProviders]);
   const toast = useToast();
@@ -351,7 +356,8 @@ export default function ProfileEditor() {
         pelvicTilt: user?.pelvicTilt || 0,
         shoulderRounding: user?.shoulderRounding || 0,
         
-        dateFormat: user?.dateFormat || 'MM/DD/YYYY',
+        dateFormat: user?.dateFormat || 'DD/MM/YYYY',
+        numberFormat: user?.numberFormat || 'Auto (from currency)',
         measurementSystem: user?.measurementSystem || 'Metric (cm, kg)',
         textDirection: user?.textDirection || 'LTR (Left to Right)',
         motherLanguage: user?.motherLanguage || '',
@@ -453,7 +459,8 @@ export default function ProfileEditor() {
       pelvicTilt: user?.pelvicTilt || 0,
       shoulderRounding: user?.shoulderRounding || 0,
       
-      dateFormat: user?.dateFormat || 'MM/DD/YYYY',
+      dateFormat: user?.dateFormat || 'DD/MM/YYYY',
+      numberFormat: user?.numberFormat || 'Auto (from currency)',
       measurementSystem: user?.measurementSystem || 'Metric (cm, kg)',
       textDirection: user?.textDirection || 'LTR (Left to Right)',
       motherLanguage: user?.motherLanguage || '',
@@ -569,6 +576,7 @@ export default function ProfileEditor() {
       updates.baseCurrency = 'USD ($)';
       updates.isdCode = '+1';
       updates.dateFormat = 'MM/DD/YYYY';
+      updates.numberFormat = '1,234.56';
       updates.measurementSystem = 'Imperial (inches, lbs)';
       updates.textDirection = 'LTR (Left to Right)';
       updates.motherLanguage = 'English';
@@ -576,12 +584,14 @@ export default function ProfileEditor() {
       updates.baseCurrency = 'INR (₹)';
       updates.isdCode = '+91';
       updates.dateFormat = 'DD/MM/YYYY';
+      updates.numberFormat = '12,34,567.89';
       updates.measurementSystem = 'Metric (cm, kg)';
       updates.textDirection = 'LTR (Left to Right)';
     } else if (c.includes('united kingdom') || c === 'uk') {
       updates.baseCurrency = 'GBP (£)';
       updates.isdCode = '+44';
       updates.dateFormat = 'DD/MM/YYYY';
+      updates.numberFormat = '1,234.56';
       updates.measurementSystem = 'Metric (cm, kg)';
       updates.textDirection = 'LTR (Left to Right)';
       updates.motherLanguage = 'English';
@@ -589,6 +599,7 @@ export default function ProfileEditor() {
       updates.baseCurrency = 'CAD ($)';
       updates.isdCode = '+1';
       updates.dateFormat = 'MM/DD/YYYY';
+      updates.numberFormat = '1,234.56';
       updates.measurementSystem = 'Metric (cm, kg)';
       updates.textDirection = 'LTR (Left to Right)';
       updates.motherLanguage = 'English';
@@ -596,6 +607,7 @@ export default function ProfileEditor() {
       updates.baseCurrency = 'AUD ($)';
       updates.isdCode = '+61';
       updates.dateFormat = 'DD/MM/YYYY';
+      updates.numberFormat = '1,234.56';
       updates.measurementSystem = 'Metric (cm, kg)';
       updates.textDirection = 'LTR (Left to Right)';
       updates.motherLanguage = 'English';
@@ -603,6 +615,7 @@ export default function ProfileEditor() {
       updates.baseCurrency = 'Other'; // AED
       updates.isdCode = '+971';
       updates.dateFormat = 'DD/MM/YYYY';
+      updates.numberFormat = '1,234.56';
       updates.measurementSystem = 'Metric (cm, kg)';
       updates.textDirection = 'RTL (Right to Left)';
       updates.motherLanguage = 'Arabic';
@@ -610,6 +623,7 @@ export default function ProfileEditor() {
       updates.baseCurrency = 'JPY (¥)';
       updates.isdCode = '+81';
       updates.dateFormat = 'YYYY-MM-DD';
+      updates.numberFormat = '1,234.56';
       updates.measurementSystem = 'Metric (cm, kg)';
       updates.textDirection = 'LTR (Left to Right)';
       updates.motherLanguage = 'Japanese';
@@ -647,7 +661,16 @@ export default function ProfileEditor() {
       url: newSocialUrl.trim()
     };
     
-    setFormData({ ...formData, socialLinks: [...(formData.socialLinks || []), newLink] });
+    // A provider is a singleton in the database. Replacing an existing
+    // provider link keeps the editor and the server in the same shape and
+    // makes correcting a GitHub username a one-step action.
+    setFormData(prev => ({
+      ...prev,
+      socialLinks: [
+        ...(prev.socialLinks || []).filter(link => String(link?.platform || '').toLowerCase() !== finalPlatform.toLowerCase()),
+        newLink,
+      ],
+    }));
     setNewSocialUrl('');
     if (isCustom) setNewSocialCustomName('');
     setHasChanges(true);
@@ -677,10 +700,14 @@ export default function ProfileEditor() {
       const submitData = { ...formData };
       
       // Sync GitHub back to top level for Projects compatibility
-      const gh = submitData.socialLinks?.find(l => l.platform === 'GitHub');
+      const gh = submitData.socialLinks?.find(l => String(l?.platform || '').toLowerCase() === 'github');
       if (gh) {
         const raw = String(gh.url || '').trim();
-        submitData.githubUsername = raw.replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/^@/, '').split(/[/?#]/)[0];
+        submitData.githubUsername = raw
+          .replace(/^https?:\/\//i, '')
+          .replace(/^(www\.)?github\.com\//i, '')
+          .replace(/^@/, '')
+          .split(/[/?#]/)[0];
       } else {
         submitData.githubUsername = '';
       }
@@ -713,7 +740,7 @@ export default function ProfileEditor() {
           })
         });
         // Update user state in store with actual DB saved credentials
-        updateUser({
+        await updateUser({
           name: resData.user.user_metadata?.full_name || formData.name,
           email: resData.user.email
         });
@@ -737,7 +764,8 @@ export default function ProfileEditor() {
     }
   };
 
-  const currencySymbol = (formData.baseCurrency || '').match(/\(([^)]+)\)/)?.[1] || '$';
+  const currencySymbol = getCurrencySymbol(formData);
+  const bodyLengthUnit = String(formData.measurementSystem || '').startsWith('Imperial') ? 'in' : 'cm';
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0', maxWidth: '1000px', margin: '0 auto' }}>
@@ -1085,7 +1113,7 @@ export default function ProfileEditor() {
                 </div>
 
                 <div>
-                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Body Measurements (cm)</h4>
+                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Body Measurements ({bodyLengthUnit})</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem 1.5rem' }}>
                     <Field label="Chest (cm)" type="number" unit="cm" field="chest" placeholder="100" formData={formData} handleChange={handleChange} />
                     <Field label="Shoulders (cm)" type="number" unit="cm" field="shoulders" placeholder="115" formData={formData} handleChange={handleChange} />
@@ -1104,7 +1132,7 @@ export default function ProfileEditor() {
                 </div>
 
                 <div>
-                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Skeletal Proportions (cm)</h4>
+                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Skeletal Proportions ({bodyLengthUnit})</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem 1.5rem' }}>
                     <Field label="Torso Length (cm)" type="number" unit="cm" field="torsoLength" placeholder="-" formData={formData} handleChange={handleChange} />
                     <Field label="Upper Arm (cm)" type="number" unit="cm" field="upperArm" placeholder="-" formData={formData} handleChange={handleChange} />
@@ -1242,6 +1270,7 @@ export default function ProfileEditor() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0 1.5rem' }}>
                     <Field label="Base Currency" field="baseCurrency" options={['', 'USD ($)', 'EUR (€)', 'GBP (£)', 'INR (₹)', 'JPY (¥)', 'CAD ($)', 'AUD ($)', 'Other']} formData={formData} handleChange={handleChange} />
+                    <Field label="Number Format" field="numberFormat" options={['Auto (from currency)', '1,234.56', '1.234,56', '1 234,56', '12,34,567.89']} formData={formData} handleChange={handleChange} />
                     <Field label="ISD / Dial Code" field="isdCode" placeholder="e.g. +1 or +91" formData={formData} handleChange={handleChange} />
                     <Field label="Date Format" field="dateFormat" options={['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']} formData={formData} handleChange={handleChange} />
                     <Field label="Measurement System" field="measurementSystem" options={['Metric (cm, kg)', 'Imperial (inches, lbs)']} formData={formData} handleChange={handleChange} />
@@ -1249,12 +1278,14 @@ export default function ProfileEditor() {
                   </div>
                 </div>
 
+                <Switch label="Reduce motion" description="Minimizes page, card, chart, and dialog animation while preserving feedback." checked={reducedMotion} onChange={setReducedMotion} />
+
                 <div className="preference-toggle-row">
                   <div>
-                    <strong>Reduce motion</strong>
-                    <span>Minimizes page, card, chart, and dialog animation while preserving feedback.</span>
+                    <strong>Information density</strong>
+                    <span>Comfortable gives content more room. Compact keeps more data visible in lists and tables.</span>
                   </div>
-                  <button type="button" className={`preference-switch${reducedMotion ? ' is-on' : ''}`} role="switch" aria-checked={reducedMotion} onClick={() => setReducedMotion(!reducedMotion)}><span /></button>
+                  <SegmentedControl label="Information density" value={density} onChange={setDensity} options={[{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]} />
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)' }}>

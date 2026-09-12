@@ -13,11 +13,12 @@ import MetricLogger from './MetricLogger';
 import TransformationPredictor from './TransformationPredictor';
 import { latestMetrics, metricDelta, metricSeries } from '../lib/metricSeries';
 import { EMPTY_LIST } from '../lib/emptyValues';
+import { formatDate, formatMeasurement, formatNumber, getMeasurementUnit, convertMeasurement } from '../utils/userFormatters';
 
 // ── Delta badge
-function DeltaBadge({ delta, unit = '' }) {
+function DeltaBadge({ delta, unit = '', user }) {
   if (delta === null || delta === undefined || isNaN(delta)) return null;
-  const abs = Math.abs(delta).toFixed(1);
+  const abs = formatNumber(Math.abs(delta), user, { maximumFractionDigits: 1 });
   const pos = delta > 0;
   const zero = delta === 0;
   return (
@@ -43,6 +44,7 @@ const METRICS = [
 ];
 
 export default function Progress() {
+  const user           = useStore(state => state.user);
   const storeLogs      = useStore(state => state.metric_logs) || EMPTY_LIST;
   const saveMetricLog  = useStore(state => state.saveMetricLog);
   const fetchInitialData = useStore(state => state.fetchInitialData);
@@ -75,17 +77,17 @@ export default function Progress() {
 
   // ── Build chart data from DB metric_logs (store)
   const chartData = useMemo(() => metricSeries(storeLogs, activeMetric)
-    .map(point => ({ ...point, [activeMetric]: point.value })), [storeLogs, activeMetric]);
+    .map(point => ({ ...point, [activeMetric]: activeMetric === 'weight' ? convertMeasurement(point.value, 'kg', user) : point.value })), [storeLogs, activeMetric, user]);
 
   // ── 30-day delta: compare latest log vs log ~30 days ago
   const deltas = useMemo(() => {
     const result = {};
     METRICS.forEach(m => {
       const delta = metricDelta(storeLogs, m.key);
-      if (delta !== null) result[m.key] = delta;
+      if (delta !== null) result[m.key] = m.key === 'weight' ? convertMeasurement(delta, 'kg', user) : delta;
     });
     return result;
-  }, [storeLogs]);
+  }, [storeLogs, user]);
 
   const latestLog = useMemo(() => latestMetrics(storeLogs, [...METRICS.map(metric => metric.key), 'memoryPower', 'eyePower']), [storeLogs]);
   const selected  = METRICS.find(m => m.key === activeMetric) || METRICS[0];
@@ -123,8 +125,8 @@ export default function Progress() {
               style={{ width: '100%', borderRadius: '16px', objectFit: 'cover', maxHeight: '70vh' }}
             />
             <p style={{ color: '#fff', fontSize: '0.85rem', marginTop: '12px', fontWeight: 700 }}>
-              {photoEntries[lightboxIdx].date}
-              {photoEntries[lightboxIdx].weight ? ` · ${photoEntries[lightboxIdx].weight}kg` : ''}
+              {formatDate(photoEntries[lightboxIdx].date, user)}
+              {photoEntries[lightboxIdx].weight ? ` · ${formatMeasurement(photoEntries[lightboxIdx].weight, 'kg', user)}` : ''}
             </p>
             <p style={{ color: '#6b7280', fontSize: '0.72rem', marginTop: '4px' }}>
               {lightboxIdx + 1} / {photoEntries.length}
@@ -161,7 +163,7 @@ export default function Progress() {
       {/* Snapshot Vitals Grid ─ with 30-day delta badges */}
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
         {[
-          { label: 'Latest Weight', val: latestLog.weight,  unit: 'KG',  metricKey: 'weight', sub: latestLog.weight == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
+          { label: 'Latest Weight', val: latestLog.weight == null ? null : formatMeasurement(latestLog.weight, 'kg', user, { maximumFractionDigits: 1 }), unit: '', metricKey: 'weight', sub: latestLog.weight == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
           { label: 'Latest Sleep', val: latestLog.sleep, unit: 'HRS', metricKey: 'sleep', sub: latestLog.sleep == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
           { label: 'Hydration', val: latestLog.water, unit: 'L', metricKey: 'water', sub: latestLog.water == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
           { label: 'Stamina', val: latestLog.stamina, unit: '%', metricKey: 'stamina', sub: latestLog.stamina == null ? 'NOT LOGGED' : 'LATEST CHECK-IN' },
@@ -174,7 +176,7 @@ export default function Progress() {
             <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 700 }}>{card.sub}</span>
               {deltas[card.metricKey] !== undefined && (
-                <DeltaBadge delta={deltas[card.metricKey]} unit={card.unit.toLowerCase()} />
+                  <DeltaBadge delta={deltas[card.metricKey]} user={user} unit={card.metricKey === 'weight' ? getMeasurementUnit('kg', user) : card.unit.toLowerCase()} />
               )}
             </div>
           </div>
@@ -205,7 +207,7 @@ export default function Progress() {
                 }}>
                 {m.label}
                 {deltas[m.key] !== undefined && (
-                  <DeltaBadge delta={deltas[m.key]} unit={m.unit} />
+                  <DeltaBadge delta={deltas[m.key]} user={user} unit={m.key === 'weight' ? getMeasurementUnit('kg', user) : m.unit} />
                 )}
               </button>
             ))}
@@ -232,7 +234,9 @@ export default function Progress() {
                 <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} domain={selected.yDomain} />
                 <Tooltip
                   contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '0.82rem' }}
-                  formatter={v => [`${v} ${selected.unit}`, selected.label]}
+                  formatter={v => [selected.key === 'weight'
+                    ? formatMeasurement(v, 'kg', user)
+                    : `${v} ${selected.unit}`, selected.label]}
                 />
                 <Area type="monotone" dataKey={selected.key} stroke={selected.color} fill="url(#metricGrad)"
                   strokeWidth={2.5} dot={chartData.length < 20 ? { r: 3, fill: selected.color } : false} connectNulls={false} />
@@ -255,7 +259,7 @@ export default function Progress() {
             <h4 className="text-display" style={{ fontSize: '1.2rem', marginTop: '4px' }}>{m.val}{m.unit}</h4>
             {m.metricKey && deltas[m.metricKey] !== undefined && (
               <div style={{ marginTop: '4px' }}>
-                <DeltaBadge delta={deltas[m.metricKey]} unit={m.unit} />
+                <DeltaBadge delta={deltas[m.metricKey]} user={user} unit={m.unit} />
               </div>
             )}
           </div>
@@ -303,8 +307,8 @@ export default function Progress() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
                 }}>
                   <ZoomIn size={20} color="#fff" />
-                  <p style={{ color: '#fff', fontSize: '0.65rem', marginTop: '4px' }}>{entry.date}</p>
-                  {entry.weight && <p style={{ color: '#fbbf24', fontSize: '0.65rem' }}>{entry.weight}kg</p>}
+                  <p style={{ color: '#fff', fontSize: '0.65rem', marginTop: '4px' }}>{formatDate(entry.date, user)}</p>
+                  {entry.weight && <p style={{ color: '#fbbf24', fontSize: '0.65rem' }}>{formatMeasurement(entry.weight, 'kg', user)}</p>}
                 </div>
                 {/* Date label */}
                 <div style={{
@@ -312,8 +316,8 @@ export default function Progress() {
                   background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
                   padding: '6px 8px 4px',
                 }}>
-                  <p style={{ color: '#fff', fontSize: '0.6rem', fontWeight: 700 }}>{entry.date}</p>
-                  {entry.weight && <p style={{ color: '#fbbf24', fontSize: '0.58rem' }}>{entry.weight}kg</p>}
+                  <p style={{ color: '#fff', fontSize: '0.6rem', fontWeight: 700 }}>{formatDate(entry.date, user)}</p>
+                  {entry.weight && <p style={{ color: '#fbbf24', fontSize: '0.58rem' }}>{formatMeasurement(entry.weight, 'kg', user)}</p>}
                 </div>
               </div>
             ))}
@@ -362,17 +366,17 @@ export default function Progress() {
             <tbody>
               {progressEntries.map((entry, i) => (
                 <tr key={entry.id || i} style={{ borderTop: '1px solid var(--border)', fontSize: '0.85rem' }}>
-                  <td style={{ padding: '1rem', fontWeight: 700 }}>{entry.date}</td>
-                  <td style={{ padding: '1rem' }}>{entry.weight ? `${entry.weight}kg` : '—'}
+                  <td style={{ padding: '1rem', fontWeight: 700 }}>{formatDate(entry.date, user)}</td>
+                  <td style={{ padding: '1rem' }}>{entry.weight ? formatMeasurement(entry.weight, 'kg', user) : '—'}
                     {i < progressEntries.length - 1 && entry.weight && progressEntries[i+1]?.weight && (
                       <span style={{ marginLeft: '6px' }}>
-                        <DeltaBadge delta={parseFloat((Number(entry.weight) - Number(progressEntries[i+1].weight)).toFixed(1))} unit="kg" />
+                        <DeltaBadge delta={convertMeasurement(parseFloat((Number(entry.weight) - Number(progressEntries[i+1].weight)).toFixed(1)), 'kg', user)} user={user} unit={getMeasurementUnit('kg', user)} />
                       </span>
                     )}
                   </td>
                   <td style={{ padding: '1rem' }}>{entry.body_fat ? `${entry.body_fat}%` : '—'}</td>
                   <td style={{ padding: '1rem', fontSize: '0.75rem', color: 'var(--text-3)' }}>
-                    {[entry.chest && `Chest:${entry.chest}`, entry.waist && `Waist:${entry.waist}`, entry.hips && `Hips:${entry.hips}`]
+                    {[entry.chest && `Chest:${formatMeasurement(entry.chest, 'cm', user)}`, entry.waist && `Waist:${formatMeasurement(entry.waist, 'cm', user)}`, entry.hips && `Hips:${formatMeasurement(entry.hips, 'cm', user)}`]
                       .filter(Boolean).join(' · ') || '—'}
                   </td>
                   <td style={{ padding: '1rem', fontSize: '0.78rem', color: 'var(--text-3)', maxWidth: '180px' }}>
@@ -418,8 +422,8 @@ export default function Progress() {
             <tbody>
               {storeLogs.map(log => (
                 <tr key={log.id} style={{ borderTop: '1px solid var(--border)', fontSize: '0.85rem' }}>
-                  <td style={{ padding: '1rem', fontWeight: 700 }}>{log.date}</td>
-                  <td style={{ padding: '1rem' }}>{log.weight ? `${log.weight}kg` : '—'}</td>
+                  <td style={{ padding: '1rem', fontWeight: 700 }}>{formatDate(log.date, user)}</td>
+                  <td style={{ padding: '1rem' }}>{log.weight ? formatMeasurement(log.weight, 'kg', user) : '—'}</td>
                   <td style={{ padding: '1rem' }}>{log.sleep ?? '—'}h / {log.water ?? '—'}L</td>
                   <td style={{ padding: '1rem' }}>{log.stamina ?? '—'}%</td>
                   <td style={{ padding: '1rem', color: 'var(--accent)', fontWeight: 800 }}>{log.hr ?? '—'}</td>

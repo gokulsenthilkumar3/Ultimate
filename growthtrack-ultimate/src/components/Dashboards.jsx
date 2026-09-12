@@ -6,6 +6,7 @@ import {
 import { TrendingUp, Zap, Activity, Heart, Brain, DollarSign, Target, CheckCircle2, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import useStore from '../store/useStore';
+import { formatMeasurement } from '../utils/userFormatters';
 
 const TOOLTIP_STYLE = { 
   background: 'var(--bg-glass)', 
@@ -58,6 +59,7 @@ const boundedScore = value => {
 };
 
 export default function Dashboards() {
+  const user = useStore(state => state.user);
   const logs = useStore(state => state.metric_logs ?? EMPTY_ARRAY);
   const sleepLogs = useStore(s => s.sleep_logs ?? EMPTY_ARRAY);
   const habitLogsByHabit = useStore(s => s.habitLogsByHabit ?? EMPTY_RECORD);
@@ -93,7 +95,7 @@ export default function Dashboards() {
   const weightDelta = recentWeightLogs.length >= 2
     ? (recentWeightLogs[0].weight - recentWeightLogs[recentWeightLogs.length - 1].weight)
     : null;
-  const growthVel = weightDelta !== null ? `${weightDelta > 0 ? '+' : ''}${weightDelta.toFixed(1)}kg / 2Wk` : null;
+  const growthVel = weightDelta !== null ? `${weightDelta > 0 ? '+' : weightDelta < 0 ? '-' : ''}${formatMeasurement(Math.abs(weightDelta), 'kg', user)} / 2Wk` : null;
 
   // Cardiac Reserve: based on resting HR
   const rhr = latestLog.resting_hr;

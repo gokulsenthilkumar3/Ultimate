@@ -2,7 +2,6 @@ import { Z_INDEX } from '../constants';
 import React, { useState } from 'react';
 import { ArrowRight, Check, Activity, Target, User as UserIcon, AlertCircle } from 'lucide-react';
 import useStore, { selectSetUser, selectSetOnboardingComplete } from '../store/useStore';
-import { apiSync } from '../store/useStore';
 import useDialogFocus from '../hooks/useDialogFocus';
 
 function FieldError({ message }) {
@@ -66,8 +65,7 @@ export default function OnboardingWizard() {
       goals: { primary: formData.goal },
     };
     // Persist to store and API backend
-    setUser(newUser);
-    try { await apiSync('/user', 'POST', newUser); } catch { setErrors({ submit: 'We could not save your setup. Check your connection and try again.' }); return; }
+    try { await setUser(newUser); } catch { setErrors({ submit: 'We could not save your setup. Check your connection and try again.' }); return; }
     setOnboardingComplete(true);
   };
 

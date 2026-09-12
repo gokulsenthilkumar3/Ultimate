@@ -27,7 +27,7 @@ export default function LoginPage() {
     finally { setLoading(false); }
   };
 
-  return <main className="auth-shell single-user-login">
+  return <main className="auth-shell single-user-login" data-theme="light">
     <div className="auth-shell__glow auth-shell__glow--one" /><div className="auth-shell__glow auth-shell__glow--two" />
     <section className="auth-card auth-card--compact">
       <div className="auth-brand auth-brand--center"><div className="auth-brand__mark"><LockKeyhole size={22} /></div><div><div className="auth-brand__name">GrowthTrack</div><div className="auth-brand__sub">Private owner access</div></div></div>

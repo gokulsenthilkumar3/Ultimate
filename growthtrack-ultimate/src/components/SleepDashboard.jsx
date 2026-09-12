@@ -7,6 +7,7 @@ import {
 import { Moon, Sun, Zap, Clock, TrendingUp, AlertCircle, CheckCircle, Plus, Trash2, BatteryCharging, Minus } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import useStore, { selectSleepLogs, selectSaveSleepLog, apiSync } from '../store/useStore';
+import { formatDate, formatNumber, getUserLocale } from '../utils/userFormatters';
 
 const PRIORITY_COLOR = { HIGH: '#ef4444', MED: '#f59e0b', LOW: '#22c55e' };
 const QUALITY_LABELS = {
@@ -15,12 +16,12 @@ const QUALITY_LABELS = {
 };
 
 // ── Chart data builder ─────────────────────────────────────────────────────────
-const buildChartData = (logs) =>
+const buildChartData = (logs, user) =>
   [...logs].reverse().slice(-14).map((entry, i) => {
     const hrs = parseFloat(entry.duration) || 0;
     const score = Math.min(100, Math.round((hrs / 8) * 100));
     return {
-      day: entry.date ? entry.date.slice(5) : `D${i + 1}`,
+      day: entry.date ? new Intl.DateTimeFormat(getUserLocale(user), { month: 'short', day: 'numeric' }).format(new Date(`${entry.date}T12:00:00`)) : `D${i + 1}`,
       hours: +hrs.toFixed(1),
       deep: +(hrs * 0.22).toFixed(1),
       rem: +(hrs * 0.20).toFixed(1),
@@ -72,13 +73,13 @@ function SleepScoreGauge({ score }) {
 }
 
 // ── Custom Tooltip ─────────────────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, user }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '12px', backdropFilter: 'blur(16px)', padding: '0.75rem 1rem', fontSize: '0.8rem' }}>
       <p style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: '4px' }}>{label}</p>
       {payload.map(p => (
-        <p key={p.dataKey} style={{ color: p.color }}>{p.name}: {p.value}{p.unit || ''}</p>
+        <p key={p.dataKey} style={{ color: p.color }}>{p.name}: {formatNumber(p.value, user, { maximumFractionDigits: 1 })}{p.unit || ''}</p>
       ))}
     </div>
   );
@@ -88,6 +89,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 const STAGE_COLORS = { Deep: '#6366f1', REM: '#22d3ee', Light: '#94a3b8' };
 
 export default function SleepDashboard() {
+  const user = useStore(s => s.user);
   const logs = useStore(selectSleepLogs);
   const saveSleepLog = useStore(selectSaveSleepLog);
   const isLoading = useStore(s => s.isLoading);
@@ -129,8 +131,9 @@ export default function SleepDashboard() {
     setSaving(false);
   };
 
-  const chartData = useMemo(() => (logs || []).length > 0 ? buildChartData(logs) : [], [logs]);
-  const avgHours = chartData.length ? (chartData.reduce((s, d) => s + d.hours, 0) / chartData.length).toFixed(1) : '—';
+  const chartData = useMemo(() => (logs || []).length > 0 ? buildChartData(logs, user) : [], [logs, user]);
+  const avgHoursValue = chartData.length ? chartData.reduce((s, d) => s + d.hours, 0) / chartData.length : null;
+  const avgHours = avgHoursValue == null ? '—' : formatNumber(avgHoursValue, user, { maximumFractionDigits: 1 });
   const avgScore = chartData.length ? Math.round(chartData.reduce((s, d) => s + d.score, 0) / chartData.length) : 0;
   const latest = chartData[chartData.length - 1] || {};
   const scoreColor = avgScore >= 75 ? '#22c55e' : avgScore >= 55 ? '#f59e0b' : '#ef4444';
@@ -165,7 +168,7 @@ export default function SleepDashboard() {
             {chartData.length > 0 && (
               <span className={`sleep-debt-badge ${debtClass}`}>
                 <BatteryCharging size={12} />
-                {sleepDebt === 0 ? 'No Sleep Debt' : `${sleepDebt}h Debt`}
+                {sleepDebt === 0 ? 'No Sleep Debt' : `${formatNumber(sleepDebt, user, { maximumFractionDigits: 1 })}h Debt`}
               </span>
             )}
           </div>
@@ -183,7 +186,7 @@ export default function SleepDashboard() {
       {/* KPI cards */}
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Avg Sleep', value: `${avgHours}h`, sub: `last ${chartData.length}d`, color: parseFloat(avgHours) >= 7 ? '#22c55e' : '#ef4444', icon: Moon },
+          { label: 'Avg Sleep', value: `${avgHours}h`, sub: `last ${chartData.length}d`, color: (avgHoursValue ?? 0) >= 7 ? '#22c55e' : '#ef4444', icon: Moon },
           { label: 'Score', value: avgScore || '—', sub: '/100', color: scoreColor, icon: Zap },
           { label: 'Deep', value: latest.deep ? `${latest.deep}h` : '—', sub: 'last night', color: '#6366f1', icon: TrendingUp },
           { label: 'REM', value: latest.rem ? `${latest.rem}h` : '—', sub: 'last night', color: '#22d3ee', icon: Sun },
@@ -242,15 +245,15 @@ export default function SleepDashboard() {
                 <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
                   <span style={{
                     padding: '0.35rem 1rem', borderRadius: 'var(--radius-pill)', fontSize: '0.72rem', fontWeight: 700,
-                    background: parseFloat(avgHours) >= 7 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                    color: parseFloat(avgHours) >= 7 ? '#22c55e' : '#ef4444',
+                    background: (avgHoursValue ?? 0) >= 7 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    color: (avgHoursValue ?? 0) >= 7 ? '#22c55e' : '#ef4444',
                     display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    border: `1px solid ${parseFloat(avgHours) >= 7 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
+                    border: `1px solid ${(avgHoursValue ?? 0) >= 7 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
                   }}>
-                    {parseFloat(avgHours) >= 7 ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
-                    {parseFloat(avgHours) >= 7
+                    {(avgHoursValue ?? 0) >= 7 ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
+                    {(avgHoursValue ?? 0) >= 7
                       ? `On target — ${avgHours}h avg`
-                      : `Below optimal — need +${(7 - parseFloat(avgHours)).toFixed(1)}h/night`}
+                      : `Below optimal — need +${formatNumber(Math.max(0, 7 - (avgHoursValue || 0)), user, { maximumFractionDigits: 1 })}h/night`}
                   </span>
                 </div>
               </>
@@ -277,7 +280,7 @@ export default function SleepDashboard() {
                         <Cell key={i} fill={entry.fill} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => [`${v}h`]} contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '10px', backdropFilter: 'blur(12px)' }} />
+                    <Tooltip formatter={(v) => [`${formatNumber(v, user, { maximumFractionDigits: 1 })}h`]} contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '10px', backdropFilter: 'blur(12px)' }} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="macro-ring-legend" style={{ marginTop: '0.5rem' }}>
@@ -285,7 +288,7 @@ export default function SleepDashboard() {
                     <div key={s.name} className="macro-ring-legend__item">
                       <div className="macro-ring-legend__dot" style={{ background: s.fill }} />
                       <span className="macro-ring-legend__label">{s.name} Sleep</span>
-                      <span className="macro-ring-legend__value">{s.value}h</span>
+                      <span className="macro-ring-legend__value">{formatNumber(s.value, user, { maximumFractionDigits: 1 })}h</span>
                     </div>
                   ))}
                 </div>
@@ -304,7 +307,7 @@ export default function SleepDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="day" stroke="var(--text-3)" tick={{ fontSize: 10 }} />
                   <YAxis domain={[0, 100]} stroke="var(--text-3)" tick={{ fontSize: 10 }} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<CustomTooltip user={user} />} />
                   <Bar dataKey="score" fill="#6366f1" radius={[4, 4, 0, 0]} name="Score" />
                 </BarChart>
               </ResponsiveContainer>
@@ -388,8 +391,8 @@ export default function SleepDashboard() {
                   return (
                     <div key={entry.date} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 1.5rem', borderBottom: '1px solid var(--border)' }} className="hover-bg-subtle">
                       <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 800, color: 'var(--text-1)', minWidth: '88px', fontFamily: 'monospace', fontSize: '0.85rem' }}>{entry.date}</span>
-                        <span style={{ color: 'var(--accent)', fontWeight: 800, fontSize: '0.95rem' }}>{hrs.toFixed(1)}h</span>
+                        <span style={{ fontWeight: 800, color: 'var(--text-1)', minWidth: '88px', fontFamily: 'monospace', fontSize: '0.85rem' }}>{formatDate(entry.date, user)}</span>
+                        <span style={{ color: 'var(--accent)', fontWeight: 800, fontSize: '0.95rem' }}>{formatNumber(hrs, user, { maximumFractionDigits: 1 })}h</span>
                         <span style={{ fontSize: '0.68rem', padding: '2px 8px', borderRadius: '6px', background: `${scoreColor}18`, color: scoreColor, fontWeight: 700, border: `1px solid ${scoreColor}40` }}>
                           {score}/100
                         </span>

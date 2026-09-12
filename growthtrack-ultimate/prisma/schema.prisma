@@ -30,6 +30,11 @@ model User {
   calendarEvents    String?
   wellnessData      String?
   healthExtras      String?
+  // Project annotations are user-owned JSON singletons. Keeping them on the
+  // account means manual projects and repository notes survive a reload and
+  // follow the same authenticated write path as the rest of the profile.
+  manualProjects    String?
+  repoNotes         String?
   // Investment holdings are stored as a validated JSON array so the
   // portfolio module shares the same authenticated persistence path as the
   // other user-owned singleton records.
@@ -100,6 +105,7 @@ model UserPreference {
   navigationOrder    String?
   navigationTabOrder String?
   reducedMotion      Boolean  @default(false)
+  density            String   @default("comfortable")
   updatedAt          DateTime @default(now()) @updatedAt
   createdBy          String?
   updatedBy          String?
@@ -145,6 +151,7 @@ model OwnerProfile {
   primaryBank               String?
   passportNationality       String?
   dateFormat                String?
+  numberFormat              String?
   measurementSystem         String?
   textDirection             String?
   motherLanguage            String?
@@ -462,6 +469,9 @@ model Task {
   status      String?
   due_date    String?
   priority    String?
+  project     String?
+  section     String?
+  tags        String?
   done        Boolean  @default(false)
   completedAt String?
   data        String?

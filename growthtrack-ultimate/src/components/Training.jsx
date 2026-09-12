@@ -16,6 +16,7 @@ import useStore, {
   selectDeleteWorkoutSession,
 } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import { formatDate, formatMeasurement, getMeasurementUnit, convertMeasurementToMetric } from '../utils/userFormatters';
 
 const DAYS  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LIFTS = ['benchPress', 'squat', 'deadlift', 'ohp'];
@@ -121,7 +122,7 @@ function epley1RM(weight, reps) {
 }
 
 // ── Progressive Overload Tab ───────────────────────────────────────────────
-function ProgressiveOverloadTab({ schedule, sessions }) {
+function ProgressiveOverloadTab({ schedule, sessions, user }) {
   const overloadData = useMemo(() => buildOverloadData(schedule, sessions), [schedule, sessions]);
   const exerciseNames = Object.keys(overloadData).filter(n => overloadData[n].length > 0);
   const [activeEx, setActiveEx] = useState(exerciseNames[0] || null);
@@ -213,19 +214,19 @@ function ProgressiveOverloadTab({ schedule, sessions }) {
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center', color: 'var(--text-3)' }}>{row.sessions}</td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center', fontWeight: 800 }}>
-                      {row.currentWeight ? `${row.currentWeight} kg` : '—'}
+                      {row.currentWeight ? formatMeasurement(row.currentWeight, 'kg', user) : '—'}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center' }}>
                       {row.nextTarget ? (
                         <span style={{ color: '#0ea5e9', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                          <ArrowRight size={12} /> {row.nextTarget} kg
+                          <ArrowRight size={12} /> {formatMeasurement(row.nextTarget, 'kg', user)}
                         </span>
                       ) : '—'}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: tc, fontWeight: 700 }}>
                         <TI size={13} />
-                        {row.trend !== null ? `${row.trend > 0 ? '+' : ''}${row.trend} kg` : '—'}
+                        {row.trend !== null ? `${row.trend > 0 ? '+' : row.trend < 0 ? '-' : ''}${formatMeasurement(Math.abs(row.trend), 'kg', user)}` : '—'}
                       </span>
                     </td>
                   </tr>
@@ -247,13 +248,13 @@ function ProgressiveOverloadTab({ schedule, sessions }) {
             {/* Summary metrics */}
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               {[
-                { label: 'Current',     val: lastEntry ? `${lastEntry.maxWeight} kg` : '—', color: 'var(--accent)' },
-                { label: 'Next Target', val: nextTarget ? `${nextTarget} kg` : '—',         color: '#0ea5e9' },
+                { label: 'Current',     val: lastEntry ? formatMeasurement(lastEntry.maxWeight, 'kg', user) : '—', color: 'var(--accent)' },
+                { label: 'Next Target', val: nextTarget ? formatMeasurement(nextTarget, 'kg', user) : '—',         color: '#0ea5e9' },
                 { label: 'Trend',
                   val: (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                       <TrendIcon size={13} />
-                      {delta !== null ? `${delta > 0 ? '+' : ''}${delta} kg` : '—'}
+                      {delta !== null ? `${delta > 0 ? '+' : delta < 0 ? '-' : ''}${formatMeasurement(Math.abs(delta), 'kg', user)}` : '—'}
                     </span>
                   ),
                   color: trendColor },
@@ -271,11 +272,11 @@ function ProgressiveOverloadTab({ schedule, sessions }) {
               <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} unit="kg" />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v} kg`, 'Max Weight']} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} unit={getMeasurementUnit('kg', user)} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatMeasurement(v, 'kg', user), 'Max Weight']} />
                 {nextTarget && (
                   <ReferenceLine y={nextTarget} stroke="#0ea5e9" strokeDasharray="5 3"
-                    label={{ value: `Target: ${nextTarget}kg`, fill: '#0ea5e9', fontSize: 10, position: 'insideTopRight' }} />
+                    label={{ value: `Target: ${formatMeasurement(nextTarget, 'kg', user)}`, fill: '#0ea5e9', fontSize: 10, position: 'insideTopRight' }} />
                 )}
                 <Line type="monotone" dataKey="weight" stroke="var(--accent)" strokeWidth={2.5}
                   dot={{ r: 5, fill: 'var(--accent)', strokeWidth: 0 }}
@@ -292,7 +293,7 @@ function ProgressiveOverloadTab({ schedule, sessions }) {
           <div style={{ marginTop: '1rem', padding: '0.85rem', background: 'rgba(14,165,233,0.06)', borderRadius: '10px', border: '1px solid rgba(14,165,233,0.15)' }}>
             <p style={{ fontSize: '0.72rem', color: '#0ea5e9', fontWeight: 700, marginBottom: '4px' }}>Linear Progression Protocol</p>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-2)', lineHeight: 1.6 }}>
-              Add <strong>2.5 kg</strong> each session while you can complete all target reps with good form.
+              Add <strong>2.5 {getMeasurementUnit('kg', user)}</strong> each session while you can complete all target reps with good form.
               If you fail to complete reps, repeat the same weight. After 3 failures, deload by 10% and rebuild.
             </p>
           </div>
@@ -304,6 +305,7 @@ function ProgressiveOverloadTab({ schedule, sessions }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function Training() {
+  const user                = useStore(s => s.user);
   const training             = useStore(selectTrainingPlan) || {};
   const setTraining          = useStore(selectUpdateTrainingPlan);
   const { sessions: workoutSessions } = useStore(selectWorkouts);
@@ -361,12 +363,12 @@ export default function Training() {
 
   const logPR = () => {
     if (!prForm.weight) return;
-    const w = Number(prForm.weight);
+    const w = convertMeasurementToMetric(prForm.weight, 'kg', user);
     const newPRs = { ...PRs, [prForm.lift]: Math.max(PRs[prForm.lift] || 0, w) };
     const newHistory = [...prHistory, { date: new Date().toISOString().slice(0, 10), lift: prForm.lift, weight: w }];
     updateSection({ PRs: newPRs, prHistory: newHistory });
     setPrForm({ lift: prForm.lift, weight: '' });
-    toast.success(`PR logged: ${LIFT_LABELS[prForm.lift]} ${w}kg`);
+    toast.success(`PR logged: ${LIFT_LABELS[prForm.lift]} ${formatMeasurement(w, 'kg', user)}`);
   };
 
   const incrementStreak = () => {
@@ -425,7 +427,7 @@ export default function Training() {
     incrementStreak();
     setActiveSession(null);
     if (sessionRestTimer) clearInterval(sessionRestTimer);
-    toast.success(`Session saved! Volume: ${(volume / 1000).toFixed(2)}k kg · ${elapsed} min`);
+    toast.success(`Session saved! Volume: ${formatMeasurement(volume, 'kg', user)} · ${elapsed} min`);
   };
 
   const cancelSession = () => {
@@ -434,7 +436,7 @@ export default function Training() {
     toast.error('Session cancelled');
   };
 
-  const prChartData    = prHistory.filter(h => h.lift === activePRLift).slice(-10).map(h => ({ date: h.date.slice(5), weight: h.weight }));
+  const prChartData    = prHistory.filter(h => h.lift === activePRLift).slice(-10).map(h => ({ date: h.date.slice(5), weight: convertMeasurement(h.weight, 'kg', user) }));
   const recentSessions = workoutSessions.slice(0, 15);
 
   return (
@@ -461,10 +463,10 @@ export default function Training() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Weekly Volume (Plan)', value: `${(totalPlannedVolume / 1000).toFixed(1)}k kg`, icon: <Dumbbell size={18} color="var(--accent)" />, color: 'var(--accent)' },
+          { label: 'Weekly Volume (Plan)', value: formatMeasurement(totalPlannedVolume, 'kg', user), icon: <Dumbbell size={18} color="var(--accent)" />, color: 'var(--accent)' },
           { label: 'Current Streak',       value: `${streak} days`,             icon: <Flame size={18} color="var(--warning)" />,  color: 'var(--warning)' },
           { label: 'Best Streak',          value: `${longestStreak} days`,       icon: <Trophy size={18} color="var(--warning)" />, color: 'var(--warning)' },
-          { label: '7-Day Logged Volume',  value: `${(last7LoggedVolume / 1000).toFixed(1)}k kg`, icon: <Dumbbell size={18} color="var(--info)" />, color: 'var(--info)' },
+          { label: '7-Day Logged Volume',  value: formatMeasurement(last7LoggedVolume, 'kg', user), icon: <Dumbbell size={18} color="var(--info)" />, color: 'var(--info)' },
         ].map(s => (
           <div key={s.label} className="glass-card" style={{ padding: '1.15rem', textAlign: 'center' }}>
             <div style={{ marginBottom: '0.4rem' }}>{s.icon}</div>
@@ -537,14 +539,14 @@ export default function Training() {
                         <div key={ex.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderTop: '1px solid var(--border)' }}>
                           <div>
                             <p style={{ fontSize: '0.82rem', fontWeight: 600 }}>{ex.name}</p>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{ex.sets}×{ex.reps} @ {ex.weight}kg</p>
+                            <p style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{ex.sets}×{ex.reps} @ {formatMeasurement(ex.weight, 'kg', user)}</p>
                           </div>
                           <button onClick={() => removeExercise(day.id, ex.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}><Trash2 size={12} /></button>
                         </div>
                       ))}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 48px 60px 36px', gap: '4px', marginTop: '0.5rem' }}>
                         {['name', 'sets', 'reps', 'weight'].map(f => (
-                          <input key={f} placeholder={f === 'weight' ? 'kg' : f} value={newEx[f]}
+                          <input key={f} placeholder={f === 'weight' ? getMeasurementUnit('kg', user) : f} value={newEx[f]}
                             onChange={e => setNewEx({ ...newEx, [f]: e.target.value })}
                             className="form-input" style={{ padding: '0.35rem', fontSize: '0.72rem' }} />
                         ))}
@@ -617,7 +619,7 @@ export default function Training() {
                         <h4 style={{ fontWeight: 800, fontSize: '1rem', color: allDone ? '#10b981' : 'var(--text-1)' }}>{exName}</h4>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr 50px', gap: '8px', marginBottom: '8px' }}>
-                        {['SET', 'REPS', 'WEIGHT (kg)', 'VOLUME', 'DONE'].map(h => (
+                        {['SET', 'REPS', `WEIGHT (${getMeasurementUnit('kg', user)})`, 'VOLUME', 'DONE'].map(h => (
                           <span key={h} style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 700 }}>{h}</span>
                         ))}
                       </div>
@@ -625,14 +627,14 @@ export default function Training() {
                         <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr 50px', gap: '8px', alignItems: 'center', marginBottom: '8px', opacity: s.done ? 0.6 : 1, transition: 'opacity 0.2s' }}>
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>#{s.setNum}</span>
-                            {s.prevWeight && !s.done && <span style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Prev: {s.prevWeight}kg</span>}
+                            {s.prevWeight && !s.done && <span style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Prev: {formatMeasurement(s.prevWeight, 'kg', user)}</span>}
                           </div>
                           <input type="number" value={s.actualReps} onChange={e => updateSetValue(s.id, 'actualReps', e.target.value)}
                             className="form-input" style={{ padding: '0.35rem', fontSize: '0.82rem', textAlign: 'center' }} disabled={s.done} />
                           <input type="number" value={s.actualWeight} onChange={e => updateSetValue(s.id, 'actualWeight', e.target.value)}
                             className="form-input" style={{ padding: '0.35rem', fontSize: '0.82rem', textAlign: 'center' }} disabled={s.done} />
                           <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-2)' }}>
-                            {(Number(s.actualReps) * Number(s.actualWeight) || 0).toLocaleString()} kg
+                            {formatMeasurement(Number(s.actualReps) * Number(s.actualWeight) || 0, 'kg', user)}
                           </span>
                           <button onClick={() => { toggleSet(s.id); if (!s.done) startRestTimer(90); }}
                             style={{ width: '36px', height: '36px', borderRadius: '8px', border: `2px solid ${s.done ? '#10b981' : 'var(--border)'}`, background: s.done ? 'rgba(16,185,129,0.2)' : 'var(--bg-elevated)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
@@ -666,7 +668,7 @@ export default function Training() {
                 <div key={lift} style={{ background: 'var(--bg-elevated)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: `1px solid ${PRs[lift] ? 'rgba(245,158,11,0.4)' : 'var(--border)'}`, textAlign: 'center' }}>
                   <p className="label-caps">{LIFT_LABELS[lift]}</p>
                   <p style={{ fontSize: '1.6rem', fontWeight: 900, color: PRs[lift] ? 'var(--warning)' : 'var(--text-3)', marginTop: '0.25rem' }}>
-                    {PRs[lift] ? `${PRs[lift]}kg` : '—'}
+                    {PRs[lift] ? formatMeasurement(PRs[lift], 'kg', user) : '—'}
                   </p>
                 </div>
               ))}
@@ -675,7 +677,7 @@ export default function Training() {
               <select value={prForm.lift} onChange={e => setPrForm({ ...prForm, lift: e.target.value })} className="form-input" style={{ flex: 1, minWidth: '140px' }}>
                 {LIFTS.map(l => <option key={l} value={l}>{LIFT_LABELS[l]}</option>)}
               </select>
-              <input type="number" placeholder="New PR (kg)" value={prForm.weight} onChange={e => setPrForm({ ...prForm, weight: e.target.value })} className="form-input" style={{ width: '120px' }} />
+              <input type="number" placeholder={`New PR (${getMeasurementUnit('kg', user)})`} value={prForm.weight} onChange={e => setPrForm({ ...prForm, weight: e.target.value })} className="form-input" style={{ width: '120px' }} />
               <button onClick={logPR} className="btn-primary"><Trophy size={15} /> LOG PR</button>
             </div>
           </div>
@@ -696,8 +698,8 @@ export default function Training() {
                 <LineChart data={prChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-3)' }} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} unit="kg" />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} unit={getMeasurementUnit('kg', user)} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v} ${getMeasurementUnit('kg', user)}`, 'PR']} />
                   <Line type="monotone" dataKey="weight" stroke="var(--warning)" strokeWidth={2.5} dot={{ r: 5, fill: 'var(--warning)' }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -711,7 +713,7 @@ export default function Training() {
             <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Calculate your 1-Rep Max based on weight and reps.</p>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div>
-                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Weight (kg)</label>
+                <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Weight ({getMeasurementUnit('kg', user)})</label>
                 <input type="number" placeholder="100" value={calc1RM.weight} onChange={e => setCalc1RM(p => ({ ...p, weight: e.target.value }))} className="form-input" style={{ width: '120px' }} />
               </div>
               <div>
@@ -721,7 +723,7 @@ export default function Training() {
               <div style={{ paddingBottom: '4px' }}>
                 <span className="label-caps" style={{ color: 'var(--text-3)' }}>Estimated 1RM</span>
                 <p style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>
-                  {epley1RM(calc1RM.weight, calc1RM.reps) ? `${epley1RM(calc1RM.weight, calc1RM.reps)} kg` : '—'}
+                  {epley1RM(calc1RM.weight, calc1RM.reps) ? formatMeasurement(epley1RM(calc1RM.weight, calc1RM.reps), 'kg', user) : '—'}
                 </p>
               </div>
             </div>
@@ -731,7 +733,7 @@ export default function Training() {
 
       {/* ── PROGRESSIVE OVERLOAD ── */}
       {activeTab === 'Progressive Overload' && (
-        <ProgressiveOverloadTab schedule={schedule} sessions={workoutSessions} />
+        <ProgressiveOverloadTab schedule={schedule} sessions={workoutSessions} user={user} />
       )}
 
       {/* ── VOLUME HISTORY ── */}
@@ -745,7 +747,7 @@ export default function Training() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={4} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${(v/1000).toFixed(2)}k kg`, 'Volume']} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatMeasurement(v, 'kg', user), 'Volume']} />
                 <Bar dataKey="volume" radius={[3, 3, 0, 0]}>
                   {volumeHistory.map((d, idx) => (
                     <Cell key={idx} fill={d.volume === 0 ? 'var(--bg-elevated)' : d.volume / maxVolume > 0.7 ? '#10b981' : d.volume / maxVolume > 0.3 ? '#0ea5e9' : '#8b5cf6'} />
@@ -779,7 +781,7 @@ export default function Training() {
                   const intensity = vol / maxVolume;
                   const bg = vol === 0 ? 'var(--bg-elevated)' : `rgba(99,102,241,${0.2 + intensity * 0.75})`;
                   cells.push(
-                    <div key={key} title={`${key}: ${vol > 0 ? (vol/1000).toFixed(1) + 'k kg' : 'Rest'}`}
+                    <div key={key} title={`${key}: ${vol > 0 ? formatMeasurement(vol, 'kg', user) : 'Rest'}`}
                       style={{ aspectRatio: '1', borderRadius: '4px', background: bg, border: isToday ? '2px solid var(--accent)' : '1px solid rgba(255,255,255,0.04)', cursor: 'default' }} />
                   );
                 }
@@ -814,7 +816,7 @@ export default function Training() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent)' }}>{((s.volume || 0) / 1000).toFixed(2)}k kg</p>
+                      <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent)' }}>{formatMeasurement(s.volume || 0, 'kg', user)}</p>
                       <p style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>volume</p>
                     </div>
                     <button onClick={() => deleteWorkoutSession(s.id)} className="hover-text-danger"

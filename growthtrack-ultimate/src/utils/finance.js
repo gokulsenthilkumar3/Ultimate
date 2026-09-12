@@ -3,13 +3,10 @@
  * Kept separate so they can be unit-tested independently of React.
  */
 
-/** Format a number as Indian Rupee string */
-export const fmtINR = (n) => {
-  const value = Number(n);
-  if (!Number.isFinite(value)) return '₹0';
-  const formatted = Math.abs(value).toLocaleString('en-IN');
-  return value < 0 ? `-₹${formatted}` : `₹${formatted}`;
-};
+import { formatCurrency } from './userFormatters';
+
+/** Format money using the signed-in user's Profile → Formatting & Culture. */
+export const fmtINR = (n, user) => formatCurrency(n, user);
 
 /** Sum all transactions of a given type */
 export const sumByType = (transactions, type) =>
