@@ -1,5 +1,5 @@
 import safeLocalStorage from '../utils/safeLocalStorage';
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useId } from 'react';
 import {
   User, Camera, Save, X, Upload, CheckCircle,
   Shield, Layout, Globe,
@@ -44,6 +44,7 @@ const convertBodyValue = (value, unit, measurementSystem, toCanonical = false) =
 };
 
 const Field = ({ label, type = 'text', field, placeholder, options, formData, handleChange, prefix, step, min, max, inputMode, unit }) => {
+  const id = useId();
   const isImperial = String(formData?.measurementSystem || '').startsWith('Imperial');
   const displayUnit = isImperial && unit === 'cm' ? 'in' : isImperial && unit === 'kg' ? 'lb' : unit;
   const rawValue = field.includes('.') ? formData[field.split('.')[0]]?.[field.split('.')[1]] : formData[field];
@@ -52,9 +53,10 @@ const Field = ({ label, type = 'text', field, placeholder, options, formData, ha
 
   return (
   <div style={{ marginBottom: '1.25rem' }}>
-    <label className="form-label">{displayLabel}</label>
+    <label className="form-label" htmlFor={id}>{displayLabel}</label>
     {options ? (
       <select
+        id={id}
         className="form-input"
         value={field.includes('.') ? formData[field.split('.')[0]]?.[field.split('.')[1]] : formData[field]}
         onChange={e => handleChange(field, e.target.value)}
@@ -70,6 +72,7 @@ const Field = ({ label, type = 'text', field, placeholder, options, formData, ha
           </span>
         )}
         <input
+          id={id}
           type={type}
           className="form-input"
           value={displayValue ?? ''}
@@ -93,11 +96,12 @@ const Field = ({ label, type = 'text', field, placeholder, options, formData, ha
 const RangeField = ({ label, field, min = 0, max = 1, step = 0.05, formData, handleChange }) => (
   <div style={{ marginBottom: '1.25rem' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
-      <label className="form-label">{label}</label>
+      <label className="form-label" htmlFor={`profile-range-${field}`}>{label}</label>
       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)' }}>{formData[field] ?? 0.5}</span>
     </div>
     <input
       type="range"
+      id={`profile-range-${field}`}
       min={min} max={max} step={step}
       value={formData[field] ?? 0.5}
       onChange={e => handleChange(field, parseFloat(e.target.value))}
@@ -674,7 +678,12 @@ export default function ProfileEditor() {
       
       // Sync GitHub back to top level for Projects compatibility
       const gh = submitData.socialLinks?.find(l => l.platform === 'GitHub');
-      if (gh) submitData.githubUsername = gh.url.replace(/.*github\.com\//, '');
+      if (gh) {
+        const raw = String(gh.url || '').trim();
+        submitData.githubUsername = raw.replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/^@/, '').split(/[/?#]/)[0];
+      } else {
+        submitData.githubUsername = '';
+      }
       
       if (avatarPreview && avatarPreview !== user?.avatar) submitData.avatar = avatarPreview;
       if (!avatarPreview) submitData.avatar = null;
@@ -864,7 +873,7 @@ export default function ProfileEditor() {
                   <Field label="Full Name" field="name" placeholder="Your name" formData={formData} handleChange={handleChange} />
                   <Field label="Email" type="email" field="email" placeholder="your@email.com" formData={formData} handleChange={handleChange} />
                   <Field label="Phone" type="tel" field="phone" placeholder="00000 00000" prefix={formData.isdCode} formData={formData} handleChange={handleChange} />
-                  <StunningDatePicker label="Date of Birth" value={formData.dob} onChange={(val) => handleChange('dob', val)} />
+                  <StunningDatePicker label="Date of Birth" autoComplete="bday" max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`} value={formData.dob} onChange={(val) => handleChange('dob', val)} />
                   <Field label="Gender" field="gender" options={['', 'Male', 'Female', 'Non-binary', 'Prefer not to say']} formData={formData} handleChange={handleChange} />
                   <Field label="Blood Type" field="bloodType" options={['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']} formData={formData} handleChange={handleChange} />
                   <Field label="Marital Status" field="maritalStatus" options={['', 'Single', 'Married', 'In a Relationship', 'Divorced', 'Widowed', 'Prefer not to say']} formData={formData} handleChange={handleChange} />

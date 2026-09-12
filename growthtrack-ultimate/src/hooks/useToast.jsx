@@ -27,13 +27,14 @@ export function ToastProvider({ children }) {
 
   const dismiss = useCallback((id) => {
     clearTimeout(timers.current[id]);
+    delete timers.current[id];
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const toast = useCallback((message, type = 'info', duration = 3500, options = {}) => {
     const id = ++toastId;
     setToasts((prev) => [...prev.slice(-2), { id, message, type, ...options }]); // max 3 stacked
-    timers.current[id] = setTimeout(() => dismiss(id), duration);
+    if (duration > 0 && type !== 'error' && !options.action) timers.current[id] = setTimeout(() => dismiss(id), duration);
     return id;
   }, [dismiss]);
 
@@ -54,7 +55,7 @@ export function ToastProvider({ children }) {
 
       {/* Toast Stack — fixed bottom-right, above nav */}
       <div
-        aria-live="polite"
+        aria-label="Notifications"
         style={{
           position: 'fixed',
           bottom: 'max(110px, calc(24px + env(safe-area-inset-bottom)))',
@@ -72,7 +73,7 @@ export function ToastProvider({ children }) {
           return (
             <div
               key={t.id}
-              role="alert"
+              role={t.type === 'error' ? 'alert' : 'status'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -83,8 +84,8 @@ export function ToastProvider({ children }) {
                 borderRadius: '12px',
                 backdropFilter: 'blur(20px)',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
-                maxWidth: '340px',
-                minWidth: '220px',
+                maxWidth: 'min(340px, calc(100vw - 48px))',
+                minWidth: 'min(220px, calc(100vw - 48px))',
                 pointerEvents: 'auto',
                 animation: 'toastIn 0.3s cubic-bezier(0.16,1,0.3,1) both',
               }}
@@ -102,6 +103,7 @@ export function ToastProvider({ children }) {
               </span>
               {t.action && (
                 <button
+                  type="button"
                   onClick={() => {
                     t.action.onClick();
                     dismiss(t.id);
@@ -111,6 +113,8 @@ export function ToastProvider({ children }) {
                     border: '1px solid var(--border)',
                     color: 'var(--text-1)',
                     padding: '2px 8px',
+                    minHeight: '44px',
+                    minWidth: '44px',
                     borderRadius: '6px',
                     fontSize: '0.75rem',
                     fontWeight: 700,
@@ -122,6 +126,7 @@ export function ToastProvider({ children }) {
                 </button>
               )}
               <button
+                type="button"
                 onClick={() => dismiss(t.id)}
                 style={{
                   background: 'none',
@@ -129,6 +134,10 @@ export function ToastProvider({ children }) {
                   cursor: 'pointer',
                   color: 'var(--text-3)',
                   padding: '2px',
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   display: 'flex',
                   flexShrink: 0,
                 }}

@@ -90,6 +90,12 @@ npm install
 npm run dev
 ```
 
+## Production operations
+
+Run `npm run backup:db` before migrations and retain encrypted copies outside the application host. The service expects secrets through environment variables; never package `.env` files or commit credentials. CI runs tests, lint, dependency audit, and the production build before deployment.
+
+For data rights requests, use the privacy and terms pages as the user-facing policy baseline and implement export/deletion handling in the deployment environment before accepting production users.
+
 <br/>
 
 <div align="center">

@@ -199,7 +199,7 @@ input, select, textarea, button {
 .content-area {
   position: relative;
   min-height: 65vh;
-  animation: pageEnter 0.38s var(--ease) both;
+  animation: none;
 }
 @keyframes pageEnter {
   from { opacity: 0; transform: translateY(12px) scale(0.995); }

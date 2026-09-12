@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Brain, Sparkles } from 'lucide-react';
 import useStore from '../store/useStore';
 import { askLocalGrowthcast, buildGrowthcastSignal } from '../lib/growthcast';
@@ -7,8 +8,6 @@ import useHashTab, { handleTabKeyDown } from '../hooks/useHashTab';
 const Analytics = lazy(() => import('./Analytics'));
 const Dashboards = lazy(() => import('./Dashboards'));
 const TransformationPredictor = lazy(() => import('./TransformationPredictor'));
-const Progress = lazy(() => import('./Progress'));
-const GoalsDashboard = lazy(() => import('./GoalsDashboard'));
 
 const TABS = [
   { id: 'analytics', label: 'Analytics', description: 'Correlations and trends' },
@@ -18,6 +17,25 @@ const TABS = [
   { id: 'forecast', label: 'Forecast', description: 'Trajectory model' },
 ];
 const TAB_IDS = TABS.map(item => item.id);
+
+function ReadOnlySummary({ kind }) {
+  const navigate = useNavigate();
+  const state = useStore();
+  const isProgress = kind === 'progress';
+  const logs = state.metric_logs || [];
+  const goals = state.goals || [];
+  const count = isProgress ? logs.length : goals.length;
+  const active = isProgress ? logs.filter(log => log?.date).length : goals.filter(goal => !['done', 'completed'].includes(String(goal?.status || '').toLowerCase())).length;
+  const latest = isProgress ? logs[0]?.date : goals[0]?.title;
+  return <div className="glass-card insights-summary" aria-label={`Read-only ${kind} summary`}>
+    <span className="eyebrow">Insights summary</span>
+    <h2>{isProgress ? 'Progress at a glance' : 'Goals at a glance'}</h2>
+    <p className="text-secondary">This is a read-only view of the data owned by the {isProgress ? 'Progress' : 'Goals'} module.</p>
+    <div className="insights-summary__stats"><strong>{count}</strong><span>{isProgress ? 'saved measurements' : 'tracked goals'}</span><strong>{active}</strong><span>{isProgress ? 'dated entries' : 'active goals'}</span></div>
+    {latest && <p className="text-secondary">Latest: {isProgress ? new Date(latest).toLocaleDateString() : latest}</p>}
+    <button className="btn-primary" type="button" onClick={() => navigate(`/${isProgress ? 'progress' : 'goals'}`)}>Open {isProgress ? 'Progress' : 'Goals'}</button>
+  </div>;
+}
 
 export default function InsightsHub({ initialTab = 'analytics', logs = [] }) {
   const [tab, selectTab] = useHashTab(TAB_IDS, initialTab);
@@ -108,8 +126,8 @@ export default function InsightsHub({ initialTab = 'analytics', logs = [] }) {
         <Suspense fallback={<div className="hub-loading"><div className="spin-ring" /> Loading insights…</div>}>
           {tab === 'analytics' && <Analytics />}
           {tab === 'dashboards' && <Dashboards />}
-          {tab === 'progress' && <Progress />}
-          {tab === 'goals' && <GoalsDashboard />}
+          {tab === 'progress' && <ReadOnlySummary kind="progress" />}
+          {tab === 'goals' && <ReadOnlySummary kind="goals" />}
           {tab === 'forecast' && <TransformationPredictor logs={logs} />}
         </Suspense>
       </div>

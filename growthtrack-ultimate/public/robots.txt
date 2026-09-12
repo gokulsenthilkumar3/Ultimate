@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /overview
+Sitemap: https://gokulsenthilkumar3.github.io/Ultimate/sitemap.xml

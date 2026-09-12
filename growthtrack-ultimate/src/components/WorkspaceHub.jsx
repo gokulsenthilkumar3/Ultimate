@@ -7,7 +7,7 @@ const Notes = lazy(() => import('./Notes'));
 
 const TABS = [
   { id: 'calendar', label: 'Calendar', description: 'Plan the day' },
-  { id: 'documents', label: 'Documents', description: 'Keep files together' },
+  { id: 'documents', label: 'My Files', description: 'Keep files together' },
   { id: 'notes', label: 'Notes', description: 'Capture an idea' },
 ];
 const TAB_IDS = TABS.map(item => item.id);

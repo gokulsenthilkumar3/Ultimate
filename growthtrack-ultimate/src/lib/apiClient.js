@@ -1,4 +1,5 @@
 const API_BASE = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || '').replace(/\/$/, '');
+import { requestErrorMessage, uiMessages } from './uiMessages';
 const CSRF_KEY = 'growthtrack-csrf-token';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
@@ -26,6 +27,7 @@ export class ApiClient {
   async request(path, options = {}) {
     const { timeoutMs: requestTimeoutMs, signal: callerSignal, ...requestOptions } = options;
     const method = String(options.method || 'GET').toUpperCase();
+    if (callerSignal?.aborted) throw new ApiError(uiMessages.cancelled, { path });
     const maxAttempts = SAFE_METHODS.has(method) ? this.retries + 1 : 1;
     let lastError;
 
@@ -48,12 +50,13 @@ export class ApiClient {
         let payload = {};
         try { payload = text ? JSON.parse(text) : {}; } catch { payload = { error: text || 'Invalid server response.' }; }
         if (response.status === 401) window.dispatchEvent(new CustomEvent('growthtrack:auth-expired'));
-        if (!response.ok) throw new ApiError(payload.error || `Request failed (${response.status})`, { status: response.status, payload, path });
+        if (!response.ok) throw new ApiError(requestErrorMessage(response.status, path), { status: response.status, payload, path });
         return payload;
       } catch (error) {
         lastError = error?.name === 'AbortError'
-          ? new ApiError('The server took too long to respond.', { status: 408, path })
-          : error;
+          ? new ApiError(callerSignal?.aborted ? uiMessages.cancelled : uiMessages.timeout, { status: 408, path })
+          : error instanceof ApiError ? error : new ApiError(uiMessages.connection, { status: 0, path });
+        if (callerSignal?.aborted) throw lastError;
         const retryable = SAFE_METHODS.has(method) && (lastError.status === 0 || RETRYABLE_STATUS.has(lastError.status));
         if (!retryable || attempt === maxAttempts - 1) throw lastError;
         await new Promise(resolve => globalThis.setTimeout(resolve, 250 * (2 ** attempt) + Math.random() * 100));

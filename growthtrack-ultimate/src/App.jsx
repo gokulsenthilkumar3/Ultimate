@@ -14,8 +14,12 @@ import './styles/chamber.css';
 import './styles/premium.css';
 import './styles/ui-components.css';
 import './styles/ultimate-ui.css';
+import './styles/design-tokens.css';
+import './styles/design-system.css';
 import './styles/experience.css';
 import SectionNavigation from './components/SectionNavigation';
+import { TAB_GROUP_MAP } from './config/navigation';
+import { domainAccents } from './design/domainTokens';
 
 import LoginPage from './pages/LoginPage';
 
@@ -166,8 +170,10 @@ function NavbarCheckInAlert({ onOpen, onDismiss }) {
   );
 }
 
-function ProductPageTransition({ children, reducedMotion }) {
-  const motionScopeRef = useStaggeredEntrance({ disabled: reducedMotion });
+function ProductPageTransition({ children, reducedMotion, hero = false }) {
+  // The architecture contract reserves the orchestrated entrance for Overview.
+  // Daily-use modules should appear immediately and respond only to actions.
+  const motionScopeRef = useStaggeredEntrance({ disabled: reducedMotion || !hero });
 
   return (
     <div ref={motionScopeRef} className="page-transition-wrapper" data-motion-scope>
@@ -353,7 +359,8 @@ export default function App() {
           <SettingsModal onClose={() => setShowSettings(false)} />
         )}
 
-        <div className="app-shell" data-theme={theme} data-palette={palette} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed}>
+        <div className="app-shell" data-theme={theme} data-palette={palette} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed}
+          data-domain={TAB_GROUP_MAP[activeTab] || 'system'} style={{ '--domain-accent': domainAccents[TAB_GROUP_MAP[activeTab]] || domainAccents.system }}>
           <a className="skip-to-content" href="#main-content">Skip to content</a>
           <div className="mesh-bg" />
 
@@ -386,10 +393,11 @@ export default function App() {
 
             {/* ── Single content area: shows skeleton during load, tab after ── */}
             <main id="main-content" className="content-area" tabIndex={-1} aria-busy={isLoading}>
+              {serverStatus === 'offline' && <div className="gt-connection-notice" role="status">The workspace connection is unavailable. Check that the local server is running, then try your action again.</div>}
               {!isNotFound && <SectionNavigation activeTab={activeTab} onNavigate={setActiveTab} />}
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
-                  <ProductPageTransition key={activeTab} reducedMotion={reducedMotion}>
+                  <ProductPageTransition key={activeTab} reducedMotion={reducedMotion} hero={activeTab === 'overview'}>
                     {isNotFound
                       ? <NotFound />
                       : isLoading || !initialDataReady

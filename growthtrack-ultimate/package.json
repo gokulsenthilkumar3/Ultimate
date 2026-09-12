@@ -7,7 +7,7 @@
   "main": "desktop.js",
   "build": {
     "appId": "com.growthtrack.ultimate",
-    "asar": false,
+    "asar": true,
     "productName": "GrowthTrack Ultimate",
     "directories": {
       "output": "../growthtrack-release"
@@ -23,7 +23,6 @@
       "logger.js",
       "dev.db",
       "package.json",
-      ".env",
       "node_modules/@prisma/client/**/*",
       "node_modules/.prisma/**/*",
       "node_modules/prisma/**/*"
@@ -39,6 +38,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:run": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:visual": "playwright test tests/e2e/physique-visual.spec.ts",
@@ -53,6 +53,7 @@
     "owner:create": "node scripts/create-owner.js",
     "db:sync": "prisma generate && prisma db push",
     "db:seed-config": "node scripts/seed-app-config.mjs"
+    ,"backup:db": "node scripts/backup-db.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",

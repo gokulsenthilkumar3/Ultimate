@@ -469,6 +469,8 @@ model Task {
   createdBy   String?
   updatedBy   String?
   updatedAt   DateTime @default(now()) @updatedAt
+  @@index([userId, createdAt])
+  @@index([userId, status, due_date])
 }
 
 model Transaction {
@@ -485,6 +487,8 @@ model Transaction {
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
+  @@index([userId, createdAt])
 }
 
 model Budget {
@@ -498,6 +502,7 @@ model Budget {
   createdBy    String?
   updatedBy    String?
   updatedAt    DateTime @default(now()) @updatedAt
+  @@index([userId, month])
 }
 
 model MetricLog {
@@ -521,6 +526,7 @@ model MetricLog {
   updatedAt   DateTime  @default(now()) @updatedAt
 
   @@index([userId, metric, measuredAt])
+  @@index([userId, date])
 }
 
 model HealthProfile {

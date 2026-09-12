@@ -272,7 +272,7 @@ export default function About() {
           <div className="timeline-spine" />
           
           {gitError && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Error loading commits: {gitError}</p>}
-          {changelog.length === 0 && !gitError && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}><Loader2 size={12} style={{ animation: 'spin 1s linear infinite', display: 'inline-block', marginRight: '6px' }} /> Syncing with GitHub...</p>}
+          {changelog.length === 0 && !gitError && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}><Loader2 size={12} style={{ animation: 'spin 1s linear infinite', display: 'inline-block', marginRight: '6px' }} /> Loading release history…</p>}
 
           {visibleChangelog.map((entry, idx) => {
             const tc = TYPE_COLORS[entry.type] || TYPE_COLORS.minor;

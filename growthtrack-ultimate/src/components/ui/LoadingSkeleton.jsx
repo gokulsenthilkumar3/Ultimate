@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function LoadingSkeleton() {
   return (
-    <div className="fade-in module-page" style={{ padding: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="fade-in module-page" role="status" aria-label="Loading your workspace" style={{ padding: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ flex: 1 }}>
           <div className="skeleton-pulse" style={{ width: '150px', height: '14px', borderRadius: '4px', marginBottom: '1rem' }} />

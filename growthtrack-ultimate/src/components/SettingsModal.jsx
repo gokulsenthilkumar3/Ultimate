@@ -8,11 +8,13 @@ import {
 import useStore from '../store/useStore';
 import { apiSync } from '../store/useStore';
 import ConfirmDialog from './ui/ConfirmDialog';
+import useDialogFocus from '../hooks/useDialogFocus';
 import { fetchIpInfo } from '../hooks/useGeolocation';
 import DeviceSyncModal from './DeviceSyncModal';
 import ReferralDashboard from './ReferralDashboard';
 
 export default function SettingsModal({ onClose }) {
+  const dialogRef = useDialogFocus(true, onClose);
   const [activeTab, setActiveTab] = useState('Profile');
   const user = useStore(state => state.user);
   const skills = useStore(state => state.skills) || [];
@@ -118,6 +120,8 @@ export default function SettingsModal({ onClose }) {
 
   return (
     <div className="settings-modal-shell"
+      ref={dialogRef}
+      tabIndex={-1}
       role="dialog" 
       aria-modal="true" 
       aria-labelledby="settings-title"
