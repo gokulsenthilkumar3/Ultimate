@@ -21,7 +21,7 @@ export default function TermsPage() {
       <h2 style={s.h2}>5. Limitation of Liability</h2>
       <p style={s.p}>Ultimate is provided "as is." We are not liable for health decisions made based on app data. Consult a healthcare professional for medical advice.</p>
       <h2 style={s.h2}>6. Contact</h2>
-      <p style={s.p}>Legal questions: legal@ultimate.app</p>
+      <p style={s.p}>Legal questions should be directed to the contact published by the deployment operator.</p>
     </div>
   );
 }

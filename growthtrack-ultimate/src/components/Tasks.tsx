@@ -366,6 +366,8 @@ export default function Tasks() {
   const [tab,      setTab]      = useState('pending');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'matrix'
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [editId,   setEditId]   = useState<any>(null);
   const [filter,   setFilter]   = useState('all');
   const [sortBy,   setSortBy]   = useState('created');
@@ -407,21 +409,25 @@ export default function Tasks() {
   const EMPTY_FORM = { title: '', description: '', priority: 'p3', category: 'Work', dueDate: '', parent_task_id: '' };
   const [form, setForm] = useState(EMPTY_FORM);
 
-  const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(false); };
+  const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(false); setSaving(false); setSaveError(''); };
 
   // ── CRUD helpers ──
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    if (saving || !form.title.trim()) return;
+    setSaving(true);
+    setSaveError('');
 
     if (form.parent_task_id) {
       if (form.parent_task_id === editId) {
         toast.error("Task cannot be its own parent.");
+        setSaving(false);
         return;
       }
       const parentTask = allTasks.find(t => t.id === form.parent_task_id);
       if (parentTask && parentTask.parent_task_id === editId) {
         toast.error("Circular reference detected.");
+        setSaving(false);
         return;
       }
     }
@@ -434,7 +440,7 @@ export default function Tasks() {
         toast.success('Task updated');
       } catch {
         storeUpdateTask(editId, form);
-        toast.success('Task updated (local)');
+        toast.info('Task updated on this device. We will retry sync when the connection returns.');
       }
     } else {
       const payload = { ...form, status: 'pending', subtasks: [], created_at: new Date().toISOString() };
@@ -449,10 +455,13 @@ export default function Tasks() {
         }
         toast.success('Task added');
       } catch {
-        await storeAddTask(newTask);
-        toast.success('Task added (local)');
+        // The optimistic task is already visible. Do not wait on a second API
+        // request here; that used to keep the dimmed drawer open indefinitely.
+        toast.info('Task added on this device. We will retry sync when the connection returns.');
       }
     }
+    setSaving(false);
+    setSaveError('');
     resetForm();
   };
 
@@ -727,6 +736,7 @@ export default function Tasks() {
         }} onClick={resetForm}>
           <form 
             onSubmit={handleSubmit} 
+            aria-busy={saving || undefined}
             onClick={e => e.stopPropagation()}
             style={{
               width: '100%',
@@ -748,50 +758,51 @@ export default function Tasks() {
                 {editId ? <Edit3 size={18} color="var(--accent)" /> : <Plus size={18} color="var(--accent)" />}
                 {editId ? 'Edit Task Spec' : 'Deploy New Task'}
               </h3>
-              <button type="button" className="btn btn-secondary" onClick={resetForm} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '6px' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
+              <button type="button" className="btn btn-secondary" onClick={resetForm} disabled={saving} aria-label="Close task form"
+                style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', padding: '6px', minWidth: 44, minHeight: 44 }}>
                 <X size={20} />
               </button>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
               <div>
-                <label className="form-label">Title *</label>
-                <input type="text" placeholder="Specify task name..." value={form.title} autoFocus required
+                <label className="form-label" htmlFor="task-title">Title *</label>
+                <input id="task-title" type="text" placeholder="Specify task name..." value={form.title} autoFocus required
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   className="form-input"  />
               </div>
 
               <div>
-                <label className="form-label">Description</label>
-                <textarea rows={4} placeholder="Describe the objectives..." value={form.description}
+                <label className="form-label" htmlFor="task-description">Description</label>
+                <textarea id="task-description" rows={4} placeholder="Describe the objectives..." value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   className="form-input"  />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="form-label">Priority</label>
-                  <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="form-input" >
+                  <label className="form-label" htmlFor="task-priority">Priority</label>
+                  <select id="task-priority" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="form-input" >
                     {PRIORITIES.map(p => <option key={p.value} value={p.value} style={{ background: 'var(--bg-surface)', color: 'var(--text-1)' }}>{p.label} — {p.long}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Category</label>
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="form-input" >
+                  <label className="form-label" htmlFor="task-category">Category</label>
+                  <select id="task-category" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="form-input" >
                     {CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--bg-surface)', color: 'var(--text-1)' }}>{c}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="form-label">Due Date</label>
-                <input type="date" value={form.dueDate}
+                <label className="form-label" htmlFor="task-due-date">Due Date</label>
+                <input id="task-due-date" type="date" value={form.dueDate}
                   onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className="form-input"  />
               </div>
 
               <div>
-                <label className="form-label">Parent Task (Optional)</label>
-                <select value={form.parent_task_id} onChange={e => setForm(f => ({ ...f, parent_task_id: e.target.value }))} className="form-input" >
+                <label className="form-label" htmlFor="task-parent">Parent Task (Optional)</label>
+                <select id="task-parent" value={form.parent_task_id} onChange={e => setForm(f => ({ ...f, parent_task_id: e.target.value }))} className="form-input" >
                   <option value="" style={{ background: 'var(--bg-surface)', color: 'var(--text-1)' }}>None</option>
                   {allTasks.filter(t => t.id !== editId).map(t => (
                     <option key={t.id} value={t.id} style={{ background: 'var(--bg-surface)', color: 'var(--text-1)' }}>{t.title}</option>
@@ -802,14 +813,15 @@ export default function Tasks() {
             
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
               <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
-              <button type="submit"
+              <button type="submit" disabled={saving}
+                aria-busy={saving || undefined}
                 style={{ flex: 1, padding: '12px', borderRadius: '10px', fontSize: '0.85rem',
-                         fontWeight: 900, background: 'var(--accent)', color: '#000',
-                         border: 'none', cursor: 'pointer', boxShadow: 'var(--glow-cyan)' }}
+                         fontWeight: 900, background: 'var(--accent)', color: 'var(--bg-base, #000)',
+                         border: 'none', cursor: saving ? 'wait' : 'pointer', boxShadow: 'var(--glow-cyan)', opacity: saving ? 0.72 : 1 }}
                 onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
                 onMouseLeave={e => e.currentTarget.style.filter = 'none'}
               >
-                {editId ? 'Save Changes' : 'Initialize Task'}
+                {saving ? (editId ? 'Saving changes…' : 'Adding task…') : (editId ? 'Save Changes' : 'Initialize Task')}
               </button>
             </div>
           </form>

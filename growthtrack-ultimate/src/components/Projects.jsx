@@ -37,6 +37,26 @@ const PROJECT_TABS = [
   { id: 'manual', label: 'My Projects' },
 ];
 
+/** Convert the profile value into the exact GitHub login expected by /users/:login/repos. */
+export function normalizeGithubUsername(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const url = new URL(withScheme);
+    if (!/^(www\.)?github\.com$/i.test(url.hostname)) return raw.replace(/^@/, '').split(/[/?#]/)[0];
+    return decodeURIComponent(url.pathname.replace(/^\/+|\/+$/g, '').split('/')[0]).replace(/^@/, '');
+  } catch {
+    return raw.replace(/^@/, '').replace(/^github\.com\//i, '').split(/[/?#]/)[0];
+  }
+}
+
+function readGithubUsername(user) {
+  const socialLink = user?.socialLinks?.find(link => String(link?.platform || '').toLowerCase() === 'github')?.url;
+  const socialProfile = user?.socialProfiles?.find(profile => String(profile?.provider || '').toLowerCase() === 'github')?.profileUrl;
+  return normalizeGithubUsername(user?.githubUsername || socialLink || socialProfile || user?.socialMedia?.GitHub);
+}
+
 export default function Projects() {
   const user = useStore(s => s.user);
   const updateUserSlice = useStore(s => s.updateUserSlice);
@@ -63,7 +83,7 @@ export default function Projects() {
 
   const githubManageEnabled = user?.githubManageEnabled || false;
   const githubToken = user?.githubToken || '';
-  const githubUsername = user?.githubUsername || user?.socialMedia?.GitHub?.replace(/.*github\.com\//, '') || '';
+  const githubUsername = readGithubUsername(user);
   const manualProjects = user?.manualProjects || [];
   const repoNotes = user?.repoNotes || {};
 
@@ -88,7 +108,7 @@ export default function Projects() {
   }, [showSortDropdown]);
 
   useEffect(() => {
-    if (!githubManageEnabled && !githubUsername) { setLoading(false); return; }
+    if (!githubManageEnabled && !githubUsername) { setRepos([]); setLoading(false); return; }
     setLoading(true);
     
     const endpoint = (githubManageEnabled && githubToken)
@@ -101,17 +121,22 @@ export default function Projects() {
       headers['Accept'] = 'application/vnd.github.v3+json';
     }
 
-    fetch(endpoint, { headers })
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12_000);
+    fetch(endpoint, { headers, signal: controller.signal })
       .then(res => { 
         if (res.status === 401) {
           toast.error('GitHub token is invalid or expired. Please reconnect in settings.');
           throw new Error('Unauthorized');
         }
-        if (!res.ok) throw new Error('Failed'); 
-        return res.json(); 
+        if (res.status === 404) throw new Error(`GitHub user “${githubUsername}” was not found. Check the saved username or URL.`);
+        if (res.status === 403) throw new Error('GitHub temporarily limited this request. Try again in a minute.');
+        if (!res.ok) throw new Error('GitHub could not load repositories. Try again.');
+        return res.json();
       })
       .then(data => { setRepos(data); setLoading(false); })
-      .catch(() => { setLoading(false); });
+      .catch(error => { setLoading(false); if (error.name !== 'AbortError') toast.error(error.message || 'GitHub could not load repositories. Try again.'); })
+      .finally(() => window.clearTimeout(timeout));
   }, [githubManageEnabled, githubToken, githubUsername, toast]);
 
   const handleCreateOrEditGithubRepo = async () => {

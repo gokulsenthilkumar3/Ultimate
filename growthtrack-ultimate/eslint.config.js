@@ -32,4 +32,8 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    files: ['server.js', 'server/**/*.js', 'scripts/**/*.js', 'scripts/**/*.mjs', 'desktop.js', 'logger.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.es2021 } },
+  },
 ])

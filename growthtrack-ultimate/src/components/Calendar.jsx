@@ -302,12 +302,12 @@ export default function Calendar() {
                   <div key={e.id + e.date} style={{ display: 'flex', gap: '0.75rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${e.color || '#6366f1'}33`, borderLeft: `3px solid ${e.color || '#6366f1'}` }}>
                     {isEditingThis ? (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <input value={editForm.title || ''} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} className="form-input" style={{ fontSize: '0.85rem' }} />
+                        <label className="form-label">Event title<input value={editForm.title || ''} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} className="form-input" style={{ fontSize: '0.85rem' }} /></label>
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                          <input type="date" value={editForm.date || ''} onChange={ev => setEditForm(f => ({ ...f, date: ev.target.value }))} className="form-input" />
-                          <select value={editForm.recurrence || 'none'} onChange={ev => setEditForm(f => ({ ...f, recurrence: ev.target.value }))} className="form-input">
+                          <label className="form-label">Event date<input type="date" value={editForm.date || ''} onChange={ev => setEditForm(f => ({ ...f, date: ev.target.value }))} className="form-input" /></label>
+                          <label className="form-label">Repeats<select value={editForm.recurrence || 'none'} onChange={ev => setEditForm(f => ({ ...f, recurrence: ev.target.value }))} className="form-input">
                             {RECUR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select>
+                          </select></label>
                         </div>
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
                           <button onClick={saveEdit} className="btn-primary" style={{ padding: '3px 10px', fontSize: '0.72rem' }}><Check size={11} /> Save</button>

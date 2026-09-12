@@ -34,6 +34,12 @@ jobs:
       - name: Run Unit/Component Tests (gate — must pass before deploy)
         run: npm run test:run
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
       - name: Build Application
         id: build
         run: npm run build

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import ConfirmDialog from './ui/ConfirmDialog';
+import useDialogFocus from '../hooks/useDialogFocus';
 import useStore, { selectDocuments, selectAddDocument, selectDeleteDocument } from '../store/useStore';
 
 // ── File type utilities ────────────────────────────────────────────────────────
@@ -38,11 +39,12 @@ function getFileInfo(name = '') {
 }
 
 // ── Drag-and-Drop Upload Modal ─────────────────────────────────────────────────
-function UploadModal({ onUpload, onClose }) {
+export function UploadModal({ onUpload, onClose }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileType, setFileType] = useState('Private');
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState('');
+  const dialogRef = useDialogFocus(true, () => { if (!uploading) onClose(); });
   const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef();
 
@@ -50,9 +52,10 @@ function UploadModal({ onUpload, onClose }) {
     if (!file) return;
     // Validate file size (max 50MB)
     if (file.size > 50 * 1024 * 1024) {
-      alert('File too large. Maximum size is 50MB.');
+      setError('Choose a file smaller than 50 MB, then try again.');
       return;
     }
+    setError('');
     setSelectedFile(file);
   };
 
@@ -70,45 +73,42 @@ function UploadModal({ onUpload, onClose }) {
 
   const handleDragLeave = useCallback(() => setIsDragging(false), []);
 
-  const handleConfirm = () => {
-    if (!selectedFile) return;
+  const handleConfirm = async () => {
+    if (!selectedFile || uploading) return;
     setUploading(true);
-    let current = 0;
-    const interval = setInterval(() => {
-      current += Math.random() * 18 + 5; // More realistic increments
-      if (current >= 100) {
-        clearInterval(interval);
-        setProgress(100);
-        setTimeout(() => {
-          const sizeKB = selectedFile.size / 1024;
-          const size = sizeKB < 1024
-            ? `${sizeKB.toFixed(1)} KB`
-            : `${(sizeKB / 1024).toFixed(2)} MB`;
-          onUpload({ name: selectedFile.name, size, type: fileType, date: new Date().toLocaleDateString() });
-          onClose();
-        }, 500);
-      } else {
-        setProgress(Math.min(current, 99));
-      }
-    }, 150);
+    setError('');
+    try {
+      const sizeKB = selectedFile.size / 1024;
+      const size = sizeKB < 1024 ? `${sizeKB.toFixed(1)} KB` : `${(sizeKB / 1024).toFixed(2)} MB`;
+      await onUpload({ name: selectedFile.name, size, type: fileType, date: new Date().toLocaleDateString() });
+      onClose();
+    } catch { setError('We could not save this file record. Check your connection and try again.'); }
+    finally { setUploading(false); }
   };
 
   const { icon: FileIcon, className: fileIconClass } = selectedFile ? getFileInfo(selectedFile.name) : { icon: UploadCloud, className: '' };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div className="glass-card slide-in-bottom" style={{ width: '100%', maxWidth: '460px', padding: '2rem', position: 'relative' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', transition: 'color 0.2s' }}
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Add file record" tabIndex={-1} className="glass-card slide-in-bottom" style={{ width: '100%', maxWidth: '460px', padding: '2rem', position: 'relative' }}>
+        <button type="button" aria-label="Close file record dialog" disabled={uploading} onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', transition: 'color 0.2s', minWidth: 44, minHeight: 44 }}
           onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
           onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
         ><X size={18} /></button>
 
         <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Digital Vault</p>
-        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '1.5rem' }}>Upload File</h3>
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '1.5rem' }}>Add file record</h3>
+        <p className="text-secondary">Save the file name and details to your list. The file itself stays on your device.</p>
+        {error && <p role="alert" className="gt-field__error">{error}</p>}
 
         {/* Drag-and-drop zone */}
         <div
           className={`dropzone${isDragging ? ' dropzone--active' : ''}`}
+          role="button"
+          tabIndex={uploading ? -1 : 0}
+          aria-disabled={uploading}
+          aria-label="Choose a file, maximum 50 MB"
+          onKeyDown={event => { if (!uploading && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); fileRef.current?.click(); } }}
           onClick={() => fileRef.current?.click()}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -129,13 +129,13 @@ function UploadModal({ onUpload, onClose }) {
               <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '4px' }}>Max 50MB · Any format</p>
             </>
           )}
-          <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={e => handleFileSelect(e.target.files[0])} />
+          <input ref={fileRef} type="file" disabled={uploading} style={{ display: 'none' }} onChange={e => handleFileSelect(e.target.files[0])} />
         </div>
 
         <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Visibility</label>
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
           {['Private', 'Public'].map(t => (
-            <button key={t} onClick={() => setFileType(t)}
+            <button type="button" key={t} aria-pressed={fileType === t} disabled={uploading} onClick={() => setFileType(t)}
               style={{ flex: 1, padding: '10px', borderRadius: '10px', border: `2px solid ${fileType === t ? 'var(--accent)' : 'var(--border)'}`, background: fileType === t ? 'var(--accent-soft)' : 'transparent', color: fileType === t ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s' }}
             >
               {t === 'Private' ? <Lock size={14} /> : <Globe size={14} />} {t}
@@ -143,12 +143,9 @@ function UploadModal({ onUpload, onClose }) {
           ))}
         </div>
 
-        <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', position: 'relative', overflow: 'hidden' }} onClick={handleConfirm} disabled={!selectedFile || uploading}>
-          {uploading && (
-            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${progress}%`, background: 'rgba(255,255,255,0.2)', transition: 'width 0.15s ease' }} />
-          )}
+        <button type="button" className="gt-button gt-button--primary" aria-busy={uploading || undefined} style={{ width: '100%', justifyContent: 'center', position: 'relative', overflow: 'hidden' }} onClick={handleConfirm} disabled={!selectedFile || uploading}>
           <UploadCloud size={16} style={{ position: 'relative', zIndex: 1 }} />
-          <span style={{ position: 'relative', zIndex: 1 }}>{uploading ? `Uploading… ${Math.round(progress)}%` : 'Upload to Vault'}</span>
+          <span style={{ position: 'relative', zIndex: 1 }}>{uploading ? 'Saving file record…' : 'Save file record'}</span>
         </button>
       </div>
     </div>
@@ -187,12 +184,8 @@ export default function Documents() {
   };
 
   const handleUpload = async (fileData) => {
-    try {
-      await addDocument(fileData);
-      toast.success(`${fileData.name} uploaded successfully.`);
-    } catch {
-      toast.error('Upload failed');
-    }
+    await addDocument(fileData);
+    toast.success(`${fileData.name} added to your file list.`);
   };
 
   const handleDelete = (id) => setConfirmDelete(id);
@@ -339,11 +332,11 @@ export default function Documents() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-elevated)', padding: '6px 12px', borderRadius: '10px', minWidth: '200px', flex: 1, maxWidth: '320px' }}>
               <Search size={14} color="var(--text-3)" />
               <input
-                type="text" placeholder="Search vault…" value={searchTerm}
+                type="search" aria-label="Search documents" placeholder="Search vault…" value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-1)', fontSize: '0.85rem', outline: 'none', width: '100%' }}
               />
-              {searchTerm && <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', display: 'flex' }}><X size={12} /></button>}
+              {searchTerm && <button type="button" aria-label="Clear document search" onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', display: 'flex', minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}><X size={12} /></button>}
             </div>
 
             {/* Filter by type */}

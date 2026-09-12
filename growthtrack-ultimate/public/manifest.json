@@ -9,6 +9,8 @@
   "background_color": "#050810",
   "theme_color": "#e5a50a",
   "orientation": "any",
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "favicon.svg",

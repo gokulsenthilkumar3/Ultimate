@@ -29,6 +29,7 @@ function publicUser(user) {
 
 export function createSecurity({ prisma, logToFile }) {
   const attempts = new Map();
+  const apiBuckets = new Map();
   const isProduction = process.env.NODE_ENV === 'production';
   const configuredOrigins = (process.env.APP_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean);
   const localOrigins = ['http://localhost:3001', 'http://127.0.0.1:3001', 'http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:5001', 'http://127.0.0.1:5001', 'http://localhost:5173', 'http://127.0.0.1:5173'];
@@ -50,8 +51,19 @@ export function createSecurity({ prisma, logToFile }) {
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+    if (isProduction) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
     res.setHeader('Cache-Control', req.path.startsWith('/api/auth') ? 'no-store' : 'private, no-cache');
     next();
+  };
+
+  const apiRateLimit = (req, res, next) => {
+    if (SAFE_METHODS.has(req.method)) return next();
+    const now = Date.now();
+    const key = `${req.ip || 'unknown'}:${req.path}`;
+    const bucket = (apiBuckets.get(key) || []).filter(time => now - time < 60_000);
+    if (bucket.length >= 120) return res.status(429).json({ error: 'Too many requests. Try again shortly.' });
+    bucket.push(now); apiBuckets.set(key, bucket); return next();
   };
 
   async function writeLoginLog({ userId, email, action, failureReason, req }) {
@@ -170,5 +182,5 @@ export function createSecurity({ prisma, logToFile }) {
     return res.json({ user: publicUser(updated) });
   };
 
-  return { corsOptions, headers, login, authenticate, me, csrf, logout, updateProfile };
+  return { corsOptions, headers, apiRateLimit, login, authenticate, me, csrf, logout, updateProfile };
 }

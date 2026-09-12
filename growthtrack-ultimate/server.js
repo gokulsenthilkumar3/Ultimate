@@ -43,6 +43,7 @@ app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 app.use(security.headers);
 app.use(cors(security.corsOptions));
+app.use('/api', security.apiRateLimit);
 app.use('/api/webhook/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '8mb' }));
 app.use('/api', (req, res, next) => {
@@ -84,7 +85,7 @@ function sendInternalError(res, error, context) {
 // Audit Logs (Read from Winston rotating file)
 app.get('/api/logs', authMiddleware, async (req, res) => {
   try {
-    const logs = await prisma.auditLog.findMany({ orderBy: { timestamp: 'desc' }, take: 1000 });
+    const logs = await prisma.auditLog.findMany({ where: { user_id: req.user.id }, orderBy: { timestamp: 'desc' }, take: 100 });
     res.json(logs);
   } catch (err) {
     console.error('[Logs Error]', err);
@@ -241,7 +242,7 @@ app.get('/api/referrals', authMiddleware, async (req, res) => {
       creditBalance: user.creditBalance,
       history
     });
-  } catch (error) {
+  } catch {
     res.status(401).json({ error: 'Invalid token' });
   }
 });
@@ -268,7 +269,7 @@ app.post('/api/referrals/sync', authMiddleware, async (req, res) => {
       return res.json({ success: true, message: 'Referral completed.' });
     }
     res.json({ success: false, message: 'No pending referral found.' });
-  } catch (error) {
+  } catch {
     res.status(401).json({ error: 'Invalid token' });
   }
 });
@@ -425,9 +426,10 @@ const mapDatabaseFields = (source, mapping) => source ? Object.fromEntries(
 ) : {};
 
 app.get('/api/config', authMiddleware, async (req, res) => {
+  const publicKeys = ['navigation', 'appCatalog', 'portfolioUrl', 'aiAgent', 'weatherUrl', 'newsSources'];
   const [settings, integrations, helpArticles, planTemplates] = await Promise.all([
-    prisma.appSetting.findMany({ orderBy: { key: 'asc' } }),
-    prisma.integrationProvider.findMany({ orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }] }),
+    prisma.appSetting.findMany({ where: { key: { in: publicKeys } }, orderBy: { key: 'asc' }, select: { key: true, value: true, valueType: true, category: true } }),
+    prisma.integrationProvider.findMany({ where: { enabled: true }, select: { providerKey: true, displayName: true, category: true, authType: true, enabled: true, icon: true, documentationUrl: true, sortOrder: true }, orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.helpArticle.findMany({ where: { enabled: true }, orderBy: { sortOrder: 'asc' } }),
     prisma.planTemplate.findMany({ where: { active: true }, orderBy: [{ planType: 'asc' }, { sortOrder: 'asc' }] }),
   ]);
@@ -566,7 +568,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
     prisma.bodyProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.socialProfile.findMany({ where: { userId: req.user.id }, orderBy: { sortOrder: 'asc' } }),
-    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), prisma.note.findMany({ where: { userId: req.user.id } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany(),
+    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), prisma.note.findMany({ where: { userId: req.user.id } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany({ where: { key: { in: ['navigation', 'appCatalog', 'portfolioUrl', 'aiAgent', 'weatherUrl', 'newsSources'] } } }),
   ]);
   const profileBaseline = metric_logs.find(row => row.source === 'profile' && row.metric === 'profile_baseline');
   res.json({

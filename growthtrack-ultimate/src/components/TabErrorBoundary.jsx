@@ -28,16 +28,16 @@ export class TabErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="tab-error-boundary">
+        <div className="tab-error-boundary" role="alert">
           <div className="tab-error-icon">⚠️</div>
           <h3 className="tab-error-title">
-            {this.props.tabName ? `"${this.props.tabName}" tab` : 'This tab'} encountered an error
+            {this.props.tabName || 'This page'} could not load
           </h3>
-          <pre className="tab-error-message">
-            {this.state.error?.message || 'Unknown error'}
-          </pre>
-          <button className="tab-error-retry" onClick={this.handleRetry}>
-            ↺ Retry
+          <p className="tab-error-message">
+            Try loading this page again. If it still does not open, choose another page from the navigation.
+          </p>
+          <button type="button" className="tab-error-retry gt-button gt-button--secondary" onClick={this.handleRetry}>
+            Retry page
           </button>
         </div>
       );

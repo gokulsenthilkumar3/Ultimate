@@ -1,0 +1,115 @@
+--- a/src/styles/design-system.css
++++ b/src/styles/design-system.css
+@@ -1,35 +1,77 @@
+-.gt-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1px solid transparent; border-radius: 12px; padding: 0 16px; font: inherit; font-size: .82rem; font-weight: 680; cursor: pointer; transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, opacity 150ms ease; }
+-.gt-button--sm { min-height: 40px; padding-inline: 12px; font-size: .77rem; }
+-.gt-button--lg { min-height: 52px; padding-inline: 20px; font-size: .88rem; }
+-.gt-button--primary { color: #fff; background: var(--accent); box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 24%, transparent); }
+-.gt-button--secondary { color: var(--text-1); background: var(--ui-highlight); border-color: var(--ui-line); }
+-.gt-button--ghost { color: var(--text-2); background: transparent; }
+-.gt-button--danger { color: #fff; background: var(--danger, #ff453a); }
+-.gt-button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+-.gt-button:active:not(:disabled) { transform: scale(.98); }
+-.gt-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+-.gt-button:disabled { cursor: not-allowed; opacity: .52; transform: none; }
+-.gt-button__spinner { animation: gt-spin .8s linear infinite; }
+-@keyframes gt-spin { to { transform: rotate(360deg); } }
+-.gt-field { display: grid; gap: 7px; min-width: 0; }
+-.gt-field label { color: var(--text-1); font-size: .8rem; font-weight: 650; }
+-.gt-field label span { color: var(--danger, #ff453a); }
+-.gt-field__hint, .gt-field__error { margin: 0; font-size: .74rem; line-height: 1.45; }
+-.gt-field__hint { color: var(--text-2); }
+-.gt-field__error { color: var(--danger, #ff453a); }
+-.gt-field input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--ui-line-strong); border-radius: 10px; background: var(--bg-input, var(--ui-highlight)); color: var(--text-1); font: inherit; }
+-.gt-field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+-.gt-field input[aria-invalid='true'] { border-color: var(--danger, #ff453a); }
+-.gt-field select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--ui-line-strong); border-radius: 10px; background: var(--bg-input, var(--ui-highlight)); color: var(--text-1); font: inherit; }
+-.gt-field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+-.gt-modal-backdrop { position: fixed; inset: 0; z-index: var(--z-modal, 100); display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.62); backdrop-filter: blur(8px); }
+-.gt-modal { width: min(100%, 560px); max-height: min(760px, calc(100vh - 40px)); overflow: auto; border: 1px solid var(--ui-line-strong); border-radius: 20px; background: var(--ui-panel-solid); color: var(--text-1); box-shadow: var(--ui-shadow-lg); }
+-.gt-modal__header, .gt-modal__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--ui-line); }
+-.gt-modal__header h2 { margin: 0; font-size: 1.05rem; }
+-.gt-modal__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 10px; color: var(--text-2); background: transparent; cursor: pointer; }
+-.gt-modal__close:hover { color: var(--text-1); background: var(--ui-highlight); }
+-.gt-modal__body { padding: 20px; }
+-.gt-modal__actions { justify-content: flex-end; border-top: 1px solid var(--ui-line); border-bottom: 0; }
+-.modal-open { overflow: hidden; }
+-@media (max-width: 640px) { .gt-modal-backdrop { align-items: end; padding: 0; } .gt-modal { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; } }
+-@media (prefers-reduced-motion: reduce) { .gt-button { transition: none; } .gt-button__spinner { animation: none; } }
++.gt-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1px solid transparent; border-radius: 12px; padding: 0 16px; font: inherit; font-size: .82rem; font-weight: 680; cursor: pointer; transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, opacity 150ms ease; }
++.gt-button--sm { min-height: 44px; padding-inline: 12px; font-size: .875rem; }
++.gt-button--lg { min-height: 52px; padding-inline: 20px; font-size: .88rem; }
++.gt-button--primary { color: #fff; background: var(--accent); box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 24%, transparent); }
++.gt-button--secondary { color: var(--text-1); background: var(--ui-highlight); border-color: var(--ui-line); }
++.gt-button--ghost { color: var(--text-2); background: transparent; }
++.gt-button--danger { color: #fff; background: var(--danger, #ff453a); }
++.gt-button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
++.gt-button:active:not(:disabled) { transform: scale(.98); }
++.gt-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
++.gt-button:disabled { cursor: not-allowed; opacity: .52; transform: none; }
++.gt-button__spinner { animation: gt-spin .8s linear infinite; }
++@keyframes gt-spin { to { transform: rotate(360deg); } }
++.gt-field { display: grid; gap: 7px; min-width: 0; }
++.gt-field label { color: var(--text-1); font-size: .8rem; font-weight: 650; }
++.gt-field label span { color: var(--danger, #ff453a); }
++.gt-field__hint, .gt-field__error { margin: 0; font-size: .74rem; line-height: 1.45; }
++.gt-field__hint { color: var(--text-2); }
++.gt-field__error { color: var(--danger, #ff453a); }
++.gt-field input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--ui-line-strong); border-radius: 10px; background: var(--bg-input, var(--ui-highlight)); color: var(--text-1); font: inherit; }
++.gt-field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
++.gt-field input[aria-invalid='true'] { border-color: var(--danger, #ff453a); }
++.gt-field select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--ui-line-strong); border-radius: 10px; background: var(--bg-input, var(--ui-highlight)); color: var(--text-1); font: inherit; }
++.gt-field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
++.gt-modal-backdrop { position: fixed; inset: 0; z-index: var(--z-modal, 100); display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.62); backdrop-filter: blur(8px); }
++.gt-modal { width: min(100%, 560px); max-height: min(760px, calc(100vh - 40px)); overflow: auto; border: 1px solid var(--ui-line-strong); border-radius: 20px; background: var(--ui-panel-solid); color: var(--text-1); box-shadow: var(--ui-shadow-lg); }
++.gt-modal__header, .gt-modal__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--ui-line); }
++.gt-modal__header h2 { margin: 0; font-size: 1.05rem; }
++.gt-modal__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 10px; color: var(--text-2); background: transparent; cursor: pointer; }
++.gt-modal__close:hover { color: var(--text-1); background: var(--ui-highlight); }
++.gt-modal__body { padding: 20px; }
++.gt-modal__actions { justify-content: flex-end; border-top: 1px solid var(--ui-line); border-bottom: 0; }
++.modal-open { overflow: hidden; }
++@media (max-width: 640px) { .gt-modal-backdrop { align-items: end; padding: 0; } .gt-modal { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; } }
++@media (prefers-reduced-motion: reduce) { .gt-button { transition: none; } .gt-button__spinner { animation: none; } }
++
++/* Shared controls use the generated neutral palette. */
++.single-user-login { background: var(--gt-canvas); color: var(--gt-text); padding-bottom: calc(48px + var(--consent-height, 0px)); }
++.single-user-login .auth-card { background: var(--gt-surface); border: 1px solid var(--gt-border); border-radius: 24px; padding: clamp(24px, 5vw, 48px); box-shadow: 0 24px 80px #0002; }
++.single-user-login .auth-shell__glow { display: none; }
++.single-user-login .auth-brand__name { color: var(--gt-text); }
++.single-user-login :is(.auth-brand__sub, .single-user-login__trust) { color: var(--gt-muted); }
++.single-user-login__title { color: var(--gt-text); font-size: clamp(28px, 4vw, 36px); line-height: 1.15; letter-spacing: -.035em; margin: 32px 0 12px; }
++.single-user-login__subtitle { color: var(--gt-muted); margin: 0 0 24px; line-height: 1.5; }
++.single-user-login__reveal { justify-self: start; }
++.single-user-login .notice--error { color: var(--gt-danger); background: var(--gt-surface); border-color: var(--gt-danger); }
++.gt-button { min-width: 44px; font-size: .875rem; line-height: 1.5; }
++.gt-button--primary { background: var(--gt-action); color: var(--gt-on-action); box-shadow: 0 4px 12px #0002; }
++.gt-button--danger { background: #b42318; color: #fff; }
++.gt-button--secondary { background: var(--gt-surface); border-color: var(--gt-border); color: var(--gt-text); }
++.gt-button--ghost, .gt-button--tertiary { background: transparent; color: var(--gt-muted); }
++.gt-button--icon { padding: 0; width: 44px; height: 44px; }
++.gt-button__icon { display: inline-flex; align-items: center; }
++.gt-button[data-status='error'] { border-color: var(--gt-danger); }
++.gt-button[data-status='success'] { border-color: var(--gt-success); }
++.gt-field { gap: 8px; }
++.gt-field label { font-size: .875rem; line-height: 1.5; color: var(--gt-text); }
++.gt-field :is(input, select) { box-sizing: border-box; min-width: 0; background: var(--gt-surface); color: var(--gt-text); border-color: var(--gt-border); transition: border-color 150ms ease, box-shadow 150ms ease; }
++.gt-field :is(input, select):hover:not(:disabled) { border-color: var(--gt-focus); }
++.gt-field :is(input, select):disabled { opacity: .6; cursor: not-allowed; }
++.gt-field input:read-only { border-style: dashed; }
++.gt-field :is(input, select)[aria-invalid='true'] { border-color: var(--gt-danger); }
++.gt-field input::placeholder { color: var(--gt-muted); opacity: 1; }
++.gt-field__hint { color: var(--gt-muted); }
++.gt-field__error, .gt-field label span { color: var(--gt-danger); }
++.gt-field__success { color: var(--gt-success); }
++.gt-field__hint, .gt-field__error, .gt-field__success { margin: 0; font-size: .875rem; line-height: 1.5; overflow-wrap: anywhere; }
++.gt-button:focus-visible, .gt-modal__close:focus-visible, .gt-field :is(input, select):focus-visible { outline: 3px solid var(--gt-focus); outline-offset: 3px; }
++.gt-modal { background: var(--gt-surface); color: var(--gt-text); }
++.gt-modal__close { color: var(--gt-muted); }
++.gt-connection-notice { padding: 16px; margin-bottom: 24px; border: 1px solid var(--gt-border); border-radius: 12px; color: var(--gt-text); background: var(--gt-surface); line-height: 1.5; }
++@media (max-width: 639px) { .gt-field :is(input, select) { font-size: 16px; } }
++@media (prefers-reduced-motion: reduce) { .gt-field :is(input, select) { transition: none; } }
++@media (forced-colors: active) {
++  .gt-button, .gt-field :is(input, select), .gt-modal { border: 1px solid ButtonText; }
++  .gt-button:disabled { color: GrayText; opacity: 1; }
++}

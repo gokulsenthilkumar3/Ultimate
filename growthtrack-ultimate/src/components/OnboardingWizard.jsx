@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ArrowRight, Check, Activity, Target, User as UserIcon, AlertCircle } from 'lucide-react';
 import useStore, { selectSetUser, selectSetOnboardingComplete } from '../store/useStore';
 import { apiSync } from '../store/useStore';
+import useDialogFocus from '../hooks/useDialogFocus';
 
 function FieldError({ message }) {
   if (!message) return null;
@@ -27,6 +28,7 @@ export default function OnboardingWizard() {
     weight: 70,
     goal: 'general_health'
   });
+  const dialogRef = useDialogFocus(true, () => {});
 
   const validate = (currentStep) => {
     const errs = {};
@@ -65,7 +67,7 @@ export default function OnboardingWizard() {
     };
     // Persist to store and API backend
     setUser(newUser);
-    apiSync('/user', 'POST', newUser);
+    try { await apiSync('/user', 'POST', newUser); } catch { setErrors({ submit: 'We could not save your setup. Check your connection and try again.' }); return; }
     setOnboardingComplete(true);
   };
 
@@ -75,7 +77,7 @@ export default function OnboardingWizard() {
   };
 
   return (
-    <div className="onboarding-wizard"
+    <div ref={dialogRef} className="onboarding-wizard"
       role="dialog"
       aria-modal="true"
       aria-label="Onboarding Wizard"
@@ -92,6 +94,7 @@ export default function OnboardingWizard() {
         maxWidth: '500px', width: '100%',
         display: 'flex', flexDirection: 'column', gap: '2rem'
       }}>
+        {errors.submit && <div role="alert" style={{ color: '#f87171', fontSize: '0.82rem' }}>{errors.submit}</div>}
 
         {/* Progress Bar */}
         <div style={{ display: 'flex', gap: '8px' }} role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={3} aria-label={`Step ${step} of 3`}>

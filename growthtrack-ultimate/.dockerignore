@@ -1,0 +1,9 @@
+node_modules
+dist
+.env*
+*.db
+.git
+logs
+coverage
+playwright-report
+test-results
