@@ -17,9 +17,9 @@ import './styles/ultimate-ui.css';
 import './styles/design-tokens.css';
 import './styles/design-system.css';
 import './styles/experience.css';
-import SectionNavigation from './components/SectionNavigation';
-import { TAB_GROUP_MAP } from './config/navigation';
+import { TAB_GROUP_MAP, GROUPS, tabMeta } from './config/navigation';
 import { domainAccents } from './design/domainTokens';
+import { getTextDirection } from './utils/userFormatters';
 
 import LoginPage from './pages/LoginPage';
 
@@ -29,9 +29,11 @@ import DailyCheckIn        from './components/DailyCheckIn';
 import FloatingPillDock    from './components/FloatingPillDock';
 import PremiumSidebar      from './components/PremiumSidebar';
 import Header              from './components/Header';
+import Breadcrumbs         from './components/Breadcrumbs';
 import SettingsModal       from './components/SettingsModal';
 import NotificationCenter  from './components/NotificationCenter';
 import LoadingSkeleton     from './components/ui/LoadingSkeleton';
+import PageState           from './components/ui/PageState';
 import NotFound            from './components/NotFound';
 
 import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
@@ -70,6 +72,9 @@ const Timesheet          = lazy(() => import('./components/Timesheet'));
 const Logs               = lazy(() => import('./components/Logs'));
 const Helpdesk           = lazy(() => import('./components/Helpdesk'));
 const InsightsHub        = lazy(() => import('./components/InsightsHub'));
+const WellnessCommand    = lazy(() => import('./components/WellnessCommand'));
+const LifeCommand        = lazy(() => import('./components/LifeCommand'));
+const HubCommand         = lazy(() => import('./components/HubCommand'));
 const WorkspaceHub       = lazy(() => import('./components/WorkspaceHub'));
 const Portfolio          = lazy(() => import('./components/Portfolio'));
 const Projects           = lazy(() => import('./components/Projects'));
@@ -88,20 +93,19 @@ const TransformationPredictor = lazy(() => import('./components/TransformationPr
 const HabitsMatrix       = lazy(() => import('./components/HabitsMatrix'));
 const Pricing            = lazy(() => import('./components/Pricing'));
 
+// Warm the most likely next command view when the browser is idle. This keeps
+// command navigation immediate without competing with the current interaction.
+const IDLE_PREFETCH = Object.freeze({
+  wellness: () => Promise.all([import('./components/SleepDashboard'), import('./components/HabitsMatrix')]),
+  insights: () => Promise.all([import('./components/Current'), import('./components/Analytics')]),
+  workspace: () => Promise.all([import('./components/Tasks'), import('./components/Notes')]),
+  life: () => Promise.all([import('./components/SocialMedia'), import('./components/Entertainment')]),
+  hub: () => Promise.all([import('./components/AppLauncher'), import('./components/NotificationCenter')]),
+});
+
 
 function TabSpinner() {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '60vh', flexDirection: 'column', gap: '1rem',
-    }}>
-      <div className="spin-ring" />
-      <span style={{
-        color: 'var(--text-3)', fontSize: '0.78rem',
-        letterSpacing: '0.1em', fontFamily: 'var(--font-display)', fontWeight: 600,
-      }}>LOADING MODULE</span>
-    </div>
-  );
+  return <LoadingSkeleton />;
 }
 
 // ── Memoized tab renderer — prevents re-creation on every App render ──────────
@@ -152,7 +156,11 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
     case 'about':          return <About />;
     case 'sip':            return <SIPCalculator />;
     case 'forecast':       return <InsightsHub initialTab="forecast" logs={metricLogs} />;
-    case 'insights':       return <InsightsHub logs={metricLogs} />;
+    case 'insights':       return <InsightsHub logs={metricLogs} setActiveTab={setActiveTab} />;
+    case 'wellnessCommand': return <WellnessCommand user={user} setActiveTab={setActiveTab} />;
+    case 'wellness': return <WellnessCommand user={user} setActiveTab={setActiveTab} />;
+    case 'life':           return <LifeCommand />;
+    case 'hub':            return <HubCommand setActiveTab={setActiveTab} notificationState={notificationState} />;
     case 'apps':           return <AppLauncher setActiveTab={setActiveTab} />;
     case 'notifications':  return <NotificationCenter onNavigate={setActiveTab} notificationState={notificationState} />;
     default:               return <Overview {...props} />;
@@ -194,6 +202,7 @@ export default function App() {
   const setActiveTab = useStore(selectSetActiveTab);
   const sidebarCollapsed = useStore((state) => state.sidebarCollapsed);
   const reducedMotion = useStore((state) => state.reducedMotion);
+  const density = useStore((state) => state.density || 'comfortable');
   const fetchInitialData   = useStore(selectFetchInitialData);
   const checkServerHealth  = useStore(selectCheckServerHealth);
   const isLoading          = useStore(selectIsLoading);
@@ -210,7 +219,7 @@ export default function App() {
   const [showCheckInAlert,  setShowCheckInAlert]  = React.useState(false);
   const sessionId = authenticatedUser?.id || authenticatedUser?.email || session?.expiresAt || null;
   const initialDataReady = Boolean(sessionId && loadedSessionId === sessionId);
-  const notificationState  = useNotifications({ enabled: Boolean(session && initialDataReady) });
+  const notificationState  = useNotifications({ enabled: Boolean(session && initialDataReady && user?.notifications !== false) });
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const navigate = useNavigate();
@@ -219,6 +228,19 @@ export default function App() {
   // Use URL path as source of truth if valid, else fallback to store
   const pathTabRaw = location.pathname.replace(/^\/+|\/+$/g, '');
   const activeTab = (pathTabRaw && GLOBAL_MODULES[pathTabRaw]) ? pathTabRaw : storeActiveTab;
+
+  useEffect(() => {
+    if (reducedMotion) return undefined;
+    const preload = IDLE_PREFETCH[activeTab];
+    if (!preload) return undefined;
+    const run = () => { void preload().catch(() => {}); };
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(run, { timeout: 1800 });
+      return () => window.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(run, 700);
+    return () => window.clearTimeout(id);
+  }, [activeTab, reducedMotion]);
   const isNotFound = Boolean(pathTabRaw && !GLOBAL_MODULES[pathTabRaw]);
 
   // Load the large 3D asset only when its module is requested. This keeps the
@@ -325,6 +347,12 @@ export default function App() {
     document.documentElement.setAttribute('data-reduced-motion', String(reducedMotion));
   }, [theme, palette, reducedMotion]);
 
+  // Formatting & Culture is a workspace preference, so direction must apply
+  // to the whole document rather than only the Profile form.
+  useEffect(() => {
+    document.documentElement.setAttribute('dir', getTextDirection(user));
+  }, [user?.textDirection]);
+
   // New modules start at the top; a long previous page must not hide their heading.
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -359,7 +387,7 @@ export default function App() {
           <SettingsModal onClose={() => setShowSettings(false)} />
         )}
 
-        <div className="app-shell" data-theme={theme} data-palette={palette} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed}
+        <div className="app-shell" dir={getTextDirection(user)} data-theme={theme} data-palette={palette} data-density={density} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed}
           data-domain={TAB_GROUP_MAP[activeTab] || 'system'} style={{ '--domain-accent': domainAccents[TAB_GROUP_MAP[activeTab]] || domainAccents.system }}>
           <a className="skip-to-content" href="#main-content">Skip to content</a>
           <div className="mesh-bg" />
@@ -369,6 +397,7 @@ export default function App() {
           <div className="main-area">
             <Header
               activeTab={activeTab}
+              setActiveTab={setActiveTab}
               user={user}
               theme={theme}
               setTheme={setTheme}
@@ -390,18 +419,21 @@ export default function App() {
                 }}
               />
             )}
+            {!['wellness', 'finance', 'insights', 'workspace', 'life', 'hub'].includes(activeTab) && !['life', 'system'].includes(TAB_GROUP_MAP[activeTab]) && <nav className="command-subnav" aria-label={`${GROUPS[TAB_GROUP_MAP[activeTab]]?.label || 'Command'} subtabs`}>
+              {(GROUPS[TAB_GROUP_MAP[activeTab]]?.tabs || []).map(id => <button key={id} className={id === activeTab ? 'is-active' : ''} onClick={() => setActiveTab(id)}>{tabMeta(id).label}</button>)}
+            </nav>}
 
             {/* ── Single content area: shows skeleton during load, tab after ── */}
             <main id="main-content" className="content-area" tabIndex={-1} aria-busy={isLoading}>
-              {serverStatus === 'offline' && <div className="gt-connection-notice" role="status">The workspace connection is unavailable. Check that the local server is running, then try your action again.</div>}
-              {!isNotFound && <SectionNavigation activeTab={activeTab} onNavigate={setActiveTab} />}
+              {serverStatus === 'offline' && <PageState state="offline" title="You’re working offline" description="Your workspace is still here. New changes will sync when the connection returns." onRetry={checkServerHealth} />}
+              {!isNotFound && <Breadcrumbs activeTab={activeTab} onNavigate={setActiveTab} />}
               <ErrorBoundary resetKey={activeTab}>
                 <Suspense fallback={<TabSpinner />}>
                   <ProductPageTransition key={activeTab} reducedMotion={reducedMotion} hero={activeTab === 'overview'}>
                     {isNotFound
                       ? <NotFound />
                       : isLoading || !initialDataReady
-                      ? <LoadingSkeleton />
+                      ? <LoadingSkeleton variant={TAB_GROUP_MAP[activeTab] || 'workspace'} />
                       : <TabRenderer
                           tab={activeTab}
                           user={user}
@@ -410,7 +442,7 @@ export default function App() {
                           setTheme={setTheme}
                           setActiveTab={setActiveTab}
                           metricLogs={metricLogs}
-                          notificationState={activeTab === 'notifications' ? notificationState : null}
+                          notificationState={['notifications', 'hub'].includes(activeTab) ? notificationState : null}
                         />
                     }
                   </ProductPageTransition>

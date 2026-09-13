@@ -14,6 +14,7 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip,
   CartesianGrid, ReferenceLine,
 } from 'recharts';
+import { formatDate, formatMeasurement, formatNumber, formatTemperature } from '../utils/userFormatters';
 
 const VITAL_TYPES = ['Blood Pressure', 'Heart Rate', 'Blood Sugar', 'SpO2', 'Temperature', 'Weight'];
 
@@ -33,7 +34,7 @@ const tooltipStyle = {
 };
 
 // ── Health Timeline Visualizer ────────────────────────────────────────────
-function VitalsTimeline({ vitalsLogs }) {
+function VitalsTimeline({ vitalsLogs, user }) {
   const [activeType, setActiveType] = useState('Heart Rate');
 
   const types = useMemo(() =>
@@ -50,6 +51,11 @@ function VitalsTimeline({ vitalsLogs }) {
   }, [vitalsLogs, activeType]);
 
   const meta = VITAL_META[activeType] || { color: 'var(--accent)', unit: '', icon: '📊' };
+  const formatVital = value => activeType === 'Weight'
+    ? formatMeasurement(value, 'kg', user)
+    : activeType === 'Temperature'
+      ? formatTemperature(value, user)
+      : `${formatNumber(value, user, { maximumFractionDigits: 1 })} ${meta.unit}`;
 
   const latest  = chartData.length > 0 ? chartData[chartData.length - 1] : null;
   const prev    = chartData.length > 1 ? chartData[chartData.length - 2] : null;
@@ -92,17 +98,16 @@ function VitalsTimeline({ vitalsLogs }) {
           <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-elevated)', borderRadius: '10px', minWidth: '120px' }}>
             <p className="label-caps" style={{ fontSize: '0.6rem', marginBottom: '4px' }}>Latest Reading</p>
             <p style={{ fontSize: '1.4rem', fontWeight: 900, color: meta.color, lineHeight: 1 }}>
-              {latest.value}
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginLeft: '4px' }}>{meta.unit}</span>
+              {formatVital(latest.value)}
             </p>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>{latest.date}</p>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>{formatDate(latest.date, user)}</p>
           </div>
           {trend !== null && (
             <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-elevated)', borderRadius: '10px' }}>
               <p className="label-caps" style={{ fontSize: '0.6rem', marginBottom: '4px' }}>Change</p>
               <p style={{ fontSize: '1.1rem', fontWeight: 800, color: trendColor, display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <TrendIcon size={16} />
-                {trend > 0 ? '+' : ''}{trend.toFixed(1)} {meta.unit}
+                {trend > 0 ? '+' : ''}{activeType === 'Weight' ? formatMeasurement(Math.abs(trend), 'kg', user) : `${formatNumber(Math.abs(trend), user, { maximumFractionDigits: 1 })} ${meta.unit}`}
               </p>
               <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>vs previous</p>
             </div>
@@ -137,7 +142,7 @@ function VitalsTimeline({ vitalsLogs }) {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis dataKey="date" stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} />
               <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={tooltipStyle} formatter={v => [`${v} ${meta.unit}`, activeType]} />
+              <Tooltip contentStyle={tooltipStyle} formatter={v => [formatVital(v), activeType]} />
               {meta.normalRange && (
                 <>
                   <ReferenceLine y={meta.normalRange[0]} stroke={meta.color} strokeDasharray="4 2" strokeOpacity={0.4} />
@@ -164,11 +169,11 @@ function VitalsTimeline({ vitalsLogs }) {
 }
 
 // ── Chronological Events Timeline ─────────────────────────────────────────
-function EventTimeline({ vitalsLogs, medications }) {
+function EventTimeline({ vitalsLogs, medications, user }) {
   const events = useMemo(() => {
     const vEvents = vitalsLogs.map(l => ({
       date: l.date,
-      label: `${l.type}: ${l.value}${l.unit ? ' ' + l.unit : ''}`,
+      label: `${l.type}: ${l.type === 'Weight' ? formatMeasurement(l.value, 'kg', user) : l.type === 'Temperature' ? formatTemperature(l.value, user) : `${Number.isFinite(Number(l.value)) ? formatNumber(l.value, user, { maximumFractionDigits: 1 }) : String(l.value || '—')}${l.unit ? ' ' + l.unit : ''}`}`,
       icon: VITAL_META[l.type]?.icon || '📋',
       color: VITAL_META[l.type]?.color || 'var(--accent)',
       type: 'vital',
@@ -215,7 +220,7 @@ function EventTimeline({ vitalsLogs, medications }) {
                   <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>{ev.icon}</span> {ev.label}
                   </span>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', whiteSpace: 'nowrap', marginLeft: '8px' }}>{ev.date}</span>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', whiteSpace: 'nowrap', marginLeft: '8px' }}>{formatDate(ev.date, user)}</span>
                 </div>
               </div>
             </div>
@@ -228,6 +233,7 @@ function EventTimeline({ vitalsLogs, medications }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function Medical() {
+  const user = useStore(s => s.user);
   const dbMedical = useStore(selectMedicalData);
   const medicalData = dbMedical || { testsRequired: [] };
   const vitalsLogs = useStore(selectVitalsLogs) || EMPTY_LIST;
@@ -321,7 +327,7 @@ export default function Medical() {
       </div>
 
       {/* Health Timeline Visualizer (chart per vital type) */}
-      <VitalsTimeline vitalsLogs={vitalsLogs} />
+      <VitalsTimeline vitalsLogs={vitalsLogs} user={user} />
 
       {/* Required Tests + Log Vitals */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
@@ -423,7 +429,7 @@ export default function Medical() {
       </div>
 
       {/* Chronological Timeline */}
-      <EventTimeline vitalsLogs={vitalsLogs} medications={medications} />
+      <EventTimeline vitalsLogs={vitalsLogs} medications={medications} user={user} />
 
       {/* Medications tracker */}
       <div className="glass-card mb-lg">

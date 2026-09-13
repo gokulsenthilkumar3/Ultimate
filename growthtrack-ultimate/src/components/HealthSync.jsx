@@ -4,7 +4,9 @@ import safeLocalStorage from '../utils/safeLocalStorage';
  * Apple HealthKit doesn't work on web; CSV export is the bridge until native app.
  * CSV format expected: Date,Weight (kg)
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import useStore from '../store/useStore';
+import { formatDate, formatMeasurement, getMeasurementUnit } from '../utils/userFormatters';
 
 const STORAGE_KEY = 'ultimate_health_data';
 
@@ -26,12 +28,17 @@ function parseCSV(text) {
 }
 
 export default function HealthSync({ onDataUpdate }) {
+  const user = useStore(state => state.user);
   const [entries, setEntries] = useState(loadData);
   const [weight, setWeight] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [unit, setUnit] = useState('kg');
+  const [unit, setUnit] = useState(() => String(user?.measurementSystem || '').toLowerCase().startsWith('imperial') ? 'lbs' : 'kg');
   const [msg, setMsg] = useState('');
   const fileRef = useRef();
+
+  useEffect(() => {
+    setUnit(String(user?.measurementSystem || '').toLowerCase().startsWith('imperial') ? 'lbs' : 'kg');
+  }, [user?.measurementSystem]);
 
   const toKg = (val) => unit === 'lbs' ? val * 0.453592 : val;
 
@@ -46,7 +53,7 @@ export default function HealthSync({ onDataUpdate }) {
     setEntries(updated);
     onDataUpdate?.(updated);
     setWeight('');
-    setMsg(`✅ Logged ${Math.round(kg * 10) / 10} kg for ${date}`);
+    setMsg(`✅ Logged ${formatMeasurement(kg, 'kg', user)} for ${formatDate(date, user)}`);
     setTimeout(() => setMsg(''), 3000);
   };
 
@@ -91,7 +98,7 @@ export default function HealthSync({ onDataUpdate }) {
 
       <form style={s.form} onSubmit={addEntry}>
         <input style={s.input} type="date" value={date} onChange={e => setDate(e.target.value)} />
-        <input style={s.input} type="number" placeholder="Weight" value={weight} onChange={e => setWeight(e.target.value)} step="0.1" />
+        <input style={s.input} type="number" placeholder={`Weight (${unit})`} value={weight} onChange={e => setWeight(e.target.value)} step="0.1" />
         <select style={s.select} value={unit} onChange={e => setUnit(e.target.value)}>
           <option value="kg">kg</option>
           <option value="lbs">lbs</option>
@@ -112,14 +119,14 @@ export default function HealthSync({ onDataUpdate }) {
           <thead>
             <tr>
               <th style={s.th}>Date</th>
-              <th style={s.th}>Weight (kg)</th>
+              <th style={s.th}>Weight ({getMeasurementUnit('kg', user)})</th>
             </tr>
           </thead>
           <tbody>
             {entries.slice(0, 10).map((e, i) => (
               <tr key={i}>
-                <td style={s.td}>{e.date}</td>
-                <td style={s.td}>{e.weight} kg</td>
+                <td style={s.td}>{formatDate(e.date, user)}</td>
+                <td style={s.td}>{formatMeasurement(e.weight, 'kg', user)}</td>
               </tr>
             ))}
           </tbody>

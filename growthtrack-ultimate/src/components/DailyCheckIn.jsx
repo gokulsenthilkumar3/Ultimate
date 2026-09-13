@@ -5,6 +5,7 @@ import useStore, { selectSaveSleepLog, selectAddMoodLog } from '../store/useStor
 import { useToast } from '../hooks/useToast';
 import SavedIndicator from './ui/SavedIndicator';
 import { dismissNotificationIds } from '../lib/notifications';
+import { formatDate, getMeasurementUnit, convertMeasurement, convertMeasurementToMetric } from '../utils/userFormatters';
 
 const MOODS = ['\ud83d\ude22', '\ud83d\ude15', '\ud83d\ude10', '\ud83d\ude0a', '\ud83d\ude01'];
 const ENERGY = ['\ud83e\udeb4', '\ud83d\ude34', '\u26a1', '\ud83d\udd25', '\ud83d\ude80'];
@@ -25,7 +26,7 @@ export default function DailyCheckIn({ onClose }) {
 
   const [step, setStep]   = useState(0);
   const [data, setData]   = useState({
-    sleep: 7, energy: 2, mood: 2, weight: user?.weight || '', note: '',
+    sleep: 7, energy: 2, mood: 2, weight: user?.weight ? convertMeasurement(user.weight, 'kg', user) : '', note: '',
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saved,    setSaved]    = useState(false);
@@ -108,7 +109,7 @@ export default function DailyCheckIn({ onClose }) {
             className="form-input"
             style={{ fontSize: '1.5rem', textAlign: 'center', width: '180px', padding: '0.75rem' }}
             min={30} max={200} step={0.1} />
-          <p style={{ marginTop: '0.75rem', color: 'var(--text-3)', fontSize: '0.8rem' }}>kg \u2014 Leave blank to skip</p>
+          <p style={{ marginTop: '0.75rem', color: 'var(--text-3)', fontSize: '0.8rem' }}>{getMeasurementUnit('kg', user)} \u2014 Leave blank to skip</p>
         </div>
       ),
     },
@@ -132,16 +133,17 @@ export default function DailyCheckIn({ onClose }) {
     setIsSaving(true);
     const checkInDate = todayStr();
     const updatedUser = { ...user };
+    const metricWeight = data.weight ? convertMeasurementToMetric(data.weight, 'kg', user) : null;
 
     // weight update
-    if (data.weight) {
-      updatedUser.weightLog = [...(user?.weightLog || []), { date: checkInDate, weight: parseFloat(data.weight) }];
-      updatedUser.weight = parseFloat(data.weight);
+    if (metricWeight !== null && Number.isFinite(metricWeight)) {
+      updatedUser.weightLog = [...(user?.weightLog || []), { date: checkInDate, weight: metricWeight }];
+      updatedUser.weight = metricWeight;
     }
 
     // check-in log
     updatedUser.checkIns = [...(user?.checkIns || []), {
-      date: checkInDate, sleep: data.sleep, energy: data.energy, mood: data.mood, weight: data.weight || null,
+      date: checkInDate, sleep: data.sleep, energy: data.energy, mood: data.mood, weight: metricWeight,
     }];
 
     // sleep log
@@ -242,7 +244,7 @@ export default function DailyCheckIn({ onClose }) {
 
             <div style={{ marginBottom: '0.5rem' }}>
               <p className="label-caps" style={{ color: 'var(--accent)', fontSize: '0.65rem' }}>
-                DAILY CHECK-IN \u00b7 {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                DAILY CHECK-IN \u00b7 {formatDate(new Date(), user, { style: 'long', weekday: true })}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '0.75rem' }}>
                 {steps[step].icon}

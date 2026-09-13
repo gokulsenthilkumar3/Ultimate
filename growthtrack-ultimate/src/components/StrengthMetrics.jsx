@@ -7,6 +7,7 @@ import {
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import { formatDate, formatMeasurement, formatNumber, getMeasurementUnit, convertMeasurement, convertMeasurementToMetric } from '../utils/userFormatters';
 
 const TOOLTIP_STYLE = {
   background: 'var(--bg-glass)', border: '1px solid var(--border)',
@@ -52,9 +53,10 @@ const oneRMFormulas = {
 };
 
 function OneRMCalculator() {
+  const user = useStore(s => s.user);
   const [weight, setWeight] = useState('');
   const [reps,   setReps]   = useState('');
-  const [unit,   setUnit]   = useState('kg');
+  const [unit,   setUnit]   = useState(() => String(user?.measurementSystem || '').toLowerCase().startsWith('imperial') ? 'lb' : 'kg');
 
   const results = useMemo(() => {
     const w = Number(weight), r = Number(reps);
@@ -208,6 +210,7 @@ function MuscleFatigueHeatmap({ recentLogs }) {
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function StrengthMetrics() {
   const toast = useToast();
+  const user = useStore(s => s.user);
   const metric_logs = useStore(s => s.metric_logs) || [];
   const saveMetricLog = useStore(s => s.saveMetricLog);
 
@@ -248,9 +251,9 @@ export default function StrengthMetrics() {
   const exLogs = useMemo(() => {
     const ex = activeEx || exercises[0] || '';
     return strengthLogs.filter(l => l.exercise === ex).slice(0, 30).reverse().map(l => ({
-      date: l.date?.slice(5), weight: l.weight, volume: l.weight * l.reps * l.sets,
+      date: l.date?.slice(5), weight: convertMeasurement(l.weight, 'kg', user), volume: l.weight * l.reps * l.sets,
     }));
-  }, [activeEx, exercises, strengthLogs]);
+  }, [activeEx, exercises, strengthLogs, user]);
 
   // Weekly volume by muscle
   const weeklyVolume = useMemo(() => {
@@ -272,13 +275,13 @@ export default function StrengthMetrics() {
     if (!form.exercise || !form.weight) { toast.error('Exercise and weight required'); return; }
     const log = {
       type: 'strength', exercise: form.exercise, date: form.date,
-      weight: Number(form.weight), reps: Number(form.reps) || 1, sets: Number(form.sets) || 1,
-      value: Number(form.weight), unit: 'kg', notes: form.notes,
+      weight: convertMeasurementToMetric(form.weight, 'kg', user), reps: Number(form.reps) || 1, sets: Number(form.sets) || 1,
+      value: convertMeasurementToMetric(form.weight, 'kg', user), unit: 'kg', notes: form.notes,
     };
     if (typeof saveMetricLog === 'function') await saveMetricLog(log);
     setForm(f => ({ ...f, exercise: '', weight: '', reps: '', sets: '', notes: '' }));
     setShowAdd(false);
-    toast.success(`✅ ${log.exercise} — ${log.weight}kg logged`);
+    toast.success(`✅ ${log.exercise} — ${formatMeasurement(log.weight, 'kg', user)} logged`);
   };
 
   const recentLogs7Days = useMemo(() => {
@@ -309,7 +312,7 @@ export default function StrengthMetrics() {
           {Object.entries(PRs).slice(0, 6).map(([ex, pr]) => (
             <div key={ex} style={{ padding: '0.65rem 0.85rem', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: '10px', minWidth: '100px', textAlign: 'center' }}>
               <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, marginBottom: '2px' }}>🏆 PR</p>
-              <p style={{ fontSize: '1rem', fontWeight: 900, color: '#fbbf24', fontFamily: 'monospace' }}>{pr.weight} kg</p>
+              <p style={{ fontSize: '1rem', fontWeight: 900, color: '#fbbf24', fontFamily: 'monospace' }}>{formatMeasurement(pr.weight, 'kg', user)}</p>
               <p style={{ fontSize: '0.65rem', color: 'var(--text-2)', fontWeight: 700 }}>{ex}</p>
             </div>
           ))}
@@ -332,7 +335,7 @@ export default function StrengthMetrics() {
               <input list="ex-list" placeholder="Exercise *" value={form.exercise} onChange={e => setForm(f => ({ ...f, exercise: e.target.value }))} className="form-input" />
               <datalist id="ex-list">{EXERCISE_LIBRARY.map(e => <option key={e.name} value={e.name} />)}</datalist>
             </div>
-            <input type="number" placeholder="Weight (kg) *" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} className="form-input" />
+            <input type="number" placeholder={`Weight (${getMeasurementUnit('kg', user)}) *`} value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} className="form-input" />
             <input type="number" placeholder="Reps" value={form.reps} onChange={e => setForm(f => ({ ...f, reps: e.target.value }))} className="form-input" />
             <input type="number" placeholder="Sets" value={form.sets} onChange={e => setForm(f => ({ ...f, sets: e.target.value }))} className="form-input" />
             <div>
@@ -370,13 +373,13 @@ export default function StrengthMetrics() {
                   const isPR = PRs[l.exercise]?.weight === l.weight && PRs[l.exercise]?.date === l.date;
                   return (
                     <tr key={l.id || l.date + l.exercise} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: isPR ? 'rgba(251,191,36,0.05)' : 'transparent' }}>
-                      <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{l.date}</td>
+                      <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{formatDate(l.date, user)}</td>
                       <td style={{ padding: '0.5rem 0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         {isPR && <span title="Personal Record">🏆</span>} {l.exercise}
                       </td>
                       <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace' }}>{l.sets}×{l.reps}</td>
-                      <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace', fontWeight: 800, color: 'var(--accent)' }}>{l.weight} kg</td>
-                      <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace', color: 'var(--text-2)' }}>{(l.weight * l.reps * l.sets).toLocaleString()} kg</td>
+                      <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace', fontWeight: 800, color: 'var(--accent)' }}>{formatMeasurement(l.weight, 'kg', user)}</td>
+                      <td style={{ padding: '0.5rem 0.6rem', fontFamily: 'monospace', color: 'var(--text-2)' }}>{formatMeasurement(l.weight * l.reps * l.sets, 'kg', user)}</td>
                       <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-3)', fontSize: '0.7rem' }}>{l.notes || '—'}</td>
                     </tr>
                   );
@@ -404,8 +407,8 @@ export default function StrengthMetrics() {
                 <LineChart data={exLogs} margin={{ top: 8, right: 8, bottom: 4, left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} unit="kg" />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} unit={getMeasurementUnit('kg', user)} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${formatNumber(v, user)} ${getMeasurementUnit('kg', user)}`, 'Max Weight']} />
                   <Line type="monotone" dataKey="weight" name="Max Weight" stroke="var(--accent)" strokeWidth={2.5} dot={{ r: 5, fill: 'var(--accent)' }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -433,7 +436,7 @@ export default function StrengthMetrics() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                 <YAxis type="category" dataKey="muscle" tick={{ fontSize: 11, fill: 'var(--text-2)' }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v.toLocaleString()} kg`, 'Volume']} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatMeasurement(v, 'kg', user), 'Volume']} />
                 <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
                   {weeklyVolume.map((entry, idx) => (
                     <React.Fragment key={entry.muscle}>

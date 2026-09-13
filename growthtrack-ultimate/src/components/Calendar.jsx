@@ -5,6 +5,7 @@ import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { localDateKey } from '../lib/metricSeries';
 import { expandRecurring, validateCalendarEvent, buildCalendarExport } from '../lib/calendarDates';
+import { formatDate } from '../utils/userFormatters';
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -27,6 +28,7 @@ function isSameDay(d1, d2) {
 
 export default function Calendar() {
   const toast = useToast();
+  const user = useStore(s => s.user);
   const events              = useStore(s => s.calendar_events ?? EMPTY_EVENTS);
   const _updateAll          = useStore(s => s.updateCalendarEvents);
   const addEvent            = (ev) => _updateAll && _updateAll([...events, ev]);
@@ -248,7 +250,7 @@ export default function Calendar() {
 
                 return (
                   <button key={idx} type="button" onClick={() => setSelectedDate(isSameDay(day, selectedDate || new Date(0)) ? null : day)}
-                    aria-label={`${day.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}${dayEvents.length ? `, ${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : ', no events'}`}
+                    aria-label={`${formatDate(day, user, { style: 'long', weekday: true })}${dayEvents.length ? `, ${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : ', no events'}`}
                     aria-pressed={Boolean(isSelected)}
                     style={{
                       minHeight: '80px', borderRadius: '8px', padding: '4px', cursor: 'pointer',
@@ -317,9 +319,9 @@ export default function Calendar() {
                     ) : (
                       <>
                         <div style={{ width: '42px', textAlign: 'center', flexShrink: 0, borderRight: `1px solid ${e.color}44`, paddingRight: '0.6rem' }}>
-                          <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{new Date(e.date + 'T00:00:00').toLocaleDateString('en', { month: 'short' })}</p>
+                          <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{formatDate(e.date, user, { month: 'short', year: false })}</p>
                           <p style={{ fontSize: '1.4rem', fontWeight: 900, color: e.color, lineHeight: 1 }}>{new Date(e.date + 'T00:00:00').getDate()}</p>
-                          <p style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>{new Date(e.date + 'T00:00:00').toLocaleDateString('en', { weekday: 'short' })}</p>
+                          <p style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>{formatDate(e.date, user, { style: 'long' }).split(' ').slice(0, 1).join(' ')}</p>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>

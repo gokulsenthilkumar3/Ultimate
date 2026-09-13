@@ -3,6 +3,9 @@ import useStore from '../store/useStore';
 import { Send, Bot, User, Trash2, Copy, Zap, RefreshCw, Sparkles } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { askLocalGrowthcast } from '../lib/growthcast';
+import { formatCurrency } from '../utils/userFormatters';
+import Button from './ui/Button';
+import Card from './ui/Card';
 
 // ── Typing simulation component ────────────────────────────────────────────
 function TypedMessage({ text, speed = 12, onDone }) {
@@ -30,14 +33,14 @@ function TypedMessage({ text, speed = 12, onDone }) {
 }
 
 const QUICK_PROMPTS = [
-  { label: '📊 Today summary',   prompt: 'Give me a quick summary of my progress today across health, habits, and tasks.' },
-  { label: '💪 Workout advice',  prompt: 'Based on my training history and PRs, what should I focus on in my next workout?' },
-  { label: '🎯 Goal check',      prompt: 'How am I progressing toward my current goals? What should I prioritise?' },
-  { label: '😴 Sleep analysis',  prompt: 'Analyse my recent sleep patterns and give me actionable advice to improve sleep quality.' },
-  { label: '💰 Finance tip',     prompt: 'Give me a personalised finance tip based on my current income, expenses, and saving rate.' },
-  { label: '🔥 Habit coaching',  prompt: 'Which of my habits has the lowest completion rate? How can I improve it?' },
-  { label: '🥗 Nutrition guide', prompt: 'Based on my nutrition goals, what macro adjustments would help me most right now?' },
-  { label: '🧠 Weekly plan',     prompt: 'Create a prioritised weekly action plan for me based on all my current data.' },
+  { label: 'Today’s summary', prompt: 'Give me a quick summary of my progress today across health, habits, and tasks.' },
+  { label: 'Workout advice', prompt: 'Based on my training history and PRs, what should I focus on in my next workout?' },
+  { label: 'Goal check-in', prompt: 'How am I progressing toward my current goals? What should I prioritise?' },
+  { label: 'Sleep analysis', prompt: 'Analyse my recent sleep patterns and give me actionable advice to improve sleep quality.' },
+  { label: 'Finance tip', prompt: 'Give me a personalised finance tip based on my current income, expenses, and saving rate.' },
+  { label: 'Habit coaching', prompt: 'Which of my habits has the lowest completion rate? How can I improve it?' },
+  { label: 'Nutrition guide', prompt: 'Based on my nutrition goals, what macro adjustments would help me most right now?' },
+  { label: 'Weekly plan', prompt: 'Create a prioritised weekly action plan for me based on all my current data.' },
 ];
 
 const CACHE_KEY = 'gt_ai_cache_v2';
@@ -82,9 +85,9 @@ export default function AiDashboard() {
     const formatTask  = t => `${t.title} (priority: ${t.priority || 'normal'}, due: ${t.due_date || 'no date'})`;
     const formatMetric = m => `${m.type}: ${m.value} ${m.unit || ''} on ${m.date}`;
     const formatSleep  = s => `${s.date}: ${s.duration}h, quality ${s.quality}/10`;
-    const formatFin    = () => finance.accounts ? `balance: ₹${Object.values(finance.accounts).reduce((s, a) => s + (a.balance || 0), 0).toLocaleString()}` : '';
+    const formatFin    = () => finance.accounts ? `balance: ${formatCurrency(Object.values(finance.accounts).reduce((s, a) => s + (a.balance || 0), 0), u)}` : '';
     const formatNote   = n => n.title || 'Untitled Note';
-    const formatSub    = s => `${s.name} (₹${s.cost})`;
+    const formatSub    = s => `${s.name} (${formatCurrency(s.cost, u)})`;
     const formatShop   = i => i.name;
     const formatMed    = m => `${m.name} (${m.dosage})`;
     const formatTime   = t => `${t.task} (${t.hours}h)`;
@@ -144,16 +147,14 @@ export default function AiDashboard() {
       }
 
       if (!response) {
-        response = '⚠️ The configured Agent is unavailable. Check the database-backed Agent settings and local Ollama service.';
+        response = 'Your assistant is taking a moment to reconnect. Please try again shortly.';
       }
 
       const aiMsg = { role: 'assistant', content: response, id: Date.now() + 1, typing: true };
       setMessages(prev => [...prev, aiMsg]);
       setTyping(true);
     } catch (err) {
-      const errMsg = err?.message?.includes('API error')
-        ? 'Could not reach AI backend. Please check your API key configuration.'
-        : 'AI request failed. Please try again.';
+      const errMsg = 'We couldn’t finish that response. Your conversation is still here—please try again.';
       setMessages(prev => [...prev, { role: 'assistant', content: errMsg, id: Date.now() + 1, error: true }]);
       toast.error(errMsg);
     } finally {
@@ -167,14 +168,14 @@ export default function AiDashboard() {
   }, []);
 
   const copyMessage = (content) => {
-    navigator.clipboard.writeText(content).then(() => toast.success('Copied!')).catch(() => toast.error('Failed to copy'));
+    navigator.clipboard.writeText(content).then(() => toast.success('Copied to your clipboard.')).catch(() => toast.error('We couldn’t copy that. Please try again.'));
   };
 
   const clearChat = () => {
     setMessages([]);
     setShowPrompts(true);
     sessionStorage.removeItem(CACHE_KEY);
-    toast.info('Chat cleared');
+    toast.info('This conversation has been cleared.');
   };
 
   // Safe React-based markdown renderer — no dangerouslySetInnerHTML, no XSS risk.
@@ -235,63 +236,51 @@ export default function AiDashboard() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)', minHeight: '500px', padding: '0.5rem 0' }}>
+    <div className="agent-workspace">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexShrink: 0, flexWrap: 'wrap', gap: '0.5rem' }}>
+      <Card className="agent-workspace__header">
         <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.2rem' }}>AI Assistant</p>
-          <h2 className="text-display" style={{ fontSize: '1.6rem', marginBottom: 0 }}>
-            <Bot size={22} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px', color: 'var(--accent)' }} />
-            GrowthTrack AI
-          </h2>
+          <p className="eyebrow">Your assistant</p>
+          <h2><Bot size={22} aria-hidden="true" /> GrowthTrack AI</h2>
+          <p>Ask for a clear next step, a thoughtful review, or a plan for the week.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <select value={model} onChange={e => setModel(e.target.value)} className="form-input" style={{ fontSize: '0.72rem', padding: '4px 8px' }}>
+        <div className="agent-workspace__actions">
+          <label className="agent-workspace__model"><span>Model</span><select value={model} onChange={e => setModel(e.target.value)}>
             <optgroup label="Local (Ollama)">
               <option value={`ollama-${aiConfig.model || 'unconfigured'}`}>{aiConfig.model || 'Not configured'}</option>
             </optgroup>
-          </select>
-          <button onClick={clearChat} title="Clear chat" style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 10px', color: 'var(--text-3)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Trash2 size={12} /> Clear
-          </button>
+          </select></label>
+          <Button variant="secondary" onClick={clearChat} title="Clear conversation"><Trash2 size={15} /> Clear</Button>
         </div>
-      </div>
+      </Card>
 
       {/* Context chip */}
-      <div style={{ marginBottom: '0.75rem', flexShrink: 0 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '99px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.65rem', color: '#818cf8' }}>
+      <div className="agent-workspace__privacy">
+        <div>
           <Sparkles size={10} />
-          AI has access to your goals, habits, tasks, metrics, sleep, and finance data
+          Uses the relevant workspace context to make answers more useful. Your message stays in this private workspace.
         </div>
       </div>
 
       {/* Chat messages */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: '4px', marginBottom: '0.75rem' }}>
+      <div className="agent-workspace__messages" aria-live="polite">
         {/* Quick prompts */}
         {showPrompts && (
-          <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 700, marginBottom: '0.75rem' }}>
-              <Zap size={13} style={{ display: 'inline', marginRight: '5px', color: '#f59e0b' }} />
-              Quick prompts
+          <div className="agent-workspace__prompts">
+            <p><Zap size={14} aria-hidden="true" /> A good place to start</p>
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
               {QUICK_PROMPTS.map(p => (
-                <button key={p.label} onClick={() => sendMessage(p.prompt)} disabled={loading} style={{
-                  padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', color: 'var(--text-2)',
-                  fontSize: '0.78rem', fontWeight: 600, textAlign: 'left', transition: 'background 0.15s',
-                }}>
-                  {p.label}
-                </button>
+                <Card as="button" interactive type="button" key={p.label} onClick={() => sendMessage(p.prompt)} disabled={loading} className="agent-workspace__prompt">{p.label}</Card>
               ))}
             </div>
           </div>
         )}
 
         {messages.length === 0 && !showPrompts && (
-          <div style={{ textAlign: 'center', padding: '3rem 2rem', color: 'var(--text-3)' }}>
-            <Bot size={40} style={{ opacity: 0.2, marginBottom: '0.75rem' }} />
-            <p style={{ fontSize: '0.88rem' }}>Ask me anything about your health, goals, finances, or productivity.</p>
+          <div className="agent-workspace__empty">
+            <Bot size={40} aria-hidden="true" />
+            <p>Ask about your health, goals, finances, or focus—and we’ll work through it together.</p>
           </div>
         )}
 

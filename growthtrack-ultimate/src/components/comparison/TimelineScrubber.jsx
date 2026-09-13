@@ -34,6 +34,8 @@ import * as THREE          from "three";
 
 import use3DStore          from "../store/use3DStore";
 import HumanoidClone       from "../morphEngine/HumanoidClone";
+import useStore            from "../../store/useStore";
+import { formatDate }      from "../../utils/userFormatters";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTO-PLAY HOOK
@@ -128,6 +130,7 @@ export function useTimelinePlayback() {
  * Mounts in the HTML layer below or above the 3D canvas.
  */
 export default function TimelineScrubber({ style = {} }) {
+  const user = useStore((state) => state.user);
   const trackRef = useRef();
 
   const {
@@ -223,7 +226,7 @@ export default function TimelineScrubber({ style = {} }) {
         {/* Date label */}
         <div style={{ color: "#445566", fontSize: "11px", letterSpacing: "0.08em" }}>
           {currentSnap?.date
-            ? new Date(currentSnap.date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+            ? formatDate(currentSnap.date, user, { month: "short" })
             : ""}
         </div>
       </div>

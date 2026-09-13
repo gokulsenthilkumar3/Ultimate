@@ -1,0 +1,3 @@
+ALTER TABLE "Task" ADD COLUMN "project" TEXT;
+ALTER TABLE "Task" ADD COLUMN "section" TEXT;
+ALTER TABLE "Task" ADD COLUMN "tags" TEXT;

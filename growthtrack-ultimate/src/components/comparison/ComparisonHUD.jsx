@@ -25,6 +25,8 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Html }                                          from "@react-three/drei";
 import { useShallow }                                    from "zustand/react/shallow";
 import use3DStore                                        from "../store/use3DStore";
+import useStore                                           from "../../store/useStore";
+import { formatDate, formatMeasurement, formatNumber }    from "../../utils/userFormatters";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -56,7 +58,7 @@ const ENTRY_STAGGER = 55;
 // SINGLE DELTA CARD
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DeltaCard({ measurement, currentVal, goalVal, delta, yPosition, entryDelay }) {
+function DeltaCard({ measurement, currentVal, goalVal, delta, yPosition, entryDelay, user }) {
   const [visible, setVisible] = useState(false);
 
   // Staggered entry animation
@@ -127,7 +129,9 @@ function DeltaCard({ measurement, currentVal, goalVal, delta, yPosition, entryDe
             lineHeight:  "1",
             filter:      `drop-shadow(0 0 6px ${accentColor})`,
           }}>
-            {arrowSymbol} {sign}{absD.toFixed(1)}{measurement.unit}
+            {arrowSymbol} {sign}{measurement.unit === 'kg' || measurement.unit === 'cm'
+              ? formatMeasurement(absD, measurement.unit, user)
+              : `${formatNumber(absD, user)} ${measurement.unit}`}
           </span>
 
           {/* Current → Goal */}
@@ -138,9 +142,9 @@ function DeltaCard({ measurement, currentVal, goalVal, delta, yPosition, entryDe
             fontSize:    "9px",
             color:       "#667788",
           }}>
-            <span>{currentVal.toFixed(1)}</span>
+            <span>{measurement.unit === 'kg' || measurement.unit === 'cm' ? formatMeasurement(currentVal, measurement.unit, user) : `${formatNumber(currentVal, user)} ${measurement.unit}`}</span>
             <span style={{ color: "#334455" }}>→</span>
-            <span style={{ color: "#22D3EE" }}>{goalVal.toFixed(1)}</span>
+            <span style={{ color: "#22D3EE" }}>{measurement.unit === 'kg' || measurement.unit === 'cm' ? formatMeasurement(goalVal, measurement.unit, user) : `${formatNumber(goalVal, user)} ${measurement.unit}`}</span>
           </div>
         </div>
       </div>
@@ -273,6 +277,7 @@ function OverallProgressBadge({ percent }) {
  *   cloneASeparation — the DUAL_SEPARATION constant from CloneEngine (default 0.9)
  */
 export default function ComparisonHUD({ cloneASeparation = 0.9 }) {
+  const user = useStore((state) => state.user);
   const [entryKey, setEntryKey] = useState(0);
 
   const { currentMetrics, goalMetrics, getDeltas, getProgressPercent, ambitionPath } =
@@ -298,7 +303,7 @@ export default function ComparisonHUD({ cloneASeparation = 0.9 }) {
 
   // Deadline label
   const deadline = ambitionPath?.deadline
-    ? new Date(ambitionPath.deadline).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    ? formatDate(ambitionPath.deadline, user, { month: "short" })
     : "Dec 2026";
 
   return (
@@ -319,6 +324,7 @@ export default function ComparisonHUD({ cloneASeparation = 0.9 }) {
             currentVal={currentVal}
             goalVal={goalVal}
             delta={delta}
+            user={user}
             yPosition={CARD_OFFSET_Y - i * CARD_SPACING}
             entryDelay={i * ENTRY_STAGGER}
           />
@@ -328,7 +334,7 @@ export default function ComparisonHUD({ cloneASeparation = 0.9 }) {
       {/* ── Nameplates ── */}
       <CloneNameplate
         label="You Now"
-        sublabel={`${currentMetrics.weight}kg · ${currentMetrics.bodyFat}% BF`}
+        sublabel={`${formatMeasurement(currentMetrics.weight, 'kg', user)} · ${formatNumber(currentMetrics.bodyFat, user)}% BF`}
         x={-cloneASeparation}
         color="#4FC3F7"
       />

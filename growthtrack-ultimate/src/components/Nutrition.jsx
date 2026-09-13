@@ -14,6 +14,7 @@ import useStore, {
   selectFetchInitialData,
   selectIsLoading,
 } from '../store/useStore';
+import { formatDate, getMeasurementUnit, convertMeasurement, convertMeasurementToMetric, formatNumber } from '../utils/userFormatters';
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Pre-workout', 'Post-workout'];
 const EMPTY_FORM = { name: '', meal: 'Breakfast', calories: '', protein_g: '', carbs_g: '', fat_g: '' };
@@ -56,7 +57,7 @@ function calcMacroTargets(weight, height, age, gender, activity, goal) {
 }
 
 // ── Animated 3-part Concentric Ring Chart ─────────────────────────────────
-function MacroRings({ proteinPct, carbsPct, fatPct, consumed, targets }) {
+function MacroRings({ proteinPct, carbsPct, fatPct, consumed, targets, user }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const t = setTimeout(() => setMounted(true), 80); return () => clearTimeout(t); }, []);
 
@@ -101,7 +102,7 @@ function MacroRings({ proteinPct, carbsPct, fatPct, consumed, targets }) {
         alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
       }}>
         <span style={{ fontSize: '1.35rem', fontWeight: 900, lineHeight: 1, color: 'var(--text-1)' }}>
-          {consumed.calories}
+          {formatNumber(consumed.calories, user, { maximumFractionDigits: 0 })}
         </span>
         <span style={{ fontSize: '0.58rem', color: 'var(--text-3)', textTransform: 'uppercase',
                        letterSpacing: '0.08em', marginTop: '2px' }}>kcal</span>
@@ -118,7 +119,7 @@ function MacroRings({ proteinPct, carbsPct, fatPct, consumed, targets }) {
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: m.color, flexShrink: 0 }} />
             <div>
               <div style={{ fontSize: '0.55rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</div>
-              <div style={{ fontSize: '0.72rem', fontWeight: 800, color: m.color }}>{Math.round(m.val)}g</div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 800, color: m.color }}>{formatNumber(m.val, user, { maximumFractionDigits: 0 })}g</div>
             </div>
           </div>
         ))}
@@ -127,7 +128,7 @@ function MacroRings({ proteinPct, carbsPct, fatPct, consumed, targets }) {
   );
 }
 
-function MacroProgressBar({ label, consumed, target, color }) {
+function MacroProgressBar({ label, consumed, target, color, user }) {
   const pct = Math.min(100, target ? Math.round((consumed / target) * 100) : 0);
   const over = consumed > target && target > 0;
   return (
@@ -135,7 +136,7 @@ function MacroProgressBar({ label, consumed, target, color }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
         <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{label}</span>
         <span style={{ fontSize: '0.75rem', color: over ? '#ef4444' : 'var(--text-3)' }}>
-          {consumed}g <span style={{ color: 'var(--text-3)' }}>/ {target}g</span>
+          {formatNumber(consumed, user, { maximumFractionDigits: 0 })}g <span style={{ color: 'var(--text-3)' }}>/ {formatNumber(target, user, { maximumFractionDigits: 0 })}g</span>
           {over && <span style={{ marginLeft: '4px', color: '#ef4444' }}>↑</span>}
         </span>
       </div>
@@ -153,7 +154,7 @@ function MacroProgressBar({ label, consumed, target, color }) {
 }
 
 // ── Dynamic BMR Breakdown Panel ────────────────────────────────────────────
-function BMRBreakdown({ weight, height, age, gender, activity, goal, targets }) {
+function BMRBreakdown({ weight, height, age, gender, activity, goal, targets, user }) {
   const bmr = targets.bmr;
   const tdeeRaw = targets.tdee;
   const multiplier = ACTIVITY_MULTIPLIERS[activity] || 1.2;
@@ -178,7 +179,7 @@ function BMRBreakdown({ weight, height, age, gender, activity, goal, targets }) 
           marginLeft: 'auto', fontSize: '0.68rem', fontWeight: 800,
           background: 'var(--bg-elevated)', borderRadius: 99, padding: '3px 10px',
           color: 'var(--accent)',
-        }}>TDEE: {targets.calories} kcal</span>
+        }}>TDEE: {formatNumber(targets.calories, user, { maximumFractionDigits: 0 })} kcal</span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
@@ -186,7 +187,7 @@ function BMRBreakdown({ weight, height, age, gender, activity, goal, targets }) 
           <div key={i}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-1)' }}>{bar.label}</span>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: bar.color }}>{bar.kcal} kcal</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: bar.color }}>{formatNumber(bar.kcal, user, { maximumFractionDigits: 0 })} kcal</span>
             </div>
             <div style={{ height: 6, borderRadius: 99, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
               <div style={{
@@ -210,8 +211,8 @@ function BMRBreakdown({ weight, height, age, gender, activity, goal, targets }) 
           { label: 'Fat',     g: targets.fat,     kcal: targets.fat * 9,     color: MACRO_COLORS.fat     },
         ].map(m => (
           <div key={m.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: m.color }}>{m.g}g</div>
-            <div style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>{m.kcal} kcal</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: m.color }}>{formatNumber(m.g, user, { maximumFractionDigits: 0 })}g</div>
+            <div style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>{formatNumber(m.kcal, user, { maximumFractionDigits: 0 })} kcal</div>
             <div style={{ fontSize: '0.6rem', color: 'var(--text-3)', textTransform: 'uppercase',
                           letterSpacing: '0.06em', marginTop: '1px' }}>{m.label}</div>
           </div>
@@ -247,8 +248,8 @@ export default function Nutrition({ user }) {
   }, []);
 
   // ── Calculator state — live (no button needed) ──────────────────────────
-  const [calcWeight,   setCalcWeight]   = useState(user?.weight || 75);
-  const [calcHeight,   setCalcHeight]   = useState(user?.height || 170);
+  const [calcWeight,   setCalcWeight]   = useState(() => user?.weight ? convertMeasurement(user.weight, 'kg', user) : 75);
+  const [calcHeight,   setCalcHeight]   = useState(() => user?.height ? convertMeasurement(user.height, 'cm', user) : 170);
   const [calcAge,      setCalcAge]      = useState(user?.age || 30);
   const [calcGender,   setCalcGender]   = useState(user?.gender || 'M');
   const [calcActivity, setCalcActivity] = useState(user?.activityLevel || 'sedentary');
@@ -257,9 +258,11 @@ export default function Nutrition({ user }) {
   const [calcGoal, setCalcGoal] = useState(defaultGoal);
 
   // Live-computed targets — update on every input change
+  const calcWeightMetric = convertMeasurementToMetric(calcWeight, 'kg', user);
+  const calcHeightMetric = convertMeasurementToMetric(calcHeight, 'cm', user);
   const macroTargets = useMemo(
-    () => calcMacroTargets(calcWeight, calcHeight, calcAge, calcGender, calcActivity, calcGoal),
-    [calcWeight, calcHeight, calcAge, calcGender, calcActivity, calcGoal]
+    () => calcMacroTargets(calcWeightMetric, calcHeightMetric, calcAge, calcGender, calcActivity, calcGoal),
+    [calcWeightMetric, calcHeightMetric, calcAge, calcGender, calcActivity, calcGoal]
   );
 
   // ── Logging ──────────────────────────────────────────────────────────────
@@ -318,7 +321,7 @@ export default function Nutrition({ user }) {
       const ds = d.toISOString().slice(0, 10);
       const row = nutritionLogs.filter(l => l.date === ds);
       days.push({
-        date:     ds.slice(5),
+        date:     ds,
         calories: row.reduce((s, l) => s + Number(l.calories  || 0), 0),
         protein:  row.reduce((s, l) => s + Number(l.protein_g || 0), 0),
         carbs:    row.reduce((s, l) => s + Number(l.carbs_g   || 0), 0),
@@ -347,8 +350,8 @@ export default function Nutrition({ user }) {
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {[
             { label: 'Age', value: calcAge, onChange: setCalcAge, type: 'number', min: 10, max: 100, flex: '1 1 70px' },
-            { label: 'Wt (kg)', value: calcWeight, onChange: setCalcWeight, type: 'number', min: 30, max: 300, flex: '1 1 80px' },
-            { label: 'Ht (cm)', value: calcHeight, onChange: setCalcHeight, type: 'number', min: 100, max: 250, flex: '1 1 80px' },
+            { label: `Wt (${getMeasurementUnit('kg', user)})`, value: calcWeight, onChange: setCalcWeight, type: 'number', min: 30, max: 300, flex: '1 1 80px' },
+            { label: `Ht (${getMeasurementUnit('cm', user)})`, value: calcHeight, onChange: setCalcHeight, type: 'number', min: 100, max: 250, flex: '1 1 80px' },
           ].map(f => (
             <div key={f.label} style={{ flex: f.flex }}>
               <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>{f.label}</label>
@@ -383,11 +386,11 @@ export default function Nutrition({ user }) {
           display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.6rem', marginTop: '1rem',
         }}>
           {[
-            { label: 'BMR',        value: `${macroTargets.bmr} kcal`,      color: 'var(--text-2)' },
-            { label: 'TDEE (Goal)',value: `${macroTargets.calories} kcal`, color: 'var(--accent)' },
-            { label: 'Protein',    value: `${macroTargets.protein}g`,      color: MACRO_COLORS.protein },
-            { label: 'Carbs',      value: `${macroTargets.carbs}g`,        color: MACRO_COLORS.carbs },
-            { label: 'Fat',        value: `${macroTargets.fat}g`,          color: MACRO_COLORS.fat },
+            { label: 'BMR',        value: `${formatNumber(macroTargets.bmr, user)} kcal`,      color: 'var(--text-2)' },
+            { label: 'TDEE (Goal)',value: `${formatNumber(macroTargets.calories, user)} kcal`, color: 'var(--accent)' },
+            { label: 'Protein',    value: `${formatNumber(macroTargets.protein, user)}g`,      color: MACRO_COLORS.protein },
+            { label: 'Carbs',      value: `${formatNumber(macroTargets.carbs, user)}g`,        color: MACRO_COLORS.carbs },
+            { label: 'Fat',        value: `${formatNumber(macroTargets.fat, user)}g`,          color: MACRO_COLORS.fat },
           ].map(t => (
             <div key={t.label} style={{
               padding: '0.7rem 0.5rem', background: 'var(--bg-elevated)',
@@ -403,9 +406,9 @@ export default function Nutrition({ user }) {
       {/* ── BMR Breakdown ─────────────────────────────────────────────── */}
       <div className="mb-lg">
         <BMRBreakdown
-          weight={calcWeight} height={calcHeight} age={calcAge}
+          weight={calcWeightMetric} height={calcHeightMetric} age={calcAge}
           gender={calcGender} activity={calcActivity} goal={calcGoal}
-          targets={macroTargets}
+          targets={macroTargets} user={user}
         />
       </div>
 
@@ -424,13 +427,13 @@ export default function Nutrition({ user }) {
               background: `${balanceColor}1a`, borderRadius: 99, padding: '2px 8px',
             }}>
               <BalanceIcon size={11} />
-              {balanceLabel}{balance !== 0 && ` ${balance > 0 ? '+' : ''}${balance} kcal`}
+              {balanceLabel}{balance !== 0 && ` ${balance > 0 ? '+' : ''}${formatNumber(Math.abs(balance), user)} kcal`}
             </span>
           </div>
           <p style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1 }}>
-            {consumed.calories}
+            {formatNumber(consumed.calories, user)}
             <span style={{ fontSize: '0.85rem', color: 'var(--text-3)', marginLeft: '6px' }}>
-              / {macroTargets.calories} kcal
+              / {formatNumber(macroTargets.calories, user)} kcal
             </span>
           </p>
           <div style={{
@@ -446,7 +449,7 @@ export default function Nutrition({ user }) {
           <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>{calPct}% of target</span>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>
-              {Math.max(0, macroTargets.calories - consumed.calories)} remaining
+              {formatNumber(Math.max(0, macroTargets.calories - consumed.calories), user)} remaining
             </span>
           </div>
         </div>
@@ -454,9 +457,9 @@ export default function Nutrition({ user }) {
         {/* Macro progress bars */}
         <div className="glass-card">
           <p className="label-caps" style={{ marginBottom: '0.75rem' }}>Macro Targets Today</p>
-          <MacroProgressBar label="Protein" consumed={Math.round(consumed.protein)} target={macroTargets.protein} color={MACRO_COLORS.protein} />
-          <MacroProgressBar label="Carbs"   consumed={Math.round(consumed.carbs)}   target={macroTargets.carbs}   color={MACRO_COLORS.carbs}   />
-          <MacroProgressBar label="Fat"     consumed={Math.round(consumed.fat)}     target={macroTargets.fat}     color={MACRO_COLORS.fat}     />
+          <MacroProgressBar label="Protein" consumed={Math.round(consumed.protein)} target={macroTargets.protein} color={MACRO_COLORS.protein} user={user} />
+          <MacroProgressBar label="Carbs"   consumed={Math.round(consumed.carbs)}   target={macroTargets.carbs}   color={MACRO_COLORS.carbs}   user={user} />
+          <MacroProgressBar label="Fat"     consumed={Math.round(consumed.fat)}     target={macroTargets.fat}     color={MACRO_COLORS.fat}     user={user} />
         </div>
 
         {/* 3-part animated ring chart */}
@@ -477,6 +480,7 @@ export default function Nutrition({ user }) {
                 fatPct={macroTargets.fat       ? (consumed.fat     / macroTargets.fat)     * 100 : 0}
                 consumed={consumed}
                 targets={macroTargets}
+                user={user}
               />
             </div>
           )}
@@ -620,7 +624,7 @@ export default function Nutrition({ user }) {
                 const noData = row.count === 0;
                 return (
                   <tr key={row.date} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: noData ? 0.4 : 1 }}>
-                    <td style={{ padding: '0.45rem 0.6rem', fontWeight: 600 }}>{row.date}</td>
+                    <td style={{ padding: '0.45rem 0.6rem', fontWeight: 600 }}>{formatDate(row.date, user)}</td>
                     <td style={{ padding: '0.45rem 0.6rem', color: 'var(--text-3)' }}>{row.count}</td>
                     <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', fontWeight: 700 }}>{row.calories || '—'}</td>
                     <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', color: MACRO_COLORS.protein }}>{row.protein ? `${row.protein}g` : '—'}</td>

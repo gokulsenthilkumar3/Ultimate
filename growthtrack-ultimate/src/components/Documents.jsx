@@ -11,6 +11,7 @@ import { useToast } from '../hooks/useToast';
 import ConfirmDialog from './ui/ConfirmDialog';
 import useDialogFocus from '../hooks/useDialogFocus';
 import useStore, { selectDocuments, selectAddDocument, selectDeleteDocument } from '../store/useStore';
+import { formatDate } from '../utils/userFormatters';
 
 // ── File type utilities ────────────────────────────────────────────────────────
 const FILE_TYPES = {
@@ -80,7 +81,7 @@ export function UploadModal({ onUpload, onClose }) {
     try {
       const sizeKB = selectedFile.size / 1024;
       const size = sizeKB < 1024 ? `${sizeKB.toFixed(1)} KB` : `${(sizeKB / 1024).toFixed(2)} MB`;
-      await onUpload({ name: selectedFile.name, size, type: fileType, date: new Date().toLocaleDateString() });
+      await onUpload({ name: selectedFile.name, size, type: fileType, date: new Date().toISOString() });
       onClose();
     } catch { setError('We could not save this file record. Check your connection and try again.'); }
     finally { setUploading(false); }
@@ -154,6 +155,7 @@ export function UploadModal({ onUpload, onClose }) {
 
 // ── Main Documents Component ────────────────────────────────────────────────────
 export default function Documents() {
+  const user = useStore(s => s.user);
   const documentProviders = useStore(s => s.appConfig?.documentProviders ?? EMPTY_LIST);
   const documents = useStore(selectDocuments);
   const addDocument = useStore(selectAddDocument);
@@ -433,7 +435,7 @@ export default function Documents() {
                         </div>
                       </td>
                       <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: 'var(--text-3)', fontFamily: 'monospace' }}>{file.size}</td>
-                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: 'var(--text-3)' }}>{file.date}</td>
+                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: 'var(--text-3)' }}>{formatDate(file.date, user)}</td>
                       <td style={{ padding: '0.85rem 1rem' }}>
                         <span style={{
                           fontSize: '0.62rem', padding: '3px 8px', borderRadius: '6px',

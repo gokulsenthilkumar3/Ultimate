@@ -6,6 +6,7 @@ import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
 import { handleTabKeyDown } from '../hooks/useHashTab';
+import { formatCurrency, formatDate, formatNumber, getCurrencySymbol, getUserLocale } from '../utils/userFormatters';
 
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
 const PROJECTS_LIST = ['General', 'Development', 'Design', 'Research', 'Meetings', 'Admin', 'Marketing', 'Other'];
@@ -25,6 +26,7 @@ function formatHours(seconds) {
 
 export default function Timesheet() {
   const toast = useToast();
+  const user = useStore(s => s.user);
   const storeEntries = useStore(s => s.timesheetEntries) || [];
   const storeAdd    = useStore(s => s.addTimesheetEntry);
   const storeDelete = useStore(s => s.deleteTimesheetEntry);
@@ -79,6 +81,8 @@ export default function Timesheet() {
   // Manual entry form
   const [manualForm, setManualForm] = useState({ project: 'General', task: '', date: new Date().toISOString().slice(0, 10), hours: '', minutes: '', billable: true, notes: '' });
   const [showManual, setShowManual] = useState(false);
+  const currencySymbol = getCurrencySymbol(user);
+  const money = value => formatCurrency(value, user);
 
   // Stopwatch logic
   useEffect(() => {
@@ -120,7 +124,7 @@ export default function Timesheet() {
       endTime: new Date().toISOString(),
     };
     addTimesheetEntry(entry);
-    toast.success(`⏱ Session saved: ${formatHours(totalSeconds)} · ${billable ? `$${earnings.toFixed(2)}` : 'Non-billable'}`);
+    toast.success(`⏱ Session saved: ${formatHours(totalSeconds)} · ${billable ? money(earnings) : 'Non-billable'}`);
     setElapsed(0); setStartTime(null); setTask(''); setNotes('');
   };
 
@@ -181,10 +185,10 @@ export default function Timesheet() {
       const dayEntries = timesheetEntries.filter(e => e.date === key);
       const hours = dayEntries.reduce((s, e) => s + (e.seconds || 0), 0) / 3600;
       const earnings = dayEntries.filter(e => e.billable).reduce((s, e) => s + (e.earnings || 0), 0);
-      data.push({ day: d.toLocaleDateString('en', { weekday: 'short' }), hours: +hours.toFixed(2), earnings: +earnings.toFixed(2) });
+      data.push({ day: new Intl.DateTimeFormat(getUserLocale(user), { weekday: 'short' }).format(d), hours: +hours.toFixed(2), earnings: +earnings.toFixed(2) });
     }
     return data;
-  }, [timesheetEntries]);
+  }, [timesheetEntries, user]);
 
   const exportCSV = useCallback(() => {
     const headers = 'Date,Project,Task,Hours,Billable,Earnings,Notes';
@@ -229,8 +233,8 @@ export default function Timesheet() {
           { label: 'Today',        val: formatHours(stats.todaySeconds),  color: 'var(--accent)' },
           { label: 'This Week',    val: formatHours(stats.weekSeconds),   color: '#10b981' },
           { label: 'Total',        val: formatHours(stats.totalSeconds),  color: '#0ea5e9' },
-          { label: 'Wk Earnings',  val: `$${stats.weekEarnings.toFixed(0)}`, color: '#fbbf24' },
-          { label: 'Total Earned', val: `$${stats.totalEarnings.toFixed(0)}`, color: '#f59e0b' },
+          { label: 'Wk Earnings',  val: money(stats.weekEarnings), color: '#fbbf24' },
+          { label: 'Total Earned', val: money(stats.totalEarnings), color: '#f59e0b' },
         ].map(s => (
           <div key={s.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
             <p style={{ fontSize: '1.4rem', fontWeight: 900, color: s.color, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>{s.val}</p>
@@ -289,8 +293,8 @@ export default function Timesheet() {
             {elapsed > 0 && billable && (
               <div style={{ padding: '0.75rem 1.5rem', borderRadius: '10px', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                 <DollarSign size={16} color="#fbbf24" />
-                <span style={{ fontWeight: 900, color: '#fbbf24', fontSize: '1.1rem' }}>+${((elapsed / 3600) * rate).toFixed(2)}</span>
-                <span style={{ color: 'var(--text-3)', fontSize: '0.72rem' }}>@ ${rate}/hr</span>
+                <span style={{ fontWeight: 900, color: '#fbbf24', fontSize: '1.1rem' }}>+{money((elapsed / 3600) * rate)}</span>
+                <span style={{ color: 'var(--text-3)', fontSize: '0.72rem' }}>@ {money(rate)}/hr</span>
               </div>
             )}
 
@@ -307,7 +311,7 @@ export default function Timesheet() {
                 <input id="timesheet-task" value={task} onChange={e => setTask(e.target.value)} placeholder="What are you working on?" className="form-input" style={{ fontSize: '0.82rem' }} />
               </div>
               <div>
-                <label htmlFor="timesheet-rate" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px', fontWeight: 700 }}>Hourly Rate ($)</label>
+                <label htmlFor="timesheet-rate" style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-3)', marginBottom: '4px', fontWeight: 700 }}>Hourly Rate ({currencySymbol})</label>
                 <input id="timesheet-rate" type="number" value={rate} onChange={e => setRate(Number(e.target.value))} className="form-input" style={{ fontSize: '0.82rem' }} />
               </div>
               <div>
@@ -414,14 +418,14 @@ export default function Timesheet() {
                 const e = data[index];
                 return (
                   <div style={{ ...style, display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <div style={{ width: '15%', padding: '0 0.6rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{e.date}</div>
+                    <div style={{ width: '15%', padding: '0 0.6rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{formatDate(e.date, user)}</div>
                     <div style={{ width: '15%', padding: '0 0.6rem', fontWeight: 700, fontSize: '0.78rem' }}>{e.project}</div>
                     <div style={{ width: '25%', padding: '0 0.6rem', color: 'var(--text-2)', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.task || '—'}</div>
                     <div style={{ width: '15%', padding: '0 0.6rem', fontFamily: 'monospace', fontWeight: 800, color: 'var(--accent)', fontSize: '0.78rem' }}>{formatDuration(e.seconds || 0)}</div>
                     <div style={{ width: '15%', padding: '0 0.6rem', textAlign: 'center' }}>
                       <span style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: '99px', fontWeight: 700, background: e.billable ? 'rgba(16,185,129,0.12)' : 'rgba(107,114,128,0.12)', color: e.billable ? '#10b981' : '#6b7280' }}>{e.billable ? 'Billable' : 'Non-bill.'}</span>
                     </div>
-                    <div style={{ width: '10%', padding: '0 0.6rem', fontFamily: 'monospace', color: '#fbbf24', fontWeight: 700, fontSize: '0.78rem' }}>{e.earnings ? `$${e.earnings.toFixed(2)}` : '—'}</div>
+                    <div style={{ width: '10%', padding: '0 0.6rem', fontFamily: 'monospace', color: '#fbbf24', fontWeight: 700, fontSize: '0.78rem' }}>{e.earnings ? money(e.earnings) : '—'}</div>
                     <div style={{ width: '5%', padding: '0 0.6rem', display: 'flex', justifyContent: 'center' }}>
                       <button type="button" aria-label={`Delete ${e.project} entry from ${e.date}`} onClick={() => deleteTimesheetEntry(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}><Trash2 size={12} /></button>
                     </div>
@@ -456,8 +460,8 @@ export default function Timesheet() {
               <BarChart data={last7}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`$${v}`, 'Earnings']} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => formatCurrency(v, user)} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatCurrency(v, user), 'Earnings']} />
                 <Bar dataKey="earnings" fill="#fbbf24" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -472,7 +476,7 @@ export default function Timesheet() {
                     <div key={row.project}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
                         <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>{row.project}</span>
-                        <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: 'var(--accent)' }}>{row.hours}h</span>
+                        <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: 'var(--accent)' }}>{formatNumber(row.hours, user, { maximumFractionDigits: 2 })}h</span>
                       </div>
                       <div style={{ height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px' }}>
                         <div style={{ height: '100%', width: `${(row.hours / maxH) * 100}%`, background: 'var(--accent)', borderRadius: '99px' }} />

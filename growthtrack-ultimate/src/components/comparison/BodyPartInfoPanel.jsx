@@ -23,7 +23,9 @@ import { Z_INDEX } from '../constants';
 import React, { useEffect, useRef, useMemo } from "react";
 import { useShallow }                         from "zustand/react/shallow";
 import use3DStore                             from "../store/use3DStore";
+import useStore                               from "../store/useStore";
 import { BODY_PART_REGIONS }                  from "../morphEngine/BodyPartInteraction";
+import { formatMeasurement, formatNumber }     from "../../utils/userFormatters";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BODY PART KNOWLEDGE BASE
@@ -148,7 +150,7 @@ const BODY_PART_INFO = {
 // DELTA BAR — visual delta indicator
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DeltaBar({ current, goal, unit, isLossPositive = false }) {
+function DeltaBar({ current, goal, unit, isLossPositive = false, formatValue }) {
   const delta       = goal - current;
   const absD        = Math.abs(delta);
   const isPositive  = isLossPositive ? delta < 0 : delta > 0;
@@ -158,8 +160,8 @@ function DeltaBar({ current, goal, unit, isLossPositive = false }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#667788" }}>
-        <span>Current: <strong style={{ color: "#4FC3F7" }}>{current}{unit}</strong></span>
-        <span>Goal: <strong style={{ color: "#22D3EE" }}>{goal}{unit}</strong></span>
+        <span>Current: <strong style={{ color: "#4FC3F7" }}>{formatValue(current)}</strong></span>
+        <span>Goal: <strong style={{ color: "#22D3EE" }}>{formatValue(goal)}</strong></span>
       </div>
       {/* Bar */}
       <div style={{ height: "4px", background: "#0D1520", borderRadius: "2px", overflow: "hidden" }}>
@@ -177,7 +179,7 @@ function DeltaBar({ current, goal, unit, isLossPositive = false }) {
         fontWeight:  700,
         filter:      `drop-shadow(0 0 4px ${color}88)`,
       }}>
-        {isPositive ? "▲" : delta < 0 ? "▼" : "●"} {delta > 0 ? "+" : ""}{delta.toFixed(1)}{unit} to goal
+        {isPositive ? "▲" : delta < 0 ? "▼" : "●"} {delta > 0 ? "+" : delta < 0 ? "-" : ""}{formatValue(Math.abs(delta))} to goal
       </div>
     </div>
   );
@@ -192,6 +194,7 @@ function DeltaBar({ current, goal, unit, isLossPositive = false }) {
  * Slides in from the right when focusedBodyPart is set in store.
  */
 export default function BodyPartInfoPanel() {
+  const user = useStore(s => s.user);
   const { focusedBodyPart, setFocusedBodyPart, setAnatomyDepth, currentMetrics, goalMetrics } =
     use3DStore(useShallow((s) => ({
       focusedBodyPart:  s.focusedBodyPart,
@@ -217,6 +220,10 @@ export default function BodyPartInfoPanel() {
   const goalVal        = primaryMetric ? (goalMetrics[primaryMetric]    ?? 0) : 0;
 
   const isOpen = !!focusedBodyPart && !!info;
+  const metricUnit = primaryMetric === "bodyFat" ? "%" : "cm";
+  const formatMetric = value => metricUnit === "%"
+    ? `${formatNumber(value, user, { maximumFractionDigits: 1 })}%`
+    : formatMeasurement(value, 'cm', user, { maximumFractionDigits: 1 });
 
   return (
     <div
@@ -283,7 +290,8 @@ export default function BodyPartInfoPanel() {
               <DeltaBar
                 current={currentVal}
                 goal={goalVal}
-                unit={primaryMetric === "bodyFat" ? "%" : "cm"}
+                unit={metricUnit}
+                formatValue={formatMetric}
                 isLossPositive={primaryMetric === "waist" || primaryMetric === "bodyFat"}
               />
             </div>
