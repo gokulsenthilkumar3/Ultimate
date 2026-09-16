@@ -20,15 +20,23 @@ export default defineConfig(({ mode }) => {
   ].filter(Boolean),
   server: {
     port: Number(env.VITE_PORT || 5000),
+    strictPort: true,
     host: env.VITE_HOST || '127.0.0.1',
     allowedHosts,
     proxy: {
       '/api': {
-        target: env.API_PROXY_TARGET || 'http://127.0.0.1:3001',
+        // All API requests go through the local gateway, which namespaces
+        // them by product prefix (/api/ultimate/*, /api/finsync/*, etc.).
+        // When the gateway is not running, Vite falls back to a 502 rather
+        // than a hard crash; the UI degrades to its offline state.
+        target: env.GATEWAY_URL || 'http://127.0.0.1:3000',
         changeOrigin: false,
       },
       '/auth': {
-        target: env.API_PROXY_TARGET || 'http://127.0.0.1:3001',
+        // Auth routes stay direct to the Ultimate server (3001) so login
+        // cookies, CSRF tokens, and logout all share the same origin without
+        // a gateway intermediary that could alter the Set-Cookie header.
+        target: env.ULTIMATE_API_URL || 'http://127.0.0.1:3001',
         changeOrigin: false,
       },
     },

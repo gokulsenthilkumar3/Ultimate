@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowUpRight, Grid, List, Pin, Search, Star, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowUpRight, Circle, Copy, Grid, List, Pin, Search, Server, Star, X } from 'lucide-react';
 import safeLocalStorage from '../utils/safeLocalStorage';
 import useStore, { selectPinnedTabs, selectTogglePinnedTab } from '../store/useStore';
 import { GROUPS, NAVIGABLE_MODULES, TABS, tabMeta } from '../config/navigation';
+import { PRODUCTS } from '../config/products';
+import { apiRequest } from '../lib/apiClient';
 import '../styles/app-hub.css';
 
 const DOCK_APP_IDS = ['overview', 'physique', 'tasks', 'finance', 'insights', 'habits', 'workspace'];
@@ -72,6 +74,20 @@ export default function AppLauncher({ setActiveTab }) {
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [groupFilter, setGroupFilter] = useState('all');
   const [clickCounts, setClickCounts] = useState(getClickCounts);
+  const [serviceState, setServiceState] = useState({ loading: true, services: {} });
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const response = await fetch('/api/gateway/health', { credentials: 'include' });
+        const payload = await response.json();
+        if (active) setServiceState({ loading: false, services: Object.fromEntries((payload.services || []).map(service => [service.id, service])) });
+      } catch { if (active) setServiceState({ loading: false, services: {} }); }
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 15_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
   const frequentApps = useMemo(() => [...allApps].sort((a, b) => (clickCounts[b.id] || 0) - (clickCounts[a.id] || 0)).filter(app => clickCounts[app.id] > 0).slice(0, 6), [allApps, clickCounts]);
   const pinnedApps = useMemo(() => allApps.filter(app => pinnedTabs.includes(app.id)), [allApps, pinnedTabs]);
   const dockApps = useMemo(() => {
@@ -99,6 +115,16 @@ export default function AppLauncher({ setActiveTab }) {
     setClickCounts(counts);
     setActiveTab?.(id);
   };
+  const launchProduct = async product => {
+    const popup = window.open('', '_blank');
+    if (popup) popup.opener = null;
+    try {
+      const handoff = await apiRequest('/api/integrations/handoff', { method: 'POST', body: JSON.stringify({ productId: product.id }) });
+      if (popup) popup.location = handoff.launchUrl; else window.open(handoff.launchUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      if (popup) popup.location = product.uiUrl; else window.open(product.uiUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <div className="app-hub-shell">
@@ -121,6 +147,30 @@ export default function AppLauncher({ setActiveTab }) {
         <div><p className="app-hub-label">Personal website</p><p className="app-hub-copy">Visit your linked portfolio.</p></div>
         <a href={portfolioUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">Open website <ArrowUpRight size={15} /></a>
       </div>}
+      <section className="app-hub-panel product-launcher" aria-labelledby="connected-products-title">
+        <div className="product-launcher__heading">
+          <div><p className="app-hub-label"><Server size={15} /> Connected products</p><h2 id="connected-products-title">Your workspace, one launchpad.</h2><p>Open each product independently while Ultimate keeps its availability visible.</p></div>
+          <span className="product-launcher__gateway" aria-busy={serviceState.loading}><Circle size={9} fill={serviceState.loading ? 'currentColor' : '#30d158'} /> Gateway :3000</span>
+        </div>
+        <div className="product-launcher__grid">
+          {PRODUCTS.map((product, idx) => {
+            const online = Boolean(serviceState.services[product.id]?.online);
+            const isOffline = !serviceState.loading && !online;
+            return <article className="product-card" key={product.id} style={{ '--product-color': product.color }} data-offline={String(isOffline)}>
+              <div className="product-card__top"><span className="product-card__icon" aria-hidden="true">{product.icon}</span><span className={`product-card__status ${online ? 'is-online' : ''}`}><i />{serviceState.loading ? 'Checking' : online ? 'Online' : 'Offline'}</span></div>
+              <div><h3>{product.name}</h3><p>{product.description}</p></div>
+              <div className="product-card__actions">
+                <button type="button" onClick={() => launchProduct(product)}
+                  data-tip={isOffline ? product.command : undefined}
+                  aria-label={`Open ${product.name}${isOffline ? ' (run ' + product.command + ' to start locally)' : ''}`}
+                >Open app <ArrowUpRight size={14} /></button>
+                <a href={`http://localhost:3000${product.healthUrl}`} target="_blank" rel="noopener noreferrer">API</a>
+              </div>
+              <button className="product-card__command" type="button" title="Copy local start command" onClick={() => navigator.clipboard?.writeText(product.command)}><Copy size={12} /> {product.command}</button>
+            </article>;
+          })}
+        </div>
+      </section>
       {frequentApps.length > 0 && <section className="app-hub-frequent" aria-label="Frequently used modules">
         <h2 className="app-hub-label"><Star size={13} /> Frequently used</h2>
         <div className="chip-row">{frequentApps.map(app => <button className="app-hub-kpi" key={app.id} onClick={() => onNavigate(app.id)}>{app.icon} {app.label}</button>)}</div>
@@ -141,9 +191,9 @@ export default function AppLauncher({ setActiveTab }) {
         if (!apps.length) return null;
         return <section key={group} className="app-hub-group">
           <h2 className="app-hub-label">{group}<span>{apps.length}</span></h2>
-          <div className={`app-hub-cards app-hub-cards--${viewMode}`}>{apps.map(app => {
+          <div className={`app-hub-cards app-hub-cards--${viewMode}`}>{apps.map((app, appIdx) => {
             const isPinned = pinnedTabs.includes(app.id);
-            return <article key={app.id} className="glass-card app-hub-card" style={{ '--app-color': app.color }}>
+            return <article key={app.id} className="glass-card app-hub-card" style={{ '--app-color': app.color, '--card-i': appIdx }}>
               <button className="app-hub-card__launch" onClick={() => onNavigate(app.id)} aria-label={`Open ${app.label}`}>
                 <span className="app-hub-card__icon" aria-hidden="true">{appIcon(app)}</span>
                 <span className="app-hub-card__copy"><strong>{app.label}</strong><span>{app.description}</span></span>

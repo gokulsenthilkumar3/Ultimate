@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import json
+import urllib.request
 
 from src.data.loader import load_forex_data
 from src.features.engineer import load_config
@@ -16,6 +18,22 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Consume Ultimate's short-lived handoff when Forex is opened from the Apps Hub.
+handoff = st.query_params.get("ultimate_handoff")
+if handoff and "ultimate_identity" not in st.session_state:
+    try:
+        request = urllib.request.Request(
+            "http://localhost:3000/api/ultimate/api/integrations/consume",
+            data=json.dumps({"productId": "forex", "token": handoff}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            st.session_state["ultimate_identity"] = json.loads(response.read().decode("utf-8"))
+        st.query_params.clear()
+    except Exception:
+        st.warning("The Ultimate sign-in link expired. Open Forex from Ultimate again to reconnect.")
 
 st.title("📈 Forex Ensemble Prediction Dashboard")
 st.markdown("Visualise the predictive performance of our ML models against historical and recent data.")

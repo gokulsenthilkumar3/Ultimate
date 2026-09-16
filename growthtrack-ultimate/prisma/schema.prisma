@@ -843,6 +843,9 @@ model AuditLog {
   user_id     String?
   user_agent  String?
   severity    String?  @default("info")
+  source      String?  @default("ultimate-api")
+  request_id  String?
+  metadata    String?
   timestamp   DateTime @default(now())
   createdBy   String?
   updatedBy   String?
@@ -865,6 +868,9 @@ model LoginLog {
   updatedBy      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
+  source         String?  @default("ultimate-api")
+  request_id     String?
+  metadata       String?
 
   @@map("login_logs")
 }
@@ -881,6 +887,9 @@ model SessionLog {
   updatedBy  String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
+  source     String?  @default("ultimate-api")
+  request_id String?
+  metadata   String?
 
   @@map("session_logs")
 }

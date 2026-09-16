@@ -268,7 +268,6 @@ export default function AiDashboard() {
         {showPrompts && (
           <div className="agent-workspace__prompts">
             <p><Zap size={14} aria-hidden="true" /> A good place to start</p>
-            </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
               {QUICK_PROMPTS.map(p => (
                 <Card as="button" interactive type="button" key={p.label} onClick={() => sendMessage(p.prompt)} disabled={loading} className="agent-workspace__prompt">{p.label}</Card>

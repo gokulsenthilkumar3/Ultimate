@@ -8,6 +8,13 @@ import storage from '../utils/safeLocalStorage';
 beforeEach(() => { mocks.state.pinnedTabs = []; mocks.state.togglePinnedTab.mockClear(); storage.clear(); });
 afterEach(cleanup);
 
+it('shows all standalone products and their start commands', () => {
+  render(<AppLauncher />);
+  expect(screen.getByRole('heading', { name: 'Your workspace, one launchpad.' })).toBeVisible();
+  ['FinSync', 'OxFin', 'Forex', 'Family Connect', 'Equity / NiftyLens'].forEach(name => expect(screen.getByRole('heading', { name })).toBeVisible());
+  expect(screen.getAllByTitle('Copy local start command')).toHaveLength(5);
+});
+
 it('searches navigation keywords and clears combined filters', () => {
   render(<AppLauncher />);
   fireEvent.change(screen.getByRole('searchbox', { name: 'Search apps' }), { target: { value: 'water' } });

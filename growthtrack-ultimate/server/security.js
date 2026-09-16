@@ -27,7 +27,7 @@ function publicUser(user) {
   };
 }
 
-export function createSecurity({ prisma, logToFile }) {
+export function createSecurity({ prisma, logToFile, writeEvent }) {
   const attempts = new Map();
   const apiBuckets = new Map();
   const isProduction = process.env.NODE_ENV === 'production';
@@ -67,6 +67,7 @@ export function createSecurity({ prisma, logToFile }) {
   };
 
   async function writeLoginLog({ userId, email, action, failureReason, req }) {
+    if (writeEvent) return writeEvent({ category: 'auth', action, user_id: userId, user_email: email, details: failureReason, severity: action.includes('failed') || action.includes('blocked') ? 'warning' : 'info' }, req);
     await prisma.loginLog.create({ data: { user_id: userId, email, action, failure_reason: failureReason, ip_address: req.ip, user_agent: req.headers['user-agent'] } });
     logToFile(action === 'login_failed' ? 'warning' : 'info', `auth:${action}`, { user_id: userId, email, failure_reason: failureReason, ip: req.ip, user_agent: req.headers['user-agent'] });
   }
@@ -96,7 +97,7 @@ export function createSecurity({ prisma, logToFile }) {
     const csrfToken = randomToken();
     const expiresAt = new Date(now + SESSION_HOURS * 60 * 60 * 1000);
     const session = await prisma.authSession.create({ data: { userId: user.id, tokenHash: sha256(sessionToken), csrfHash: sha256(csrfToken), ipAddress: req.ip, userAgent: req.headers['user-agent'], expiresAt } });
-    await prisma.sessionLog.create({ data: { user_id: user.id, action: 'start', details: `Session ${session.id} created`, ip_address: req.ip, user_agent: req.headers['user-agent'] } });
+    if (writeEvent) await writeEvent({ category: 'session', action: 'start', user_id: user.id, user_name: user.fullName, user_email: user.email, item_id: session.id, details: `Session ${session.id} created` }, req);
     await writeLoginLog({ userId: user.id, email, action: 'login_success', req });
 
     res.cookie(COOKIE_NAME, sessionToken, { httpOnly: true, secure: isProduction, sameSite: 'strict', path: '/', maxAge: SESSION_HOURS * 60 * 60 * 1000 });
@@ -127,7 +128,7 @@ export function createSecurity({ prisma, logToFile }) {
       // Successful mutations are recorded by the CRUD audit service. Keep a
       // request-level record only for failures so routine reads do not flood
       // the local database or duplicate mutation logs.
-      if (res.statusCode >= 400) prisma.auditLog.create({ data: { action: `${req.method} ${req.path}`, table_name: 'http_request', item_id: session.id, details: JSON.stringify({ status: res.statusCode, queryKeys: Object.keys(req.query || {}) }), actor_name: session.user.fullName, actor_email: session.user.email, actor_ip: req.ip, category: 'request', user_id: session.user.id, user_agent: req.headers['user-agent'], severity: 'warning' } }).catch(() => {});
+      if (res.statusCode >= 400) (writeEvent ? writeEvent({ category: 'request', action: `${req.method} ${req.path}`, table_name: 'http_request', item_id: session.id, details: { status: res.statusCode, queryKeys: Object.keys(req.query || {}) }, user_id: session.user.id, user_name: session.user.fullName, user_email: session.user.email, severity: 'warning' }, req) : Promise.resolve()).catch(() => {});
     });
     next();
   };
@@ -142,7 +143,7 @@ export function createSecurity({ prisma, logToFile }) {
 
   const logout = async (req, res) => {
     await prisma.authSession.update({ where: { id: req.authSession.id }, data: { revokedAt: new Date() } });
-    await prisma.sessionLog.create({ data: { user_id: req.user.id, action: 'end', details: `Session ${req.authSession.id} revoked`, ip_address: req.ip, user_agent: req.headers['user-agent'] } });
+    if (writeEvent) await writeEvent({ category: 'session', action: 'end', user_id: req.user.id, user_name: req.user.fullName, user_email: req.user.email, item_id: req.authSession.id, details: `Session ${req.authSession.id} revoked` }, req);
     res.clearCookie(COOKIE_NAME, { path: '/', sameSite: 'strict', secure: isProduction });
     res.json({ success: true });
   };

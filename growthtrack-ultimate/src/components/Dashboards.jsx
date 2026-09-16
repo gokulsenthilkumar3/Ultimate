@@ -196,7 +196,7 @@ export default function Dashboards() {
              detail="Body signal overview across strength, recovery, mobility, and endurance."
            />
            {radarData.length >= 3 ? <div style={{ flex: 1, minHeight: 0 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1} initialDimension={{ width: 1, height: 1 }}>
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                   <PolarGrid stroke="var(--border-strong)" />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-3)', fontSize: 11, fontWeight: 700 }} />
@@ -225,7 +225,7 @@ export default function Dashboards() {
              detail="Sleep quality tracked against stress patterns over time."
            />
            {correlationData.length >= 2 ? <div style={{ flex: 1, minHeight: 0 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1} initialDimension={{ width: 1, height: 1 }}>
                 <AreaChart data={correlationData}>
                   <defs>
                     <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
@@ -255,7 +255,7 @@ export default function Dashboards() {
              detail="Income and expense rhythm across the last six months."
            />
            {financeChartData.length ? <div style={{ flex: 1, minHeight: 0 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1} initialDimension={{ width: 1, height: 1 }}>
                 <BarChart data={financeChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="month" stroke="var(--text-3)" fontSize={10} />
@@ -276,7 +276,7 @@ export default function Dashboards() {
              detail="Daily completion density across the last two weeks."
            />
            {habitChartData.length ? <div style={{ flex: 1, minHeight: 0 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1} initialDimension={{ width: 1, height: 1 }}>
                 <AreaChart data={habitChartData}>
                   <defs>
                     <linearGradient id="colorHabit" x1="0" y1="0" x2="0" y2="1">
@@ -302,7 +302,7 @@ export default function Dashboards() {
              detail="Rolling average of goal progress additions across the recent window."
            />
            {goalChartData.length ? <div style={{ flex: 1, minHeight: 0 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1} initialDimension={{ width: 1, height: 1 }}>
                 <LineChart data={goalChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="date" stroke="var(--text-3)" fontSize={10} tickFormatter={(v) => v.slice(5)} />

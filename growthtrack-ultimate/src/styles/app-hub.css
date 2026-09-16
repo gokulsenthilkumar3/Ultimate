@@ -31,9 +31,9 @@
 .app-hub-view-switch button[aria-pressed='true'], .app-hub-pinned-filter[aria-pressed='true'] { color: var(--accent); background: var(--accent-soft); }
 .app-hub-pinned-filter { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 13px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-panel-solid); color: var(--text-2); font-size: .8rem !important; }
 .app-hub-pinned-filter > span { font-variant-numeric: tabular-nums; opacity: .8; }
-.app-hub-filters { display: flex; width: 100%; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin; }
+.app-hub-filters { display: flex; width: 100%; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; }
 .app-hub-filters button { flex-shrink: 0; padding: 9px 14px; min-height: 40px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--text-2); font-size: .8rem; }
-.app-hub-filters button[aria-pressed='true'] { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--accent); font-weight: 650; }
+.app-hub-filters button[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent); font-weight: 650; }
 .app-hub-results { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: -12px; }
 .app-hub-result-count { margin: 0; font-size: .78rem; color: var(--text-2); overflow-wrap: anywhere; }
 .app-hub-results button { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 8px; border: 0; background: transparent; color: var(--accent); font-size: .76rem; }
@@ -56,11 +56,32 @@
 .app-hub-empty > svg { color: var(--accent); }
 .app-hub-empty h2 { margin: 0; color: var(--text-1); font-size: 1.25rem; }
 .app-hub-empty p { margin: 0; max-width: 360px; line-height: 1.6; font-size: .85rem; }
+.product-launcher { position: relative; overflow: hidden; border-color: var(--ui-line-strong) !important; background: color-mix(in srgb, var(--ui-panel-solid) 84%, transparent) !important; -webkit-backdrop-filter: blur(28px) saturate(145%); backdrop-filter: blur(28px) saturate(145%); }
+.product-launcher::before { content: ''; position: absolute; inset: -100px -80px auto auto; width: 260px; height: 260px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, transparent); filter: blur(40px); pointer-events: none; }
+.product-launcher__heading { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.product-launcher__heading h2 { margin: 0; font-size: clamp(1.25rem, 2.5vw, 1.75rem); letter-spacing: -.04em; }
+.product-launcher__heading p:not(.app-hub-label) { margin: 7px 0 0; color: var(--text-2); font-size: .82rem; }
+.product-launcher__gateway { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border: 1px solid var(--ui-line); border-radius: 999px; background: var(--ui-highlight); color: var(--text-2); font-size: .72rem; white-space: nowrap; }
+.product-launcher__grid { position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 12px; }
+.product-card { display: grid; align-content: space-between; gap: 16px; min-height: 235px; padding: 16px; border: 1px solid var(--ui-line); border-radius: 20px; background: color-mix(in srgb, var(--ui-panel-solid) 90%, transparent); box-shadow: 0 14px 38px rgba(0,0,0,.08); transition: transform var(--gt-motion-standard), border-color var(--gt-motion-standard), box-shadow var(--gt-motion-standard); }
+.product-card:hover { transform: translateY(-2px); border-color: var(--product-color); box-shadow: 0 20px 50px rgba(0,0,0,.14); }
+.product-card__top { display: flex; justify-content: space-between; align-items: center; }
+.product-card__icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: color-mix(in srgb, var(--product-color) 16%, transparent); font-size: 1.35rem; }
+.product-card__status { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: .67rem; }
+.product-card__status i { width: 7px; height: 7px; border-radius: 50%; background: #8e8e93; }.product-card__status.is-online i { background: #30d158; box-shadow: 0 0 0 4px rgba(48,209,88,.12); }
+.product-card h3 { margin: 0 0 7px; font-size: .98rem; }.product-card p { margin: 0; color: var(--text-2); font-size: .76rem; line-height: 1.55; }
+.product-card__actions { display: flex; gap: 8px; }.product-card__actions a, .product-card__actions button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 0 13px; border: 0; border-radius: 12px; background: var(--product-color); color: white; text-decoration: none; font-size: .75rem; font-weight: 700; }.product-card__actions a { background: var(--ui-highlight); color: var(--text-1); }
+.product-card__command { display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0; overflow: hidden; border: 0; background: transparent; color: var(--text-3); font-family: var(--font-mono, monospace) !important; font-size: .64rem !important; text-overflow: ellipsis; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .product-card { transition: none; }.product-card:hover { transform: none; } }
 @media (hover: hover) {
   .app-hub-card__launch:hover { background: var(--ui-highlight); }
   .app-hub-card__pin:hover, .app-hub-filters button:hover, .app-hub-view-switch button:hover { color: var(--accent); background: var(--accent-soft); }
 }
 @media (max-width: 1000px) { .app-hub-shell .app-hub-hero { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 640px) {
+  .product-launcher__grid { grid-template-columns: 1fr 1fr; }
+  .product-card { min-height: 200px; }
+}
 @media (max-width: 540px) {
   .app-hub-shell { gap: 18px; }
   .app-hub-panel { padding: 16px !important; }
@@ -74,4 +95,126 @@
   .app-hub-cards--list .app-hub-card__pin { right: 8px; top: 20px; }
   .app-hub-cards--list .app-hub-card__arrow { display: none; }
   .app-hub-cards--list .app-hub-card__launch { padding-right: 58px; }
+  .product-launcher__heading { flex-direction: column; }.product-launcher__grid { grid-template-columns: 1fr; }.product-card { min-height: 220px; }
 }
+
+/* ── iOS-inspired spring entrance ────────────────────────────────────────────
+   Cards drift up 12 px and fade in. Stagger is driven by --card-i set on
+   each article via inline style in AppLauncher. prefers-reduced-motion
+   collapses the animation to an immediate opacity fade only.            */
+@keyframes hub-card-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@keyframes hub-card-in-reduced {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.app-hub-card {
+  animation: hub-card-in 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--card-i, 0) * 35ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-hub-card {
+    animation: hub-card-in-reduced 0.2s ease both;
+    animation-delay: 0ms;
+  }
+}
+
+/* ── Animated gradient border on product card hover ─────────────────────────
+   A conic-gradient pseudo-element rotates behind the card to create the
+   iOS-17-style glowing border on hover without JavaScript.               */
+@property --border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes spin-border { to { --border-angle: 360deg; } }
+.product-card {
+  position: relative;
+  isolation: isolate;
+}
+.product-card::after {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 21px;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 60%,
+    color-mix(in srgb, var(--product-color) 80%, transparent) 70%,
+    transparent 80%
+  );
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.product-card:hover::after {
+  opacity: 1;
+  animation: spin-border 3s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-card::after { animation: none; }
+  .product-card:hover::after { opacity: 1; background: color-mix(in srgb, var(--product-color) 35%, transparent); }
+}
+
+/* ── Online status dot pulse ─────────────────────────────────────────────────*/
+@keyframes status-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(48,209,88,.5); }
+  60%       { box-shadow: 0 0 0 5px rgba(48,209,88,0); }
+}
+.product-card__status.is-online i {
+  background: #30d158;
+  animation: status-pulse 2.4s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-card__status.is-online i { animation: none; box-shadow: 0 0 0 4px rgba(48,209,88,.18); }
+}
+
+/* ── Consistent keyboard focus rings ─────────────────────────────────────────
+   Override browser defaults with our design-system accent so focus is always
+   visible and matches the product theme.                                  */
+.app-hub-shell :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.app-hub-card__launch:focus-visible,
+.app-hub-card__pin:focus-visible {
+  outline-offset: -3px;
+}
+.product-card__actions button:focus-visible,
+.product-card__actions a:focus-visible {
+  outline-color: color-mix(in srgb, var(--product-color) 80%, var(--accent));
+}
+
+/* ── "Start locally" offline tooltip ────────────────────────────────────────*/
+.product-card[data-offline="true"] .product-card__actions button {
+  position: relative;
+}
+.product-card[data-offline="true"] .product-card__actions button::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+  width: max-content;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: var(--ui-popover, hsl(0 0% 10%));
+  color: var(--text-1);
+  font-size: .69rem;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 50;
+}
+.product-card[data-offline="true"] .product-card__actions button:hover::after,
+.product-card[data-offline="true"] .product-card__actions button:focus-visible::after {
+  opacity: 1;
+}
+

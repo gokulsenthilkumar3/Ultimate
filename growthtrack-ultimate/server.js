@@ -5,12 +5,15 @@ import Stripe from 'stripe';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'url';
 import { logToFile } from './logger.js';
 import { createSecurity } from './server/security.js';
 import BaseController from './server/controllers/BaseController.js';
 import { collectionToClient } from './server/collectionPayload.js';
 import MetricLogController from './server/controllers/MetricLogController.js';
+import { enabledIdentityProviders } from './server/identityProviders.js';
+import { createEventLogger } from './server/eventLogger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,12 +45,44 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
 const APP_URL = process.env.APP_URL || 'http://localhost:5000/Ultimate';
-const security = createSecurity({ prisma, logToFile });
+const eventLogger = createEventLogger({ prisma, logToFile });
+const security = createSecurity({ prisma, logToFile, writeEvent: eventLogger.write });
+async function cleanupExpiredLogs() {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  try {
+    await Promise.all([
+      prisma.auditLog.deleteMany({ where: { timestamp: { lt: cutoff } } }),
+      prisma.sessionLog.deleteMany({ where: { timestamp: { lt: cutoff } } }),
+      prisma.loginLog.deleteMany({ where: { timestamp: { lt: cutoff } } }),
+    ]);
+  } catch (error) { logToFile('warning', 'log_retention_cleanup_failed', { error: String(error?.message || error) }); }
+}
+void cleanupExpiredLogs();
+setInterval(cleanupExpiredLogs, 6 * 60 * 60 * 1000).unref?.();
 const authMiddleware = security.authenticate;
+const handoffSecret = process.env.HANDOFF_SECRET || crypto.randomBytes(32).toString('hex');
+const handoffNonces = new Map();
+const productCallbacks = Object.freeze({
+  finsync: 'http://localhost:5101/auth/ultimate/callback', oxfin: 'http://localhost:5102/auth/ultimate/callback',
+  forex: 'http://localhost:8501', family: 'http://localhost:5104/auth/ultimate/callback', equity: 'http://localhost:5105/auth/ultimate/callback',
+});
+const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+const signHandoff = payload => { const body = encode(payload); return `${body}.${crypto.createHmac('sha256', handoffSecret).update(body).digest('base64url')}`; };
+const verifyHandoff = token => {
+  const [body, signature] = String(token || '').split('.'); if (!body || !signature) return null;
+  const expected = crypto.createHmac('sha256', handoffSecret).update(body).digest(); const received = Buffer.from(signature, 'base64url');
+  if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) return null;
+  try { return JSON.parse(Buffer.from(body, 'base64url').toString('utf8')); } catch { return null; }
+};
 
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 app.use(security.headers);
+app.use((req, res, next) => {
+  req.requestId = String(req.headers['x-request-id'] || crypto.randomUUID());
+  res.setHeader('X-Request-Id', req.requestId);
+  next();
+});
 app.use(cors(security.corsOptions));
 app.use('/api', security.apiRateLimit);
 app.use('/api/webhook/stripe', express.raw({ type: 'application/json' }));
@@ -66,21 +101,55 @@ app.use('/api', (req, res, next) => {
 // Root path is reserved for the frontend (dist/index.html)
 
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'online', service: 'GrowthTrack API' }));
+app.get('/api/auth/providers', (req, res) => res.json({ providers: enabledIdentityProviders() }));
+
+// Gateway health — probes each product and returns live readiness.
+// AppLauncher polls this every 15 s to show online/offline state in the App Hub.
+const GATEWAY_PRODUCT_REGISTRY = Object.freeze([
+  { id: 'ultimate', name: 'Ultimate',          healthUrl: `http://127.0.0.1:${PORT}/api/health` },
+  { id: 'finsync',  name: 'FinSync',           healthUrl: 'http://localhost:5101/api/health' },
+  { id: 'oxfin',    name: 'OxFin',             healthUrl: 'http://localhost:5102/api/health' },
+  { id: 'forex',    name: 'Forex',             healthUrl: 'http://localhost:8501/api/health' },
+  { id: 'family',   name: 'Family Connect',    healthUrl: 'http://localhost:5104/api/health' },
+  { id: 'equity',   name: 'Equity/NiftyLens',  healthUrl: 'http://localhost:5105/api/health' },
+]);
+async function probeProduct({ id, name, healthUrl }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1800);
+  try {
+    const res = await fetch(healthUrl, { signal: controller.signal });
+    return { id, name, online: res.ok };
+  } catch { return { id, name, online: false }; }
+  finally { clearTimeout(timer); }
+}
+app.get('/api/gateway/health', async (req, res) => {
+  try {
+    const services = await Promise.all(GATEWAY_PRODUCT_REGISTRY.map(probeProduct));
+    return res.json({ status: 'online', gateway: { port: PORT }, services });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+app.post('/api/integrations/handoff', authMiddleware, (req, res) => {
+  const productId = String(req.body?.productId || ''); const callback = productCallbacks[productId];
+  if (!callback) return res.status(400).json({ error: 'Unknown product.' });
+  const now = Math.floor(Date.now() / 1000); const jti = crypto.randomUUID();
+  const payload = { iss: 'ultimate-local', aud: productId, sub: req.user.id, email: req.user.email, name: req.user.fullName, iat: now, exp: now + 60, jti };
+  handoffNonces.set(jti, payload.exp); const token = signHandoff(payload); const separator = callback.includes('?') ? '&' : '?';
+  return res.json({ token, expiresAt: payload.exp, launchUrl: `${callback}${separator}ultimate_handoff=${encodeURIComponent(token)}` });
+});
+app.post('/api/integrations/consume', (req, res) => {
+  const productId = String(req.body?.productId || ''); const payload = verifyHandoff(req.body?.token); const now = Math.floor(Date.now() / 1000);
+  if (!payload || payload.aud !== productId || payload.exp <= now || !handoffNonces.has(payload.jti)) return res.status(401).json({ error: 'Invalid or expired handoff.' });
+  handoffNonces.delete(payload.jti);
+  return res.json({ user: { id: payload.sub, email: payload.email, name: payload.name }, provider: payload.iss });
+});
 
 // Keep CRUD auditing at the API boundary so every module is covered, including
 // modules whose client-side store does not import the logger directly.
 async function auditCrud({ action, table_name, item_id, details, userId, req }) {
   req.auditWritten = true;
-  try {
-    await prisma.auditLog.create({ data: {
-      action, table_name, item_id: item_id == null ? null : String(item_id),
-      details: typeof details === 'string' ? details : JSON.stringify(details),
-      category: 'crud', user_id: userId, actor_ip: req.ip,
-      user_agent: req.headers['user-agent'], severity: 'info'
-    }});
-  } catch (error) {
-    console.error('[CRUD Audit Error]', error);
-  }
+  await eventLogger.write({ category: 'audit', source: 'crud-boundary', action, table_name, item_id, details, user_id: userId, user_name: req.user?.fullName, user_email: req.user?.email }, req);
 }
 
 function sendInternalError(res, error, context) {
@@ -88,32 +157,48 @@ function sendInternalError(res, error, context) {
   return res.status(500).json({ error: 'Internal server error.' });
 }
 
-// Audit Logs (Read from Winston rotating file)
-app.get('/api/logs', authMiddleware, async (req, res) => {
-  try {
-    const logs = await prisma.auditLog.findMany({ where: { user_id: req.user.id }, orderBy: { timestamp: 'desc' }, take: 100 });
-    res.json(logs);
-  } catch (err) {
-    console.error('[Logs Error]', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+function logWhere(query = {}, category) {
+  const where = category ? { category } : {};
+  if (query.action) where.action = String(query.action);
+  if (query.source) where.source = String(query.source);
+  if (query.severity) where.severity = String(query.severity);
+  if (query.from || query.to) where.timestamp = { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) };
+  if (query.q) where.OR = [{ action: { contains: String(query.q) } }, { details: { contains: String(query.q) } }, { table_name: { contains: String(query.q) } }];
+  return where;
+}
+function categoryWhere(query = {}, kind) {
+  const where = {};
+  if (query.action) where.action = String(query.action);
+  if (query.source) where.source = String(query.source);
+  if (query.from || query.to) where.timestamp = { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) };
+  if (kind === 'audit') { if (query.severity) where.severity = String(query.severity); if (query.q) where.OR = [{ action: { contains: String(query.q) } }, { details: { contains: String(query.q) } }, { table_name: { contains: String(query.q) } }]; }
+  if (kind === 'auth' && query.q) where.OR = [{ action: { contains: String(query.q) } }, { email: { contains: String(query.q) } }, { failure_reason: { contains: String(query.q) } }];
+  if (kind === 'session' && query.q) where.details = { contains: String(query.q) };
+  return where;
+}
+function unified(row, category) {
+  return { ...row, category: row.category || category, source: row.source || 'ultimate-api', user_id: row.user_id || null, user_name: row.actor_name || null, user_email: row.actor_email || row.email || null, request_id: row.request_id || null, actor_ip: row.actor_ip || row.ip_address || null, timestamp: row.timestamp || row.createdAt };
+}
+async function readUnifiedLogs(req, fixedCategory) {
+  const page = Math.max(1, Number(req.query.page || 1)); const limit = Math.min(100, Math.max(1, Number(req.query.limit || 50))); const query = req.query;
+  const categories = fixedCategory ? [fixedCategory] : (query.category && query.category !== 'all' ? [String(query.category)] : ['auth', 'session', 'audit', 'crud', 'system', 'request']);
+  const [auth, sessions, audits] = await Promise.all([
+    categories.includes('auth') ? prisma.loginLog.findMany({ where: categoryWhere(query, 'auth'), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
+    categories.includes('session') ? prisma.sessionLog.findMany({ where: categoryWhere(query, 'session'), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
+    prisma.auditLog.findMany({ where: categoryWhere(query, 'audit'), orderBy: { timestamp: 'desc' }, take: 500 }),
+  ]);
+  const all = [...auth.map(x => unified(x, 'auth')), ...sessions.map(x => unified(x, 'session')), ...audits.map(x => unified(x, x.category || 'audit'))].filter(x => !fixedCategory || x.category === fixedCategory).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const total = all.length; return { logs: all.slice((page - 1) * limit, page * limit), total, page, limit, diagnostics: eventLogger.diagnostics };
+}
+app.get('/api/logs', authMiddleware, async (req, res) => { try { res.json(await readUnifiedLogs(req)); } catch (err) { console.error('[Logs Error]', err); res.status(500).json({ error: 'Unable to read logs.', requestId: req.requestId }); } });
+app.get('/api/logs/summary', authMiddleware, async (req, res) => { try { const [audit, session, auth] = await Promise.all([prisma.auditLog.count(), prisma.sessionLog.count(), prisma.loginLog.count()]); res.json({ counts: { audit, session, auth, total: audit + session + auth }, diagnostics: eventLogger.diagnostics }); } catch { res.status(500).json({ error: 'Unable to read log summary.' }); } });
+for (const [pathName, category] of [['sessions', 'session'], ['auth', 'auth'], ['audit', 'audit']]) app.get(`/api/logs/${pathName}`, authMiddleware, async (req, res) => { try { res.json(await readUnifiedLogs(req, category)); } catch { res.status(500).json({ error: 'Unable to read logs.' }); } });
 
 app.post('/api/logs', authMiddleware, async (req, res) => {
   try {
     const { action, table_name, item_id, details, category, severity } = req.body;
     
-    await prisma.auditLog.create({ data: {
-      action, table_name, item_id, details: typeof details === 'string' ? details : JSON.stringify(details),
-      category: category || 'system', user_id: req.user.id, actor_name: req.user.fullName, actor_email: req.user.email,
-      actor_ip: req.ip, user_agent: req.headers['user-agent'], severity: severity || 'info'
-    }});
-    logToFile(severity || 'info', details || action, {
-      action, table_name, item_id, category, user_id: req.user.id,
-      actor_name: req.user.fullName, actor_email: req.user.email,
-      actor_ip: req.ip, user_agent: req.headers['user-agent']
-    });
-    
+    await eventLogger.write({ action, table_name, item_id, details, category: category || 'system', user_id: req.user.id, user_name: req.user.fullName, user_email: req.user.email, severity: severity || 'info' }, req);
     res.json({ success: true });
   } catch (err) {
     console.error('[Logs Error]', err);
@@ -127,9 +212,7 @@ app.post('/api/session-logs', authMiddleware, async (req, res) => {
   try {
     const { action, details } = req.body;
 
-    await prisma.sessionLog.create({ data: { user_id: req.user.id, action, details, ip_address: req.ip, user_agent: req.headers['user-agent'] } });
-    logToFile('info', `session:${action}`, { user_id: req.user.id, action, details, ip: req.ip, user_agent: req.headers['user-agent'] });
-    
+    await eventLogger.write({ category: 'session', action, details, user_id: req.user.id, user_name: req.user.fullName, user_email: req.user.email }, req);
     res.json({ success: true });
   } catch (err) {
     console.error('[Session Logs Error]', err);

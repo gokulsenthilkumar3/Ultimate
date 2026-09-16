@@ -10,7 +10,7 @@ import { formatDateTime } from '../utils/userFormatters';
 
 const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error', 'login_success', 'login_failed', 'signup', 'logout', 'session_start', 'session_end', 'page_view'];
 const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];
-const CATEGORIES = ['all', 'auth', 'crud', 'session', 'system'];
+const CATEGORIES = ['all', 'auth', 'session', 'audit', 'system'];
 const TABLES     = ['all', 'users', 'goals', 'habits', 'tasks', 'finance', 'training', 'nutrition', 'notes', 'projects', 'sessions', 'navigation'];
 
 const SENTIMENT_COLORS = {
@@ -46,6 +46,7 @@ export default function Logs() {
 
   const [logs,     setLogs]     = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [search,   setSearch]   = useState('');
   const [actionF,  setActionF]  = useState('all');
   const [tableF,   setTableF]   = useState('all');
@@ -61,12 +62,13 @@ export default function Logs() {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const data = await apiSync('/logs');
       if (!data) throw new Error();
       setLogs(Array.isArray(data) ? data : (data.logs || []));
-    } catch {
-      // Fallback to empty or cached
+    } catch (error) {
+      setLoadError(error?.message || 'Logs service is unavailable.');
       setLogs([]);
     } finally {
       setLoading(false);
@@ -188,12 +190,12 @@ export default function Logs() {
         {CATEGORIES.map(cat => {
           const isActive = categoryF === cat;
           const icon = cat === 'auth' ? <Shield size={12} /> : 
-                     cat === 'crud' ? <Database size={12} /> :
+                     cat === 'audit' ? <Database size={12} /> :
                      cat === 'session' ? <Activity size={12} /> :
                      cat === 'system' ? <Cpu size={12} /> : null;
           const count = cat === 'all' ? enriched.length : enriched.filter(l => (l.category || '') === cat).length;
           const color = cat === 'auth' ? '#8b5cf6' :
-                      cat === 'crud' ? '#10b981' :
+                      cat === 'audit' ? '#10b981' :
                       cat === 'session' ? '#0ea5e9' :
                       cat === 'system' ? '#f59e0b' : '#6b7280';
           return (
@@ -260,6 +262,8 @@ export default function Logs() {
           <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem', color: 'var(--text-3)' }}>
             <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} />
           </div>
+        ) : loadError ? (
+          <EmptyState icon={AlertTriangle} title="Logs unavailable" description={loadError} action={<button onClick={fetchLogs} className="btn-primary">Retry</button>} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Filter} title="No logs found" description={enriched.length === 0 ? 'No audit logs recorded yet.' : 'No logs match your current filters.'} />
         ) : (<>

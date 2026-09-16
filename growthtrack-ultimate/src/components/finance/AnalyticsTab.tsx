@@ -32,7 +32,7 @@ const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pi
             {hasSpendData ? (
               <>
                 <div style={{ height: '300px', marginTop: '1rem' }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1} initialDimension={{ width: 1, height: 1 }}>
                     <RePieChart>
                       {/* @ts-ignore - Recharts types might be missing activeIndex depending on version */}
                       <Pie data={pieData} innerRadius={65} outerRadius={90} paddingAngle={4} dataKey="value" activeIndex={activeIndex} activeShape={(props: any) => renderActiveShape(props, fmtINR)} onMouseEnter={onPieEnter} onClick={(entry: any) => onCategorySelect?.(entry?.name)}>
@@ -60,7 +60,7 @@ const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pi
             <h3 className="card-title"><BarChart2 size={18}/> Spend Velocity</h3>
             {hasSpendData ? (
               <div style={{ height: '300px', marginTop: '1rem' }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1} initialDimension={{ width: 1, height: 1 }}>
                   <BarChart data={pieData.slice(0, 8)}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis dataKey="name" stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} />

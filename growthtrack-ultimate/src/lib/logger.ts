@@ -1,5 +1,5 @@
 import safeLocalStorage from '../utils/safeLocalStorage';
-import { apiRequest } from './apiClient';
+import { apiRequest, getCsrfToken, refreshCsrfToken } from './apiClient';
 
 /**
  * GrowthTrack Logger - Centralized logging system
@@ -77,28 +77,51 @@ function getCurrentUser(): { user_id?: string; user_name?: string; user_email?: 
   return {};
 }
 
+let authUser: ReturnType<typeof getCurrentUser> = {};
+const queue: LogEntry[] = [];
+const recent = new Map<string, number>();
+let flushTimer: number | undefined;
+export function setLoggingUser(user: any) {
+  authUser = user ? { user_id: user.id, user_name: user.fullName || user.name, user_email: user.email } : {};
+  if (authUser.user_id) void flushLogQueue();
+}
+function scheduleFlush() { if (flushTimer) return; flushTimer = window.setTimeout(() => { flushTimer = undefined; void flushLogQueue(); }, 350); }
+export async function flushLogQueue(): Promise<void> {
+  if (!getCsrfToken() || !authUser.user_id || !queue.length) return;
+  while (queue.length) {
+    const event = queue[0];
+    try { await apiRequest('/api/logs', { method: 'POST', body: JSON.stringify(event) }); queue.shift(); }
+    catch (error: any) {
+      if (error?.status === 403) {
+        try { await refreshCsrfToken(); await apiRequest('/api/logs', { method: 'POST', body: JSON.stringify(event) }); queue.shift(); continue; } catch {}
+      }
+      if (error?.status === 401) queue.shift();
+      break;
+    }
+  }
+}
+
 /**
  * Core logging function - sends to audit_log table
  */
 export async function logAction(entry: LogEntry): Promise<void> {
-  try {
-    const user = getCurrentUser();
-    const payload: LogEntry = {
+  const currentUser = authUser.user_id ? authUser : getCurrentUser();
+  const payload: LogEntry = {
       ...entry,
       timestamp: entry.timestamp || new Date().toISOString(),
-      user_id: entry.user_id || user.user_id,
-      user_name: entry.user_name || user.user_name,
-      user_email: entry.user_email || user.user_email,
+      user_id: entry.user_id || currentUser.user_id,
+      user_name: entry.user_name || currentUser.user_name,
+      user_email: entry.user_email || currentUser.user_email,
       severity: entry.severity || 'info'
     };
-
-    await apiRequest('/api/logs', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-  } catch (error) {
-    console.error('[Logger] Failed to log action:', error);
-  }
+  const key = `${payload.category}|${payload.action}|${payload.table_name || ''}|${payload.item_id || ''}|${payload.details}`;
+  const now = Date.now(); if (recent.has(key) && now - recent.get(key)! < 2000) return; recent.set(key, now);
+  if (!payload.user_id) return;
+  // Queue the event and schedule a batched flush — do NOT call flushLogQueue()
+  // inline here. Doing so causes 403s on first session mount: the CSRF token
+  // may be stale and hasn't been refreshed yet. The scheduled flush (350 ms)
+  // fires after React's commit phase, by which time the token is current.
+  queue.push(payload); if (queue.length > 100) queue.shift(); scheduleFlush();
 }
 
 /**
@@ -155,6 +178,7 @@ export async function logSession(
   details?: string
 ): Promise<void> {
   const user = getCurrentUser();
+  if (!user.user_id || !getCsrfToken()) return;
   
   await logAction({
     category: 'session',
@@ -167,24 +191,16 @@ export async function logSession(
     severity: 'info'
   });
 
-  // Also log to session_logs table
-  try {
-    await apiRequest('/api/session-logs', {
-      method: 'POST',
-      body: JSON.stringify({
-        action,
-        details
-      })
-    });
-  } catch (error) {
-    console.error('[Logger] Failed to log to session_logs:', error);
-  }
 }
 
 /**
  * Log page views
  */
 export async function logPageView(pageName: string): Promise<void> {
+  // Degrade silently when there is no authenticated session. This prevents
+  // 401 console errors during the login page and first-paint before the CSRF
+  // token has been exchanged.
+  if (!getCsrfToken()) return;
   await logAction({
     category: 'session',
     action: 'page_view',

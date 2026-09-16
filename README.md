@@ -36,3 +36,20 @@ npm run dev
 
 ---
 *GrowthTrack Ultimate — Your digital life, visualized.*
+## Unified local workspace
+
+Ultimate Tracker is the control center at `http://localhost:5000/Ultimate/`. A local gateway on port `3000` provides stable API namespaces and health reporting for Ultimate, the optional local AI agent, FinSync, OxFin, Forex, Family Connect, and Equity/NiftyLens.
+
+```powershell
+npm run dev             # gateway + Ultimate
+npm run dev:all         # gateway + all standalone UIs
+npm run dev:finsync
+npm run dev:oxfin
+npm run dev:forex
+npm run dev:family
+npm run dev:equity
+```
+
+The standalone UI ports are `5101` (FinSync), `5102` (OxFin), `5104` (Family Connect), `5105` (Equity), and `8501` (Forex). The gateway health document is available at `http://localhost:3000/health`. The nested `Forex/Forex-Ensemble-Prediction` directory is a legacy source copy; `Forex` is the canonical runnable project.
+
+Ultimate local owner login is the current identity provider. Product launches use audience-bound, one-time handoff tokens. The provider adapter intentionally leaves Google, Apple, Microsoft, and managed-cloud identity disabled until credentials are configured.
