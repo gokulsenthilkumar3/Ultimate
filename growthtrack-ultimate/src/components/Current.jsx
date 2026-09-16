@@ -39,8 +39,9 @@ export default function Current() {
   const tg      = getTimeGradient(hour);
 
   // ── Geolocation + weather ──────────────────────────────────────────────
-  const { data: location } = useQuery({
+  const { data: location, refetch: requestLocation, isFetching: locating } = useQuery({
     queryKey: ['location'],
+    enabled: false,
     queryFn: () => new Promise((resolve) => {
       if (!navigator.geolocation) {
         toast.info('Enable location to load local weather.');
@@ -165,7 +166,7 @@ export default function Current() {
                 <AlertTriangle size={14} /> Weather is unavailable right now. Try again when you are ready.
               </div>
             ) : !location ? (
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>Location required</div>
+              <Button variant="secondary" onClick={() => requestLocation()} loading={locating}>Use my location</Button>
             ) : cur && (
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '3rem', lineHeight: 1 }}>{wmo.icon}</p>

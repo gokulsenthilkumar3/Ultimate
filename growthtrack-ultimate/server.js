@@ -192,6 +192,17 @@ async function readUnifiedLogs(req, fixedCategory) {
 }
 app.get('/api/logs', authMiddleware, async (req, res) => { try { res.json(await readUnifiedLogs(req)); } catch (err) { console.error('[Logs Error]', err); res.status(500).json({ error: 'Unable to read logs.', requestId: req.requestId }); } });
 app.get('/api/logs/summary', authMiddleware, async (req, res) => { try { const [audit, session, auth] = await Promise.all([prisma.auditLog.count(), prisma.sessionLog.count(), prisma.loginLog.count()]); res.json({ counts: { audit, session, auth, total: audit + session + auth }, diagnostics: eventLogger.diagnostics }); } catch { res.status(500).json({ error: 'Unable to read log summary.' }); } });
+app.get('/api/logs/diagnostics', authMiddleware, async (req, res) => {
+  try {
+    const [audit, session, auth] = await Promise.all([prisma.auditLog.count(), prisma.sessionLog.count(), prisma.loginLog.count()]);
+    res.json({ status: 'healthy', database: { status: 'connected', writable: true }, counts: { audit, session, auth, total: audit + session + auth }, diagnostics: { ...eventLogger.diagnostics, requestId: req.requestId }, databasePath: databaseUrl });
+  } catch (error) { res.status(503).json({ status: 'degraded', database: { status: 'unavailable', writable: false }, error: 'Logging database unavailable.', requestId: req.requestId }); }
+});
+app.post('/api/logs/diagnostics/self-test', authMiddleware, async (req, res) => {
+  const id = await eventLogger.write({ category: 'system', source: 'logging-diagnostics', action: 'logging_self_test', severity: 'info', user_id: req.user.id, user_name: req.user.fullName, user_email: req.user.email, details: 'Authenticated logging self-test' }, req);
+  if (!id) return res.status(503).json({ status: 'degraded', error: 'Logging database unavailable.', requestId: req.requestId });
+  res.json({ status: 'healthy', eventId: id, requestId: req.requestId });
+});
 for (const [pathName, category] of [['sessions', 'session'], ['auth', 'auth'], ['audit', 'audit']]) app.get(`/api/logs/${pathName}`, authMiddleware, async (req, res) => { try { res.json(await readUnifiedLogs(req, category)); } catch { res.status(500).json({ error: 'Unable to read logs.' }); } });
 
 app.post('/api/logs', authMiddleware, async (req, res) => {

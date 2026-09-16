@@ -14,8 +14,6 @@ if (MIXPANEL_TOKEN && hasConsent) {
     persistence: 'localStorage'
   });
   isInitialized = true;
-} else {
-  console.warn('Mixpanel token not found. Analytics disabled.');
 }
 
 /**

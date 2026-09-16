@@ -119,8 +119,8 @@ export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSe
               onDragOver={event => event.preventDefault()}
               onDrop={() => moveGroup(groupId)}
             >
-              <button className="sidebar-nav-group__label sidebar-group-toggle" aria-hidden={collapsed} tabIndex={collapsed ? -1 : 0} aria-expanded="true" aria-controls={`sidebar-group-${groupId}`} onClick={() => setActiveTab(({ wellness: 'wellness', life: 'life', system: 'hub' })[groupId] || group.tabs[0])}>
-                <GroupIcon size={15} />
+              <button className={`sidebar-nav-group__label sidebar-group-toggle ${activeGroup === groupId ? 'is-active' : ''}`} aria-hidden={collapsed} tabIndex={collapsed ? -1 : 0} aria-current={activeGroup === groupId ? 'page' : undefined} aria-expanded="true" aria-controls={`sidebar-group-${groupId}`} onClick={() => setActiveTab(({ wellness: 'wellness', life: 'life', system: 'hub' })[groupId] || group.tabs[0])}>
+                <span className="sidebar-group-toggle__icon"><GroupIcon size={17} /></span>
                 <span>{group.label}</span>
               </button>
               <div id={`sidebar-group-${groupId}`} className="sidebar-nav-group__items" style={{ display: 'none' }}>

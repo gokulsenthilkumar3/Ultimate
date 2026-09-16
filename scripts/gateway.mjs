@@ -30,8 +30,11 @@ async function probe(id, target) {
   const name = productNames[id] || id;
   try {
     const probePath = id === 'agent' ? '/api/tags' : '/api/health';
-    const response = await fetch(`${target}${probePath}`, { signal: controller.signal });
-    return { id, name, online: response.ok, status: response.status };
+    let response = await fetch(`${target}${probePath}`, { signal: controller.signal });
+    // Standalone UIs do not all expose an API health route. A successful UI
+    // document is still useful readiness evidence for the Apps Hub.
+    if (!response.ok && id !== 'agent') response = await fetch(target, { signal: controller.signal });
+    return { id, name, online: response.ok, status: response.status, checked: response.url };
   } catch { return { id, name, online: false, status: null }; }
   finally { clearTimeout(timer); }
 }

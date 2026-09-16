@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./server
+        working-directory: ./growthtrack-ultimate
     steps:
       - uses: actions/checkout@v3
       - name: Use Node.js
@@ -37,9 +37,8 @@ jobs:
         with:
           node-version: '22.x'
           cache: 'npm'
-          cache-dependency-path: ./server/package-lock.json
+          cache-dependency-path: ./growthtrack-ultimate/package-lock.json
       - run: npm install
       - run: npm test
         env:
           NODE_ENV: test
-          FIREBASE_ENABLED: 'false'

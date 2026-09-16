@@ -1,5 +1,6 @@
 /** GrowthTrack visual contract. Keep component styles on semantic tokens. */
 export const tokens = {
+  version: '2.0.0',
   color: {
     accent: '#007AFF', accentStrong: '#0057B8', success: '#248A3D', warning: '#C93400', danger: '#BA1A1A',
     canvas: '#F5F5F7', surface: '#FFFFFF', text: '#1D1D1F', textMuted: '#515154', textSubtle: '#6E6E73',

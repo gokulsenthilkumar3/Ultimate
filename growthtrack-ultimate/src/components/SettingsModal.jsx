@@ -32,26 +32,8 @@ export default function SettingsModal({ onClose }) {
 
   const fetchNetworkInfo = async () => {
     try {
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(async () => {
-          try {
-            // Mock Reverse geocode to avoid 429 Too Many Requests
-            const loc = 'Local';
-            const country = 'Network';
-            const ipData = await fetchIpInfo();
-            setNetworkInfo({ ip: ipData?.ip || 'Unknown', location: `${loc}, ${country} (GPS)` });
-          } catch {
-            const ipData = await fetchIpInfo();
-            setNetworkInfo({ ip: ipData?.ip || 'Unknown', location: ipData ? `${ipData.city}, ${ipData.country_name} (IP)` : 'Offline' });
-          }
-        }, async () => {
-          const data = await fetchIpInfo();
-          setNetworkInfo({ ip: data?.ip || 'Unknown', location: data ? `${data.city}, ${data.country_name} (IP)` : 'Offline' });
-        });
-      } else {
-        const data = await fetchIpInfo();
-        setNetworkInfo({ ip: data?.ip || 'Unknown', location: data ? `${data.city}, ${data.country_name}` : 'Offline' });
-      }
+      const data = await fetchIpInfo();
+      setNetworkInfo({ ip: data?.ip || 'Unknown', location: data ? `${data.city}, ${data.country_name} (approximate)` : 'Offline' });
     } catch {
       setNetworkInfo({ ip: 'Unavailable', location: 'Offline' });
     }

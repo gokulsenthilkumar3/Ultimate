@@ -17,6 +17,7 @@ import './styles/ultimate-ui.css';
 import './styles/design-tokens.css';
 import './styles/design-system.css';
 import './styles/experience.css';
+import './styles/ios27.css';
 import { TAB_GROUP_MAP, GROUPS, tabMeta } from './config/navigation';
 import { domainAccents } from './design/domainTokens';
 import { getTextDirection } from './utils/userFormatters';

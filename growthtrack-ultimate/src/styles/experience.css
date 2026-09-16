@@ -249,9 +249,9 @@ body,
    deliberately last so older module styles inherit the same surfaces,
    typography, action colors, and spacing without a per-page rewrite. */
 :root {
-  --admin-primary: #059669;
-  --admin-primary-light: #34d399;
-  --admin-primary-dark: #047857;
+  --admin-primary: #0a84ff;
+  --admin-primary-light: #64d2ff;
+  --admin-primary-dark: #0066cc;
   --admin-blue: #0ea5e9;
   --admin-purple: #6366f1;
   --admin-yellow: #f59e0b;
@@ -271,8 +271,8 @@ body,
   --ui-radius-card: 14px;
   --ui-radius-control: 10px;
 
-  --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-body: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  --font-body: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
   --text-1: #f8fafc;
   --text-2: #cbd5e1;
@@ -285,10 +285,10 @@ body,
   --bg-input: rgba(255, 255, 255, .055);
   --border: rgba(255, 255, 255, .08);
   --border-strong: rgba(255, 255, 255, .14);
-  --border-glow: rgba(5, 150, 105, .28);
-  --accent: #059669;
-  --accent-secondary: #34d399;
-  --accent-soft: rgba(5, 150, 105, .14);
+  --border-glow: rgba(10, 132, 255, .28);
+  --accent: #0a84ff;
+  --accent-secondary: #64d2ff;
+  --accent-soft: rgba(10, 132, 255, .14);
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -298,11 +298,11 @@ body,
   --gt-text: #f8fafc;
   --gt-muted: #cbd5e1;
   --gt-border: rgba(255, 255, 255, .14);
-  --gt-action: #059669;
+  --gt-action: #0a84ff;
   --gt-on-action: #ffffff;
   --gt-danger: #ef4444;
   --gt-success: #10b981;
-  --gt-focus: #34d399;
+  --gt-focus: #64d2ff;
 }
 
 [data-theme='light'] {
@@ -327,27 +327,27 @@ body,
   --bg-input: #ffffff;
   --border: rgba(15, 23, 42, .07);
   --border-strong: rgba(15, 23, 42, .14);
-  --border-glow: rgba(5, 150, 105, .28);
+  --border-glow: rgba(0, 122, 255, .24);
   --gt-canvas: #f1f5f9;
   --gt-surface: #ffffff;
   --gt-text: #0f172a;
   --gt-muted: #475569;
   --gt-border: rgba(15, 23, 42, .14);
-  --gt-action: #059669;
+  --gt-action: #007aff;
   --gt-danger: #ef4444;
   --gt-success: #10b981;
-  --gt-focus: #047857;
+  --gt-focus: #005fcc;
 }
 
-/* Keep one brand/action color even when an older palette or a module domain
-   supplies its own accent. */
+/* Keep the shell on the iOS system-blue action color. Domain and status
+   colors remain available for data visualisation and semantic feedback. */
 .app-shell[data-domain] {
   --domain-accent: var(--admin-primary) !important;
-  --domain-accent-soft: rgba(5, 150, 105, .14) !important;
+  --domain-accent-soft: rgba(10, 132, 255, .14) !important;
   --accent: var(--admin-primary) !important;
   --accent-secondary: var(--admin-primary-light) !important;
-  --accent-soft: rgba(5, 150, 105, .14) !important;
-  --border-glow: rgba(5, 150, 105, .28) !important;
+  --accent-soft: rgba(10, 132, 255, .14) !important;
+  --border-glow: rgba(10, 132, 255, .28) !important;
   --action-primary: var(--admin-primary) !important;
   --action-primary-hover: var(--admin-primary-dark) !important;
   --success: var(--admin-green) !important;
@@ -433,8 +433,8 @@ body { letter-spacing: 0 !important; }
 .app-header__mark,
 .premium-sidebar-brand > span,
 .app-header__profile b { background: var(--admin-primary) !important; box-shadow: none !important; }
-.premium-sidebar-avatar { background: rgba(5, 150, 105, .14) !important; border-color: rgba(5, 150, 105, .3) !important; color: var(--admin-primary-light) !important; }
-.premium-sidebar-item.active { background: rgba(5, 150, 105, .14) !important; box-shadow: inset 3px 0 var(--admin-primary) !important; }
+.premium-sidebar-avatar { background: rgba(10, 132, 255, .14) !important; border-color: rgba(10, 132, 255, .3) !important; color: var(--admin-primary-light) !important; }
+.premium-sidebar-item.active { background: rgba(10, 132, 255, .14) !important; box-shadow: inset 3px 0 var(--admin-primary) !important; }
 .premium-sidebar-item.active .premium-sidebar-icon { color: var(--admin-primary) !important; }
 
 /* Calm, readable surfaces across legacy modules. */
@@ -466,7 +466,7 @@ body { letter-spacing: 0 !important; }
   color: #fff !important;
   background: var(--admin-primary) !important;
   border-color: var(--admin-primary) !important;
-  box-shadow: 0 4px 10px rgba(5, 150, 105, .2) !important;
+  box-shadow: 0 4px 10px rgba(10, 132, 255, .22) !important;
 }
 .btn-primary:hover:not(:disabled),
 .btn--primary:hover:not(:disabled),
@@ -502,7 +502,7 @@ body { letter-spacing: 0 !important; }
   font: inherit;
   cursor: pointer;
 }
-.breadcrumbs button:hover { color: var(--admin-primary); background: rgba(5, 150, 105, .08); }
+.breadcrumbs button:hover { color: var(--admin-primary); background: rgba(10, 132, 255, .08); }
 .breadcrumbs__separator { color: var(--text-3); }
 .breadcrumbs__current { color: var(--text-1); font-weight: 700; }
 
@@ -525,11 +525,11 @@ body { letter-spacing: 0 !important; }
 .wellness-command__tabs button{border:0;background:var(--bg-elevated);color:var(--text-2);padding:.55rem .8rem;border-radius:8px;font:700 .74rem 'Outfit','Inter',sans-serif;cursor:pointer}
 .wellness-command__tabs button:hover,.wellness-command__tabs button:focus-visible{color:var(--accent);background:var(--accent-soft);outline:2px solid var(--accent);outline-offset:1px}
 .wellness-command__tabs button.is-active{color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 -2px var(--accent)}
-.app-header__context strong,.app-header__brand-copy strong{font-family:'Outfit','Inter',sans-serif;letter-spacing:-.02em;font-weight:800}
+.app-header__context strong,.app-header__brand-copy strong{font-family:'SF Pro Display','SF Pro Text',-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;letter-spacing:-.02em;font-weight:700}
 .app-header__context span{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--accent)}
-.premium-sidebar-nav-group__label,.sidebar-nav-group__label{font-family:'Outfit','Inter',sans-serif;font-size:.72rem;letter-spacing:.02em;font-weight:800}
-.premium-sidebar-label{font-family:'Outfit','Inter',sans-serif;font-size:.76rem;font-weight:650;letter-spacing:.005em}
-.app-header__subnav button{font-family:'Outfit','Inter',sans-serif;letter-spacing:.01em}
+.premium-sidebar-nav-group__label,.sidebar-nav-group__label{font-family:'SF Pro Text',-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;font-size:.72rem;letter-spacing:.01em;font-weight:650}
+.premium-sidebar-label{font-family:'SF Pro Text',-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;font-size:.76rem;font-weight:590;letter-spacing:0}
+.app-header__subnav button{font-family:'SF Pro Text',-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;letter-spacing:0}
 
 /* Command bar refinement: give the active workspace and daily controls a clearer hierarchy. */
 @media (min-width: 769px) {

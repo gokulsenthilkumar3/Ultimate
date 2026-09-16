@@ -6,39 +6,15 @@ function fetchFallbackIp(resolve) {
   fetch('https://ipapi.co/json/')
     .then(r => r.json())
     .then(resolve)
-    .catch(err => {
-      console.error('IP Info fetch failed:', err);
+    .catch(() => {
       resolve(null);
     });
 }
 
 export function fetchIpInfo() {
   if (!geolocationPromise) {
-    geolocationPromise = new Promise((resolve) => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const { latitude, longitude } = pos.coords;
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-              .then(res => res.json())
-              .then(data => {
-                const address = data.address || {};
-                const city = address.city || address.town || address.village || address.county || 'Unknown Location';
-                resolve({ city, country_name: address.country || '', ip: 'GPS Verified' });
-              })
-              .catch(() => {
-                fetchFallbackIp(resolve);
-              });
-          },
-          () => {
-            fetchFallbackIp(resolve);
-          },
-          { timeout: 8000 }
-        );
-      } else {
-        fetchFallbackIp(resolve);
-      }
-    });
+    // Passive network diagnostics never trigger a browser location prompt.
+    geolocationPromise = new Promise(fetchFallbackIp);
   }
   return geolocationPromise;
 }

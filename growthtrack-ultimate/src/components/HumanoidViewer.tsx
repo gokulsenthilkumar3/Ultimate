@@ -40,7 +40,7 @@ import { trackEvent } from '../lib/analytics';
 import { formatDate, formatMeasurement, formatNumber } from '../utils/userFormatters';
 
 // Lazy load the heavy 3D canvas
-const ChamberCanvas = lazy(() => import('./ChamberCanvas'));
+const ChamberCanvas = lazy(() => import('./PhysiqueRenderer'));
 const Sprite3DViewer = lazy(() => import('./Sprite3DViewer'));
 
 const EMPTY_OBJECT = {};

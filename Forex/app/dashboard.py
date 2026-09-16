@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,7 +10,10 @@ import urllib.request
 
 from src.data.loader import load_forex_data
 from src.features.engineer import load_config
-from predict import load_artifacts, preprocess
+# The inference module lives in the canonical Forex source package. Streamlit
+# executes this file from `app/`, so importing the old root-level `predict`
+# module fails even though the implementation exists.
+from src.scripts.predict import load_artifacts, preprocess
 
 # ── Streamlit Configuration ──────────────────────────────────────────────────
 st.set_page_config(
@@ -20,6 +24,9 @@ st.set_page_config(
 )
 
 # Consume Ultimate's short-lived handoff when Forex is opened from the Apps Hub.
+design_css = Path(__file__).with_name("growthtrack-design.css").read_text(encoding="utf-8")
+st.markdown(f"<style>{design_css}</style>", unsafe_allow_html=True)
+
 handoff = st.query_params.get("ultimate_handoff")
 if handoff and "ultimate_identity" not in st.session_state:
     try:

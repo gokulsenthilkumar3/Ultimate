@@ -73,6 +73,13 @@
 .product-card__actions { display: flex; gap: 8px; }.product-card__actions a, .product-card__actions button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 0 13px; border: 0; border-radius: 12px; background: var(--product-color); color: white; text-decoration: none; font-size: .75rem; font-weight: 700; }.product-card__actions a { background: var(--ui-highlight); color: var(--text-1); }
 .product-card__command { display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0; overflow: hidden; border: 0; background: transparent; color: var(--text-3); font-family: var(--font-mono, monospace) !important; font-size: .64rem !important; text-overflow: ellipsis; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .product-card { transition: none; }.product-card:hover { transform: none; } }
+
+.app-hub-embedded { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: calc(100dvh - 90px); gap: 12px; }
+.app-hub-embedded__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--ui-line); border-radius: 16px; background: var(--ui-panel-solid); }
+.app-hub-embedded__header > div { display: grid; gap: 2px; text-align: center; }.app-hub-embedded__header span { color: var(--text-2); font-size: .72rem; }
+.app-hub-embedded__frame { width: 100%; min-height: 70dvh; border: 1px solid var(--ui-line); border-radius: 18px; background: var(--ui-panel-solid); }
+.app-hub-embedded__loading { display: grid; place-items: center; min-height: 70dvh; border: 1px dashed var(--ui-line-strong); border-radius: 18px; color: var(--text-2); }
+@media (max-width: 680px) { .app-hub-embedded__header { align-items: stretch; flex-direction: column; }.app-hub-embedded__header > div { order: -1; } }
 @media (hover: hover) {
   .app-hub-card__launch:hover { background: var(--ui-highlight); }
   .app-hub-card__pin:hover, .app-hub-filters button:hover, .app-hub-view-switch button:hover { color: var(--accent); background: var(--accent-soft); }
@@ -217,4 +224,3 @@
 .product-card[data-offline="true"] .product-card__actions button:focus-visible::after {
   opacity: 1;
 }
-

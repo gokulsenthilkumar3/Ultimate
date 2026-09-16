@@ -38,41 +38,43 @@ const COMMANDS = {
     env: {},
     uiUrl: 'http://localhost:3000',
     ports: [3000],
+    healthUrls: ['http://127.0.0.1:3000/health'],
   },
   ultimate: {
     cwd: path.join(root, 'growthtrack-ultimate'),
-    command: 'npm',
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
     args: ['run', 'dev'],
     env: {},
     uiUrl:  'http://127.0.0.1:5000/Ultimate/',
     apiUrl: 'http://127.0.0.1:3001',
     ports: [3001, 5000],
+    healthUrls: ['http://127.0.0.1:3001/api/health', 'http://127.0.0.1:5000/Ultimate/'],
   },
   finsync: {
     // FinSync workspace uses `web:dev` script to start apps/web
     cwd: path.join(root, 'FinSync'),
-    command: 'npm',
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
     args: ['run', 'web:dev'],
     env: { PORT: '5101' },
     uiUrl: 'http://localhost:5101',
   },
   oxfin: {
     cwd: path.join(root, 'FinSync', 'OxFin', 'ox-fin-web'),
-    command: 'npm',
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
     args: ['run', 'dev', '--', '-p', '5102'],
     env: { PORT: '5102' },
     uiUrl: 'http://localhost:5102',
   },
   family: {
     cwd: path.join(root, 'Family Connect', 'familyconnect', 'frontend'),
-    command: 'npm',
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
     args: ['run', 'dev', '--', '--port', '5104'],
     env: { PORT: '5104' },
     uiUrl: 'http://localhost:5104',
   },
   equity: {
     cwd: path.join(root, 'Equity', 'NiftyLens'),
-    command: 'npm',
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
     args: ['run', 'dev', '--', '-p', '5105'],
     env: { PORT: '5105' },
     uiUrl: 'http://localhost:5105',
@@ -88,6 +90,18 @@ const COMMANDS = {
   },
 };
 
+// Windows cannot reliably spawn npm.cmd with shell:false on every Node build.
+// Invoke npm's CLI through the active Node executable instead.
+if (process.platform === 'win32') {
+  const npmCli = path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+  for (const spec of Object.values(COMMANDS)) {
+    if (spec.command === 'npm.cmd') {
+      spec.command = process.execPath;
+      spec.args = [npmCli, ...spec.args];
+    }
+  }
+}
+
 function portInUse(port) {
   return new Promise(resolve => {
     const socket = net.createConnection({ host: '127.0.0.1', port });
@@ -96,6 +110,9 @@ function portInUse(port) {
     socket.once('error', () => done(false));
     socket.setTimeout(250, () => done(true));
   });
+}
+async function serviceHealthy(url) {
+  try { const response = await fetch(url, { signal: AbortSignal.timeout(900) }); return response.ok; } catch { return false; }
 }
 
 // ── Parse targets ─────────────────────────────────────────────────────────────
@@ -138,16 +155,28 @@ for (const name of selected) {
     continue;
   }
 
+  const packageFile = path.join(spec.cwd, 'package.json');
+  const dependencyMarker = fs.existsSync(packageFile) ? path.join(spec.cwd, 'node_modules', '.bin') : null;
+  if (spec.command.endsWith('npm') || spec.command.endsWith('npm.cmd')) {
+    if (dependencyMarker && !fs.existsSync(dependencyMarker)) {
+    console.error(`${COLORS[name] || ''}[${name}]${COLORS.reset} \x1b[31mdependencies are not installed in ${spec.cwd}. Run npm install there, then rerun this launcher.\x1b[0m`);
+    process.exitCode = 1;
+    continue;
+    }
+  }
+
   const occupied = [];
   for (const port of spec.ports || []) if (await portInUse(port)) occupied.push(port);
   if (occupied.length) {
-    console.warn(`${COLORS[name] || ''}[${name}]${COLORS.reset} ${COLORS.dim}already running on port${occupied.length > 1 ? 's' : ''} ${occupied.join(', ')} — reusing the existing service.${COLORS.reset}`);
+    const healthy = await Promise.all((spec.healthUrls || []).map(serviceHealthy));
+    if (healthy.every(Boolean)) console.warn(`${COLORS[name] || ''}[${name}]${COLORS.reset} ${COLORS.dim}already running and healthy on port${occupied.length > 1 ? 's' : ''} ${occupied.join(', ')} — reusing the existing service.${COLORS.reset}`);
+    else console.error(`${COLORS[name] || ''}[${name}]${COLORS.reset} \x1b[31mport conflict on ${occupied.join(', ')} but the existing service is unhealthy. Stop the stale process, then rerun this command.${COLORS.reset}`);
     continue;
   }
 
   const child = spawn(spec.command, spec.args, {
     cwd:   spec.cwd,
-    shell: process.platform === 'win32',
+    shell: false,
     stdio: 'inherit',
     env:   { ...process.env, FORCE_COLOR: '1', ...spec.env },
   });

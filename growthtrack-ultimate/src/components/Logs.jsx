@@ -47,6 +47,8 @@ export default function Logs() {
   const [logs,     setLogs]     = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [selfTesting, setSelfTesting] = useState(false);
   const [search,   setSearch]   = useState('');
   const [actionF,  setActionF]  = useState('all');
   const [tableF,   setTableF]   = useState('all');
@@ -67,6 +69,7 @@ export default function Logs() {
       const data = await apiSync('/logs');
       if (!data) throw new Error();
       setLogs(Array.isArray(data) ? data : (data.logs || []));
+      try { setDiagnostics(await apiSync('/logs/diagnostics')); } catch (error) { setDiagnostics({ status: 'unavailable', error: error?.message || 'Diagnostics unavailable.' }); }
     } catch (error) {
       setLoadError(error?.message || 'Logs service is unavailable.');
       setLogs([]);
@@ -74,6 +77,13 @@ export default function Logs() {
       setLoading(false);
     }
   }, []);
+
+  const runSelfTest = useCallback(async () => {
+    setSelfTesting(true);
+    try { const result = await apiSync('/logs/diagnostics/self-test', 'POST', {}); toast.success(`Logging verified (${result.eventId})`); await fetchLogs(); }
+    catch (error) { toast.error(error?.message || 'Logging self-test failed.'); }
+    finally { setSelfTesting(false); }
+  }, [fetchLogs, toast]);
 
   useEffect(() => { fetchLogs(); }, []);
 
@@ -181,9 +191,16 @@ export default function Logs() {
           <button onClick={() => exportLogs('json')} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
             <Download size={12} /> JSON
           </button>
+          <button onClick={runSelfTest} className="btn-primary" disabled={selfTesting}><CheckCircle size={14} /> {selfTesting ? 'Testing…' : 'Test logging'}</button>
           <button onClick={() => setShowAddModal(true)} className="btn-primary"><Plus size={14} /> Add Entry</button>
         </div>
       </div>
+      {diagnostics && <div className="glass-card" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', padding: '0.75rem', fontSize: '0.75rem' }}>
+        <span><strong>Logging:</strong> {diagnostics.status}</span>
+        {diagnostics.counts && <span>DB events: {diagnostics.counts.total}</span>}
+        {diagnostics.diagnostics?.lastSuccessfulEvent && <span>Last event: {diagnostics.diagnostics.lastSuccessfulEvent.action}</span>}
+        {diagnostics.databasePath && <span style={{ color: 'var(--text-3)' }}>SQLite connected</span>}
+      </div>}
 
       {/* Category tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
@@ -263,7 +280,7 @@ export default function Logs() {
             <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} />
           </div>
         ) : loadError ? (
-          <EmptyState icon={AlertTriangle} title="Logs unavailable" description={loadError} action={<button onClick={fetchLogs} className="btn-primary">Retry</button>} />
+          <EmptyState icon={AlertTriangle} title="Logs unavailable" description={loadError} actionLabel="Retry" onAction={fetchLogs} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Filter} title="No logs found" description={enriched.length === 0 ? 'No audit logs recorded yet.' : 'No logs match your current filters.'} />
         ) : (<>

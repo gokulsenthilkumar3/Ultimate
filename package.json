@@ -2,6 +2,8 @@
   "name": "growthtrack-workspace",
   "private": true,
   "scripts": {
+    "design:sync": "node scripts/sync-design-system.mjs",
+    "design:check": "node scripts/sync-design-system.mjs --check",
     "dev": "node scripts/workspace.mjs gateway ultimate",
     "dev:all": "node scripts/workspace.mjs gateway ultimate finsync oxfin family equity forex",
     "dev:gateway": "node scripts/workspace.mjs gateway",

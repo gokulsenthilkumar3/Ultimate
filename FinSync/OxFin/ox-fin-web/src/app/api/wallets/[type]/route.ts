@@ -1,9 +1,9 @@
 // src/app/api/wallets/[type]/route.ts
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { securityHeaders } from '@/middleware/securityHeaders';
-import { rateLimiter } from '@/middleware/rateLimiter';
-import { csrfProtection } from '@/middleware/csrf';
+import { securityHeaders } from '@/guards/securityHeaders';
+import { rateLimiter } from '@/guards/rateLimiter';
+import { csrfProtection } from '@/guards/csrf';
 
 const rateLimitMap = new Map<string, { count: number; reset: number }>();
 function checkRateLimit(ip: string) {

@@ -75,6 +75,7 @@ export default function AppLauncher({ setActiveTab }) {
   const [groupFilter, setGroupFilter] = useState('all');
   const [clickCounts, setClickCounts] = useState(getClickCounts);
   const [serviceState, setServiceState] = useState({ loading: true, services: {} });
+  const [embeddedProduct, setEmbeddedProduct] = useState(null);
   useEffect(() => {
     let active = true;
     const refresh = async () => {
@@ -116,15 +117,23 @@ export default function AppLauncher({ setActiveTab }) {
     setActiveTab?.(id);
   };
   const launchProduct = async product => {
-    const popup = window.open('', '_blank');
-    if (popup) popup.opener = null;
+    setEmbeddedProduct({ ...product, loading: true });
     try {
       const handoff = await apiRequest('/api/integrations/handoff', { method: 'POST', body: JSON.stringify({ productId: product.id }) });
-      if (popup) popup.location = handoff.launchUrl; else window.open(handoff.launchUrl, '_blank', 'noopener,noreferrer');
+      setEmbeddedProduct({ ...product, url: handoff.launchUrl });
     } catch {
-      if (popup) popup.location = product.uiUrl; else window.open(product.uiUrl, '_blank', 'noopener,noreferrer');
+      setEmbeddedProduct({ ...product, url: product.uiUrl });
     }
   };
+
+  if (embeddedProduct) return <section className="app-hub-embedded" aria-label={`${embeddedProduct.name} in Ultimate`}>
+    <header className="app-hub-embedded__header">
+      <button type="button" className="btn btn--ghost" onClick={() => setEmbeddedProduct(null)}>← Back to Apps Hub</button>
+      <div><strong>{embeddedProduct.icon} {embeddedProduct.name}</strong><span>Running inside Ultimate</span></div>
+      <a href={embeddedProduct.url || embeddedProduct.uiUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">Open separately <ArrowUpRight size={15} /></a>
+    </header>
+    {embeddedProduct.loading ? <div className="app-hub-embedded__loading" role="status">Connecting to {embeddedProduct.name}…</div> : <iframe className="app-hub-embedded__frame" title={`${embeddedProduct.name} application`} src={embeddedProduct.url} allow="clipboard-read; clipboard-write" />}
+  </section>;
 
   return (
     <div className="app-hub-shell">

@@ -31,7 +31,8 @@ export function middleware(request: NextRequest) {
   // In development, skip server-side auth — Firebase client handles routing
   if (process.env.NODE_ENV === 'development') {
     const response = NextResponse.next();
-    response.headers.set('X-Frame-Options', 'DENY');
+    // Ultimate embeds local products in its Apps Hub during development.
+    // Production keeps the clickjacking protection below.
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     return response;

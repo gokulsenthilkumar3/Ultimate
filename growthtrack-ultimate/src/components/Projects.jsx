@@ -449,7 +449,7 @@ export default function Projects() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <a href={repo.html_url} target="_blank" rel="noopener noreferrer"
                       style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-1)', textDecoration: 'none', fontWeight: 700, fontSize: '1.05rem', wordBreak: 'break-all', paddingRight: '0.5rem' }}>
-                      <GitBranch size={18} color="var(--text-2)" flexShrink={0} />
+                      <GitBranch size={18} color="var(--text-2)" style={{ flexShrink: 0 }} />
                       {repo.name} {repo.private && <span style={{ fontSize: '0.65rem', padding: '1px 6px', background: 'var(--warning)', color: 'black', borderRadius: '4px', fontWeight: 800 }}>PRIVATE</span>}
                     </a>
                     

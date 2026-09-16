@@ -206,8 +206,9 @@ export default function Overview({ setActiveTab }) {
   }, []);
 
   // Fetch weather with React Query caching
-  const { data: weather, isLoading: weatherLoading } = useQuery({
+  const { data: weather, isLoading: weatherLoading, refetch: requestWeather } = useQuery({
     queryKey: ['weather'],
+    enabled: false,
     queryFn: () => new Promise((resolve) => {
       if (!navigator.geolocation) return resolve(null);
       navigator.geolocation.getCurrentPosition(pos => {
@@ -414,7 +415,7 @@ export default function Overview({ setActiveTab }) {
           ) : (
             <div style={{ textAlign: 'center', width: '100%' }}>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', margin: '0 0 6px 0' }}>Enable location for weather</p>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Coordinates unavailable</span>
+              <button type="button" className="gt-button gt-button--secondary" onClick={() => requestWeather()}>Use my location</button>
             </div>
           )}
         </div>
