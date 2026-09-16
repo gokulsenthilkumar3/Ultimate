@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Outputs & artifacts (large files — do not commit)
+outputs/
+*.pkl
+*.keras
+*.h5
+
+# Scratch work — never commit
+scratch/
+
+# Logs
+*.log
+training.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Data (large CSVs — manage with DVC or Git LFS)
+# Uncomment if you use DVC:
+# Forex_Data.csv
+
+# Optuna study DB
+*.db

@@ -1,0 +1,167 @@
+# FinSync Super - Git Ignore File
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Next.js (Web)
+apps/web/.next/
+apps/web/out/
+apps/web/build
+apps/web/.vercel
+
+# Expo / React Native (Mobile)
+apps/mobile/.expo/
+apps/mobile/.expo-shared/
+apps/mobile/dist/
+apps/mobile/ios/
+apps/mobile/android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
+# Production builds
+build/
+dist/
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+*.pem
+Thumbs.db
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Environment variables
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# Firebase
+.firebase/
+# .firebaserc - Allow this for project configuration
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.sublime-workspace
+*.sublime-project
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# API Keys and Secrets (IMPORTANT!)
+**/secrets.json
+**/config/keys.json
+**/*-key.json
+service-account*.json
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Certificates
+*.pem
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Package manager lock files (choose one)
+# Uncomment if using specific package manager
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Build artifacts
+*.js.map
+*.d.ts.map
+
+# Sentry
+.sentryclirc
+
+# Vercel
+.vercel
+
+# Turbo
+.turbo
+
+# Local environment files
+.local
+
+# Generated files
+**/generated/
+**/__generated__/
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Documentation builds
+docs/.vitepress/dist
+docs/.vitepress/cache
+
+# Test results
+test-results/
+playwright-report/

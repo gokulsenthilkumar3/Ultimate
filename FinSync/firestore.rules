@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidTransaction() {
+      return request.resource.data.keys().hasAll(['amount', 'type', 'category', 'date'])
+        && request.resource.data.amount is number
+        && request.resource.data.type in ['credit', 'debit']
+        && request.resource.data.category is string
+        && request.resource.data.date is timestamp;
+    }
+    
+    // User profiles - only owner can read/write
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      // User settings
+      match /settings/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Transactions - owner only, with validation
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTransaction();
+        allow update: if isOwner(userId) && isValidTransaction();
+        allow delete: if isOwner(userId);
+      }
+      
+      // Bank accounts - owner only
+      match /accounts/{accountId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Budgets - owner only
+      match /budgets/{budgetId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Investments - owner only
+      match /investments/{investmentId} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Notifications - owner only
+      match /notifications/{notificationId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // App configuration - public read, admin write only
+    match /config/{document} {
+      allow read: if true;
+      allow write: if false; // Only via Admin SDK
+    }
+    
+    // System metadata - public read
+    match /metadata/{document} {
+      allow read: if true;
+      allow write: if false; // Only via Admin SDK
+    }
+    
+    // Default: deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

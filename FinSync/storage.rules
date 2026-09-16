@@ -1,0 +1,70 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidFileSize(maxSizeMB) {
+      return request.resource.size < maxSizeMB * 1024 * 1024;
+    }
+    
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidDocumentType() {
+      return request.resource.contentType.matches('application/pdf')
+          || request.resource.contentType.matches('image/.*');
+    }
+    
+    // User-specific storage paths
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+    
+    // Receipt uploads - max 5MB, images only
+    match /receipts/{userId}/{receiptId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) 
+                   && isValidImageType() 
+                   && isValidFileSize(5);
+    }
+    
+    // Profile pictures - max 2MB
+    match /profiles/{userId}/avatar {
+      allow read: if true; // Public read
+      allow write: if isOwner(userId) 
+                   && isValidImageType() 
+                   && isValidFileSize(2);
+    }
+    
+    // Document storage (PDFs, images) - max 10MB
+    match /documents/{userId}/{documentId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) 
+                   && isValidDocumentType() 
+                   && isValidFileSize(10);
+    }
+    
+    // Wallet files (tickets, IDs, etc.) - max 5MB
+    match /wallet/{userId}/{fileId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) 
+                   && isValidDocumentType() 
+                   && isValidFileSize(5);
+    }
+    
+    // Default: deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

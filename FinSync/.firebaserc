@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "finsync-super-2025",
+    "stage": "finsync-super"
+  },
+  "targets": {},
+  "etags": {}
+}
