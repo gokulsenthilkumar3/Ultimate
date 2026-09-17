@@ -26,6 +26,19 @@ describe('interface regressions', () => {
     expect(within(screen.getByLabelText('Activity confirmations')).getByRole('status')).toHaveTextContent('Task saved');
   });
 
+  it('deduplicates repeated errors while the first message is visible', async () => {
+    function Probe() {
+      const toast = useToast();
+      return <button onClick={() => toast.error('Logging service unavailable')}>Repeat error</button>;
+    }
+    render(<ToastProvider><Probe /></ToastProvider>);
+    const button = screen.getByRole('button', { name: 'Repeat error' });
+    await userEvent.click(button);
+    await userEvent.click(button);
+    await userEvent.click(button);
+    expect(within(screen.getByLabelText('Errors')).getAllByRole('alert')).toHaveLength(1);
+  });
+
   it('focuses the safe action when confirming deletion', () => {
     render(<ConfirmDialog open title="Delete record?" onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();

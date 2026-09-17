@@ -129,7 +129,7 @@ export default function MetricLogger({ onClose, onSave }) {
       background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: Z_INDEX.OVERLAY,
     }}>
-      <div className="glass-card stagger-item" style={{
+      <div className="gt-surface gt-glass stagger-item" style={{
         width: '100%', maxWidth: '600px', maxHeight: '90vh',
         padding: '2rem', display: 'flex', flexDirection: 'column',
       }}>

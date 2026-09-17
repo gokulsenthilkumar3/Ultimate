@@ -74,17 +74,27 @@ function ToastItem({ item, dismiss }) {
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timers = useRef({});
+  const activeToastKeys = useRef(new Map());
+  const toastKeysById = useRef(new Map());
 
   const dismiss = useCallback((id) => {
     clearTimeout(timers.current[id]);
     delete timers.current[id];
+    const key = toastKeysById.current.get(id);
+    if (key) activeToastKeys.current.delete(key);
+    toastKeysById.current.delete(id);
     setToasts((previous) => previous.filter((item) => item.id !== id));
   }, []);
 
   const toast = useCallback((message, type = 'info', duration = 3500, options = {}) => {
-    const id = ++toastId;
     const kind = options.kind || (type === 'error' ? 'error' : 'crud');
+    const key = `${kind}:${type}:${String(message).trim()}`;
+    const existingId = activeToastKeys.current.get(key);
+    if (existingId) return existingId;
+    const id = ++toastId;
     const item = { id, message, type, kind, ...options };
+    activeToastKeys.current.set(key, id);
+    toastKeysById.current.set(id, key);
     setToasts((previous) => [...previous.slice(-2), item]);
     const isPersistent = kind === 'error' || kind === 'notification';
     if (duration > 0 && !isPersistent && !options.action) {
@@ -96,7 +106,19 @@ export function ToastProvider({ children }) {
   useEffect(() => () => {
     Object.values(timers.current).forEach(clearTimeout);
     timers.current = {};
+    activeToastKeys.current.clear();
+    toastKeysById.current.clear();
   }, []);
+
+  useEffect(() => {
+    const visibleIds = new Set(toasts.map((item) => item.id));
+    for (const [id, key] of toastKeysById.current.entries()) {
+      if (!visibleIds.has(id)) {
+        toastKeysById.current.delete(id);
+        activeToastKeys.current.delete(key);
+      }
+    }
+  }, [toasts]);
 
   toast.success = (message, duration, options) => toast(message, 'success', duration, options);
   toast.error = (message, duration, options) => toast(message, 'error', duration || 5000, options);

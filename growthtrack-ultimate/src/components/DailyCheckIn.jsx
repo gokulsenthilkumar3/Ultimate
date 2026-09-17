@@ -204,7 +204,7 @@ export default function DailyCheckIn({ onClose }) {
         padding: '1rem',
       }}
     >
-      <div className="glass-card daily-checkin-modal__card fade-in" style={{
+      <div className="gt-surface gt-glass daily-checkin-modal__card fade-in" style={{
         width: '100%', maxWidth: '480px',
         padding: '2.5rem', position: 'relative',
         border: '1px solid var(--border-strong)',

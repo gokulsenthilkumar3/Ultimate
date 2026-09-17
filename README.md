@@ -1,14 +1,10 @@
-<div align="center">
-
 # GrowthTrack Ultimate
 
-### One private workspace for health, finance, work, family, and intelligent insights.
+**One private workspace for health, finance, work, family, and intelligent insights**
 
 **A local-first personal operating system with six independently runnable products, one secure gateway, and one refined control center.**
 
 [Explore the workspace](#workspace) · [Start locally](#quick-start) · [Read the architecture](docs/ARCHITECTURE.md) · [View the design system](growthtrack-ultimate/docs/DESIGN_SYSTEM.md)
-
-</div>
 
 ---
 
@@ -29,7 +25,7 @@ The experience is designed around four principles:
 ## Workspace
 
 | Product | Purpose | Runtime | Local UI |
-|:--|:--|:--|:--|
+| :-- | :-- | :-- | :-- |
 | **Ultimate** | Personal command center, Apps Hub, logs, AI, wellness, work, finance, and digital physique | React + Vite | `http://127.0.0.1:5000/Ultimate/` |
 | **FinSync** | Budgeting, transactions, banking workflows, and financial planning | Next.js | `http://localhost:5101` |
 | **OxFin** | Wallets, cards, bills, investments, and financial intelligence | Next.js | `http://localhost:5102` |
@@ -73,7 +69,7 @@ All API traffic enters through the local gateway at `http://localhost:3000`. Pro
 Ultimate uses a forward-looking, iOS-inspired visual language without copying proprietary interfaces.
 
 | Foundation | Implementation |
-|:--|:--|
+| :-- | :-- |
 | **Color** | Semantic system blue for actions; green reserved for success; adaptive light/dark surfaces |
 | **Typography** | SF Pro-style system stack with Inter and Segoe UI fallbacks |
 | **Materials** | Restrained translucency, hairline borders, continuous corners, and controlled depth |
@@ -211,8 +207,4 @@ No open-source license is currently included. Unless a license is added, the rep
 
 ---
 
-<div align="center">
-
 **GrowthTrack Ultimate** · Your life, clearly connected.
-
-</div>

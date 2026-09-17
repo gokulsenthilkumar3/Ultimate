@@ -152,7 +152,8 @@ Everything else has safe defaults for local development.
 ## Visual-system contribution rules
 
 Ultimate's shared visual tokens and primitives live in `growthtrack-ultimate/src/design` and `growthtrack-ultimate/src/components/ui`. Keep gateway, handoff, session, logging, and standalone product contracts intact when adopting the visual system. See `growthtrack-ultimate/docs/DESIGN_SYSTEM.md` and `MIGRATION_GUIDE.md`.
-# Shared visual system
+
+## Shared visual system
 
 Use `npm run design:sync` to refresh companion-product design adapters and
 `npm run design:check` to verify them. See [adapter documentation](docs/SHARED_DESIGN_ADAPTERS.md)

@@ -171,6 +171,11 @@ function categoryWhere(query = {}, kind) {
   if (query.action) where.action = String(query.action);
   if (query.source) where.source = String(query.source);
   if (query.from || query.to) where.timestamp = { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) };
+  
+  if (query.category && query.category !== 'all' && kind === 'audit' && !['auth', 'session'].includes(query.category)) {
+    where.category = String(query.category);
+  }
+
   if (kind === 'audit') { if (query.severity) where.severity = String(query.severity); if (query.q) where.OR = [{ action: { contains: String(query.q) } }, { details: { contains: String(query.q) } }, { table_name: { contains: String(query.q) } }]; }
   if (kind === 'auth' && query.q) where.OR = [{ action: { contains: String(query.q) } }, { email: { contains: String(query.q) } }, { failure_reason: { contains: String(query.q) } }];
   if (kind === 'session' && query.q) where.details = { contains: String(query.q) };
@@ -181,13 +186,14 @@ function unified(row, category) {
 }
 async function readUnifiedLogs(req, fixedCategory) {
   const page = Math.max(1, Number(req.query.page || 1)); const limit = Math.min(100, Math.max(1, Number(req.query.limit || 50))); const query = req.query;
-  const categories = fixedCategory ? [fixedCategory] : (query.category && query.category !== 'all' ? [String(query.category)] : ['auth', 'session', 'audit', 'crud', 'system', 'request']);
+  const targetCategory = fixedCategory || (query.category && query.category !== 'all' ? String(query.category) : null);
+  const categories = targetCategory ? [targetCategory] : ['auth', 'session', 'audit', 'crud', 'system', 'request'];
   const [auth, sessions, audits] = await Promise.all([
     categories.includes('auth') ? prisma.loginLog.findMany({ where: categoryWhere(query, 'auth'), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
     categories.includes('session') ? prisma.sessionLog.findMany({ where: categoryWhere(query, 'session'), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
-    prisma.auditLog.findMany({ where: categoryWhere(query, 'audit'), orderBy: { timestamp: 'desc' }, take: 500 }),
+    categories.some(c => !['auth', 'session'].includes(c)) ? prisma.auditLog.findMany({ where: categoryWhere(query, 'audit'), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
   ]);
-  const all = [...auth.map(x => unified(x, 'auth')), ...sessions.map(x => unified(x, 'session')), ...audits.map(x => unified(x, x.category || 'audit'))].filter(x => !fixedCategory || x.category === fixedCategory).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const all = [...auth.map(x => unified(x, 'auth')), ...sessions.map(x => unified(x, 'session')), ...audits.map(x => unified(x, x.category || 'audit'))].filter(x => !targetCategory || x.category === targetCategory).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
   const total = all.length; return { logs: all.slice((page - 1) * limit, page * limit), total, page, limit, diagnostics: eventLogger.diagnostics };
 }
 app.get('/api/logs', authMiddleware, async (req, res) => { try { res.json(await readUnifiedLogs(req)); } catch (err) { console.error('[Logs Error]', err); res.status(500).json({ error: 'Unable to read logs.', requestId: req.requestId }); } });

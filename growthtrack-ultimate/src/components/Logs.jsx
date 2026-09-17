@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Filter, Download, Plus, Trash2, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Shield, Database, Activity, Cpu } from 'lucide-react';
+import { Search, Filter, Download, Plus, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Shield, Database, Activity, Cpu, User, Hash, Server } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
-import { FixedSizeList as List } from '../lib/FixedSizeList';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { formatDateTime } from '../utils/userFormatters';
+import '../styles/logs.css';
 
 const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error', 'login_success', 'login_failed', 'signup', 'logout', 'session_start', 'session_end', 'page_view'];
 const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];
@@ -40,6 +40,17 @@ function formatTimestamp(ts, user) {
   } catch { return String(ts); }
 }
 
+function titleCase(value = '') {
+  return String(value || 'Event').replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function categoryIcon(category) {
+  if (category === 'auth') return <Shield size={16} />;
+  if (category === 'session') return <Activity size={16} />;
+  if (category === 'system') return <Cpu size={16} />;
+  return <Database size={16} />;
+}
+
 export default function Logs() {
   const toast = useToast();
   const user  = useStore(s => s.user);
@@ -60,23 +71,35 @@ export default function Logs() {
   const [sortDir,  setSortDir]  = useState('desc');
   const [expandedId, setExpandedId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [manualForm, setManualForm] = useState({ action: 'create', table_name: 'users', details: '', category: 'crud' });
+  const [manualForm, setManualForm] = useState({ action: 'create', table_name: 'users', details: '', category: 'audit' });
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     setLoadError('');
     try {
-      const data = await apiSync('/logs');
+      const qs = new URLSearchParams();
+      if (categoryF !== 'all') qs.append('category', categoryF);
+      if (actionF !== 'all') qs.append('action', actionF);
+      if (search.trim()) qs.append('q', search.trim());
+      if (dateFrom) qs.append('from', new Date(dateFrom).toISOString());
+      if (dateTo) qs.append('to', new Date(dateTo + 'T23:59:59').toISOString());
+
+      const data = await apiSync(`/logs?${qs.toString()}`, 'GET');
       if (!data) throw new Error();
       setLogs(Array.isArray(data) ? data : (data.logs || []));
-      try { setDiagnostics(await apiSync('/logs/diagnostics')); } catch (error) { setDiagnostics({ status: 'unavailable', error: error?.message || 'Diagnostics unavailable.' }); }
+      try {
+        setDiagnostics(await apiSync('/logs/diagnostics', 'GET'));
+      } catch (error) {
+        setDiagnostics({ status: 'unavailable', error: error?.message || 'Diagnostics unavailable.' });
+      }
     } catch (error) {
       setLoadError(error?.message || 'Logs service is unavailable.');
+      setDiagnostics({ status: 'unavailable', error: error?.message || 'Logs service is unavailable.' });
       setLogs([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [categoryF, actionF, search, dateFrom, dateTo]);
 
   const runSelfTest = useCallback(async () => {
     setSelfTesting(true);
@@ -85,12 +108,16 @@ export default function Logs() {
     finally { setSelfTesting(false); }
   }, [fetchLogs, toast]);
 
-  useEffect(() => { fetchLogs(); }, []);
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
   const enriched = useMemo(() => logs.map(l => ({
     ...l,
     _sentiment: getSentiment(l.details || l.description || ''),
     _ts: l.timestamp ? new Date(l.timestamp).getTime() : 0,
+    _severity: String(l.severity || (getSentiment(l.details || l.description || '') === 'negative' ? 'error' : 'info')).toLowerCase(),
+    _actor: l.user_name || l.actor_name || l.user_email || l.email || 'System',
+    _source: l.source || 'ultimate-api',
+    _details: l.details || l.description || l.failure_reason || 'No additional details recorded.',
   })), [logs]);
 
   const filtered = useMemo(() => {
@@ -107,6 +134,9 @@ export default function Logs() {
         (l.details || '').toLowerCase().includes(q) ||
         (l.action  || '').toLowerCase().includes(q) ||
         (l.table_name || '').toLowerCase().includes(q) ||
+        (l._actor || '').toLowerCase().includes(q) ||
+        (l._source || '').toLowerCase().includes(q) ||
+        (l.request_id || '').toLowerCase().includes(q) ||
         String(l.item_id || '').includes(q)
       );
     }
@@ -126,7 +156,7 @@ export default function Logs() {
   };
 
   const exportLogs = useCallback((format = 'json') => {
-    const data = filtered.map(({ _sentiment, _ts, ...l }) => l);
+    const data = filtered.map(({ _sentiment, _ts, _severity, _actor, _source, _details, ...l }) => l);
     let content, type, ext;
     if (format === 'json') {
       content = JSON.stringify(data, null, 2);
@@ -159,7 +189,7 @@ export default function Logs() {
       if (!res) throw new Error();
       toast.success('Log entry added');
       setShowAddModal(false);
-      setManualForm({ action: 'create', table_name: 'users', details: '' });
+      setManualForm({ action: 'create', table_name: 'users', details: '', category: 'audit' });
       fetchLogs();
     } catch { toast.error('Failed to add log entry.'); }
   };
@@ -195,11 +225,12 @@ export default function Logs() {
           <button onClick={() => setShowAddModal(true)} className="btn-primary"><Plus size={14} /> Add Entry</button>
         </div>
       </div>
-      {diagnostics && <div className="glass-card" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', padding: '0.75rem', fontSize: '0.75rem' }}>
+      {diagnostics && <div className="gt-surface gt-glass" role="status" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', padding: '0.75rem', fontSize: '0.75rem' }}>
         <span><strong>Logging:</strong> {diagnostics.status}</span>
         {diagnostics.counts && <span>DB events: {diagnostics.counts.total}</span>}
         {diagnostics.diagnostics?.lastSuccessfulEvent && <span>Last event: {diagnostics.diagnostics.lastSuccessfulEvent.action}</span>}
         {diagnostics.databasePath && <span style={{ color: 'var(--text-3)' }}>SQLite connected</span>}
+        {diagnostics.error && <span style={{ color: 'var(--danger)' }}>{diagnostics.error}</span>}
       </div>}
 
       {/* Category tabs */}
@@ -273,98 +304,81 @@ export default function Logs() {
         )}
       </div>
 
-      {/* Table */}
-      <div className="glass-card" style={{ overflowX: 'auto' }}>
+      {/* Unified event stream */}
+      <div className="gt-surface gt-glass log-stream">
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem', color: 'var(--text-3)' }}>
             <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} />
           </div>
         ) : loadError ? (
           <EmptyState icon={AlertTriangle} title="Logs unavailable" description={loadError} actionLabel="Retry" onAction={fetchLogs} />
+        ) : diagnostics?.status === 'unavailable' && enriched.length === 0 ? (
+          <EmptyState icon={AlertTriangle} title="Logging diagnostics unavailable" description={diagnostics.error || 'The logging service could not be verified.'} actionLabel="Retry" onAction={fetchLogs} />
         ) : filtered.length === 0 ? (
           <EmptyState icon={Filter} title="No logs found" description={enriched.length === 0 ? 'No audit logs recorded yet.' : 'No logs match your current filters.'} />
         ) : (<>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {[['timestamp', 'Time'], ['action', 'Action'], ['table_name', 'Table'], ['item_id', 'Item ID'], ['', 'Sentiment'], ['', 'Details']].map(([k, h]) => (
-                  <th key={h} onClick={() => k && toggleSort(k)} style={{
-                    padding: '0.5rem 0.75rem', textAlign: 'left', color: 'var(--text-3)', fontWeight: 700,
-                    fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em',
-                    cursor: k ? 'pointer' : 'default', userSelect: 'none', whiteSpace: 'nowrap',
-                  }}>{h} {k && <SortIcon k={k} />}</th>
-                ))}
-              </tr>
-            </thead>
-          </table>
-          <div style={{ flex: 1, minHeight: '400px' }}>
-            <List
-              height={400}
-              itemCount={filtered.length}
-              itemSize={42}
-              width="100%"
-              itemData={filtered}
-            >
-              {({ index, style, data }) => {
-                const log = data[index];
-                const sc = SENTIMENT_COLORS[log._sentiment] || SENTIMENT_COLORS.neutral;
-                const ac = ACTION_COLORS[(log.action || '').toLowerCase()] || ACTION_COLORS.other;
-                const details = log.details || log.description || '';
-                return (
-                  <div style={{ ...style, display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
-                    onClick={() => setExpandedId(log.id)}>
-                    <div style={{ width: '150px', padding: '0 0.75rem', color: 'var(--text-3)', whiteSpace: 'nowrap', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={10} /> {formatTimestamp(log.timestamp, user)}
-                    </div>
-                    <div style={{ width: '100px', padding: '0 0.75rem' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700, background: `${ac}20`, color: ac, textTransform: 'capitalize' }}>
-                        {log.action || '—'}
-                      </span>
-                    </div>
-                    <div style={{ width: '120px', padding: '0 0.75rem', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: '0.72rem' }}>{log.table_name || '—'}</div>
-                    <div style={{ width: '120px', padding: '0 0.75rem', color: 'var(--text-3)', fontFamily: 'monospace', fontSize: '0.68rem' }}>{log.item_id || '—'}</div>
-                    <div style={{ width: '120px', padding: '0 0.75rem' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: sc.text, fontSize: '0.68rem', fontWeight: 700, background: sc.bg, padding: '2px 8px', borderRadius: '99px', border: `1px solid ${sc.border}` }}>
-                        {sc.icon}{log._sentiment}
-                      </span>
-                    </div>
-                    <div style={{ flex: 1, padding: '0 0.75rem', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.72rem' }}>
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }} />,
-                        }}
-                      >
-                        {details.slice(0, 150)}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                );
-              }}
-            </List>
+          <div className="log-stream__toolbar">
+            <div><strong>Event stream</strong><span>{filtered.length} records in the current view</span></div>
+            <button type="button" onClick={() => toggleSort('timestamp')} className="log-sort-button">
+              <Clock size={13} /> {sortDir === 'desc' ? 'Newest first' : 'Oldest first'} <SortIcon k="timestamp" />
+            </button>
           </div>
-          </>)}
+          <div className="log-event-list" role="list">
+            {filtered.map((log) => {
+              const actionColor = ACTION_COLORS[(log.action || '').toLowerCase()] || ACTION_COLORS.other;
+              return (
+                <button type="button" role="listitem" className="log-event" key={`${log.category}-${log.id}`} onClick={() => setExpandedId(`${log.category || 'audit'}:${log.id}`)}>
+                  <span className={`log-event__icon log-event__icon--${log.category || 'audit'}`}>{categoryIcon(log.category)}</span>
+                  <span className="log-event__content">
+                    <span className="log-event__heading">
+                      <strong>{titleCase(log.action)}</strong>
+                      <span className={`log-severity log-severity--${log._severity}`}>{log._severity}</span>
+                      <span className="log-category">{titleCase(log.category || 'audit')}</span>
+                    </span>
+                    <span className="log-event__details">{log._details}</span>
+                    <span className="log-event__metadata">
+                      <span><Clock size={12} />{formatTimestamp(log.timestamp, user)}</span>
+                      <span><User size={12} />{log._actor}</span>
+                      <span><Server size={12} />{log._source}</span>
+                      {(log.table_name || log.item_id) && <span><Database size={12} />{log.table_name || 'record'}{log.item_id ? ` · ${log.item_id}` : ''}</span>}
+                      {log.request_id && <span className="log-request-id"><Hash size={12} />{log.request_id}</span>}
+                    </span>
+                  </span>
+                  <span className="log-event__action" style={{ color: actionColor }}>View</span>
+                </button>
+              );
+            })}
+          </div>
+        </>)}
       </div>
 
       {/* Expanded details modal */}
       {expandedId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }} onClick={() => setExpandedId(null)}>
-          <div className="glass-card" style={{ width: '600px', maxWidth: '95vw', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <p style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--text-1)' }}>Log Details</p>
+          <div className="gt-surface gt-glass log-detail" onClick={e => e.stopPropagation()}>
             {(() => {
-              const log = logs.find(l => l.id === expandedId);
+              const log = enriched.find(l => `${l.category || 'audit'}:${l.id}` === expandedId);
               if (!log) return null;
-              const details = log.details || log.description || '';
+              const normalized = log;
+              const details = normalized._details || log.details || log.description || '';
               return (
-                <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-2)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }} />,
-                    }}
-                  >
-                    {details}
-                  </ReactMarkdown>
+                <div>
+                  <div className="log-detail__header">
+                    <span className={`log-event__icon log-event__icon--${normalized.category || 'audit'}`}>{categoryIcon(normalized.category)}</span>
+                    <div><span>{titleCase(normalized.category || 'audit')} event</span><h3>{titleCase(normalized.action)}</h3></div>
+                    <span className={`log-severity log-severity--${normalized._severity || 'info'}`}>{normalized._severity || 'info'}</span>
+                  </div>
+                  <dl className="log-detail__facts">
+                    <div><dt>Time</dt><dd>{formatTimestamp(normalized.timestamp, user)}</dd></div>
+                    <div><dt>Actor</dt><dd>{normalized._actor || 'System'}</dd></div>
+                    <div><dt>Source</dt><dd>{normalized._source || 'ultimate-api'}</dd></div>
+                    <div><dt>Target</dt><dd>{normalized.table_name || '—'}{normalized.item_id ? ` · ${normalized.item_id}` : ''}</dd></div>
+                    <div className="log-detail__wide"><dt>Request ID</dt><dd>{normalized.request_id || 'Not recorded'}</dd></div>
+                  </dl>
+                  <div className="log-detail__message">
+                    <span>Event details</span>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" /> }}>{details}</ReactMarkdown>
+                  </div>
                 </div>
               );
             })()}
@@ -378,7 +392,7 @@ export default function Logs() {
       {/* Add manual log modal */}
       {showAddModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-          <div className="glass-card" style={{ width: '420px', maxWidth: '95vw' }}>
+          <div className="gt-surface gt-glass" style={{ width: '420px', maxWidth: '95vw' }}>
             <p style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--text-1)' }}>Add Manual Log Entry</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
               <select value={manualForm.category} onChange={e => setManualForm(f => ({ ...f, category: e.target.value }))} className="form-input">
