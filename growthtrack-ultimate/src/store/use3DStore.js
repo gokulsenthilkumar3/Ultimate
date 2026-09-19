@@ -351,7 +351,7 @@ const use3DStore = create(
       vfxState: { ...VFX_DEFAULTS },
 
       /** Detected GPU tier — set on mount via capability detection */
-      gpuTier: GPU_TIERS.HIGH,
+      gpuTier: GPU_TIERS.MED,
 
       /** Shared, database-hydratable cinematic renderer configuration. */
       cinematicState: { ...CINEMATIC_DEFAULTS },

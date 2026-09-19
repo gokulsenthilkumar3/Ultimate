@@ -18,5 +18,10 @@ describe('model asset registry', () => {
     expect(resolveModelAsset({ avatarAsset: 'https://example.com/person.glb' }).source).toBe('default');
     expect(resolveModelAsset({ avatarAsset: '../private/person.glb' }).source).toBe('default');
   });
-});
 
+  it('uses the lightweight asset by default and reserves the hero asset for high quality', () => {
+    expect(resolveModelAsset({}, 'MED').path).toMatch(/humanoid-base-lite\.glb$/);
+    expect(resolveModelAsset({}, 'LOW').path).toMatch(/humanoid-base-lite\.glb$/);
+    expect(resolveModelAsset({}, 'HIGH').path).toMatch(/humanoid-base\.glb$/);
+  });
+});

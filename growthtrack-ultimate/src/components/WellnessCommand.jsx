@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { HeartPulse, Activity, Moon } from 'lucide-react';
 import useStore from '../store/useStore';
 import { handleTabKeyDown } from '../hooks/useHashTab';
@@ -33,7 +34,12 @@ function AreaLoading() {
 }
 
 export default function WellnessCommand({ user, setActiveTab }) {
-  const [activeArea, setActiveArea] = useState('overview');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const hash = location.hash.slice(1).toLowerCase();
+  const activeArea = ['3d', 'blueprint', 'targets', 'history'].includes(hash)
+    ? 'physique' : AREAS.some(([id]) => id === hash) ? hash : 'overview';
+  const setActiveArea = (area) => navigate({ pathname: location.pathname, search: location.search, hash: area === 'physique' ? '#3d' : `#${area}` });
   const habits = useStore(s => s.habits) || [];
   const sleep = useStore(s => s.sleepLogs) || [];
   const metrics = useStore(s => s.metricLogs) || [];

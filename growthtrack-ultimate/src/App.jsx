@@ -93,6 +93,7 @@ const SIPCalculator      = lazy(() => import('./components/SIPCalculator'));
 const TransformationPredictor = lazy(() => import('./components/TransformationPredictor'));
 const HabitsMatrix       = lazy(() => import('./components/HabitsMatrix'));
 const Pricing            = lazy(() => import('./components/Pricing'));
+const ActionCenter       = lazy(() => import('./components/ActionCenter'));
 
 // Warm the most likely next command view when the browser is idle. This keeps
 // command navigation immediate without competing with the current interaction.
@@ -114,6 +115,7 @@ const TabRenderer = React.memo(function TabRenderer({ tab, user, setUser, theme,
   const props = { user, setUser, theme, setTheme };
   switch (tab) {
     case 'overview':       return <Overview {...props} />;
+    case 'actions':        return <ActionCenter />;
     case 'humanoid':       // ── Merged into Physique → 3D Mirror sub-tab ──────────
     case 'physique':       return <Physique {...props} />;
 

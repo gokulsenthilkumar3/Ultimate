@@ -20,5 +20,13 @@ describe('body metric fallbacks', () => {
   it('reports precision without counting estimates as user measurements', () => {
     expect(getMetricCompleteness({ height: 178, weight: 76 })).toMatchObject({ supplied: 2, total: 10, percent: 20 });
   });
-});
 
+  it('replaces impossible legacy values with render-only estimates', () => {
+    const result = resolveBodyMetrics({ height: 175, chest: -0.1, thighs: 3, waist: 82 });
+    expect(result.invalidKeys).toEqual(expect.arrayContaining(['chest', 'thighs']));
+    expect(result.metrics.chest).toBeGreaterThan(70);
+    expect(result.metrics.thighs).toBeGreaterThan(35);
+    expect(result.metrics.waist).toBe(82);
+    expect(getMetricCompleteness({ height: 175, chest: -0.1, thighs: 3 })).toMatchObject({ supplied: 1 });
+  });
+});

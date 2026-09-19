@@ -31,7 +31,8 @@ import SocialShareModal from './SocialShareModal';
 import PhysiqueDataPanel from './PhysiqueDataPanel';
 import use3DStore, { CINEMATIC_PRESETS } from '../store/use3DStore';
 import useStore from '../store/useStore';
-import { BODY_APPEARANCE_FIELDS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile } from '../lib/physiqueProfile';
+import { BODY_APPEARANCE_FIELDS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, getInvalidBodyProfileMeasurements, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile } from '../lib/physiqueProfile';
+import { validateBodyMetric } from '../lib/bodyMetricContract';
 import { buildRendererQualityGate } from '../lib/rendererQualityGate';
 import { getMetricCompleteness } from '../lib/bodyMetricFallbacks';
 import { USER, BODY_PARTS, STATUS } from '../data/userData';
@@ -314,6 +315,11 @@ export default function HumanoidViewer() {
   const bodyProfile = bodyProfileState || EMPTY_OBJECT;
   const globalMetricLogs = metricLogsState || EMPTY_ARRAY;
   const persistedPhysique = persistedPhysiqueState || EMPTY_OBJECT;
+  const normalizedBodyProfile = useMemo(() => mergeBodyProfileSources(bodyProfile, legacyUser), [bodyProfile, legacyUser]);
+  const invalidProfileMeasurements = useMemo(
+    () => getInvalidBodyProfileMeasurements(normalizedBodyProfile, persistedPhysique),
+    [normalizedBodyProfile, persistedPhysique],
+  );
   const qualityGate = useMemo(() => buildRendererQualityGate({
     diagnostics: modelDiagnostics,
     telemetry: rendererTelemetry,
@@ -398,21 +404,29 @@ export default function HumanoidViewer() {
 
   const handleCurrentValue = useCallback((key: string, rawValue: string) => {
     if (rawValue.trim() === '') return;
-    const value = Number(rawValue);
-    if (!Number.isFinite(value)) return;
+    const validation = validateBodyMetric(key, rawValue, { allowEmpty: false });
+    if (!validation.valid) {
+      toast.error(`${key}: ${validation.reason || 'Enter a valid measurement.'}`);
+      return;
+    }
+    const value = validation.value as number;
     const next = { ...currentMetrics, [key]: value };
     updateCurrentMetric(key, value);
     queueProfileSave(next, goalMetrics, manualMorphOverrides);
-  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateCurrentMetric]);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, toast, updateCurrentMetric]);
 
   const handleGoalValue = useCallback((key: string, rawValue: string) => {
     if (rawValue.trim() === '') return;
-    const value = Number(rawValue);
-    if (!Number.isFinite(value)) return;
+    const validation = validateBodyMetric(key, rawValue, { allowEmpty: false });
+    if (!validation.valid) {
+      toast.error(`${key}: ${validation.reason || 'Enter a valid goal measurement.'}`);
+      return;
+    }
+    const value = validation.value as number;
     const next = { ...goalMetrics, [key]: value };
     updateGoalMetric(key, value);
     queueProfileSave(currentMetrics, next, manualMorphOverrides);
-  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateGoalMetric]);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, toast, updateGoalMetric]);
 
   const updateCurrentAppearance = useCallback((key: string, value: string | number) => {
     const next = { ...currentMetrics, [key]: value };
@@ -498,13 +512,12 @@ export default function HumanoidViewer() {
 
   // ── Hydrate the renderer cache from persisted physique records.
   useEffect(() => {
-    const normalizedProfile = mergeBodyProfileSources(bodyProfile, legacyUser);
     const persistedCurrent = {
       ...(persistedPhysique?.privateMetrics || {}),
       ...(persistedPhysique?.appearanceMetrics || {}),
-      ...bodyProfileToMetrics(normalizedProfile),
+      ...bodyProfileToMetrics(normalizedBodyProfile),
     };
-    const persistedGoal = bodyProfileToGoals(normalizedProfile, persistedPhysique);
+    const persistedGoal = bodyProfileToGoals(normalizedBodyProfile, persistedPhysique);
     const persistedSnapshots = metricLogsToSnapshots(globalMetricLogs);
     const persistedMilestones = Array.isArray(persistedPhysique?.milestones) ? persistedPhysique.milestones : [];
     const persistedMorphOverrides = persistedPhysique?.morphOverrides && typeof persistedPhysique.morphOverrides === 'object'
@@ -518,7 +531,7 @@ export default function HumanoidViewer() {
     setGoalMetrics(persistedGoal);
     setTimelineSnaps(persistedSnapshots);
     setMilestones(persistedMilestones);
-  }, [bodyProfile, globalMetricLogs, legacyUser, persistedPhysique, setCinematicState, setCurrentMetrics, setGoalMetrics, setMilestones, setMorphOverrides, setTimelineSnaps]);
+  }, [globalMetricLogs, normalizedBodyProfile, persistedPhysique, setCinematicState, setCurrentMetrics, setGoalMetrics, setMilestones, setMorphOverrides, setTimelineSnaps]);
 
   useEffect(() => () => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
@@ -640,9 +653,9 @@ export default function HumanoidViewer() {
         <div className="chamber-topbar__brand">
           <div className="chamber-topbar__title-row">
             <span className="shimmer-text chamber-topbar__title">
-              DIGITAL TWIN
+              DIGITAL HUMAN PREVIEW
             </span>
-            <span className="chamber-topbar__version">v5</span>
+            <span className="chamber-topbar__version">V1</span>
           </div>
           <div className="chamber-topbar__chips">
             {/* Render status — detailed model diagnostics live in Settings. */}
@@ -651,10 +664,10 @@ export default function HumanoidViewer() {
               style={{ '--hud-delay': '0.1s' } as React.CSSProperties}
             >
               <span className="hud-dot" />
-              {modelDiagnostics?.health === 'healthy' ? 'AUTHORED MODEL' : 'PROCEDURAL CG'}
+              {modelDiagnostics?.health === 'healthy' ? 'HUMAN MESH LOADED' : 'SAFE FALLBACK'}
             </span>
             <span className="hud-chip" style={{ '--hud-delay': '0.18s' } as React.CSSProperties}>
-              REALTIME MORPHS
+              MEASUREMENT MORPHS
             </span>
             <span className="hud-chip cinematic" style={{ '--hud-delay': '0.26s' } as React.CSSProperties}>
               <Camera size={10} /> {cinematic.preset === 'CUSTOM' ? 'CUSTOM GRADE' : `${cinematic.preset} GRADE`}
@@ -665,8 +678,16 @@ export default function HumanoidViewer() {
               title={`${qualityGate.passed} of ${qualityGate.total} quality checks passing`}
             >
               {qualityGate.releaseReady ? <CheckCircle size={10} /> : <AlertTriangle size={10} />}
-              {qualityGate.releaseReady ? 'RENDERER READY' : qualityGate.status === 'pending' ? 'LOADING MODEL' : 'RENDERER DETAILS'}
+              {qualityGate.releaseReady ? 'MODEL CHECKS PASS' : qualityGate.status === 'pending' ? 'LOADING MODEL' : 'MODEL DETAILS'}
             </span>
+            {invalidProfileMeasurements.length > 0 && (
+              <span
+                className="hud-chip quality-gate quality-gate--attention"
+                title={invalidProfileMeasurements.map((item) => `${item.label}: ${item.value} (${item.reason})`).join('\n')}
+              >
+                <AlertTriangle size={10} /> {invalidProfileMeasurements.length} MEASUREMENT{invalidProfileMeasurements.length === 1 ? '' : 'S'} NEED REVIEW
+              </span>
+            )}
             {overallScore > 0 && (
               <span className="hud-chip healthy" style={{ '--hud-delay': '0.36s' } as React.CSSProperties}>
                 <Star size={10} /> {overallScore}%

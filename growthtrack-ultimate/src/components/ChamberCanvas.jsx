@@ -287,7 +287,7 @@ function useGlCreated(setLodConfig) {
     initialized.current = true;
 
     detectAndSetGpuTier(gl);
-    const tier   = use3DStore.getState().gpuTier || GPU_TIERS.HIGH;
+    const tier   = use3DStore.getState().gpuTier || GPU_TIERS.MED;
     const config = LOD_CONFIG[tier];
     setLodConfig(config);
 
@@ -308,7 +308,7 @@ function useGlCreated(setLodConfig) {
 export default function ChamberCanvas({ className = "", style = {} }) {
   const wrapperRef = useRef(null);
   const qualityStatus = use3DStore((state) => state.rendererQualityTelemetry.status);
-  const [lodConfig, setLodConfig] = useState(LOD_CONFIG[GPU_TIERS.HIGH]);
+  const [lodConfig, setLodConfig] = useState(LOD_CONFIG[GPU_TIERS.MED]);
   const [isIntersecting, setIsIntersecting] = useState(true);
   const [documentVisible, setDocumentVisible] = useState(() => document.visibilityState !== 'hidden');
   const profileReducedMotion = useStore((state) => state.reducedMotion);

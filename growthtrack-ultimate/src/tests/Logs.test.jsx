@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { apiSyncMock } = vi.hoisted(() => ({ apiSyncMock: vi.fn() }));
@@ -41,5 +42,24 @@ describe('Logs service states', () => {
 
     expect(await screen.findByText('Logging diagnostics unavailable')).toBeVisible();
     expect(screen.queryByText('No logs found')).toBeNull();
+  });
+
+  it('paginates records and exposes accessible filter labels', async () => {
+    const logs = Array.from({ length: 30 }, (_, index) => ({
+      id: String(index + 1), category: 'audit', action: 'update',
+      details: `Event ${index + 1}`, timestamp: `2026-09-${String((index % 19) + 1).padStart(2, '0')}T10:00:00.000Z`,
+    }));
+    apiSyncMock
+      .mockResolvedValueOnce({ logs, total: logs.length })
+      .mockResolvedValueOnce({ status: 'healthy', counts: { total: logs.length } });
+
+    render(<Logs />);
+    expect(await screen.findByText('Event 30')).toBeVisible();
+    expect(screen.getByRole('searchbox', { name: 'Search audit logs' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Filter logs by category' })).toBeVisible();
+    expect(screen.getByText('Page 1 of 2')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Page 2 of 2')).toBeVisible();
+    expect(screen.getByText('Showing 26–30 of 30')).toBeVisible();
   });
 });

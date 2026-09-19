@@ -116,6 +116,24 @@ function translateNodeWorldZ(node, parentWorld, shiftZ) {
   delete node.scale;
 }
 
+function reparentPreservingWorld(json, nodes, parents, childIndex, parentIndex) {
+  const world = worldMatrix(nodes, parents, childIndex, new Map());
+  const parentWorld = worldMatrix(nodes, parents, parentIndex, new Map());
+  const local = parentWorld.clone().invert().multiply(world);
+  const oldParent = parents.get(childIndex);
+  if (oldParent != null) {
+    nodes[oldParent].children = (nodes[oldParent].children ?? []).filter((index) => index !== childIndex);
+  }
+  (json.scenes ?? []).forEach((scene) => {
+    scene.nodes = (scene.nodes ?? []).filter((index) => index !== childIndex);
+  });
+  nodes[parentIndex].children = [...new Set([...(nodes[parentIndex].children ?? []), childIndex])];
+  nodes[childIndex].matrix = local.toArray().map((value) => Number(value.toFixed(10)));
+  delete nodes[childIndex].translation;
+  delete nodes[childIndex].rotation;
+  delete nodes[childIndex].scale;
+}
+
 function calibrate(filePath) {
   const parsed = parseGlb(filePath);
   const { json, binary } = parsed;
@@ -132,6 +150,17 @@ function calibrate(filePath) {
   const bodyMatrix = worldMatrix(nodes, parents, bodyIndex, cache);
   const bodyPoints = accessorPoints(json, binary, positionAccessor(json, bodyNode.mesh)).map((point) => point.applyMatrix4(bodyMatrix));
   const headWorld = worldMatrix(nodes, parents, headIndex, cache);
+
+  if ([eyesIndex, hairIndex].every((index) => nodes[index].extras?.alignment === 'makehuman-proxy')) {
+    for (const index of [eyesIndex, hairIndex]) {
+      reparentPreservingWorld(json, nodes, parentMap(nodes), index, headIndex);
+      nodes[index].extras = { ...nodes[index].extras, headBound: true, bindTransform: 'head-local' };
+    }
+    json.asset.extras = { ...(json.asset.extras ?? {}), featureAlignment: { method: 'source-proxy-barycentric', calibrated: true } };
+    writeGlb(filePath, parsed);
+    console.log(`✓ ${path.basename(filePath)}: source attachment maps preserved; eyes and hair follow all body morphs`);
+    return;
+  }
 
   const featureInfo = (index) => {
     const node = nodes[index];
@@ -158,10 +187,16 @@ function calibrate(filePath) {
 
   const eyeAlignmentOffsetZ = Number(eyes.node.extras?.alignmentOffsetZ ?? 0) + eyeShiftZ;
   const hairAlignmentOffsetZ = Number(hair.node.extras?.alignmentOffsetZ ?? 0) + hairShiftZ;
-  translateNodeWorldZ(eyes.node, headWorld, eyeShiftZ);
-  translateNodeWorldZ(hair.node, headWorld, hairShiftZ);
-  eyes.node.extras = { ...(eyes.node.extras ?? {}), alignment: 'body-surface-calibrated', alignmentOffsetZ: Number(eyeAlignmentOffsetZ.toFixed(6)) };
-  hair.node.extras = { ...(hair.node.extras ?? {}), alignment: 'body-surface-calibrated', alignmentOffsetZ: Number(hairAlignmentOffsetZ.toFixed(6)) };
+  const eyesParentIndex = parents.get(eyesIndex);
+  const hairParentIndex = parents.get(hairIndex);
+  const eyesParentWorld = eyesParentIndex == null ? new Matrix4() : worldMatrix(nodes, parents, eyesParentIndex, new Map());
+  const hairParentWorld = hairParentIndex == null ? new Matrix4() : worldMatrix(nodes, parents, hairParentIndex, new Map());
+  translateNodeWorldZ(eyes.node, eyesParentWorld, eyeShiftZ);
+  translateNodeWorldZ(hair.node, hairParentWorld, hairShiftZ);
+  reparentPreservingWorld(json, nodes, parentMap(nodes), eyesIndex, headIndex);
+  reparentPreservingWorld(json, nodes, parentMap(nodes), hairIndex, headIndex);
+  eyes.node.extras = { ...(eyes.node.extras ?? {}), alignment: 'body-surface-calibrated', alignmentOffsetZ: Number(eyeAlignmentOffsetZ.toFixed(6)), headBound: true, bindTransform: 'head-local' };
+  hair.node.extras = { ...(hair.node.extras ?? {}), alignment: 'body-surface-calibrated', alignmentOffsetZ: Number(hairAlignmentOffsetZ.toFixed(6)), headBound: true, bindTransform: 'head-local' };
   json.asset.extras = {
     ...(json.asset.extras ?? {}),
     featureAlignment: { method: 'body-surface-bounds', calibrated: true },

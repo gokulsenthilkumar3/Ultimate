@@ -32,6 +32,7 @@ import { createDeltaMaterial as createDeltaHeatmapMaterial, updateDeltaUniforms 
 import { resolveBodyMetrics } from "../../lib/bodyMetricFallbacks";
 import { computeHeightScale, resolveSkinTone } from "./metricsToBlendshapes";
 import { inspectDigitalHumanV2 } from './digitalHumanV2';
+import { createSoleGrounder } from './grounding';
 
 const ProceduralHumanoid = React.lazy(() => import("./ProceduralHumanoid"));
 
@@ -94,6 +95,8 @@ export default function HumanoidClone({
   // ── Load model ──────────────────────────────────────────────────────────────
   const { bodyMesh, morphIndexMap, morphMeshes, privateAnatomyMesh, featureMeshes, skinVariantMaterials, skeleton, scene, diagnostics } = useModelLoader(modelPreference);
   const useProcedural = !bodyMesh || diagnostics?.isSuspicious;
+  const groundSoles = useMemo(() => bodyMesh && scene ? createSoleGrounder(bodyMesh, scene) : null, [bodyMesh, scene]);
+  const groundElapsed = useRef(1);
   const setModelFrame = use3DStore((s) => s.setModelFrame);
   const setModelDiagnostics = use3DStore((s) => s.setModelDiagnostics);
   const gpuTier = use3DStore((s) => s.gpuTier);
@@ -167,7 +170,7 @@ export default function HumanoidClone({
             ? skinVariantMaterials?.SkinVariant_Deep
             : null;
         return createSkinMaterial(toneIndex, variant || bodyMesh?.material || null, {
-          bodyHairIntensity: renderMetrics?.bodyHairDensity ?? 0.18,
+          bodyHairIntensity: renderMetrics?.bodyHairDensity ?? 0,
           skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,
           vertexColors: true,
         });
@@ -280,7 +283,7 @@ export default function HumanoidClone({
   useEffect(() => () => scalpMaterial.dispose(), [scalpMaterial]);
 
   useEffect(() => {
-    if (useProcedural || !bodyMesh || !skeleton || hairStyle === 'bald' || renderMode !== 'normal') return undefined;
+    if (useProcedural || !bodyMesh || !skeleton || hairStyle !== 'buzz' || renderMode !== 'normal') return undefined;
     const parent = bodyMesh.parent || scene;
     const scalp = new THREE.SkinnedMesh(bodyMesh.geometry, scalpMaterial);
     scalp.name = 'GrowthTrackScalpCap';
@@ -344,7 +347,7 @@ export default function HumanoidClone({
     (featureMeshes || []).forEach(({ mesh, feature }) => {
       const next = renderMode === 'normal' ? featureMaterials[feature] : material;
       if (next) mesh.material = next;
-      if (feature === 'hair') mesh.visible = ['medium', 'long'].includes(hairStyle);
+      if (feature === 'hair') mesh.visible = ['short', 'medium', 'long'].includes(hairStyle);
       mesh.renderOrder = renderMode === 'ghost' ? 3 : 0;
       mesh.castShadow = renderMode === 'normal';
       mesh.receiveShadow = false;
@@ -408,6 +411,7 @@ export default function HumanoidClone({
     if (bodyMesh && !useProcedural) {
       (morphMeshes || [{ mesh: bodyMesh }]).forEach(({ mesh, sensitive }) => {
         if (!mesh) return;
+        if (featureMeshes.some((feature) => feature.mesh === mesh)) return;
         mesh.material = sensitive ? privateMaterial : material;
         mesh.castShadow = renderMode === "normal";
         mesh.receiveShadow = false;
@@ -420,7 +424,7 @@ export default function HumanoidClone({
       // eslint-disable-next-line react-hooks/immutability
       privateAnatomyMesh.material = privateMaterial;
     }
-  }, [bodyMesh, material, morphMeshes, privateAnatomyMesh, privateMaterial, renderMode, useProcedural]);
+  }, [bodyMesh, featureMeshes, material, morphMeshes, privateAnatomyMesh, privateMaterial, renderMode, useProcedural]);
 
   useEffect(() => {
     if (!privateAnatomyMesh) return;
@@ -445,6 +449,11 @@ export default function HumanoidClone({
     }
     if (scalpRef.current) interpolator.applyToMesh(scalpRef.current, morphIndexMap);
     if (auraRef.current) interpolator.applyToMesh(auraRef.current, morphIndexMap);
+    groundElapsed.current += delta;
+    if (groundElapsed.current >= 0.15) {
+      groundSoles?.(0.04 / heightScale);
+      groundElapsed.current = 0;
+    }
 
     const blink = interpolator.getWeight("blink");
     const smile = interpolator.getWeight("smile");
@@ -467,7 +476,7 @@ export default function HumanoidClone({
         fitzpatrickIndex:     interpolator.getWeight("fitzpatrick_index"),
         skinColorHex:         renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,
         vascularityIntensity: interpolator.getWeight("vascularity_intensity"),
-        bodyHairIntensity:    renderMetrics?.bodyHairDensity ?? 0.18,
+        bodyHairIntensity:    renderMetrics?.bodyHairDensity ?? 0,
         time: _.clock.elapsedTime
       });
     }

@@ -9,15 +9,16 @@ import React from 'react';
  * @param {string} [subtitle] - Optional subtitle / description
  * @param {React.ReactNode} [actions] - Optional right-aligned action buttons
  */
-export default function PageHeader({ accent, icon, title, subtitle, actions }) {
+export default function PageHeader({ accent, icon, title, subtitle, actions, status, headingLevel = 1 }) {
+  const Heading = headingLevel === 2 ? 'h2' : 'h1';
   return (
     <div className="page-header-block" style={actions ? { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' } : {}}>
       <div>
         <p className="label-caps page-header-block__accent">{accent}</p>
-        <h2 className="text-display page-header-block__title">
+        <Heading className="text-display page-header-block__title">
           {icon && <span className="page-header-block__icon">{icon}</span>}
           {title}
-        </h2>
+        </Heading>
         {subtitle && (
           <p className="page-header-block__subtitle">{subtitle}</p>
         )}
@@ -27,6 +28,7 @@ export default function PageHeader({ accent, icon, title, subtitle, actions }) {
           {actions}
         </div>
       )}
+      {status && <div className="page-header-block__status">{status}</div>}
     </div>
   );
 }

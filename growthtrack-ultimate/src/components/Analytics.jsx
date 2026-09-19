@@ -255,7 +255,7 @@ export default function Analytics() {
       </div>
 
       {/* ── Command Center Tab Bar ────────────────────────────────────── */}
-      <div style={{
+      <div role="tablist" aria-label="Analytics sections" style={{
 
         display: 'flex', gap: '4px', padding: '4px',
         background: 'var(--bg-elevated)', borderRadius: '14px',
@@ -269,6 +269,10 @@ export default function Analytics() {
         ].map(tab => (
           <button
             key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={commandTab === tab.id}
+            aria-controls={`analytics-panel-${tab.id}`}
             onClick={() => setCommandTab(tab.id)}
             style={{
               padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
@@ -286,7 +290,7 @@ export default function Analytics() {
 
       {/* ── Correlations sub-tab (original Analytics content) ────────────── */}
       {commandTab === 'correlations' && (
-      <div>
+      <div id="analytics-panel-correlations" role="tabpanel" aria-label="Correlations analytics">
 
       {/* Summary chips */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
@@ -302,15 +306,15 @@ export default function Analytics() {
       </div>
 
       {/* View tabs */}
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+      <div role="tablist" aria-label="Correlation views" style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
         {['correlations', 'trends', 'habits', 'goals'].map(t => (
-          <button key={t} onClick={() => setView(t)} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: view === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === t ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{t}</button>
+          <button type="button" role="tab" aria-selected={view === t} aria-controls={`correlation-view-${t}`} key={t} onClick={() => setView(t)} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: view === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === t ? 'var(--bg-base)' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{t}</button>
         ))}
       </div>
 
       {/* Correlations */}
       {view === 'correlations' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div id="correlation-view-correlations" role="tabpanel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <CorrelationPanel title="Sleep → Mood" xLabel="Sleep (hrs)" yLabel="Mood (1-10)" color="#0ea5e9" data={sleepMoodData} r={rSleepMood} user={user} />
           <CorrelationPanel title="Sleep → Energy" xLabel="Sleep (hrs)" yLabel="Energy (1-10)" color="#f59e0b" data={sleepEnergyData} r={rSleepEnergy} user={user} />
           <CorrelationPanel title="Energy → Mood" xLabel="Energy (1-10)" yLabel="Mood (1-10)" color="#ec4899" data={energyMoodData} r={rEnergyMood} user={user} />
@@ -339,7 +343,7 @@ export default function Analytics() {
 
       {/* Trends */}
       {view === 'trends' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div id="correlation-view-trends" role="tabpanel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <CrossDomainTrend metrics={metrics} sleepLogs={sleepLogs} user={user} />
           <div className="glass-card">
             <span className="card-title">Task Completion Rate — 30 Days</span>
@@ -370,7 +374,7 @@ export default function Analytics() {
 
       {/* Habits */}
       {view === 'habits' && (
-        <div className="glass-card">
+        <div id="correlation-view-habits" role="tabpanel" className="glass-card">
           <span className="card-title">Habit Streak Leaderboard</span>
           {habitStreakData.length === 0 ? (
             <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginTop: '0.75rem' }}>No habits tracked yet.</p>
@@ -390,7 +394,7 @@ export default function Analytics() {
 
       {/* Goals */}
       {view === 'goals' && (
-        <div className="glass-card">
+        <div id="correlation-view-goals" role="tabpanel" className="glass-card">
           <span className="card-title">Goal Progress Distribution</span>
           {goalProgressData.length === 0 ? (
             <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginTop: '0.75rem' }}>No goals tracked yet.</p>
@@ -418,14 +422,18 @@ export default function Analytics() {
       {/* ── Audit Logs sub-tab ────────────────────────────────────── */}
       {commandTab === 'logs' && (
         <Suspense fallback={<div style={{height:'40vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spin-ring"/></div>}>
+          <div id="analytics-panel-logs" role="tabpanel">
           <Logs />
+          </div>
         </Suspense>
       )}
 
       {/* ── Growth Forecast sub-tab ────────────────────────────────── */}
       {commandTab === 'forecast' && (
         <Suspense fallback={<div style={{height:'40vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spin-ring"/></div>}>
+          <div id="analytics-panel-forecast" role="tabpanel">
           <TransformationPredictor logs={metricLogs} />
+          </div>
         </Suspense>
       )}
     </div>

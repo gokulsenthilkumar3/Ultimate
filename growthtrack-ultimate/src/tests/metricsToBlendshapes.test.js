@@ -98,4 +98,13 @@ describe('pure metric-to-blendshape engine', () => {
     expect(resolveSkinTone({ skinFitzpatrickIndex: 4 })).toBe('V');
     expect(computeMorphWeights({ skinFitzpatrickIndex: 4 }).fitzpatrick_index).toBe(4);
   });
+
+  it('maps measured nose dimensions directly instead of deriving nose length from body fat', () => {
+    const shortNarrow = computeMorphWeights({ noseLength: 3, noseWidth: 2 });
+    const longWide = computeMorphWeights({ noseLength: 7, noseWidth: 5 });
+    expect(longWide.nose_length).toBeGreaterThan(shortNarrow.nose_length);
+    expect(longWide.nose_bridge_width).toBeGreaterThan(shortNarrow.nose_bridge_width);
+    expect(longWide.nose_tip_size).toBeGreaterThan(shortNarrow.nose_tip_size);
+    expect(computeMorphWeights({ bodyFat: 8 }).nose_length).toBe(computeMorphWeights({ bodyFat: 38 }).nose_length);
+  });
 });

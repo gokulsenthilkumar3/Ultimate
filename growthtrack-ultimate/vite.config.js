@@ -25,11 +25,11 @@ export default defineConfig(({ mode }) => {
     allowedHosts,
     proxy: {
       '/api': {
-        // All API requests go through the local gateway, which namespaces
-        // them by product prefix (/api/ultimate/*, /api/finsync/*, etc.).
-        // When the gateway is not running, Vite falls back to a 502 rather
-        // than a hard crash; the UI degrades to its offline state.
-        target: env.GATEWAY_URL || 'http://127.0.0.1:3000',
+        // Standalone `npm run dev` starts server.js on 3001. A workspace that
+        // also starts the multi-product gateway can opt in with GATEWAY_URL.
+        // Keeping the direct server as the default prevents login and every
+        // persisted module from silently receiving 502s in normal local use.
+        target: env.GATEWAY_URL || env.ULTIMATE_API_URL || 'http://127.0.0.1:3001',
         changeOrigin: false,
       },
       '/auth': {

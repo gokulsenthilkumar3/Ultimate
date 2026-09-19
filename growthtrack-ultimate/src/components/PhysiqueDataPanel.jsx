@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, CheckCircle2, ChevronDown, Cpu, Flag, LockKeyhole, Plus, Ruler, ShieldCheck, Target, TrendingUp } from 'lucide-react';
 import useStore from '../store/useStore';
-import { formatMeasurement, formatDate, getMeasurementUnit } from '../utils/userFormatters';
+import { formatMeasurement, formatDate } from '../utils/userFormatters';
 import { BODY_METRIC_GROUPS, BODY_METRICS } from '../lib/physiqueProfile';
+import MeasurementInput from './ui/MeasurementInput';
 
 const TABS = [
   { id: 'summary', label: 'Summary', icon: Activity },
@@ -73,8 +74,8 @@ export default function PhysiqueDataPanel({ current = {}, goal = {}, baseline = 
                 const delta = Number.isFinite(now) && Number.isFinite(target) ? target - now : null;
                 return <div className="physique-metric-table__row" key={metric.key}>
                   <strong>{metric.label}</strong><span data-label="Baseline">{format(start, metric.unit, user)}</span>
-                  <label data-label="Current"><input type="number" step="0.1" value={Number.isFinite(now) ? now : ''} aria-label={`Current ${metric.label}`} onChange={(event) => onCurrentChange(metric.key, event.target.value)} /><small>{getMeasurementUnit(metric.unit, user)}</small></label>
-                  <label data-label="Goal"><input type="number" step="0.1" value={Number.isFinite(target) ? target : ''} aria-label={`Goal ${metric.label}`} onChange={(event) => onGoalChange(metric.key, event.target.value)} /><small>{getMeasurementUnit(metric.unit, user)}</small></label>
+                  <label data-label="Current"><MeasurementInput metricKey={metric.key} value={Number.isFinite(now) ? now : ''} aria-label={`Current ${metric.label}`} onCommit={(value) => onCurrentChange(metric.key, value)} /><small>{metric.unit}</small></label>
+                  <label data-label="Goal"><MeasurementInput metricKey={metric.key} value={Number.isFinite(target) ? target : ''} aria-label={`Goal ${metric.label}`} onCommit={(value) => onGoalChange(metric.key, value)} /><small>{metric.unit}</small></label>
                   <span data-label="Change" className={delta == null ? '' : 'has-value'}>{delta == null ? '—' : format(delta, metric.unit, user)}</span>
                 </div>;
               })}

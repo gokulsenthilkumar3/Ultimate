@@ -42,3 +42,4 @@
 .log-detail__message a { color: var(--gt-action); }
 @media (max-width: 720px) { .log-stream__toolbar { align-items: flex-start; }.log-event { grid-template-columns: 40px minmax(0, 1fr); }.log-event__action { display: none; }.log-event__metadata { display: grid; grid-template-columns: 1fr; }.log-event__details { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }.log-detail__facts { grid-template-columns: 1fr; }.log-detail__wide { grid-column: auto; } }
 @media (prefers-reduced-motion: reduce) { .log-event { transition: none; } }
+.log-search { flex: 1; }

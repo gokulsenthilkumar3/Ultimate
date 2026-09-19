@@ -41,7 +41,7 @@ function safeAvatarAsset(value) {
 }
 
 /** Resolve a DB-backed avatar choice to a same-origin GLB. */
-export function resolveModelAsset(preference = {}, gpuTier = 'HIGH') {
+export function resolveModelAsset(preference = {}, gpuTier = 'MED') {
   const preset = normalizePreset(
     preference.modelPreset === 'auto'
       ? preference.biologicalSex
@@ -52,8 +52,8 @@ export function resolveModelAsset(preference = {}, gpuTier = 'HIGH') {
   const configuredV2 = safeAvatarAsset(V2_ASSETS[preset]);
   const configuredV2Mobile = safeAvatarAsset(V2_ASSETS.mobile);
   const preferV2 = preference.modelVersion === 'v2' || preference.preferV2 === true;
-  const selectedV2 = preferV2 && (gpuTier === 'LOW' ? configuredV2Mobile || configuredV2 : configuredV2);
-  const useLiteDefault = gpuTier === 'LOW' && !customAsset && configuredAsset === DEFAULT_ASSETS.production;
+  const selectedV2 = preferV2 && (gpuTier === 'HIGH' ? configuredV2 : configuredV2Mobile || configuredV2);
+  const useLiteDefault = gpuTier !== 'HIGH' && !customAsset && configuredAsset === DEFAULT_ASSETS.production;
   return {
     path: customAsset || selectedV2 || (useLiteDefault ? DEFAULT_ASSETS.lite : configuredAsset),
     preset,

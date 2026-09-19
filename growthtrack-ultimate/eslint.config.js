@@ -11,6 +11,8 @@ export default defineConfig([
   globalIgnores([
     'dist', '.agents', '.build_test', 'coverage', 'logs', 'playwright-report',
     'test-results', '.tmp', '.vite', '.claude', '.windsurf',
+    'prisma-generated', 'release-v2', 'release-*',
+    'docs/ui-review/before-source',
   ]),
   {
     files: ['**/*.{js,jsx}'],

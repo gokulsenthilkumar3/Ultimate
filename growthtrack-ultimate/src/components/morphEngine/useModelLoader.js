@@ -3,7 +3,7 @@ import { fitModelFeatures } from './fitModelFeatures';
  * GrowthTrack Ultimate — Layer 3: Parametric Morph Engine
  * useModelLoader.js
  *
- * Loads the base humanoid GLB with Draco decompression.
+ * Loads the base humanoid GLB from the local application bundle.
  * Extracts and maps all named morph targets from the mesh.
  * Uses SkeletonUtils.clone so each HumanoidClone gets its own
  * independent morphTargetInfluences array.
@@ -34,16 +34,17 @@ import { DEFAULT_ASSETS, resolveModelAsset } from './modelAssetRegistry';
 // CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const MODEL_PATH = DEFAULT_ASSETS.production;
-export const MODEL_PATH_LITE = DEFAULT_ASSETS.lite;
+const ASSET_REVISION = 'proxy-fit-20260919';
+export const MODEL_PATH = `${DEFAULT_ASSETS.production}?v=${ASSET_REVISION}`;
+export const MODEL_PATH_LITE = `${DEFAULT_ASSETS.lite}?v=${ASSET_REVISION}`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PRELOAD — call this at app root to start loading immediately
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function preloadHumanoidModel() {
-  useGLTF.preload(MODEL_PATH, 'https://www.gstatic.com/draco/v1/decoders/');
-  useGLTF.preload(MODEL_PATH_LITE, 'https://www.gstatic.com/draco/v1/decoders/');
+export function preloadHumanoidModel({ includeHero = false } = {}) {
+  useGLTF.preload(MODEL_PATH_LITE);
+  if (includeHero) useGLTF.preload(MODEL_PATH);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -165,14 +166,14 @@ export function useModelLoader(modelPreference = {}) {
     () => resolveModelAsset({ avatarAsset, biologicalSex, modelPreset, modelVersion }, gpuTier),
     [avatarAsset, biologicalSex, gpuTier, modelPreset, modelVersion],
   );
-  const modelPath = modelAsset.path;
+  const modelPath = modelAsset.source === 'default' ? `${modelAsset.path}?v=${ASSET_REVISION}` : modelAsset.path;
   // useGLTF must be called unconditionally (Rules of Hooks).
   // Suspense promises must be re-thrown so React Suspense can catch them.
   // Network / parse errors are caught and we fall through to the dev fallback.
   let gltf = null;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    gltf = useGLTF(modelPath, 'https://www.gstatic.com/draco/v1/decoders/');
+    gltf = useGLTF(modelPath);
   } catch (err) {
     if (err && typeof err.then === 'function') throw err; // re-throw Suspense promises
     if (import.meta.env.DEV) {
@@ -303,6 +304,7 @@ export function useModelLoader(modelPreference = {}) {
         clonedScene.position.x = -center.x * scale;
         clonedScene.position.z = -center.z * scale;
         clonedScene.position.y = -(box.min.y * scale);
+        clonedScene.updateWorldMatrix(true, true);
         bounds = { center, size, height: height * scale, radius };
         return {
           bodyMesh,

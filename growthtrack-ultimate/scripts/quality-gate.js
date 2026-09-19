@@ -51,6 +51,17 @@ function verifySecurityHeaders() {
   record('Browser security policy', missing.length ? 'fail' : 'pass', missing.length ? `missing ${missing.join(', ')}` : 'CSP, anti-sniffing, frame and referrer protections are configured');
 }
 
+function verifyOfflineModelRuntime() {
+  const loaderPath = path.join(projectRoot, 'src/components/morphEngine/useModelLoader.js');
+  const source = readFileSync(loaderPath, 'utf8');
+  const remoteDecoder = /https?:\/\/[^'"`]+(?:draco|decoder)/i.exec(source);
+  record(
+    'Offline model runtime',
+    remoteDecoder ? 'fail' : 'pass',
+    remoteDecoder ? `remote decoder dependency found: ${remoteDecoder[0]}` : 'GLBs and their loader require no remote decoder',
+  );
+}
+
 function verifyBundleBudgets() {
   const assetDir = path.join(projectRoot, 'dist/assets');
   if (!existsSync(assetDir)) {
@@ -66,9 +77,10 @@ function verifyBundleBudgets() {
   record('3D bundle budget', failures.length ? 'fail' : 'pass', failures.length ? failures.join(' · ') : `Three ${Math.round(three.bytes / 1024)} KB · chamber ${Math.round(chamber.bytes / 1024)} KB`);
 }
 
-console.log('\nGrowthTrack Phase 5 — Quality Gate\n');
+console.log('\nGrowthTrack Release Quality Gate\n');
 verifyRequiredFiles();
 verifySecurityHeaders();
+verifyOfflineModelRuntime();
 
 runNode('Renderer lint', path.join(projectRoot, 'node_modules/eslint/bin/eslint.js'), [
   'src/components/ChamberCanvas.jsx',

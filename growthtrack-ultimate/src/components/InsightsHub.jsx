@@ -18,8 +18,10 @@ const TransformationPredictor = lazy(() => import('./TransformationPredictor'));
 const Overview = lazy(() => import('./Overview'));
 const Current = lazy(() => import('./Current'));
 const Progress = lazy(() => import('./Progress'));
+const ActionCenter = lazy(() => import('./ActionCenter'));
 
 const TABS = [
+  { id: 'actions', label: 'Action Center', description: 'Your next best actions' },
   { id: 'overview', label: 'Overview', description: 'Your daily snapshot' },
   { id: 'current', label: 'Current', description: 'What needs attention now' },
   { id: 'analytics', label: 'Analytics', description: 'Correlations and trends' },
@@ -110,6 +112,7 @@ export default function InsightsHub({ initialTab = 'overview', logs = [], setAct
       >
         <Suspense fallback={<LoadingSkeleton variant="insights" />}>
           {tab === 'overview' && <Overview setActiveTab={setActiveTab} />}
+          {tab === 'actions' && <ActionCenter />}
           {tab === 'current' && <Current />}
           {tab === 'analytics' && <Analytics />}
           {tab === 'dashboards' && <Dashboards />}

@@ -1,3 +1,5 @@
+import { sanitizeBodyMetrics } from './bodyMetricContract';
+
 const finite = (value) => {
   if (value === '' || value == null) return null;
   const number = Number(value);
@@ -30,7 +32,9 @@ function normalizeSex(value) {
  * digital human coherent while profile data is incomplete.
  */
 export function resolveBodyMetrics(metrics = {}, inherited = {}) {
-  const supplied = { ...inherited, ...metrics };
+  const inheritedResult = sanitizeBodyMetrics(inherited);
+  const metricResult = sanitizeBodyMetrics(metrics);
+  const supplied = { ...inheritedResult.metrics, ...metricResult.metrics };
   const sex = normalizeSex(supplied.biologicalSex || supplied.gender || supplied.modelPreset);
   const baseline = SEX_BASELINES[sex];
   const resolved = { ...supplied, biologicalSex: supplied.biologicalSex || sex };
@@ -87,13 +91,16 @@ export function resolveBodyMetrics(metrics = {}, inherited = {}) {
   return {
     metrics: resolved,
     derivedKeys: [...derivedKeys],
-    suppliedKeys: Object.keys(metrics).filter((key) => finite(metrics[key]) != null),
+    suppliedKeys: Object.keys(metricResult.metrics).filter((key) => finite(metricResult.metrics[key]) != null),
+    invalidKeys: [...new Set([...inheritedResult.invalid, ...metricResult.invalid].map((item) => item.key))],
+    invalid: [...inheritedResult.invalid, ...metricResult.invalid],
   };
 }
 
 export function getMetricCompleteness(metrics = {}) {
   const highValueKeys = ['height', 'weight', 'bodyFat', 'chest', 'waist', 'hips', 'shoulderBreadth', 'arms', 'thighs', 'calves'];
-  const supplied = highValueKeys.filter((key) => finite(metrics[key]) != null);
+  const validMetrics = sanitizeBodyMetrics(metrics).metrics;
+  const supplied = highValueKeys.filter((key) => finite(validMetrics[key]) != null);
   return {
     supplied: supplied.length,
     total: highValueKeys.length,
@@ -101,4 +108,3 @@ export function getMetricCompleteness(metrics = {}) {
     missing: highValueKeys.filter((key) => !supplied.includes(key)),
   };
 }
-

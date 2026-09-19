@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Filter, Download, Plus, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Shield, Database, Activity, Cpu, User, Hash, Server } from 'lucide-react';
+import { Filter, Download, Plus, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Shield, Database, Activity, Cpu, User, Hash, Server } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import SearchField from './ui/SearchField';
+import Pagination from './ui/Pagination';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { formatDateTime } from '../utils/userFormatters';
@@ -70,6 +72,8 @@ export default function Logs() {
   const [sortKey,  setSortKey]  = useState('timestamp');
   const [sortDir,  setSortDir]  = useState('desc');
   const [expandedId, setExpandedId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [showAddModal, setShowAddModal] = useState(false);
   const [manualForm, setManualForm] = useState({ action: 'create', table_name: 'users', details: '', category: 'audit' });
 
@@ -84,7 +88,8 @@ export default function Logs() {
       if (dateFrom) qs.append('from', new Date(dateFrom).toISOString());
       if (dateTo) qs.append('to', new Date(dateTo + 'T23:59:59').toISOString());
 
-      const data = await apiSync(`/logs?${qs.toString()}`, 'GET');
+      const query = qs.toString();
+      const data = await apiSync(query ? `/logs?${query}` : '/logs', 'GET');
       if (!data) throw new Error();
       setLogs(Array.isArray(data) ? data : (data.logs || []));
       try {
@@ -149,6 +154,11 @@ export default function Logs() {
     });
     return list;
   }, [enriched, categoryF, actionF, tableF, sentimentF, dateFrom, dateTo, search, sortKey, sortDir]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visibleLogs = useMemo(() => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize), [filtered, currentPage, pageSize]);
+
+  useEffect(() => { setPage(1); }, [search, categoryF, actionF, tableF, sentimentF, dateFrom, dateTo, pageSize]);
 
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -156,7 +166,7 @@ export default function Logs() {
   };
 
   const exportLogs = useCallback((format = 'json') => {
-    const data = filtered.map(({ _sentiment, _ts, _severity, _actor, _source, _details, ...l }) => l);
+    const data = filtered.map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => !key.startsWith('_'))));
     let content, type, ext;
     if (format === 'json') {
       content = JSON.stringify(data, null, 2);
@@ -281,22 +291,19 @@ export default function Logs() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
-          <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search logs…" className="form-input" style={{ paddingLeft: '30px' }} />
-        </div>
-        <select value={categoryF} onChange={e => setCategoryF(e.target.value)} className="form-input" style={{ width: 'auto' }}>
+        <SearchField className="log-search" label="Search audit logs" value={search} onChange={setSearch} placeholder="Search logs…" resultCount={filtered.length} />
+        <select aria-label="Filter logs by category" value={categoryF} onChange={e => setCategoryF(e.target.value)} className="form-input" style={{ width: 'auto' }}>
           {CATEGORIES.map(c => <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>)}
         </select>
-        <select value={actionF}  onChange={e => setActionF(e.target.value)}  className="form-input" style={{ width: 'auto' }}>
+        <select aria-label="Filter logs by action" value={actionF} onChange={e => setActionF(e.target.value)} className="form-input" style={{ width: 'auto' }}>
           {ACTIONS.map(a => <option key={a} value={a}>{a === 'all' ? 'All Actions' : a}</option>)}
         </select>
-        <select value={tableF}   onChange={e => setTableF(e.target.value)}   className="form-input" style={{ width: 'auto' }}>
+        <select aria-label="Filter logs by table" value={tableF} onChange={e => setTableF(e.target.value)} className="form-input" style={{ width: 'auto' }}>
           {TABLES.map(t => <option key={t} value={t}>{t === 'all' ? 'All Tables' : t}</option>)}
         </select>
-        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="form-input" style={{ width: '140px' }} />
+        <input type="date" aria-label="Logs from date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="form-input" style={{ width: '140px' }} />
         <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>→</span>
-        <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   className="form-input" style={{ width: '140px' }} />
+        <input type="date" aria-label="Logs through date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="form-input" style={{ width: '140px' }} />
         {(search || categoryF !== 'all' || actionF !== 'all' || tableF !== 'all' || sentimentF !== 'all' || dateFrom || dateTo) && (
           <button onClick={() => { setSearch(''); setCategoryF('all'); setActionF('all'); setTableF('all'); setSentimentF('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '0.72rem' }}>
             ✕ Clear
@@ -324,7 +331,7 @@ export default function Logs() {
             </button>
           </div>
           <div className="log-event-list" role="list">
-            {filtered.map((log) => {
+            {visibleLogs.map((log) => {
               const actionColor = ACTION_COLORS[(log.action || '').toLowerCase()] || ACTION_COLORS.other;
               return (
                 <button type="button" role="listitem" className="log-event" key={`${log.category}-${log.id}`} onClick={() => setExpandedId(`${log.category || 'audit'}:${log.id}`)}>
@@ -349,6 +356,7 @@ export default function Logs() {
               );
             })}
           </div>
+          <Pagination label="Audit log pages" page={currentPage} pageCount={pageCount} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>)}
       </div>
 
@@ -377,7 +385,7 @@ export default function Logs() {
                   </dl>
                   <div className="log-detail__message">
                     <span>Event details</span>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" /> }}>{details}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: (props) => <a {...props} target="_blank" rel="noreferrer" /> }}>{details}</ReactMarkdown>
                   </div>
                 </div>
               );

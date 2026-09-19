@@ -14,6 +14,7 @@ import { collectionToClient } from './server/collectionPayload.js';
 import MetricLogController from './server/controllers/MetricLogController.js';
 import { enabledIdentityProviders } from './server/identityProviders.js';
 import { createEventLogger } from './server/eventLogger.js';
+import { BODY_METRIC_RANGES, validateBodyMetric } from './src/lib/bodyMetricContract.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -157,15 +158,6 @@ function sendInternalError(res, error, context) {
   return res.status(500).json({ error: 'Internal server error.' });
 }
 
-function logWhere(query = {}, category) {
-  const where = category ? { category } : {};
-  if (query.action) where.action = String(query.action);
-  if (query.source) where.source = String(query.source);
-  if (query.severity) where.severity = String(query.severity);
-  if (query.from || query.to) where.timestamp = { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) };
-  if (query.q) where.OR = [{ action: { contains: String(query.q) } }, { details: { contains: String(query.q) } }, { table_name: { contains: String(query.q) } }];
-  return where;
-}
 function categoryWhere(query = {}, kind) {
   const where = {};
   if (query.action) where.action = String(query.action);
@@ -202,7 +194,7 @@ app.get('/api/logs/diagnostics', authMiddleware, async (req, res) => {
   try {
     const [audit, session, auth] = await Promise.all([prisma.auditLog.count(), prisma.sessionLog.count(), prisma.loginLog.count()]);
     res.json({ status: 'healthy', database: { status: 'connected', writable: true }, counts: { audit, session, auth, total: audit + session + auth }, diagnostics: { ...eventLogger.diagnostics, requestId: req.requestId }, databasePath: databaseUrl });
-  } catch (error) { res.status(503).json({ status: 'degraded', database: { status: 'unavailable', writable: false }, error: 'Logging database unavailable.', requestId: req.requestId }); }
+  } catch { res.status(503).json({ status: 'degraded', database: { status: 'unavailable', writable: false }, error: 'Logging database unavailable.', requestId: req.requestId }); }
 });
 app.post('/api/logs/diagnostics/self-test', authMiddleware, async (req, res) => {
   const id = await eventLogger.write({ category: 'system', source: 'logging-diagnostics', action: 'logging_self_test', severity: 'info', user_id: req.user.id, user_name: req.user.fullName, user_email: req.user.email, details: 'Authenticated logging self-test' }, req);
@@ -464,6 +456,25 @@ const bodyNumberFields = new Set(Object.values(bodyFieldMap).filter(field => !bo
 const bodyProfileFields = new Set(Object.values(bodyFieldMap));
 const appearanceColorFields = new Set(['skinColorHex', 'hairColorHex', 'facialHairColorHex', 'eyebrowColorHex', 'eyeColorHex', 'scleraColorHex', 'lipColorHex', 'bodyHairColorHex', 'nailColorHex'].map(key => bodyFieldMap[key]));
 const bodyJsonFields = new Set(['morphOverrides', 'facialMorphs', 'bodyProportions', 'skinTones', 'skinDetails', 'hairProperties', 'eyeProperties'].map(key => bodyFieldMap[key]));
+const bodyMetricKeyByDatabaseField = new Map(Object.entries(bodyFieldMap).flatMap(([clientField, databaseField]) => {
+  const targetCandidate = clientField.startsWith('target')
+    ? `${clientField.slice(6, 7).toLowerCase()}${clientField.slice(7)}`
+    : null;
+  const metricKey = BODY_METRIC_RANGES[clientField] ? clientField : BODY_METRIC_RANGES[targetCandidate] ? targetCandidate : null;
+  return metricKey ? [[databaseField, metricKey]] : [];
+}));
+
+const invalidBodyMeasurements = (source, { databaseFields = false } = {}) => Object.entries(source || {}).flatMap(([field, value]) => {
+  const targetCandidate = field.startsWith('target')
+    ? `${field.slice(6, 7).toLowerCase()}${field.slice(7)}`
+    : null;
+  const metricKey = databaseFields
+    ? bodyMetricKeyByDatabaseField.get(field)
+    : BODY_METRIC_RANGES[field] ? field : BODY_METRIC_RANGES[targetCandidate] ? targetCandidate : null;
+  if (!metricKey || value === '' || value == null) return [];
+  const result = validateBodyMetric(metricKey, value, { allowEmpty: false });
+  return result.valid ? [] : [{ field, metric: metricKey, value, message: result.reason }];
+});
 
 const normalizeBodyField = (databaseField, value) => {
   if (bodyNumberFields.has(databaseField)) {
@@ -646,6 +657,10 @@ app.get('/api/body-profile', authMiddleware, async (req, res) => {
 });
 
 app.put('/api/body-profile', authMiddleware, async (req, res) => {
+  const invalidMeasurements = invalidBodyMeasurements(req.body, { databaseFields: true });
+  if (invalidMeasurements.length) {
+    return res.status(400).json({ error: 'One or more body measurements are outside the supported range.', fields: invalidMeasurements });
+  }
   const data = normalizeBodyProfilePayload(req.body);
   const existing = await prisma.bodyProfile.findUnique({ where: { userId: req.user.id }, select: { id: true } });
   const profile = await prisma.bodyProfile.upsert({ where: { userId: req.user.id }, update: data, create: { userId: req.user.id, ...data } });
@@ -713,6 +728,10 @@ app.get('/api/state', authMiddleware, async (req, res) => {
 app.post('/api/user', authMiddleware, async (req, res) => {
   try {
     const data = req.body;
+    const invalidMeasurements = invalidBodyMeasurements(data);
+    if (invalidMeasurements.length) {
+      return res.status(400).json({ error: 'One or more body measurements are outside the supported range.', fields: invalidMeasurements });
+    }
     const updateData = {};
     const singletonFields = ['trainingPlan', 'nutritionStrategy', 'lifestyleTips', 'medicalData', 'physiqueTargets', 'assessmentQA', 'skills', 'calendarEvents', 'wellnessData', 'healthExtras', 'manualProjects', 'repoNotes', 'portfolio'];
 

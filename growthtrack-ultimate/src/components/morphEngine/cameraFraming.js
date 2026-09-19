@@ -19,7 +19,7 @@ export function fitHumanFrame({ frame, width = 1000, height = 700, fov = 30, vie
   // Leave portrait-safe breathing room around hair, hands, feet and the goal
   // aura. A mathematically exact fit placed the forehead against the control
   // band and clipped the floor contact on short canvases.
-  const distance = Math.max(projectedHeight * 0.68 / verticalTangent, totalWidth * 0.66 / horizontalTangent) + halfDepth;
+  const distance = Math.max(projectedHeight * 0.76 / verticalTangent, totalWidth * 0.66 / horizontalTangent) + halfDepth;
   return { distance, center: [0, bodyHeight * 0.51, 0] };
 }
 

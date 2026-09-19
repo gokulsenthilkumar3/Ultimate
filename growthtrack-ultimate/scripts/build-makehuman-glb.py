@@ -41,12 +41,12 @@ def texture_bytes(path: Path, max_size: int | None = None) -> bytes:
         image.save(output, format="PNG", optimize=True)
         return output.getvalue()
 
-# The current profile target is a young athletic male. MakeHuman macro targets
-# are absolute blend shapes from its neutral base, so this establishes a male,
-# high-muscle production silhouette before measurement-specific morphs are
-# layered on top.
+# Start from MakeHuman's ordinary young adult male rather than a bodybuilding
+# extreme.  Earlier releases baked the max-muscle target into every profile and
+# then widened the shoulders a second time.  That made even average measurements
+# render as a caricature and left too little useful range for the metric morphs.
 BASE_SCULPT_SOURCES = [
-    ("targets/macrodetails/universal-male-young-maxmuscle-averageweight", 1.0),
+    ("targets/macrodetails/universal-male-young-averagemuscle-averageweight", 1.0),
 ]
 
 
@@ -88,7 +88,7 @@ MORPH_SOURCES = {
     "brow_depth": [("targets/forehead/forehead-trans-forward", 1.0)],
     "nose_bridge_width": [("targets/nose/nose-width1-incr", 1.0)],
     "nose_tip_size": [("targets/nose/nose-point-width-incr", 1.0)],
-    "ear_prominence": [("targets/ears/l-ear-trans-out", 0.5), ("targets/ears/r-ear-trans-out", 0.5)],
+    "ear_prominence": [("targets/ears/l-ear-wing-incr", 0.5), ("targets/ears/r-ear-wing-incr", 0.5)],
     "jaw_width": [("targets/chin/chin-width-incr", 1.0)],
     "chin_projection": [("targets/chin/chin-prognathism-incr", 1.0)],
     "lip_fullness": [("targets/mouth/mouth-upperlip-volume-incr", 0.5), ("targets/mouth/mouth-lowerlip-volume-incr", 0.5)],
@@ -114,6 +114,7 @@ GENERATED_MORPH_NAMES = {
     "blink",
     "smile",
     "jaw_open",
+    "shoulder_drop",
 }
 MORPH_SOURCES.update({name: [] for name in GENERATED_MORPH_NAMES})
 
@@ -281,6 +282,9 @@ def generated_morph_delta(name: str, coords: np.ndarray) -> np.ndarray:
         lower_face = np.exp(-((y - 0.525) / 0.095) ** 4 - (x / 0.095) ** 4) * front
         delta[:, 1] -= lower_face * 0.016
         delta[:, 2] += lower_face * 0.004
+    elif name == "shoulder_drop":
+        shoulder = np.exp(-((abs_x - 0.19) / 0.12) ** 4 - ((y - 0.48) / 0.14) ** 4)
+        delta[:, 1] -= shoulder * 0.018
 
     return delta
 
@@ -426,25 +430,13 @@ def athletic_male_base_delta(coords: np.ndarray) -> np.ndarray:
 
 
 def surface_colors(positions: np.ndarray, body: bool) -> np.ndarray:
-    """Add restrained albedo contrast at key muscle separations."""
+    """Return a neutral vertex tint and let the calibrated skin maps do shading.
+
+    Procedurally darkened abdominal and glute creases looked painted-on under
+    daily-use lighting and amplified normal-map noise.  Anatomical definition
+    now comes from geometry, normals and the PBR texture set.
+    """
     colors = np.ones_like(positions, dtype=np.float32)
-    if not body:
-        return colors
-    x, y, z = positions[:, 0], positions[:, 1], positions[:, 2]
-    abs_x = np.abs(x)
-    front = np.clip((z - 0.075) / 0.075, 0.0, 1.0)
-    back = np.clip((0.075 - z) / 0.18, 0.0, 1.0)
-    core = np.exp(-((y - 0.18) / 0.19) ** 6) * front
-    linea = np.exp(-(x / 0.011) ** 2) * np.exp(-((y - 0.17) / 0.16) ** 6)
-    transverse = sum(np.exp(-((y - cy) / 0.011) ** 2) for cy in (0.13, 0.20, 0.27)) * np.exp(-(abs_x / 0.12) ** 6)
-    pec_fold = np.exp(-((y - 0.275) / 0.022) ** 2) * np.exp(-((abs_x - 0.085) / 0.10) ** 4) * front
-    abs_separation = np.clip(core * (0.95 * linea + 0.62 * transverse), 0.0, 1.0)
-    glute_cleft = np.exp(-(x / 0.021) ** 2) * np.exp(-((y + 0.105) / 0.13) ** 4) * back
-    glute_fold = np.exp(-((y + 0.225) / 0.021) ** 2) * np.exp(-((abs_x - 0.105) / 0.10) ** 4) * back
-    deep = np.clip(abs_separation * 0.24 + pec_fold * 0.14 + glute_cleft * 0.20 + glute_fold * 0.16, 0.0, 0.42)
-    colors[:, 0] -= deep * 0.30
-    colors[:, 1] -= deep * 0.34
-    colors[:, 2] -= deep * 0.28
     return colors
 
 
@@ -452,9 +444,6 @@ def make_mesh(base, targets, group_index: int, morph_names=None, add_anatomy_det
     coords = base["coord"].astype(np.float32) * SCALE
     for stem, weight in BASE_SCULPT_SOURCES:
         coords += target_delta(targets, stem, len(coords)) * weight * SCALE
-    if group_index == 0:
-        coords += athletic_male_base_delta(coords)
-        coords += base_muscle_detail(coords)
     texco = base["texco"].astype(np.float32)
     faces = base["fvert"].astype(np.int64)
     uvs = base["fuvs"].astype(np.int64)
@@ -497,6 +486,7 @@ def make_mesh(base, targets, group_index: int, morph_names=None, add_anatomy_det
     colors = surface_colors(positions, group_index == 0)
 
     morphs = {}
+    source_morphs = {}
     missing = []
     names = list(morph_names or MORPH_SOURCES.keys())
     for name in names:
@@ -512,10 +502,24 @@ def make_mesh(base, targets, group_index: int, morph_names=None, add_anatomy_det
                 delta += target_delta(targets, stem, len(coords)) * weight * SCALE
         if add_anatomy_detail:
             delta += procedural_anatomy_delta(name, coords)
+        if name == 'ribcage_depth':
+            # Local ribcage expansion must not duplicate the whole torso key.
+            delta *= np.exp(-((coords[:, 1] - 0.30) / 0.15) ** 4)[:, None]
         if not found and group_index == 0 and name not in ("d_length", "d_girth"):
             missing.append(name)
         morphs[name] = delta[original_index]
+        source_morphs[name] = delta
 
+    group_text = base['fgstr'].tobytes().decode('utf-8')
+    group_offsets = base['fgidx']
+    joints = {}
+    for i, start in enumerate(group_offsets):
+        end = int(group_offsets[i + 1]) if i + 1 < len(group_offsets) else len(group_text)
+        name = group_text[int(start):end]
+        if name.startswith('joint-'):
+            vertices = np.unique(faces[base['group'] == i])
+            if len(vertices):
+                joints[name] = coords[vertices].mean(axis=0)
     return {
         "positions": positions,
         "normals": normals,
@@ -525,6 +529,9 @@ def make_mesh(base, targets, group_index: int, morph_names=None, add_anatomy_det
         "morphs": morphs,
         "original_index": original_index,
         "missing": missing,
+        "source_coords": coords,
+        "source_morphs": source_morphs,
+        "source_joints": joints,
     }
 
 
@@ -626,7 +633,7 @@ def neutral_metallic_roughness_png(size: int = 1024) -> bytes:
     return _rgb_png(pixels)
 
 
-def make_static_mesh(npz, body_center, body_min_y, body_scale, target_center, target_scale, flip_v=True):
+def make_static_mesh(npz, body_center, body_min_y, body_scale, target_center, target_scale, flip_v=True, fitted_positions=None):
     """Fit an accessory NPZ into the body's normalized GLB frame.
 
     MakeHuman accessories are stored in their own source-space coordinates.
@@ -648,6 +655,8 @@ def make_static_mesh(npz, body_center, body_min_y, body_scale, target_center, ta
     fitted[:, 0] = (scaled[:, 0] + target_center[0]) / body_scale + body_center[0]
     fitted[:, 1] = (scaled[:, 1] + target_center[1]) / body_scale + body_min_y
     fitted[:, 2] = (scaled[:, 2] + target_center[2]) / body_scale + body_center[2]
+    if fitted_positions is not None:
+        fitted = fitted_positions
 
     vertex_map = {}
     positions = []
@@ -682,7 +691,51 @@ def make_static_mesh(npz, body_center, body_min_y, body_scale, target_center, ta
         np.add.at(normals, indices[offset::3], cross)
     lengths = np.linalg.norm(normals, axis=1, keepdims=True)
     normals /= np.maximum(lengths, 1e-8)
-    return {"positions": positions, "normals": normals, "colors": np.ones_like(positions, dtype=np.float32), "uv_values": uv_values, "indices": indices}
+    return {"positions": positions, "normals": normals, "colors": np.ones_like(positions, dtype=np.float32), "uv_values": uv_values, "indices": indices, "original_index": np.asarray([key[0] for key in vertex_map], dtype=np.int64)}
+
+
+def fit_proxy(npz, proxy_path, body):
+    """Use the source attachment map, including seam-expanded morph deltas."""
+    rows = []
+    scales = {}
+    in_vertices = False
+    for line in proxy_path.read_text().splitlines():
+        parts = line.strip().split()
+        if not parts or parts[0].startswith('#'):
+            continue
+        if parts[0] in ('x_scale', 'y_scale', 'z_scale'):
+            scales['xyz'.index(parts[0][0])] = (int(parts[1]), int(parts[2]), float(parts[3]))
+        elif parts[0] == 'verts':
+            in_vertices = True
+        elif in_vertices:
+            if not parts[0].isdigit():
+                break
+            if len(parts) == 1:
+                rows.append([int(parts[0])] * 3 + [1, 0, 0, 0, 0, 0])
+            elif len(parts) == 9:
+                rows.append([float(value) for value in parts])
+            else:
+                raise ValueError(f'Unsupported proxy row: {line}')
+    if len(rows) != len(npz['coord']):
+        raise ValueError(f'{proxy_path}: {len(rows)} bindings for {len(npz["coord"])} vertices')
+    values = np.asarray(rows)
+    refs = values[:, :3].astype(np.int64)
+    weights = values[:, 3:6]
+    offsets = values[:, 6:9] * SCALE
+
+    def evaluate(coords):
+        axis_scale = np.ones(3)
+        for axis, (a, b, reference) in scales.items():
+            axis_scale[axis] = abs(coords[a, axis] - coords[b, axis]) / (reference * SCALE)
+        return (coords[refs] * weights[:, :, None]).sum(axis=1) + offsets * axis_scale
+
+    fitted = evaluate(body['source_coords'])
+    result = make_static_mesh(npz, np.zeros(3), 0, 1, (0, 0, 0), (1, 1, 1), fitted_positions=fitted)
+    result['morphs'] = {
+        name: (evaluate(body['source_coords'] + delta) - fitted)[result['original_index']]
+        for name, delta in body['source_morphs'].items()
+    }
+    return result
 
 
 def build_glb(
@@ -710,6 +763,16 @@ def build_glb(
         ("LeftUpLeg", "Hips", (-0.10, -0.20, 0.00)), ("LeftLeg", "LeftUpLeg", (0.00, -0.40, 0.00)), ("LeftFoot", "LeftLeg", (0.00, -0.42, 0.04)),
         ("RightUpLeg", "Hips", (0.10, -0.20, 0.00)), ("RightLeg", "RightUpLeg", (0.00, -0.40, 0.00)), ("RightFoot", "RightLeg", (0.00, -0.42, 0.04)),
     ]
+    source_joint_names = {
+        'Hips': 'joint-pelvis', 'Spine': 'joint-spine-4', 'Spine1': 'joint-spine-2',
+        'Spine2': 'joint-spine-1', 'Neck': 'joint-neck', 'Head': 'joint-head',
+    }
+    for side in ('Left', 'Right'):
+        prefix = 'l' if side == 'Left' else 'r'
+        for bone, source in [('Shoulder', 'clavicle'), ('UpperArm', 'shoulder'), ('ForeArm', 'elbow'), ('Hand', 'hand'), ('UpLeg', 'upper-leg'), ('Leg', 'knee'), ('Foot', 'ankle')]:
+            source_joint_names[side + bone] = f'joint-{prefix}-{source}'
+    authored_world = {name: body['source_joints'][source_joint_names[name]] for name, _, _ in bone_specs}
+    bone_specs = [(name, parent, authored_world[name] - authored_world[parent] if parent else authored_world[name]) for name, parent, _ in bone_specs]
     bone_world = {}
     for name, parent, local in bone_specs:
         bone_world[name] = np.asarray(local, dtype=np.float32) + (bone_world[parent] if parent else 0)
@@ -892,8 +955,16 @@ def build_glb(
     if hair_mesh_index is not None:
         hair_primitive = build_static_primitive(hair_geometry, hair_material_index)
         feature_meshes.append({"name": "GrowthTrackHair", "mesh": hair_mesh_index, "primitives": [hair_primitive], "extras": {"feature": "hair", "source": "MakeHuman short02 hair cards"}})
+    for item, geometry in [(item, eye_geometry if item['name'] == 'GrowthTrackEyes' else hair_geometry) for item in feature_meshes]:
+        names = list(geometry.get('morphs', {}))
+        item['extras']['targetNames'] = names
+        item['weights'] = [0.0] * len(names)
+        item['primitives'][0]['targets'] = [
+            {'POSITION': writer.sparse_accessor(geometry['morphs'][name], geometry['original_index'])}
+            for name in names
+        ]
     document = {
-        "asset": {"version": "2.0", "generator": "GrowthTrack MakeHuman CC0 converter"},
+        "asset": {"version": "2.0", "generator": "GrowthTrack MakeHuman CC0 converter 2.1"},
         "extensionsUsed": ["KHR_materials_clearcoat"],
         "scene": 0,
         "scenes": [{"nodes": [0, 1] + [item["mesh"] for item in feature_meshes]}],
@@ -912,6 +983,8 @@ def build_glb(
         "extras": {
             "license": "CC0 1.0",
             "source": "MakeHuman 1.1.1 bundled HM08 base mesh and targets",
+            "basePreset": "young-male-average-muscle-average-weight",
+            "baseSculpt": "neutral-anthropometric; no application-specific shoulder or muscle exaggeration",
             "vertexCount": len(body["positions"]),
             "privateVertexCount": len(private_anatomy["positions"]),
             "morphTargetCount": len(body_target_names),
@@ -934,7 +1007,7 @@ def build_glb(
         },
     }
     document["meshes"].extend(feature_meshes)
-    document["nodes"].extend({"name": item["name"], "mesh": item["mesh"]} for item in feature_meshes)
+    document["nodes"].extend({"name": item["name"], "mesh": item["mesh"], "extras": {"alignment": "makehuman-proxy", "morphFollow": True}} for item in feature_meshes)
     bone_node_offset = len(document["nodes"])
     bone_nodes = []
     for name, parent, local in bone_specs:
@@ -1011,6 +1084,10 @@ def main():
         target_center=(0.0, 1.855, 0.055),
         target_scale=(0.172, 0.105, 0.120),
     ) if hair is not None else None
+    if eyes is not None:
+        eye_geometry = fit_proxy(eyes, args.data / 'eyes/high-poly/high-poly.mhclo', body)
+    if hair is not None:
+        hair_geometry = fit_proxy(hair, args.data / 'hair/short02/short02.mhclo', body)
     build_glb(
         body,
         private_anatomy,

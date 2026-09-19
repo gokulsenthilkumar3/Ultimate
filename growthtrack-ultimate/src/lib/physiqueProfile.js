@@ -1,3 +1,5 @@
+import { validateBodyMetric } from './bodyMetricContract';
+
 export const BODY_METRIC_GROUPS = [
   {
     id: 'composition',
@@ -155,7 +157,7 @@ const finite = (value) => {
 export function bodyProfileToMetrics(profile = {}) {
   const measurements = Object.fromEntries(BODY_METRICS.flatMap((metric) => {
     const value = finite(profile?.[metric.currentField]);
-    return value == null ? [] : [[metric.key, value]];
+    return value == null || !validateBodyMetric(metric.key, value, { allowEmpty: false }).valid ? [] : [[metric.key, value]];
   }));
   const fitzpatrickIndex = finite(profile?.skinFitzpatrickIndex);
   const appearance = Object.fromEntries(BODY_APPEARANCE_FIELDS.flatMap(([key, field]) => {
@@ -174,8 +176,23 @@ export function bodyProfileToGoals(profile = {}, physiqueTargets = {}) {
   return Object.fromEntries(BODY_METRICS.flatMap((metric) => {
     const databaseValue = metric.targetField ? finite(profile?.[metric.targetField]) : null;
     const value = databaseValue ?? finite(storedGoals?.[metric.key]);
-    return value == null ? [] : [[metric.key, value]];
+    return value == null || !validateBodyMetric(metric.key, value, { allowEmpty: false }).valid ? [] : [[metric.key, value]];
   }));
+}
+
+export function getInvalidBodyProfileMeasurements(profile = {}, physiqueTargets = {}) {
+  return BODY_METRICS.flatMap((metric) => {
+    const values = [
+      { field: metric.currentField, scope: 'current', value: profile?.[metric.currentField] },
+      { field: metric.targetField, scope: 'goal', value: metric.targetField ? profile?.[metric.targetField] : undefined },
+      { field: `goalMetrics.${metric.key}`, scope: 'goal', value: physiqueTargets?.goalMetrics?.[metric.key] },
+    ];
+    return values.flatMap((item) => {
+      if (item.value === '' || item.value == null) return [];
+      const result = validateBodyMetric(metric.key, item.value, { allowEmpty: false });
+      return result.valid ? [] : [{ key: metric.key, label: metric.label, unit: metric.unit, ...item, reason: result.reason }];
+    });
+  });
 }
 
 export function metricsToBodyProfile(current = {}, goal = {}, { includeEmpty = false } = {}) {
@@ -183,8 +200,10 @@ export function metricsToBodyProfile(current = {}, goal = {}, { includeEmpty = f
   BODY_METRICS.forEach((metric) => {
     const currentValue = finite(current?.[metric.key]);
     const goalValue = finite(goal?.[metric.key]);
-    if (currentValue != null || (includeEmpty && Object.prototype.hasOwnProperty.call(current, metric.key))) payload[metric.currentField] = currentValue;
-    if (metric.targetField && (goalValue != null || (includeEmpty && Object.prototype.hasOwnProperty.call(goal, metric.key)))) payload[metric.targetField] = goalValue;
+    const currentValid = currentValue != null && validateBodyMetric(metric.key, currentValue, { allowEmpty: false }).valid;
+    const goalValid = goalValue != null && validateBodyMetric(metric.key, goalValue, { allowEmpty: false }).valid;
+    if (currentValid || (includeEmpty && currentValue == null && Object.prototype.hasOwnProperty.call(current, metric.key))) payload[metric.currentField] = currentValid ? currentValue : null;
+    if (metric.targetField && (goalValid || (includeEmpty && goalValue == null && Object.prototype.hasOwnProperty.call(goal, metric.key)))) payload[metric.targetField] = goalValid ? goalValue : null;
   });
   BODY_APPEARANCE_FIELDS.forEach(([key, field]) => {
     const value = current?.[key];
@@ -205,7 +224,7 @@ export function metricLogsToSnapshots(logs = []) {
     .map((log) => ({ id: log.id, date: log.date || log.createdAt, label: log.label || 'Check-in', metrics: log.metrics, note: log.note || '' }));
 
   const grouped = new Map();
-  logs.filter((log) => BODY_METRIC_MAP[log?.metric] && finite(log?.value) != null).forEach((log) => {
+  logs.filter((log) => BODY_METRIC_MAP[log?.metric] && finite(log?.value) != null && validateBodyMetric(log.metric, log.value, { allowEmpty: false }).valid).forEach((log) => {
     const date = String(log.date || log.createdAt || '').slice(0, 10);
     if (!date) return;
     const snapshot = grouped.get(date) || { id: `metrics-${date}`, date, label: 'Check-in', metrics: {} };
@@ -224,6 +243,7 @@ export function calculateGoalProgress({ baseline = {}, current = {}, goal = {} }
     const now = finite(current[metric.key]);
     const target = finite(goal[metric.key]);
     if (start == null || now == null || target == null) return [];
+    if (![start, now, target].every((value) => validateBodyMetric(metric.key, value, { allowEmpty: false }).valid)) return [];
     const span = target - start;
     const progress = Math.abs(span) < 0.0001 ? (Math.abs(now - target) < 0.0001 ? 100 : 0) : ((now - start) / span) * 100;
     return [{ key: metric.key, progress: Math.max(0, Math.min(100, progress)) }];

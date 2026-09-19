@@ -152,7 +152,6 @@ export default React.memo(function TransformationPredictor({ logs }) {
 
   const onTrackCount  = predictions.filter(p => p.isOnTrack).length;
   const avgConfidence = Math.round(predictions.reduce((s, p) => s + p.confidence, 0) / predictions.length);
-  const metricSel     = selected ? predictions.find(p => p.id === selected) : null;
 
   // Radar data — one point per metric
   const radarData = predictions.map(p => ({
@@ -172,6 +171,7 @@ export default React.memo(function TransformationPredictor({ logs }) {
           <div>
             <h3 className="text-display" style={{ fontSize: '1.5rem' }}>Transformation Predictions</h3>
             <p className="text-secondary" style={{ fontSize: '0.8rem' }}>AI-driven trajectory · 30-day horizon</p>
+            <p className="text-secondary" style={{ fontSize: '0.72rem', maxWidth: '56ch', marginTop: '0.25rem' }}>Directional estimate based only on your saved logs. Confidence falls with sparse or inconsistent data; this is not medical or financial advice.</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -191,11 +191,11 @@ export default React.memo(function TransformationPredictor({ logs }) {
           { label: 'Confidence',  value: `${avgConfidence}%`,                     color: avgConfidence > 60 ? '#22c55e' : '#f59e0b',                         icon: Zap },
           { label: 'Data Points', value: logs?.length || 0,                       color: 'var(--accent)',                                                    icon: Activity },
           { label: 'Horizon',     value: '30 days',                               color: 'var(--text-2)',                                                    icon: Clock },
-        ].map(({ label, value, color, icon: Icon }) => (
+        ].map(({ label, value, color, icon }) => (
           <div key={label} className="glass-card card-shine-wrap" style={{ padding: '0.85rem 1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span className="label-caps" style={{ fontSize: '0.65rem' }}>{label}</span>
-              <Icon size={13} color={color} />
+              {React.createElement(icon, { size: 13, color })}
             </div>
             <div style={{ fontSize: '1.3rem', fontWeight: 900, color, fontFamily: 'var(--font-display)', lineHeight: 1, marginTop: '0.3rem' }}>{value}</div>
           </div>

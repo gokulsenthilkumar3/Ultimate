@@ -3,6 +3,7 @@ import {
   bodyProfileToGoals,
   bodyProfileToMetrics,
   calculateGoalProgress,
+  getInvalidBodyProfileMeasurements,
   metricLogsToSnapshots,
   mergeBodyProfileSources,
   metricsToBodyProfile,
@@ -12,6 +13,15 @@ describe('physique profile mapping', () => {
   it('maps database fields without inventing missing measurements', () => {
     expect(bodyProfileToMetrics({ heightCm: 178, weightKg: 70, chestCm: null })).toEqual({ height: 178, weight: 70 });
     expect(bodyProfileToGoals({ targetWeightKg: 80 }, { goalMetrics: { calves: 41 } })).toEqual({ weight: 80, calves: 41 });
+  });
+
+  it('does not render implausible legacy measurements as anatomy', () => {
+    const profile = { heightCm: 175, chestCm: -0.1, thighsCm: 3, waistCm: 82 };
+    expect(bodyProfileToMetrics(profile)).toEqual({ height: 175, waist: 82 });
+    expect(getInvalidBodyProfileMeasurements(profile)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: 'chest', value: -0.1 }),
+      expect.objectContaining({ key: 'thighs', value: 3 }),
+    ]));
   });
 
   it('recovers legacy user measurements while preferring normalized profile values', () => {

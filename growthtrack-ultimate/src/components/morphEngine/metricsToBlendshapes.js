@@ -165,17 +165,29 @@ export function computeMorphWeights(metrics = {}, inheritedMetrics = {}) {
     foot_length: normalise(renderMetrics.footLength ?? 27, 'footLength'),
     head_circumference: normalise(renderMetrics.headCirc ?? 57, 'headCirc'),
     brow_depth: normalise(renderMetrics.brow_depth ?? 0.35, 'brow_depth'),
-    nose_bridge_width: normalise(renderMetrics.nose_bridge_width ?? 0.32, 'nose_bridge_width'),
-    nose_tip_size: normalise(renderMetrics.nose_tip_size ?? 0.33, 'nose_tip_size'),
+    nose_bridge_width: renderMetrics.noseWidth != null
+      ? normalise(renderMetrics.noseWidth, 'noseWidth')
+      : normalise(renderMetrics.nose_bridge_width ?? 0.32, 'nose_bridge_width'),
+    nose_tip_size: renderMetrics.noseWidth != null
+      ? normalise(renderMetrics.noseWidth, 'noseWidth') * 0.82
+      : normalise(renderMetrics.nose_tip_size ?? 0.33, 'nose_tip_size'),
     ear_prominence: normalise(renderMetrics.ear_prominence ?? 0.38, 'ear_prominence'),
-    jaw_width: normalise(renderMetrics.jaw_width ?? 0.36, 'jaw_width'),
+    jaw_width: renderMetrics.faceWidth != null
+      ? normalise(renderMetrics.faceWidth, 'faceWidth')
+      : normalise(renderMetrics.jaw_width ?? 0.36, 'jaw_width'),
     chin_projection: normalise(renderMetrics.chin_projection ?? 0.30, 'chin_projection'),
     lip_fullness: normalise(renderMetrics.lip_fullness ?? 0.42, 'lip_fullness'),
     eye_size: normalise(renderMetrics.eye_size ?? 0.40, 'eye_size'),
-    cheekbone_width: normalise(renderMetrics.bodyFat, 'bodyFat') * 0.35 + normalise(shoulderValue, shoulderRange) * 0.15,
-    forehead_height: normalise(renderMetrics.headCirc ?? 57, 'headCirc') * 0.25,
+    cheekbone_width: renderMetrics.faceWidth != null
+      ? normalise(renderMetrics.faceWidth, 'faceWidth') * 0.6
+      : normalise(renderMetrics.bodyFat, 'bodyFat') * 0.35 + normalise(shoulderValue, shoulderRange) * 0.15,
+    forehead_height: renderMetrics.faceHeight != null
+      ? normalise(renderMetrics.faceHeight, 'faceHeight') * 0.55
+      : normalise(renderMetrics.headCirc ?? 57, 'headCirc') * 0.25,
     temple_narrowing: 1 - normalise(renderMetrics.headCirc ?? 57, 'headCirc') * 0.15,
-    nose_length: normalise(renderMetrics.bodyFat, 'bodyFat') * 0.18 + 0.15,
+    nose_length: renderMetrics.noseLength != null
+      ? normalise(renderMetrics.noseLength, 'noseLength')
+      : 0.32,
     jaw_angle: normalise(renderMetrics.bodyFat, 'bodyFat') * 0.2,
     shoulder_drop: renderMetrics.shoulderDrop == null ? 0.08 : normalise(renderMetrics.shoulderDrop, 'shoulderDrop'),
     knee_spacing: normalise(hipValue, hipRange) * 0.22,

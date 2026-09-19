@@ -3,10 +3,10 @@ import {
   Cloud, Database, Dumbbell, FileText, Goal, HandCoins, HeartPulse, HelpCircle,
   History, Home, Landmark, LayoutDashboard, ListChecks, Map, PieChart, Ruler,
   Settings, ShieldCheck, ShoppingBag, Sparkles, Target, TrendingUp, Trophy,
-  Users, Utensils, WalletCards, Waves,
+  Users, Utensils, WalletCards, Waves, CheckCircle,
 } from 'lucide-react';
 
-export const TABS = {
+const TAB_CORE = {
   overview: { label: 'Overview', group: 'insights', icon: Home, emoji: '🏠', keywords: ['home', 'today', 'dashboard'] },
   current: { label: 'Current', group: 'insights', icon: Activity, emoji: '🌤', keywords: ['now', 'status'] },
   wellnessCommand: { label: 'Wellness Command', group: 'wellness', icon: HeartPulse, emoji: '💚', keywords: ['wellness command', 'health command'] },
@@ -26,6 +26,7 @@ export const TABS = {
   health: { label: 'Health+', group: 'wellness', icon: HeartPulse, emoji: '🩺', keywords: ['vitals'] },
   habits: { label: 'Habits', group: 'wellness', icon: Goal, emoji: '🔥', keywords: ['routine', 'streak'] },
   insights: { label: 'Insights', group: 'insights', icon: TrendingUp, emoji: '📊', keywords: ['analytics', 'dashboards', 'growth forecast', 'growthcast'] },
+  actions: { label: 'Action Center', group: 'insights', icon: CheckCircle, emoji: '⚡', keywords: ['next actions', 'priorities', 'recommendations'] },
   analytics: { label: 'Analytics', group: 'insights', icon: TrendingUp, emoji: '📊', keywords: ['insights', 'metrics'] },
   dashboards: { label: 'Dashboards', group: 'insights', icon: LayoutDashboard, emoji: '▦', keywords: ['dashboard', 'overview'] },
   forecast: { label: 'Forecast', group: 'insights', icon: TrendingUp, emoji: '🔮', keywords: ['growth forecast', 'prediction'] },
@@ -54,8 +55,17 @@ export const TABS = {
   pricing: { label: 'Plans', group: 'system', icon: ShieldCheck, emoji: '✨', keywords: ['pricing', 'subscription'] },
 };
 
+export const TABS = Object.freeze(Object.fromEntries(Object.entries(TAB_CORE).map(([id, meta]) => [id, Object.freeze({
+  id,
+  canonicalPath: `/${id}`,
+  description: `${meta.label} workspace`,
+  aliases: [],
+  availability: 'ready',
+  ...meta,
+})])));
+
 export const GROUPS = {
-  insights: { label: 'Insights', icon: TrendingUp, tabs: ['insights', 'overview', 'current', 'analytics', 'dashboards', 'progress', 'forecast'] },
+  insights: { label: 'Insights', icon: TrendingUp, tabs: ['insights', 'actions', 'overview', 'current', 'analytics', 'dashboards', 'progress', 'forecast'] },
   money: { label: 'Finance', icon: WalletCards, tabs: ['finance'] },
   wellness: { label: 'Wellness', icon: HeartPulse, tabs: ['wellness', 'sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration'] },
   work: { label: 'Workspace', icon: BriefcaseBusiness, tabs: ['workspace', 'tasks', 'projects', 'timesheet', 'skills', 'goals'] },
@@ -68,6 +78,10 @@ export const GROUP_ORDER = ['money', 'insights', 'wellness', 'work', 'life', 'sy
 export const MOBILE_QUICK_GROUPS = ['insights', 'money', 'wellness', 'work', 'life', 'system'];
 export const TAB_GROUP_MAP = Object.fromEntries(Object.entries(TABS).map(([id, tab]) => [id, tab.group]));
 export const ROUTE_ALIASES = { humanoid: 'physique', analytics: 'insights', dashboards: 'insights', forecast: 'insights', calendar: 'workspace', documents: 'workspace', notes: 'workspace', settings: 'profile' };
+export const MODULE_DEFINITIONS = Object.freeze(Object.values(TABS).map(meta => Object.freeze({
+  ...meta,
+  aliases: Object.entries(ROUTE_ALIASES).filter(([, target]) => target === meta.id).map(([alias]) => alias),
+})));
 export const NAVIGABLE_MODULES = {
   ...Object.fromEntries(Object.entries(TABS).map(([id, meta]) => [id, meta.label])),
   wellness: 'Wellness Command',
@@ -98,5 +112,9 @@ export function navigationGroups(configured = []) {
 }
 
 export function tabMeta(id) {
-  return TABS[id] || TABS[ROUTE_ALIASES[id]] || { label: id, icon: Settings, emoji: '📌', keywords: [] };
+  return TABS[id] || TABS[ROUTE_ALIASES[id]] || { id, canonicalPath: `/${id}`, label: id, description: 'Workspace', icon: Settings, emoji: '📌', keywords: [], aliases: [], availability: 'planned' };
+}
+
+export function canonicalModule(id) {
+  return tabMeta(ROUTE_ALIASES[id] || id);
 }

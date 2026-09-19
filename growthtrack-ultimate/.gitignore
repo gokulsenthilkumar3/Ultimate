@@ -53,10 +53,37 @@ Claude.md
 
 # Databases
 *.db
+*.db-shm
+*.db-wal
 *.db-journal
 *.sqlite
 *.sqlite3
 dev.db
+
+# Private local-first application data
+user-data/
+uploads/
+exports/
+backups/
+conversation-exports/
+screenshots/
+crash-dumps/
+
+# Local AI weights and 3D working sources
+*.gguf
+*.safetensors
+*.ckpt
+*.onnx
+*.blend
+*.blend1
+*.blend2
+
+# Credentials, keys, and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
 
 # Build & Test output
 build/
@@ -64,6 +91,9 @@ coverage/
 .build_test/
 .vercel/
 .netlify/
+prisma-generated/
+release-v2/
+release-*/
 
 # OS generated files
 .DS_Store?

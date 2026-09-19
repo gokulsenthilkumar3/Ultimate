@@ -13,11 +13,8 @@ export function buildGrowthcastSignal(state) {
   return { momentum, dataConfidence, completedGoals, habitStreak, taskLoad, model: GROWTHCAST_MODELS.trajectory };
 }
 export async function askLocalGrowthcast(prompt, config = {}) {
-  const model = config.model || 'gemma3';
-  const baseUrl = String(config.baseUrl || '').replace(/\/$/, '');
-  if (!baseUrl) throw new Error('Ollama endpoint is not configured');
-  const response = await fetch(`${baseUrl}/api/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, prompt, stream: false }), signal: AbortSignal.timeout(Number(config.timeoutMs) || 12000) });
-  if (!response.ok) throw new Error('Ollama is not available');
-  const data = await response.json();
-  return data.response || 'No local response returned.';
+  const provider = createModelProvider({ provider: 'ollama', ...config });
+  const result = await provider.chat({ prompt, model: config.model || 'gemma3' });
+  return result.text || 'No local response returned.';
 }
+import { createModelProvider } from './aiProviders';

@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* global process */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -161,8 +160,15 @@ function main() {
   check(headNodeIndex >= 0, 'Head joint', 'Head joint is missing', failures);
   check(eyesNode.parent === headNodeIndex && eyesNode.node?.extras?.headBound === true, 'Eye head binding', 'GrowthTrackEyes must be parented to Head with an authored local bind transform', failures);
   check(hairNode.parent === headNodeIndex && hairNode.node?.extras?.headBound === true, 'Hair head binding', 'GrowthTrackHair must be parented to Head with an authored local bind transform', failures);
-  check(eyesNode.node?.extras?.alignment === 'body-surface-calibrated' && Number(eyesNode.node?.extras?.alignmentOffsetZ) < -0.05, 'Eye surface alignment', 'GrowthTrackEyes must be calibrated against the face surface', failures);
-  check(hairNode.node?.extras?.alignment === 'body-surface-calibrated' && Number(hairNode.node?.extras?.alignmentOffsetZ) < -0.05, 'Hair surface alignment', 'GrowthTrackHair must be calibrated against the scalp surface', failures);
+  for (const feature of [eyesNode, hairNode]) {
+    const sourceBound = feature.node?.extras?.alignment === 'makehuman-proxy';
+    const legacyBound = feature.node?.extras?.alignment === 'body-surface-calibrated' && Number(feature.node?.extras?.alignmentOffsetZ) < -0.05;
+    check(sourceBound || legacyBound, 'Feature alignment', 'Accessory must carry source attachment or legacy alignment metadata', failures);
+    if (sourceBound) {
+      const mesh = json.meshes[feature.node.mesh];
+      check(mesh.extras?.targetNames?.length === targetNames.length && mesh.primitives[0].targets?.length === targetNames.length, 'Accessory morph coverage', 'Accessory must follow every body morph', failures);
+    }
+  }
   check(privatePosition?.count >= 800, 'Private anatomy topology', `${privatePosition?.count ?? 0} verts`, failures);
   check(privateTargetNames.includes('d_length') && privateTargetNames.includes('d_girth'), 'Private anatomy morphs', privateTargetNames.join(', ') || 'none', failures);
   check(privateMorphChangedCount('d_length') > 0 && privateMorphChangedCount('d_girth') > 0, 'Private anatomy deformation', `length ${privateMorphChangedCount('d_length')} verts · girth ${privateMorphChangedCount('d_girth')} verts`, failures);
