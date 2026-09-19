@@ -194,7 +194,9 @@ export function computeMorphWeights(metrics = {}, inheritedMetrics = {}) {
     ankle_taper: 1 - normalise(renderMetrics.ankle, 'ankle') * 0.3,
     hand_splay: renderMetrics.handSplay == null ? 0.02 : normalise(renderMetrics.handSplay, 'handSplay'),
     foot_arch: normalise(renderMetrics.footLength ?? 27, 'footLength') * 0.2,
-    d_length: normalise(renderMetrics.d_length ?? renderMetrics.d_size, 'd_size'),
+    d_length: renderMetrics.d_length != null
+      ? normalise(renderMetrics.d_length, 'd_size')
+      : normalise(renderMetrics.d_size, 'd_size'),
     d_girth: normalise(renderMetrics.d_girth, 'd_girth'),
     vascularity_intensity: renderMetrics.bodyFat < 15 ? Math.max(0, (15 - renderMetrics.bodyFat) / 10) : 0,
     fitzpatrick_index: SKIN_TONES.indexOf(resolveSkinTone(renderMetrics)),

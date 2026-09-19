@@ -15,6 +15,21 @@ describe('body metric fallbacks', () => {
     expect(result.metrics.weight).toBe(82);
     expect(result.metrics.height).toBe(178);
     expect(result.metrics.chest).toBe(101);
+    expect(result.sourceByKey).toMatchObject({
+      weight: 'measured',
+      height: 'inherited',
+      chest: 'inherited',
+      waist: 'estimated',
+    });
+    expect(result.inheritedKeys).toEqual(expect.arrayContaining(['height', 'chest']));
+  });
+
+  it('does not promote invalid or estimated values to measured provenance', () => {
+    const result = resolveBodyMetrics({ height: 175, chest: -1 }, { waist: 81 });
+    expect(result.sourceByKey.height).toBe('measured');
+    expect(result.sourceByKey.waist).toBe('inherited');
+    expect(result.sourceByKey.chest).toBe('estimated');
+    expect(result.suppliedKeys).not.toContain('chest');
   });
 
   it('reports precision without counting estimates as user measurements', () => {

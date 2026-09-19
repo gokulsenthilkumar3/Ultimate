@@ -88,10 +88,23 @@ export function resolveBodyMetrics(metrics = {}, inherited = {}) {
   setDerived('headCirc', height * 0.325);
   setDerived('neckLength', height * 0.06);
 
+  const directKeys = new Set(Object.keys(metricResult.metrics).filter((key) => finite(metricResult.metrics[key]) != null));
+  const inheritedKeys = new Set(Object.keys(inheritedResult.metrics).filter((key) => (
+    finite(inheritedResult.metrics[key]) != null && !directKeys.has(key)
+  )));
+  const sourceByKey = Object.fromEntries(Object.keys(resolved).flatMap((key) => {
+    if (directKeys.has(key)) return [[key, 'measured']];
+    if (inheritedKeys.has(key)) return [[key, 'inherited']];
+    if (derivedKeys.has(key)) return [[key, 'estimated']];
+    return [];
+  }));
+
   return {
     metrics: resolved,
     derivedKeys: [...derivedKeys],
-    suppliedKeys: Object.keys(metricResult.metrics).filter((key) => finite(metricResult.metrics[key]) != null),
+    suppliedKeys: [...directKeys],
+    inheritedKeys: [...inheritedKeys],
+    sourceByKey,
     invalidKeys: [...new Set([...inheritedResult.invalid, ...metricResult.invalid].map((item) => item.key))],
     invalid: [...inheritedResult.invalid, ...metricResult.invalid],
   };

@@ -347,38 +347,45 @@ def make_private_anatomy_mesh() -> dict:
             d = ring_b[segment]
             triangles.extend((a, b, c, a, c, d))
 
-    # Compact paired testicular surfaces, kept as smooth UV spheres in the
-    # same protected primitive so they follow girth changes coherently.
-    sphere_segments = 24
-    sphere_rings = 12
-    for side in (-1.0, 1.0):
-        sphere_center = np.asarray([side * 0.023, -0.040, 0.114], dtype=np.float32)
-        sphere_radius = 0.018
-        sphere_rows = []
-        for row in range(sphere_rings + 1):
-            phi = (row / sphere_rings) * np.pi
-            row_ids = []
-            for segment in range(sphere_segments):
-                theta = (segment / sphere_segments) * np.pi * 2.0
-                local = np.asarray([
-                    np.sin(phi) * np.cos(theta),
-                    np.cos(phi) * 0.92,
-                    np.sin(phi) * np.sin(theta),
-                ], dtype=np.float32) * sphere_radius
-                row_ids.append(add_vertex(
-                    tuple((sphere_center + local).tolist()),
-                    (segment / sphere_segments, row / sphere_rings),
-                    (0.0, 0.0, 0.0),
-                    tuple((local * 0.22).tolist()),
-                ))
-            sphere_rows.append(row_ids)
-        for row in range(sphere_rings):
-            for segment in range(sphere_segments):
-                a = sphere_rows[row][segment]
-                b = sphere_rows[row][(segment + 1) % sphere_segments]
-                c = sphere_rows[row + 1][(segment + 1) % sphere_segments]
-                d = sphere_rows[row + 1][segment]
-                triangles.extend((a, b, c, a, c, d))
+    # One continuous pear-shaped scrotal envelope replaces the old pair of
+    # disconnected spheres. The higher-density surface gives a cleaner,
+    # recognisably anatomical silhouette while remaining intentionally neutral
+    # and suitable for measurement visualisation rather than clinical use.
+    sack_segments = 32
+    sack_rings = 20
+    sack_center = np.asarray([0.0, -0.048, 0.114], dtype=np.float32)
+    sack_rows = []
+    for row in range(sack_rings + 1):
+        phi = (row / sack_rings) * np.pi
+        row_ids = []
+        vertical = np.cos(phi)
+        pear = 1.0 + 0.16 * max(0.0, -vertical)
+        for segment in range(sack_segments):
+            theta = (segment / sack_segments) * np.pi * 2.0
+            radial = np.sin(phi)
+            # A shallow median cleft and controlled left/right fullness avoid
+            # the toy-like two-ball shape without introducing separate shells.
+            side = np.cos(theta)
+            cleft = 1.0 - 0.08 * np.exp(-((side / 0.20) ** 2)) * radial
+            local = np.asarray([
+                radial * side * 0.038 * pear,
+                vertical * 0.033,
+                radial * np.sin(theta) * 0.026 * cleft,
+            ], dtype=np.float32)
+            row_ids.append(add_vertex(
+                tuple((sack_center + local).tolist()),
+                (segment / sack_segments, row / sack_rings),
+                (0.0, float(-0.010 * max(0.0, -vertical)), 0.0),
+                tuple((local * np.asarray([0.26, 0.18, 0.26], dtype=np.float32)).tolist()),
+            ))
+        sack_rows.append(row_ids)
+    for row in range(sack_rings):
+        for segment in range(sack_segments):
+            a = sack_rows[row][segment]
+            b = sack_rows[row][(segment + 1) % sack_segments]
+            c = sack_rows[row + 1][(segment + 1) % sack_segments]
+            d = sack_rows[row + 1][segment]
+            triangles.extend((a, b, c, a, c, d))
 
     positions = np.asarray(positions, dtype=np.float32)
     uv_values = np.asarray(uv_values, dtype=np.float32)
@@ -1004,6 +1011,22 @@ def build_glb(
                 "ktx2": False,
             },
             "privacy": "PrivateAnatomy is hidden by the application until an explicit per-session reveal.",
+            "metricContract": {
+                "version": 2,
+                "units": {"length": "cm", "mass": "kg", "percentage": "%", "privateLength": "in"},
+                "referenceHeightCm": 175,
+                "sourceOfTruth": "src/components/morphEngine/metricsToBlendshapes.js",
+                "directMetrics": [
+                    "height", "weight", "bodyFat", "chest", "chestDepth", "shoulders",
+                    "shoulderBreadth", "waist", "arms", "forearm", "hips", "glutes",
+                    "thighs", "calves", "ankle", "neck", "torsoLength", "upperArm",
+                    "lowerArm", "handLength", "legLength", "inseam", "footLength",
+                    "headCirc", "faceWidth", "faceHeight", "noseLength", "noseWidth",
+                    "d_size", "d_length", "d_girth"
+                ],
+                "privateMorphs": {"d_size": "d_length", "d_length": "d_length", "d_girth": "d_girth"},
+                "confidence": "measured values override render-only estimates; invalid values are rejected before morphing",
+            },
         },
     }
     document["meshes"].extend(feature_meshes)

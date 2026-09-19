@@ -40,8 +40,7 @@ function PortraitFill({ profile, lighting }) {
     <>
       <rectAreaLight position={[2.8, 2.4, 2.5]} rotation={[0, -0.72, 0]} width={3.2} height={4.4} intensity={lighting.fill} color={profile.fill} />
       <pointLight position={[0, 0.55, 1.8]} intensity={lighting.point} color={profile.key} distance={4.5} decay={2} />
-      {/* Negative fill light under chin for deeper cavity shadows */}
-      <pointLight position={[0, -0.4, 0.6]} intensity={-0.6} color="#ffffff" distance={2} decay={2} />
+      <pointLight position={[0, 0.8, -2.4]} intensity={lighting.point} color="#ffffff" distance={5} decay={2} />
     </>
   );
 }
@@ -77,8 +76,8 @@ export default function StudioLighting({ lodConfig }) {
 
   return (
     <group name="cinematic-portrait-lighting">
-      <ambientLight intensity={lighting.ambient} color={profile.fill} />
-      <hemisphereLight skyColor={profile.key} groundColor={"#030508"} intensity={lighting.hemisphere * 0.7} />
+      <ambientLight intensity={Math.max(0.3, lighting.ambient)} color="#ffffff" />
+      <hemisphereLight color="#ffffff" groundColor="#77716a" intensity={lighting.hemisphere} />
       <CinematicKey profile={profile} shadowMapSize={lodConfig?.shadowMapSize} lighting={lighting} />
       <PortraitFill profile={profile} lighting={lighting} />
       <EdgeLights profile={profile} lighting={lighting} />

@@ -27,6 +27,17 @@ describe('shipped human assets', () => {
         const index = body.extras.targetNames.indexOf(name);
         expect(glb.accessors[body.primitives[0].targets[index].POSITION].sparse.count).toBeGreaterThan(0);
       }
+      expect(glb.extras.metricContract).toMatchObject({
+        version: 2,
+        referenceHeightCm: 175,
+        privateMorphs: { d_size: 'd_length', d_length: 'd_length', d_girth: 'd_girth' },
+      });
+      const privateMesh = glb.meshes.find((mesh) => mesh.name === 'GrowthTrackPrivateAnatomy');
+      expect(glb.accessors[privateMesh.primitives[0].attributes.POSITION].count).toBeGreaterThanOrEqual(896);
+      for (const name of ['d_length', 'd_girth']) {
+        const index = privateMesh.extras.targetNames.indexOf(name);
+        expect(glb.accessors[privateMesh.primitives[0].targets[index].POSITION].sparse.count).toBeGreaterThan(0);
+      }
     });
   }
 });

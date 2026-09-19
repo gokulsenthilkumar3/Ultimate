@@ -52,6 +52,12 @@ export const BODY_METRIC_RANGES = Object.freeze({
   earWidth: { min: 1, max: 10, unit: 'cm' },
   noseLength: { min: 1, max: 12, unit: 'cm' },
   noseWidth: { min: 1, max: 10, unit: 'cm' },
+  // Optional private external-anatomy measurements. These are kept separate
+  // from ordinary physique analytics and are only rendered after a per-session
+  // reveal. `d_size` remains as a compatibility alias for older profiles.
+  d_size: { min: 3, max: 9, unit: 'in' },
+  d_length: { min: 3, max: 9, unit: 'in' },
+  d_girth: { min: 3, max: 7, unit: 'in' },
   leftShoulder: { min: 20, max: 90, unit: 'cm' },
   rightShoulder: { min: 20, max: 90, unit: 'cm' },
   leftUpperArm: { min: 10, max: 100, unit: 'cm' },

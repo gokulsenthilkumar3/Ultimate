@@ -19,6 +19,8 @@ import React, {
   useRef, Suspense, lazy,
 } from 'react';
 import TabErrorBoundary from './TabErrorBoundary';
+import MeasurementInput from './ui/MeasurementInput';
+import AvatarCreationWizard from './AvatarCreationWizard';
 import {
   Rotate3D, Eye, Layers, Zap, Shirt, Ruler, Camera, Download,
   ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle,
@@ -32,9 +34,9 @@ import PhysiqueDataPanel from './PhysiqueDataPanel';
 import use3DStore, { CINEMATIC_PRESETS } from '../store/use3DStore';
 import useStore from '../store/useStore';
 import { BODY_APPEARANCE_FIELDS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, getInvalidBodyProfileMeasurements, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile } from '../lib/physiqueProfile';
-import { validateBodyMetric } from '../lib/bodyMetricContract';
+import { BODY_METRIC_RANGES, validateBodyMetric } from '../lib/bodyMetricContract';
 import { buildRendererQualityGate } from '../lib/rendererQualityGate';
-import { getMetricCompleteness } from '../lib/bodyMetricFallbacks';
+import { getMetricCompleteness, resolveBodyMetrics } from '../lib/bodyMetricFallbacks';
 import { USER, BODY_PARTS, STATUS } from '../data/userData';
 import { useToast } from '../hooks/useToast';
 import { trackEvent } from '../lib/analytics';
@@ -238,7 +240,7 @@ export default function HumanoidViewer() {
   }, []);
   const wardrobe          = use3DStore((s) => s.wardrobeState);
   const anatomyDepth      = use3DStore((s) => s.anatomyDepth);
-  const privateAnatomyVisible = use3DStore((s) => s.privateAnatomyVisible);
+  const captureRedacted = use3DStore((s) => s.captureRedacted);
   const selectedPart      = use3DStore((s) => s.focusedBodyPart);
   const currentMetrics    = use3DStore((s) => s.cloneA?.metrics || EMPTY_OBJECT);
   const goalMetrics       = use3DStore((s) => s.cloneB?.metrics || EMPTY_OBJECT);
@@ -286,7 +288,7 @@ export default function HumanoidViewer() {
   const setStressLevel    = use3DStore((s) => s.setStressLevel);
   const setWardrobe       = use3DStore((s) => s.setWardrobe);
   const setAnatomyDepth   = use3DStore((s) => s.setAnatomyDepth);
-  const setPrivateAnatomyVisible = use3DStore((s) => s.setPrivateAnatomyVisible);
+  const setCaptureRedacted = use3DStore((s) => s.setCaptureRedacted);
   const setSelectedPart   = use3DStore((s) => s.setFocusedBodyPart);
   const setVfx            = use3DStore((s) => s.setVfx);
   const setSplitDividerX  = use3DStore((s) => s.setSplitDividerX);
@@ -448,8 +450,9 @@ export default function HumanoidViewer() {
 
   // ── Local UI state
   const [showEditor, setShowEditor] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [editorTab, setEditorTab] = useState(() => sessionStorage.getItem('chamber_tab') || 'metrics');
-  const [sensitiveUnlocked, setSensitiveUnlocked] = useState(false);
+  const sensitiveUnlocked = wardrobe === 'ANATOMICAL';
   const [splitDragging, setSplitDragging] = useState(false);
   const [storyStage, setStoryStage] = useState('current');
 
@@ -461,11 +464,8 @@ export default function HumanoidViewer() {
   const hairB = { style: goalMetrics.hairStyle || 'short', color: goalMetrics.hairColor || '#2c1a0a' };
 
   const toggleSensitiveAnatomy = useCallback(() => {
-    const next = !sensitiveUnlocked;
-    setSensitiveUnlocked(next);
-    setPrivateAnatomyVisible(next);
-    if (next) setWardrobe('ANATOMICAL');
-  }, [sensitiveUnlocked, setPrivateAnatomyVisible, setWardrobe]);
+    setWardrobe(sensitiveUnlocked ? 'UNDERWEAR' : 'ANATOMICAL');
+  }, [sensitiveUnlocked, setWardrobe]);
 
   // Timeline playback
   const [timelinePlaying, setTimelinePlaying] = useState(false);
@@ -481,6 +481,11 @@ export default function HumanoidViewer() {
     setEditorTab(id);
     sessionStorage.setItem('chamber_tab', id);
   }, []);
+
+  const openAnatomyEditor = useCallback(() => {
+    setShowEditor(true);
+    handleTabChange('anatomy');
+  }, [handleTabChange]);
 
   const handleStoryStage = useCallback((stage: string) => {
     if ((stage === 'goal' && !hasGoalComparison) || (stage !== 'current' && stage !== 'goal' && !hasTimelineData)) return;
@@ -536,8 +541,8 @@ export default function HumanoidViewer() {
   useEffect(() => () => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     if (renderPersistTimerRef.current) clearTimeout(renderPersistTimerRef.current);
-    setPrivateAnatomyVisible(false);
-  }, [setPrivateAnatomyVisible]);
+    setCaptureRedacted(false);
+  }, [setCaptureRedacted]);
 
   // ── Timeline playback auto-scrub
   useEffect(() => {
@@ -557,6 +562,11 @@ export default function HumanoidViewer() {
   const baselineMetrics = useMemo(() => getBaselineMetrics(snapshots, currentMetrics), [currentMetrics, snapshots]);
   const progressSummary = useMemo(() => calculateGoalProgress({ baseline: baselineMetrics, current: currentMetrics, goal: goalMetrics }), [baselineMetrics, currentMetrics, goalMetrics]);
   const metricCompleteness = useMemo(() => getMetricCompleteness(currentMetrics), [currentMetrics]);
+  const currentMetricResolution = useMemo(() => resolveBodyMetrics(currentMetrics), [currentMetrics]);
+  const goalMetricResolution = useMemo(
+    () => resolveBodyMetrics(goalMetrics, currentMetrics),
+    [currentMetrics, goalMetrics],
+  );
   const overallScore = progressSummary.score ?? 0;
 
   // ── Export screenshot
@@ -567,36 +577,32 @@ export default function HumanoidViewer() {
   const captureScreenshot = useCallback(async () => {
     const canvas = document.querySelector('.chamber-viewport canvas') as HTMLCanvasElement | null;
     if (!canvas) { toast.error('No 3D viewport found.'); return; }
-    const restoreSensitiveView = privateAnatomyVisible;
+    if (captureRedacted) return;
     try {
-      if (restoreSensitiveView) {
-        setPrivateAnatomyVisible(false);
-        await waitForProtectedRedraw();
-      }
+      setCaptureRedacted(true);
+      await waitForProtectedRedraw();
       const link = document.createElement('a');
       link.download = `MirrorChamber_${new Date().toISOString().split('T')[0]}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
       toast.success('Screenshot exported with private anatomy hidden.');
     } finally {
-      if (restoreSensitiveView) setPrivateAnatomyVisible(true);
+      setCaptureRedacted(false);
     }
-  }, [privateAnatomyVisible, setPrivateAnatomyVisible, toast, waitForProtectedRedraw]);
+  }, [captureRedacted, setCaptureRedacted, toast, waitForProtectedRedraw]);
 
   const handleShareAvatar = useCallback(async () => {
     const canvas = document.querySelector('.chamber-viewport canvas') as HTMLCanvasElement | null;
-    const restoreSensitiveView = privateAnatomyVisible;
+    if (captureRedacted) return;
     try {
-      if (restoreSensitiveView) {
-        setPrivateAnatomyVisible(false);
-        await waitForProtectedRedraw();
-      }
+      setCaptureRedacted(true);
+      await waitForProtectedRedraw();
       setShareImageSrc(canvas ? canvas.toDataURL('image/png') as any : null);
       setShowShareModal(true);
     } finally {
-      if (restoreSensitiveView) setPrivateAnatomyVisible(true);
+      setCaptureRedacted(false);
     }
-  }, [privateAnatomyVisible, setPrivateAnatomyVisible, waitForProtectedRedraw]);
+  }, [captureRedacted, setCaptureRedacted, waitForProtectedRedraw]);
 
   const handleSaveSnapshot = useCallback(async () => {
     try {
@@ -697,6 +703,9 @@ export default function HumanoidViewer() {
         </div>
         {/* Right: quality + render mode toggles */}
         <div className="chamber-render-controls chamber-topbar__controls">
+          <button className="chamber-pill" onClick={() => setShowWizard(true)} style={{ marginRight: '8px' }}>
+            <Rotate3D size={12} style={{ marginRight: '4px' }} /> Setup Wizard
+          </button>
           <div className="chamber-quality-switch" aria-label="Render quality">
             {QUALITY_OPTIONS.map((level) => (
               <button key={level} className={`chamber-view-btn${quality === level ? ' active' : ''}`}
@@ -741,11 +750,12 @@ export default function HumanoidViewer() {
               </div>
               <div className="chamber-pill-group">
                 <button className="chamber-pill" onClick={() => { fitCameraToBody(); setIsZoomed(false); }}>
-                  Fit
+                  Full Body
                 </button>
                 <button className="chamber-pill" onClick={() => { resetCameraZoom(); setIsZoomed(false); }}>
                   Reset
                 </button>
+                <button className="chamber-pill" onClick={() => { setViewMode('SOLO'); setSelectedPart('head'); }}>Face</button>
                 <button className={`chamber-pill${isZoomed ? ' active' : ''}`} onClick={() => setIsZoomed((z) => !z)}>
                   Zoom {isZoomed ? 'In' : 'Out'}
                 </button>
@@ -890,6 +900,9 @@ export default function HumanoidViewer() {
 
           {/* Floating action buttons */}
           <div className="chamber-fab-row">
+            <button className={`chamber-fab${editorTab === 'anatomy' && showEditor ? ' active' : ''}`} onClick={openAnatomyEditor} title="Open anatomical controls" aria-label="Open anatomical controls" aria-expanded={editorTab === 'anatomy' && showEditor}>
+              <Layers size={16} />
+            </button>
             <button className={`chamber-fab${autoRotate ? ' active' : ''}`} onClick={() => setAutoRotate(!autoRotate)} title={autoRotate ? 'Pause cinematic orbit' : 'Cinematic orbit'} aria-pressed={autoRotate}>
               <Rotate3D size={16} />
             </button>
@@ -932,17 +945,32 @@ export default function HumanoidViewer() {
                   <h4 className="chamber-editor__heading">
                     <Ruler size={14} /> Body Metrics
                   </h4>
+                  <details className="chamber-note">
+                    <summary>Model fit</summary>
+                    <p>Entered measurements drive the shape; missing values use render-only estimates. Circumferences are not yet verified against the deformed mesh, so achieved measurements and fit errors are unavailable. Measurement completeness is not anatomical accuracy.</p>
+                  </details>
                   <div className="chamber-metric-list">
                     {Object.entries(METRIC_LABELS).map(([key, meta]) => {
-                      const cur = currentMetrics[key] as number ?? 0;
-                      const goal = goalMetrics[key] as number ?? 0;
+                      const currentIsMeasured = currentMetricResolution.suppliedKeys.includes(key);
+                      const goalIsMeasured = goalMetricResolution.suppliedKeys.includes(key);
+                      const range = (BODY_METRIC_RANGES as any)[key];
+                      const cur = Number((currentMetricResolution.metrics as any)[key]) || 0;
+                      const goal = Number((goalMetricResolution.metrics as any)[key]) || cur;
+                      const goalSource = (goalMetricResolution.sourceByKey as any)[key] === 'inherited'
+                        ? 'Current'
+                        : goalIsMeasured ? 'Goal' : 'Estimated';
                       const pctRaw = Number((progressSummary as any).byMetric?.[key]) || 0;
                       const pct = Math.round(pctRaw);
                       const progressColor = pct >= 75 ? 'var(--chamber-success)' : pct >= 40 ? 'var(--chamber-gold)' : 'var(--chamber-glow)';
                       return (
                         <div key={key} className="chamber-metric-row">
                           <div className="chamber-metric-row__header">
-                            <span className="chamber-metric-row__label">{meta.label}</span>
+                            <span className="chamber-metric-row__label">
+                              {meta.label}
+                              <small className={`chamber-metric-source${currentIsMeasured ? ' is-measured' : ''}`}>
+                                {currentIsMeasured ? 'Entered' : 'Estimated'}
+                              </small>
+                            </span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span className="chamber-metric-row__value">
                                 {meta.unit === 'kg' || meta.unit === 'cm'
@@ -959,20 +987,20 @@ export default function HumanoidViewer() {
                           {/* NOW slider */}
                           <div style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: 2 }}>NOW</div>
                           <input type="range" aria-label={`Current ${meta.label}`}
-                            min={key === 'bodyFat' ? 5 : 30}
-                            max={key === 'bodyFat' ? 40 : key === 'weight' ? 130 : 150}
+                            min={range.min}
+                            max={range.max}
                             step={1} value={cur}
                             onChange={(e) => handleCurrentValue(key, e.target.value)}
                             className="chamber-slider" />
                           {/* GOAL slider */}
                           <div style={{ fontSize: '0.6rem', color: 'var(--chamber-glow)', marginBottom: 2, marginTop: 4 }}>
-                            GOAL <span style={{ float: 'right' }}>{meta.unit === 'kg' || meta.unit === 'cm'
+                            GOAL · {goalSource.toUpperCase()} <span style={{ float: 'right' }}>{meta.unit === 'kg' || meta.unit === 'cm'
                               ? formatMeasurement(goal, meta.unit, user)
                               : `${goal}${meta.unit}`}</span>
                           </div>
                           <input type="range" aria-label={`Goal ${meta.label}`}
-                            min={key === 'bodyFat' ? 5 : 30}
-                            max={key === 'bodyFat' ? 40 : key === 'weight' ? 130 : 150}
+                            min={range.min}
+                            max={range.max}
                             step={1} value={goal}
                             onChange={(e) => handleGoalValue(key, e.target.value)}
                             className="chamber-slider"
@@ -1207,8 +1235,9 @@ export default function HumanoidViewer() {
               {editorTab === 'anatomy' && (
                 <div className="chamber-editor__section">
                   <h4 className="chamber-editor__heading">
-                    <Layers size={14} /> Anatomical Peel
+                    <Layers size={14} /> Anatomy guide
                   </h4>
+                  <p className="chamber-note">This diagram is illustrative. The GLB contains external surfaces only; these controls do not reveal internal organs or a medical skeleton.</p>
                   {/* Animated SVG */}
                   <AnatomySVG depth={anatomyDepth} />
 
@@ -1256,7 +1285,7 @@ export default function HumanoidViewer() {
                     <div className="chamber-sensitive-card__head">
                       <div>
                         <h4><Eye size={13} /> Private anatomy</h4>
-                        <p>Hidden by default and automatically removed from screenshots and sharing.</p>
+                        <p>Complete adult anatomy is visible in Anatomical mode. Screenshots and sharing hide the external genital mesh.</p>
                       </div>
                       <button
                         className={`chamber-pill${sensitiveUnlocked ? ' active' : ''}`}
@@ -1264,43 +1293,39 @@ export default function HumanoidViewer() {
                         disabled={!modelDiagnostics?.hasPrivateAnatomy}
                         onClick={toggleSensitiveAnatomy}
                       >
-                        {sensitiveUnlocked ? 'Hide' : modelDiagnostics?.hasPrivateAnatomy ? 'Reveal for session' : 'Asset unavailable'}
+                        {sensitiveUnlocked ? 'Wear underwear' : modelDiagnostics?.hasPrivateAnatomy ? 'Anatomical mode' : 'Asset unavailable'}
                       </button>
                     </div>
 
                     {sensitiveUnlocked && modelDiagnostics?.hasPrivateAnatomy && (
                       <div className="chamber-sensitive-grid">
                         {[
-                          { key: 'd_size', label: 'Length', min: 3, max: 9 },
-                          { key: 'd_girth', label: 'Girth', min: 3, max: 7 },
+                          { key: 'd_size', label: 'External anatomy length' },
+                          { key: 'd_girth', label: 'External anatomy girth' },
                         ].map((metric) => (
                           <div key={metric.key} className="chamber-sensitive-field">
                             <strong>{metric.label}</strong>
                             <label>
                               <span>Current</span>
-                              <input
-                                type="number"
+                              <MeasurementInput
+                                key={`${metric.key}-private-current-${(currentMetrics as any)[metric.key] ?? ''}`}
+                                metricKey={metric.key}
                                 inputMode="decimal"
-                                min={metric.min}
-                                max={metric.max}
-                                step="0.1"
                                 value={(currentMetrics as any)[metric.key] ?? ''}
                                 placeholder="Not set"
-                                onChange={(event) => handleCurrentValue(metric.key, event.target.value)}
+                                onCommit={(value) => handleCurrentValue(metric.key, value)}
                               />
                               <em>in</em>
                             </label>
                             <label>
                               <span>Goal</span>
-                              <input
-                                type="number"
+                              <MeasurementInput
+                                key={`${metric.key}-private-goal-${(goalMetrics as any)[metric.key] ?? ''}`}
+                                metricKey={metric.key}
                                 inputMode="decimal"
-                                min={metric.min}
-                                max={metric.max}
-                                step="0.1"
                                 value={(goalMetrics as any)[metric.key] ?? ''}
                                 placeholder="Not set"
-                                onChange={(event) => handleGoalValue(metric.key, event.target.value)}
+                                onCommit={(value) => handleGoalValue(metric.key, value)}
                               />
                               <em>in</em>
                             </label>
@@ -1521,6 +1546,10 @@ export default function HumanoidViewer() {
           </div>
         </div>
       )}
+
+      {showWizard || !currentMetrics.height ? (
+        <AvatarCreationWizard onComplete={() => setShowWizard(false)} />
+      ) : null}
 
       <PhysiqueDataPanel
         current={currentMetrics}

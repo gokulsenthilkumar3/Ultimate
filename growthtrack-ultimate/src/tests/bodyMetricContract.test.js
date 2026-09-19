@@ -20,4 +20,10 @@ describe('body measurement contract', () => {
   it('supports clearing optional measurements', () => {
     expect(validateBodyMetric('waist', '')).toMatchObject({ valid: true, empty: true, value: null });
   });
+
+  it('validates private measurements without exposing them to ordinary metrics', () => {
+    expect(validateBodyMetric('d_size', 6)).toMatchObject({ valid: true, value: 6 });
+    expect(validateBodyMetric('d_length', 10)).toMatchObject({ valid: false, reason: 'Enter 3–9 in.' });
+    expect(validateBodyMetric('d_girth', 2)).toMatchObject({ valid: false, reason: 'Enter 3–7 in.' });
+  });
 });

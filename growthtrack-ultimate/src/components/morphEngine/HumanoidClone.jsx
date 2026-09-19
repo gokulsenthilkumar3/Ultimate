@@ -33,6 +33,8 @@ import { resolveBodyMetrics } from "../../lib/bodyMetricFallbacks";
 import { computeHeightScale, resolveSkinTone } from "./metricsToBlendshapes";
 import { inspectDigitalHumanV2 } from './digitalHumanV2';
 import { createSoleGrounder } from './grounding';
+import { isAnatomyVisible } from './anatomyVisibility';
+import { registerAvatarSource } from './avatarExport';
 
 const ProceduralHumanoid = React.lazy(() => import("./ProceduralHumanoid"));
 
@@ -100,7 +102,7 @@ export default function HumanoidClone({
   const setModelFrame = use3DStore((s) => s.setModelFrame);
   const setModelDiagnostics = use3DStore((s) => s.setModelDiagnostics);
   const gpuTier = use3DStore((s) => s.gpuTier);
-  const privateAnatomyVisible = use3DStore((s) => s.privateAnatomyVisible);
+  const captureRedacted = use3DStore((s) => s.captureRedacted);
   const wardrobe = use3DStore((s) => s.wardrobeState);
 
   // ── Store slice ─────────────────────────────────────────────────────────────
@@ -124,6 +126,13 @@ export default function HumanoidClone({
     [renderMetrics],
   );
   const skinTone = useMemo(() => resolveSkinTone(renderMetrics), [renderMetrics]);
+  useEffect(() => {
+    if (useProcedural || !groupRef.current) return undefined;
+    return registerAvatarSource(cloneKey, {
+      group: groupRef.current,
+      metadata: () => ({ schemaVersion: 1, metrics: { ...metrics }, weights: { ...weights }, asset: diagnostics?.modelAsset, calibrationVersion: null }),
+    });
+  }, [cloneKey, diagnostics, metrics, weights, useProcedural, visible]);
 
   // ── Morph interpolator ──────────────────────────────────────────────────────
   const { interpolator, updateWeights } = useMorphInterpolator(snapWeights);
@@ -431,8 +440,8 @@ export default function HumanoidClone({
     // The asset loads hidden and remains hidden in ghost/delta views. Only the
     // explicit per-session reveal in the anatomy editor can make it visible.
     // eslint-disable-next-line react-hooks/immutability
-    privateAnatomyMesh.visible = privateAnatomyVisible && renderMode === "normal";
-  }, [privateAnatomyMesh, privateAnatomyVisible, renderMode]);
+    privateAnatomyMesh.visible = isAnatomyVisible({ wardrobe, renderMode, captureRedacted });
+  }, [privateAnatomyMesh, wardrobe, captureRedacted, renderMode]);
 
   // ── Per-frame morph application ─────────────────────────────────────────────
   useFrame((_, delta) => {

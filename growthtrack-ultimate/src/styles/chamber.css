@@ -407,6 +407,20 @@
 }
 .chamber-metric-row__header, .chamber-morph-row__header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
 .chamber-metric-row__label, .chamber-morph-row__header span:first-child { color: #b9c7d8; font-size: .7rem; font-weight: 650; }
+.chamber-metric-row__label { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.chamber-metric-source {
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--chamber-gold) 35%, transparent);
+  border-radius: 999px;
+  color: var(--chamber-gold);
+  font: 700 .5rem/1 var(--font-mono, monospace);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.chamber-metric-source.is-measured {
+  border-color: color-mix(in srgb, var(--chamber-success) 38%, transparent);
+  color: var(--chamber-success);
+}
 .chamber-metric-row__value, .chamber-morph-row__value { color: #ecfeff; font: 750 .72rem/1 var(--font-mono, monospace); }
 .chamber-slider { width: 100%; height: 4px; accent-color: #22d3ee; cursor: pointer; }
 .chamber-divider { height: 1px; background: rgba(148,210,230,.1); }

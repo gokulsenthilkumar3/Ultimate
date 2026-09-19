@@ -107,4 +107,13 @@ describe('pure metric-to-blendshape engine', () => {
     expect(longWide.nose_tip_size).toBeGreaterThan(shortNarrow.nose_tip_size);
     expect(computeMorphWeights({ bodyFat: 8 }).nose_length).toBe(computeMorphWeights({ bodyFat: 38 }).nose_length);
   });
+
+  it('maps both legacy and canonical private length keys to the protected morph only', () => {
+    const legacy = computeMorphWeights({ d_size: 6, d_girth: 5 });
+    const canonical = computeMorphWeights({ d_length: 6, d_girth: 5 });
+    expect(canonical.d_length).toBeCloseTo(legacy.d_length);
+    expect(canonical.d_girth).toBeCloseTo(legacy.d_girth);
+    expect(canonical.d_length).toBeCloseTo(0.5);
+    expect(canonical.d_girth).toBeCloseTo(0.5);
+  });
 });

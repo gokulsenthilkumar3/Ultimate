@@ -74,8 +74,8 @@ export default function PhysiqueDataPanel({ current = {}, goal = {}, baseline = 
                 const delta = Number.isFinite(now) && Number.isFinite(target) ? target - now : null;
                 return <div className="physique-metric-table__row" key={metric.key}>
                   <strong>{metric.label}</strong><span data-label="Baseline">{format(start, metric.unit, user)}</span>
-                  <label data-label="Current"><MeasurementInput metricKey={metric.key} value={Number.isFinite(now) ? now : ''} aria-label={`Current ${metric.label}`} onCommit={(value) => onCurrentChange(metric.key, value)} /><small>{metric.unit}</small></label>
-                  <label data-label="Goal"><MeasurementInput metricKey={metric.key} value={Number.isFinite(target) ? target : ''} aria-label={`Goal ${metric.label}`} onCommit={(value) => onGoalChange(metric.key, value)} /><small>{metric.unit}</small></label>
+                  <label data-label="Current"><MeasurementInput key={`${metric.key}-current-${now}`} metricKey={metric.key} value={Number.isFinite(now) ? now : ''} aria-label={`Current ${metric.label}`} onCommit={(value) => onCurrentChange(metric.key, value)} /><small>{metric.unit}</small></label>
+                  <label data-label="Goal"><MeasurementInput key={`${metric.key}-goal-${target}`} metricKey={metric.key} value={Number.isFinite(target) ? target : ''} aria-label={`Goal ${metric.label}`} onCommit={(value) => onGoalChange(metric.key, value)} /><small>{metric.unit}</small></label>
                   <span data-label="Change" className={delta == null ? '' : 'has-value'}>{delta == null ? '—' : format(delta, metric.unit, user)}</span>
                 </div>;
               })}

@@ -38,6 +38,15 @@ function applyMorph(dict, influences, morphKey, value) {
   return false;
 }
 
+const FITZPATRICK_COLORS = {
+  'I': '#FCECE0',
+  'II': '#F2D3BC',
+  'III': '#E1B898',
+  'IV': '#C68642',
+  'V': '#8D5524',
+  'VI': '#3D2012',
+};
+
 // ── HUMAN MODEL COMPONENT (GLB) ──
 function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, stressLevel }) {
   // FIX 2: Use corrected GLB_CURRENT/GLB_GOAL with BASE_URL
@@ -46,7 +55,8 @@ function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, s
   const clonedScene = useMemo(() => scene.clone(), [scene]);
 
   const user      = useStore(state => state.user);
-  const skinMat   = useMemo(() => createSkinMaterial(user?.skinTones?.Face || '#C68642'), [user]);
+  const skinColor = FITZPATRICK_COLORS[morphs?.skinTone] || user?.skinTones?.Face || '#C68642';
+  const skinMat   = useMemo(() => createSkinMaterial(skinColor), [skinColor]);
   const muscleMat = useMemo(() => createPeelMaterial(0xf43f5e, 0x440000, 0.4, false), []);
 
   useEffect(() => {
@@ -68,16 +78,24 @@ function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, s
         }
       }
 
-      // FIX 3: Guard morphTargetInfluences before access
       if (node.morphTargetDictionary && node.morphTargetInfluences) {
         const dict = node.morphTargetDictionary;
         const inf  = node.morphTargetInfluences;
-        applyMorph(dict, inf, 'chest_depth', Math.max(0, morphs.chest - 1));
-        applyMorph(dict, inf, 'deltoid_width', Math.max(0, morphs.shoulders - 1));
-        applyMorph(dict, inf, 'waist_narrow', Math.max(0, 1 - morphs.waist));
-        applyMorph(dict, inf, 'bicep_peak', Math.max(0, morphs.arms - 1));
+        applyMorph(dict, inf, 'chest_depth', Math.max(0, (morphs.chest || 0) - 1));
+        applyMorph(dict, inf, 'deltoid_width', Math.max(0, (morphs.shoulders || 0) - 1));
+        applyMorph(dict, inf, 'waist_narrow', Math.max(0, 1 - (morphs.waist || 0)));
+        applyMorph(dict, inf, 'bicep_peak', Math.max(0, (morphs.arms || 0) - 1));
         applyMorph(dict, inf, 'overall_mass', Math.max(0, morphs.weight ? morphs.weight / 100 : 0));
         applyMorph(dict, inf, 'gut_volume', Math.max(0, morphs.bodyFat ? morphs.bodyFat / 40 : 0));
+        
+        // Anatomy & Face Wiring
+        applyMorph(dict, inf, 'face_roundness', morphs.face_roundness || 0);
+        applyMorph(dict, inf, 'jaw_width', morphs.jaw_width || 0);
+        applyMorph(dict, inf, 'torso_length', morphs.torso_length || morphs.torsoLength || 0);
+        applyMorph(dict, inf, 'shoulder_slope', morphs.shoulder_slope || 0);
+        applyMorph(dict, inf, 'clavicle_width', morphs.clavicle_width || 0);
+        applyMorph(dict, inf, 'pelvis_width', morphs.pelvis_width || 0);
+        applyMorph(dict, inf, 'leg_length', morphs.leg_length || morphs.legLength || 0);
       }
 
       if (process.env.NODE_ENV !== 'production' && node.morphTargetDictionary) {

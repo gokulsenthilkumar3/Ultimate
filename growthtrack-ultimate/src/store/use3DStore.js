@@ -116,7 +116,7 @@ export const CINEMATIC_PRESETS = Object.freeze({
   }),
 });
 
-export const CINEMATIC_DEFAULTS = Object.freeze({ ...CINEMATIC_PRESETS.PORTRAIT });
+export const CINEMATIC_DEFAULTS = Object.freeze({ ...CINEMATIC_PRESETS.ANALYTIC });
 
 const sanitizeCinematicState = (value = {}) => {
   const merged = { ...CINEMATIC_DEFAULTS, ...value };
@@ -338,6 +338,8 @@ const use3DStore = create(
        * This flag is deliberately not persisted with renderer preferences.
        */
       privateAnatomyVisible: false,
+      captureRedacted: false,
+      setCaptureRedacted: (value) => set({ captureRedacted: value === true }),
 
       /** Ambition path data */
       ambitionPath: {
