@@ -143,7 +143,10 @@ export default function HumanoidClone({
 
   useEffect(() => {
     if (!scene || useProcedural) return;
-    const box = new THREE.Box3().setFromObject(bodyMesh);
+    // Frame the complete authored avatar, not only the body primitive. This
+    // includes hair, eyes, feet, clothing and visible anatomy attachments.
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(scene);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
     box.getSize(size);

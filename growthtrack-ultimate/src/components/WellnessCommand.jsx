@@ -1,6 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { HeartPulse, Activity, Moon } from 'lucide-react';
+import { HeartPulse, Activity, Moon, Brain, Droplets } from 'lucide-react';
 import useStore from '../store/useStore';
 import { handleTabKeyDown } from '../hooks/useHashTab';
 import Card from './ui/Card';
@@ -40,19 +40,59 @@ export default function WellnessCommand({ user, setActiveTab }) {
   const activeArea = ['3d', 'blueprint', 'targets', 'history'].includes(hash)
     ? 'physique' : AREAS.some(([id]) => id === hash) ? hash : 'overview';
   const setActiveArea = (area) => navigate({ pathname: location.pathname, search: location.search, hash: area === 'physique' ? '#3d' : `#${area}` });
+  
   const habits = useStore(s => s.habits) || [];
   const sleep = useStore(s => s.sleepLogs) || [];
   const metrics = useStore(s => s.metricLogs) || [];
+  
   const ActiveArea = AREAS.find(([id]) => id === activeArea)?.[2] || Overview;
+  
   const cards = [
     { label: 'Habits tracked', value: habits.length, icon: Activity, color: 'var(--gt-success)' },
     { label: 'Sleep entries', value: sleep.length, icon: Moon, color: 'var(--gt-action)' },
     { label: 'Health metrics', value: metrics.length, icon: HeartPulse, color: 'var(--gt-warning)' },
+    { label: 'Mindfulness mins', value: '120', icon: Brain, color: '#a78bfa' },
+    { label: 'Avg Hydration', value: '2.5L', icon: Droplets, color: '#60a5fa' },
   ];
+
   return <div className="module-page wellness-command">
-    <Card className="page-header wellness-command__header"><div><p className="eyebrow">Wellness</p><h1>Feel well, one day at a time.</h1><p className="page-subtitle">A clear view of your sleep, habits, movement, and energy.</p></div><div className="wellness-command__pulse"><HeartPulse size={18} aria-hidden="true" /> Your wellness workspace</div></Card>
-    <Tabs className="wellness-command__tabs" label="Wellness areas" idPrefix="wellness-tab" tabs={AREAS.map(([id, label]) => ({ value: id, label, panelId: 'wellness-area-panel' }))} value={activeArea} onChange={setActiveArea} onKeyDown={event => handleTabKeyDown(event, { tabs: AREAS.map(([id]) => ({ id })), activeTab: activeArea, selectTab: setActiveArea, idPrefix: 'wellness-tab' })} />
-    {activeArea === 'overview' && <div className="dashboard-grid dashboard-grid--three wellness-command__stats">{cards.map(({ label, value, icon, color }) => <Card key={label} className="wellness-command__stat" style={{ '--wellness-stat': color }}>{React.createElement(icon, { size: 20, color, 'aria-hidden': true })}<strong>{value}</strong><span>{label}</span></Card>)}</div>}
-    <section id="wellness-area-panel" role="tabpanel" aria-labelledby={`wellness-tab-${activeArea}`}><Suspense fallback={<AreaLoading />}><ActiveArea user={user} setActiveTab={setActiveTab} /></Suspense></section>
+    <Card className="page-header wellness-command__header">
+      <div>
+        <p className="eyebrow">Wellness</p>
+        <h1>Feel well, one day at a time.</h1>
+        <p className="page-subtitle">A clear view of your sleep, habits, movement, and energy.</p>
+      </div>
+      <div className="wellness-command__pulse">
+        <HeartPulse size={18} aria-hidden="true" /> Your wellness workspace
+      </div>
+    </Card>
+    
+    <Tabs 
+      className="wellness-command__tabs" 
+      label="Wellness areas" 
+      idPrefix="wellness-tab" 
+      tabs={AREAS.map(([id, label]) => ({ value: id, label, panelId: 'wellness-area-panel' }))} 
+      value={activeArea} 
+      onChange={setActiveArea} 
+      onKeyDown={event => handleTabKeyDown(event, { tabs: AREAS.map(([id]) => ({ id })), activeTab: activeArea, selectTab: setActiveArea, idPrefix: 'wellness-tab' })} 
+    />
+    
+    {activeArea === 'overview' && (
+      <div className="dashboard-grid dashboard-grid--three wellness-command__stats" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        {cards.map(({ label, value, icon, color }) => (
+          <Card key={label} className="wellness-command__stat" style={{ '--wellness-stat': color }}>
+            {React.createElement(icon, { size: 20, color, 'aria-hidden': true })}
+            <strong>{value}</strong>
+            <span>{label}</span>
+          </Card>
+        ))}
+      </div>
+    )}
+    
+    <section id="wellness-area-panel" role="tabpanel" aria-labelledby={`wellness-tab-${activeArea}`}>
+      <Suspense fallback={<AreaLoading />}>
+        <ActiveArea user={user} setActiveTab={setActiveTab} />
+      </Suspense>
+    </section>
   </div>;
 }

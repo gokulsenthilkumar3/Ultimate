@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
   ].filter(Boolean),
   server: {
     port: Number(env.VITE_PORT || 5000),
-    strictPort: true,
+    strictPort: false,
     host: env.VITE_HOST || '127.0.0.1',
     allowedHosts,
     proxy: {

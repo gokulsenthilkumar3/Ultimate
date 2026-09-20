@@ -27,7 +27,7 @@ import {
   Target, Maximize2, Minimize2, Settings,
   Activity, Heart, Dumbbell, Star,
   Play, Pause, SlidersHorizontal, Palette, Globe,
-  FlaskConical, Share2,
+  FlaskConical, Share2, MoreHorizontal, Save, ZoomIn, ZoomOut, UserRound, Scissors, Sun, ShieldCheck,
 } from 'lucide-react';
 import SocialShareModal from './SocialShareModal';
 import PhysiqueDataPanel from './PhysiqueDataPanel';
@@ -100,27 +100,17 @@ const MORPH_WEIGHT_GROUPS = [
   },
 ];
 
-const VIEW_MODES = [
-  { id: 'SOLO',     label: 'Solo',     key: '1' },
-  { id: 'DUAL',     label: 'Dual',     key: '2' },
-  { id: 'GHOST',    label: 'Ghost',    key: '3' },
-  { id: 'SPLIT',    label: 'Split',    key: '4' },
-  { id: 'DELTA',    label: 'Delta',    key: '5' },
-  { id: 'TIMELINE', label: 'Timeline', key: '6' },
-];
-
 const CAMERA_PRESETS = [
-  { id: 'FRONT', label: '↑ Front' },
-  { id: 'LEFT',  label: '← Left'  },
-  { id: 'BACK',  label: '↓ Back'  },
-  { id: 'RIGHT', label: '→ Right' },
+  { id: 'FRONT', label: 'Front' },
+  { id: 'LEFT',  label: 'Side'  },
+  { id: 'BACK',  label: 'Back'  },
 ];
 
 const WARDROBE_OPTIONS = [
-  { id: 'GYM',        label: 'Gym',        icon: '🏋️' },
-  { id: 'CASUAL',     label: 'Casual',     icon: '👕' },
-  { id: 'UNDERWEAR',  label: 'Underwear',  icon: '🩲' },
-  { id: 'ANATOMICAL', label: 'Anatomical', icon: '🔬' },
+  { id: 'ANATOMICAL', label: 'Anatomical', icon: UserRound },
+  { id: 'UNDERWEAR',  label: 'Underwear',  icon: ShieldCheck },
+  { id: 'GYM',        label: 'Gym',        icon: Dumbbell },
+  { id: 'CASUAL',     label: 'Casual',     icon: Shirt },
 ];
 
 const QUALITY_OPTIONS = ['LOW', 'MED', 'HIGH'];
@@ -228,6 +218,7 @@ export default function HumanoidViewer() {
 
   // ── Store
   const viewMode          = use3DStore((s) => s.viewMode);
+  const avatarWorkspace   = use3DStore((s) => s.avatarWorkspace);
   const renderMode        = use3DStore((s) => s.renderMode);
   const cameraPreset      = use3DStore((s) => s.cameraPreset);
   const autoRotate        = use3DStore((s) => s.autoRotate);
@@ -279,6 +270,7 @@ export default function HumanoidViewer() {
 
   // ── Actions
   const setViewMode       = use3DStore((s) => s.setViewMode);
+  const setAvatarWorkspace = use3DStore((s) => s.setAvatarWorkspace);
   const setRenderMode     = use3DStore((s) => s.setRenderMode);
   const setCameraPreset   = use3DStore((s) => s.setCameraPreset);
   const setCameraZoom     = use3DStore((s) => s.setCameraZoom);
@@ -337,6 +329,7 @@ export default function HumanoidViewer() {
   const renderPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const queueProfileSave = useCallback((nextCurrent: any, nextGoal: any, nextMorphOverrides: any = manualMorphOverrides) => {
+    setAvatarWorkspace({ saveStatus: 'saving' });
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
     persistTimerRef.current = setTimeout(async () => {
       try {
@@ -362,11 +355,13 @@ export default function HumanoidViewer() {
             current: nextMorphOverrides,
           },
         });
+        setAvatarWorkspace({ saveStatus: 'saved' });
       } catch {
+        setAvatarWorkspace({ saveStatus: 'error' });
         toast.error('Could not save physique measurements.');
       }
     }, 650);
-  }, [manualMorphOverrides, persistedPhysique, toast, updateBodyProfile, updatePhysiqueTargets]);
+  }, [manualMorphOverrides, persistedPhysique, setAvatarWorkspace, toast, updateBodyProfile, updatePhysiqueTargets]);
 
   const setAdvancedMorph = useCallback((key: string, value: number) => {
     const nextOverrides = { ...manualMorphOverrides, [key]: value };
@@ -449,15 +444,17 @@ export default function HumanoidViewer() {
   }, [addTimelineSnap, currentMetrics, saveMetricLog]);
 
   // ── Local UI state
-  const [showEditor, setShowEditor] = useState(false);
+  const showEditor = avatarWorkspace.inspectorOpen;
+  const setShowEditor = useCallback((open: boolean) => setAvatarWorkspace({ inspectorOpen: open }), [setAvatarWorkspace]);
+  const [exportingAvatar, setExportingAvatar] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
-  const [editorTab, setEditorTab] = useState(() => sessionStorage.getItem('chamber_tab') || 'metrics');
+  const editorTab = avatarWorkspace.inspectorSection;
   const sensitiveUnlocked = wardrobe === 'ANATOMICAL';
   const [splitDragging, setSplitDragging] = useState(false);
   const [storyStage, setStoryStage] = useState('current');
+  const showSettings = false;
+  const setShowSettings = (_open: boolean) => {};
 
-  // Settings drawer
-  const [showSettings, setShowSettings] = useState(false);
   const skinTone = currentMetrics.skinTone || 'IV';
   const eyeColor = currentMetrics.eyeColor || '#6b3b20';
   const hairA = { style: currentMetrics.hairStyle || 'short', color: currentMetrics.hairColor || '#2c1a0a' };
@@ -478,9 +475,9 @@ export default function HumanoidViewer() {
 
   // ── Persist tab selection
   const handleTabChange = useCallback((id: string) => {
-    setEditorTab(id);
+    setAvatarWorkspace({ inspectorSection: id });
     sessionStorage.setItem('chamber_tab', id);
-  }, []);
+  }, [setAvatarWorkspace]);
 
   const openAnatomyEditor = useCallback(() => {
     setShowEditor(true);
@@ -649,77 +646,32 @@ export default function HumanoidViewer() {
   return (
     <>
     <div className="chamber fade-in chamber-fullscreen-wrap">
-      {/* ═══ SCAN BOOT EFFECT + OVERLAYS ═══ */}
-      <div className="chamber-scan-boot" />
-      <div className="chamber-scanlines" />
-
-      {/* ═══ FLOATING HUD TOP BAR ═══ */}
-      <div className="chamber-topbar">
-        {/* Left: title + status chips */}
+      <header className="chamber-topbar">
         <div className="chamber-topbar__brand">
           <div className="chamber-topbar__title-row">
-            <span className="shimmer-text chamber-topbar__title">
-              DIGITAL HUMAN PREVIEW
-            </span>
-            <span className="chamber-topbar__version">V1</span>
+            <h2 className="chamber-topbar__title">My avatar</h2>
+            <span className="chamber-context-label">{avatarWorkspace.avatarContext === 'goal' ? 'Goal' : 'Current'}</span>
           </div>
           <div className="chamber-topbar__chips">
-            {/* Render status — detailed model diagnostics live in Settings. */}
-            <span
-              className="hud-chip healthy"
-              style={{ '--hud-delay': '0.1s' } as React.CSSProperties}
-            >
-              <span className="hud-dot" />
-              {modelDiagnostics?.health === 'healthy' ? 'HUMAN MESH LOADED' : 'SAFE FALLBACK'}
-            </span>
-            <span className="hud-chip" style={{ '--hud-delay': '0.18s' } as React.CSSProperties}>
-              MEASUREMENT MORPHS
-            </span>
-            <span className="hud-chip cinematic" style={{ '--hud-delay': '0.26s' } as React.CSSProperties}>
-              <Camera size={10} /> {cinematic.preset === 'CUSTOM' ? 'CUSTOM GRADE' : `${cinematic.preset} GRADE`}
-            </span>
-            <span
-              className={`hud-chip quality-gate quality-gate--${qualityGate.status}`}
-              style={{ '--hud-delay': '0.32s' } as React.CSSProperties}
-              title={`${qualityGate.passed} of ${qualityGate.total} quality checks passing`}
-            >
-              {qualityGate.releaseReady ? <CheckCircle size={10} /> : <AlertTriangle size={10} />}
-              {qualityGate.releaseReady ? 'MODEL CHECKS PASS' : qualityGate.status === 'pending' ? 'LOADING MODEL' : 'MODEL DETAILS'}
-            </span>
-            {invalidProfileMeasurements.length > 0 && (
-              <span
-                className="hud-chip quality-gate quality-gate--attention"
-                title={invalidProfileMeasurements.map((item) => `${item.label}: ${item.value} (${item.reason})`).join('\n')}
-              >
-                <AlertTriangle size={10} /> {invalidProfileMeasurements.length} MEASUREMENT{invalidProfileMeasurements.length === 1 ? '' : 'S'} NEED REVIEW
-              </span>
-            )}
-            {overallScore > 0 && (
-              <span className="hud-chip healthy" style={{ '--hud-delay': '0.36s' } as React.CSSProperties}>
-                <Star size={10} /> {overallScore}%
-              </span>
-            )}
+            <span className={`workspace-status workspace-status--${avatarWorkspace.saveStatus}`}>{avatarWorkspace.saveStatus}</span>
+            <button className="workspace-model-status" onClick={() => handleTabChange('view')}>
+              <AlertTriangle size={14} /> Legacy asset · Needs review
+            </button>
           </div>
         </div>
-        {/* Right: quality + render mode toggles */}
         <div className="chamber-render-controls chamber-topbar__controls">
-          <button className="chamber-pill" onClick={() => setShowWizard(true)} style={{ marginRight: '8px' }}>
-            <Rotate3D size={12} style={{ marginRight: '4px' }} /> Setup Wizard
+          <button className="chamber-pill chamber-pill--primary" onClick={saveSnapshot}>
+            <Save size={16} /> Save check-in
           </button>
-          <div className="chamber-quality-switch" aria-label="Render quality">
-            {QUALITY_OPTIONS.map((level) => (
-              <button key={level} className={`chamber-view-btn${quality === level ? ' active' : ''}`}
-                aria-pressed={quality === level} onClick={() => setQuality(level)}>{level === 'MED' ? 'BAL' : level}</button>
-            ))}
-          </div>
-          <div className="chamber-quality-switch" aria-label="Renderer">
-            <button className={`chamber-view-btn${renderMode === 'WEBGL' ? ' active' : ''}`}
-              aria-pressed={renderMode === 'WEBGL'} onClick={() => setRenderMode('WEBGL')}>3D</button>
-            <button className={`chamber-view-btn${renderMode === 'SPRITE' ? ' active' : ''}`}
-              aria-pressed={renderMode === 'SPRITE'} onClick={() => setRenderMode('SPRITE')}>2D</button>
-          </div>
+          <button className="chamber-pill" onClick={captureScreenshot}><Download size={16} /> Export</button>
+          <details className="workspace-overflow"><summary aria-label="More avatar actions"><MoreHorizontal size={18} /></summary><div>
+            <button onClick={() => setShowWizard(true)}>Create or replace avatar</button>
+            <button onClick={handleShareAvatar}>Share protected view</button>
+            <button onClick={() => handleTabChange('view')}>Model diagnostics</button>
+            <button onClick={resetAdvancedMorphs}>Reset body adjustments</button>
+          </div></details>
         </div>
-      </div>
+      </header>
 
       {/* ═══ VIEWPORT + EDITOR LAYOUT ═══ */}
       <div className="chamber-layout">
@@ -728,17 +680,20 @@ export default function HumanoidViewer() {
           {/* Top overlay bar */}
           <div className="chamber-overlay-top">
             <div className="chamber-view-modes" role="group" aria-label="Comparison mode">
-              {VIEW_MODES.map((mode) => {
-                const available = canUseViewMode(mode.id);
-                const label = mode.id === 'SOLO' ? 'Current body' : mode.id === 'DUAL' ? 'Side by side' : mode.label;
-                return (
-                  <button key={mode.id} className={`chamber-pill${viewMode === mode.id ? ' active' : ''}`}
-                    aria-pressed={viewMode === mode.id} aria-disabled={!available}
-                    aria-label={available ? label : `${label} view unavailable. ${modeUnavailableReason(mode.id)}`}
-                    title={available ? `${mode.label} view (${mode.key})` : modeUnavailableReason(mode.id)}
-                    onClick={() => { if (available) setViewMode(mode.id); }}>{label}</button>
-                );
+              {(['current', 'goal', 'compare', 'timeline'] as const).map((mode) => {
+                const available = mode === 'timeline' ? hasTimelineData : mode !== 'compare' || hasGoalComparison;
+                return <button key={mode} className={`chamber-pill${avatarWorkspace.workspaceMode === mode ? ' active' : ''}`}
+                  aria-pressed={avatarWorkspace.workspaceMode === mode} disabled={!available}
+                  title={available ? undefined : mode === 'timeline' ? modeUnavailableReason('TIMELINE') : modeUnavailableReason('DUAL')}
+                  onClick={() => setAvatarWorkspace({ workspaceMode: mode, avatarContext: mode === 'goal' ? 'goal' : mode === 'current' ? 'current' : avatarWorkspace.avatarContext })}>
+                  {mode[0].toUpperCase() + mode.slice(1)}
+                </button>;
               })}
+              {avatarWorkspace.workspaceMode === 'compare' && <select aria-label="Comparison style" value={avatarWorkspace.compareStyle}
+                onChange={(event) => setAvatarWorkspace({ compareStyle: event.target.value })}>
+                <option value="side-by-side">Side by side</option><option value="overlay">Overlay</option>
+                <option value="split">Split</option><option value="difference">Difference</option>
+              </select>}
             </div>
             <div className="chamber-overlay-row">
               {/* Camera presets */}
@@ -756,17 +711,9 @@ export default function HumanoidViewer() {
                   Reset
                 </button>
                 <button className="chamber-pill" onClick={() => { setViewMode('SOLO'); setSelectedPart('head'); }}>Face</button>
-                <button className={`chamber-pill${isZoomed ? ' active' : ''}`} onClick={() => setIsZoomed((z) => !z)}>
-                  Zoom {isZoomed ? 'In' : 'Out'}
-                </button>
+                <button className="chamber-pill chamber-icon-button" aria-label="Zoom in" title="Zoom in" onClick={() => setCameraZoom(Math.min(2.2, cameraZoom + 0.15))}><ZoomIn size={16} /></button>
+                <button className="chamber-pill chamber-icon-button" aria-label="Zoom out" title="Zoom out" onClick={() => setCameraZoom(Math.max(0.7, cameraZoom - 0.15))}><ZoomOut size={16} /></button>
               </div>
-              {/* Export */}
-              <button className="chamber-pill chamber-pill--share" onClick={handleShareAvatar}>
-                <Share2 size={12} /> SHARE
-              </button>
-              <button className="chamber-pill chamber-pill--export" onClick={captureScreenshot}>
-                <Camera size={12} /> EXPORT
-              </button>
             </div>
           </div>
 
@@ -898,21 +845,6 @@ export default function HumanoidViewer() {
             );
           })()}
 
-          {/* Floating action buttons */}
-          <div className="chamber-fab-row">
-            <button className={`chamber-fab${editorTab === 'anatomy' && showEditor ? ' active' : ''}`} onClick={openAnatomyEditor} title="Open anatomical controls" aria-label="Open anatomical controls" aria-expanded={editorTab === 'anatomy' && showEditor}>
-              <Layers size={16} />
-            </button>
-            <button className={`chamber-fab${autoRotate ? ' active' : ''}`} onClick={() => setAutoRotate(!autoRotate)} title={autoRotate ? 'Pause cinematic orbit' : 'Cinematic orbit'} aria-pressed={autoRotate}>
-              <Rotate3D size={16} />
-            </button>
-            <button className={`chamber-fab${showEditor ? ' active' : ''}`} onClick={() => setShowEditor(!showEditor)} title="Open body editor" aria-expanded={showEditor}>
-              <SlidersHorizontal size={16} />
-            </button>
-            <button className="chamber-fab" onClick={() => setShowSettings(!showSettings)} title="Settings">
-              <Settings size={16} />
-            </button>
-          </div>
         </div>
 
         {/* ── EDITOR SIDEBAR ── */}
@@ -921,11 +853,13 @@ export default function HumanoidViewer() {
             {/* Editor tabs */}
             <div className="chamber-editor__tabs">
               {[
-                { id: 'metrics',  label: 'Metrics', icon: Ruler   },
-                { id: 'morphs',   label: 'Morphs',  icon: Zap     },
+                { id: 'measurements', label: 'Measure', icon: Ruler },
                 { id: 'face',     label: 'Face',     icon: Eye     },
-                { id: 'wardrobe', label: 'Outfit',   icon: Shirt   },
+                { id: 'hair', label: 'Hair', icon: Scissors },
+                { id: 'skin', label: 'Skin', icon: Palette },
                 { id: 'anatomy',  label: 'Anatomy',  icon: Layers  },
+                { id: 'clothing', label: 'Clothing', icon: Shirt },
+                { id: 'view', label: 'View', icon: Sun },
               ].map((tab) => (
                 <button key={tab.id}
                   aria-label={tab.label}
@@ -940,11 +874,19 @@ export default function HumanoidViewer() {
             <div className="chamber-editor__body">
 
               {/* ── METRICS TAB ── */}
-              {editorTab === 'metrics' && (
+              {editorTab === 'measurements' && (
                 <div className="chamber-editor__section">
                   <h4 className="chamber-editor__heading">
                     <Ruler size={14} /> Body Metrics
                   </h4>
+                  <div className="workspace-context-switch" role="group" aria-label="Measurement context">
+                    {(['current', 'goal'] as const).map((context) => <button key={context}
+                      className={avatarWorkspace.avatarContext === context ? 'active' : ''}
+                      aria-pressed={avatarWorkspace.avatarContext === context}
+                      onClick={() => setAvatarWorkspace({ avatarContext: context, workspaceMode: context })}>
+                      {context === 'current' ? 'Current measurements' : 'Goal measurements'}
+                    </button>)}
+                  </div>
                   <details className="chamber-note">
                     <summary>Model fit</summary>
                     <p>Entered measurements drive the shape; missing values use render-only estimates. Circumferences are not yet verified against the deformed mesh, so achieved measurements and fit errors are unavailable. Measurement completeness is not anatomical accuracy.</p>
@@ -1014,6 +956,33 @@ export default function HumanoidViewer() {
                     })}
 
                   </div>
+                </div>
+              )}
+
+              {editorTab === 'hair' && (
+                <div className="chamber-editor__section">
+                  <h4 className="chamber-editor__heading"><Scissors size={14} /> Hair</h4>
+                  <p className="chamber-note">Only validated assets can be selected. Hair fit is checked with head and stature changes.</p>
+                  <div className="chamber-wardrobe-grid">
+                    {['bald', 'buzz', 'short', 'medium', 'long'].map((style) => {
+                      const available = ['bald', 'short'].includes(style);
+                      return <button key={style} disabled={!available} className={`chamber-wardrobe-card${hairA.style === style ? ' active' : ''}`}
+                        onClick={() => updateCurrentAppearance('hairStyle', style)}><Scissors size={18} /><span>{style}</span><small>{available ? 'Ready' : 'Asset required'}</small></button>;
+                    })}
+                  </div>
+                  <label className="workspace-field"><span>Hair color</span><input type="color" value={hairA.color} onChange={(e) => updateCurrentAppearance('hairColor', e.target.value)} /></label>
+                  <div className="workspace-unavailable"><span>Density, greying and facial hair</span><strong>Planned · compatible assets required</strong></div>
+                </div>
+              )}
+
+              {editorTab === 'skin' && (
+                <div className="chamber-editor__section">
+                  <h4 className="chamber-editor__heading"><Palette size={14} /> Skin</h4>
+                  <p className="chamber-note">Appearance controls are visual. They do not infer ethnicity or a medical condition.</p>
+                  <div className="workspace-swatch-row">{FITZPATRICK_SWATCHES.map((s) => <button key={s.id} title={s.label} aria-label={s.label}
+                    className={skinTone === s.id ? 'active' : ''} style={{ background: s.hex }} onClick={() => updateCurrentAppearance('skinTone', s.id)} />)}</div>
+                  <button className="chamber-pill" onClick={() => handleCinematicPreset('ANALYTIC')}><Sun size={15} /> Lock neutral inspection lighting</button>
+                  <div className="workspace-unavailable"><span>Undertone, pigmentation, freckles and scars</span><strong>Planned · texture masks required</strong></div>
                 </div>
               )}
 
@@ -1206,7 +1175,7 @@ export default function HumanoidViewer() {
               )}
 
               {/* ── WARDROBE TAB ── */}
-              {editorTab === 'wardrobe' && (
+              {editorTab === 'clothing' && (
                 <div className="chamber-editor__section">
                   <h4 className="chamber-editor__heading">
                     <Shirt size={14} /> Wardrobe
@@ -1216,7 +1185,7 @@ export default function HumanoidViewer() {
                       <button key={w.id}
                         className={`chamber-wardrobe-card${wardrobe === w.id ? ' active' : ''}`}
                         onClick={() => setWardrobe(w.id)}>
-                        <span className="chamber-wardrobe-card__icon">{w.icon}</span>
+                        <span className="chamber-wardrobe-card__icon">{React.createElement(w.icon, { size: 20, 'aria-hidden': true })}</span>
                         <span className="chamber-wardrobe-card__label">{w.label}</span>
                       </button>
                     ))}
@@ -1238,48 +1207,7 @@ export default function HumanoidViewer() {
                     <Layers size={14} /> Anatomy guide
                   </h4>
                   <p className="chamber-note">This diagram is illustrative. The GLB contains external surfaces only; these controls do not reveal internal organs or a medical skeleton.</p>
-                  {/* Animated SVG */}
-                  <AnatomySVG depth={anatomyDepth} />
-
-                  <div className="chamber-anatomy-visual" style={{ marginTop: 12 }}>
-                    <div className="chamber-anatomy-layers">
-                      <div className={`chamber-anatomy-layer${anatomyDepth > 70 ? ' active' : ''}`}>
-                        <Eye size={12} /> Skin
-                      </div>
-                      <div className={`chamber-anatomy-layer${anatomyDepth <= 70 && anatomyDepth > 30 ? ' active' : ''}`}>
-                        <Dumbbell size={12} /> Muscle
-                      </div>
-                      <div className={`chamber-anatomy-layer${anatomyDepth <= 30 && anatomyDepth > 10 ? ' active' : ''}`}>
-                        <Heart size={12} /> Skeleton
-                      </div>
-                      <div className={`chamber-anatomy-layer${anatomyDepth <= 10 ? ' active' : ''}`}>
-                        <Heart size={12} fill="red" /> Organs
-                      </div>
-                    </div>
-                    {/* Depth markers */}
-                    <div style={{ position: 'relative', height: 16, margin: '6px 0' }}>
-                      {[0, 33, 66, 100].map((mark) => (
-                        <button key={mark}
-                          onClick={() => setAnatomyDepth(mark)}
-                          style={{
-                            position: 'absolute', left: `${mark}%`, transform: 'translateX(-50%)',
-                            width: 8, height: 8, borderRadius: '50%', padding: 0,
-                            background: anatomyDepth <= mark + 5 && anatomyDepth >= mark - 5
-                              ? 'var(--chamber-glow)' : 'var(--surface-3)',
-                            border: '1px solid var(--chamber-glow)',
-                            cursor: 'pointer',
-                          }} />
-                      ))}
-                    </div>
-                    <input type="range" aria-label="Anatomical peel depth" min="0" max="100" value={anatomyDepth}
-                      onChange={(e) => setAnatomyDepth(parseInt(e.target.value))}
-                      className="chamber-slider" style={{ accentColor: 'var(--chamber-glow)' }} />
-                    <div className="chamber-anatomy-scale">
-                      <span>Organs</span>
-                      <span>{anatomyDepth}%</span>
-                      <span>Skin</span>
-                    </div>
-                  </div>
+                  <div className="workspace-anatomy-info"><UserRound size={22} /><div><strong>External anatomy only</strong><p>Anatomical clothing mode displays the complete authored adult surface. Internal anatomy is not included in this asset.</p></div></div>
 
                   <div className="chamber-sensitive-card">
                     <div className="chamber-sensitive-card__head">
@@ -1334,6 +1262,21 @@ export default function HumanoidViewer() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {editorTab === 'view' && (
+                <div className="chamber-editor__section">
+                  <h4 className="chamber-editor__heading"><Sun size={14} /> View</h4>
+                  <label className="workspace-field"><span>Quality</span><select value={avatarWorkspace.qualityPreference} onChange={(e) => {
+                    const preference = e.target.value; setAvatarWorkspace({ qualityPreference: preference });
+                    if (preference !== 'automatic') setQuality({ performance: 'LOW', balanced: 'MED', high: 'HIGH' }[preference]);
+                  }}><option value="automatic">Automatic ({quality})</option><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="high">High</option></select></label>
+                  <label className="workspace-field"><span>Renderer</span><select value={renderMode} onChange={(e) => setRenderMode(e.target.value)}><option value="WEBGL">Interactive 3D</option><option value="SPRITE">2D fallback</option></select></label>
+                  <label className="workspace-switch"><span>Presentation mode<small>Enables optional cinematic lighting.</small></span><input type="checkbox" checked={avatarWorkspace.presentationMode} onChange={(e) => { setAvatarWorkspace({ presentationMode: e.target.checked }); handleCinematicPreset(e.target.checked ? 'PORTRAIT' : 'ANALYTIC'); }} /></label>
+                  <label className="workspace-switch"><span>Auto rotate</span><input type="checkbox" checked={autoRotate} onChange={(e) => setAutoRotate(e.target.checked)} /></label>
+                  <label className="workspace-switch"><span>Protect screenshots and sharing</span><input type="checkbox" checked={captureRedacted} onChange={(e) => setCaptureRedacted(e.target.checked)} /></label>
+                  <details className="chamber-note"><summary>Model diagnostics</summary><p>Legacy asset · Needs review. Open gates: hair/scalp fit, shoulder contours, eye seating, hands and feet, external-anatomy seams, pelvis silhouette, calibrated circumferences, true geometry LODs, accessory licenses, and performance certification.</p><p>Runtime: {modelDiagnostics?.health || 'Loading'} · {rendererTelemetry?.fps || 0} FPS · {quality} tier.</p></details>
                 </div>
               )}
             </div>
@@ -1559,8 +1502,6 @@ export default function HumanoidViewer() {
         milestones={milestones}
         progress={progressSummary}
         diagnostics={modelDiagnostics}
-        onCurrentChange={handleCurrentValue}
-        onGoalChange={handleGoalValue}
         onSaveSnapshot={handleSaveSnapshot}
         onToggleMilestone={handleToggleMilestone}
       />

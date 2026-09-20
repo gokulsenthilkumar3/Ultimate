@@ -1,4 +1,4 @@
-import { Group, Mesh, BufferAttribute, Vector3 } from 'three';
+import { Group, Mesh, BufferAttribute, Vector3, Box3 } from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
 const sources = new Map();
@@ -40,8 +40,15 @@ export function bakeAvatarSurface(source) {
 export async function exportPersonalAvatar(key = 'A') {
   const source = sources.get(key);
   if (!source) throw new Error('Load the authored 3D model before exporting.');
+  const metadata = source.metadata();
+  const height = Number(metadata.metrics?.height);
+  if (!(height > 0)) throw new Error('Enter your height before exporting a model in physical units.');
   const baked = bakeAvatarSurface(source.group);
-  baked.userData = { avatar: source.metadata(), geometry: 'evaluated-surface', unit: 'm' };
+  const body = baked.children.find((mesh) => /body/i.test(mesh.name)) || baked;
+  const bounds = new Box3().setFromObject(body);
+  const scale = height / 100 / (bounds.max.y - bounds.min.y);
+  baked.children.forEach((mesh) => { mesh.geometry.translate(0, -bounds.min.y, 0); mesh.geometry.scale(scale, scale, scale); });
+  baked.userData = { avatar: metadata, geometry: 'evaluated-surface', unit: 'm', shaderEffects: 'not-exported' };
   try {
     return await new GLTFExporter().parseAsync(baked, { binary: true, onlyVisible: true });
   } finally {

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon, ListTodo } from 'lucide-react';
+import { PieChart, BarChart2 } from 'lucide-react';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, AreaChart, Area, Sector } from 'recharts';
-import StatCard from '../ui/StatCard';
 import EmptyState from '../ui/EmptyState';
 
 const renderActiveShape = (props: any, fmtINR: (value: number) => string) => {
@@ -50,6 +49,7 @@ const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pi
                     </div>
                   ))}
                 </div>
+                <details className="finance-chart-table"><summary>View category data as a table</summary><table><thead><tr><th>Category</th><th>Amount</th><th>Share</th></tr></thead><tbody>{pieData.map((item) => <tr key={item.name}><td>{item.name}</td><td>{fmtINR(item.value)}</td><td>{Math.round((item.value / (expenses || 1)) * 100)}%</td></tr>)}</tbody></table></details>
               </>
             ) : (
               <EmptyState icon="DollarSign" title="No spending data" description="Add an expense for this month to unlock category analytics." />

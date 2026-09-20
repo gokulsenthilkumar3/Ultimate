@@ -1,11 +1,9 @@
 import React from 'react';
-import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon, ListTodo } from 'lucide-react';
-import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, AreaChart, Area } from 'recharts';
-import StatCard from '../ui/StatCard';
+import { Plus, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import EmptyState from '../ui/EmptyState';
 
 
-export default function BudgetingTab({ fmtINR, currencySymbol, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }) {
+export default function BudgetingTab({ fmtINR, currencySymbol, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget, toast }) {
   {/* ── BUDGETING ── */}
       return (
     <div className="glass-card">
@@ -29,7 +27,7 @@ export default function BudgetingTab({ fmtINR, currencySymbol, form, CATEGORIES,
                 setBudgetForm({ category: '', limit_amount: '' });
                 toast.success('Budget added');
               } else toast.error('Category and limit required');
-            }}><Plus size={16}/> ADD BUDGET</button>
+            }}><Plus size={16}/> Add budget</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
             <div>
@@ -52,9 +50,9 @@ export default function BudgetingTab({ fmtINR, currencySymbol, form, CATEGORIES,
                   const totalLimits = budgets.reduce((a, b) => a + b.limit_amount, 0);
                   if (!totalLimits) return null;
                   const ratio = expenses / totalLimits;
-                  if (ratio > 1) return <p style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 700 }}>⚠️ You have exceeded your total defined budgets!</p>;
-                  if (ratio >= 0.8) return <p style={{ fontSize: '0.8rem', color: 'var(--warning)', fontWeight: 700 }}>⚠️ Warning: {(ratio * 100).toFixed(0)}% of budget consumed.</p>;
-                  return <p style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 700 }}>✅ Within total defined budgets.</p>;
+                  if (ratio > 1) return <p className="finance-budget-insight finance-text-expense"><AlertTriangle size={15}/> You have exceeded your defined budgets.</p>;
+                  if (ratio >= 0.8) return <p className="finance-budget-insight"><AlertTriangle size={15}/> {(ratio * 100).toFixed(0)}% of budget consumed.</p>;
+                  return <p className="finance-budget-insight finance-text-income"><CheckCircle2 size={15}/> Within total defined budgets.</p>;
                 })()}
               </div>
             </div>

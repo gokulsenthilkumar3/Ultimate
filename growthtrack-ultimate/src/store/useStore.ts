@@ -66,6 +66,7 @@ function persistPortfolio(next: any[]) {
 // fire-and-forget callers remain safe while awaited callers can still surface
 // the original error to the UI.
 let userSyncQueue: Promise<any> = Promise.resolve();
+let physiqueSyncQueue: Promise<any> = Promise.resolve();
 
 function persistUser(nextUser: any) {
   const request = userSyncQueue.then(() => apiSync('/user', 'POST', nextUser));
@@ -357,6 +358,16 @@ const useStore = create<any>()(
         }
       },
 
+      updateShoppingItem: async (id: string, updates: any) => {
+        const res = await apiSync(`/shopping/${id}`, 'PUT', updates);
+        set((state: any) => ({
+          shopping: {
+            ...state.shopping,
+            items: state.shopping.items.map((item: any) => item.id === id ? { ...item, ...updates, ...(res || {}) } : item),
+          },
+        }));
+      },
+
       deleteShoppingItem: (id: string) => {
         apiSync(`/shopping/${id}`, 'DELETE');
         set((state: any) => ({
@@ -381,6 +392,8 @@ const useStore = create<any>()(
           }));
         }
       },
+
+      toggleShoppingItem: (id: string) => get().toggleShoppingPurchased(id),
 
       checkServerHealth: async () => {
         try {
@@ -566,7 +579,12 @@ const useStore = create<any>()(
       updateNutritionStrategy: async (data: any) => { set({ nutritionStrategy: data }); apiSync('/nutrition_strategy', 'POST', data); },
       updateLifestyleTips: async (data: any) => { set({ lifestyleTips: data }); apiSync('/lifestyle_tips', 'POST', data); },
       updateMedicalData: async (data: any) => { set({ medicalData: data }); apiSync('/medical_data', 'POST', data); },
-      updatePhysiqueTargets: async (data: any) => { set({ physiqueTargets: data }); apiSync('/physique_targets', 'POST', data); },
+      updatePhysiqueTargets: async (data: any) => {
+        set({ physiqueTargets: data });
+        const request = physiqueSyncQueue.then(() => apiSync('/physique_targets', 'POST', data));
+        physiqueSyncQueue = request.catch(() => undefined);
+        return request;
+      },
       updateAssessmentQA: async (data: any) => { set({ assessmentQA: data }); apiSync('/assessment_qa', 'POST', data); },
       updateSkills: async (data: any) => { set({ skills: data }); apiSync('/skills', 'POST', data); },
       addSkill: async (skill: any) => {

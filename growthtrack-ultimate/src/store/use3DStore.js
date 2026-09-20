@@ -13,6 +13,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector, devtools } from "zustand/middleware";
 import { buildMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
+import { DEFAULT_AVATAR_WORKSPACE, sanitizeAvatarWorkspace, workspaceToRendererMode } from "../lib/avatarWorkspace";
 
 export { computeMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
 
@@ -293,6 +294,9 @@ const use3DStore = create(
       /** Current viewport comparison mode */
       viewMode: VIEW_MODES.SOLO,
 
+      /** UI-only workspace preferences; measurements remain in cloneA/cloneB. */
+      avatarWorkspace: { ...DEFAULT_AVATAR_WORKSPACE },
+
       /** Wardrobe / surface state */
       // Use the validated skin surface by default. Shader-only outfits remain
       // selectable previews until authored clothing geometry is available.
@@ -480,6 +484,11 @@ const use3DStore = create(
           false,
           "setGoalMetrics"
         );
+      },
+
+      setAvatarWorkspace: (patch = {}) => {
+        const next = sanitizeAvatarWorkspace({ ...get().avatarWorkspace, ...patch });
+        set({ avatarWorkspace: next, viewMode: workspaceToRendererMode(next) }, false, "setAvatarWorkspace");
       },
 
       /**

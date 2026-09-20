@@ -207,6 +207,7 @@ export default function CloneEngine() {
   const canvasWidth = useThree((state) => state.size.width);
   const dualSeparation = getDualSeparation(canvasWidth);
   const viewMode      = use3DStore((s) => s.viewMode);
+  const avatarContext = use3DStore((s) => s.avatarWorkspace?.avatarContext || 'current');
   const splitDividerX = use3DStore((s) => s.splitDividerX);
   // Live delta subscription — updates on every metric change, not just viewMode
   const cloneAMetrics = use3DStore((s) => s.cloneA.metrics);
@@ -235,18 +236,20 @@ export default function CloneEngine() {
   switch (viewMode) {
 
     // ── SOLO MODE ────────────────────────────────────────────────────────────
-    case VIEW_MODES.SOLO:
+    case VIEW_MODES.SOLO: {
+      const soloKey = avatarContext === 'goal' ? 'B' : 'A';
       return (
         <>
           <HumanoidClone
-            cloneKey="A"
+            cloneKey={soloKey}
             position={[0, 0, 0]}
             renderMode="normal"
             visible={true}
           />
-          <BodyPartInteraction cloneKey="A" clonePosition={[0, 0, 0]} />
+          <BodyPartInteraction cloneKey={soloKey} clonePosition={[0, 0, 0]} />
         </>
       );
+    }
 
     // ── DUAL MODE ────────────────────────────────────────────────────────────
     case VIEW_MODES.DUAL:

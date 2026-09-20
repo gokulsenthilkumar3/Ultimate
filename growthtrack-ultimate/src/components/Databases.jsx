@@ -335,6 +335,201 @@ function DataTable({ table, onUpdate, onDelete }) {
                       {editCell?.rowId === row.id && editCell?.fieldId === f.id
                         ? <CellEditor field={f} value={editVal} onChange={setEditVal} onCommit={commitEdit} />
                         : <CellView field={f} value={row[f.id]} />
+  const toast = useToast();
+  const fileRef = useRef();
+
+  const [search,     setSearch]     = useState('');
+  const [sortField,  setSortField]  = useState(null);
+  const [sortDir,    setSortDir]    = useState('asc');
+  const [filterField, setFilterField] = useState('all');
+  const [filterValue, setFilterValue] = useState('');
+  const [editCell,   setEditCell]   = useState(null); // { rowId, fieldId }
+  const [editVal,    setEditVal]    = useState('');
+  const [showSchema, setShowSchema] = useState(false);
+  const [showAddRow, setShowAddRow] = useState(false);
+  const [newRow,     setNewRow]     = useState({});
+
+  const filteredRows = useMemo(() => {
+    let rows = [...table.rows];
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter(r =>
+        Object.values(r).some(v => String(v || '').toLowerCase().includes(q))
+      );
+    }
+    if (filterField !== 'all' && filterValue) {
+      rows = rows.filter(r => String(r[filterField] || '').toLowerCase().includes(filterValue.toLowerCase()));
+    }
+    if (sortField) {
+      rows.sort((a, b) => {
+        const av = a[sortField] ?? ''; const bv = b[sortField] ?? '';
+        const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }
+    return rows;
+  }, [table.rows, search, filterField, filterValue, sortField, sortDir]);
+
+  const toggleSort = (fieldId) => {
+    if (sortField === fieldId) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(fieldId); setSortDir('asc'); }
+  };
+
+  const commitEdit = useCallback(() => {
+    if (!editCell) return;
+    const updated = table.rows.map(r => r.id === editCell.rowId ? { ...r, [editCell.fieldId]: editVal } : r);
+    onUpdate({ ...table, rows: updated });
+    setEditCell(null);
+  }, [editCell, editVal, table, onUpdate]);
+
+  const addRow = () => {
+    const row = { id: Date.now(), ...newRow };
+    const required = table.fields.filter(f => f.required);
+    for (const f of required) {
+      if (!row[f.id]) { toast.error(`"${f.name}" is required`); return; }
+    }
+    onUpdate({ ...table, rows: [...table.rows, row] });
+    setNewRow({});
+    setShowAddRow(false);
+    toast.success('Row added');
+  };
+
+  const deleteRow = (id) => {
+    onUpdate({ ...table, rows: table.rows.filter(r => r.id !== id) });
+    toast.info('Row deleted');
+  };
+
+  const exportCSV = () => {
+    const csv = toCSV(table.fields, table.rows);
+    const url  = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a'); a.href = url; a.download = `${table.name}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${table.rows.length} rows`);
+  };
+
+  const importCSV = (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const { fields, rows } = parseCSV(ev.target.result);
+      if (!fields.length) { toast.error('Empty or invalid CSV'); return; }
+      onUpdate({ ...table, fields, rows });
+      toast.success(`Imported ${rows.length} rows, ${fields.length} fields`);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const copyRow = (row) => {
+    const copy = { ...row, id: Date.now() };
+    onUpdate({ ...table, rows: [...table.rows, copy] });
+    toast.success('Row duplicated');
+  };
+
+  const saveSchema = (name, fields) => {
+    onUpdate({ ...table, name, fields });
+    setShowSchema(false);
+  };
+
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      {showSchema && <SchemaEditor table={table} onSave={saveSchema} onClose={() => setShowSchema(false)} />}
+
+      {/* Table header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Database size={15} color="var(--accent)" />
+          <span style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-1)' }}>{table.name}</span>
+          <span style={{ fontSize: '0.65rem', color: 'var(--text-3)', background: 'rgba(255,255,255,0.06)', padding: '1px 7px', borderRadius: '99px' }}>{table.rows.length} rows</span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <button onClick={() => setShowSchema(true)} style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.68rem', fontWeight: 700, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', color: 'var(--accent)', cursor: 'pointer' }}>⚙️ Schema</button>
+          <button onClick={exportCSV} style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.68rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}><Download size={11} /> CSV</button>
+          <label style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.68rem', fontWeight: 700, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <Upload size={11} /> Import <input type="file" accept=".csv" onChange={importCSV} style={{ display: 'none' }} ref={fileRef} />
+          </label>
+          <button onClick={() => setShowAddRow(s => !s)} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.68rem' }}><Plus size={11} /> Row</button>
+          <button onClick={() => onDelete(table.id)} style={{ padding: '4px 8px', borderRadius: '6px', background: 'none', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171', cursor: 'pointer' }}><Trash2 size={11} /></button>
+        </div>
+      </div>
+
+      {/* Search + filter */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px' }}>
+          <Search size={12} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ paddingLeft: '30px', width: '100%' }} className="form-input" />
+        </div>
+        <select value={filterField} onChange={e => setFilterField(e.target.value)} className="form-input" style={{ flex: '0 0 120px', fontSize: '0.72rem' }}>
+          <option value="all">All fields</option>
+          {table.fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
+        {filterField !== 'all' && (
+          <input value={filterValue} onChange={e => setFilterValue(e.target.value)} placeholder="Filter value…" className="form-input" style={{ flex: '1 1 150px', fontSize: '0.72rem' }} />
+        )}
+      </div>
+
+      {/* Add row form */}
+      {showAddRow && (
+        <div style={{ padding: '0.75rem', marginBottom: '0.5rem', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '10px' }}>
+          <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-2)', marginBottom: '0.5rem' }}>New Row</p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+            {table.fields.map(f => (
+              <div key={f.id} style={{ flex: '1 1 140px' }}>
+                <label style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: '3px', fontWeight: 700 }}>
+                  {f.name}{f.required ? ' *' : ''}
+                </label>
+                {f.type === 'boolean' ? (
+                  <input type="checkbox" checked={!!newRow[f.id]} onChange={e => setNewRow(r => ({ ...r, [f.id]: e.target.checked }))} />
+                ) : f.type === 'select' ? (
+                  <select value={newRow[f.id] || ''} onChange={e => setNewRow(r => ({ ...r, [f.id]: e.target.value }))} className="form-input" style={{ fontSize: '0.72rem' }}>
+                    <option value="">—</option>
+                    {(f.options || []).map(o => <option key={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'email' ? 'email' : f.type === 'url' ? 'url' : 'text'}
+                    value={newRow[f.id] || ''} onChange={e => setNewRow(r => ({ ...r, [f.id]: e.target.value }))} className="form-input" style={{ fontSize: '0.72rem' }} />
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button onClick={addRow} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.72rem' }}><Check size={11} /> Add</button>
+            <button onClick={() => setShowAddRow(false)} style={{ padding: '4px 10px', fontSize: '0.72rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+        {table.rows.length === 0 && !showAddRow ? (
+          <div style={{ padding: '2rem', textAlign: 'center' }}>
+            <EmptyState icon={Database} title="No rows yet" description="Click '+ Row' to add your first entry." ctaLabel="Add Row" onAction={() => setShowAddRow(true)} />
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}>
+                {table.fields.map(f => (
+                  <th key={f.id} style={{ padding: '0.55rem 0.75rem', textAlign: 'left', fontWeight: 700, fontSize: '0.65rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }} onClick={() => toggleSort(f.id)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {f.name}
+                      {sortField === f.id ? (sortDir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ArrowUpDown size={9} style={{ opacity: 0.35 }} />}
+                      <span style={{ fontSize: '0.55rem', color: 'var(--text-3)', fontWeight: 500 }}>({f.type})</span>
+                      {f.required && <span style={{ color: '#f87171', fontSize: '0.6rem' }}>*</span>}
+                    </div>
+                  </th>
+                ))}
+                <th style={{ padding: '0.55rem 0.5rem', width: '56px', color: 'var(--text-3)', fontSize: '0.6rem', textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map(row => (
+                <tr key={row.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  {table.fields.map(f => (
+                    <td key={f.id} style={{ padding: '0.45rem 0.75rem', verticalAlign: 'middle' }} onDoubleClick={() => { setEditCell({ rowId: row.id, fieldId: f.id }); setEditVal(row[f.id] ?? ''); }}>
+                      {editCell?.rowId === row.id && editCell?.fieldId === f.id
+                        ? <CellEditor field={f} value={editVal} onChange={setEditVal} onCommit={commitEdit} />
+                        : <CellView field={f} value={row[f.id]} />
                       }
                     </td>
                   ))}
@@ -366,8 +561,25 @@ export default function Databases() {
   const [newName, setNewName] = useState('');
   const [systemTables, setSystemTables] = useState([]);
   const [configDrafts, setConfigDrafts] = useState({});
+  const [viewMode, setViewMode] = useState('table');
+
   const refreshSystemTables = useCallback(async () => {
-    try { setSystemTables(await apiSync('/database/tables', 'GET')); } catch { setSystemTables([]); }
+    try { 
+      const data = await apiSync('/database/tables', 'GET');
+      // Ensure specific tables are listed even if empty (user requested explicit listing)
+      const expectedTables = ['task', 'metric', 'logs', 'mode', 'goals', 'sleep', 'body_profile', 'health_profile', 'app_settings'];
+      const fetchedNames = data.map(t => t.name);
+      
+      expectedTables.forEach(name => {
+        if (!fetchedNames.includes(name)) {
+          data.push({ name, count: 0, rows: [] });
+        }
+      });
+      
+      setSystemTables(data); 
+    } catch { 
+      setSystemTables([]); 
+    }
   }, []);
   useEffect(() => { refreshSystemTables(); }, [refreshSystemTables]);
   const saveConfig = async row => {
@@ -394,6 +606,33 @@ export default function Databases() {
   const deleteTable = (id) => {
     if (typeof setTables === 'function') setTables(tables.filter(t => t.id !== id));
     toast.info('Table deleted');
+  };
+
+  const renderTableRows = (rows) => {
+    if (!rows || rows.length === 0) return <span className="text-secondary">No records</span>;
+    const headers = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
+    return (
+      <div style={{ overflowX: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border)' }}>
+              {headers.map(h => <th key={h} style={{ padding: '0.5rem', color: 'var(--text-3)', fontWeight: 600 }}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={row.id || i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                {headers.map(h => (
+                  <td key={h} style={{ padding: '0.5rem', color: 'var(--text-2)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[h])}>
+                    {String(row[h])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   return (
@@ -425,10 +664,42 @@ export default function Databases() {
       )}
 
       <section className="glass-card databases-system" aria-labelledby="app-data-title">
-        <div className="databases-system__header"><div><p className="label-caps">Live app data</p><h3 id="app-data-title">Application tables</h3></div><span className="badge">SQL-backed</span></div>
+        <div className="databases-system__header">
+          <div>
+            <p className="label-caps">Live app data</p>
+            <h3 id="app-data-title">Application tables</h3>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="badge">SQL-backed</span>
+            <div style={{ display: 'flex', background: 'var(--bg-dark)', borderRadius: '6px', padding: '2px' }}>
+              <button onClick={() => setViewMode('table')} style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '4px', border: 'none', background: viewMode === 'table' ? 'var(--accent)' : 'transparent', color: viewMode === 'table' ? '#000' : 'var(--text-3)', cursor: 'pointer' }}>Table</button>
+              <button onClick={() => setViewMode('json')} style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '4px', border: 'none', background: viewMode === 'json' ? 'var(--accent)' : 'transparent', color: viewMode === 'json' ? '#000' : 'var(--text-3)', cursor: 'pointer' }}>JSON</button>
+            </div>
+          </div>
+        </div>
         <p className="text-secondary databases-system__hint">Every module table is available here as a read view. Create or edit records in their module; the API handles the SQL persistence and CRUD audit trail.</p>
         <div className="databases-system__grid">
-          {systemTables.map(table => <details key={table.name} className="databases-system__table"><summary><span>{table.name}</span><b>{table.count}</b></summary><div className="databases-system__rows">{table.rows?.length ? table.rows.map((row, i) => table.name === 'app_settings' ? <div className="config-row" key={row.id || i}><strong>{row.key}</strong><textarea className="form-input" value={configDrafts[row.key] ?? JSON.stringify(row.value, null, 2)} onChange={event => setConfigDrafts(drafts => ({ ...drafts, [row.key]: event.target.value }))} /><button className="btn-secondary" onClick={() => saveConfig(row)}>Save configuration</button></div> : <pre key={row.id || i}>{JSON.stringify(row, null, 2)}</pre>) : <span className="text-secondary">No records</span>}{table.count > (table.rows?.length || 0) && <small>Showing {table.rows.length} of {table.count}</small>}</div></details>)}
+          {systemTables.map(table => (
+            <details key={table.name} className="databases-system__table">
+              <summary><span>{table.name}</span><b>{table.count}</b></summary>
+              <div className="databases-system__rows" style={{ padding: '1rem' }}>
+                {table.name === 'app_settings' ? (
+                  table.rows?.length ? table.rows.map((row, i) => (
+                    <div className="config-row" key={row.id || i} style={{ marginBottom: '1rem' }}>
+                      <strong style={{ display: 'block', marginBottom: '0.5rem' }}>{row.key}</strong>
+                      <textarea className="form-input" style={{ width: '100%', minHeight: '80px', fontFamily: 'monospace' }} value={configDrafts[row.key] ?? JSON.stringify(row.value, null, 2)} onChange={event => setConfigDrafts(drafts => ({ ...drafts, [row.key]: event.target.value }))} />
+                      <button className="btn-secondary" style={{ marginTop: '0.5rem' }} onClick={() => saveConfig(row)}>Save configuration</button>
+                    </div>
+                  )) : <span className="text-secondary">No records</span>
+                ) : (
+                  viewMode === 'table' ? renderTableRows(table.rows) : (
+                    table.rows?.length ? table.rows.map((row, i) => <pre key={row.id || i}>{JSON.stringify(row, null, 2)}</pre>) : <span className="text-secondary">No records</span>
+                  )
+                )}
+                {table.count > (table.rows?.length || 0) && <small style={{ display: 'block', marginTop: '0.5rem' }}>Showing {table.rows.length} of {table.count}</small>}
+              </div>
+            </details>
+          ))}
         </div>
       </section>
     </div>

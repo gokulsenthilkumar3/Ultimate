@@ -221,7 +221,7 @@ export function metricsToBodyProfile(current = {}, goal = {}, { includeEmpty = f
 export function metricLogsToSnapshots(logs = []) {
   const explicit = logs
     .filter((log) => log?.metric === 'physique_snapshot' && log?.metrics && typeof log.metrics === 'object')
-    .map((log) => ({ id: log.id, date: log.date || log.createdAt, label: log.label || 'Check-in', metrics: log.metrics, note: log.note || '' }));
+    .map((log) => ({ ...(log.avatarSnapshot || {}), id: log.id, date: log.avatarSnapshot?.date || log.date || log.createdAt, label: log.label || 'Check-in', metrics: log.metrics, note: log.note || '' }));
 
   const grouped = new Map();
   logs.filter((log) => BODY_METRIC_MAP[log?.metric] && finite(log?.value) != null && validateBodyMetric(log.metric, log.value, { allowEmpty: false }).valid).forEach((log) => {

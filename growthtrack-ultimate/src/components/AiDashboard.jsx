@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import useStore from '../store/useStore';
-import { Send, Bot, User, Trash2, Copy, Zap, RefreshCw, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Trash2, Copy, Zap, RefreshCw, Sparkles, Info } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { askLocalGrowthcast } from '../lib/growthcast';
 import { formatCurrency } from '../utils/userFormatters';
@@ -58,6 +58,7 @@ export default function AiDashboard() {
   const [typing,      setTyping]      = useState(false);
   const [model,       setModel]       = useState(() => `ollama-${aiConfig.model || 'unconfigured'}`);
   const [showPrompts, setShowPrompts] = useState(messages.length === 0);
+  const [showGuide, setShowGuide] = useState(false);
 
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
@@ -246,10 +247,16 @@ export default function AiDashboard() {
         </div>
         <div className="agent-workspace__actions">
           <label className="agent-workspace__model"><span>Model</span><select value={model} onChange={e => setModel(e.target.value)}>
-            <optgroup label="Local (Ollama)">
-              <option value={`ollama-${aiConfig.model || 'unconfigured'}`}>{aiConfig.model || 'Not configured'}</option>
+            <optgroup label="Local Models">
+              <option value="ollama-llama3">Llama 3 (Ollama)</option>
+              <option value="ollama-gemma3">Gemma 3 (Ollama)</option>
+              <option value={`ollama-${aiConfig.model || 'unconfigured'}`}>{aiConfig.model || 'System Default'}</option>
+            </optgroup>
+            <optgroup label="Cloud Models">
+              <option value="cloud-freeverse">Freeverse API</option>
             </optgroup>
           </select></label>
+          <Button variant="secondary" onClick={() => setShowGuide(!showGuide)} title="Prompting Guide"><Info size={15} /> Guide</Button>
           <Button variant="secondary" onClick={clearChat} title="Clear conversation"><Trash2 size={15} /> Clear</Button>
         </div>
       </Card>
@@ -261,6 +268,20 @@ export default function AiDashboard() {
           Uses the relevant workspace context to make answers more useful. Your message stays in this private workspace.
         </div>
       </div>
+
+      {showGuide && (
+        <Card style={{ margin: '1rem', padding: '1rem', background: 'var(--bg-elevated)', border: '1px solid var(--accent)' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Info size={16}/> Prompting Guide</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginBottom: '0.5rem' }}>For multiple-choice questions or structured decisions, format your prompt clearly:</p>
+          <pre style={{ background: 'var(--bg-dark)', padding: '0.5rem', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--text-1)', marginBottom: '0.5rem' }}>
+            What should I focus on today?{'\n'}
+            A) Finish the presentation{'\n'}
+            B) Do a 5k run{'\n'}
+            C) Read a book
+          </pre>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>The agent evaluates your recent data and highlights the best choice.</p>
+        </Card>
+      )}
 
       {/* Chat messages */}
       <div className="agent-workspace__messages" aria-live="polite">

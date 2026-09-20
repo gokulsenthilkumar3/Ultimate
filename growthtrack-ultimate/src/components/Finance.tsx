@@ -1,13 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { IndianRupee, PieChart, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Plus, Trash2, Calendar, CreditCard, Activity, BarChart2, Upload, LineChart as LineIcon, ListTodo, AlertTriangle } from 'lucide-react';
-import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, AreaChart, Area } from 'recharts';
+import { TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Trash2, AlertTriangle, Download } from 'lucide-react';
 import useStore, { selectFinance, selectUser, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget, apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import '../styles/finance.css';
-import StatCard from './ui/StatCard';
 import SIPCalculator from './SIPCalculator';
 import Shopping from './Shopping';
-import EmptyState from './ui/EmptyState';
 import Portfolio from './Portfolio';
 import OverviewTab from './finance/OverviewTab';
 const AnalyticsTab = React.lazy(() => import('./finance/AnalyticsTab'));
@@ -18,7 +15,6 @@ import SyncTab from './finance/SyncTab';
 import { fmtINR } from '../utils/finance';
 import { formatTime, getCurrencySymbol } from '../utils/userFormatters';
 import Button from './ui/Button';
-import Card from './ui/Card';
 import LoadingSkeleton from './ui/LoadingSkeleton';
 import SelectField from './ui/SelectField';
 import Tabs from './ui/Tabs';
@@ -87,6 +83,8 @@ export default function Finance() {
   const [budgetForm, setBudgetForm] = useState({ category: '', limit_amount: '' });
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [ledgerQuery, setLedgerQuery] = useState('');
+  const [ledgerPage, setLedgerPage] = useState(1);
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.substring(1).toLowerCase();
     if (hash === 'portfolio') return 'Portfolio';
@@ -137,8 +135,12 @@ export default function Finance() {
     transactions.filter(t => t.date && t.date.startsWith(selectedMonth)),
   [transactions, selectedMonth]);
   const visibleTransactions = useMemo(() =>
-    selectedCategory ? filteredTransactions.filter(t => t.category === selectedCategory) : filteredTransactions,
-  [filteredTransactions, selectedCategory]);
+    (selectedCategory ? filteredTransactions.filter(t => t.category === selectedCategory) : filteredTransactions)
+      .filter((transaction: any) => !ledgerQuery.trim() || [transaction.category, transaction.note, transaction.method, transaction.type]
+        .some(value => String(value || '').toLowerCase().includes(ledgerQuery.trim().toLowerCase()))),
+  [filteredTransactions, ledgerQuery, selectedCategory]);
+
+  React.useEffect(() => { setLedgerPage(1); }, [ledgerQuery, selectedCategory, selectedMonth]);
 
   const { income, expenses, investments, balance, pieData, methodData } = useMemo(() => {
     let inc = 0, exp = 0, inv = 0;
@@ -267,17 +269,17 @@ export default function Finance() {
   return (
     <div className="fade-in module-page finance-container">
       {/* Header */}
-      <Card className="finance-header">
+      <header className="finance-header">
         <div>
           <p className="label-caps finance-header-label">Finance</p>
           <h2 className="text-display finance-header-title">A clearer view of your money.</h2>
           <p className="text-secondary">Review your spending, plan ahead, and keep the next step simple.</p>
         </div>
         <div className="finance-header-actions">
-          <Button variant="secondary" icon={<ArrowDownRight size={16} />} onClick={handleCsvExport}>Export CSV</Button>
+          <Button variant="secondary" icon={<Download size={16} />} onClick={handleCsvExport}>Export CSV</Button>
           <SelectField label="Month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="finance-month-input" options={lastNMonths(12).map(m => ({ value: m, label: m }))} />
         </div>
-      </Card>
+      </header>
 
       {/* Budget breach alerts */}
       {budgetAlerts.length > 0 && (
@@ -296,17 +298,17 @@ export default function Finance() {
 
       <Tabs className="finance-tabs" label="Finance areas" idPrefix="finance-tab" tabs={financeTabs.map(tab => ({ value: tab, label: tab, panelId: 'finance-tabpanel' }))} value={activeTab} onChange={handleTabClick} onKeyDown={event => handleTabKeyDown(event, { tabs: financeTabs.map(id => ({ id })), activeTab, selectTab: handleTabClick, idPrefix: 'finance-tab' })} />
       <section id="finance-tabpanel" role="tabpanel" aria-labelledby={`finance-tab-${activeTab}`}>
-      {activeTab === 'Overview' && <OverviewTab {...{ statCards, savingsRate, methodData, COLORS, fmtINR: formatMoney, currencySymbol, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions: visibleTransactions, selectedCategory, onClearCategory: () => setSelectedCategory(''), handleDeleteTransaction, expenses, selectedMonth }} />}
+      {activeTab === 'Overview' && <OverviewTab {...{ statCards, savingsRate, methodData, COLORS, fmtINR: formatMoney, currencySymbol, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions: visibleTransactions, selectedCategory, onClearCategory: () => setSelectedCategory(''), handleDeleteTransaction, expenses, selectedMonth, ledgerQuery, setLedgerQuery, ledgerPage, setLedgerPage }} />}
       <React.Suspense fallback={<LoadingSkeleton variant="finance" />}>
         {activeTab === 'Analytics' && <AnalyticsTab {...{ COLORS, fmtINR: formatMoney, currencySymbol, form, pieData, TOOLTIP_STYLE, expenses, onCategorySelect: (category: string) => setSelectedCategory((current) => current === category ? '' : category) }} />}
         {activeTab === 'Trends' && <TrendsTab {...{ fmtINR: formatMoney, currencySymbol, form, TOOLTIP_STYLE, trendWindow, setTrendWindow, trendData, expenses }} />}
       </React.Suspense>
-      {activeTab === 'Budgeting' && <BudgetingTab {...{ fmtINR: formatMoney, currencySymbol, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget }} />}
-      {activeTab === 'Subscriptions' && <SubscriptionsTab {...{ fmtINR: formatMoney, currencySymbol, form, showAddSub, setShowAddSub, subForm, setSubForm, addSubscription, subs, handleDeleteSubscription }} />}
+      {activeTab === 'Budgeting' && <BudgetingTab {...{ fmtINR: formatMoney, currencySymbol, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget, toast }} />}
+      {activeTab === 'Subscriptions' && <SubscriptionsTab {...{ fmtINR: formatMoney, currencySymbol, showAddSub, setShowAddSub, subForm, setSubForm, addSubscription, subs, handleDeleteSubscription, transactions, toast }} />}
       {activeTab === 'Portfolio' && <div className="fade-in"><Portfolio /></div>}
       {activeTab === 'SIP' && <div className="fade-in"><SIPCalculator /></div>}
       {activeTab === 'Shopping' && <div className="fade-in"><Shopping /></div>}
-      {activeTab === 'Sync' && <SyncTab {...{ axioLastSync, axioSyncing, handleAxioSync, csvUploading, handleCsvImport }} />}
+      {activeTab === 'Sync' && <SyncTab {...{ csvUploading, handleCsvImport }} />}
       </section>
     </div>
   );
