@@ -61,6 +61,11 @@ export const TABS = Object.freeze(Object.fromEntries(Object.entries(TAB_CORE).ma
   description: `${meta.label} workspace`,
   aliases: [],
   availability: 'ready',
+  area: meta.group,
+  shortLabel: meta.label,
+  order: 0,
+  navigation: 'secondary',
+  pageTemplate: ['analytics', 'dashboards', 'progress', 'forecast'].includes(id) ? 'analytics' : ['profile', 'settings'].includes(id) ? 'settings' : ['physique', 'ai'].includes(id) ? 'immersive' : 'record',
   ...meta,
 })])));
 

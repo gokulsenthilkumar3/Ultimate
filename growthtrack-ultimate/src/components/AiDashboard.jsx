@@ -3,6 +3,7 @@ import useStore from '../store/useStore';
 import { Send, Bot, User, Trash2, Copy, Zap, RefreshCw, Sparkles, Info } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { askLocalGrowthcast } from '../lib/growthcast';
+import { OllamaProvider } from '../lib/aiProviders';
 import { formatCurrency } from '../utils/userFormatters';
 import Button from './ui/Button';
 import Card from './ui/Card';
@@ -59,12 +60,30 @@ export default function AiDashboard() {
   const [model,       setModel]       = useState(() => `ollama-${aiConfig.model || 'unconfigured'}`);
   const [showPrompts, setShowPrompts] = useState(messages.length === 0);
   const [showGuide, setShowGuide] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [modelStatus, setModelStatus] = useState('Checking local models…');
+  const [responseStyle, setResponseStyle] = useState('standard');
 
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typing]);
   useEffect(() => { setCache(messages); }, [messages]);
+  useEffect(() => {
+    let active = true;
+    new OllamaProvider(aiConfig).listModels().then(models => {
+      if (!active) return;
+      setAvailableModels(models);
+      setModelStatus(models.length ? `${models.length} installed local model${models.length === 1 ? '' : 's'}` : 'No local models installed');
+      const selected = models.some(item => item.id === aiConfig.model) ? aiConfig.model : models[0]?.id;
+      if (selected) setModel(`ollama-${selected}`);
+    }).catch(error => {
+      if (!active) return;
+      setAvailableModels([]);
+      setModelStatus(error?.message || 'Ollama is unavailable');
+    });
+    return () => { active = false; };
+  }, [aiConfig.baseUrl, aiConfig.model, aiConfig.timeoutMs]);
 
   // Build rich user context string
   const userContext = useMemo(() => {
@@ -128,6 +147,7 @@ export default function AiDashboard() {
       const fullPrompt = [
         'You are GrowthTrack AI — a personal growth assistant with access to the user\'s real data.',
         'Be concise, encouraging, and data-driven. Use Markdown for structure when helpful.',
+        responseStyle === 'multiple-choice' ? 'Use guided multiple choice: ask one clear question at a time, offer 3–5 mutually exclusive choices with short trade-offs, and always allow a free-text answer. Never assume which choice the user selected.' : '',
         '',
         '=== User Context ===',
         userContext,
@@ -161,7 +181,7 @@ export default function AiDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, userContext, model, state, toast, aiConfig]);
+  }, [input, loading, messages, userContext, model, responseStyle, toast, aiConfig]);
 
   const handleTypingDone = useCallback((msgId) => {
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, typing: false } : m));
@@ -247,15 +267,12 @@ export default function AiDashboard() {
         </div>
         <div className="agent-workspace__actions">
           <label className="agent-workspace__model"><span>Model</span><select value={model} onChange={e => setModel(e.target.value)}>
-            <optgroup label="Local Models">
-              <option value="ollama-llama3">Llama 3 (Ollama)</option>
-              <option value="ollama-gemma3">Gemma 3 (Ollama)</option>
-              <option value={`ollama-${aiConfig.model || 'unconfigured'}`}>{aiConfig.model || 'System Default'}</option>
+            <optgroup label="Installed Ollama models">
+              {!availableModels.length && <option value="ollama-unconfigured">No installed model found</option>}
+              {availableModels.map(item => <option key={item.id} value={`ollama-${item.id}`}>{item.label}</option>)}
             </optgroup>
-            <optgroup label="Cloud Models">
-              <option value="cloud-freeverse">Freeverse API</option>
-            </optgroup>
-          </select></label>
+          </select><small>{modelStatus}</small></label>
+          <label className="agent-workspace__model"><span>Answer style</span><select value={responseStyle} onChange={event => setResponseStyle(event.target.value)}><option value="standard">Standard</option><option value="multiple-choice">Multiple-choice coaching</option></select></label>
           <Button variant="secondary" onClick={() => setShowGuide(!showGuide)} title="Prompting Guide"><Info size={15} /> Guide</Button>
           <Button variant="secondary" onClick={clearChat} title="Clear conversation"><Trash2 size={15} /> Clear</Button>
         </div>

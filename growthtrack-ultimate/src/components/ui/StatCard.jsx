@@ -10,16 +10,17 @@ import React from 'react';
  * @param {string} [props.color] - CSS color for icon + value (defaults to --accent)
  * @param {React.CSSProperties} [props.style] - Extra styles on the wrapper
  */
-export default function StatCard({ icon: Icon, label, value, color = 'var(--accent)', style }) {
+export default function StatCard({ icon: Icon, label, value, color = 'var(--accent)', style, trend, hint }) {
   return (
-    <div className="glass-card stat-card" style={style}>
+    <div className="glass-card stat-card" style={{ ...style, '--stat-accent': color }}>
       <div className="stat-card__header">
-        {Icon && <Icon size={16} color={color} />}
+        {Icon && <Icon size={16} />}
         <span className="label-caps">{label}</span>
       </div>
-      <p className="stat-card__value" style={{ color }}>
+      <p className="stat-card__value">
         {value}
       </p>
+      {(trend || hint) && <div className="stat-card__meta">{trend && <span>{trend}</span>}{hint && <small>{hint}</small>}</div>}
     </div>
   );
 }

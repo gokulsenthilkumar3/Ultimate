@@ -335,6 +335,25 @@ function DataTable({ table, onUpdate, onDelete }) {
                       {editCell?.rowId === row.id && editCell?.fieldId === f.id
                         ? <CellEditor field={f} value={editVal} onChange={setEditVal} onCommit={commitEdit} />
                         : <CellView field={f} value={row[f.id]} />
+                      }
+                    </td>
+                  ))}
+                  <td style={{ padding: '0.45rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => copyRow(row)} title="Duplicate" style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '2px' }}><Copy size={11} /></button>
+                    <button onClick={() => deleteRow(row.id)} title="Delete" style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.5)', cursor: 'pointer', padding: '2px' }}><Trash2 size={11} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {filteredRows.length !== table.rows.length && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', textAlign: 'right' }}>Showing {filteredRows.length} of {table.rows.length} rows</p>}
+    </div>
+  );
+}
+
+function LegacyDuplicatedDataTable({ table, onUpdate, onDelete }) {
   const toast = useToast();
   const fileRef = useRef();
 
@@ -566,16 +585,6 @@ export default function Databases() {
   const refreshSystemTables = useCallback(async () => {
     try { 
       const data = await apiSync('/database/tables', 'GET');
-      // Ensure specific tables are listed even if empty (user requested explicit listing)
-      const expectedTables = ['task', 'metric', 'logs', 'mode', 'goals', 'sleep', 'body_profile', 'health_profile', 'app_settings'];
-      const fetchedNames = data.map(t => t.name);
-      
-      expectedTables.forEach(name => {
-        if (!fetchedNames.includes(name)) {
-          data.push({ name, count: 0, rows: [] });
-        }
-      });
-      
       setSystemTables(data); 
     } catch { 
       setSystemTables([]); 
@@ -608,6 +617,14 @@ export default function Databases() {
     toast.info('Table deleted');
   };
 
+  const useAsCustomTable = (source) => {
+    const rows = source.rows || [];
+    const keys = [...new Set(rows.flatMap(row => Object.keys(row)))].filter(key => key !== 'id');
+    const editable = { ...defaultTable(`${source.name} workspace`), fields: keys.map(key => ({ id: key, name: key.replaceAll('_', ' '), type: typeof rows.find(row => row[key] != null)?.[key] === 'number' ? 'number' : 'text', required: false })), rows: rows.map(row => ({ id: crypto.randomUUID(), ...Object.fromEntries(keys.map(key => [key, typeof row[key] === 'object' ? JSON.stringify(row[key]) : row[key]])) })) };
+    setTables?.([...tables, editable]);
+    toast.success(`Created editable “${editable.name}”`);
+  };
+
   const renderTableRows = (rows) => {
     if (!rows || rows.length === 0) return <span className="text-secondary">No records</span>;
     const headers = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
@@ -624,7 +641,7 @@ export default function Databases() {
               <tr key={row.id || i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                 {headers.map(h => (
                   <td key={h} style={{ padding: '0.5rem', color: 'var(--text-2)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[h])}>
-                    {String(row[h])}
+                    {row[h] == null ? '—' : typeof row[h] === 'object' ? JSON.stringify(row[h]) : String(row[h])}
                   </td>
                 ))}
               </tr>
@@ -683,6 +700,7 @@ export default function Databases() {
             <details key={table.name} className="databases-system__table">
               <summary><span>{table.name}</span><b>{table.count}</b></summary>
               <div className="databases-system__rows" style={{ padding: '1rem' }}>
+                <button className="btn-secondary" style={{ marginBottom: '.75rem', minHeight: 36 }} onClick={() => useAsCustomTable(table)}>Use as editable table</button>
                 {table.name === 'app_settings' ? (
                   table.rows?.length ? table.rows.map((row, i) => (
                     <div className="config-row" key={row.id || i} style={{ marginBottom: '1rem' }}>

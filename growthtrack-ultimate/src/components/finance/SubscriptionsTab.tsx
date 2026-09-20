@@ -29,7 +29,7 @@ export default function SubscriptionsTab({ fmtINR, currencySymbol, showAddSub, s
         <h3 className="card-title"><Calendar size={18}/> Recurring Subscriptions & Bills</h3>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-2)' }}>
-            <Settings size={14} /> Auto-add confident
+            <Settings size={14} /> Suggest confident matches
             <Switch checked={autoAdd} onChange={(e) => setAutoAdd(e.target.checked)} />
           </label>
           <button className="btn-primary btn-sm" onClick={() => setShowAddSub(!showAddSub)}>
@@ -43,7 +43,7 @@ export default function SubscriptionsTab({ fmtINR, currencySymbol, showAddSub, s
           <Radar size={20}/>
           <span>
             <strong>Recurring-payment suggestions</strong>
-            <small>Detected locally from similar expense descriptions and amounts. {autoAdd ? 'High-confidence items will be added automatically.' : 'Review before adding.'}</small>
+            <small>Detected locally from similar expense descriptions and amounts. {autoAdd ? 'Suggestions are highlighted; you still confirm each one.' : 'Review before adding.'}</small>
           </span>
         </div>
         {suggestions.length ? (

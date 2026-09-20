@@ -1,6 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { HeartPulse, Activity, Moon, Brain, Droplets } from 'lucide-react';
+import { HeartPulse, Activity, Moon } from 'lucide-react';
 import useStore from '../store/useStore';
 import { handleTabKeyDown } from '../hooks/useHashTab';
 import Card from './ui/Card';
@@ -51,8 +51,6 @@ export default function WellnessCommand({ user, setActiveTab }) {
     { label: 'Habits tracked', value: habits.length, icon: Activity, color: 'var(--gt-success)' },
     { label: 'Sleep entries', value: sleep.length, icon: Moon, color: 'var(--gt-action)' },
     { label: 'Health metrics', value: metrics.length, icon: HeartPulse, color: 'var(--gt-warning)' },
-    { label: 'Mindfulness mins', value: '120', icon: Brain, color: '#a78bfa' },
-    { label: 'Avg Hydration', value: '2.5L', icon: Droplets, color: '#60a5fa' },
   ];
 
   return <div className="module-page wellness-command">

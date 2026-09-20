@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Building2, ChevronDown, CreditCard, FileSpreadsheet, Info, Landmark, ShieldCheck, Smartphone, Upload, Link } from 'lucide-react';
-import { useToast } from '../../hooks/useToast';
+import { AlertTriangle, Building2, ChevronDown, CreditCard, FileSpreadsheet, Info, Landmark, ShieldCheck, Smartphone, Upload } from 'lucide-react';
 
 const PROVIDERS = [
   { name: 'BHIM and UPI apps', icon: Smartphone, availability: 'Statement import', note: 'UPI apps usually do not provide a complete portable CSV. Export the linked bank-account statement and import it here.', steps: ['Open the bank account linked to BHIM, Google Pay, PhonePe or Paytm.', 'Download the statement for the required date range as CSV or Excel.', 'Import it below and review duplicates before applying.'] },
@@ -17,18 +16,7 @@ interface SyncTabProps {
 }
 
 export default function SyncTab({ csvUploading, handleCsvImport }: SyncTabProps) {
-  const toast: any = useToast();
   const [expanded, setExpanded] = useState<string>('HDFC Bank');
-  const [authorizing, setAuthorizing] = useState<string | false>(false);
-
-  const mockAuthorize = (providerName: string) => {
-    setAuthorizing(providerName);
-    setTimeout(() => {
-      setAuthorizing(false);
-      toast.success(`Secure token established for ${providerName}. (Mock)`);
-    }, 1500);
-  };
-
   return <div className="finance-sync-container">
     <header className="finance-sync-header">
       <h3 className="text-display finance-sync-title">Bank and app imports</h3>
@@ -61,17 +49,7 @@ export default function SyncTab({ csvUploading, handleCsvImport }: SyncTabProps)
                   {provider.steps.map(step => <li key={step} style={{ fontSize: '0.78rem', color: 'var(--text-3)', margin: '2px 0' }}>{step}</li>)}
                 </ol>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button 
-                  onClick={() => mockAuthorize(provider.name)}
-                  className="btn-primary" 
-                  style={{ fontSize: '0.78rem', padding: '6px 12px' }}
-                  disabled={!!authorizing}
-                >
-                  <Link size={14} style={{ marginRight: '4px' }} />
-                  {authorizing === provider.name ? 'Connecting...' : `Authorize ${provider.name}`}
-                </button>
-              </div>
+              <p className="finance-sync-warning"><AlertTriangle size={15}/> Direct authorization is unavailable for this provider. Use the provider’s official export, then review it locally before importing.</p>
             </div>
           )}
         </article>
@@ -84,14 +62,14 @@ export default function SyncTab({ csvUploading, handleCsvImport }: SyncTabProps)
         <strong>Import a bank statement</strong>
         <p>Accepted now: CSV up to 2 MB. Use an official export and remove passwords or unrelated personal notes before importing.</p>
       </div>
-      <label className="btn-primary">
+      <label className="btn-primary" aria-disabled={csvUploading}>
         {csvUploading ? 'Processing…' : <><Upload size={16}/> Choose CSV</>}
         <input type="file" aria-label="Upload CSV statement" accept=".csv,text/csv" onChange={handleCsvImport} disabled={csvUploading} style={{ display: 'none' }}/>
       </label>
     </section>
     
     <p className="finance-sync-warning">
-      <AlertTriangle size={15}/> Direct authorization appears only after a verified provider adapter, consent screen, encrypted tokens, revocation, and real sync tests are configured. The authorize buttons above are currently for demonstration.
+      <AlertTriangle size={15}/> GrowthTrack does not request bank passwords, card PINs, OTPs, or unofficial scraping access. A direct connector will appear only after a verified adapter, consent screen, encrypted token storage, revocation, and real sync tests are configured.
     </p>
   </div>;
 }

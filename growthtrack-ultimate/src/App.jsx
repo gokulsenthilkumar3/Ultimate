@@ -18,6 +18,8 @@ import './styles/design-tokens.css';
 import './styles/design-system.css';
 import './styles/experience.css';
 import './styles/ios27.css';
+import './styles/ui-system-v2.css';
+import './styles/ui-system-v3.css';
 import { TAB_GROUP_MAP, GROUPS, tabMeta } from './config/navigation';
 import { domainAccents } from './design/domainTokens';
 import { getTextDirection } from './utils/userFormatters';
@@ -36,6 +38,8 @@ import NotificationCenter  from './components/NotificationCenter';
 import LoadingSkeleton     from './components/ui/LoadingSkeleton';
 import PageState           from './components/ui/PageState';
 import NotFound            from './components/NotFound';
+import ContextFooter       from './components/ContextFooter';
+import VisualStage         from './components/visual/VisualStage';
 
 import { preloadHumanoidModel }  from './components/morphEngine/useModelLoader';
 import { TIMING } from './constants';
@@ -103,6 +107,15 @@ const IDLE_PREFETCH = Object.freeze({
   workspace: () => Promise.all([import('./components/Tasks'), import('./components/Notes')]),
   life: () => Promise.all([import('./components/SocialMedia'), import('./components/Entertainment')]),
   hub: () => Promise.all([import('./components/AppLauncher'), import('./components/NotificationCenter')]),
+});
+
+const VISUAL_SCENES = Object.freeze({
+  money: 'finance',
+  insights: 'insights',
+  wellness: 'wellness',
+  work: 'workspace',
+  life: 'life',
+  system: 'hub',
 });
 
 
@@ -390,10 +403,14 @@ export default function App() {
           <SettingsModal onClose={() => setShowSettings(false)} />
         )}
 
-        <div className="app-shell" dir={getTextDirection(user)} data-theme={theme} data-palette={palette} data-density={density} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed}
+        <div className="app-shell" dir={getTextDirection(user)} data-theme={theme} data-palette={palette} data-density={density} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed} data-ui-system="v3"
           data-domain={TAB_GROUP_MAP[activeTab] || 'system'} style={{ '--domain-accent': domainAccents[TAB_GROUP_MAP[activeTab]] || domainAccents.system }}>
           <a className="skip-to-content" href="#main-content">Skip to content</a>
-          <div className="mesh-bg" />
+          <VisualStage
+            scene={activeTab === 'physique' ? 'avatar' : activeTab === 'ai' ? 'agent' : VISUAL_SCENES[TAB_GROUP_MAP[activeTab]] || 'overview'}
+            intensity={['overview', 'physique', 'ai'].includes(activeTab) ? 'hero' : 'ambient'}
+            reducedMotion={reducedMotion}
+          />
 
 
           {/* ── Main workspace: content + navigation ── */}
@@ -465,6 +482,7 @@ export default function App() {
               activeTab={activeTab} 
               onTabChange={setActiveTab} 
             />
+            <ContextFooter activeTab={activeTab} serverStatus={serverStatus} />
           </div>
         </div>
       </ToastProvider>

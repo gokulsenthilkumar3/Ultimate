@@ -18,11 +18,11 @@ import { metricsToBodyProfile } from '../lib/physiqueProfile';
 import { getCurrencySymbol } from '../utils/userFormatters';
 
 const TABS = [
-  { id: 'personal', label: 'Personal', icon: User },
-  { id: 'physical', label: 'Body Profile', icon: Shield },
-  { id: 'security', label: 'Security', icon: Shield },
-  { id: 'appearance', label: 'Appearance', icon: Layout },
-  { id: 'integrations', label: 'Integrations', icon: Globe },
+  { id: 'personal', label: 'Account', description: 'Identity, contact, and personal details', icon: User },
+  { id: 'physical', label: 'Body & measurements', description: 'Body profile and measurement defaults', icon: Shield },
+  { id: 'security', label: 'Privacy & security', description: 'Password, sessions, and data protection', icon: Shield },
+  { id: 'appearance', label: 'Display', description: 'Theme, units, language, and accessibility', icon: Layout },
+  { id: 'integrations', label: 'Connections', description: 'Linked services and social profiles', icon: Globe },
 ];
 
 
@@ -810,7 +810,7 @@ export default function ProfileEditor() {
                 }}
               >
                 <tab.icon size={16} />
-                {tab.label}
+                <span style={{ display: 'grid', gap: 2 }}><strong>{tab.label}</strong><small style={{ color: 'var(--text-3)', fontSize: '.68rem', lineHeight: 1.3 }}>{tab.description}</small></span>
               </button>
             );
           })}
@@ -894,6 +894,7 @@ export default function ProfileEditor() {
               {React.createElement(TABS.find(t => t.id === activeTab).icon, { size: 18, color: 'var(--accent)' })}
               {TABS.find(t => t.id === activeTab).label}
             </h3>
+            <p className="text-secondary" style={{ marginTop: '-1.35rem', marginBottom: '1.75rem' }}>{TABS.find(t => t.id === activeTab).description}</p>
 
             {activeTab === 'personal' && (
               <>

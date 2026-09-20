@@ -49,4 +49,11 @@ describe('Section discovery', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hub', exact: true }));
     expect(navigate).toHaveBeenLastCalledWith('hub');
   });
+  it('exposes only the active area modules in the second navigation level', () => {
+    const navigate = vi.fn();
+    render(<PremiumSidebar activeTab="finance" setActiveTab={navigate} user={{ name: 'Owner' }} onOpenSettings={() => {}} onLogout={() => {}} />);
+    const modules = within(screen.getByRole('navigation', { name: 'Finance modules' }));
+    expect(modules.getByRole('button', { name: /Finance/ })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('button', { name: /Sleep workspace/ })).toBeNull();
+  });
 });

@@ -13,7 +13,7 @@ import BudgetingTab from './finance/BudgetingTab';
 import SubscriptionsTab from './finance/SubscriptionsTab';
 import SyncTab from './finance/SyncTab';
 import { fmtINR } from '../utils/finance';
-import { formatTime, getCurrencySymbol } from '../utils/userFormatters';
+import { getCurrencySymbol } from '../utils/userFormatters';
 import Button from './ui/Button';
 import LoadingSkeleton from './ui/LoadingSkeleton';
 import SelectField from './ui/SelectField';
@@ -128,8 +128,6 @@ export default function Finance() {
   const [subForm, setSubForm] = useState({ name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1 });
 
   const [csvUploading, setCsvUploading] = useState(false);
-  const [axioSyncing, setAxioSyncing] = useState(false);
-  const [axioLastSync, setAxioLastSync] = useState<string | null>(null);
 
   const filteredTransactions = useMemo(() =>
     transactions.filter(t => t.date && t.date.startsWith(selectedMonth)),
@@ -246,19 +244,6 @@ export default function Finance() {
     finally {
       setCsvUploading(false);
       event.target.value = '';
-    }
-  };
-
-  const handleAxioSync = async () => {
-    setAxioSyncing(true);
-    try {
-      const count = await useStore.getState().syncBankData('Axio');
-      setAxioLastSync(formatTime(new Date(), user));
-      toast.success(`Axio sync complete — ${count} new transaction${count === 1 ? '' : 's'}.`);
-    } catch {
-      toast.error('Axio sync failed. Check the server connection and try again.');
-    } finally {
-      setAxioSyncing(false);
     }
   };
 

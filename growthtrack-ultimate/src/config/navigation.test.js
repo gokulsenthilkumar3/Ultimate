@@ -11,6 +11,9 @@ describe('canonical module registry', () => {
       expect(module.icon).toBeTypeOf('object');
       expect(module.keywords).toBeInstanceOf(Array);
       expect(['ready', 'setup-required', 'planned']).toContain(module.availability);
+      expect(module.area).toBe(module.group);
+      expect(['primary', 'secondary', 'hidden-alias']).toContain(module.navigation);
+      expect(['command', 'record', 'analytics', 'detail', 'settings', 'immersive']).toContain(module.pageTemplate);
     }
   });
 

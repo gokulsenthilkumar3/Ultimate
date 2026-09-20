@@ -12,7 +12,7 @@ import React from 'react';
 export default function PageHeader({ accent, icon, title, subtitle, actions, status, headingLevel = 1 }) {
   const Heading = headingLevel === 2 ? 'h2' : 'h1';
   return (
-    <div className="page-header-block" style={actions ? { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' } : {}}>
+    <div className="page-header-block" data-has-actions={Boolean(actions)}>
       <div>
         <p className="label-caps page-header-block__accent">{accent}</p>
         <Heading className="text-display page-header-block__title">
@@ -24,7 +24,7 @@ export default function PageHeader({ accent, icon, title, subtitle, actions, sta
         )}
       </div>
       {actions && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+        <div className="page-header-block__actions">
           {actions}
         </div>
       )}
