@@ -8,20 +8,38 @@ function normalizeBaseUrl(value) {
   } catch { return ''; }
 }
 
+export const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
+
 function modelCapabilities(name = '') {
   const id = String(name).toLowerCase();
+  const embedding = /embed/.test(id);
   return {
-    text: true,
+    text: !embedding,
     vision: /gemma[34]|llava|vision|qwen.*vl/.test(id),
     tools: /gemma4|functiongemma|qwen|llama3\.1/.test(id),
-    embedding: /embed/.test(id),
+    embedding,
   };
+}
+
+export function selectPreferredChatModel(models = [], configuredModel = '') {
+  const chatModels = models.filter(model => model?.capabilities?.text !== false);
+  if (!chatModels.length) return null;
+  const configured = String(configuredModel || '').trim().toLowerCase();
+  if (configured) {
+    const exact = chatModels.find(model => model.id.toLowerCase() === configured);
+    if (exact) return exact;
+    const family = chatModels.find(model => model.id.toLowerCase().startsWith(`${configured}:`));
+    if (family) return family;
+  }
+  return chatModels.find(model => /^gemma4(?::|$)/i.test(model.id))
+    || chatModels.find(model => /^gemma3(?::|$)/i.test(model.id))
+    || chatModels[0];
 }
 
 export class OllamaProvider {
   constructor(config = {}) {
     this.id = 'ollama-local';
-    this.baseUrl = normalizeBaseUrl(config.baseUrl);
+    this.baseUrl = normalizeBaseUrl(config.baseUrl || DEFAULT_OLLAMA_BASE_URL);
     this.defaultModel = config.model || 'gemma3';
     this.timeoutMs = Math.max(1000, Math.min(Number(config.timeoutMs) || 12000, 300000));
   }

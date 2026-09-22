@@ -14,7 +14,10 @@ export function buildGrowthcastSignal(state) {
 }
 export async function askLocalGrowthcast(prompt, config = {}) {
   const provider = createModelProvider({ provider: 'ollama', ...config });
-  const result = await provider.chat({ prompt, model: config.model || 'gemma3' });
+  const models = await provider.listModels();
+  const selectedModel = selectPreferredChatModel(models, config.model || 'gemma3');
+  if (!selectedModel) throw new Error('No chat-capable Ollama model is installed');
+  const result = await provider.chat({ prompt, model: selectedModel.id });
   return result.text || 'No local response returned.';
 }
-import { createModelProvider } from './aiProviders';
+import { createModelProvider, selectPreferredChatModel } from './aiProviders';

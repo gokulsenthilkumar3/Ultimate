@@ -3,7 +3,7 @@ import useStore from '../store/useStore';
 import { Send, Bot, User, Trash2, Copy, Zap, RefreshCw, Sparkles, Info } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { askLocalGrowthcast } from '../lib/growthcast';
-import { OllamaProvider } from '../lib/aiProviders';
+import { OllamaProvider, selectPreferredChatModel } from '../lib/aiProviders';
 import { formatCurrency } from '../utils/userFormatters';
 import Button from './ui/Button';
 import Card from './ui/Card';
@@ -75,8 +75,8 @@ export default function AiDashboard() {
       if (!active) return;
       setAvailableModels(models);
       setModelStatus(models.length ? `${models.length} installed local model${models.length === 1 ? '' : 's'}` : 'No local models installed');
-      const selected = models.some(item => item.id === aiConfig.model) ? aiConfig.model : models[0]?.id;
-      if (selected) setModel(`ollama-${selected}`);
+      const selected = selectPreferredChatModel(models, aiConfig.model);
+      if (selected) setModel(`ollama-${selected.id}`);
     }).catch(error => {
       if (!active) return;
       setAvailableModels([]);

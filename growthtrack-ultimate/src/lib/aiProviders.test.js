@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { OllamaProvider, createModelProvider, modelCapabilities, normalizeBaseUrl } from './aiProviders';
+import { DEFAULT_OLLAMA_BASE_URL, OllamaProvider, createModelProvider, modelCapabilities, normalizeBaseUrl, selectPreferredChatModel } from './aiProviders';
 
 describe('local AI provider boundary', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -8,6 +8,11 @@ describe('local AI provider boundary', () => {
     expect(normalizeBaseUrl('http://localhost:11434/')).toBe('http://localhost:11434');
     expect(normalizeBaseUrl('file:///models')).toBe('');
     expect(() => createModelProvider({ provider: 'cloud' })).toThrow('Unsupported model provider');
+  });
+
+  it('connects to the standard local Ollama endpoint when no endpoint is configured', () => {
+    expect(new OllamaProvider().baseUrl).toBe(DEFAULT_OLLAMA_BASE_URL);
+    expect(new OllamaProvider({ baseUrl: '' }).baseUrl).toBe(DEFAULT_OLLAMA_BASE_URL);
   });
 
   it('discovers installed models and exposes inferred capabilities', async () => {
@@ -32,6 +37,18 @@ describe('local AI provider boundary', () => {
   });
 
   it('classifies embedding-only models', () => {
-    expect(modelCapabilities('embeddinggemma')).toMatchObject({ embedding: true, text: true });
+    expect(modelCapabilities('embeddinggemma')).toMatchObject({ embedding: true, text: false });
+  });
+
+  it('selects an installed chat model and prefers configured Gemma families', () => {
+    const models = [
+      { id: 'embeddinggemma:latest', capabilities: { text: false } },
+      { id: 'llama3.2:3b', capabilities: { text: true } },
+      { id: 'gemma3:1b', capabilities: { text: true } },
+      { id: 'gemma4:e4b', capabilities: { text: true } },
+    ];
+    expect(selectPreferredChatModel(models, 'gemma3')?.id).toBe('gemma3:1b');
+    expect(selectPreferredChatModel(models, '')?.id).toBe('gemma4:e4b');
+    expect(selectPreferredChatModel(models.slice(0, 1), '')).toBeNull();
   });
 });
