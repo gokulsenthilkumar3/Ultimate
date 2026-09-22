@@ -1,13 +1,13 @@
 import { test, expect, devices } from '@playwright/test';
 
+test.use({ ...devices['Pixel 5'] });
+
 /**
  * Spec 2 — BottomNavBar (mobile)
  * Verifies each nav group button is tappable on mobile viewports,
  * becomes active, and shows the active label beneath the icon.
  */
 test.describe('BottomNavBar', () => {
-  test.use({ ...devices['Pixel 5'] });
-
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Wait for shell to stabilize

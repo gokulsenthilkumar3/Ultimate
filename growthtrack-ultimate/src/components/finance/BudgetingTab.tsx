@@ -3,7 +3,7 @@ import { Plus, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import EmptyState from '../ui/EmptyState';
 
 
-export default function BudgetingTab({ fmtINR, currencySymbol, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget, toast }) {
+export default function BudgetingTab({ fmtINR, currencySymbol, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget, toast }: any) {
   {/* ── BUDGETING ── */}
       return (
     <div className="glass-card">

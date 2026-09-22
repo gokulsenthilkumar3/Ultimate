@@ -28,6 +28,22 @@ function runNode(name, modulePath, args = [], { advisory = false } = {}) {
   return false;
 }
 
+function runCommand(name, command, args = [], { advisory = false } = {}) {
+  const result = spawnSync(command, args, {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    env: { ...process.env, CI: '1' },
+    shell: process.platform === 'win32',
+  });
+  if (result.status === 0) {
+    record(name, 'pass', 'passed');
+    return true;
+  }
+  const output = `${result.stdout || ''}\n${result.stderr || ''}`.trim().split(/\r?\n/).slice(-8).join(' | ');
+  record(name, advisory ? 'warn' : 'fail', output || `exited with ${result.status}`);
+  return false;
+}
+
 function verifyRequiredFiles() {
   const files = [
     'public/assets/models/humanoid-base.glb',
@@ -62,6 +78,24 @@ function verifyOfflineModelRuntime() {
   );
 }
 
+function verifyDesktopSecurity() {
+  const source = readFileSync(path.join(projectRoot, 'desktop.js'), 'utf8');
+  const preload = path.join(projectRoot, 'preload.cjs');
+  const failures = [];
+  if (!/nodeIntegration:\s*false/.test(source)) failures.push('Node integration is not disabled');
+  if (!/contextIsolation:\s*true/.test(source)) failures.push('context isolation is not enabled');
+  if (!/sandbox:\s*true/.test(source)) failures.push('renderer sandbox is not enabled');
+  if (!existsSync(preload)) failures.push('allowlisted preload bridge is missing');
+  record('Electron renderer isolation', failures.length ? 'fail' : 'pass', failures.length ? failures.join(' · ') : 'Node disabled, context isolated, sandboxed, preload allowlisted');
+}
+
+function verifyNoSimulatedFinanceMutation() {
+  const source = readFileSync(path.join(projectRoot, 'server.js'), 'utf8');
+  const route = source.match(/app\.post\('\/api\/finance\/sync\/bank'[\s\S]*?\n\}\);/i)?.[0] || '';
+  const unsafe = /Math\.random|createMany|Mock\)/.test(route);
+  record('Finance connector honesty', route && !unsafe ? 'pass' : 'fail', route ? (unsafe ? 'bank sync still writes simulated data' : 'unconfigured sync is non-mutating') : 'bank sync route missing');
+}
+
 function verifyBundleBudgets() {
   const assetDir = path.join(projectRoot, 'dist/assets');
   if (!existsSync(assetDir)) {
@@ -81,6 +115,13 @@ console.log('\nGrowthTrack Release Quality Gate\n');
 verifyRequiredFiles();
 verifySecurityHeaders();
 verifyOfflineModelRuntime();
+verifyDesktopSecurity();
+verifyNoSimulatedFinanceMutation();
+
+runCommand('TypeScript', 'npm', ['run', 'typecheck']);
+runCommand('Source lint', 'npm', ['run', 'lint']);
+runCommand('Prisma schema', 'npx', ['prisma', 'validate']);
+runCommand('Production dependency audit', 'npm', ['run', 'security:audit']);
 
 runNode('Renderer lint', path.join(projectRoot, 'node_modules/eslint/bin/eslint.js'), [
   'src/components/ChamberCanvas.jsx',

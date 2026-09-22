@@ -1,5 +1,4 @@
-/* global process */
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import { dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
@@ -7,16 +6,9 @@ import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 let mainWindow;
 
-// Some Windows drivers crash Electron's GPU process before Chromium can show
-// a window. The web renderer still keeps its own WebGL quality/fallback logic.
-app.disableHardwareAcceleration();
-app.commandLine.appendSwitch('disable-gpu');
-// Keep Chromium's GPU implementation in the browser process. On some
-// Windows installations the sandboxed GPU child process exits with a native
-// breakpoint before Electron can create the first window.
-app.commandLine.appendSwitch('in-process-gpu');
-app.commandLine.appendSwitch('disable-gpu-compositing');
-app.commandLine.appendSwitch('disable-gpu-rasterization');
+// GPU fallback is opt-in so the default desktop path can use WebGL. Machines
+// with unstable drivers can set GROWTH_TRACK_DISABLE_GPU=true.
+if (process.env.GROWTH_TRACK_DISABLE_GPU === 'true') app.disableHardwareAcceleration();
 
 // Electron otherwise places its cache beside the installed executable. That
 // location can be read-only for per-user installs, which causes repeated GPU
@@ -79,7 +71,21 @@ async function createWindow() {
     width: 1200,
     height: 800,
     show: true,
-    webPreferences: { nodeIntegration: true, contextIsolation: false }
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(path.dirname(fileURLToPath(import.meta.url)), 'preload.cjs'),
+    }
+  });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https:\/\//i.test(url)) void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const allowed = new URL(`http://localhost:${process.env.PORT || 3001}`);
+    const destination = new URL(url);
+    if (destination.origin !== allowed.origin) event.preventDefault();
   });
   prepareUserDatabase(userDatabase);
   process.env.DATABASE_URL = `file:${userDatabase.replaceAll('\\', '/')}`;

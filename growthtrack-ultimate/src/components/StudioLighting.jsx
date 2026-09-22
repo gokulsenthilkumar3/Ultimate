@@ -13,26 +13,17 @@
  * Shadow map size is tier-controlled via lodConfig prop.
  */
 
-import React, { useRef } from "react";
-import { useHelper }     from "@react-three/drei";
-import * as THREE        from "three";
-
-// ── Toggle this in dev to see light helpers ──────────────────────────────────
-const SHOW_LIGHT_HELPERS = process.env.NODE_ENV === "development" && false;
+import React from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KEY LIGHT — main warm directional, casts shadows
 // ─────────────────────────────────────────────────────────────────────────────
 
 function KeyLight({ shadowMapSize }) {
-  const ref = useRef();
-  if (SHOW_LIGHT_HELPERS) useHelper(ref, THREE.DirectionalLightHelper, 1, "yellow");
-
   const hasShadow = !!shadowMapSize;
 
   return (
     <directionalLight
-      ref={ref}
       position={[-3, 5, 3]}
       intensity={2.2}
       color="#FFF5E0"
@@ -56,12 +47,8 @@ function KeyLight({ shadowMapSize }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FillLight() {
-  const ref = useRef();
-  if (SHOW_LIGHT_HELPERS) useHelper(ref, THREE.DirectionalLightHelper, 0.5, "cyan");
-
   return (
     <directionalLight
-      ref={ref}
       position={[4, 2, 2]}
       intensity={0.7}
       color="#D6EEFF"
@@ -75,12 +62,8 @@ function FillLight() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RimLight() {
-  const ref = useRef();
-  if (SHOW_LIGHT_HELPERS) useHelper(ref, THREE.DirectionalLightHelper, 0.5, "blue");
-
   return (
     <directionalLight
-      ref={ref}
       position={[0, 1, -5]}
       intensity={1.2}
       color="#8899FF"
@@ -94,12 +77,8 @@ function RimLight() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SubLight() {
-  const ref = useRef();
-  if (SHOW_LIGHT_HELPERS) useHelper(ref, THREE.PointLightHelper, 0.3, "orange");
-
   return (
     <pointLight
-      ref={ref}
       position={[0, -0.3, 0.5]}
       intensity={0.5}
       color="#FFCC88"

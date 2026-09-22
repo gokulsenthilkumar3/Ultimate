@@ -31,6 +31,12 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Run Unit/Component Tests (gate — must pass before deploy)
         run: npm run test:run
 
@@ -38,7 +44,10 @@ jobs:
         run: npm run lint
 
       - name: Dependency audit
-        run: npm audit --audit-level=high
+        run: npm run security:audit
+
+      - name: Validate authored GLBs
+        run: npm run validate:glb
 
       - name: Build Application
         id: build
@@ -50,6 +59,18 @@ jobs:
           name: dist
           path: growthtrack-ultimate/dist
           retention-days: 1
+
+      - name: Upload test and coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-evidence
+          path: |
+            growthtrack-ultimate/coverage
+            growthtrack-ultimate/test-results
+            growthtrack-ultimate/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
 
   # ── Step 2: Deploy only if tests + build passed ──────────────────────────────
   deploy:

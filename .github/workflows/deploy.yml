@@ -1,11 +1,8 @@
-name: CI -> Test -> Deploy
+name: GrowthTrack Pages Deployment
 
+# GrowthTrack requires desktop/backend services. Static Pages deployment is
+# intentionally opt-in and cannot make normal pushes fail.
 on:
-  push:
-    branches:
-      - main
-      - restructure
-      - TerraUltimateonJul7-2026
   workflow_dispatch:
 
 permissions:
@@ -14,36 +11,18 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: growthtrack-pages
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Run Tests
+  deploy:
+    name: Deploy static preview
+    if: vars.ENABLE_GITHUB_PAGES == 'true'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js 22.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: growthtrack-ultimate/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ./growthtrack-ultimate
-        run: npm install
-
-      - name: Lint
-        working-directory: ./growthtrack-ultimate
-        run: npm run lint
-        continue-on-error: true
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: test
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,46 +30,26 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: npm
           cache-dependency-path: growthtrack-ultimate/package-lock.json
 
-      - name: Install dependencies
-        working-directory: ./growthtrack-ultimate
-        run: npm install
+      - name: Install locked dependencies
+        working-directory: growthtrack-ultimate
+        run: npm ci
 
-      - name: Build
-        working-directory: ./growthtrack-ultimate
+      - name: Build static preview
+        working-directory: growthtrack-ultimate
         run: npm run build
-        env:
-          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
 
-      - name: Add cache-busting headers
-        working-directory: growthtrack-ultimate/dist
-        run: |
-          cp index.html 404.html
-          echo '{ "headers": [{ "source": "**/*.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] }] }' > _headers
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: ./growthtrack-ultimate/dist
+          path: growthtrack-ultimate/dist
 
-  deploy:
-    name: Deploy
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4

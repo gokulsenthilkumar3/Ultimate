@@ -32,7 +32,7 @@ const MAX_CSV_SIZE_BYTES = 2 * 1024 * 1024;
 
 // Build last N months as YYYY-MM strings
 function lastNMonths(n = 6) {
-  const months = [];
+  const months: string[] = [];
   const now = new Date();
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);

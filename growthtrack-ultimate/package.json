@@ -19,6 +19,7 @@
       "prisma-generated/**/*",
       "scripts/**/*",
       "desktop.js",
+      "preload.cjs",
       "server.js",
       "logger.js",
       "dev.db",
@@ -35,6 +36,7 @@
     "build:desktop": "node scripts/build-desktop.mjs",
     "dev": "concurrently \"vite\" \"node server.js\"",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -50,6 +52,7 @@
     "glb:health": "node scripts/glb-health.js",
     "glb:priority-fixes": "node scripts/glb-priority-fixes.js",
     "quality:gate": "node scripts/quality-gate.js",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
     "owner:create": "node scripts/create-owner.js",
     "db:sync": "prisma generate && prisma db push",
     "db:seed-config": "node scripts/seed-app-config.mjs"
@@ -83,7 +86,7 @@
     "react-dom": "19.2.4",
     "react-easy-crop": "^6.2.3",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.15.1",
+    "react-router-dom": "7.18.4",
     "react-window": "^2.2.7",
     "recharts": "3.8.1",
     "remark-gfm": "^4.0.1",
@@ -97,11 +100,11 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
-    "@lhci/cli": "0.15.1",
     "@playwright/test": "1.59.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
+    "@vitest/coverage-v8": "5.0.1",
     "@types/node": "^25.9.5",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -116,7 +119,11 @@
     "prisma": "^7.9.1",
     "rollup-plugin-visualizer": "^5.12.0",
     "typescript": "^6.0.3",
-    "vite": "8.0.4",
-    "vitest": "4.1.5"
+    "vite": "8.3.0",
+    "vitest": "5.0.1"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "mysql2": "3.24.4"
   }
 }

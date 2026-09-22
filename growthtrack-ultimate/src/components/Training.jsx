@@ -436,7 +436,7 @@ export default function Training() {
     toast.error('Session cancelled');
   };
 
-  const prChartData    = prHistory.filter(h => h.lift === activePRLift).slice(-10).map(h => ({ date: h.date.slice(5), weight: convertMeasurement(h.weight, 'kg', user) }));
+  const prChartData    = prHistory.filter(h => h.lift === activePRLift).slice(-10).map(h => ({ date: h.date.slice(5), weight: convertMeasurementToMetric(h.weight, 'kg', user) }));
   const recentSessions = workoutSessions.slice(0, 15);
 
   return (

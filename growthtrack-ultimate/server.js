@@ -158,8 +158,8 @@ function sendInternalError(res, error, context) {
   return res.status(500).json({ error: 'Internal server error.' });
 }
 
-function categoryWhere(query = {}, kind) {
-  const where = {};
+function categoryWhere(query = {}, kind, userId) {
+  const where = userId ? { user_id: userId } : {};
   if (query.action) where.action = String(query.action);
   if (query.source) where.source = String(query.source);
   if (query.from || query.to) where.timestamp = { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) };
@@ -181,19 +181,19 @@ async function readUnifiedLogs(req, fixedCategory) {
   const targetCategory = fixedCategory || (query.category && query.category !== 'all' ? String(query.category) : null);
   const categories = targetCategory ? [targetCategory] : ['auth', 'session', 'audit', 'crud', 'system', 'request'];
   const [auth, sessions, audits] = await Promise.all([
-    categories.includes('auth') ? prisma.loginLog.findMany({ where: categoryWhere(query, 'auth'), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
-    categories.includes('session') ? prisma.sessionLog.findMany({ where: categoryWhere(query, 'session'), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
-    categories.some(c => !['auth', 'session'].includes(c)) ? prisma.auditLog.findMany({ where: categoryWhere(query, 'audit'), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
+    categories.includes('auth') ? prisma.loginLog.findMany({ where: categoryWhere(query, 'auth', req.user.id), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
+    categories.includes('session') ? prisma.sessionLog.findMany({ where: categoryWhere(query, 'session', req.user.id), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
+    categories.some(c => !['auth', 'session'].includes(c)) ? prisma.auditLog.findMany({ where: categoryWhere(query, 'audit', req.user.id), orderBy: { timestamp: 'desc' }, take: 500 }) : [],
   ]);
   const all = [...auth.map(x => unified(x, 'auth')), ...sessions.map(x => unified(x, 'session')), ...audits.map(x => unified(x, x.category || 'audit'))].filter(x => !targetCategory || x.category === targetCategory).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
   const total = all.length; return { logs: all.slice((page - 1) * limit, page * limit), total, page, limit, diagnostics: eventLogger.diagnostics };
 }
 app.get('/api/logs', authMiddleware, async (req, res) => { try { res.json(await readUnifiedLogs(req)); } catch (err) { console.error('[Logs Error]', err); res.status(500).json({ error: 'Unable to read logs.', requestId: req.requestId }); } });
-app.get('/api/logs/summary', authMiddleware, async (req, res) => { try { const [audit, session, auth] = await Promise.all([prisma.auditLog.count(), prisma.sessionLog.count(), prisma.loginLog.count()]); res.json({ counts: { audit, session, auth, total: audit + session + auth }, diagnostics: eventLogger.diagnostics }); } catch { res.status(500).json({ error: 'Unable to read log summary.' }); } });
+app.get('/api/logs/summary', authMiddleware, async (req, res) => { try { const [audit, session, auth] = await Promise.all([prisma.auditLog.count({ where: { user_id: req.user.id } }), prisma.sessionLog.count({ where: { user_id: req.user.id } }), prisma.loginLog.count({ where: { user_id: req.user.id } })]); res.json({ counts: { audit, session, auth, total: audit + session + auth }, diagnostics: eventLogger.diagnostics }); } catch { res.status(500).json({ error: 'Unable to read log summary.' }); } });
 app.get('/api/logs/diagnostics', authMiddleware, async (req, res) => {
   try {
-    const [audit, session, auth] = await Promise.all([prisma.auditLog.count(), prisma.sessionLog.count(), prisma.loginLog.count()]);
-    res.json({ status: 'healthy', database: { status: 'connected', writable: true }, counts: { audit, session, auth, total: audit + session + auth }, diagnostics: { ...eventLogger.diagnostics, requestId: req.requestId }, databasePath: databaseUrl });
+    const [audit, session, auth] = await Promise.all([prisma.auditLog.count({ where: { user_id: req.user.id } }), prisma.sessionLog.count({ where: { user_id: req.user.id } }), prisma.loginLog.count({ where: { user_id: req.user.id } })]);
+    res.json({ status: 'healthy', database: { status: 'connected', writable: true }, counts: { audit, session, auth, total: audit + session + auth }, diagnostics: { ...eventLogger.diagnostics, requestId: req.requestId } });
   } catch { res.status(503).json({ status: 'degraded', database: { status: 'unavailable', writable: false }, error: 'Logging database unavailable.', requestId: req.requestId }); }
 });
 app.post('/api/logs/diagnostics/self-test', authMiddleware, async (req, res) => {
@@ -561,6 +561,8 @@ app.get('/api/config', authMiddleware, async (req, res) => {
 app.put('/api/config/:key', authMiddleware, async (req, res) => {
   const key = String(req.params.key || '').trim();
   if (!/^[a-z][a-zA-Z0-9.-]{0,63}$/.test(key)) return res.status(400).json({ error: 'Setting key is invalid.' });
+  const editableKeys = new Set(['navigation', 'appCatalog', 'portfolioUrl', 'aiAgent', 'weatherUrl', 'newsSources']);
+  if (!editableKeys.has(key)) return res.status(403).json({ error: 'This setting cannot be changed from the application.' });
   const rawValue = req.body?.value ?? req.body;
   if (jsonSize(rawValue) > 512 * 1024) return res.status(413).json({ error: 'Setting value is too large.' });
   const value = JSON.stringify(rawValue);
@@ -623,15 +625,16 @@ app.put('/api/custom-tables', authMiddleware, async (req, res) => {
   const incomingIds = tables.map(table => String(table.id)).filter(Boolean);
   const conflicting = incomingIds.length ? await prisma.customTable.findFirst({ where: { id: { in: incomingIds }, userId: { not: req.user.id } }, select: { id: true } }) : null;
   if (conflicting) return res.status(403).json({ error: 'A custom table identifier is not owned by this account.' });
-  await prisma.customTable.deleteMany({ where: { userId: req.user.id, ...(incomingIds.length ? { id: { notIn: incomingIds } } : {}) } });
-  const saved = [];
-  for (const table of tables) {
+  const normalized = tables.map((table) => {
     const id = String(table.id || crypto.randomUUID());
     const fields = Array.isArray(table.fields) ? table.fields.slice(0, 100) : [];
     const rows = Array.isArray(table.rows) ? table.rows.slice(0, 10_000) : [];
-    const data = { name: String(table.name || 'Untitled').trim().slice(0, 100) || 'Untitled', schema: JSON.stringify(fields), rows: JSON.stringify(rows) };
-    saved.push(await prisma.customTable.upsert({ where: { id }, update: data, create: { id, userId: req.user.id, ...data } }));
-  }
+    return { id, data: { name: String(table.name || 'Untitled').trim().slice(0, 100) || 'Untitled', schema: JSON.stringify(fields), rows: JSON.stringify(rows) } };
+  });
+  const saved = await prisma.$transaction(async (tx) => {
+    await tx.customTable.deleteMany({ where: { userId: req.user.id, ...(incomingIds.length ? { id: { notIn: incomingIds } } : {}) } });
+    return Promise.all(normalized.map(({ id, data }) => tx.customTable.upsert({ where: { id }, update: data, create: { id, userId: req.user.id, ...data } })));
+  });
   await auditCrud({ action: 'update', table_name: 'custom_tables', item_id: 'bulk', details: `Saved ${saved.length} custom tables`, userId: req.user.id, req });
   res.json({ success: true, count: saved.length });
 });
@@ -932,42 +935,13 @@ app.get('/api/finance/export', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/finance/sync/bank', authMiddleware, async (req, res) => {
-  try {
-    // Simulate 10-15 realistic transactions over the last 30 days
-    const count = Math.floor(Math.random() * 6) + 10;
-    const categories = ['Food & Dining', 'Groceries', 'Transport', 'Shopping', 'Bills & Utilities', 'Entertainment'];
-    const merchants = ['Zomato', 'Swiggy', 'Blinkit', 'Zepto', 'Uber', 'Ola', 'Amazon', 'Flipkart', 'Netflix', 'Spotify', 'Jio'];
-    const methods = ['UPI (GPay/PhonePe)', 'Credit Card', 'Debit Card', 'Net Banking'];
-
-    const transactions = [];
-    for (let i = 0; i < count; i++) {
-      const isIncome = Math.random() > 0.85;
-      const amount = isIncome ? Math.floor(Math.random() * 50000) + 15000 : Math.floor(Math.random() * 2000) + 50;
-      
-      const dateObj = new Date();
-      dateObj.setDate(dateObj.getDate() - Math.floor(Math.random() * 30));
-      
-      transactions.push({
-        userId: req.user.id,
-        date: dateObj,
-        amount: amount,
-        type: isIncome ? 'income' : 'expense',
-        category: isIncome ? 'Salary / Income' : categories[Math.floor(Math.random() * categories.length)],
-        method: methods[Math.floor(Math.random() * methods.length)],
-        note: isIncome ? 'Salary Credit (Mock)' : `POS / UPI @ ${merchants[Math.floor(Math.random() * merchants.length)]}`,
-      });
-    }
-    
-    await prisma.transaction.createMany({ data: transactions });
-    res.json({
-      success: true,
-      message: 'Sync successful via mock provider',
-      imported: transactions.length
-    });
-  } catch(err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to sync Bank' });
-  }
+  res.status(501).json({
+    error: 'Bank sync is not configured.',
+    code: 'CONNECTOR_SETUP_REQUIRED',
+    setupRequired: true,
+    supportedImport: 'csv',
+    message: 'Download a transaction statement from your bank or payment app, then use CSV import. No transactions were changed.',
+  });
 });
 
 // Dynamic CRUD endpoints for collections

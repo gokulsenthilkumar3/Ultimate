@@ -332,7 +332,7 @@ function Journal() {
 }
 
 // ── Trends component ──────────────────────────────────────────────────────────
-function MoodTrends({ moodLogs, sleepLogs }) {
+function MoodTrends({ moodLogs, sleepLogs, user }) {
   const last14  = useMemo(() => getLast14Days(), []);
   const logMap  = useMemo(() => {
     const m = {};
@@ -691,7 +691,7 @@ export default function MindWellness() {
 
       {/* ── TRENDS TAB ── */}
       {activeTab === 'trends' && (
-        <MoodTrends moodLogs={moodLogs} sleepLogs={sleepLogs} />
+        <MoodTrends moodLogs={moodLogs} sleepLogs={sleepLogs} user={user} />
       )}
 
       {/* ── JOURNAL TAB ── */}

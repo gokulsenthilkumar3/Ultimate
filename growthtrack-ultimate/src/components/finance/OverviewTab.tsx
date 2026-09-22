@@ -4,7 +4,7 @@ import StatCard from '../ui/StatCard';
 import EmptyState from '../ui/EmptyState';
 
 
-export default function OverviewTab({ statCards, savingsRate, methodData, COLORS, fmtINR, currencySymbol, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, selectedCategory, onClearCategory, handleDeleteTransaction, expenses, selectedMonth, ledgerQuery, setLedgerQuery, ledgerPage, setLedgerPage }) {
+export default function OverviewTab({ statCards, savingsRate, methodData, COLORS, fmtINR, currencySymbol, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, selectedCategory, onClearCategory, handleDeleteTransaction, expenses, selectedMonth, ledgerQuery, setLedgerQuery, ledgerPage, setLedgerPage }: any) {
   const pageSize = 10;
   const pageCount = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
   const page = Math.min(ledgerPage, pageCount);

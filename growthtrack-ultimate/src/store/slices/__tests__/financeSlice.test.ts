@@ -30,7 +30,7 @@ describe('financeSlice', () => {
 
   it('addTransaction updates state', async () => {
     const slice = createFinanceSlice(set, get, null as any);
-    const mockTx = { amount: 100, category: 'Food', type: 'Expense' };
+    const mockTx = { amount: 100, category: 'Food', type: 'Expense' as const };
     
     await slice.addTransaction(mockTx);
 

@@ -37,7 +37,7 @@ const AnalyticsTab = React.memo(function AnalyticsTab({ COLORS, fmtINR, form, pi
                       <Pie data={pieData} innerRadius={65} outerRadius={90} paddingAngle={4} dataKey="value" activeIndex={activeIndex} activeShape={(props: any) => renderActiveShape(props, fmtINR)} onMouseEnter={onPieEnter} onClick={(entry: any) => onCategorySelect?.(entry?.name)}>
                         {pieData.map((_, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
                       </Pie>
-                      <Tooltip formatter={(val: number) => fmtINR(val)} contentStyle={TOOLTIP_STYLE} />
+                      <Tooltip formatter={(val: any) => fmtINR(Number(val || 0))} contentStyle={TOOLTIP_STYLE} />
                     </RePieChart>
                   </ResponsiveContainer>
                 </div>

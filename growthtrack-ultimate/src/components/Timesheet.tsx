@@ -13,6 +13,20 @@ const PROJECTS_LIST = ['General', 'Development', 'Design', 'Research', 'Meetings
 const DEFAULT_RATE = 50; // USD/hr
 const TIMESHEET_TABS = ['timer', 'log', 'analytics'].map(id => ({ id }));
 
+type TimesheetEntry = {
+  id: string | number;
+  project: string;
+  task?: string;
+  date: string;
+  seconds: number;
+  hours: number;
+  billable: boolean;
+  earnings?: number;
+  notes?: string;
+  startTime?: string | null;
+  endTime?: string | null;
+};
+
 function padTime(n) { return String(n).padStart(2, '0'); }
 function formatDuration(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -31,7 +45,7 @@ export default function Timesheet() {
   const storeAdd    = useStore(s => s.addTimesheetEntry);
   const storeDelete = useStore(s => s.deleteTimesheetEntry);
 
-  const [dbEntries, setDbEntries] = useState(null);
+  const [dbEntries, setDbEntries] = useState<TimesheetEntry[] | null>(null);
 
   const fetchEntries = useCallback(async () => {
     try {
@@ -44,7 +58,7 @@ export default function Timesheet() {
 
   const timesheetEntries = useMemo(() => dbEntries !== null ? dbEntries : storeEntries, [dbEntries, storeEntries]);
 
-  const addTimesheetEntry = async (entry) => {
+  const addTimesheetEntry = async (entry: TimesheetEntry) => {
     // Optimistic UI
     setDbEntries(prev => prev ? [entry, ...prev] : [entry, ...storeEntries]);
     try {
@@ -57,7 +71,7 @@ export default function Timesheet() {
     }
   };
 
-  const deleteTimesheetEntry = async (id) => {
+  const deleteTimesheetEntry = async (id: string | number) => {
     // Optimistic UI
     setDbEntries(prev => prev ? prev.filter(e => e.id !== id) : null);
     try {
@@ -70,13 +84,13 @@ export default function Timesheet() {
   const [tab, setTab] = useState('timer');
   const [running,   setRunning]   = useState(false);
   const [elapsed,   setElapsed]   = useState(0);
-  const [startTime, setStartTime] = useState(null);
+  const [startTime, setStartTime] = useState<string | null>(null);
   const [project,   setProject]   = useState('General');
   const [task,      setTask]       = useState('');
   const [billable,  setBillable]  = useState(true);
   const [rate,      setRate]      = useState(DEFAULT_RATE);
   const [notes,     setNotes]     = useState('');
-  const intervalRef = useRef(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Manual entry form
   const [manualForm, setManualForm] = useState({ project: 'General', task: '', date: new Date().toISOString().slice(0, 10), hours: '', minutes: '', billable: true, notes: '' });
@@ -91,9 +105,9 @@ export default function Timesheet() {
         setElapsed(e => e + 1);
       }, 1000);
     } else {
-      clearInterval(intervalRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
     }
-    return () => clearInterval(intervalRef.current);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [running]);
 
   const startTimer = () => {
@@ -168,7 +182,7 @@ export default function Timesheet() {
   }, [timesheetEntries, today, thisWeek]);
 
   const byProject = useMemo(() => {
-    const map = {};
+    const map: Record<string, number> = {};
     timesheetEntries.forEach(e => {
       if (!map[e.project]) map[e.project] = 0;
       map[e.project] += e.seconds || 0;
@@ -178,7 +192,7 @@ export default function Timesheet() {
 
   // 7-day chart
   const last7 = useMemo(() => {
-    const data = [];
+    const data: Array<{ day: string; hours: number; earnings: number }> = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const key = d.toISOString().slice(0, 10);

@@ -617,7 +617,7 @@ export default function Databases() {
     toast.info('Table deleted');
   };
 
-  const useAsCustomTable = (source) => {
+  const importAsCustomTable = (source) => {
     const rows = source.rows || [];
     const keys = [...new Set(rows.flatMap(row => Object.keys(row)))].filter(key => key !== 'id');
     const editable = { ...defaultTable(`${source.name} workspace`), fields: keys.map(key => ({ id: key, name: key.replaceAll('_', ' '), type: typeof rows.find(row => row[key] != null)?.[key] === 'number' ? 'number' : 'text', required: false })), rows: rows.map(row => ({ id: crypto.randomUUID(), ...Object.fromEntries(keys.map(key => [key, typeof row[key] === 'object' ? JSON.stringify(row[key]) : row[key]])) })) };
@@ -700,7 +700,7 @@ export default function Databases() {
             <details key={table.name} className="databases-system__table">
               <summary><span>{table.name}</span><b>{table.count}</b></summary>
               <div className="databases-system__rows" style={{ padding: '1rem' }}>
-                <button className="btn-secondary" style={{ marginBottom: '.75rem', minHeight: 36 }} onClick={() => useAsCustomTable(table)}>Use as editable table</button>
+                <button className="btn-secondary" style={{ marginBottom: '.75rem', minHeight: 36 }} onClick={() => importAsCustomTable(table)}>Use as editable table</button>
                 {table.name === 'app_settings' ? (
                   table.rows?.length ? table.rows.map((row, i) => (
                     <div className="config-row" key={row.id || i} style={{ marginBottom: '1rem' }}>

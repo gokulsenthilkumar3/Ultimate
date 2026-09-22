@@ -42,10 +42,10 @@ export function createEventLogger({ prisma, logToFile }) {
         record = await prisma.auditLog.create({ data: common });
       }
       diagnostics.writes += 1; diagnostics.lastSuccessfulEvent = { ...event, timestamp: new Date().toISOString() }; diagnostics.lastError = null;
-      try { logToFile(event.severity, `${event.category}:${event.action}`, event); } catch {}
+      try { logToFile(event.severity, `${event.category}:${event.action}`, event); } catch { /* Database logging remains authoritative. */ }
       return record?.id || true;
     } catch (error) {
-      diagnostics.failures += 1; diagnostics.lastError = String(error?.message || error); try { logToFile('error', 'logging_failure', { error: diagnostics.lastError }); } catch {} return false;
+      diagnostics.failures += 1; diagnostics.lastError = String(error?.message || error); try { logToFile('error', 'logging_failure', { error: diagnostics.lastError }); } catch { /* Avoid recursive logging failure. */ } return false;
     }
   };
   return { write, diagnostics, queueSize: () => 0 };

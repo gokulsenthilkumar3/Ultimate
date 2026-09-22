@@ -72,7 +72,6 @@ export default function Shopping() {
     const item = {
       ...form,
       id: Date.now(),
-      purchased: false,
       createdAt: new Date().toISOString().slice(0, 10),
       estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : null,
       targetPrice:   form.targetPrice   ? Number(form.targetPrice)   : null,

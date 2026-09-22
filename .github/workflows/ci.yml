@@ -2,43 +2,83 @@ name: GrowthTrack CI Pipeline
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
+    paths:
+      - "growthtrack-ultimate/**"
+      - ".github/workflows/ci.yml"
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
+    paths:
+      - "growthtrack-ultimate/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: growthtrack-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test-frontend:
+  quality:
+    name: Quality Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
-        working-directory: ./growthtrack-ultimate
+        working-directory: growthtrack-ultimate
     steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-          cache: 'npm'
-          cache-dependency-path: ./growthtrack-ultimate/package-lock.json
-      - run: npm install
-      - run: npm test
-        env:
-          VITE_API_BASE: http://localhost:3001/api
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  test-backend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./growthtrack-ultimate
-    steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
-          cache: 'npm'
-          cache-dependency-path: ./growthtrack-ultimate/package-lock.json
-      - run: npm install
-      - run: npm test
-        env:
-          NODE_ENV: test
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and component tests with coverage
+        run: npm run test:run
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Dependency security audit
+        run: npm run security:audit
+
+      - name: Validate authored GLBs
+        run: npm run validate:glb
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: growthtrack-dist
+          path: growthtrack-ultimate/dist
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload quality evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: growthtrack-quality-evidence
+          path: |
+            growthtrack-ultimate/coverage
+            growthtrack-ultimate/test-results
+            growthtrack-ultimate/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14

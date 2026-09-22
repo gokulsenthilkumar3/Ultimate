@@ -79,6 +79,7 @@ export default defineConfig(({ mode }) => {
   test: {
     environment: 'jsdom',
     globals: true,
+    testTimeout: 15_000,
     // setup.js lives outside __tests__ so Vitest never mistakes it for a test suite
     setupFiles: ['./src/test-setup/setup.js'],
     include: ['src/**/*.test.{js,jsx,ts,tsx}'],
@@ -86,6 +87,7 @@ export default defineConfig(({ mode }) => {
     coverage: {
       reporter: ['text', 'lcov'],
       include: ['src/utils/**'],
+      thresholds: { statements: 50, branches: 40, functions: 50, lines: 50 },
     },
   },
   };

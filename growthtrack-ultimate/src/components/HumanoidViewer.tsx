@@ -49,6 +49,15 @@ const Sprite3DViewer = lazy(() => import('./Sprite3DViewer'));
 const EMPTY_OBJECT = {};
 const EMPTY_ARRAY: never[] = [];
 
+const VIEW_MODES = [
+  { key: '1', id: 'SOLO' },
+  { key: '2', id: 'DUAL' },
+  { key: '3', id: 'GHOST' },
+  { key: '4', id: 'SPLIT' },
+  { key: '5', id: 'DELTA' },
+  { key: '6', id: 'TIMELINE' },
+] as const;
+
 
 // ── Metric labels
 const METRIC_LABELS: Record<string, { label: string; unit: string; icon: React.ElementType; direction: 'increase' | 'decrease' }> = {

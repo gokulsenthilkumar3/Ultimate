@@ -33,6 +33,7 @@
  */
 
 import { formatDate, formatMeasurement, formatNumber } from '../../utils/userFormatters';
+import useStore from '../../store/useStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY — get R3F canvas element

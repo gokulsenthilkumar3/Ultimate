@@ -98,7 +98,7 @@ function HumanModel({ type, morphs, depth, onSelectPart, hairPreset, wardrobe, s
         applyMorph(dict, inf, 'leg_length', morphs.leg_length || morphs.legLength || 0);
       }
 
-      if (process.env.NODE_ENV !== 'production' && node.morphTargetDictionary) {
+      if (import.meta.env.DEV && node.morphTargetDictionary) {
         const missing = MORPH_TARGET_NAMES.filter((name) => node.morphTargetDictionary[name] === undefined);
         if (missing.length > 0) {
           node.userData.missingMorphTargets = missing;
