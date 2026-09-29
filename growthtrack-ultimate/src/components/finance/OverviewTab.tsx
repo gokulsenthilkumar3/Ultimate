@@ -1,139 +1,68 @@
-import React from 'react';
-import { Wallet, Plus, Trash2, CreditCard, PiggyBank, Search, X } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Wallet, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
+import type { Budget, Transaction } from '../../schemas';
+import { featurePath } from '../../config/featureRegistry';
+import type { FinanceUser, MoneyFormatter, Subscription } from '../../utils/financeModel';
+import { CHART_COLORS, financeBreakdown, financeBudget, financeSummary, sortLedger, totalMoney } from '../../utils/financeModel';
+import { formatDate } from '../../utils/userFormatters';
 import StatCard from '../ui/StatCard';
 import EmptyState from '../ui/EmptyState';
+import TransactionEditor from './TransactionEditor';
 
-
-export default function OverviewTab({ statCards, savingsRate, methodData, COLORS, fmtINR, currencySymbol, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions, selectedCategory, onClearCategory, handleDeleteTransaction, expenses, selectedMonth, ledgerQuery, setLedgerQuery, ledgerPage, setLedgerPage }: any) {
-  const pageSize = 10;
-  const pageCount = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
-  const page = Math.min(ledgerPage, pageCount);
-  const pagedTransactions = [...filteredTransactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice((page - 1) * pageSize, page * pageSize);
-  const [year, month] = selectedMonth.split('-').map(Number);
-  const calendarOffset = new Date(year, month - 1, 1).getDay();
-  {/* ── OVERVIEW ── */}
-      return (
-    <>
-          <div className="stats-grid finance-kpi-grid mb-lg">
-            {statCards.map((c) => <StatCard key={c.label} icon={c.icon} label={c.label} value={c.value} color={c.color} />)}
-          </div>
-
-          {/* Savings Rate pill */}
-          <div className="finance-overview-savings-rate-container">
-            <div className={`finance-overview-savings-rate ${parseFloat(savingsRate) >= 20 ? 'finance-savings-good' : parseFloat(savingsRate) >= 0 ? 'finance-savings-warn' : 'finance-savings-danger'}`}>
-              <span>
-                <PiggyBank size={16} aria-hidden="true" /> Savings rate: {savingsRate}%
-                <small>{parseFloat(savingsRate) >= 30 ? 'Excellent' : parseFloat(savingsRate) >= 20 ? 'On track' : parseFloat(savingsRate) >= 0 ? 'Below 20% target' : 'Overspending'}</small>
-              </span>
-            </div>
-          </div>
-
-          <div className="dual-grid mb-lg">
-            <div className="glass-card">
-              <div className="card-header-row finance-overview-card-header">
-                <CreditCard size={18} color="var(--accent)" />
-                <span className="card-title finance-overview-card-title">Spending by Method</span>
-              </div>
-              <div className="finance-overview-spending-list">
-                {methodData.length === 0
-                  ? <EmptyState icon={CreditCard as any} title="No Spends" description="No expense data recorded for this month yet." />
-                  : methodData.map((d, i) => {
-                    const barStyle = { width: `${(d.value / expenses) * 100}%`, background: COLORS[i % COLORS.length] };
-                    return (
-                    <div key={d.name}>
-                      <div className="finance-overview-spending-item-header">
-                        <span className="finance-overview-spending-item-name">{d.name}</span>
-                        <span className="finance-overview-spending-item-value">{fmtINR(d.value)}</span>
-                      </div>
-                      <div className="finance-overview-spending-bar-container">
-                        <div className="finance-overview-spending-bar" ref={el => { if (el) { el.style.width = `${(d.value / expenses) * 100}%`; el.style.background = COLORS[i % COLORS.length]; } }} />
-                      </div>
-                    </div>
-                  )})}
-              </div>
-            </div>
-
-            <div className="glass-card">
-              <span className="card-title">New Log</span>
-              <div className="form-stack mt-sm">
-                <div className="btn-group">
-                  {['Expense', 'Income', 'Investment'].map((type) => (
-                    <button key={type} onClick={() => setForm({ ...form, type })} className={`finance-overview-type-btn ${form.type === type ? 'btn-primary' : 'btn-ghost'}`}>{type}</button>
-                  ))}
-                </div>
-                <div className="finance-overview-form-grid">
-                  <label className="finance-field"><span>Category</span><select aria-label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="form-input">
-                    <option value="">Category</option>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select></label>
-                  <label className="finance-field"><span>Payment method</span><select aria-label="Payment method" value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value })} className="form-input">
-                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select></label>
-                </div>
-                <div className="finance-overview-form-grid">
-                  <label className="finance-field"><span>Date</span><input type="date" aria-label="Date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="form-input" /></label>
-                  <label className="finance-field"><span>Amount ({currencySymbol})</span><input type="number" placeholder="0.00" aria-label="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="form-input" min="0" /></label>
-                </div>
-                <label className="finance-field"><span>Description</span><input type="text" placeholder="Optional note" aria-label="Description" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="form-input" onKeyDown={(e) => e.key === 'Enter' && handleAdd()} /></label>
-                <button onClick={handleAdd} className="btn-primary btn-full"><Plus size={16} /> Add transaction</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Day Spend Heatmap */}
-          <div className="glass-card mb-lg">
-            <span className="card-title">Spending calendar — {selectedMonth}</span>
-            <p className="finance-overview-heatmap-subtitle">A calendar view of daily expenses. Darker days indicate higher spending.</p>
-            <div className="finance-calendar-weekdays" aria-hidden="true">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => <span key={day}>{day}</span>)}</div>
-            <div className="finance-overview-heatmap-grid" role="grid" aria-label={`Daily spending for ${selectedMonth}`}>
-              {Array.from({ length: calendarOffset }, (_, index) => <span key={`blank-${index}`} className="finance-calendar-blank" aria-hidden="true" />)}
-              {dayHeatmapData.map(d => {
-                const intensity = d.amount / maxDaySpend;
-                return (
-                  <div key={d.day} role="gridcell" aria-label={`${selectedMonth}-${String(d.day).padStart(2, '0')}: ${fmtINR(d.amount)}`} title={`Day ${d.day}: ${fmtINR(d.amount)}`} className="finance-overview-heatmap-cell" ref={el => { if (el) { el.style.background = d.amount === 0 ? 'var(--bg-elevated)' : `rgba(244,63,94,${0.15 + intensity * 0.75})`; el.style.color = intensity > 0.5 ? '#fff' : 'var(--text-2)'; } }}>
-                    <strong>{d.day}</strong>{d.amount > 0 && <small>{fmtINR(d.amount)}</small>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="glass-card">
-            <div className="card-header-row finance-overview-card-header">
-              <div><span className="card-title">Transactions</span><p className="finance-ledger-count">{filteredTransactions.length} result{filteredTransactions.length === 1 ? '' : 's'} · {selectedMonth}</p></div>
-              {selectedCategory && (
-                <button type="button" className="btn-sm" onClick={onClearCategory} aria-label="Clear category filter">
-                  {selectedCategory} · Clear
-                </button>
-              )}
-            </div>
-            <div className="finance-ledger-toolbar"><label><Search size={16} /><input type="search" value={ledgerQuery} onChange={(e) => setLedgerQuery(e.target.value)} placeholder="Search category, note, method…" aria-label="Search transactions" />{ledgerQuery && <button type="button" aria-label="Clear transaction search" onClick={() => setLedgerQuery('')}><X size={15} /></button>}</label></div>
-            {filteredTransactions.length > 0 && <div className="finance-overview-ledger-head" aria-hidden="true"><span>Date</span><span>Transaction</span><span>Method</span><span>Amount</span><span /></div>}
-            <div className="item-list mt-sm">
-              {filteredTransactions.length === 0 && (
-                <EmptyState 
-                  icon={Wallet as any}
-                  title="No Transactions" 
-                  description={ledgerQuery ? `No transactions match “${ledgerQuery}”. Try another search or clear the filter.` : 'No transactions found for this month. Start by adding a new transaction.'} 
-                />
-              )}
-              {pagedTransactions.map((tx) => (
-                <div key={tx.id} className="list-row finance-overview-ledger-row">
-                  <div className="finance-overview-ledger-date">{tx.date}</div>
-                  <div>
-                    <p className="finance-overview-ledger-category">{tx.category}</p>
-                    <p className="finance-overview-ledger-note">{tx.note}</p>
-                  </div>
-                  <div className="finance-overview-ledger-method"><CreditCard size={14} /> {tx.method}</div>
-                  <div className={`finance-overview-ledger-amount ${tx.type === 'Income' ? 'finance-text-income' : tx.type === 'Expense' ? 'finance-text-expense' : 'finance-text-invest'}`}>
-                    {tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '-' : ''}{fmtINR(tx.amount)}
-                  </div>
-                  <button title="Delete transaction" aria-label="Delete transaction" onClick={() => handleDeleteTransaction(tx.id)} className="btn-icon btn-icon--danger finance-overview-ledger-delete"><Trash2 size={16} /></button>
-                </div>
-              ))}
-            </div>
-            {filteredTransactions.length > pageSize && <nav className="finance-pagination" aria-label="Transaction pages"><button disabled={page <= 1} onClick={() => setLedgerPage(page - 1)}>Previous</button><span>{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filteredTransactions.length)} of {filteredTransactions.length}</span><button disabled={page >= pageCount} onClick={() => setLedgerPage(page + 1)}>Next</button></nav>}
-          </div>
-        </>
-  );
+interface Props {
+  transactions: Transaction[]; budgets: Budget[]; subscriptions: Subscription[];
+  month: string; today: string; user: FinanceUser; currencySymbol: string; formatMoney: MoneyFormatter;
+  onSave: (transaction: Transaction, editing: boolean) => Promise<void>;
+}
+export default function OverviewTab({ transactions, budgets, subscriptions, month, today, user, currencySymbol, formatMoney, onSave }: Props) {
+  const [showEntry, setShowEntry] = useState(false);
+  const summary = financeSummary(transactions);
+  const methods = financeBreakdown(transactions, 'method'), categories = financeBreakdown(transactions, 'category');
+  const recent = sortLedger(transactions, 'date-desc').slice(0, 5);
+  const upcoming = subscriptions.filter(row => row.active !== 0 && (row.next_date || row.nextDate)).sort((a, b) => (a.next_date || a.nextDate || '').localeCompare(b.next_date || b.nextDate || '')).slice(0, 5);
+  const [year, monthNumber] = month.split('-').map(Number);
+  const offset = new Date(year, monthNumber - 1, 1).getDay();
+  const days = Array.from({ length: new Date(year, monthNumber, 0).getDate() }, (_, index) => {
+    const date = month + '-' + String(index + 1).padStart(2, '0');
+    return { date, day: index + 1, amount: totalMoney(transactions.filter(row => row.type === 'Expense' && row.date === date).map(row => row.amount)) };
+  });
+  const maximum = Math.max(1, ...days.map(row => row.amount));
+  const cards = [
+    { label: 'Net monthly balance', value: formatMoney(summary.balance), icon: Wallet, color: summary.balance >= 0 ? 'var(--success)' : 'var(--danger)' },
+    { label: 'Total income', value: formatMoney(summary.income), icon: ArrowUpRight, color: 'var(--success)' },
+    { label: 'Total expenses', value: formatMoney(summary.expenses), icon: ArrowDownRight, color: 'var(--danger)' },
+    { label: 'Invested / saved', value: formatMoney(summary.investments), icon: TrendingUp, color: 'var(--info)' },
+  ];
+  return <>
+    <div className="stats-grid finance-kpi-grid">{cards.map(card => <StatCard key={card.label} {...card} />)}</div>
+    <p className="finance-note">{summary.savingsRate === null ? 'Savings rate needs recorded income.' : 'Savings rate: ' + summary.savingsRate.toFixed(1) + '% of income after expenses.'} Totals use recorded transactions for {month}.</p>
+    <div className="finance-controls"><button type="button" className="btn-primary" onClick={() => setShowEntry(true)}>Quick transaction entry</button><Link to={featurePath('transactions')}>Open Transactions</Link></div>
+    {showEntry && <TransactionEditor {...{ today, currencySymbol, formatMoney, onSave }} onSaved={() => setShowEntry(false)} onCancel={() => setShowEntry(false)} />}
+    <div className="finance-card-grid">
+      <section className="glass-card"><div className="finance-card-heading"><h2>Spending by method</h2></div>
+        {methods.length ? methods.map((row, index) => <div key={row.name} className="finance-overview-spending-list"><div className="finance-overview-spending-item-header"><span>{row.name}</span><strong>{formatMoney(row.value)}</strong></div><div className="finance-overview-spending-bar-container"><div className="finance-overview-spending-bar" style={{ width: (summary.expenses > 0 ? row.value / summary.expenses * 100 : 0) + '%', background: CHART_COLORS[index % CHART_COLORS.length] }} /></div></div>) : <EmptyState icon="DollarSign" title="No spending recorded" description="Add an expense to see spending by payment method." />}
+      </section>
+      <section className="glass-card"><div className="finance-card-heading"><h2>Budget status</h2><Link to={featurePath('budgeting')}>Manage budgets</Link></div>
+        {budgets.length ? budgets.map(budget => {
+          const actual = categories.find(row => row.name === budget.category)?.value || 0;
+          const status = financeBudget(actual, budget.limit_amount);
+          return <div key={budget.id} className="finance-budget-row"><div className="finance-budget-header"><strong>{budget.category}</strong><span>{formatMoney(actual)} / {formatMoney(budget.limit_amount)}</span></div><p className={status.over ? 'finance-text-expense' : 'finance-note'}>{status.over ? formatMoney(-status.remaining) + ' over limit' : formatMoney(status.remaining) + ' remaining'}</p></div>;
+        }) : <p className="finance-note">No category budgets for this month.</p>}
+      </section>
+      <section className="glass-card"><div className="finance-card-heading"><h2>Recent activity</h2><Link to={featurePath('transactions')}>View all transactions</Link></div>
+        {recent.length ? <ul className="item-list">{recent.map(row => <li key={row.id}><strong>{row.category} · {formatMoney(row.amount)}</strong><p className="finance-note">{row.type} · {formatDate(row.date, user)}{row.note ? ' · ' + row.note : ''}</p></li>)}</ul> : <p className="finance-note">No transactions recorded for {month}.</p>}
+      </section>
+      <section className="glass-card"><div className="finance-card-heading"><h2>Upcoming commitments</h2><Link to={featurePath('subscriptions')}>Manage subscriptions</Link></div>
+        {upcoming.length ? <ul className="item-list">{upcoming.map(row => <li key={row.id}><strong>{row.name} · {formatMoney(row.cost)}</strong><p className="finance-note">{formatDate(row.next_date || row.nextDate || '', user)} · {(row.next_date || row.nextDate || '') < today ? 'Renewal date has passed; review this bill.' : 'Next recorded renewal'}</p></li>)}</ul> : <p className="finance-note">No renewal dates recorded.</p>}
+      </section>
+    </div>
+    <section className="glass-card"><div className="finance-card-heading"><h2>Spending calendar · {month}</h2></div><p className="finance-note">Daily expenses from recorded transactions. Darker days have higher spending.</p>
+      <div className="finance-calendar-weekdays" aria-hidden="true">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <span key={day}>{day}</span>)}</div>
+      <div className="finance-overview-heatmap-grid" role="list" aria-label={'Daily spending for ' + month}>
+        {Array.from({ length: offset }, (_, index) => <span key={'blank-' + index} className="finance-calendar-blank" aria-hidden="true" />)}
+        {days.map(row => <div key={row.date} role="listitem" className="finance-overview-heatmap-cell" aria-label={row.date + ': ' + formatMoney(row.amount)} title={row.date + ': ' + formatMoney(row.amount)} style={{ background: row.amount ? 'rgba(244,63,94,' + (0.15 + row.amount / maximum * 0.75) + ')' : 'var(--bg-elevated)' }}><strong>{row.day}</strong>{row.amount > 0 && <small>{formatMoney(row.amount)}</small>}</div>)}
+      </div>
+    </section>
+  </>;
 }

@@ -7,17 +7,28 @@ import {
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import { formatNumber } from '../utils/userFormatters';
+import useHashTab from '../hooks/useHashTab';
 
 // ── Brand config ───────────────────────────────────────────────────────────────
 const PLATFORM_CONFIG = {
   LinkedIn:  { color: '#0a66c2', bg: 'rgba(10,102,194,0.1)',   border: 'rgba(10,102,194,0.3)',  icon: '💼', placeholder: 'https://linkedin.com/in/username',   followerLabel: 'Connections',  likeLabel: 'Reactions' },
   Instagram: { color: '#e1306c', bg: 'rgba(225,48,108,0.08)',  border: 'rgba(225,48,108,0.3)',  icon: '📸', placeholder: 'https://instagram.com/username',    followerLabel: 'Followers',    likeLabel: 'Avg Likes' },
+  Facebook:  { color: '#1877f2', bg: 'rgba(24,119,242,0.08)',  border: 'rgba(24,119,242,0.3)',  icon: 'f', placeholder: 'https://facebook.com/page', followerLabel: 'Followers', likeLabel: 'Avg Reactions' },
+  X:         { color: '#d1d5db', bg: 'rgba(209,213,219,0.08)', border: 'rgba(209,213,219,0.3)', icon: '𝕏', placeholder: 'https://x.com/username', followerLabel: 'Followers', likeLabel: 'Avg Likes' },
   Twitter:   { color: '#1da1f2', bg: 'rgba(29,161,242,0.08)',  border: 'rgba(29,161,242,0.3)',  icon: '🐦', placeholder: 'https://twitter.com/username',     followerLabel: 'Followers',    likeLabel: 'Avg Likes' },
   Threads:   { color: '#f0f6fc', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.12)',icon: '🧵', placeholder: 'https://threads.net/@username',    followerLabel: 'Followers',    likeLabel: 'Avg Likes' },
   WhatsApp:  { color: '#25d366', bg: 'rgba(37,211,102,0.08)',  border: 'rgba(37,211,102,0.3)',  icon: '💬', placeholder: '+91 9876543210 or wa.me link',      followerLabel: 'Contacts',     likeLabel: 'Replies' },
   GitHub:    { color: '#f0f6fc', bg: 'rgba(240,246,252,0.06)', border: 'rgba(240,246,252,0.15)',icon: '🐱', placeholder: 'https://github.com/username',      followerLabel: 'Followers',    likeLabel: 'Stars' },
   YouTube:   { color: '#ff0000', bg: 'rgba(255,0,0,0.08)',     border: 'rgba(255,0,0,0.28)',    icon: '▶️', placeholder: 'https://youtube.com/@channel',   followerLabel: 'Subscribers',  likeLabel: 'Avg Likes' },
 };
+const CORE_PROVIDERS = ['GitHub', 'YouTube', 'Instagram', 'Facebook', 'X', 'LinkedIn'];
+const EMPTY_CORE_PROFILES = Object.fromEntries(CORE_PROVIDERS.map(provider => [provider, '']));
+function safeProfileUrl(value) {
+  try {
+    const url = new URL(value);
+    return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
+}
 
 function getBrandConfig(platform) {
   return PLATFORM_CONFIG[platform] || {
@@ -29,7 +40,7 @@ function getBrandConfig(platform) {
 
 // ── Engagement rate calculation ────────────────────────────────────────────────
 function calcEngagementRate(followers, avgLikes) {
-  if (!followers || !avgLikes || followers === 0) return null;
+  if (!Number.isFinite(Number(followers)) || !Number.isFinite(Number(avgLikes)) || Number(followers) <= 0) return null;
   return ((avgLikes / followers) * 100).toFixed(2);
 }
 
@@ -51,6 +62,7 @@ function Sparkline({ data = [] }) {
 function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatform, onCopy, onDelete, isDefault, onChange, user }) {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const isLinked = !!link?.trim();
+  const externalUrl = safeProfileUrl(link);
 
   const er = analyticsData
     ? calcEngagementRate(analyticsData.followers, analyticsData.avgLikes)
@@ -66,9 +78,9 @@ function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatf
           </div>
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: 800, color: isLinked ? cfg.color : 'var(--text-1)', margin: 0 }}>{platform}</h3>
-            {isLinked && er && (
+            {isLinked && er !== null && (
               <span className="engagement-rate-pill" style={{ fontSize: '0.6rem', padding: '2px 8px', marginTop: '3px', display: 'inline-flex' }}>
-                <Activity size={9} /> {er}% ER
+                <Activity size={9} /> {er}% entered likes / followers
               </span>
             )}
           </div>
@@ -107,8 +119,8 @@ function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatf
       {/* Quick actions */}
       {isLinked && (
         <div style={{ padding: '0.75rem 1.5rem', display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {link.startsWith('http') && (
-            <a href={link} target="_blank" rel="noopener noreferrer"
+          {externalUrl && (
+            <a href={externalUrl} target="_blank" rel="noopener noreferrer"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', color: cfg.color, fontWeight: 700, textDecoration: 'none' }}>
               <ExternalLink size={12} /> Open
             </a>
@@ -131,7 +143,7 @@ function PlatformAnalyticsCard({ platform, cfg, link, analyticsData, copiedPlatf
           ].map(({ icon: Icon, label, value, color }) => (
             <div key={label} className="platform-analytics-card__metric">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '4px' }}>
-                <Icon size={12} color={color} />
+                {React.createElement(Icon, { size: 12, color })}
               </div>
               <div className="platform-analytics-card__metric-value" style={{ color }}>{value || '—'}</div>
               <div className="platform-analytics-card__metric-label">{label}</div>
@@ -148,26 +160,22 @@ export default function SocialMedia() {
   const user = useStore(state => state.user);
   const socialProfiles = useStore(state => state.socialProfiles ?? EMPTY_LIST);
   const fetchInitialData = useStore(state => state.fetchInitialData);
-  const [socialData, setSocialData] = useState(() => socialProfiles.length
-    ? Object.fromEntries(socialProfiles.map(profile => [profile.provider, profile.profileUrl || '']))
-    : user?.socialMedia || { LinkedIn: '', Instagram: '', Twitter: '', Threads: '', WhatsApp: '', GitHub: '', YouTube: '' });
+  const [socialData, setSocialData] = useState(() => ({ ...EMPTY_CORE_PROFILES,
+    ...(user?.socialMedia || {}), ...Object.fromEntries(socialProfiles.map(profile => [profile.provider, profile.profileUrl || ''])) }));
   const [analyticsData, setAnalyticsData] = useState(() => socialProfiles.length
-    ? Object.fromEntries(socialProfiles.map(profile => [profile.provider, { followers: profile.followers || 0, avgLikes: profile.avgLikes || 0, avgViews: profile.avgViews || 0 }]))
+    ? Object.fromEntries(socialProfiles.map(profile => [profile.provider, { followers: profile.followers, avgLikes: profile.avgLikes, avgViews: profile.avgViews }]))
     : user?.socialAnalytics || {}); // { platform: { followers, avgLikes, avgViews } }
   const [isSaving, setIsSaving] = useState(false);
   const [newPlatform, setNewPlatform] = useState('');
+  const [removedProfiles, setRemovedProfiles] = useState([]);
   const [copiedPlatform, setCopiedPlatform] = useState(null);
-  const [activeTab, setActiveTab] = useState('profiles');
+  const [activeTab, setActiveTab] = useHashTab(['profiles', 'analytics', 'connections'], 'profiles');
   const toast = useToast();
 
   const validateUrls = () => {
     for (const [platform, link] of Object.entries(socialData)) {
       if (!link?.trim()) continue;
-      const looksLikeUrl = link.includes('.') || link.startsWith('http');
-      if (looksLikeUrl) {
-        try { new URL(link.startsWith('http') ? link : 'https://' + link); }
-        catch { return platform; }
-      }
+      if (!safeProfileUrl(link)) return platform;
     }
     return null;
   };
@@ -179,11 +187,14 @@ export default function SocialMedia() {
     try {
       const rows = Object.entries(socialData).map(([provider, profileUrl]) => ({
         provider, profileUrl, ...(analyticsData[provider] || {}), enabled: Boolean(profileUrl),
+        expectedUpdatedAt: socialProfiles.find(profile => profile.provider === provider)?.updatedAt ?? null,
       }));
-      await apiSync('/social-profiles', 'PUT', rows);
-      toast.success('Social graph synchronized.');
-      fetchInitialData();
-    } catch { toast.error('Failed to sync social media data.'); }
+      const saved = await apiSync('/social-profiles', 'PUT', { rows, removed: removedProfiles });
+      if (!Array.isArray(saved) || saved.length !== rows.length) throw new Error('The server did not acknowledge all profiles.');
+      setRemovedProfiles([]);
+      toast.success('Manual social profiles and figures saved. Provider accounts were not connected.');
+      await Promise.resolve(fetchInitialData()).catch(() => toast.warning('Saved, but refreshing profiles failed. Reload before editing again.'));
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save social records.'); }
     setIsSaving(false);
   };
 
@@ -199,7 +210,7 @@ export default function SocialMedia() {
   const handleAnalyticsChange = (platform, field, value) => {
     setAnalyticsData(prev => ({
       ...prev,
-      [platform]: { ...(prev[platform] || {}), [field]: parseInt(value) || 0 }
+      [platform]: { ...(prev[platform] || {}), [field]: value === '' ? null : Number(value) }
     }));
   };
 
@@ -228,11 +239,11 @@ export default function SocialMedia() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Digital Identity</p>
-          <h2 className="text-display" style={{ fontSize: '2.2rem', marginBottom: '0.35rem' }}>Social Graph Sync</h2>
-          <p className="text-secondary">Manage and track your presence across the digital ecosystem.</p>
+          <h2 className="text-display" style={{ fontSize: '2.2rem', marginBottom: '0.35rem' }}>Social profiles</h2>
+          <p className="text-secondary">Saved links and manually entered figures. Automatic provider analytics are not connected.</p>
         </div>
         <button onClick={handleSave} disabled={isSaving} className="btn-primary">
-          <Save size={16} /> {isSaving ? 'SYNCING…' : 'SYNC & SAVE'}
+          <Save size={16} /> {isSaving ? 'SAVING…' : 'SAVE MANUAL RECORDS'}
         </button>
       </div>
 
@@ -240,14 +251,14 @@ export default function SocialMedia() {
       {linkedPlatforms.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
           {[
-            { label: 'Linked Platforms', value: linkedPlatforms.length, icon: Globe, color: 'var(--accent)' },
-            { label: 'Avg Engagement Rate', value: avgER ? `${avgER}%` : '—', icon: TrendingUp, color: '#22c55e' },
-            { label: 'Total Followers', value: formatNumber(Object.values(analyticsData).reduce((a, d) => a + (d?.followers || 0), 0), user, { maximumFractionDigits: 0 }), icon: Users, color: '#6366f1' },
+            { label: 'Saved profile links', value: linkedPlatforms.length, icon: Globe, color: 'var(--accent)' },
+            { label: 'Entered likes / followers', value: avgER ? `${avgER}%` : '—', icon: TrendingUp, color: '#22c55e' },
+            { label: 'Entered followers', value: formatNumber(Object.values(analyticsData).reduce((a, d) => a + (Number(d?.followers) || 0), 0), user, { maximumFractionDigits: 0 }), icon: Users, color: '#6366f1' },
           ].map(({ label, value, icon: Icon, color }) => (
             <div key={label} className="glass-card card-shine-wrap" style={{ padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <span className="label-caps">{label}</span>
-                <Icon size={16} color={color} />
+                {React.createElement(Icon, { size: 16, color })}
               </div>
               <div style={{ fontSize: '1.5rem', fontWeight: 900, color, fontFamily: 'var(--font-display)', marginTop: '0.4rem', lineHeight: 1 }}>{value}</div>
             </div>
@@ -256,9 +267,9 @@ export default function SocialMedia() {
       )}
 
       {/* Tab selector */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem' }}>
-        {['profiles', 'analytics'].map(tab => (
-          <button key={tab} className={`btn-sm${activeTab === tab ? ' active' : ''}`}
+      <div role="tablist" aria-label="Social views" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem' }}>
+        {['profiles', 'analytics', 'connections'].map(tab => (
+          <button key={tab} role="tab" aria-selected={activeTab === tab} className={`btn-sm${activeTab === tab ? ' active' : ''}`}
             onClick={() => setActiveTab(tab)} style={{ textTransform: 'capitalize', padding: '0.5rem 1.25rem' }}>
             {tab}
           </button>
@@ -268,7 +279,7 @@ export default function SocialMedia() {
       {/* Connected strip */}
       {linkedPlatforms.length > 0 && activeTab === 'profiles' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem', padding: '0.85rem 1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '14px', border: '1px solid var(--border)' }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 700, alignSelf: 'center', marginRight: '4px' }}>LINKED:</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 700, alignSelf: 'center', marginRight: '4px' }}>SAVED LINKS:</span>
           {linkedPlatforms.map(([platform]) => {
             const cfg = getBrandConfig(platform);
             return (
@@ -295,7 +306,11 @@ export default function SocialMedia() {
                 analyticsData={analyticsData[platform]}
                 copiedPlatform={copiedPlatform}
                 onCopy={handleCopy}
-                onDelete={() => setSocialData(prev => { const n = { ...prev }; delete n[platform]; return n; })}
+                onDelete={() => {
+                  const existing = socialProfiles.find(profile => profile.provider === platform);
+                  if (existing) setRemovedProfiles(previous => [...previous.filter(row => row.provider !== platform), { provider: platform, expectedUpdatedAt: existing.updatedAt }]);
+                  setSocialData(prev => { const next = { ...prev }; delete next[platform]; return next; });
+                }}
                 isDefault={isDefault}
                 user={user}
                 onChange={val => setSocialData(prev => ({ ...prev, [platform]: val }))}
@@ -362,7 +377,7 @@ export default function SocialMedia() {
                   ].map(({ key, label, icon: Icon, color }) => (
                     <div key={key}>
                       <label className="label-caps" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
-                        <Icon size={10} color={color} /> {label}
+                        {React.createElement(Icon, { size: 10, color })} {label}
                       </label>
                       <input
                         type="number" min="0" placeholder="0"
@@ -373,13 +388,11 @@ export default function SocialMedia() {
                       />
                     </div>
                   ))}
-                  {er && (
+                  {er !== null && (
                     <div style={{ marginTop: '0.25rem', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: `${erColor}10`, border: `1px solid ${erColor}30` }}>
-                      <span className="label-caps" style={{ display: 'block', marginBottom: '4px' }}>Engagement Rate</span>
+                      <span className="label-caps" style={{ display: 'block', marginBottom: '4px' }}>Entered likes / followers</span>
                       <span style={{ fontSize: '1.4rem', fontWeight: 900, color: erColor, fontFamily: 'var(--font-display)' }}>{er}%</span>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginLeft: '6px' }}>
-                        {parseFloat(er) >= 3 ? '✓ Excellent' : parseFloat(er) >= 1 ? '~ Good' : '↓ Needs work'}
-                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginLeft: '6px' }}>Calculated only from your manual figures, not provider-verified reach.</span>
                     </div>
                   )}
                 </div>
@@ -389,12 +402,17 @@ export default function SocialMedia() {
           {linkedPlatforms.length === 0 && (
             <div style={{ gridColumn: '1/-1', padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>
               <Globe size={48} style={{ margin: '0 auto 1rem', display: 'block', opacity: 0.2 }} />
-              <p style={{ fontWeight: 700, color: 'var(--text-2)', marginBottom: '4px' }}>No linked platforms</p>
+              <p style={{ fontWeight: 700, color: 'var(--text-2)', marginBottom: '4px' }}>No saved profile links</p>
               <p style={{ fontSize: '0.82rem' }}>Add your profile URLs in the Profiles tab first.</p>
             </div>
           )}
         </div>
       )}
+      {activeTab === 'connections' && <section className="glass-card" aria-label="Social provider connections" style={{ padding: '1.5rem' }}>
+        <h3>Provider connections</h3>
+        <p>Automatic reads require each provider’s authorized API access, credentials, and capability review. No provider is connected by saving a profile link.</p>
+        <ul>{CORE_PROVIDERS.map(provider => <li key={provider}>{provider}: setup required</li>)}</ul>
+      </section>}
     </div>
   );
 }

@@ -1,46 +1,55 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_OLLAMA_BASE_URL, OllamaProvider, createModelProvider, modelCapabilities, normalizeBaseUrl, selectPreferredChatModel } from './aiProviders';
+import { getAgentsReadiness, streamAgentsChat } from '../services/aiClient';
 
-describe('local AI provider boundary', () => {
-  afterEach(() => vi.restoreAllMocks());
+vi.mock('../services/aiClient', () => ({ getAgentsReadiness: vi.fn(), streamAgentsChat: vi.fn() }));
 
-  it('normalizes only HTTP endpoints and rejects unsupported providers', () => {
-    expect(normalizeBaseUrl('http://localhost:11434/')).toBe('http://localhost:11434');
-    expect(normalizeBaseUrl('file:///models')).toBe('');
+describe('same-origin AI provider compatibility', () => {
+  afterEach(() => vi.resetAllMocks());
+
+  it('ignores client URL configuration and rejects unsupported providers', () => {
+    expect(DEFAULT_OLLAMA_BASE_URL).toBe('/api/agents');
+    expect(normalizeBaseUrl('http://attacker.example')).toBe('/api/agents');
+    expect(new OllamaProvider({ baseUrl: 'http://attacker.example' }).baseUrl).toBe('/api/agents');
     expect(() => createModelProvider({ provider: 'cloud' })).toThrow('Unsupported model provider');
   });
 
-  it('connects to the standard local Ollama endpoint when no endpoint is configured', () => {
-    expect(new OllamaProvider().baseUrl).toBe(DEFAULT_OLLAMA_BASE_URL);
-    expect(new OllamaProvider({ baseUrl: '' }).baseUrl).toBe(DEFAULT_OLLAMA_BASE_URL);
+  it('discovers models only through the authenticated backend', async () => {
+    const models = [{ id: 'gemma3:1b', capabilities: { text: true } }];
+    getAgentsReadiness.mockResolvedValue({ models, ready: true });
+    const controller = new AbortController();
+    expect(await new OllamaProvider().listModels({ signal: controller.signal })).toEqual(models);
+    expect(getAgentsReadiness).toHaveBeenCalledWith({ signal: controller.signal });
   });
 
-  it('discovers installed models and exposes inferred capabilities', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ models: [{ name: 'gemma4:e4b', size: 42, modified_at: '2026-01-01' }] }) }));
-    const provider = new OllamaProvider({ baseUrl: 'http://localhost:11434' });
-    const models = await provider.listModels();
-    expect(models[0]).toMatchObject({ id: 'gemma4:e4b', provider: 'ollama-local', size: 42 });
-    expect(models[0].capabilities).toMatchObject({ text: true, vision: true, tools: true });
+  it('preserves false readiness for empty model lists', async () => {
+    getAgentsReadiness.mockResolvedValue({ models: [], modelCount: 0, ready: false, available: false });
+    expect(await new OllamaProvider().availability()).toMatchObject({ available: false, modelCount: 0 });
   });
 
-  it('returns a stable unavailable state instead of throwing from availability', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-    const status = await new OllamaProvider({ baseUrl: 'http://localhost:11434' }).availability();
-    expect(status).toMatchObject({ available: false, modelCount: 0, reason: 'offline' });
+  it('reports unavailable status and propagates caller cancellation', async () => {
+    getAgentsReadiness.mockRejectedValue(new Error('offline'));
+    expect(await new OllamaProvider().availability()).toMatchObject({ available: false, ready: false, reason: 'offline' });
+    const controller = new AbortController();
+    controller.abort();
+    await expect(new OllamaProvider().availability({ signal: controller.signal })).rejects.toThrow('offline');
   });
 
-  it('validates prompts and returns normalized chat output', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ response: 'Ready', model: 'gemma3', done: true }) }));
-    const provider = new OllamaProvider({ baseUrl: 'http://localhost:11434', model: 'gemma3' });
+  it('validates prompts and forwards genuine streaming callbacks', async () => {
+    const onDelta = vi.fn();
+    streamAgentsChat.mockResolvedValue({ text: 'Ready', model: 'gemma3:1b', provider: 'ollama-local', done: true });
+    const provider = new OllamaProvider({ model: 'gemma3:1b' });
     await expect(provider.chat({ prompt: '  ' })).rejects.toThrow('A prompt is required');
-    await expect(provider.chat({ prompt: 'Plan my day' })).resolves.toEqual({ text: 'Ready', model: 'gemma3', provider: 'ollama-local', done: true });
+    expect(await provider.chat({ prompt: 'Plan today', onDelta })).toMatchObject({ text: 'Ready', done: true });
+    expect(streamAgentsChat).toHaveBeenCalledWith(expect.objectContaining({ model: 'gemma3:1b', messages: [{ role: 'user', content: 'Plan today' }], onDelta }));
   });
 
-  it('classifies embedding-only models', () => {
-    expect(modelCapabilities('embeddinggemma')).toMatchObject({ embedding: true, text: false });
+  it('classifies embeddings without claiming tool execution', () => {
+    expect(modelCapabilities('embeddinggemma')).toMatchObject({ embedding: true, text: false, tools: false });
+    expect(modelCapabilities('gemma3')).toMatchObject({ text: true, tools: false });
   });
 
-  it('selects an installed chat model and prefers configured Gemma families', () => {
+  it('selects only installed chat models and honors configured families', () => {
     const models = [
       { id: 'embeddinggemma:latest', capabilities: { text: false } },
       { id: 'llama3.2:3b', capabilities: { text: true } },

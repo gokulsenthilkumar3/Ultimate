@@ -9,7 +9,7 @@ import {
   Zap, Archive, Search
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-import { apiSync } from '../store/useStore';
+import { taskIsDone } from '../store/slices/taskSlice';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
 import { consumePendingUiAction } from '../lib/pendingUiAction';
@@ -83,6 +83,13 @@ function SubTaskRow({ sub, onToggle, onDelete }: any) {
 function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete, onSubAdd }: any) {
   const [expanded,    setExpanded]    = useState(false);
   const [subInput,    setSubInput]    = useState('');
+  const [addingSub, setAddingSub] = useState(false);
+  const addSub = async () => {
+    if (addingSub || !subInput.trim()) return;
+    setAddingSub(true);
+    try { if (await onSubAdd(task.id, subInput.trim())) setSubInput(''); }
+    finally { setAddingSub(false); }
+  };
   const today    = new Date().toISOString().slice(0, 10);
   const prio     = PMAP[normPriority(task.priority)] || PMAP.p3;
   const dm       = dueMeta(task.dueDate);
@@ -233,12 +240,8 @@ function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete
                   placeholder="+ Add sub-task…"
                   value={subInput}
                   onChange={e => setSubInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && subInput.trim()) {
-                      onSubAdd(task.id, subInput.trim());
-                      setSubInput('');
-                    }
-                  }}
+                  disabled={addingSub}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void addSub(); } }}
                   style={{
                     flex: 1, background: 'rgba(0,0,0,0.2)',
                     border: '1px solid rgba(255,255,255,0.08)',
@@ -247,7 +250,8 @@ function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete
                   }}
                 />
                 <button
-                  onClick={() => { if (subInput.trim()) { onSubAdd(task.id, subInput.trim()); setSubInput(''); } }}
+                  onClick={addSub}
+                  disabled={addingSub}
                   style={{
                     padding: '4px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)',
                     border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-2)', cursor: 'pointer',
@@ -337,34 +341,30 @@ export default function Tasks() {
   const storeReopenTask   = useStore(selectReopenTask);
   const toast             = useToast();
 
-  // DB-backed task list (overrides store snapshot when loaded)
-  const [dbTasks,   setDbTasks]   = useState<any>(null);  // null = not yet loaded
   const [syncing,   setSyncing]   = useState(false);
-
-  // Local state for tasks when not yet fetched from DB
+  const [operationError, setOperationError] = useState('');
+  const storeFetchTasks = useStore(s => s.fetchTasks);
   const storeTasks = useStore(s => s.user?.tasks);
 
   const fetchTasks = useCallback(async () => {
     setSyncing(true);
     try {
-      const rows = await apiSync('/tasks', 'GET');
-      if (Array.isArray(rows)) setDbTasks(rows);
-    } catch { /* fallback to store */ }
+      await storeFetchTasks();
+      setOperationError('');
+    } catch (error) { setOperationError(error?.message || 'Tasks could not be refreshed. Try again.'); }
     finally { setSyncing(false); }
-  }, []);
+  }, [storeFetchTasks]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
-  // Merge DB tasks + store tasks
   const allTasks = useMemo(() => {
-    if (dbTasks !== null) return dbTasks;
     const p = storeTasks?.pending   || [];
     const c = storeTasks?.completed || [];
-    return [...p, ...c.map(t => ({ ...t, status: 'done' }))];
-  }, [dbTasks, storeTasks]);
+    return [...p, ...c];
+  }, [storeTasks]);
 
-  const pending   = useMemo(() => allTasks.filter(t => t.status !== 'done'), [allTasks]);
-  const completed = useMemo(() => allTasks.filter(t => t.status === 'done'),  [allTasks]);
+  const pending   = useMemo(() => allTasks.filter(t => !taskIsDone(t)), [allTasks]);
+  const completed = useMemo(() => allTasks.filter(taskIsDone), [allTasks]);
 
   const [tab,      setTab]      = useState('pending');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'matrix'
@@ -400,6 +400,7 @@ export default function Tasks() {
   // 'N' key shortcut: open new task form when no input is focused
   useEffect(() => {
     const handleKey = (e) => {
+      if (saving) return;
       if ((e.key === 'n' || e.key === 'N') && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
         e.preventDefault();
         setShowForm(true);
@@ -408,7 +409,7 @@ export default function Tasks() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, []);
+  }, [saving]);
 
   const EMPTY_FORM = { title: '', description: '', priority: 'p3', category: 'Work', project: '', section: '', tags: '', dueDate: '', reminderAt: '', recurrence: 'none', parent_task_id: '' };
   const [form, setForm] = useState(EMPTY_FORM);
@@ -441,85 +442,52 @@ export default function Tasks() {
         return;
       }
     }
-    if (editId) {
-      // PATCH to API
-      // Optimistic update
-      setDbTasks((prev: any) => prev ? prev.map((t: any) => t.id === editId ? { ...t, ...taskForm } : t) : null);
-      try {
-        await apiSync(`/tasks/${editId}`, 'PATCH', taskForm);
-        toast.success('Task updated');
-      } catch {
-        storeUpdateTask(editId, form);
-        toast.info('Task updated on this device. We will retry sync when the connection returns.');
-      }
-    } else {
-      const payload = { ...taskForm, status: 'pending', subtasks: [], created_at: new Date().toISOString() };
-      const tempId = Date.now();
-      const newTask = { ...payload, id: tempId };
-      // Optimistic update
-      setDbTasks((prev: any) => prev ? [newTask, ...prev] : [newTask]);
-      try {
-        const created = await apiSync('/tasks', 'POST', payload);
-        if (created?.id) {
-          setDbTasks((prev: any) => prev ? prev.map((t: any) => t.id === tempId ? created : t) : null);
-        }
-        toast.success('Task added');
-      } catch {
-        // The optimistic task is already visible. Do not wait on a second API
-        // request here; that used to keep the dimmed drawer open indefinitely.
-        toast.info('Task added on this device. We will retry sync when the connection returns.');
-      }
-    }
-    setSaving(false);
-    setSaveError('');
-    resetForm();
+    try {
+      if (editId) await storeUpdateTask(editId, taskForm);
+      else await storeAddTask({ ...taskForm, status: 'pending', done: false, subtasks: [] });
+      toast.success(editId ? 'Task updated' : 'Task added');
+      resetForm();
+    } catch (error) {
+      const message = error?.message || 'Task could not be saved. Your draft is kept; try again.';
+      setSaveError(message);
+      toast.error(message);
+    } finally { setSaving(false); }
   };
 
+  const runTaskAction = useCallback(async (operation, success) => {
+    setOperationError('');
+    try { await operation(); if (success) toast.success(success); return true; }
+    catch (error) {
+      const message = error?.message || 'The task change could not be saved. Try again.';
+      setOperationError(message);
+      toast.error(message);
+      return false;
+    }
+  }, [toast]);
+
   const handleComplete = useCallback(async (id) => {
-    const ts = new Date().toISOString();
-    // Optimistic UI
-    setDbTasks((prev: any) => prev ? prev.map((t: any) => t.id === id
-        ? { ...t, status: 'done', completed_at: ts } : t) : null);
-    try {
-      await apiSync(`/tasks/${id}`, 'PATCH', { status: 'done', completed_at: ts });
-    } catch { storeCompleteTask(id); }
-    toast.success('Task completed! ✓');
-  }, [storeCompleteTask, toast]);
+    return runTaskAction(() => storeCompleteTask(id), 'Task completed! ✓');
+  }, [storeCompleteTask, runTaskAction]);
 
   const handleDelete = useCallback(async (id, bucket) => {
     const taskToRestore = allTasks.find(t => t.id === id);
-    // Optimistic UI
-    setDbTasks((prev: any) => prev ? prev.filter(t => t.id !== id) : null);
-    try {
-      await apiSync(`/tasks/${id}`, 'DELETE');
-    } catch { storeDeleteTask(id, bucket); }
+    if (!await runTaskAction(() => storeDeleteTask(id, bucket))) return false;
     
     toast.info('Task deleted', 5000, {
       action: {
         label: 'Undo',
         onClick: async () => {
           if (!taskToRestore) return;
-          try {
-            const created = await apiSync('/tasks', 'POST', taskToRestore);
-            const newTask = created?.id ? created : { ...taskToRestore, id: Date.now() };
-            setDbTasks((prev: any) => prev ? [...prev, newTask] : null);
-          } catch {
-            storeAddTask(taskToRestore);
-          }
-          toast.success('Task restored');
+          await runTaskAction(() => storeAddTask(taskToRestore), 'Task restored');
         }
       }
     });
-  }, [storeDeleteTask, toast, allTasks]);
+    return true;
+  }, [storeDeleteTask, storeAddTask, toast, allTasks, runTaskAction]);
 
   const handleReopen = useCallback(async (id) => {
-    // Optimistic UI
-    setDbTasks((prev: any) => prev ? prev.map((t: any) => t.id === id ? { ...t, status: 'pending', completed_at: null } : t) : null);
-    try {
-      await apiSync(`/tasks/${id}`, 'PATCH', { status: 'pending', completed_at: null });
-    } catch { storeReopenTask(id); }
-    toast.info('Task reopened');
-  }, [storeReopenTask, toast]);
+    return runTaskAction(() => storeReopenTask(id), 'Task reopened');
+  }, [storeReopenTask, runTaskAction]);
 
   const startEdit = (task: any) => {
     setForm({
@@ -542,35 +510,17 @@ export default function Tasks() {
 
   // ── Sub-task helpers ──
   const handleSubAdd = useCallback(async (taskId, title) => {
-    const task = allTasks.find(t => t.id === taskId);
-    if (!task) return;
-    const newSub = { id: Date.now(), title, done: false };
-    const updated = { subtasks: [...(task.subtasks || []), newSub] };
-    try {
-      await apiSync(`/tasks/${taskId}`, 'PATCH', updated);
-    } catch { /* local only */ }
-    setDbTasks((prev: any) => prev
-      ? prev.map((t: any) => t.id === taskId ? { ...t, subtasks: updated.subtasks } : t)
-      : null
-    );
-    toast.success('Sub-task added');
-  }, [allTasks, toast]);
+    const newSub = { id: crypto.randomUUID(), title, done: false };
+    return runTaskAction(() => storeUpdateTask(taskId, task => ({ subtasks: [...(task.subtasks || []), newSub] })), 'Sub-task added');
+  }, [storeUpdateTask, runTaskAction]);
 
   const handleSubToggle = useCallback(async (taskId, subId) => {
-    const task = allTasks.find(t => t.id === taskId);
-    if (!task) return;
-    const newSubs = (task.subtasks || []).map(s => s.id === subId ? { ...s, done: !s.done } : s);
-    try { await apiSync(`/tasks/${taskId}`, 'PATCH', { subtasks: newSubs }); } catch { /* local */ }
-    setDbTasks((prev: any) => prev ? prev.map((t: any) => t.id === taskId ? { ...t, subtasks: newSubs } : t) : null);
-  }, [allTasks]);
+    return runTaskAction(() => storeUpdateTask(taskId, task => ({ subtasks: (task.subtasks || []).map(s => s.id === subId ? { ...s, done: !s.done } : s) })));
+  }, [storeUpdateTask, runTaskAction]);
 
   const handleSubDelete = useCallback(async (taskId, subId) => {
-    const task = allTasks.find(t => t.id === taskId);
-    if (!task) return;
-    const newSubs = (task.subtasks || []).filter(s => s.id !== subId);
-    try { await apiSync(`/tasks/${taskId}`, 'PATCH', { subtasks: newSubs }); } catch { /* local */ }
-    setDbTasks((prev: any) => prev ? prev.map((t: any) => t.id === taskId ? { ...t, subtasks: newSubs } : t) : null);
-  }, [allTasks]);
+    return runTaskAction(() => storeUpdateTask(taskId, task => ({ subtasks: (task.subtasks || []).filter(s => s.id !== subId) })));
+  }, [storeUpdateTask, runTaskAction]);
 
   const today     = new Date().toISOString().slice(0, 10);
   const overdueCt = pending.filter(t => (t.dueDate || t.due_date) && (t.dueDate || t.due_date) < today).length;
@@ -606,14 +556,15 @@ export default function Tasks() {
 
   // Bulk actions
   const handleBulkComplete = useCallback(async () => {
-    for (const id of selected) { await handleComplete(id).catch(() => {}); }
-    setSelected(new Set());
-    toast.success(`${selected.size} task(s) marked complete!`);
-  }, [selected, handleComplete, toast]);
+    const failed = new Set();
+    for (const id of selected) { if (!await handleComplete(id)) failed.add(id); }
+    setSelected(failed);
+  }, [selected, handleComplete]);
 
   const handleBulkDelete = useCallback(async () => {
-    for (const id of selected) { await handleDelete(id, 'pending').catch(() => {}); }
-    setSelected(new Set());
+    const failed = new Set();
+    for (const id of selected) { if (!await handleDelete(id, 'pending')) failed.add(id); }
+    setSelected(failed);
   }, [selected, handleDelete]);
 
   const tomorrow = new Date();
@@ -646,6 +597,7 @@ export default function Tasks() {
   // ── Render ──
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 1.5rem' }}>
+      {operationError && <p role="alert">{operationError}</p>}
       {/* Dynamic Keyframes Injection */}
       <style>{`
         @keyframes fadeIn {
@@ -709,6 +661,7 @@ export default function Tasks() {
             <RefreshCw size={14} className={syncing ? 'spin' : ''} />
           </button>
           <button
+            disabled={saving}
             onClick={() => { setShowForm(v => !v); if (editId) resetForm(); }}
             style={{ 
               padding: '10px 20px', 
@@ -757,7 +710,7 @@ export default function Tasks() {
           display: 'flex',
           justifyContent: 'flex-end',
           animation: 'fadeIn 0.25s ease'
-        }} onClick={resetForm}>
+        }} onClick={() => { if (!saving) resetForm(); }}>
           <form className="task-drawer"
             onSubmit={handleSubmit} 
             aria-busy={saving || undefined}
@@ -789,6 +742,7 @@ export default function Tasks() {
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+              {saveError && <p role="alert">{saveError}</p>}
               <div>
                 <label className="form-label" htmlFor="task-title">Title *</label>
                 <input id="task-title" type="text" placeholder="Specify task name..." value={form.title} autoFocus required
@@ -847,7 +801,7 @@ export default function Tasks() {
             </div>
             
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={resetForm} disabled={saving}>Cancel</button>
               <button type="submit" disabled={saving}
                 aria-busy={saving || undefined}
                 style={{ flex: 1, padding: '12px', borderRadius: '10px', fontSize: '0.85rem',

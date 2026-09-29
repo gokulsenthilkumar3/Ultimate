@@ -5,13 +5,17 @@ import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
-import { handleTabKeyDown } from '../hooks/useHashTab';
+import useHashTab, { handleTabKeyDown } from '../hooks/useHashTab';
+import { readDraft, saveDraft, removeDraft } from '../lib/drafts';
+import { timerSeconds } from '../lib/timer';
+import { financeToday } from '../utils/financeModel';
+import { spreadsheetCsv } from '../utils/csv';
 import { formatCurrency, formatDate, formatNumber, getCurrencySymbol, getUserLocale } from '../utils/userFormatters';
 
 const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
 const PROJECTS_LIST = ['General', 'Development', 'Design', 'Research', 'Meetings', 'Admin', 'Marketing', 'Other'];
-const DEFAULT_RATE = 50; // USD/hr
-const TIMESHEET_TABS = ['timer', 'log', 'analytics'].map(id => ({ id }));
+const DEFAULT_RATE = 0;
+const TIMESHEET_TABS = ['timer', 'sessions', 'analytics'].map(id => ({ id }));
 
 type TimesheetEntry = {
   id: string | number;
@@ -42,8 +46,8 @@ export default function Timesheet() {
   const toast = useToast();
   const user = useStore(s => s.user);
   const storeEntries = useStore(s => s.timesheetEntries) || [];
-  const storeAdd    = useStore(s => s.addTimesheetEntry);
-  const storeDelete = useStore(s => s.deleteTimesheetEntry);
+  const [loadError, setLoadError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const [dbEntries, setDbEntries] = useState<TimesheetEntry[] | null>(null);
 
@@ -51,7 +55,8 @@ export default function Timesheet() {
     try {
       const rows = await apiSync('/timesheet', 'GET');
       if (Array.isArray(rows)) setDbEntries(rows);
-    } catch {}
+      setLoadError('');
+    } catch { setLoadError('Saved sessions could not be refreshed. Previously loaded records may be incomplete.'); }
   }, []);
 
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
@@ -59,29 +64,28 @@ export default function Timesheet() {
   const timesheetEntries = useMemo(() => dbEntries !== null ? dbEntries : storeEntries, [dbEntries, storeEntries]);
 
   const addTimesheetEntry = async (entry: TimesheetEntry) => {
-    // Optimistic UI
-    setDbEntries(prev => prev ? [entry, ...prev] : [entry, ...storeEntries]);
-    try {
-      const created = await apiSync('/timesheet', 'POST', entry);
-      if (created?.id) {
-        setDbEntries(prev => prev ? prev.map(e => e.id === entry.id ? created : e) : null);
-      }
-    } catch {
-      if (typeof storeAdd === 'function') storeAdd(entry);
+    let created;
+    try { created = await apiSync('/timesheet', 'POST', { ...entry, id: String(entry.id) }); }
+    catch (error) {
+      // A write may commit before an interrupted response. Reconcile its stable
+      // ID through an owner-authorized read, never create another session.
+      const rows = await apiSync('/timesheet', 'GET').catch(() => []);
+      created = Array.isArray(rows) ? rows.find(row => String(row.id) === String(entry.id)) : null;
+      if (!created) throw error;
     }
+    if (!created?.id) throw new Error('The server did not acknowledge this session.');
+    setDbEntries(prev => [created, ...(prev || storeEntries).filter(row => String(row.id) !== String(created.id))]);
   };
 
   const deleteTimesheetEntry = async (id: string | number) => {
-    // Optimistic UI
-    setDbEntries(prev => prev ? prev.filter(e => e.id !== id) : null);
     try {
-      await apiSync(`/timesheet/${id}`, 'DELETE');
-    } catch {
-      if (typeof storeDelete === 'function') storeDelete(id);
-    }
+      const result = await apiSync(`/timesheet/${encodeURIComponent(id)}`, 'DELETE');
+      if (!result?.success || !result.count) throw new Error('Deletion was not acknowledged.');
+      setDbEntries(prev => (prev || storeEntries).filter(e => e.id !== id));
+    } catch { toast.error('Deletion failed. The saved session is unchanged.'); }
   };
 
-  const [tab, setTab] = useState('timer');
+  const [tab, setTab] = useHashTab(['timer', 'sessions', 'analytics'], 'timer');
   const [running,   setRunning]   = useState(false);
   const [elapsed,   setElapsed]   = useState(0);
   const [startTime, setStartTime] = useState<string | null>(null);
@@ -91,9 +95,42 @@ export default function Timesheet() {
   const [rate,      setRate]      = useState(DEFAULT_RATE);
   const [notes,     setNotes]     = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [runningSince, setRunningSince] = useState<number | null>(null);
+  const accumulated = useRef(0);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftMessage, setDraftMessage] = useState('Loading this device’s timer draft…');
+  const pendingEntry = useRef<TimesheetEntry | null>(null);
+  const [hasPendingSave, setHasPendingSave] = useState(false);
+  const manualId = useRef<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (!user?.id) return undefined;
+    readDraft<{ runningSince: number | null; accumulatedSeconds: number; startTime: string | null; project: string; task: string; billable: boolean; rate: number; notes: string; pendingEntry?: TimesheetEntry }>(user.id, 'timesheet-timer').then(draft => {
+      if (!alive) return;
+      if (draft) {
+        const data = draft.data;
+        accumulated.current = Math.max(0, Number(data.accumulatedSeconds) || 0);
+        const since = Number.isFinite(data.runningSince) ? data.runningSince : null;
+        setRunningSince(since); setRunning(since !== null); setStartTime(data.startTime);
+        setElapsed(timerSeconds({ accumulatedSeconds: accumulated.current, runningSince: since, startedAt: data.startTime }));
+        setProject(data.project || 'General'); setTask(data.task || ''); setBillable(Boolean(data.billable)); setRate(Math.max(0, Number(data.rate) || 0)); setNotes(data.notes || '');
+        pendingEntry.current = data.pendingEntry || null; setHasPendingSave(Boolean(data.pendingEntry));
+        setDraftMessage('Timer recovered from this device. It has not been submitted.');
+      } else setDraftMessage('Timer drafts are private to this browser and device.');
+      setDraftReady(true);
+    }).catch(() => { if (alive) { setDraftMessage('Timer draft recovery is unavailable. Keep this page open to avoid losing an unfinished session.'); setDraftReady(true); } });
+    return () => { alive = false; };
+  }, [user?.id]);
+  useEffect(() => {
+    if (!draftReady || !user?.id || (!startTime && !task && !notes)) return;
+    const timeout = setTimeout(() => { void saveDraft(user.id, 'timesheet-timer', { runningSince, accumulatedSeconds: accumulated.current, startTime, project, task, billable, rate, notes, pendingEntry: pendingEntry.current })
+      .then(() => setDraftMessage('Timer draft saved on this device. Not submitted to the server.'))
+      .catch(() => setDraftMessage('Draft could not be saved locally. Keep this page open.')); }, 200);
+    return () => clearTimeout(timeout);
+  }, [draftReady, user?.id, startTime, runningSince, project, task, billable, rate, notes, hasPendingSave]);
 
   // Manual entry form
-  const [manualForm, setManualForm] = useState({ project: 'General', task: '', date: new Date().toISOString().slice(0, 10), hours: '', minutes: '', billable: true, notes: '' });
+  const [manualForm, setManualForm] = useState({ project: 'General', task: '', date: financeToday(user), hours: '', minutes: '', billable: true, notes: '' });
   const [showManual, setShowManual] = useState(false);
   const currencySymbol = getCurrencySymbol(user);
   const money = value => formatCurrency(value, user);
@@ -102,33 +139,37 @@ export default function Timesheet() {
   useEffect(() => {
     if (running) {
       intervalRef.current = setInterval(() => {
-        setElapsed(e => e + 1);
+        setElapsed(timerSeconds({ accumulatedSeconds: accumulated.current, runningSince, startedAt: startTime }));
       }, 1000);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running]);
+  }, [running, runningSince, startTime]);
 
   const startTimer = () => {
     setStartTime(new Date().toISOString());
+    accumulated.current = 0;
+    setRunningSince(Date.now());
     setRunning(true);
     toast.info('Timer started');
   };
 
-  const pauseTimer = () => setRunning(false);
-  const resumeTimer = () => setRunning(true);
+  const pauseTimer = () => { accumulated.current = timerSeconds({ accumulatedSeconds: accumulated.current, runningSince, startedAt: startTime }); setElapsed(accumulated.current); setRunningSince(null); setRunning(false); };
+  const resumeTimer = () => { setRunningSince(Date.now()); setRunning(true); };
 
-  const stopTimer = () => {
-    if (elapsed < 10) { toast.error('Session too short (< 10 seconds)'); return; }
-    setRunning(false);
-    const totalSeconds = elapsed;
+  const stopTimer = async () => {
+    if (saving) return;
+    if (!Number.isFinite(rate) || rate < 0) { toast.error('Enter a valid non-negative hourly rate.'); return; }
+    if (timerSeconds({ accumulatedSeconds: accumulated.current, runningSince, startedAt: startTime }) < 10) { toast.error('Session too short (< 10 seconds)'); return; }
+    pauseTimer();
+    const totalSeconds = timerSeconds({ accumulatedSeconds: accumulated.current, runningSince: null, startedAt: startTime });
     const hours = totalSeconds / 3600;
     const earnings = billable ? hours * rate : 0;
-    const entry = {
-      id: Date.now(),
+    const entry = pendingEntry.current || {
+      id: crypto.randomUUID(),
       project, task: task || 'Work session',
-      date: new Date().toISOString().slice(0, 10),
+      date: financeToday(user),
       seconds: totalSeconds,
       hours: +hours.toFixed(4),
       billable,
@@ -137,35 +178,50 @@ export default function Timesheet() {
       startTime,
       endTime: new Date().toISOString(),
     };
-    addTimesheetEntry(entry);
+    pendingEntry.current = entry; setHasPendingSave(true);
+    setSaving(true);
+    try { await saveDraft(user.id, 'timesheet-timer', { runningSince: null, accumulatedSeconds: totalSeconds, startTime, project, task, billable, rate, notes, pendingEntry: entry }); }
+    catch { setDraftMessage('Local recovery is unavailable. Do not close this page before saving finishes.'); }
+    try { await addTimesheetEntry(entry); }
+    catch { toast.error('Session was not saved. Your paused timer and notes remain recoverable.'); setSaving(false); return; }
+    setSaving(false);
     toast.success(`⏱ Session saved: ${formatHours(totalSeconds)} · ${billable ? money(earnings) : 'Non-billable'}`);
     setElapsed(0); setStartTime(null); setTask(''); setNotes('');
+    pendingEntry.current = null; setHasPendingSave(false);
+    accumulated.current = 0;
+    if (user?.id) void removeDraft(user.id, 'timesheet-timer').catch(() => setDraftMessage('Session saved, but the local draft could not be removed.'));
   };
 
-  const saveManual = () => {
+  const saveManual = async () => {
+    if (saving) return;
+    if (Number(manualForm.hours) < 0 || Number(manualForm.minutes) < 0 || !Number.isFinite(Number(manualForm.hours)) || !Number.isFinite(Number(manualForm.minutes))) { toast.error('Enter valid non-negative hours and minutes.'); return; }
     const totalSeconds = (Number(manualForm.hours) || 0) * 3600 + (Number(manualForm.minutes) || 0) * 60;
     if (totalSeconds < 60) { toast.error('Duration must be at least 1 minute'); return; }
     const hours = totalSeconds / 3600;
     const earnings = manualForm.billable ? hours * rate : 0;
     const entry = {
-      id: Date.now(),
+      id: manualId.current || (manualId.current = crypto.randomUUID()),
       project: manualForm.project, task: manualForm.task || 'Manual entry',
       date: manualForm.date, seconds: totalSeconds, hours: +hours.toFixed(4),
       billable: manualForm.billable, earnings: +earnings.toFixed(2),
       notes: manualForm.notes, startTime: null, endTime: null,
     };
-    addTimesheetEntry(entry);
+    setSaving(true);
+    try { await addTimesheetEntry(entry); }
+    catch { toast.error('Entry was not saved. Your form remains open for retry.'); setSaving(false); return; }
+    setSaving(false);
     toast.success('Manual entry saved');
-    setManualForm({ project: 'General', task: '', date: new Date().toISOString().slice(0, 10), hours: '', minutes: '', billable: true, notes: '' });
+    manualId.current = null;
+    setManualForm({ project: 'General', task: '', date: financeToday(user), hours: '', minutes: '', billable: true, notes: '' });
     setShowManual(false);
   };
 
   // Analytics
-  const today = new Date().toISOString().slice(0, 10);
+  const today = financeToday(user);
   const thisWeek = useMemo(() => {
     const d = new Date(); d.setDate(d.getDate() - d.getDay());
-    return d.toISOString().slice(0, 10);
-  }, []);
+    return financeToday(user, d);
+  }, [user]);
 
   const stats = useMemo(() => {
     const all = timesheetEntries;
@@ -195,7 +251,7 @@ export default function Timesheet() {
     const data: Array<{ day: string; hours: number; earnings: number }> = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = financeToday(user, d);
       const dayEntries = timesheetEntries.filter(e => e.date === key);
       const hours = dayEntries.reduce((s, e) => s + (e.seconds || 0), 0) / 3600;
       const earnings = dayEntries.filter(e => e.billable).reduce((s, e) => s + (e.earnings || 0), 0);
@@ -205,14 +261,12 @@ export default function Timesheet() {
   }, [timesheetEntries, user]);
 
   const exportCSV = useCallback(() => {
-    const headers = 'Date,Project,Task,Hours,Billable,Earnings,Notes';
-    const rows = timesheetEntries.map(e => [e.date, e.project, e.task || '', e.hours, e.billable ? 'Yes' : 'No', e.earnings || 0, e.notes || ''].map(v => JSON.stringify(v)).join(','));
-    const csv = [headers, ...rows].join('\n');
+    const csv = spreadsheetCsv(['Date', 'Project', 'Task', 'Hours', 'Billable', 'Earnings', 'Notes'], timesheetEntries.map(e => [e.date, e.project, e.task || '', e.hours, e.billable ? 'Yes' : 'No', e.earnings || 0, e.notes || '']));
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a = document.createElement('a'); a.href = url; a.download = `timesheet-${today}.csv`; a.click();
     URL.revokeObjectURL(url);
     toast.success('Timesheet exported');
-  }, [timesheetEntries, today]);
+  }, [timesheetEntries, today, toast]);
 
   const recentEntries = useMemo(() => [...timesheetEntries].sort((a, b) => (b.date || '').localeCompare(a.date || '')), [timesheetEntries]);
 
@@ -231,7 +285,7 @@ export default function Timesheet() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Productivity</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Timesheet</h2>
+          <h1 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Timesheet</h1>
           <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Time tracking · Billable hours · Earnings</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -241,6 +295,8 @@ export default function Timesheet() {
         </div>
       </div>
 
+      {loadError && <p role="alert">{loadError} <button type="button" onClick={fetchEntries}>Retry load</button></p>}
+      <p role="status">{saving ? 'Waiting for server acknowledgment…' : draftMessage}</p>
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
         {[
@@ -282,23 +338,23 @@ export default function Timesheet() {
             {/* Controls */}
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
               {!running && elapsed === 0 && (
-                <button onClick={startTimer} style={{ padding: '0.75rem 2rem', borderRadius: '12px', background: '#10b981', border: 'none', color: '#fff', fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button disabled={!draftReady || saving} onClick={startTimer} style={{ padding: '0.75rem 2rem', borderRadius: '12px', background: '#10b981', border: 'none', color: '#fff', fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Play size={20} /> START
                 </button>
               )}
               {running && (
-                <button onClick={pauseTimer} style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', background: '#f59e0b', border: 'none', color: '#000', fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button disabled={saving} onClick={pauseTimer} style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', background: '#f59e0b', border: 'none', color: '#000', fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Pause size={18} /> PAUSE
                 </button>
               )}
               {!running && elapsed > 0 && (
-                <button onClick={resumeTimer} style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', background: '#10b981', border: 'none', color: '#fff', fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button disabled={saving || hasPendingSave} onClick={resumeTimer} style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', background: '#10b981', border: 'none', color: '#fff', fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Play size={18} /> RESUME
                 </button>
               )}
               {elapsed > 0 && (
-                <button onClick={stopTimer} style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', background: '#6366f1', border: 'none', color: '#fff', fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Square size={18} /> STOP & SAVE
+                <button disabled={saving} onClick={stopTimer} style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', background: '#6366f1', border: 'none', color: '#fff', fontWeight: 900, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Square size={18} /> {saving ? 'SAVING…' : hasPendingSave ? 'RETRY SAVE' : 'STOP & SAVE'}
                 </button>
               )}
             </div>
@@ -397,8 +453,8 @@ export default function Timesheet() {
                 <input aria-label="Notes" placeholder="Notes" value={manualForm.notes} onChange={e => setManualForm(f => ({ ...f, notes: e.target.value }))} className="form-input" />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                <button onClick={() => setShowManual(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-                <button onClick={saveManual} className="btn-primary">Save</button>
+                <button disabled={saving} onClick={() => { setShowManual(false); manualId.current = null; }} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+                <button disabled={saving} onClick={saveManual} className="btn-primary">{saving ? 'Saving…' : 'Save'}</button>
               </div>
             </div>
           )}
@@ -406,8 +462,8 @@ export default function Timesheet() {
       )}
 
       {/* Log tab */}
-      {tab === 'log' && (
-        <div id="timesheet-panel-log" role="tabpanel" aria-labelledby="timesheet-tab-log" className="glass-card" style={{ overflowX: 'auto' }}>
+      {tab === 'sessions' && (
+        <div id="timesheet-panel-sessions" role="tabpanel" aria-labelledby="timesheet-tab-sessions" className="glass-card" style={{ overflowX: 'auto' }}>
           {recentEntries.length === 0 ? (
             <EmptyState icon={Clock} title="No Entries" description="Start the timer to log your first session." />
           ) : (<>

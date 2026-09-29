@@ -1,19 +1,16 @@
-import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   Film, Tv, Star, Plus, Trash2, Search, ChevronLeft, ChevronRight,
-  X, Filter, BarChart2, Clock, Trophy, SortAsc, SortDesc, Eye, RefreshCw, Key
+  X, Filter, BarChart2, Clock, Trophy, SortAsc, SortDesc, Eye
 } from 'lucide-react';
 
 import useStore, {
   selectEntertainment,
   selectAddMediaItem,
   selectDeleteMediaItem,
-  selectUpdateMediaProgress,
 } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
-import { formatDateTime } from '../utils/userFormatters';
 
 const TYPES    = ['Anime', 'Series', 'Movie', 'Documentary'];
 const STATUSES = ['Watching', 'Plan to Watch', 'Completed', 'Dropped'];
@@ -33,10 +30,11 @@ const OTT_PROVIDERS = [
   { name: 'Apple TV+',       color: '#f5f5f7', icon: '🍎' },
   { name: 'JioCinema',       color: '#003bce', icon: '🎭' },
 ];
-const EMPTY_FORM = { title: '', type: 'Anime', season: 1, episode: 1, total_episodes: '', rating: 7.0, status: 'Watching' };
+const EMPTY_FORM = { title: '', type: 'Anime', season: 1, episode: 0, total_episodes: '', rating: '', status: 'Plan to Watch' };
 
 // ── RatingDisplay ─────────────────────────────────────────────────────────────
 function RatingDisplay({ value }) {
+  if (value == null || value === '' || !Number.isFinite(Number(value))) return <span>Unrated</span>;
   const num = typeof value === 'number' && !isNaN(value) ? value : 0;
   const filled = Math.round(num);
   return (
@@ -111,6 +109,13 @@ function HorizontalCarousel({ items, onDelete, onProgress }) {
 
 // ── Media Card ────────────────────────────────────────────────────────────────
 function MediaCard({ item, onDelete, onProgress }) {
+  const [draft, setDraft] = useState(() => ({ title: item.title || '', type: item.type || 'Series', season: item.season ?? 1, episode: item.episode ?? 0, total_episodes: item.total_episodes ?? '', rating: item.rating ?? '', status: item.status || 'Plan to Watch' }));
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    try { await onProgress(item.id, draft); } finally { setSaving(false); }
+  };
   const totalEps   = parseInt(item.total_episodes) || 0;
   const curEp      = parseInt(item.episode) || 0;
   const epProgress = totalEps > 0 ? Math.min(100, Math.round((curEp / totalEps) * 100))
@@ -133,25 +138,28 @@ function MediaCard({ item, onDelete, onProgress }) {
               </span>
               <h4 className="media-card__title" style={{ marginTop: '6px', maxWidth: '190px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</h4>
             </div>
-            <button onClick={() => onDelete(item.id, item.title)} className="btn-icon hover-text-danger" style={{ color: 'var(--text-3)', flexShrink: 0 }} aria-label="Delete">
+            <button disabled={saving} onClick={() => onDelete(item.id, item.title)} className="btn-icon hover-text-danger" style={{ color: 'var(--text-3)', flexShrink: 0 }} aria-label={`Delete ${item.title}`}>
               <Trash2 size={14} />
             </button>
           </div>
 
-          {/* Season/Ep/Total */}
+          <fieldset disabled={saving} style={{ border: 0, padding: 0, margin: 0 }}>
+          <input aria-label={`Title for ${item.title}`} value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} className="form-input" />
+          <select aria-label={`Type for ${item.title}`} value={draft.type} onChange={e => setDraft(d => ({ ...d, type: e.target.value }))} className="form-input">{TYPES.map(type => <option key={type}>{type}</option>)}</select>
+          {/* Episodes watched, not an invented current-episode number. */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
             {[{ label: 'S', field: 'season' }, { label: 'Ep', field: 'episode' }].map(({ label, field }) => (
               <div key={field} style={{ flex: 1 }}>
                 <p className="label-caps" style={{ marginBottom: '3px', fontSize: '0.6rem' }}>{label}</p>
-                <input type="number" value={item[field]}
-                  onChange={e => { const v = parseInt(e.target.value); if (v >= 1) onProgress(item.id, field, v); }}
-                  className="form-input" style={{ padding: '0.35rem', fontSize: '0.85rem', textAlign: 'center' }} min="1" />
+                <input type="number" aria-label={`${field === 'episode' ? 'Episodes watched' : 'Season'} for ${item.title}`} value={draft[field]}
+                  onChange={e => setDraft(d => ({ ...d, [field]: e.target.value }))}
+                  className="form-input" style={{ padding: '0.35rem', fontSize: '0.85rem', textAlign: 'center' }} min={field === 'episode' ? 0 : 1} step="1" />
               </div>
             ))}
             <div style={{ flex: 1 }}>
               <p className="label-caps" style={{ marginBottom: '3px', fontSize: '0.6rem' }}>Total</p>
-              <input type="number" value={item.total_episodes || ''}
-                onChange={e => onProgress(item.id, 'total_episodes', parseInt(e.target.value) || 0)}
+              <input type="number" aria-label={`Total episodes for ${item.title}`} value={draft.total_episodes}
+                onChange={e => setDraft(d => ({ ...d, total_episodes: e.target.value }))}
                 className="form-input" style={{ padding: '0.35rem', fontSize: '0.85rem', textAlign: 'center' }} min="0" placeholder="?" />
             </div>
           </div>
@@ -173,23 +181,25 @@ function MediaCard({ item, onDelete, onProgress }) {
           <div style={{ marginBottom: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
               <p className="label-caps" style={{ fontSize: '0.6rem' }}>Rating</p>
-              <RatingDisplay value={parseFloat(item.rating) || 0} />
+              <RatingDisplay value={item.rating} />
             </div>
-            <input type="range" min="0" max="10" step="0.5"
-              value={parseFloat(item.rating) || 0}
-              onChange={e => onProgress(item.id, 'rating', parseFloat(e.target.value))}
+            <input type="number" aria-label={`Rating for ${item.title}`} min="0" max="10" step="0.5" placeholder="Unrated"
+              value={draft.rating}
+              onChange={e => setDraft(d => ({ ...d, rating: e.target.value }))}
               style={{ width: '100%', accentColor: '#e5a50a', cursor: 'pointer' }} />
           </div>
 
           {/* Status selector */}
           <div className="media-card__footer">
-            <select value={item.status}
-              onChange={e => onProgress(item.id, 'status', e.target.value)}
+            <select aria-label={`Status for ${item.title}`} value={draft.status}
+              onChange={e => setDraft(d => ({ ...d, status: e.target.value }))}
               className="form-input"
               style={{ width: '100%', padding: '5px 8px', fontSize: '0.75rem', borderColor: STATUS_COLOR[item.status], color: STATUS_COLOR[item.status], fontWeight: 700, background: `${STATUS_COLOR[item.status]}10` }}>
               {STATUSES.map(s => <option key={s} value={s} style={{ color: 'var(--text-1)', background: 'var(--bg-surface)', fontWeight: 500 }}>{s}</option>)}
             </select>
           </div>
+          <button className="btn-primary" onClick={save}>{saving ? 'Saving…' : 'Save progress'}</button>
+          </fieldset>
         </div>
 
         {/* Progress stripe at bottom */}
@@ -204,85 +214,25 @@ function MediaCard({ item, onDelete, onProgress }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function Entertainment() {
-  const user                = useStore(s => s.user);
   const { media }           = useStore(selectEntertainment);
   const addMediaItem        = useStore(selectAddMediaItem);
   const deleteMediaItem     = useStore(selectDeleteMediaItem);
-  const updateMediaProgress = useStore(selectUpdateMediaProgress);
-  const entertainmentSync   = useStore(s => s.entertainmentSync) || { otts: ['Netflix'] };
+  const updateMediaItem = useStore(s => s.updateMediaItem);
+  const entertainmentSync = useStore(s => s.wellnessData?.entertainment) || {};
   const setEntertainmentSync = useStore(s => s.setEntertainmentSync);
   const toast = useToast();
 
-  // ── Trakt.tv state (stored in localStorage for persistence) ──────────
-  const [traktClientId, setTraktClientId] = useState(
-    () => safeLocalStorage.getItem('gt_trakt_client_id') || ''
-  );
-  const [traktUsername, setTraktUsername] = useState(
-    () => safeLocalStorage.getItem('gt_trakt_username') || ''
-  );
-  const [traktSyncing, setTraktSyncing] = useState(false);
-  const [traktLastSync, setTraktLastSync] = useState(
-    () => safeLocalStorage.getItem('gt_trakt_last_sync') || null
-  );
-
-  const saveTraktConfig = () => {
-    safeLocalStorage.setItem('gt_trakt_client_id', traktClientId);
-    safeLocalStorage.setItem('gt_trakt_username', traktUsername);
-    toast.success('Trakt.tv credentials saved!');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const createId = useRef(null);
+  const perform = async (operation) => {
+    if (pending.current) return false;
+    pending.current = true; setBusy(true); setError('');
+    try { await operation(); return true; }
+    catch (failure) { const message = failure.message || 'Save failed. Try again.'; setError(message); toast.error(message); return false; }
+    finally { pending.current = false; setBusy(false); }
   };
-
-  const syncTrakt = async () => {
-    if (!traktClientId || !traktUsername) {
-      toast.error('Enter your Trakt Client ID and username first.');
-      return;
-    }
-    setTraktSyncing(true);
-    try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'trakt-api-version': '2',
-        'trakt-api-key': traktClientId,
-      };
-      const [moviesRes, showsRes] = await Promise.all([
-        fetch(`https://api.trakt.tv/users/${traktUsername}/watched/movies?limit=50`, { headers }),
-        fetch(`https://api.trakt.tv/users/${traktUsername}/watched/shows?limit=50`, { headers }),
-      ]);
-      if (!moviesRes.ok || !showsRes.ok) throw new Error('Trakt API request failed. Check your Client ID and username.');
-
-      const [movies, shows] = await Promise.all([moviesRes.json(), showsRes.json()]);
-      const existingTitles = new Set((media || []).map(m => m.title?.toLowerCase()));
-
-      let added = 0;
-      movies.forEach(entry => {
-        const title = entry.movie?.title;
-        if (title && !existingTitles.has(title.toLowerCase())) {
-          addMediaItem({ title, type: 'Movie', status: 'Completed', rating: 7.0, season: 1, episode: 1, total_episodes: 1 });
-          existingTitles.add(title.toLowerCase());
-          added++;
-        }
-      });
-      shows.forEach(entry => {
-        const title = entry.show?.title;
-        if (title && !existingTitles.has(title.toLowerCase())) {
-          const seasons = entry.seasons?.length || 1;
-          const eps = entry.seasons?.reduce((s, se) => s + (se.episodes?.length || 0), 0) || 1;
-          addMediaItem({ title, type: 'Series', status: 'Completed', rating: 7.0, season: seasons, episode: eps, total_episodes: eps });
-          existingTitles.add(title.toLowerCase());
-          added++;
-        }
-      });
-
-      const now = new Date().toISOString();
-      safeLocalStorage.setItem('gt_trakt_last_sync', now);
-      setTraktLastSync(formatDateTime(now, user));
-      toast.success(`Trakt sync complete! ${added} new titles imported.`);
-    } catch (err) {
-      toast.error(err.message || 'Trakt sync failed.');
-    } finally {
-      setTraktSyncing(false);
-    }
-  };
-
   const [form, setForm]             = useState(EMPTY_FORM);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab]   = useState('Library');
@@ -290,31 +240,37 @@ export default function Entertainment() {
   const [sortDir, setSortDir]       = useState('desc');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterType, setFilterType]     = useState('All');
-  const syncedOTTs = entertainmentSync.otts || ['Netflix'];
+  const syncedOTTs = entertainmentSync.otts || [];
 
-  const toggleSync = (provider) => {
+  const toggleSync = async (provider) => {
     const next = syncedOTTs.includes(provider)
       ? syncedOTTs.filter(x => x !== provider)
       : [...syncedOTTs, provider];
-    setEntertainmentSync({ otts: next });
-    toast.success(syncedOTTs.includes(provider) ? `${provider} unlinked.` : `${provider} linked.`);
+    if (await perform(() => setEntertainmentSync({ otts: next }))) toast.success('Subscription indicator saved. No account was linked.');
   };
 
-  const handleAdd = useCallback(() => {
+  const handleAdd = async () => {
     if (!form.title.trim()) { toast.error('Title cannot be empty'); return; }
-    addMediaItem({ ...form, total_episodes: parseInt(form.total_episodes) || 0 });
-    setForm(EMPTY_FORM);
-    toast.success(`"${form.title}" added to library 🎬`);
-  }, [form, addMediaItem, toast]);
+    if (!createId.current) createId.current = crypto.randomUUID();
+    if (await perform(() => addMediaItem({ ...form, id: createId.current }))) {
+      createId.current = null; setForm(EMPTY_FORM); toast.success(`"${form.title}" added to library`);
+    }
+  };
 
-  const handleDelete = useCallback((id, title) => {
-    deleteMediaItem(id);
-    toast.info(`"${title}" removed`);
-  }, [deleteMediaItem, toast]);
+  const handleDelete = async (id, title) => {
+    const session = useStore.getState()._sessionVersion;
+    await perform(async () => {
+      const removed = await deleteMediaItem(id);
+      toast.info(`"${title}" removed`, 8000, { action: { label: 'Undo', onClick: async () => {
+        if (useStore.getState()._sessionVersion !== session) { toast.error('Sign in to the original account to restore this title.'); return; }
+        if (await perform(() => addMediaItem(removed))) toast.success('Title restored.');
+      } } });
+    });
+  };
 
-  const handleProgress = useCallback((id, field, value) => {
-    updateMediaProgress(id, field, value);
-  }, [updateMediaProgress]);
+  const handleProgress = async (id, draft) => {
+    if (await perform(() => updateMediaItem(id, draft))) toast.success('Progress saved.');
+  };
 
   const cycleSort = (field) => {
     if (sortBy === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -323,13 +279,14 @@ export default function Entertainment() {
 
   const filtered = useMemo(() => {
     let list = media.filter(m => {
-      const matchSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) || m.type.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = String(m.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || String(m.type || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = filterStatus === 'All' || m.status === filterStatus;
       const matchType   = filterType === 'All' || m.type === filterType;
       return matchSearch && matchStatus && matchType;
     });
     list = [...list].sort((a, b) => {
       let va, vb;
+      if (sortBy === 'added') return sortDir === 'asc' ? String(a.createdAt || '').localeCompare(String(b.createdAt || '')) : String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
       if (sortBy === 'rating') { va = parseFloat(a.rating) || 0; vb = parseFloat(b.rating) || 0; return sortDir === 'asc' ? va - vb : vb - va; }
       if (sortBy === 'progress') {
         const getPct = x => { const t = parseInt(x.total_episodes) || 0; return t > 0 ? (parseInt(x.episode) || 0) / t : (x.status === 'Completed' ? 1 : 0); };
@@ -354,7 +311,7 @@ export default function Entertainment() {
     total: media.length,
     watching: media.filter(m => m.status === 'Watching').length,
     completed: media.filter(m => m.status === 'Completed').length,
-    avgRating: media.length ? (media.reduce((s, m) => s + (parseFloat(m.rating) || 0), 0) / media.length).toFixed(1) : '—',
+    avgRating: (() => { const rated = media.filter(m => m.rating != null && m.rating !== '' && Number.isFinite(Number(m.rating))); return rated.length ? (rated.reduce((s, m) => s + Number(m.rating), 0) / rated.length).toFixed(1) : '—'; })(),
     backlog: media.filter(m => m.status === 'Plan to Watch').length,
   }), [media]);
 
@@ -363,6 +320,7 @@ export default function Entertainment() {
 
   return (
     <div className="fade-in module-page">
+      {error && <p role="alert">{error}</p>}
       {/* Header */}
       <div style={{ marginBottom: '1.75rem' }}>
         <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Entertainment</p>
@@ -429,13 +387,13 @@ export default function Entertainment() {
                       className="form-input" min="0" />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p className="label-caps" style={{ marginBottom: '4px' }}>Rating: {form.rating.toFixed(1)}</p>
-                    <input type="range" min="0" max="10" step="0.5" value={form.rating}
-                      onChange={e => setForm({ ...form, rating: parseFloat(e.target.value) })}
+                    <p className="label-caps" style={{ marginBottom: '4px' }}>Rating (optional)</p>
+                    <input aria-label="New title rating" type="number" placeholder="Unrated" min="0" max="10" step="0.5" value={form.rating}
+                      onChange={e => setForm({ ...form, rating: e.target.value })}
                       style={{ width: '100%', accentColor: '#e5a50a' }} />
                   </div>
                 </div>
-                <button onClick={handleAdd} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                <button disabled={busy} onClick={handleAdd} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                   <Plus size={16} /> Add to Library
                 </button>
               </div>
@@ -485,7 +443,7 @@ export default function Entertainment() {
                 <div>
                   <p className="label-caps" style={{ marginBottom: '6px' }}>Sort By</p>
                   <div style={{ display: 'flex', gap: '4px' }}>
-                    {[['title', 'Title'], ['rating', 'Rating'], ['progress', 'Progress']].map(([field, label]) => (
+                    {[['added', 'Added'], ['title', 'Title'], ['rating', 'Rating'], ['progress', 'Progress']].map(([field, label]) => (
                       <button key={field} onClick={() => cycleSort(field)}
                         className={`btn-sm${sortBy === field ? ' active' : ''}`}
                         style={{ fontSize: '0.65rem', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -576,12 +534,12 @@ export default function Entertainment() {
             <div className="glass-card">
               <span className="card-title"><Trophy size={16} style={{ display: 'inline', marginRight: '6px' }} />Top Rated</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
-                {[...media].sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0)).slice(0, 8).map((m, i) => (
+                {media.filter(m => m.rating != null && m.rating !== '').sort((a, b) => Number(b.rating) - Number(a.rating)).slice(0, 8).map((m, i) => (
                   <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem', borderRadius: '10px', background: 'var(--bg-elevated)' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 900, color: i < 3 ? '#e5a50a' : 'var(--text-3)', minWidth: '20px', textAlign: 'center' }}>#{i + 1}</span>
                     <span style={{ fontSize: '1rem' }}>{TYPE_ICON[m.type]}</span>
                     <span style={{ flex: 1, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-1)' }}>{m.title}</span>
-                    <RatingDisplay value={parseFloat(m.rating) || 0} />
+                    <RatingDisplay value={m.rating} />
                   </div>
                 ))}
               </div>
@@ -600,58 +558,19 @@ export default function Entertainment() {
               <span style={{ fontSize: '1.5rem' }}>📡</span>
               <div>
                 <h3 style={{ fontWeight: 900, fontSize: '1.1rem', color: '#ed1c24', margin: 0 }}>Trakt.tv Sync</h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '2px' }}>Import your real watch history from Trakt.tv using your public API key.</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '2px' }}>Setup required — authenticated watch-history import is not implemented.</p>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', margin: '1.25rem 0' }}>
-              <div>
-                <label className="label-caps" style={{ fontSize: '0.65rem', display: 'block', marginBottom: '6px' }}>Client ID (from trakt.tv/oauth/applications)</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="Paste your Client ID…"
-                  value={traktClientId}
-                  onChange={e => setTraktClientId(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label-caps" style={{ fontSize: '0.65rem', display: 'block', marginBottom: '6px' }}>Trakt Username</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="your-trakt-username"
-                  value={traktUsername}
-                  onChange={e => setTraktUsername(e.target.value)}
-                />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button className="btn-ghost" onClick={saveTraktConfig} style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Key size={14} /> Save Credentials
-              </button>
-              <button
-                className="btn-primary"
-                onClick={syncTrakt}
-                disabled={traktSyncing}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', opacity: traktSyncing ? 0.7 : 1 }}
-              >
-                <RefreshCw size={14} className={traktSyncing ? 'spin' : ''} />
-                {traktSyncing ? 'Syncing…' : 'Sync Watch History'}
-              </button>
-              {traktLastSync && (
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Last sync: {traktLastSync}</span>
-              )}
-            </div>
+            <button className="btn-primary" disabled>Sync Watch History — setup required</button>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '1rem', lineHeight: 1.6 }}>
-              ℹ️ Get your free Client ID at <a href="https://trakt.tv/oauth/applications" target="_blank" rel="noreferrer" style={{ color: '#ed1c24' }}>trakt.tv/oauth/applications</a>. 
-              Make sure your profile is set to <strong>Public</strong>. Synced titles are de-duplicated against your existing library.
+              TODO: server-managed Trakt authorization, connection status, paginated history import and acknowledged per-title deduplication. No credentials are collected and no watch history is changed here. Use manual library entry until this integration is available.
             </p>
           </div>
 
           {/* OTT Provider Sync */}
           <div className="glass-card" style={{ padding: '1.75rem' }}>
             <h3 className="card-title" style={{ marginBottom: '0.5rem' }}>OTT Provider Indicators</h3>
-            <p className="text-secondary" style={{ marginBottom: '1.5rem', fontSize: '0.82rem' }}>Mark which platforms you subscribe to. Use Trakt.tv above for actual watch history import.</p>
+            <p className="text-secondary" style={{ marginBottom: '1.5rem', fontSize: '0.82rem' }}>Manually mark subscriptions for your account. These indicators are saved on the server; they do not connect to providers or sync history.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
             {OTT_PROVIDERS.map(provider => {
               const isConnected = syncedOTTs.includes(provider.name);
@@ -666,6 +585,7 @@ export default function Entertainment() {
                     </span>
                   )}
                   <button
+                    disabled={busy}
                     className="btn-ghost"
                     style={{ width: '100%', borderColor: provider.color, color: isConnected ? 'var(--text-1)' : provider.color, background: isConnected ? `${provider.color}33` : 'transparent', fontWeight: 800, fontSize: '0.8rem' }}
                     onClick={() => toggleSync(provider.name)}>

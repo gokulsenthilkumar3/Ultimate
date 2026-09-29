@@ -23,8 +23,8 @@ export class LocalAuthProvider {
   }
 
   async signOut() {
-    try { await this.client('/api/auth/logout', { method: 'POST', body: '{}' }); }
-    finally { setCsrfToken(null); }
+    await this.client('/api/auth/logout', { method: 'POST', body: '{}' });
+    setCsrfToken(null);
   }
 }
 

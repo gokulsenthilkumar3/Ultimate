@@ -1,12 +1,16 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { ShoppingCart, Plus, Trash2, Check, Tag, Star, AlertTriangle, ArrowDown, Search, Pencil, PackageCheck, Truck, Clock3, Upload, Link2, TrendingUp, Info } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { formatCurrency, formatDate, getCurrencySymbol } from '../utils/userFormatters';
+import { financeToday } from '../utils/financeModel';
+import { shoppingEstimate } from '../store/libraryActions';
+import { previewShoppingCsv } from '../utils/shoppingImport';
 
 const CATEGORIES = ['Groceries', 'Electronics', 'Clothing', 'Health', 'Books', 'Home', 'Fitness', 'Food', 'Other'];
 const PRIORITIES = ['high', 'medium', 'low'];
+const EMPTY_SHOPPING = Object.freeze([]);
 
 const PRIORITY_COLORS = {
   high:   { bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.35)',   text: '#f87171' },
@@ -26,15 +30,16 @@ const STORE_GUIDES = [
 export default function Shopping() {
   const toast = useToast();
   const user           = useStore(s => s.user);
-  const shoppingList  = useStore(s => s.shopping?.items) || [];
+  const shoppingList  = useStore(s => s.shopping?.items) ?? EMPTY_SHOPPING;
   const addShoppingItem    = useStore(s => s.addShoppingItem);
   const updateShoppingItem = useStore(s => s.updateShoppingItem);
   const deleteShoppingItem = useStore(s => s.deleteShoppingItem);
+  const convertShoppingToExpense = useStore(s => s.convertShoppingToExpense);
   const toggleShoppingItem = useStore(s => s.toggleShoppingItem || s.toggleShoppingPurchased);
   const currencySymbol = getCurrencySymbol(user);
   const money = value => formatCurrency(value, user);
 
-  const emptyForm = { name: '', category: 'Other', priority: 'medium', estimatedCost: '', notes: '', url: '', targetPrice: '', stage: 'future', deliverySpeed: 'standard', neededBy: '', source: 'Manual', orderedAt: '', expectedDelivery: '' };
+  const emptyForm = { name: '', category: 'Other', priority: 'medium', quantity: 1, estimatedCost: '', notes: '', url: '', targetPrice: '', stage: 'future', deliverySpeed: 'standard', neededBy: '', source: 'Manual', orderedAt: '', expectedDelivery: '' };
   const [form, setForm] = useState(emptyForm);
   const [showAdd,   setShowAdd]   = useState(false);
   const [search,    setSearch]    = useState('');
@@ -44,53 +49,63 @@ export default function Shopping() {
   const [editId,    setEditId]    = useState(null);
   const [editForm,  setEditForm]  = useState({});
   const [priceInput, setPriceInput] = useState({});
+  const [expenseForm, setExpenseForm] = useState(null);
   const [stageFilter, setStageFilter] = useState('future');
   const [monthlySaving, setMonthlySaving] = useState('');
   const [showConnectors, setShowConnectors] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [importPreview, setImportPreview] = useState(null);
+  const draftId = useRef(null);
+  const savingRef = useRef(false);
 
-  const helpers = { addShoppingItem, updateShoppingItem, deleteShoppingItem, toggleShoppingItem };
+  const runSave = async (operation) => {
+    if (savingRef.current) return null;
+    savingRef.current = true;
+    setSaving(true);
+    try { return await operation(); }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Save failed. Your changes are still here.'); return null; }
+    finally { savingRef.current = false; setSaving(false); }
+  };
 
-  const doAdd = (item) => {
-    if (typeof helpers.addShoppingItem === 'function') helpers.addShoppingItem(item);
-  };
-  const doUpdate = (id, updates) => {
-    if (typeof helpers.updateShoppingItem === 'function') helpers.updateShoppingItem(id, updates);
-  };
-  const doDelete = (id) => {
-    if (typeof helpers.deleteShoppingItem === 'function') helpers.deleteShoppingItem(id);
-  };
-  const doToggle = (id) => {
+  const doToggle = async (id) => {
     const item = shoppingList.find(entry => entry.id === id);
     if (!item) return;
     const purchased = !item.purchased;
-    if (typeof helpers.updateShoppingItem === 'function') helpers.updateShoppingItem(id, { purchased, stage: purchased ? 'purchased' : 'future' });
-    else if (typeof helpers.toggleShoppingItem === 'function') helpers.toggleShoppingItem(id);
+    const saved = await runSave(() => typeof updateShoppingItem === 'function'
+      ? updateShoppingItem(id, { purchased, stage: purchased ? 'purchased' : 'future' })
+      : toggleShoppingItem(id));
+    if (saved) toast.success(purchased ? 'Marked purchased.' : 'Returned to planned purchases.');
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.name.trim()) { toast.error('Item name is required.'); return; }
     const item = {
       ...form,
-      id: Date.now(),
-      createdAt: new Date().toISOString().slice(0, 10),
+      id: draftId.current ??= crypto.randomUUID(),
+      createdAt: financeToday(user),
       estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : null,
       targetPrice:   form.targetPrice   ? Number(form.targetPrice)   : null,
+      quantity: Number(form.quantity),
       priceHistory:  [],
       stage: form.stage,
       purchased: form.stage === 'purchased',
     };
-    doAdd(item);
+    const saved = await runSave(() => addShoppingItem(item));
+    if (!saved) return;
+    draftId.current = null;
     setForm(emptyForm);
     setShowAdd(false);
     toast.success(`${item.name} added to list`);
   };
 
-  const logPrice = (id, price) => {
+  const logPrice = async (id, price) => {
+    if (price === '' || price == null) { toast.error('Enter a price.'); return; }
     const p = Number(price);
-    if (!p) return;
+    if (!Number.isFinite(p) || p < 0) { toast.error('Enter a valid non-negative price.'); return; }
     const item = shoppingList.find(x => x.id === id);
-    const history = [...(item?.priceHistory || []), { date: new Date().toISOString().slice(0, 10), price: p }];
-    doUpdate(id, { estimatedCost: p, priceHistory: history });
+    const history = [...(item?.priceHistory || []), { date: financeToday(user), price: p }];
+    const saved = await runSave(() => updateShoppingItem(id, { estimatedCost: p, priceHistory: history }));
+    if (!saved) return;
     setPriceInput(pp => { const n = { ...pp }; delete n[id]; return n; });
     if (item?.targetPrice && p <= item.targetPrice) {
       toast.success(`🎯 Price target hit! ${item.name} is now ${money(p)} (target: ${money(item.targetPrice)})`);
@@ -106,7 +121,7 @@ export default function Shopping() {
     if (catFilter !== 'all') list = list.filter(x => x.category === catFilter);
     if (priFilter !== 'all') list = list.filter(x => x.priority === priFilter);
     if (search.trim())   list = list.filter(x => x.name.toLowerCase().includes(search.toLowerCase()) || (x.notes || '').toLowerCase().includes(search.toLowerCase()));
-    return list.sort((a, b) => {
+    return [...list].sort((a, b) => {
       const pi = ['high', 'medium', 'low'];
       return pi.indexOf(a.priority) - pi.indexOf(b.priority);
     });
@@ -116,7 +131,7 @@ export default function Shopping() {
     total:     shoppingList.length,
     pending:   shoppingList.filter(x => !x.purchased).length,
     purchased: shoppingList.filter(x => x.purchased).length,
-    totalCost: shoppingList.filter(x => !x.purchased).reduce((s, x) => s + (Number(x.estimatedCost) || 0), 0),
+    totalCost: shoppingList.filter(x => !x.purchased).reduce((s, x) => s + (shoppingEstimate(x) || 0), 0),
     highPri:   shoppingList.filter(x => x.priority === 'high' && !x.purchased).length,
     priceDrop: shoppingList.filter(x => {
       const h = x.priceHistory || [];
@@ -124,7 +139,7 @@ export default function Shopping() {
       return h[h.length - 1].price < h[h.length - 2].price;
     }).length,
     arriving: shoppingList.filter(x => ['ordered', 'arriving'].includes(x.stage)).length,
-    futureCost: shoppingList.filter(x => (x.stage || 'future') === 'future').reduce((sum, item) => sum + (Number(item.estimatedCost) || 0), 0),
+    futureCost: shoppingList.filter(x => (x.stage || 'future') === 'future').reduce((sum, item) => sum + (shoppingEstimate(item) || 0), 0),
   }), [shoppingList]);
 
   const savingMonths = Number(monthlySaving) > 0 ? Math.ceil(stats.futureCost / Number(monthlySaving)) : null;
@@ -143,58 +158,27 @@ export default function Shopping() {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      const rows = (await file.text()).split(/\r?\n/).filter(Boolean);
-      const headers = rows.shift().split(',').map(value => value.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
-      let imported = 0;
-      for (const row of rows.slice(0, 500)) {
-        // Simple CSV parser ignoring commas inside quotes
-        let values = [];
-        let inQuotes = false;
-        let currentValue = '';
-        for (let i = 0; i < row.length; i++) {
-          if (row[i] === '"') inQuotes = !inQuotes;
-          else if (row[i] === ',' && !inQuotes) { values.push(currentValue.trim()); currentValue = ''; }
-          else currentValue += row[i];
-        }
-        values.push(currentValue.trim());
-        values = values.map(v => v.replace(/^"|"$/g, ''));
-        
-        const record = Object.fromEntries(headers.map((header, index) => [header, values[index] || '']));
-        
-        // Flexible key matching for Amazon, Flipkart, Instamart, Zepto, Blinkit, etc.
-        const name = record.item || record.name || record.product || record.title || record.productname || record.itemname;
-        if (!name) continue;
-        
-        const rawPrice = record.price || record.amount || record.itemtotal || record.total || record.mrp;
-        const price = rawPrice ? Number(rawPrice.replace(/[^0-9.-]+/g, "")) : null;
-        const date = record.orderdate || record.date || record.purchasedate || '';
-        
-        let source = record.source || 'Order import';
-        if (headers.includes('amazonorderid') || headers.includes('website')) source = 'Amazon';
-        else if (headers.includes('flipkart') || record.website?.includes('flipkart')) source = 'Flipkart';
-        else if (headers.includes('zepto')) source = 'Zepto';
-        else if (headers.includes('blinkit')) source = 'Blinkit';
-        else if (headers.includes('instamart')) source = 'Instamart';
-        else if (headers.includes('bigbasket')) source = 'Bigbasket';
-        else if (headers.includes('tataneu')) source = 'Tata Neu';
-        
-        await addShoppingItem({ 
-          name, 
-          source, 
-          stage: record.status === 'delivered' ? 'purchased' : record.status === 'shipped' ? 'arriving' : 'ordered', 
-          purchased: record.status === 'delivered', 
-          estimatedCost: price, 
-          orderedAt: date, 
-          expectedDelivery: record.deliverydate || '', 
-          priority: 'medium', 
-          category: record.category || 'Other', 
-          priceHistory: [] 
-        });
+      setImportPreview(previewShoppingCsv(await file.text(), shoppingList));
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not read this order CSV.'); }
+    event.target.value = '';
+  };
+
+  const commitImport = async () => {
+    if (!importPreview?.items.length || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    let imported = 0;
+    try {
+      for (const item of importPreview.items) {
+        await addShoppingItem(item);
         imported += 1;
       }
+      setImportPreview(null);
       toast.success(`Imported ${imported} order${imported === 1 ? '' : 's'}.`);
-    } catch { toast.error('Could not read this order CSV.'); }
-    event.target.value = '';
+    } catch (error) {
+      setImportPreview(preview => preview && { ...preview, items: preview.items.slice(imported) });
+      toast.error(`${imported} saved; remaining rows were not imported. ${error instanceof Error ? error.message : 'Retry the remaining rows.'}`);
+    } finally { savingRef.current = false; setSaving(false); }
   };
 
   const getPriceDropInfo = (item) => {
@@ -221,6 +205,14 @@ export default function Shopping() {
 
       {showConnectors && <section className="shopping-connectors" aria-label="Shopping imports">
         <div><Upload size={20}/><span><strong>Import order history</strong><small>Export orders from Amazon, Flipkart, or another store as CSV, then import them locally.</small></span><label className="btn-primary">Choose CSV<input type="file" accept=".csv,text/csv" onChange={importOrders}/></label></div>
+        {importPreview && <div role="region" aria-label="Order import preview"><strong>Review before import</strong><p>{importPreview.total} rows · {importPreview.items.length} ready · {importPreview.duplicates} duplicates skipped · {importPreview.errors.length} invalid</p>
+          {importPreview.errors.length > 0 && <ul>{importPreview.errors.slice(0, 10).map(error => <li key={error}>{error}</li>)}</ul>}
+          {importPreview.items.length > 0 && <ul>{importPreview.items.slice(0, 10).map(item => <li key={item.id}>{item.name} · {item.quantity} × {item.estimatedCost == null ? 'price unknown' : money(item.estimatedCost)}</li>)}</ul>}
+          {importPreview.items.length > 10 && <p>And {importPreview.items.length - 10} more rows.</p>}
+          <button type="button" className="btn-primary" disabled={saving || !importPreview.items.length} onClick={commitImport}>{saving ? 'Importing…' : `Confirm import of ${importPreview.items.length}`}</button>
+          <button type="button" className="btn-ghost" disabled={saving} onClick={() => setImportPreview(null)}>Cancel</button>
+          <small>Each confirmed row saves separately. If a save fails, the remaining rows stay here for retry.</small>
+        </div>}
         {STORE_GUIDES.map(provider => <details key={provider.name}><summary><Info size={15}/><span><strong>{provider.name}</strong><small>How to import</small></span></summary><p>{provider.note}</p><ol>{provider.steps.map(step => <li key={step}>{step}</li>)}</ol></details>)}
         <p>Direct account sync needs an official provider API and your explicit authorization. GrowthTrack never asks for a retailer password.</p>
       </section>}
@@ -259,15 +251,16 @@ export default function Shopping() {
             <select value={form.deliverySpeed} onChange={e => setForm(f => ({ ...f, deliverySpeed: e.target.value }))} className="form-input" aria-label="Delivery urgency">
               {DELIVERY_SPEEDS.map(speed => <option key={speed} value={speed}>{speed.charAt(0).toUpperCase() + speed.slice(1)} delivery</option>)}
             </select>
-            <input type="number" placeholder={`Estimated cost (${currencySymbol})`} value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))} className="form-input" />
-            <input type="number" placeholder={`Target price (${currencySymbol}) — alert when hit`} value={form.targetPrice} onChange={e => setForm(f => ({ ...f, targetPrice: e.target.value }))} className="form-input" />
+            <label>Quantity<input type="number" min="1" step="1" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} className="form-input" /></label>
+            <input type="number" min="0" step="any" aria-label={`Estimated unit cost (${currencySymbol})`} placeholder={`Estimated unit cost (${currencySymbol})`} value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))} className="form-input" />
+            <input type="number" min="0" step="any" aria-label={`Target unit price (${currencySymbol})`} placeholder={`Target unit price (${currencySymbol}) — alert when hit`} value={form.targetPrice} onChange={e => setForm(f => ({ ...f, targetPrice: e.target.value }))} className="form-input" />
             <input placeholder="URL / Link" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="form-input" />
             <label className="shopping-date-field"><span>Needed by</span><input type="date" value={form.neededBy} onChange={e => setForm(f => ({ ...f, neededBy: e.target.value }))} className="form-input" /></label>
             <input placeholder="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="form-input" style={{ gridColumn: 'span 2' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-            <button onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-            <button onClick={handleAdd} className="btn-primary">Add</button>
+            <button disabled={saving} onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+            <button disabled={saving} onClick={handleAdd} className="btn-primary">{saving ? 'Saving…' : 'Add'}</button>
           </div>
         </div>
       )}
@@ -307,8 +300,8 @@ export default function Shopping() {
               <div key={item.id} style={{ borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${pc.border}`, overflow: 'hidden', opacity: item.purchased ? 0.55 : 1, transition: 'opacity 0.2s' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.85rem 1rem' }}>
                   {/* Checkbox */}
-                  <button onClick={() => doToggle(item.id)} style={{
-                    width: '24px', height: '24px', borderRadius: '6px', flexShrink: 0, cursor: 'pointer', marginTop: '1px',
+                  <button type="button" disabled={saving} aria-label={`${item.purchased ? 'Return' : 'Mark'} ${item.name} ${item.purchased ? 'to planned purchases' : 'purchased'}`} aria-pressed={Boolean(item.purchased)} onClick={() => doToggle(item.id)} style={{
+                    minWidth: '44px', minHeight: '44px', borderRadius: '6px', flexShrink: 0, cursor: 'pointer', marginTop: '1px',
                     border: `2px solid ${item.purchased ? '#10b981' : pc.text}`,
                     background: item.purchased ? '#10b981' : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
@@ -321,8 +314,9 @@ export default function Shopping() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <input value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="form-input" style={{ fontSize: '0.85rem' }} />
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                          <input type="number" value={editForm.estimatedCost || ''} onChange={e => setEditForm(f => ({ ...f, estimatedCost: e.target.value }))} placeholder="Cost" className="form-input" style={{ width: '100px' }} />
-                          <input type="number" value={editForm.targetPrice || ''} onChange={e => setEditForm(f => ({ ...f, targetPrice: e.target.value }))} placeholder={`Target ${currencySymbol}`} className="form-input" style={{ width: '100px' }} />
+                          <input type="number" min="1" step="1" aria-label="Quantity" value={editForm.quantity ?? 1} onChange={e => setEditForm(f => ({ ...f, quantity: e.target.value }))} placeholder="Quantity" className="form-input" style={{ width: '100px' }} />
+                          <input type="number" min="0" step="any" aria-label="Estimated unit cost" value={editForm.estimatedCost ?? ''} onChange={e => setEditForm(f => ({ ...f, estimatedCost: e.target.value }))} placeholder="Unit cost" className="form-input" style={{ width: '100px' }} />
+                          <input type="number" min="0" step="any" aria-label="Target unit price" value={editForm.targetPrice ?? ''} onChange={e => setEditForm(f => ({ ...f, targetPrice: e.target.value }))} placeholder={`Target ${currencySymbol}`} className="form-input" style={{ width: '100px' }} />
                           <select value={editForm.priority || 'medium'} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))} className="form-input">
                             {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
                           </select>
@@ -335,8 +329,8 @@ export default function Shopping() {
                           <input value={editForm.url || ''} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} placeholder="URL" className="form-input" />
                         </div>
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button onClick={() => { doUpdate(item.id, editForm); setEditId(null); toast.success('Updated.'); }} className="btn-primary" style={{ padding: '3px 10px', fontSize: '0.72rem' }}><Check size={11} /> Save</button>
-                          <button onClick={() => setEditId(null)} style={{ padding: '3px 10px', fontSize: '0.72rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
+                          <button disabled={saving} onClick={async () => { const saved = await runSave(() => updateShoppingItem(item.id, editForm)); if (saved) { setEditId(null); toast.success('Updated.'); } }} className="btn-primary" style={{ padding: '3px 10px', fontSize: '0.72rem' }}><Check size={11} /> {saving ? 'Saving…' : 'Save'}</button>
+                          <button disabled={saving} onClick={() => setEditId(null)} style={{ padding: '3px 10px', fontSize: '0.72rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
                         </div>
                       </div>
                     ) : (
@@ -349,7 +343,7 @@ export default function Shopping() {
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-3)' }}>
-                          {item.estimatedCost && <span style={{ fontWeight: 700, color: 'var(--text-2)', fontFamily: 'monospace' }}>{money(item.estimatedCost)}</span>}
+                          {item.estimatedCost != null && <span style={{ fontWeight: 700, color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>{item.quantity ?? 1} × {money(item.estimatedCost)} = {money(shoppingEstimate(item) ?? 0)}</span>}
                           {item.targetPrice && <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '3px' }}><Star size={10} /> Target: {money(item.targetPrice)}</span>}
                           {pdi && pdi.dropped && <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}><ArrowDown size={10} /> {pdi.pct}% price drop!</span>}
                           {item.targetPrice && item.estimatedCost && Number(item.estimatedCost) <= Number(item.targetPrice) && <span style={{ color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}><AlertTriangle size={10} /> Target hit!</span>}
@@ -363,14 +357,29 @@ export default function Shopping() {
                         {/* Price drop log */}
                         {!item.purchased && (
                           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: '0.4rem' }}>
-                            <input type="number" placeholder={`Log new price ${currencySymbol}`} value={priceInput[item.id] || ''}
+                            <input type="number" min="0" step="any" aria-label={`Log new unit price for ${item.name}`} placeholder={`Log new price ${currencySymbol}`} value={priceInput[item.id] ?? ''}
                               onChange={e => setPriceInput(pp => ({ ...pp, [item.id]: e.target.value }))}
                               onKeyDown={e => e.key === 'Enter' && logPrice(item.id, priceInput[item.id])}
                               style={{ width: '130px', padding: '3px 8px', fontSize: '0.72rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'var(--text-1)', outline: 'none' }}
                             />
-                            {priceInput[item.id] && <button onClick={() => logPrice(item.id, priceInput[item.id])} style={{ padding: '3px 8px', fontSize: '0.65rem', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: '6px', cursor: 'pointer', color: '#34d399', fontWeight: 700 }}><Check size={10} /> Log</button>}
+                            {priceInput[item.id] !== undefined && priceInput[item.id] !== '' && <button disabled={saving} onClick={() => logPrice(item.id, priceInput[item.id])} style={{ padding: '3px 8px', fontSize: '0.65rem', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: '6px', cursor: 'pointer', color: '#34d399', fontWeight: 700 }}><Check size={10} /> Log</button>}
                           </div>
                         )}
+
+                        {item.purchased && !item.expenseId && (
+                          expenseForm?.id === item.id ? <div className="shopping-expense-form" role="group" aria-label={`Record expense for ${item.name}`}>
+                            <p>Confirm the actual total paid. This creates an expense in Finance.</p>
+                            <label>Actual total ({currencySymbol})<input className="form-input" type="number" min="0.01" step="any" value={expenseForm.amount} onChange={event => setExpenseForm(form => ({ ...form, amount: event.target.value }))} /></label>
+                            <label>Paid on<input className="form-input" type="date" value={expenseForm.date} onChange={event => setExpenseForm(form => ({ ...form, date: event.target.value }))} /></label>
+                            <label>Payment method<input className="form-input" value={expenseForm.method} onChange={event => setExpenseForm(form => ({ ...form, method: event.target.value }))} /></label>
+                            <button className="btn-primary" disabled={saving} onClick={async () => {
+                              const saved = await runSave(() => convertShoppingToExpense(item.id, expenseForm, true));
+                              if (saved) { setExpenseForm(null); toast.success('Expense recorded in Finance.'); }
+                            }}>{saving ? 'Recording…' : 'Confirm expense'}</button>
+                            <button className="btn-ghost" disabled={saving} onClick={() => setExpenseForm(null)}>Cancel</button>
+                          </div> : <button className="btn-ghost" disabled={saving} onClick={() => setExpenseForm({ id: item.id, amount: shoppingEstimate(item) ?? '', date: financeToday(user), method: 'Other' })}>Record actual expense</button>
+                        )}
+                        {item.expenseId && <span>Linked to a Finance expense</span>}
 
                         {/* Price history mini chart */}
                         {(item.priceHistory || []).length >= 2 && (
@@ -385,8 +394,8 @@ export default function Shopping() {
                   {/* Actions */}
                   {!isEditing && (
                     <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                      <button aria-label={`Edit ${item.name}`} onClick={() => { setEditId(item.id); setEditForm({ ...item }); }} className="shopping-icon-button"><Pencil size={14}/></button>
-                      <button onClick={() => { doDelete(item.id); toast.info(`${item.name} removed`); }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '3px' }}><Trash2 size={13} /></button>
+                      <button disabled={saving} aria-label={`Edit ${item.name}`} onClick={() => { setEditId(item.id); setEditForm({ ...item }); }} className="shopping-icon-button"><Pencil size={14}/></button>
+                      <button disabled={saving} aria-label={`Delete ${item.name}`} onClick={async () => { if (!window.confirm(`Delete ${item.name} from your shopping list?`)) return; const removed = await runSave(() => deleteShoppingItem(item.id)); if (removed) toast.info(`${item.name} removed`); }} className="shopping-icon-button" style={{ color: 'var(--danger, #b42318)' }}><Trash2 size={13} /></button>
                     </div>
                   )}
                 </div>

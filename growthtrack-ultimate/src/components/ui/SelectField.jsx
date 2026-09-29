@@ -1,11 +1,11 @@
 import React, { forwardRef, useId } from 'react';
 
-const SelectField = forwardRef(function SelectField({ label, hint, error, success, options = [], required = false, id: providedId, 'aria-describedby': externalDescription, ...props }, ref) {
+const SelectField = forwardRef(function SelectField({ label, hint, error, success, options = [], required = false, id: providedId, className = '', 'aria-describedby': externalDescription, ...props }, ref) {
   const generatedId = useId();
   const id = providedId || generatedId;
   const successId = success && !error ? `${id}-success` : undefined;
   const describedBy = [externalDescription, hint && `${id}-hint`, error && `${id}-error`, successId].filter(Boolean).join(' ') || undefined;
-  return <div className="gt-field">
+  return <div className={`gt-field ${className}`.trim()}>
     <label htmlFor={id}>{label}{required && <span aria-hidden="true"> *</span>}</label>
     {hint && <p id={`${id}-hint`} className="gt-field__hint">{hint}</p>}
     <select {...props} ref={ref} id={id} required={required} aria-required={required || undefined} aria-invalid={Boolean(error) || props['aria-invalid']} aria-describedby={describedBy}>

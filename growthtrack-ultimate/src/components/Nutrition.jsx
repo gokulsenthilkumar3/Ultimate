@@ -557,7 +557,7 @@ export default function Nutrition({ user }) {
         <div className="glass-card mb-lg">
           <span className="card-title">Calorie Breakdown by Meal</span>
           <div style={{ height: 180, marginTop: '1rem' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={mealBarData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
@@ -585,7 +585,7 @@ export default function Nutrition({ user }) {
           </div>
         </div>
         <div style={{ height: 160, marginBottom: '1rem' }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={160}>
             <AreaChart data={weeklyHistory} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="calGrad" x1="0" y1="0" x2="0" y2="1">

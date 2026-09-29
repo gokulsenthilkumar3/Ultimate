@@ -15,6 +15,20 @@ import MetricLogController from './server/controllers/MetricLogController.js';
 import { enabledIdentityProviders } from './server/identityProviders.js';
 import { createEventLogger } from './server/eventLogger.js';
 import { BODY_METRIC_RANGES, validateBodyMetric } from './src/lib/bodyMetricContract.js';
+import { appleHealthSetupRequired, metricToClient } from './server/domains/providers.js';
+import { registerFinanceRoutes } from './server/domains/finance.js';
+import { registerFileRoutes } from './server/domains/files.js';
+import { registerWorkoutRoutes } from './server/domains/workouts.js';
+import { saveSocialProfiles } from './server/domains/socialProfiles.js';
+import { publicSettingsWhere } from './server/domains/settingsVisibility.js';
+import { isCompletedWorkout } from './server/domains/workoutMetadata.js';
+import { createPrivateStorage } from './server/domains/privateStorage.js';
+import { createCapabilitiesHandler } from './server/domains/capabilities.js';
+import { registerLocationRoutes } from './server/domains/locations.js';
+import { registerFrontend } from './server/frontend.js';
+import createAgentsRouter from './server/agents/router.js';
+import createNotificationsRouter from './server/notifications/router.js';
+import { normalizePortfolioPayload } from './server/domains/portfolio.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -103,6 +117,12 @@ app.use('/api', (req, res, next) => {
 
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'online', service: 'GrowthTrack API' }));
 app.get('/api/auth/providers', (req, res) => res.json({ providers: enabledIdentityProviders() }));
+app.get('/api/capabilities', authMiddleware, createCapabilitiesHandler({
+  prisma, version: require('./package.json').version,
+  checkoutAvailable: () => Boolean(stripe && process.env.STRIPE_PRICE_ID),
+}));
+app.use('/api/agents', authMiddleware, createAgentsRouter());
+app.use('/api/notifications', authMiddleware, createNotificationsRouter({ prisma }));
 
 // Gateway health — probes each product and returns live readiness.
 // AppLauncher polls this every 15 s to show online/offline state in the App Hub.
@@ -150,10 +170,11 @@ app.post('/api/integrations/consume', (req, res) => {
 // modules whose client-side store does not import the logger directly.
 async function auditCrud({ action, table_name, item_id, details, userId, req }) {
   req.auditWritten = true;
-  await eventLogger.write({ category: 'audit', source: 'crud-boundary', action, table_name, item_id, details, user_id: userId, user_name: req.user?.fullName, user_email: req.user?.email }, req);
+  await eventLogger.write({ category: 'audit', source: 'crud-boundary', action, table_name, item_id, details, user_id: userId, metadata: { privacy: 'redacted' } }, { requestId: req.requestId });
 }
 
 function sendInternalError(res, error, context) {
+  if ([400, 413].includes(error.status)) return res.status(error.status).json({ error: error.message, code: error.code });
   console.error(`[${context}]`, error);
   return res.status(500).json({ error: 'Internal server error.' });
 }
@@ -381,7 +402,6 @@ const PROTECTED_MUTATION_FIELDS = new Set(['id', 'userId', 'user_id', 'createdAt
 const stripProtectedFields = source => Object.fromEntries(Object.entries(source || {}).filter(([key]) => !PROTECTED_MUTATION_FIELDS.has(key)));
 
 const metricColumns = new Set(['date', 'metric', 'value', 'unit', 'side', 'phase', 'confidence', 'measuredAt', 'source']);
-const metricToClient = row => row ? { ...parseStoredJson(row.data, {}), ...row, data: undefined } : row;
 const metricPayload = input => {
   const raw = { ...(input || {}) };
   delete raw.id; delete raw.userId; delete raw.createdAt;
@@ -499,32 +519,6 @@ const normalizeBodyProfilePayload = source => Object.fromEntries(
   [...bodyProfileFields].filter(field => source?.[field] !== undefined).map(field => [field, normalizeBodyField(field, source[field])]),
 );
 
-const portfolioTypes = new Set(['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other']);
-const normalizePortfolioPayload = source => {
-  if (!Array.isArray(source)) return [];
-  return source.slice(0, 200).map((holding, index) => {
-    if (!holding || typeof holding !== 'object') return null;
-    const name = String(holding.name ?? '').trim().slice(0, 120);
-    const units = Number(holding.units);
-    const buyPrice = Number(holding.buyPrice);
-    const currentPrice = holding.currentPrice === '' || holding.currentPrice == null ? buyPrice : Number(holding.currentPrice);
-    const buyDate = String(holding.buyDate ?? '').trim();
-    if (!name || !Number.isFinite(units) || units <= 0 || units > 1_000_000_000) return null;
-    if (!Number.isFinite(buyPrice) || buyPrice <= 0 || buyPrice > 1_000_000_000_000) return null;
-    if (!Number.isFinite(currentPrice) || currentPrice <= 0 || currentPrice > 1_000_000_000_000) return null;
-    return {
-      id: String(holding.id ?? `holding-${index + 1}`).slice(0, 80),
-      name,
-      symbol: String(holding.symbol ?? '').trim().slice(0, 32).toUpperCase(),
-      type: portfolioTypes.has(holding.type) ? holding.type : 'Other',
-      units,
-      buyPrice,
-      currentPrice,
-      buyDate: /^\d{4}-\d{2}-\d{2}$/.test(buyDate) ? buyDate : '',
-    };
-  }).filter(Boolean);
-};
-
 const mapClientFields = (source, mapping, numberFields = new Set(), booleanFields = new Set()) => Object.fromEntries(
   Object.entries(mapping).filter(([clientField]) => source[clientField] !== undefined).map(([clientField, databaseField]) => {
     const value = source[clientField];
@@ -543,9 +537,8 @@ const mapDatabaseFields = (source, mapping) => source ? Object.fromEntries(
 ) : {};
 
 app.get('/api/config', authMiddleware, async (req, res) => {
-  const publicKeys = ['navigation', 'appCatalog', 'portfolioUrl', 'aiAgent', 'weatherUrl', 'newsSources'];
   const [settings, integrations, helpArticles, planTemplates] = await Promise.all([
-    prisma.appSetting.findMany({ where: { key: { in: publicKeys } }, orderBy: { key: 'asc' }, select: { key: true, value: true, valueType: true, category: true } }),
+    prisma.appSetting.findMany({ where: publicSettingsWhere(), orderBy: { key: 'asc' }, select: { key: true, value: true, valueType: true, category: true } }),
     prisma.integrationProvider.findMany({ where: { enabled: true }, select: { providerKey: true, displayName: true, category: true, authType: true, enabled: true, icon: true, documentationUrl: true, sortOrder: true }, orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.helpArticle.findMany({ where: { enabled: true }, orderBy: { sortOrder: 'asc' } }),
     prisma.planTemplate.findMany({ where: { active: true }, orderBy: [{ planType: 'asc' }, { sortOrder: 'asc' }] }),
@@ -598,21 +591,7 @@ app.post('/api/profile/avatar', authMiddleware, async (req, res) => {
   res.json({ avatar });
 });
 
-app.get('/api/locations', authMiddleware, async (req, res) => {
-  res.json(await prisma.locationPoint.findMany({ where: { userId: req.user.id }, orderBy: { capturedAt: 'desc' }, take: 500 }));
-});
-
-app.post('/api/locations', authMiddleware, async (req, res) => {
-  const latitude = Number(req.body?.latitude), longitude = Number(req.body?.longitude);
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) return res.status(400).json({ error: 'Valid coordinates are required.' });
-  const requestedDate = req.body?.capturedAt ? new Date(req.body.capturedAt) : new Date();
-  if (Number.isNaN(requestedDate.getTime())) return res.status(400).json({ error: 'Capture time is invalid.' });
-  const accuracy = Number(req.body?.accuracyM);
-  const source = String(req.body?.source || 'browser').slice(0, 32);
-  const point = await prisma.locationPoint.create({ data: { userId: req.user.id, latitude, longitude, accuracyM: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null, source, capturedAt: requestedDate } });
-  await auditCrud({ action: 'create', table_name: 'location_points', item_id: point.id, details: 'Saved location timeline point', userId: req.user.id, req });
-  res.json(point);
-});
+registerLocationRoutes(app, authMiddleware, { prisma, auditCrud });
 
 app.get('/api/custom-tables', authMiddleware, async (req, res) => {
   const rows = await prisma.customTable.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'asc' } });
@@ -640,17 +619,19 @@ app.put('/api/custom-tables', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/preferences', authMiddleware, async (req, res) => {
-  const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: {}, create: { userId: req.user.id } });
+  const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: {}, create: { userId: req.user.id, theme: 'system' } });
   res.json({ ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) });
 });
 
 app.put('/api/preferences', authMiddleware, async (req, res) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ error: 'Preferences must be an object.' });
+  if (req.body.theme !== undefined && !['light', 'dark', 'system'].includes(req.body.theme)) return res.status(400).json({ error: 'Theme must be light, dark, or system.' });
   const allowed = ['theme', 'palette', 'sidebarCollapsed', 'onboardingComplete', 'reducedMotion'];
   const data = Object.fromEntries(allowed.filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]]));
   if (req.body.density !== undefined) data.density = req.body.density === 'compact' ? 'compact' : 'comfortable';
   if (req.body.navigationOrder !== undefined) data.navigationOrder = JSON.stringify(req.body.navigationOrder);
   if (req.body.navigationTabOrder !== undefined) data.navigationTabOrder = JSON.stringify(req.body.navigationTabOrder);
-  const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: data, create: { userId: req.user.id, ...data } });
+  const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: data, create: { userId: req.user.id, theme: 'system', ...data } });
   res.json({ ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) });
 });
 
@@ -676,13 +657,15 @@ app.get('/api/social-profiles', authMiddleware, async (req, res) => {
 });
 
 app.put('/api/social-profiles', authMiddleware, async (req, res) => {
-  const rows = Array.isArray(req.body) ? req.body : [];
-  const result = [];
-  for (const [index, row] of rows.entries()) {
-    if (!row.provider) continue;
-    result.push(await prisma.socialProfile.upsert({ where: { userId_provider: { userId: req.user.id, provider: String(row.provider) } }, update: { profileUrl: row.profileUrl || null, followers: Number(row.followers || 0), avgLikes: Number(row.avgLikes || 0), avgViews: Number(row.avgViews || 0), enabled: row.enabled !== false, sortOrder: index }, create: { userId: req.user.id, provider: String(row.provider), profileUrl: row.profileUrl || null, followers: Number(row.followers || 0), avgLikes: Number(row.avgLikes || 0), avgViews: Number(row.avgViews || 0), enabled: row.enabled !== false, sortOrder: index } }));
+  try {
+    const result = await saveSocialProfiles(prisma, req.user.id, req.body);
+    await auditCrud({ action: 'update', table_name: 'social_profiles', item_id: 'manual-profiles', details: { fields: ['profileUrl', 'followers', 'avgLikes', 'avgViews'], count: result.length }, userId: req.user.id, req }).catch(() => {});
+    res.json(result);
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
+    if (error.code === 'P2002') return res.status(409).json({ error: 'A social profile changed on another device. Refresh before saving.', code: 'SOCIAL_PROFILE_CONFLICT' });
+    return sendInternalError(res, error, 'social-profiles');
   }
-  res.json(result);
 });
 
 app.get('/api/state', authMiddleware, async (req, res) => {
@@ -693,7 +676,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
     prisma.bodyProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.socialProfile.findMany({ where: { userId: req.user.id }, orderBy: { sortOrder: 'asc' } }),
-    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), prisma.note.findMany({ where: { userId: req.user.id } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany({ where: { key: { in: ['navigation', 'appCatalog', 'portfolioUrl', 'aiAgent', 'weatherUrl', 'newsSources'] } } }),
+    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id }, include: { exercises: true } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), prisma.note.findMany({ where: { userId: req.user.id } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany({ where: publicSettingsWhere() }),
   ]);
   const profileBaseline = metric_logs.find(row => row.source === 'profile' && row.metric === 'profile_baseline');
   const githubProfile = socialProfiles.find(profile => String(profile.provider || '').toLowerCase() === 'github');
@@ -716,7 +699,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
       skills: parseStoredJson(user.skills, []), calendar_events: parseStoredJson(user.calendarEvents, []), wellnessData: parseStoredJson(user.wellnessData), healthExtras: parseStoredJson(user.healthExtras), portfolio: parseStoredJson(user.portfolio, []),
     },
     preference: preference ? { ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) } : null,
-    bodyProfile, healthProfile: parseStoredJson(healthProfile?.data, {}), socialProfiles, finance, budgets, metric_logs: metric_logs.map(metricToClient), workout_sessions,
+    bodyProfile, healthProfile: parseStoredJson(healthProfile?.data, {}), socialProfiles, finance, budgets, metric_logs: metric_logs.map(metricToClient), workout_sessions: workout_sessions.map(row => collectionToClient('workout_sessions', row)),
     ...Object.fromEntries(Object.entries({ tasks, nutrition_logs, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions }).map(([name, rows]) => [name, rows.map(row => collectionToClient(name, row))])),
     moodLogs: moodLogs.map(row => collectionToClient('mood_logs', row)),
     vitalsLogs: vitalsLogs.map(row => collectionToClient('vitals_logs', row)),
@@ -854,95 +837,16 @@ app.post('/api/hydration/log', authMiddleware, async (req, res) => {
   res.json(metricToClient(row));
 });
 
-app.get('/api/notifications', authMiddleware, async (req, res) => {
-  const rows = await prisma.auditLog.findMany({ where: { user_id: req.user.id, category: 'crud' }, orderBy: { timestamp: 'desc' }, take: 50 });
-  res.json(rows.map(row => ({ id: row.id, type: 'system', title: `${row.action || 'Updated'} ${row.table_name || 'record'}`, message: row.details || 'Local data changed.', createdAt: row.timestamp })));
-});
+app.post('/api/health/sync/apple', authMiddleware, appleHealthSetupRequired);
 
-app.post('/api/health/sync/apple', authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const today = new Date();
-    // Simulate weight drop over 14 days
-    for (let i = 14; i >= 0; i--) {
-      const dateStr = new Date(today.getTime() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
-      const weight = 80 - ((14 - i) * 0.1); // Weight goes from 80kg to 78.6kg
-      const log = await prisma.metricLog.findFirst({ where: { userId, date: dateStr, metric: 'weight' } });
-      if (!log) {
-        await prisma.metricLog.create({
-          data: {
-            userId,
-            date: dateStr,
-            metric: 'weight',
-            value: weight,
-            data: JSON.stringify({ unit: 'kg' }),
-            source: 'Apple Health',
-          }
-        });
-      } else {
-        await prisma.metricLog.update({
-          where: { id: log.id },
-          data: { value: weight, source: 'Apple Health' }
-        });
-      }
-    }
-    res.json({ success: true, message: 'Synced 14 days of Apple Health data' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to sync Apple Health' });
-  }
-});
-
-const parseCsvRow = line => {
-  const cells = []; let value = ''; let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    if (char === '"' && quoted && line[index + 1] === '"') { value += '"'; index += 1; }
-    else if (char === '"') quoted = !quoted;
-    else if (char === ',' && !quoted) { cells.push(value.trim()); value = ''; }
-    else value += char;
-  }
-  cells.push(value.trim());
-  return cells;
-};
-const csvCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
-
-app.post('/api/finance/import/csv', authMiddleware, async (req, res) => {
-  const content = String(req.body?.content || '');
-  if (!content || Buffer.byteLength(content, 'utf8') > 2 * 1024 * 1024) return res.status(413).json({ error: 'CSV must be between 1 byte and 2 MB.' });
-  const lines = content.replace(/^\uFEFF/, '').split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2 || lines.length > 5001) return res.status(400).json({ error: 'CSV needs a header and up to 5,000 rows.' });
-  const headers = parseCsvRow(lines[0]).map(header => header.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
-  const allowed = new Set(['amount', 'type', 'category', 'method', 'date', 'note']);
-  const rows = lines.slice(1).map(parseCsvRow).map(cells => Object.fromEntries(headers.map((header, index) => [header, cells[index]]).filter(([header]) => allowed.has(header)))).map(row => ({
-    userId: req.user.id,
-    amount: Number.isFinite(Number(row.amount)) ? Number(row.amount) : null,
-    type: row.type || null, category: row.category || null, method: row.method || null, date: row.date || null, note: row.note || null,
-  })).filter(row => row.amount != null);
-  if (!rows.length) return res.status(400).json({ error: 'No valid transaction rows were found.' });
-  await prisma.transaction.createMany({ data: rows });
-  await auditCrud({ action: 'create', table_name: 'finance', item_id: 'csv-import', details: `Imported ${rows.length} transactions`, userId: req.user.id, req });
-  res.json({ imported: rows.length });
-});
-
-app.get('/api/finance/export', authMiddleware, async (req, res) => {
-  const rows = await prisma.transaction.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } });
-  const headers = ['amount', 'type', 'category', 'method', 'date', 'note'];
-  const csv = [headers.join(','), ...rows.map(row => headers.map(header => csvCell(row[header])).join(','))].join('\n');
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="growthtrack-finance.csv"');
-  res.send(csv);
-});
-
-app.post('/api/finance/sync/bank', authMiddleware, async (req, res) => {
-  res.status(501).json({
-    error: 'Bank sync is not configured.',
-    code: 'CONNECTOR_SETUP_REQUIRED',
-    setupRequired: true,
-    supportedImport: 'csv',
-    message: 'Download a transaction statement from your bank or payment app, then use CSV import. No transactions were changed.',
-  });
-});
+registerFinanceRoutes(app, authMiddleware, { prisma, auditCrud });
+registerWorkoutRoutes(app, authMiddleware, { prisma, auditCrud });
+const privateFileRoot = path.resolve(process.env.FILE_STORAGE_ROOT || path.join(__dirname, 'server', 'private-files'));
+for (const publicDirectory of ['public', 'dist']) {
+  const relative = path.relative(path.join(__dirname, publicDirectory), privateFileRoot);
+  if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))) throw new Error('FILE_STORAGE_ROOT must be outside public and dist.');
+}
+registerFileRoutes(app, authMiddleware, { prisma, auditCrud, storage: createPrivateStorage(privateFileRoot) });
 
 // Dynamic CRUD endpoints for collections
 const collections = [
@@ -969,6 +873,7 @@ const collections = [
 ];
 
 collections.forEach(({ name, model }) => {
+  if (name === 'documents') return; // The file domain owns byte transfers and protected metadata.
   if (name === 'metric_logs') {
     const controller = new MetricLogController(model, name, metricPayload, stripProtectedFields, auditCrud, metricToClient, parseStoredJson);
     controller.registerRoutes(app, authMiddleware);
@@ -982,16 +887,16 @@ app.get('/api/database/tables', authMiddleware, async (req, res) => {
   const userTables = await Promise.all(collections.map(async ({ name, model }) => {
     const [count, rows] = await Promise.all([
       model.count({ where: { userId: req.user.id } }),
-      model.findMany({ where: { userId: req.user.id }, take: 10, orderBy: { createdAt: 'desc' } }),
+      model.findMany({ where: { userId: req.user.id }, take: 10, orderBy: { createdAt: 'desc' }, ...(name === 'workout_sessions' ? { include: { exercises: true } } : {}) }),
     ]);
-    return { name, count, rows: name === 'metric_logs' ? rows.map(metricToClient) : rows };
+    return { name, count, rows: name === 'metric_logs' ? rows.map(metricToClient) : ['documents', 'workout_sessions'].includes(name) ? rows.map(row => collectionToClient(name, row)) : rows };
   }));
   const [healthProfile, ownerProfile, bodyProfile, locations, settings, providers] = await Promise.all([
     prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.ownerProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.bodyProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.locationPoint.findMany({ where: { userId: req.user.id }, take: 10, orderBy: { capturedAt: 'desc' } }),
-    prisma.appSetting.findMany({ orderBy: { key: 'asc' } }),
+    prisma.appSetting.findMany({ where: publicSettingsWhere(), orderBy: { key: 'asc' } }),
     prisma.integrationProvider.findMany({ orderBy: { sortOrder: 'asc' } }),
   ]);
   res.json([
@@ -1008,8 +913,9 @@ app.get('/api/database/tables', authMiddleware, async (req, res) => {
 // Nested entities overrides
 app.post('/api/workout_sessions/:id/exercises', authMiddleware, async (req, res) => {
   try {
-    const session = await prisma.workoutSession.findFirst({ where: { id: req.params.id, userId: req.user.id }, select: { id: true } });
+    const session = await prisma.workoutSession.findFirst({ where: { id: req.params.id, userId: req.user.id }, include: { exercises: true } });
     if (!session) return res.status(404).json({ error: 'Workout session not found.' });
+    if (isCompletedWorkout(session)) return res.status(409).json({ error: 'Completed training sessions cannot be appended to.', code: 'WORKOUT_CONFLICT' });
     const data = req.body;
     if (data.exercises) {
        await prisma.workoutExercise.createMany({
@@ -1061,16 +967,7 @@ app.get('/api/habit_logs/:habitId', authMiddleware, async (req, res) => {
 });
 
 if (process.env.SERVE_FRONTEND === 'true' || process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'dist')));
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
-      return res.status(404).json({ error: 'Endpoint not found.' });
-    }
-    if (req.method === 'GET') {
-      return res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-    }
-    next();
-  });
+  registerFrontend(app, { distDirectory: path.join(__dirname, 'dist'), frontendBasePath: process.env.FRONTEND_BASE_PATH, appUrl: APP_URL });
 } else {
   app.use((req, res, next) => {
     if (!req.path.startsWith('/api/') && !req.path.startsWith('/auth/') && req.path !== '/') {

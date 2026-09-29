@@ -1,403 +1,242 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import {
-  AreaChart, Area, LineChart, Line, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid,
-} from 'recharts';
-import { TrendingUp, TrendingDown, Plus, Trash2, Edit3, Check, X, DollarSign, BarChart2, RefreshCw } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { Plus, Trash2, Edit3, DollarSign } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { handleTabKeyDown } from '../hooks/useHashTab';
 import { formatCurrency } from '../utils/userFormatters';
+import { localDateKey } from '../lib/metricSeries';
+import { finiteObservation, observationDate } from '../utils/projectGoal';
+import storage from '../utils/safeLocalStorage';
+import { portfolioSnapshotKey, readPortfolioSnapshots, holdingSnapshot, summarizePortfolio } from './PortfolioData';
 
 const ASSET_TYPES = ['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other'];
 const ASSET_COLORS = { Stock: '#6366f1', ETF: '#0ea5e9', 'Mutual Fund': '#10b981', Crypto: '#f59e0b', Gold: '#fbbf24', 'Real Estate': '#ec4899', Bond: '#8b5cf6', FD: '#34d399', Cash: '#6b7280', Other: '#94a3b8' };
 const EMPTY_PORTFOLIO = Object.freeze([]);
 const PORTFOLIO_TABS = ['holdings', 'allocation', 'performance'].map(id => ({ id }));
-
-const TOOLTIP_STYLE = { background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', backdropFilter: 'blur(12px)', fontSize: '0.8rem' };
-
-function fmt(v, decimals = 0, user) {
-  return formatCurrency(v, user, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
-
-// Mini sparkline
-function Sparkline({ data, color = '#10b981', width = 80, height = 32 }) {
-  if (!data || data.length < 2) return <div style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: '0.65rem' }}>—</div>;
-  return (
-    <ResponsiveContainer width={width} height={height}>
-      <LineChart data={data.map((v, i) => ({ v, i }))} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-        <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} />
-      </LineChart>
-    </ResponsiveContainer>
-  );
-}
-
-// Generate simulated price history for an asset (seed-based)
-function generateHistory(asset) {
-  const seed = String(asset.id ?? asset.symbol ?? asset.name ?? 'holding')
-    .split('')
-    .reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 100, 7);
-  const base  = Number(asset.buyPrice) || 100;
-  const pts   = 30;
-  const hist  = [base];
-  for (let i = 1; i < pts; i++) {
-    const rand  = Math.sin(i * seed * 0.7 + seed) * 0.04 + Math.cos(i * 0.3) * 0.02;
-    hist.push(Math.max(0.01, hist[i - 1] * (1 + rand)));
-  }
-  const current = Number(asset.currentPrice) || hist[hist.length - 1];
-  hist[pts - 1] = current;
-  return hist;
-}
-
-function ROIBadge({ roi }) {
-  const pos   = roi >= 0;
-  const color = pos ? '#10b981' : '#f87171';
-  const bg    = pos ? 'rgba(16,185,129,0.1)' : 'rgba(248,113,113,0.1)';
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 8px', borderRadius: '99px', background: bg, color, fontWeight: 800, fontSize: '0.72rem' }}>
-      {pos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}{Math.abs(roi).toFixed(2)}%
-    </span>
-  );
-}
+const EMPTY_FORM = { name: '', symbol: '', type: 'Stock', units: '', buyPrice: '', currentPrice: '', buyDate: '', priceDate: '' };
 
 export default function Portfolio() {
   const toast = useToast();
-  const user         = useStore(s => s.user);
-  const portfolio     = useStore(s => s.portfolio) ?? EMPTY_PORTFOLIO;
-  const setPortfolio  = useStore(s => s.setPortfolio);
+  const user = useStore(s => s.user);
+  const portfolio = useStore(s => s.portfolio) ?? EMPTY_PORTFOLIO;
+  const setPortfolio = useStore(s => s.setPortfolio);
+  const addHolding = useStore(s => s.addHolding);
   const updateHolding = useStore(s => s.updateHolding);
   const deleteHolding = useStore(s => s.deleteHolding);
-  const addHolding    = useStore(s => s.addHolding);
-  const formatMoney   = (value, decimals = 0) => fmt(value, decimals, user);
-
-  const [tab,      setTab]      = useState('holdings');
-  const [showAdd,  setShowAdd]  = useState(false);
-  const [editId,   setEditId]   = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [form,     setForm]     = useState({ name: '', symbol: '', type: 'Stock', units: '', buyPrice: '', currentPrice: '', buyDate: '' });
-  const [refreshing, setRefreshing] = useState(false);
-  const refreshTimerRef = useRef(null);
+  const snapshotKey = portfolioSnapshotKey(user);
+  const [snapshotRevision, setSnapshotRevision] = useState(0);
+  const snapshots = useMemo(() => {
+    // Revision changes only after a confirmed user save.
+    void snapshotRevision;
+    return readPortfolioSnapshots(storage, snapshotKey);
+  }, [snapshotKey, snapshotRevision]);
+  const { holdings, totalCost, totalValue, totalDifference } = useMemo(() => summarizePortfolio(portfolio, snapshots), [portfolio, snapshots]);
+  const [tab, setTab] = useState('holdings');
+  const [showAdd, setShowAdd] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const addIdRef = useRef(null);
   const addNameRef = useRef(null);
-
-  useEffect(() => () => {
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-  }, []);
+  const money = value => value === null ? 'Unavailable' : formatCurrency(value, user, { maximumFractionDigits: 2 });
+  const allocation = useMemo(() => {
+    const grouped = {};
+    for (const holding of holdings) {
+      if (holding.value !== null && holding.value > 0) grouped[holding.type] = (grouped[holding.type] || 0) + holding.value;
+    }
+    return Object.entries(grouped).map(([name, value]) => ({ name, value }));
+  }, [holdings]);
 
   useEffect(() => {
     if (!showAdd) return;
-    const focusTimer = globalThis.setTimeout(() => addNameRef.current?.focus(), 0);
-    return () => globalThis.clearTimeout(focusTimer);
+    const timer = globalThis.setTimeout(() => addNameRef.current?.focus(), 0);
+    return () => globalThis.clearTimeout(timer);
   }, [showAdd]);
 
-  // Derived metrics
-  const holdings = useMemo(() => (portfolio || []).map(h => {
-    const invested = Number(h.units) * Number(h.buyPrice);
-    const current  = Number(h.units) * Number(h.currentPrice || h.buyPrice);
-    const gain     = current - invested;
-    const roi      = invested > 0 ? (gain / invested) * 100 : 0;
-    const history  = generateHistory(h);
-    return { ...h, invested, current, gain, roi, history };
-  }), [portfolio]);
-
-  const totalInvested = useMemo(() => holdings.reduce((s, h) => s + h.invested, 0), [holdings]);
-  const totalCurrent  = useMemo(() => holdings.reduce((s, h) => s + h.current, 0), [holdings]);
-  const totalGain     = totalCurrent - totalInvested;
-  const totalROI      = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
-
-  const byType = useMemo(() => {
-    const map = {};
-    holdings.forEach(h => {
-      if (!map[h.type]) map[h.type] = 0;
-      map[h.type] += h.current;
-    });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
-  }, [holdings]);
-
-  const portfolioHistory = useMemo(() => {
-    if (holdings.length === 0) return [];
-    const len = 30;
-    return Array.from({ length: len }, (_, idx) => {
-      const total = holdings.reduce((sum, h) => sum + (h.history[Math.floor((idx / len) * h.history.length)] || 0) * Number(h.units), 0);
-      return { day: idx + 1, total: Math.round(total) };
-    });
-  }, [holdings]);
-
-  const handleAdd = () => {
-    const name = String(form.name || '').trim();
-    const units = Number(form.units);
-    const buyPrice = Number(form.buyPrice);
-    const currentPrice = form.currentPrice === '' ? buyPrice : Number(form.currentPrice);
-    if (!name) { toast.error('Asset name is required.'); return; }
-    if (!Number.isFinite(units) || units <= 0) { toast.error('Units must be greater than zero.'); return; }
-    if (!Number.isFinite(buyPrice) || buyPrice <= 0) { toast.error('Buy price must be greater than zero.'); return; }
-    if (!Number.isFinite(currentPrice) || currentPrice <= 0) { toast.error('Current price must be greater than zero.'); return; }
-    const newHolding = { ...form, id: Date.now().toString(), name, units, buyPrice, currentPrice };
-    if (typeof addHolding === 'function') addHolding(newHolding);
-    else if (typeof setPortfolio === 'function') setPortfolio([...(portfolio || []), newHolding]);
-    setForm({ name: '', symbol: '', type: 'Stock', units: '', buyPrice: '', currentPrice: '', buyDate: '' });
-    setShowAdd(false);
-    toast.success(`${newHolding.name} added to portfolio`);
-  };
-
-  const handleDelete = (id) => {
-    const h = holdings.find(x => x.id === id);
-    if (typeof deleteHolding === 'function') deleteHolding(id);
-    else if (typeof setPortfolio === 'function') setPortfolio((portfolio || []).filter(x => x.id !== id));
-    if (h) toast.info(`${h.name} removed`, 5000, { action: { label: 'Undo', onClick: () => { if (typeof addHolding === 'function') addHolding(h); } } });
-  };
-
-  const saveEdit = () => {
-    const name = String(editForm.name || '').trim();
-    const units = Number(editForm.units);
-    const buyPrice = Number(editForm.buyPrice);
-    const currentPrice = editForm.currentPrice === '' ? buyPrice : Number(editForm.currentPrice);
-    if (!name || !Number.isFinite(units) || units <= 0 || !Number.isFinite(buyPrice) || buyPrice <= 0 || !Number.isFinite(currentPrice) || currentPrice <= 0) {
+  function normalizeForm(input, previous) {
+    const name = String(input.name || '').trim();
+    const units = finiteObservation(input.units);
+    const buyPrice = finiteObservation(input.buyPrice);
+    const currentPrice = input.currentPrice === '' ? buyPrice : finiteObservation(input.currentPrice);
+    if (!name || units === null || units <= 0 || units > 1e9 || buyPrice === null || buyPrice <= 0 || buyPrice > 1e12 || currentPrice === null || currentPrice <= 0 || currentPrice > 1e12) {
       toast.error('Enter a name, positive units, and positive prices.');
-      return;
+      return null;
     }
-    const normalizedEdit = { ...editForm, name, units, buyPrice, currentPrice };
-    if (typeof updateHolding === 'function') updateHolding(editId, normalizedEdit);
-    else if (typeof setPortfolio === 'function') setPortfolio((portfolio || []).map(h => h.id === editId ? { ...h, ...normalizedEdit } : h));
-    setEditId(null); toast.success('Holding updated');
-  };
+    const priceDate = observationDate(input.priceDate);
+    const unchangedUndatedPrice = previous && !holdingSnapshot(previous, snapshots).date
+      && currentPrice === finiteObservation(previous.currentPrice) && !input.priceDate;
+    if (input.currentPrice !== '' && !unchangedUndatedPrice && (!priceDate || priceDate > localDateKey())) {
+      toast.error('Enter the snapshot date for the manual price, no later than today.');
+      return null;
+    }
+    if (input.currentPrice === '' && input.priceDate) {
+      toast.error('Enter a manual price for the snapshot date.');
+      return null;
+    }
+    if (input.buyDate && !observationDate(input.buyDate)) {
+      toast.error('Enter a valid buy date.');
+      return null;
+    }
+    return {
+      name: name.slice(0, 120), symbol: String(input.symbol || '').trim().slice(0, 32).toUpperCase(),
+      type: ASSET_TYPES.includes(input.type) ? input.type : 'Other', units, buyPrice, currentPrice,
+      buyDate: input.buyDate || '', priceDate,
+    };
+  }
 
-  const simulateRefresh = () => {
-    setRefreshing(true);
-    refreshTimerRef.current = setTimeout(() => {
-      // Slightly randomize current prices to simulate market update
-      if (typeof setPortfolio === 'function') {
-        setPortfolio((portfolio || []).map(h => ({
-          ...h,
-          currentPrice: +(Number(h.currentPrice || h.buyPrice) * (1 + (Math.random() - 0.48) * 0.04)).toFixed(2)
-        })));
+  function recordSnapshot(holding, date) {
+    const next = readPortfolioSnapshots(storage, snapshotKey);
+    if (date) next[String(holding.id)] = { price: holding.currentPrice, date, name: holding.name, symbol: holding.symbol || '' };
+    else delete next[String(holding.id)];
+    try { storage.setItem(snapshotKey, JSON.stringify(next)); }
+    catch { toast.error('Holding saved, but its snapshot date could not be retained locally.'); }
+    setSnapshotRevision(revision => revision + 1);
+  }
+
+  async function persist(action, onSuccess) {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await action();
+      onSuccess();
+    } catch (error) {
+      toast.error('Could not save portfolio. ' + (error?.message || 'Try again.'));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
+  function handleAdd() {
+    const normalized = normalizeForm(form);
+    if (!normalized) return;
+    const { priceDate, ...fields } = normalized;
+    addIdRef.current ||= Date.now().toString();
+    const holding = { ...fields, id: addIdRef.current };
+    return persist(() => {
+      // A rejected optimistic store save can leave this id in local state.
+      if (portfolio.some(entry => String(entry.id) === holding.id)) {
+        if (typeof updateHolding === 'function') return updateHolding(holding.id, fields);
+        if (typeof setPortfolio === 'function') return setPortfolio(previous => previous.map(entry => String(entry.id) === holding.id ? holding : entry));
+        throw new Error('Portfolio saving is unavailable.');
       }
-      setRefreshing(false);
-      toast.success('Prices refreshed (simulated)');
-    }, 800);
-  };
+      if (typeof addHolding === 'function') return addHolding(holding);
+      if (typeof setPortfolio === 'function') return setPortfolio(previous => [...previous, holding]);
+      throw new Error('Portfolio saving is unavailable.');
+    }, () => {
+      recordSnapshot(holding, priceDate);
+      setForm(EMPTY_FORM);
+      addIdRef.current = null;
+      setShowAdd(false);
+      toast.success(holding.name + ' added to portfolio');
+    });
+  }
 
-  return (
-    <div style={{ padding: '0.5rem 0' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Investments</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Portfolio</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', maxWidth: '42rem' }}>
-            Track your investments here. For your website, bio, and about-me content, open <strong style={{ color: 'var(--text-1)' }}>Profile</strong> in App Hub.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={simulateRefresh} disabled={refreshing} aria-busy={refreshing} title="Refresh simulated prices" style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
-            <RefreshCw size={13} aria-hidden="true" style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} /> {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
-          <button onClick={() => setShowAdd(s => !s)} className="btn-primary" aria-expanded={showAdd} aria-controls="portfolio-add-form"><Plus size={14} aria-hidden="true" /> Add Holding</button>
-        </div>
+  function saveEdit() {
+    const normalized = normalizeForm(editForm, portfolio.find(entry => String(entry.id) === String(editId)));
+    if (!normalized) return;
+    const { priceDate, ...fields } = normalized;
+    return persist(() => {
+      if (typeof updateHolding === 'function') return updateHolding(editId, fields);
+      if (typeof setPortfolio === 'function') return setPortfolio(previous => previous.map(holding => String(holding.id) === String(editId) ? { ...holding, ...fields } : holding));
+      throw new Error('Portfolio saving is unavailable.');
+    }, () => {
+      recordSnapshot({ ...fields, id: editId }, priceDate);
+      setEditId(null);
+      toast.success('Holding updated');
+    });
+  }
+
+  function handleDelete(holding) {
+    const snapshot = holdingSnapshot(holding, snapshots);
+    const original = portfolio.find(entry => String(entry.id) === String(holding.id));
+    return persist(() => {
+      if (typeof deleteHolding === 'function') return deleteHolding(holding.id);
+      if (typeof setPortfolio === 'function') return setPortfolio(previous => previous.filter(entry => String(entry.id) !== String(holding.id)));
+      throw new Error('Portfolio saving is unavailable.');
+    }, () => {
+      recordSnapshot(holding, null);
+      toast.info(holding.name + ' removed', 5000, { action: { label: 'Undo', onClick: () => persist(() => {
+        if (typeof addHolding === 'function') return addHolding(original);
+        if (typeof setPortfolio === 'function') return setPortfolio(previous => [...previous, original]);
+        throw new Error('Portfolio saving is unavailable.');
+      }, () => { recordSnapshot(original, snapshot.date); toast.success('Holding restored'); }) } });
+    });
+  }
+
+  function fields(input, change, editing = false) {
+    return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+      {[
+        ['name', 'Asset name', 'text'], ['symbol', 'Ticker', 'text'], ['units', 'Units', 'number'],
+        ['buyPrice', 'Buy price', 'number'], ['currentPrice', 'Manual snapshot price', 'number'],
+        ['buyDate', 'Buy date', 'date'], ['priceDate', 'Snapshot date', 'date'],
+      ].map(([key, label, type]) => <label key={key}>
+        {label}
+        <input ref={key === 'name' && !editing ? addNameRef : undefined} aria-label={(editing ? 'Holding ' : '') + label.toLowerCase()} type={type} step={type === 'number' ? 'any' : undefined} min={type === 'number' ? '0' : undefined} max={key === 'priceDate' ? localDateKey() : undefined} className="form-input" value={input[key] ?? ''} onChange={event => change(previous => ({ ...previous, [key]: event.target.value }))} disabled={saving} />
+      </label>)}
+      <label>Asset type<select className="form-input" aria-label={editing ? 'Holding asset type' : 'Asset type'} value={input.type} onChange={event => change(previous => ({ ...previous, type: event.target.value }))} disabled={saving}>
+        {ASSET_TYPES.map(type => <option key={type}>{type}</option>)}
+      </select></label>
+    </div>;
+  }
+
+  return <div className="module-page" style={{ padding: '0.5rem 0' }}>
+    <div className="section-head">
+      <div><p className="label-caps">Investments</p><h2 className="text-display">Portfolio</h2>
+        <p className="text-secondary">Prices are manual dated snapshots. Totals combine those snapshots; they are not live market valuations.</p>
+        <p className="text-secondary">Snapshot dates are retained on this device only. Undated prices cannot establish gains or returns.</p>
       </div>
-
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        {[
-          { label: 'Total Invested', val: formatMoney(totalInvested), color: 'var(--text-1)' },
-          { label: 'Current Value',  val: formatMoney(totalCurrent),  color: 'var(--accent)' },
-          { label: 'Total Gain',     val: formatMoney(totalGain),            color: totalGain >= 0 ? '#10b981' : '#f87171' },
-          { label: 'Overall ROI',    val: `${totalROI >= 0 ? '+' : ''}${totalROI.toFixed(2)}%`, color: totalROI >= 0 ? '#10b981' : '#f87171' },
-        ].map(m => (
-          <div key={m.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
-            <p style={{ fontSize: '1.5rem', fontWeight: 900, color: m.color, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>{m.val}</p>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>{m.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Tabs */}
-      <div role="tablist" aria-label="Portfolio views"
-        onKeyDown={event => handleTabKeyDown(event, { tabs: PORTFOLIO_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'portfolio-tab' })}
-        style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
-        {PORTFOLIO_TABS.map(({ id }) => (
-          <button key={id} id={`portfolio-tab-${id}`} type="button" role="tab" onClick={() => setTab(id)}
-            aria-selected={tab === id} aria-controls={`portfolio-${id}-panel`} tabIndex={tab === id ? 0 : -1}
-            style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === id ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === id ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{id}</button>
-        ))}
-      </div>
-
-      {/* Add form */}
-      {showAdd && (
-        <form id="portfolio-add-form" className="glass-card mb-lg" onSubmit={(event) => { event.preventDefault(); handleAdd(); }}>
-          <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>New Holding</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
-            {[
-              { key: 'name',         placeholder: 'Asset name *', ref: addNameRef },
-              { key: 'symbol',       placeholder: 'Ticker (e.g. RELIANCE)' },
-              { key: 'units',        placeholder: 'Units / Qty *', type: 'number' },
-              { key: 'buyPrice',     placeholder: 'Buy price *', type: 'number' },
-              { key: 'currentPrice', placeholder: 'Current price', type: 'number' },
-            ].map(f => (
-              <input key={f.key} ref={f.ref} type={f.type || 'text'} placeholder={f.placeholder} aria-label={f.placeholder.replace(' *', '')}
-                value={form[f.key]} onChange={e => setForm(ff => ({ ...ff, [f.key]: e.target.value }))}
-                className="form-input" />
-            ))}
-            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="form-input" aria-label="Asset type">
-              {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
-            <div>
-              <label style={{ fontSize: '0.62rem', color: 'var(--text-3)', display: 'block', marginBottom: '4px' }}>Buy Date</label>
-              <input type="date" value={form.buyDate} onChange={e => setForm(f => ({ ...f, buyDate: e.target.value }))} className="form-input" aria-label="Buy date" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-            <button type="button" onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-            <button type="submit" className="btn-primary">Add</button>
-          </div>
-        </form>
-      )}
-
-      {/* Holdings tab */}
-      {tab === 'holdings' && (
-        <div id="portfolio-holdings-panel" role="tabpanel" aria-labelledby="portfolio-tab-holdings" className="glass-card" style={{ overflowX: 'auto' }}>
-          {holdings.length === 0 ? (
-            <EmptyState icon={DollarSign} title="No Holdings" description="Add your first investment to start tracking your portfolio." ctaLabel="Add Holding" onAction={() => setShowAdd(true)} />
-          ) : (
-            <table aria-label="Investment holdings" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Asset', 'Type', 'Units', 'Buy Price', 'Current', 'Invested', 'Value', 'Gain', 'ROI', 'Trend', ''].map(h => (
-                    <th key={h} style={{ padding: '0.5rem 0.6rem', textAlign: h === 'Asset' || h === 'Type' ? 'left' : 'center', color: 'var(--text-3)', fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {holdings.map(h => (
-                  <tr key={h.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    {editId === h.id ? (
-                      <td colSpan={11} style={{ padding: '0.75rem 0.6rem' }}>
-                        <form onSubmit={(event) => { event.preventDefault(); saveEdit(); }} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                          <input value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Name" aria-label="Holding name" className="form-input" style={{ width: '140px' }} />
-                          <input value={editForm.units || ''} onChange={e => setEditForm(f => ({ ...f, units: e.target.value }))} placeholder="Units" aria-label="Holding units" type="number" min="0" step="any" className="form-input" style={{ width: '80px' }} />
-                          <input value={editForm.buyPrice || ''} onChange={e => setEditForm(f => ({ ...f, buyPrice: e.target.value }))} placeholder="Buy price" aria-label="Holding buy price" type="number" min="0" step="any" className="form-input" style={{ width: '100px' }} />
-                          <input value={editForm.currentPrice || ''} onChange={e => setEditForm(f => ({ ...f, currentPrice: e.target.value }))} placeholder="Current" aria-label="Holding current price" type="number" min="0" step="any" className="form-input" style={{ width: '100px' }} />
-                          <select value={editForm.type || 'Stock'} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))} aria-label="Holding asset type" className="form-input">
-                            {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
-                          </select>
-                          <button type="submit" aria-label="Save holding" title="Save holding" className="btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}><Check size={12} aria-hidden="true" /></button>
-                          <button type="button" onClick={() => setEditId(null)} aria-label="Cancel editing" title="Cancel editing" style={{ padding: '0.4rem 0.75rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}><X size={12} aria-hidden="true" /></button>
-                        </form>
-                      </td>
-                    ) : (
-                      <>
-                        <td style={{ padding: '0.6rem 0.6rem', fontWeight: 700 }}>
-                          <div>{h.name}</div>
-                          {h.symbol && <div style={{ fontSize: '0.62rem', color: 'var(--text-3)', fontFamily: 'monospace' }}>{h.symbol}</div>}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.6rem' }}>
-                          <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700, background: `${ASSET_COLORS[h.type] || '#6366f1'}20`, color: ASSET_COLORS[h.type] || '#6366f1' }}>{h.type}</span>
-                        </td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{h.units}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{formatMoney(h.buyPrice, 2)}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}>{formatMoney(h.currentPrice || h.buyPrice, 2)}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{formatMoney(h.invested)}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>{formatMoney(h.current)}</td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', color: h.gain >= 0 ? '#10b981' : '#f87171' }}>
-                          {h.gain >= 0 ? '+' : ''}{formatMoney(Math.abs(h.gain))}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center' }}>
-                          <ROIBadge roi={h.roi} />
-                        </td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center' }}>
-                          <Sparkline data={h.history} color={h.roi >= 0 ? '#10b981' : '#f87171'} />
-                        </td>
-                        <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                            <button onClick={() => { setEditId(h.id); setEditForm({ ...h }); }} aria-label={`Edit ${h.name}`} title={`Edit ${h.name}`} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={12} aria-hidden="true" /></button>
-                            <button onClick={() => handleDelete(h.id)} aria-label={`Delete ${h.name}`} title={`Delete ${h.name}`} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '3px' }}><Trash2 size={12} aria-hidden="true" /></button>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr style={{ borderTop: '2px solid rgba(255,255,255,0.1)', fontWeight: 900 }}>
-                  <td colSpan={5} style={{ padding: '0.65rem 0.6rem', color: 'var(--text-2)', fontSize: '0.75rem' }}>TOTAL ({holdings.length} holdings)</td>
-                  <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center', fontFamily: 'monospace' }}>{formatMoney(totalInvested)}</td>
-                  <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center', fontFamily: 'monospace', color: 'var(--accent)' }}>{formatMoney(totalCurrent)}</td>
-                  <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center', color: totalGain >= 0 ? '#10b981' : '#f87171', fontFamily: 'monospace' }}>
-                    {totalGain >= 0 ? '+' : ''}{formatMoney(Math.abs(totalGain))}
-                  </td>
-                  <td style={{ padding: '0.65rem 0.6rem', textAlign: 'center' }}><ROIBadge roi={totalROI} /></td>
-                  <td colSpan={2} />
-                </tr>
-              </tfoot>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Allocation tab */}
-      {tab === 'allocation' && (
-        <div id="portfolio-allocation-panel" role="tabpanel" aria-labelledby="portfolio-tab-allocation" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-          <div className="glass-card">
-            <span className="card-title">Allocation by Type</span>
-            {byType.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginTop: '1rem' }}>No holdings yet.</p> : (
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie data={byType} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} paddingAngle={2} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                    {byType.map((entry, idx) => <Cell key={idx} fill={ASSET_COLORS[entry.name] || '#6366f1'} />)}
-                  </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-          <div className="glass-card">
-            <span className="card-title">By Asset</span>
-            {holdings.length === 0 ? <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginTop: '1rem' }}>No holdings yet.</p> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                {[...holdings].sort((a, b) => b.current - a.current).map(h => (
-                  <div key={h.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                      <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>{h.name}</span>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontFamily: 'monospace' }}>{totalCurrent > 0 ? ((h.current / totalCurrent) * 100).toFixed(1) : 0}%</span>
-                    </div>
-                    <div style={{ height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px' }}>
-                      <div style={{ height: '100%', width: `${totalCurrent > 0 ? (h.current / totalCurrent) * 100 : 0}%`, background: ASSET_COLORS[h.type] || '#6366f1', borderRadius: '99px' }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Performance tab */}
-      {tab === 'performance' && (
-        <div id="portfolio-performance-panel" role="tabpanel" aria-labelledby="portfolio-tab-performance" className="glass-card">
-          <span className="card-title">Estimated Portfolio Value — Last 30 Days</span>
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Simulated based on buy prices and current values.</p>
-          {portfolioHistory.length < 2 ? (
-            <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', padding: '2rem 0', textAlign: 'center' }}>Add at least one holding to see performance.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={portfolioHistory} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-                <defs>
-                  <linearGradient id="gPort" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} label={{ value: 'Day', position: 'insideBottom', offset: -4, fontSize: 10, fill: 'var(--text-3)' }} />
-                <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => formatMoney(v)} width={72} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatMoney(v), 'Portfolio Value']} />
-                <Area type="monotone" dataKey="total" stroke="var(--accent)" fill="url(#gPort)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      )}
+      <button className="btn-primary" onClick={() => setShowAdd(open => !open)} aria-expanded={showAdd} aria-controls="portfolio-add-form" disabled={saving}><Plus size={14} /> Add Holding</button>
     </div>
-  );
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', margin: '1rem 0' }}>
+      {[['Recorded cost', totalCost], ['Manual snapshot value', totalValue], ['Unrealized difference', totalDifference]].map(([label, value]) => <div key={label} className="glass-card"><p>{label}</p><strong>{money(value)}</strong></div>)}
+    </div>
+    {totalValue === null && <p className="text-secondary">Snapshot totals are unavailable until every holding has a valid dated manual price.</p>}
+    <div role="tablist" aria-label="Portfolio views" onKeyDown={event => handleTabKeyDown(event, { tabs: PORTFOLIO_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'portfolio-tab' })} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+      {PORTFOLIO_TABS.map(({ id }) => <button key={id} id={'portfolio-tab-' + id} role="tab" type="button" aria-selected={tab === id} aria-controls={'portfolio-' + id + '-panel'} tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)} className="btn-secondary">{id[0].toUpperCase() + id.slice(1)}</button>)}
+    </div>
+    {showAdd && <form id="portfolio-add-form" className="glass-card" onSubmit={event => { event.preventDefault(); handleAdd(); }}>
+      <h3>New Holding</h3>{fields(form, setForm)}
+      <p className="text-secondary">Leave manual price and snapshot date blank if you only know the purchase cost.</p>
+      <button type="button" className="btn-secondary" onClick={() => setShowAdd(false)} disabled={saving}>Cancel</button>
+      <button type="submit" className="btn-primary" disabled={saving} aria-busy={saving}>{saving ? 'Saving…' : 'Add'}</button>
+    </form>}
+    {tab === 'holdings' && <div id="portfolio-holdings-panel" role="tabpanel" aria-labelledby="portfolio-tab-holdings" className="glass-card" style={{ overflowX: 'auto' }}>
+      {!holdings.length ? <EmptyState icon={DollarSign} title="No Holdings" description="Add your first investment to start tracking your portfolio." ctaLabel="Add Holding" onAction={() => setShowAdd(true)} /> : <table aria-label="Investment holdings" style={{ width: '100%' }}>
+        <thead><tr>{['Asset', 'Type', 'Units', 'Buy price', 'Manual price snapshot', 'Recorded cost', 'Snapshot value', 'Unrealized difference', 'Actions'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+        <tbody>{holdings.map(holding => <tr key={holding.id}>
+          {String(editId) === String(holding.id) ? <td colSpan={9}>
+            <form onSubmit={event => { event.preventDefault(); saveEdit(); }}>{fields(editForm, setEditForm, true)}
+              <button className="btn-primary" type="submit" disabled={saving} aria-busy={saving}>Save holding</button>
+              <button className="btn-secondary" type="button" disabled={saving} onClick={() => setEditId(null)}>Cancel editing</button>
+            </form>
+          </td> : <>
+            <td>{holding.name}<small style={{ display: 'block' }}>{holding.symbol}</small></td><td>{holding.type}</td><td>{holding.units}</td><td>{money(finiteObservation(holding.buyPrice))}</td>
+            <td>{money(holding.snapshot.price)}<small style={{ display: 'block' }}>{holding.snapshot.date ? 'As of ' + holding.snapshot.date : 'Undated; verify manually'}</small></td>
+            <td>{money(holding.cost)}</td><td>{money(holding.value)}</td><td>{money(holding.difference)}</td>
+            <td><button disabled={saving} onClick={() => { setEditId(holding.id); setEditForm({ ...EMPTY_FORM, ...portfolio.find(entry => String(entry.id) === String(holding.id)), priceDate: holding.snapshot.date || '' }); }} aria-label={'Edit ' + holding.name}><Edit3 size={14} /></button>
+              <button disabled={saving} onClick={() => handleDelete(holding)} aria-label={'Delete ' + holding.name}><Trash2 size={14} /></button></td>
+          </>}
+        </tr>)}</tbody>
+      </table>}
+    </div>}
+    {tab === 'allocation' && <div id="portfolio-allocation-panel" role="tabpanel" aria-labelledby="portfolio-tab-allocation" className="glass-card">
+      <h3>Allocation by manual snapshot value</h3>
+      {totalValue === null || !allocation.length ? <p>Enter dated manual prices for every holding to see allocation.</p> : <ResponsiveContainer width="100%" height={260}>
+        <PieChart><Pie data={allocation} dataKey="value" nameKey="name" outerRadius={90} label={({ name, percent }) => name + ' ' + (percent * 100).toFixed(0) + '%'}>
+          {allocation.map(entry => <Cell key={entry.name} fill={ASSET_COLORS[entry.name] || '#6366f1'} />)}
+        </Pie><Tooltip formatter={money} /></PieChart>
+      </ResponsiveContainer>}
+    </div>}
+    {tab === 'performance' && <div id="portfolio-performance-panel" role="tabpanel" aria-labelledby="portfolio-tab-performance" className="glass-card">
+      <h3>Performance history unavailable</h3>
+      <p>Only the latest manual price snapshot is recorded for each holding. There is no dated valuation and cash-flow history from which to calculate historical returns.</p>
+    </div>}
+  </div>;
 }
 

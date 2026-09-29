@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { GROUPS, GROUP_ORDER, tabMeta } from '../config/navigation';
 
@@ -24,16 +25,16 @@ export default function SectionNavigation({ activeTab, onNavigate }) {
       <div className="section-navigation__intro">
         <span className="section-navigation__icon"><Icon size={21} /></span>
         <div><span className="section-navigation__label">{group.label}</span><p>{copy.description}</p></div>
-        <button className="section-navigation__action" onClick={() => onNavigate(copy.destination)}>{copy.action}<ArrowUpRight size={16} /></button>
+        <Link className="section-navigation__action" to={tabMeta(copy.destination).canonicalPath}>{copy.action}<ArrowUpRight size={16} /></Link>
       </div>
       <nav className="section-navigation__sections" aria-label="Life areas">
-        {GROUP_ORDER.map(id => <button key={id} aria-current={id === meta.group ? 'true' : undefined} onClick={() => onNavigate(GROUPS[id].tabs[0])}>{GROUPS[id].label}</button>)}
+        {GROUP_ORDER.map(id => <Link key={id} to={tabMeta(GROUPS[id].tabs[0]).canonicalPath} aria-current={id === meta.group ? 'location' : undefined}>{GROUPS[id].label}</Link>)}
       </nav>
       <nav className="section-navigation__tools" aria-label={`${group.label} tools`}>
         {group.tabs.map(id => {
           const item = tabMeta(id);
           const ItemIcon = item.icon;
-          return <button key={id} aria-current={item === meta ? 'page' : undefined} onClick={() => onNavigate(id)}><ItemIcon size={15} /><span>{item.label}</span></button>;
+          return <Link key={id} to={item.canonicalPath} aria-current={item === meta ? 'page' : undefined}><ItemIcon size={15} /><span>{item.label}</span></Link>;
         })}
       </nav>
     </section>

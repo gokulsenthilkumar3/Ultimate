@@ -1,7 +1,6 @@
-import { Z_INDEX } from '../constants';
 import React from 'react';
-import { Bell, Command, Moon, Search, Settings, Sun, Zap } from 'lucide-react';
-import HealthScoreRing from './HealthScoreRing';
+import { Link } from 'react-router-dom';
+import { Bell, Command, Moon, Search, Sun, UserRound, WifiOff } from 'lucide-react';
 import { GROUPS, tabMeta } from '../config/navigation';
 
 export default function Header({ activeTab, user, theme, setTheme, onOpenSettings, unreadCount = 0, onOpenNotifications, serverStatus }) {
@@ -10,36 +9,26 @@ export default function Header({ activeTab, user, theme, setTheme, onOpenSetting
   const openCommandPalette = () => window.dispatchEvent(new CustomEvent('open-command-palette'));
 
   return (
-    <header className="app-header" style={{ '--header-z': Z_INDEX.HEADER }}>
-      <div className="app-header__brand">
-        <span className="app-header__mark"><Zap size={18} strokeWidth={2.6} /></span>
-        <span className="app-header__brand-copy"><strong>Ultimate</strong><small>Growth operating system</small></span>
-      </div>
-
-      <div className="app-header__context" aria-label="Current workspace">
-        <span>{group?.label || 'Workspace'}</span>
-        <strong>{group?.tabs?.[0] === activeTab ? `${group.label} Command` : meta.label}</strong>
-      </div>
-
-      <button className="app-header__search" onClick={openCommandPalette} aria-label="Search everything">
-        <Search size={15} /><span>Search everything</span><kbd><Command size={11} />K</kbd>
+    <header className="app-header">
+      <Link className="app-header__brand" to={tabMeta('overview').canonicalPath} aria-label="GrowthTrack Home">
+        <span className="app-header__mark" aria-hidden="true">G</span>
+        <span className="app-header__brand-copy"><strong>GrowthTrack</strong><small>Private workspace</small></span>
+      </Link>
+      <span className="app-header__context" aria-label="Current area">{group?.label || 'Workspace'}</span>
+      <button type="button" className="app-header__search" onClick={openCommandPalette} aria-label="Search all modules and records">
+        <Search size={18} aria-hidden="true" /><span>Search GrowthTrack</span><kbd aria-hidden="true"><Command size={12} /> K</kbd>
       </button>
-
       <div className="app-header__controls">
-        <button className="header-control app-header__mobile-search" onClick={openCommandPalette} aria-label="Search everything" data-tooltip="Search everything"><Search size={18} /></button>
-        <button className="header-control header-control--theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} data-tooltip={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
-          {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}<span>{theme === 'dark' ? 'Dark' : 'Light'}</span>
+        {serverStatus === 'offline' && <span className="app-header__status is-offline" role="status"><WifiOff size={15} aria-hidden="true" />Offline</span>}
+        <button type="button" className="header-control header-control--theme" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>
+          {theme === 'light' ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
         </button>
-        <button className="header-control" onClick={onOpenNotifications} aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} data-tooltip="Notifications">
-          <Bell size={16} />{unreadCount > 0 && <span className="header-control__badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+        <button type="button" className="header-control" onClick={onOpenNotifications} aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}>
+          <Bell size={19} aria-hidden="true" />{unreadCount > 0 && <span className="header-control__badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
         </button>
-        <div className="app-header__health"><HealthScoreRing size={30} /></div>
-        {serverStatus && serverStatus !== 'unknown' && <span className={`app-header__status is-${serverStatus}`} role="status" aria-live="polite" data-tooltip={serverStatus === 'online' ? 'Workspace connected' : 'Workspace connection unavailable'}><i aria-hidden="true" />{serverStatus === 'online' ? 'Connected' : 'Offline'}</span>}
-        <button className="app-header__profile" onClick={onOpenSettings} aria-label="Open profile and settings">
-          <span><strong>{user?.name || 'Athlete'}</strong><small>Ultimate member</small></span>
-          <b>{user?.name?.[0]?.toUpperCase() || 'G'}</b>
+        <button type="button" className="app-header__profile" onClick={onOpenSettings} aria-label="Open account and settings">
+          <UserRound size={18} aria-hidden="true" /><span>{user?.name || 'Account'}</span>
         </button>
-        <button className="header-control app-header__settings" onClick={onOpenSettings} aria-label="Open settings" data-tooltip="Settings"><Settings size={16} /></button>
       </div>
     </header>
   );

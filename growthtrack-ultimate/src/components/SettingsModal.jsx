@@ -1,41 +1,42 @@
-import { Z_INDEX } from '../constants';
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { featurePath } from '../config/featureRegistry';
 import { 
-  Settings, X, User, Shield, Terminal, Globe, Server, 
-  Database, Lock, CheckCircle2, XCircle, Zap, Star,
-  Trash2, RefreshCw, CreditCard, Gift
+  Settings, X, User, Shield, Terminal, Server,
+  RefreshCw, CreditCard, Gift, ArrowUpRight
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { apiSync } from '../store/useStore';
 import ConfirmDialog from './ui/ConfirmDialog';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { fetchIpInfo } from '../hooks/useGeolocation';
-import DeviceSyncModal from './DeviceSyncModal';
 import ReferralDashboard from './ReferralDashboard';
 import { formatTime } from '../utils/userFormatters';
 
 export default function SettingsModal({ onClose }) {
+  const navigate = useNavigate();
   const dialogRef = useDialogFocus(true, onClose);
   const [activeTab, setActiveTab] = useState('Profile');
   const user = useStore(state => state.user);
-  const skills = useStore(state => state.skills) || [];
-  const healthProfile = useStore(state => state.healthProfile) || {};
   const appConfig = useStore(state => state.appConfig) || {};
   const setOnboardingComplete = useStore(state => state.setOnboardingComplete);
 
   const [serverStatus, setServerStatus] = useState('Checking...');
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
-  const [networkInfo, setNetworkInfo] = useState({ ip: 'Detecting...', location: '' });
+  const [logsError, setLogsError] = useState('');
+  const [networkInfo, setNetworkInfo] = useState({ status: 'idle', ip: '', location: '' });
   const [confirmReset, setConfirmReset] = useState(false);
-  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const billingPortalUrl = /^https?:\/\//i.test(String(appConfig.billingPortalUrl || '')) ? appConfig.billingPortalUrl : '';
 
   const fetchNetworkInfo = async () => {
+    setNetworkInfo({ status: 'loading', ip: '', location: '' });
     try {
       const data = await fetchIpInfo();
-      setNetworkInfo({ ip: data?.ip || 'Unknown', location: data ? `${data.city}, ${data.country_name} (approximate)` : 'Offline' });
+      setNetworkInfo({ status: 'ready', ip: data?.ip || 'Unknown', location: [data?.city, data?.country_name].filter(Boolean).join(', ') || 'Unavailable' });
     } catch {
-      setNetworkInfo({ ip: 'Unavailable', location: 'Offline' });
+      setNetworkInfo({ status: 'error', ip: '', location: '' });
     }
   };
 
@@ -59,39 +60,40 @@ export default function SettingsModal({ onClose }) {
       try {
         const data = await apiSync('/logs', 'GET');
         if (Array.isArray(data)) setLogs(data);
+        else setLogsError('Activity could not be read.');
       } catch {
-        console.error('Failed to fetch logs');
+        setLogsError('Activity could not be loaded. Try again later.');
       }
       setLoadingLogs(false);
     };
 
     checkServer();
     fetchLogs();
-    const networkInfoTimer = window.setTimeout(fetchNetworkInfo, 0);
-    return () => window.clearTimeout(networkInfoTimer);
   }, []);
 
   const systemStats = [
-    { label: 'API Server', value: serverStatus, icon: Server, status: serverStatus.includes('Online') },
-    { label: 'UI Engine', value: 'Running', icon: Globe, status: true },
-    { label: 'Data Nodes', value: serverStatus.includes('Online') ? 'Local database' : 'Unavailable', icon: Database, status: serverStatus.includes('Online') },
-    { label: 'Security', value: 'Active', icon: Lock, status: true }
-  ];
-
-  const userStats = [
-    { label: 'Skills', value: skills.length, icon: Star, color: 'var(--accent)' },
-    { label: 'Health Score', value: healthProfile.healthScore ?? '—', icon: Zap, color: '#10b981' },
+    { label: 'API status', value: serverStatus, icon: Server, status: serverStatus.includes('Online') },
   ];
 
   const handleResetOnboarding = () => {
     setConfirmReset(true);
   };
 
-  const doReset = () => {
-    setOnboardingComplete(false);
+  const doReset = async () => {
+    try {
+      await setOnboardingComplete(false);
+      setConfirmReset(false);
+      onClose();
+      window.location.reload();
+    } catch (error) {
+      setResetError(error.message || 'Setup could not be restarted.');
+      throw error;
+    }
+  };
+
+  const openProfile = view => {
     onClose();
-    setConfirmReset(false);
-    window.location.reload(); // Force refresh to trigger wizard
+    navigate(featurePath('profile', view));
   };
 
   const tabs = [
@@ -102,17 +104,12 @@ export default function SettingsModal({ onClose }) {
   ];
 
   return (
-    <div className="settings-modal-shell"
+    <div className="settings-modal-shell gt-settings-modal"
       ref={dialogRef}
       tabIndex={-1}
       role="dialog" 
       aria-modal="true" 
       aria-labelledby="settings-title"
-      style={{
-        position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '1.5rem', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)'
-      }}
     >
       <ConfirmDialog
         open={confirmReset}
@@ -122,125 +119,69 @@ export default function SettingsModal({ onClose }) {
         onConfirm={doReset}
         onCancel={() => setConfirmReset(false)}
       />
-      <div className="glass-card settings-modal-card fade-in" style={{
-        width: '100%', maxWidth: '800px', height: '600px',
-        display: 'flex', flexDirection: 'row', overflow: 'hidden',
-        padding: 0, border: '1px solid var(--border-strong)'
-      }}>
+      <div className="settings-modal-card fade-in">
         
         {/* Sidebar */}
-        <div className="settings-modal-card__sidebar" style={{
-          width: '240px', borderRight: '1px solid var(--border)',
-          background: 'rgba(255,255,255,0.02)', padding: '2rem 1rem',
-          display: 'flex', flexDirection: 'column', gap: '0.5rem'
-        }}>
-          <h2 id="settings-title" className="text-display" style={{ fontSize: '1.2rem', marginBottom: '1.5rem', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <nav className="settings-modal-card__sidebar" aria-label="Settings sections">
+          <p className="gt-settings-modal__eyebrow">GROWTHTRACK / ACCOUNT</p>
+          <h2 id="settings-title" className="gt-settings-modal__title">
             <Settings size={20} aria-hidden="true" /> Settings
           </h2>
           
           {tabs.map(tab => (
             <button
+              type="button"
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`btn-ghost ${activeTab === tab.id ? 'active' : ''}`}
-              style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem' }}
+              className="gt-settings-modal__nav-item"
+              aria-current={activeTab === tab.id ? 'page' : undefined}
             >
-              <tab.icon size={16} style={{ marginRight: '10px' }} />
+              <tab.icon size={16} aria-hidden="true" />
               {tab.id}
             </button>
           ))}
 
-          <div style={{ marginTop: 'auto', padding: '1rem' }}>
-            <button 
+          <div className="gt-settings-modal__sidebar-footer">
+            <button type="button"
               onClick={handleResetOnboarding}
-              style={{ 
-                width: '100%', padding: '0.6rem', borderRadius: '8px',
-                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
-                color: 'var(--text-3)', fontSize: '0.7rem', fontWeight: 700,
-                display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
-              }}
-              className="hover-border-accent"
+              className="gt-settings-modal__quiet-button"
             >
-              <RefreshCw size={12} /> Reset Onboarding
+              <RefreshCw size={16} aria-hidden="true" /> Restart setup
             </button>
+            {resetError && <p role="alert" className="gt-settings-modal__error">{resetError}</p>}
           </div>
-        </div>
+        </nav>
 
         {/* Content Area */}
-        <div className="settings-modal-card__content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <header className="settings-modal-card__header" style={{ 
-            padding: '1.5rem 2rem', borderBottom: '1px solid var(--border)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-          }}>
-            <h3 style={{ fontWeight: 800, fontSize: '1.1rem' }}>{activeTab} Settings</h3>
-            {/* aria-label added: icon-only button needs explicit accessible name */}
-            <button onClick={onClose} aria-label="Close settings" style={{ 
-              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' 
-            }} className="hover-text-1">
+        <div className="settings-modal-card__content">
+          <header className="settings-modal-card__header">
+            <div><p className="gt-settings-modal__eyebrow">YOUR WORKSPACE</p><h3>{activeTab === 'Profile' ? 'Your account, at a glance.' : activeTab}</h3></div>
+            <button type="button" onClick={onClose} aria-label="Close settings" className="gt-settings-modal__close">
               <X size={20} />
             </button>
           </header>
 
-          <div className="settings-modal-card__body" style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+          <div className="settings-modal-card__body">
             {activeTab === 'Profile' && (
-              <div className="stagger-container">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
-                  <div style={{ 
-                    width: '64px', height: '64px', borderRadius: '16px', 
-                    background: user?.skinTones?.Face || 'var(--accent)', 
-                    border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>
-                      {user?.name?.[0]?.toUpperCase() || 'A'}
-                    </span>
-                  </div>
+              <div className="gt-settings-modal__overview">
+                <div className="gt-settings-modal__identity">
+                  <div className="gt-settings-modal__monogram" aria-hidden="true">{user?.name?.[0]?.toUpperCase() || 'U'}</div>
                   <div>
-                    <h4 style={{ fontSize: '1.2rem', fontWeight: 800 }}>{user?.name || 'Administrator'}</h4>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>{user?.email || 'admin@growthtrack.ultimate'}</p>
+                    <h4>{user?.name || 'Your account'}</h4>
+                    <p>{user?.email || 'Email unavailable'}</p>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-                  {userStats.map((s, i) => (
-                    <div key={i} style={{ padding: '1.25rem', background: 'var(--bg-elevated)', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                      <s.icon size={16} color={s.color} style={{ marginBottom: '0.5rem' }} />
-                      <p style={{ fontSize: '1.4rem', fontWeight: 900 }}>{s.value}</p>
-                      <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>{s.label}</p>
-                    </div>
-                  ))}
+                <p className="gt-settings-modal__section-label">GO DIRECTLY TO</p>
+                <div className="gt-settings-modal__links">
+                  <button type="button" onClick={() => openProfile('personal')}><User size={20} aria-hidden="true" /><span><strong>Account details</strong><small>Name, contact and profile</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
+                  <button type="button" onClick={() => openProfile('security')}><Shield size={20} aria-hidden="true" /><span><strong>Privacy & security</strong><small>Password, sessions, AI and drafts</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
+                  <button type="button" onClick={() => openProfile('integrations')}><Server size={20} aria-hidden="true" /><span><strong>Connections</strong><small>Service availability and social links</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
+                  <button type="button" onClick={() => openProfile('appearance')}><Settings size={20} aria-hidden="true" /><span><strong>Display preferences</strong><small>Theme, units and accessibility</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
                 </div>
-
-                <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
-                  <button 
-                    onClick={() => setShowSyncModal(true)}
-                    style={{
-                      flex: 1, padding: '12px', borderRadius: '12px',
-                      background: 'var(--accent)', color: '#fff',
-                      border: 'none', fontWeight: 700, fontSize: '0.9rem',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer'
-                    }}
-                  >
-                    <Zap size={16} /> Devices
-                  </button>
-                  <button 
-                    onClick={() => appConfig.billingPortalUrl && window.open(appConfig.billingPortalUrl, '_blank')}
-                    disabled={!appConfig.billingPortalUrl}
-                    style={{
-                      flex: 1, padding: '12px', borderRadius: '12px',
-                      background: 'rgba(255,255,255,0.05)', color: 'var(--text-1)',
-                      border: '1px solid var(--border)', fontWeight: 700, fontSize: '0.9rem',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer'
-                    }}
-                  >
-                    <CreditCard size={16} /> Billing
-                  </button>
-                </div>
-
-                <div className="glass-card" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', lineHeight: 1.6 }}>
-                    Ultimate Digital Twin Engine v2.1<br />
-                    <span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}>IP: {networkInfo.ip} | Location: {networkInfo.location}</span>
-                  </p>
+                <div className="gt-settings-modal__billing">
+                  <div><strong>Billing</strong><p>{billingPortalUrl ? 'Manage your account in the billing portal.' : 'A billing portal is not configured.'}</p></div>
+                  {billingPortalUrl && <a href={billingPortalUrl} target="_blank" rel="noopener noreferrer" className="gt-settings-modal__quiet-button"><CreditCard size={16} aria-hidden="true" /> Open billing <ArrowUpRight size={16} aria-hidden="true" /></a>}
                 </div>
               </div>
             )}
@@ -250,53 +191,52 @@ export default function SettingsModal({ onClose }) {
             )}
 
             {activeTab === 'Audit' && (
-              <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '1rem' }}>System Transaction History</p>
-                <div style={{ 
-                  flex: 1, overflowY: 'auto', background: 'var(--bg-dark)', 
-                  borderRadius: '12px', padding: '1rem', border: '1px solid var(--border)',
-                  fontFamily: '"JetBrains Mono", monospace'
-                }}>
+              <section className="gt-settings-modal__activity" aria-label="Recent account activity">
+                <p>Recent account and workspace events recorded by the server.</p>
+                <div className="gt-settings-modal__activity-list">
                   {loadingLogs ? (
-                    <p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Loading logs...</p>
+                    <p role="status">Loading activity…</p>
+                  ) : logsError ? (
+                    <p role="alert" className="gt-settings-modal__error">{logsError}</p>
                   ) : logs.length === 0 ? (
-                    <p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>No activity logged.</p>
+                    <p>No activity recorded yet.</p>
                   ) : (
                     logs.map((log, i) => (
-                      <div key={i} style={{ marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', marginBottom: '4px' }}>
-                          <span style={{ color: 'var(--accent)', fontWeight: 800 }}>[{log.action}] {log.table_name}</span>
-                          <span style={{ color: 'var(--text-3)' }}>{formatTime(log.timestamp, user)}</span>
-                        </div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-2)', wordBreak: 'break-all' }}>
-                          ID: {log.item_id} | {log.details ? log.details.slice(0, 80) + '...' : 'Verified update'}
-                        </p>
-                      </div>
+                      <article key={log.id || `${log.timestamp}-${i}`}>
+                        <div><strong>{log.action || 'Activity'} {log.table_name ? `· ${log.table_name}` : ''}</strong><time dateTime={log.timestamp}>{log.timestamp ? formatTime(log.timestamp, user) : 'Time unavailable'}</time></div>
+                        {typeof log.details === 'string' && <p>{log.details.slice(0, 180)}</p>}
+                      </article>
                     ))
                   )}
                 </div>
-              </div>
+              </section>
             )}
 
             {activeTab === 'System' && (
-              <div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+              <section className="gt-settings-modal__system">
+                <p>Live status from the application server. This check does not verify every service or security control.</p>
+                <div className="gt-settings-modal__system-grid">
                   {systemStats.map((s, i) => (
-                    <div key={i} className="glass-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.02)' }}>
-                      <s.icon size={16} color={s.status ? 'var(--success)' : 'var(--danger)'} />
+                    <div key={i} className="gt-settings-modal__system-card">
+                      <s.icon size={20} aria-hidden="true" />
                       <div>
-                        <p className="label-caps" style={{ fontSize: '0.6rem', color: 'var(--text-3)' }}>{s.label}</p>
-                        <p style={{ fontSize: '0.8rem', fontWeight: 800, color: s.status ? 'var(--text-1)' : 'var(--danger)' }}>{s.value}</p>
+                        <p className="gt-settings-modal__section-label">{s.label}</p>
+                        <p role="status" data-online={s.status}>{s.value}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+                <div className="gt-settings-modal__network">
+                  <div><h4>Network lookup</h4><p>See your public IP address and an approximate location from an external lookup service.</p></div>
+                  <button type="button" className="gt-settings-modal__quiet-button" onClick={fetchNetworkInfo} disabled={networkInfo.status === 'loading'}>{networkInfo.status === 'loading' ? 'Checking…' : 'Check network'}</button>
+                  {networkInfo.status === 'ready' && <p role="status">IP: {networkInfo.ip} · Approximate location: {networkInfo.location}</p>}
+                  {networkInfo.status === 'error' && <p role="alert" className="gt-settings-modal__error">Network information is unavailable.</p>}
+                </div>
+              </section>
             )}
           </div>
         </div>
       </div>
-      {showSyncModal && <DeviceSyncModal onClose={() => setShowSyncModal(false)} />}
     </div>
   );
 }

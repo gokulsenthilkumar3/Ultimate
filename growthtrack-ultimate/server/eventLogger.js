@@ -32,7 +32,7 @@ export function createEventLogger({ prisma, logToFile }) {
       user_agent: input.user_agent || req?.headers?.['user-agent'],
     });
     try {
-      const common = { ...event, actor_name: event.user_name || 'System', actor_email: event.user_email || 'admin@growthtrack.ultimate' };
+      const common = { ...event, actor_name: event.user_name, actor_email: event.user_email };
       let record;
       if (event.category === 'auth') {
         record = await prisma.loginLog.create({ data: { user_id: event.user_id, email: event.user_email, action: event.action, failure_reason: event.details, ip_address: event.actor_ip, user_agent: event.user_agent, source: event.source, request_id: event.request_id, metadata: event.metadata } });

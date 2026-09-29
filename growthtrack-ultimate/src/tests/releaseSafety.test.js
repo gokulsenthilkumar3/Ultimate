@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { registerFinanceRoutes } from '../../server/domains/finance';
 
 describe('release safety contracts', () => {
   it('keeps the Electron renderer isolated from Node', () => {
@@ -11,10 +12,14 @@ describe('release safety contracts', () => {
   });
 
   it('never writes generated transactions from the bank-sync placeholder', () => {
-    const source = fs.readFileSync(path.join(process.cwd(), 'server.js'), 'utf8');
-    const route = source.match(/app\.post\('\/api\/finance\/sync\/bank'[\s\S]*?\n\}\);/i)?.[0];
+    const routes = [];
+    const app = { get: () => {}, post: (path, ...handlers) => routes.push({ path, handler: handlers.at(-1) }) };
+    registerFinanceRoutes(app, () => {}, { prisma: new Proxy({}, { get: () => { throw new Error('No database access permitted'); } }) });
+    const route = routes.find(item => item.path === '/api/finance/sync/bank');
     expect(route).toBeTruthy();
-    expect(route).not.toMatch(/Math\.random|createMany|Mock\)/);
-    expect(route).toMatch(/CONNECTOR_SETUP_REQUIRED/);
+    let status, payload;
+    route.handler({}, { status: value => { status = value; return { json: value => { payload = value; } }; } });
+    expect(status).toBe(501);
+    expect(payload.code).toBe('CONNECTOR_SETUP_REQUIRED');
   });
 });

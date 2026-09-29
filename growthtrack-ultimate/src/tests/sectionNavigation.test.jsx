@@ -1,6 +1,7 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import SectionNavigation from '../components/SectionNavigation';
 import PremiumSidebar from '../components/PremiumSidebar';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -9,51 +10,43 @@ vi.mock('../store/useStore', () => ({ default: selector => selector({
   navigationOrder: [], navigationTabOrder: {}, sidebarCollapsed: false,
   setNavigationOrder: () => {}, setNavigationTabOrder: () => {}, setSidebarCollapsed: () => {},
 }) }));
-vi.mock('../lib/navMotion', () => ({ animateIndicator: () => {} }));
 afterEach(cleanup);
+function show(ui) { return render(<MemoryRouter initialEntries={['/finance/overview']}>{ui}</MemoryRouter>); }
 
 describe('Section discovery', () => {
-  it('makes command areas reachable and preserves command-first navigation', () => {
-    const navigate = vi.fn();
-    render(<SectionNavigation activeTab="finance" onNavigate={navigate} />);
+  it('keeps all six command areas reachable and Finance first', () => {
+    show(<SectionNavigation activeTab="finance" />);
     const areas = within(screen.getByRole('navigation', { name: 'Life areas' }));
-    expect(areas.getAllByRole('button')).toHaveLength(6);
-    fireEvent.click(areas.getByRole('button', { name: 'Life' }));
-    expect(navigate).toHaveBeenLastCalledWith('life');
-    fireEvent.click(areas.getByRole('button', { name: 'Hub' }));
-    expect(navigate).toHaveBeenLastCalledWith('hub');
-    expect(within(screen.getByRole('navigation', { name: 'Finance tools' })).getByRole('button', { name: 'Finance', exact: true })).toHaveAttribute('aria-current', 'page');
+    expect(areas.getAllByRole('link')).toHaveLength(6);
+    expect(areas.getAllByRole('link')[0]).toHaveTextContent('Finance');
+    expect(areas.getByRole('link', { name: 'Life' })).toHaveAttribute('href', '/life/overview');
+    expect(areas.getByRole('link', { name: 'Hub' })).toHaveAttribute('href', '/hub/overview');
+    expect(within(screen.getByRole('navigation', { name: 'Finance tools' })).getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page');
   });
-  it('highlights the parent destination for legacy deep links', () => {
-    render(<SectionNavigation activeTab="notes" onNavigate={() => {}} />);
-    const tools = within(screen.getByRole('navigation', { name: 'Workspace tools' }));
-    expect(tools.getByRole('button', { name: 'Workspace' })).toHaveAttribute('aria-current', 'page');
+  it('highlights the actual module for legacy deep links', () => {
+    show(<SectionNavigation activeTab="notes" />);
+    expect(within(screen.getByRole('navigation', { name: 'Workspace tools' })).getByRole('link', { name: 'Notes', exact: true })).toHaveAttribute('aria-current', 'page');
   });
-  it('shows context breadcrumbs without duplicating the module navigator', () => {
-    const navigate = vi.fn();
-    render(<Breadcrumbs activeTab="finance" onNavigate={navigate} />);
+  it('shows context breadcrumbs without another module navigator', () => {
+    show(<Breadcrumbs activeTab="finance" />);
     const breadcrumbs = within(screen.getByRole('navigation', { name: 'Breadcrumb' }));
     expect(breadcrumbs.getByText('Finance')).toBeVisible();
-    expect(breadcrumbs.getByText('Finance Command')).toHaveAttribute('aria-current', 'page');
-    fireEvent.click(breadcrumbs.getByRole('button', { name: 'Go to Overview' }));
-    expect(navigate).toHaveBeenLastCalledWith('overview');
+    expect(breadcrumbs.getByText('Overview')).toHaveAttribute('aria-current', 'page');
+    expect(breadcrumbs.getByRole('link', { name: 'Go to Overview' })).toHaveAttribute('href', '/insights/overview');
   });
-  it('opens command destinations from the compact sidebar', () => {
-    const navigate = vi.fn();
-    render(<PremiumSidebar activeTab="overview" setActiveTab={navigate} />);
-    expect(screen.queryByRole('button', { name: 'Sleep', exact: true })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Wellness', exact: true }));
-    expect(navigate).toHaveBeenLastCalledWith('wellness');
-    fireEvent.click(screen.getByRole('button', { name: 'Life', exact: true }));
-    expect(navigate).toHaveBeenLastCalledWith('life');
-    fireEvent.click(screen.getByRole('button', { name: 'Hub', exact: true }));
-    expect(navigate).toHaveBeenLastCalledWith('hub');
+  it('uses links for all primary destinations in the rail', () => {
+    show(<PremiumSidebar activeTab="overview" />);
+    const areas = within(screen.getByRole('navigation', { name: 'Product areas' }));
+    expect(areas.getByRole('link', { name: 'Wellness' })).toHaveAttribute('href', '/wellness/overview');
+    expect(areas.getByRole('link', { name: 'Life' })).toHaveAttribute('href', '/life/overview');
+    expect(areas.getByRole('link', { name: 'Hub' })).toHaveAttribute('href', '/hub/overview');
   });
-  it('exposes only the active area modules in the second navigation level', () => {
-    const navigate = vi.fn();
-    render(<PremiumSidebar activeTab="finance" setActiveTab={navigate} user={{ name: 'Owner' }} onOpenSettings={() => {}} onLogout={() => {}} />);
+  it('exposes all modules only for the active area', () => {
+    show(<PremiumSidebar activeTab="finance" user={{ name: 'Owner' }} onOpenSettings={() => {}} onLogout={() => {}} />);
     const modules = within(screen.getByRole('navigation', { name: 'Finance modules' }));
-    expect(modules.getByRole('button', { name: /Finance/ })).toHaveAttribute('aria-current', 'page');
-    expect(screen.queryByRole('button', { name: /Sleep workspace/ })).toBeNull();
+    expect(modules.getByRole('link', { name: /Overview/ })).toHaveAttribute('aria-current', 'page');
+    expect(modules.getByRole('link', { name: /Transactions/ })).toHaveAttribute('href', '/finance/transactions');
+    expect(screen.queryByRole('link', { name: /Sleep/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Close module navigation' })).toBeVisible();
   });
 });

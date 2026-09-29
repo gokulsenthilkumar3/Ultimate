@@ -2,9 +2,14 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { safeLocalStorage } from '../utils/safeLocalStorage';
 import { createFinanceSlice } from './slices/financeSlice';
-import { createTaskSlice } from './slices/taskSlice';
+import { createTaskSlice, taskIsDone } from './slices/taskSlice';
 import { createHealthSlice } from './slices/healthSlice';
 import { apiRequest } from '../lib/apiClient';
+import { captureSession, createWriteQueue, requireRecord } from './persistence';
+import { createRecordActions } from './recordActions';
+import { createJournalActions } from './journalActions';
+import { createLibraryActions, createShoppingConversion, validateMedia, validateShopping } from './libraryActions';
+import { createWorkoutCompletion } from './workoutActions';
 
 export async function apiSync(endpoint: string, method: string = 'POST', data: any = null): Promise<any> {
   const apiPath = endpoint.startsWith('/api/') ? endpoint : `/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -17,18 +22,22 @@ export async function apiSync(endpoint: string, method: string = 'POST', data: a
 const PORTFOLIO_TYPES = new Set(['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other']);
 
 export function normalizePortfolioHolding(holding: any, fallbackId = Date.now().toString()) {
-  if (!holding || typeof holding !== 'object') return null;
+  if (!holding || typeof holding !== 'object' || Array.isArray(holding)) return null;
   const name = String(holding.name ?? '').trim().slice(0, 120);
   const units = Number(holding.units);
   const buyPrice = Number(holding.buyPrice);
   const currentPrice = holding.currentPrice === '' || holding.currentPrice == null
-    ? buyPrice
+    ? null
     : Number(holding.currentPrice);
   if (!name || !Number.isFinite(units) || units <= 0 || units > 1_000_000_000) return null;
-  if (!Number.isFinite(buyPrice) || buyPrice <= 0 || buyPrice > 1_000_000_000_000) return null;
-  if (!Number.isFinite(currentPrice) || currentPrice <= 0 || currentPrice > 1_000_000_000_000) return null;
+  if (holding.buyPrice == null || typeof holding.buyPrice === 'boolean' || (typeof holding.buyPrice === 'string' && !holding.buyPrice.trim())) return null;
+  if (!Number.isFinite(buyPrice) || buyPrice < 0 || buyPrice > 1_000_000_000_000) return null;
+  if (typeof holding.currentPrice === 'boolean' || (currentPrice != null && (!Number.isFinite(currentPrice) || currentPrice < 0 || currentPrice > 1_000_000_000_000))) return null;
   const buyDate = String(holding.buyDate ?? '').trim();
   return {
+    // Keep acknowledged currency, price observation dates, audit timestamps,
+    // and valuation history. None of these is inferred from the purchase date.
+    ...holding,
     id: String(holding.id ?? fallbackId),
     name,
     symbol: String(holding.symbol ?? '').trim().slice(0, 32).toUpperCase(),
@@ -41,22 +50,13 @@ export function normalizePortfolioHolding(holding: any, fallbackId = Date.now().
 }
 
 export function normalizePortfolio(rows: any) {
-  if (!Array.isArray(rows)) return [];
-  return rows.map((row, index) => normalizePortfolioHolding(row, `holding-${index + 1}`)).filter(Boolean);
-}
-
-// Keep optimistic writes ordered. Without a tiny queue, two quick edits could
-// reach the API out of order and let an older snapshot overwrite the newest
-// one even though the UI already shows the latest state.
-let portfolioSyncQueue: Promise<any> = Promise.resolve();
-
-function persistPortfolio(next: any[]) {
-  const request = portfolioSyncQueue.then(() => apiSync('/portfolio', 'PUT', next));
-  portfolioSyncQueue = request.catch((error) => {
-    console.error('[useStore] portfolio persistence failed:', error);
-    return null;
+  if (rows == null) return [];
+  if (!Array.isArray(rows)) throw new Error('Portfolio records are invalid. Refresh or restore the original data before editing.');
+  return rows.map((row, index) => {
+    const holding = normalizePortfolioHolding(row, `holding-${index + 1}`);
+    if (!holding) throw new Error(`Portfolio holding ${index + 1} is invalid. No records were discarded.`);
+    return holding;
   });
-  return request;
 }
 
 // User profile writes use the same ordered queue as portfolio writes. Profile
@@ -66,7 +66,6 @@ function persistPortfolio(next: any[]) {
 // fire-and-forget callers remain safe while awaited callers can still surface
 // the original error to the UI.
 let userSyncQueue: Promise<any> = Promise.resolve();
-let physiqueSyncQueue: Promise<any> = Promise.resolve();
 
 function persistUser(nextUser: any) {
   const request = userSyncQueue.then(() => apiSync('/user', 'POST', nextUser));
@@ -79,18 +78,66 @@ function persistUser(nextUser: any) {
 
 const useStore = create<any>()(
   persist(
-    (set, get, api) => ({
+    (set, get, api) => {
+      const notes = createRecordActions(set, get, 'notes', '/notes');
+      const goals = createRecordActions(set, get, 'goals', '/goals');
+      const sleep = createRecordActions(set, get, 'sleep_logs', '/sleep_logs');
+      const moods = createRecordActions(set, get, 'moodLogs', '/mood_logs');
+      const vitals = createRecordActions(set, get, 'vitalsLogs', '/vitals_logs');
+      const documents = createRecordActions(set, get, 'documents', '/documents');
+      const habits = createRecordActions(set, get, 'habits', '/habits');
+      const subscriptions = createRecordActions(set, get, 'subscriptions', '/subscriptions');
+      const medications = createRecordActions(set, get, 'medications', '/medications');
+      const shoppingItems = createLibraryActions(set, get, 'shopping', 'items', '/shopping', validateShopping);
+      const mediaItems = createLibraryActions(set, get, 'entertainment', 'media', '/entertainment', validateMedia);
+      const singletonQueue = createWriteQueue();
+      const preferenceQueue = createWriteQueue();
+      const portfolioQueue = createWriteQueue();
+      let initialRequest = 0;
+      const savePreferences = (updates: any) => {
+        const current = captureSession(get);
+        return preferenceQueue(`${get()._sessionVersion}:${get().user?.id}:preferences`, async () => {
+          if (!current()) throw new Error('The session changed. Refresh and try again.');
+          const keys = Object.keys(updates);
+          const previous = Object.fromEntries(keys.map(key => [key, get()[key]]));
+          set({ ...updates, preferenceSaveError: null });
+          try {
+            const response = requireRecord(await apiSync('/preferences', 'PUT', updates));
+            if (current()) set((state: any) => Object.fromEntries(keys
+              .filter(key => state[key] === updates[key])
+              .map(key => [key, response[key] === undefined ? updates[key] : response[key]])));
+            return response;
+          } catch (error) {
+            if (current()) set((state: any) => ({
+              ...Object.fromEntries(keys.filter(key => state[key] === updates[key]).map(key => [key, previous[key]])),
+              preferenceSaveError: error,
+            }));
+            throw error;
+          }
+        });
+      };
+      const saveSingleton = (key: string, route: string, data: any) => {
+        const current = captureSession(get);
+        return singletonQueue(`${get()._sessionVersion}:${get().user?.id}:${key}`, async () => {
+          if (!current()) throw new Error('The session changed. Refresh and try again.');
+          const next = typeof data === 'function' ? data(get()[key]) : data;
+          const response = await apiSync(route, 'POST', next);
+          if (current()) set((state: any) => ({ [key]: next, user: state.user ? { ...state.user, [key]: next } : state.user }));
+          return response;
+        });
+      };
+      return ({
       ...createFinanceSlice(set, get, api),
       ...createTaskSlice(set, get, api),
       ...createHealthSlice(set, get, api),
+      ...createJournalActions(set, get),
 
-      // New workspaces begin in the calm, light-first product theme. Existing
-      // persisted preferences still win during hydration.
-      theme: 'light',
+      // Saved preferences win; new workspaces follow the operating system.
+      theme: 'system',
       palette: 'gold',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'logs'],
-      navigationOrder: ['today', 'body', 'wellness', 'insights', 'work', 'money', 'life', 'system'],
+      navigationOrder: ['money', 'insights', 'wellness', 'work', 'life', 'system'],
       navigationTabOrder: {},
       sidebarCollapsed: false,
       reducedMotion: false,
@@ -106,12 +153,16 @@ const useStore = create<any>()(
           };
         });
       },
-      setNavigationOrder: (navigationOrder: string[]) => { set({ navigationOrder }); apiSync('/preferences', 'PUT', { navigationOrder }); },
-      setNavigationTabOrder: (navigationTabOrder: Record<string, string[]>) => { set({ navigationTabOrder }); apiSync('/preferences', 'PUT', { navigationTabOrder }); },
-      setSidebarCollapsed: (sidebarCollapsed: boolean) => { set({ sidebarCollapsed }); apiSync('/preferences', 'PUT', { sidebarCollapsed }); },
-      setReducedMotion: (reducedMotion: boolean) => { set({ reducedMotion }); apiSync('/preferences', 'PUT', { reducedMotion }); },
-      setDensity: (density: 'comfortable' | 'compact') => { set({ density }); apiSync('/preferences', 'PUT', { density }); },
+      setNavigationOrder: (navigationOrder: string[]) => savePreferences({ navigationOrder }),
+      setNavigationTabOrder: (navigationTabOrder: Record<string, string[]>) => savePreferences({ navigationTabOrder }),
+      setSidebarCollapsed: (sidebarCollapsed: boolean) => savePreferences({ sidebarCollapsed }),
+      setReducedMotion: (reducedMotion: boolean) => savePreferences({ reducedMotion }),
+      setDensity: (density: 'comfortable' | 'compact') => savePreferences({ density }),
       isLoading: false,
+      initialLoadError: null,
+      preferenceSaveError: null,
+      _sessionVersion: 0,
+      _dataRevision: 0,
       serverStatus: 'unknown',
       onboardingComplete: false,
       lastCheckIn: null,
@@ -164,15 +215,16 @@ const useStore = create<any>()(
       setLastCheckIn: (date: string) => set({ lastCheckIn: date }),
       setCheckInAlertDismissedDate: (date: string) => set({ checkInAlertDismissedDate: date }),
       setActiveTab: (tab: string) => set({ activeTab: tab }),
-      setOnboardingComplete: (status: boolean) => { set({ onboardingComplete: status }); apiSync('/preferences', 'PUT', { onboardingComplete: status }); },
-      setTheme: (theme: string) => { set({ theme }); apiSync('/preferences', 'PUT', { theme }); },
-      setPalette: (palette: string) => { set({ palette }); apiSync('/preferences', 'PUT', { palette }); },
+      setOnboardingComplete: (status: boolean) => savePreferences({ onboardingComplete: status }),
+      setTheme: (theme: string) => savePreferences({ theme }),
+      setPalette: (palette: string) => savePreferences({ palette }),
 
       setUser: (userOrUpdater: any) => {
         const currentUser = get().user;
         const newUser = typeof userOrUpdater === 'function'
           ? userOrUpdater(currentUser)
           : userOrUpdater;
+        if (newUser == null) { get().resetSessionData(); return Promise.resolve(null); }
         set({ user: newUser });
         return persistUser(newUser);
       },
@@ -199,31 +251,46 @@ const useStore = create<any>()(
       },
 
       setPortfolio: (nextOrUpdater: any) => {
-        const previous = get().portfolio || [];
-        const proposed = typeof nextOrUpdater === 'function' ? nextOrUpdater(previous) : nextOrUpdater;
-        const next = normalizePortfolio(proposed);
-        set({ portfolio: next });
-        // Portfolio is a user-owned singleton. Keep the optimistic UI usable
-        // offline while reporting persistence failures for diagnostics.
-        return persistPortfolio(next);
+        const current = captureSession(get);
+        return portfolioQueue(`${get()._sessionVersion}:${get().user?.id}:portfolio`, async () => {
+          if (!current()) throw new Error('The session changed. Refresh and try again.');
+          const previous = get().portfolio || [];
+          const proposed = typeof nextOrUpdater === 'function' ? nextOrUpdater(previous) : nextOrUpdater;
+          const next = normalizePortfolio(proposed);
+          const response = await apiSync('/portfolio', 'PUT', next);
+          let rows = Array.isArray(response) ? response : response?.portfolio;
+          if (typeof rows === 'string') {
+            try { rows = JSON.parse(rows); }
+            catch { throw new Error('The saved portfolio could not be verified. Refresh before retrying.'); }
+          }
+          let saved = next;
+          if (rows !== undefined) {
+            if (!Array.isArray(rows)) throw new Error('The saved portfolio could not be verified. Refresh before retrying.');
+            saved = normalizePortfolio(rows);
+            if (saved.length !== next.length || next.some((holding: any) => {
+              const acknowledged: any = saved.find((row: any) => row.id === holding.id);
+              return !acknowledged || ['currency', 'priceAsOf', 'priceDate', 'updatedAt', 'valuations'].some(key => holding[key] !== undefined && acknowledged[key] === undefined);
+            })) throw new Error('The server did not retain the portfolio records or snapshot metadata. Refresh before retrying.');
+          }
+          if (current()) set((state: any) => ({ portfolio: saved, user: state.user ? { ...state.user, portfolio: saved } : state.user }));
+          return response;
+        });
       },
 
       addHolding: (holding: any) => {
         const normalized = normalizePortfolioHolding(holding);
         if (!normalized) return Promise.resolve(null);
-        return get().setPortfolio([...(get().portfolio || []), normalized]);
+        return get().setPortfolio((current: any[]) => [...current, normalized]);
       },
 
       updateHolding: (id: string | number, updates: any) => {
-        const current = get().portfolio || [];
-        return get().setPortfolio(current.map((holding: any) => (
+        return get().setPortfolio((current: any[]) => current.map((holding: any) => (
           String(holding.id) === String(id) ? { ...holding, ...updates } : holding
         )));
       },
 
       deleteHolding: (id: string | number) => {
-        const current = get().portfolio || [];
-        return get().setPortfolio(current.filter((holding: any) => String(holding.id) !== String(id)));
+        return get().setPortfolio((current: any[]) => current.filter((holding: any) => String(holding.id) !== String(id)));
       },
 
       updateBodyProfile: async (data: any) => {
@@ -241,17 +308,23 @@ const useStore = create<any>()(
       },
 
       fetchInitialData: async () => {
-        set({ isLoading: true });
+        const request = ++initialRequest;
+        const current = captureSession(get);
+        set({ isLoading: true, initialLoadError: null });
 
         try {
           const stored: any = await apiRequest('/api/state');
-          const pending = (stored.tasks || []).filter((item: any) => !item?.done && item?.status !== 'done');
-          const completed = (stored.tasks || []).filter((item: any) => item?.done || item?.status === 'done');
+          if (!current() || request !== initialRequest) return stored;
+          if (!stored?.user || !Array.isArray(stored.tasks)) throw new Error('The server returned an invalid workspace snapshot.');
+          const pending = stored.tasks.filter((item: any) => !taskIsDone(item));
+          const completed = stored.tasks.filter(taskIsDone);
           const preference = stored.preference || {};
           set({
             isLoading: false,
+            initialLoadError: null,
+            _dataRevision: get()._dataRevision + 1,
             user: { ...(stored.user || {}), tasks: { pending, completed } },
-            theme: preference.theme || 'light', palette: preference.palette || 'gold',
+            theme: preference.theme || get().theme || 'system', palette: preference.palette || 'gold',
             sidebarCollapsed: Boolean(preference.sidebarCollapsed), onboardingComplete: Boolean(preference.onboardingComplete),
             reducedMotion: Boolean(preference.reducedMotion),
             density: preference.density === 'compact' ? 'compact' : 'comfortable',
@@ -259,19 +332,37 @@ const useStore = create<any>()(
             navigationTabOrder: preference.navigationTabOrder || {},
             bodyProfile: stored.bodyProfile || null, socialProfiles: stored.socialProfiles || [],
             healthProfile: stored.healthProfile || {}, appConfig: stored.config || {}, databases: stored.databases || [],
-            finance: { ...(get().finance || {}), transactions: Object.fromEntries((stored.finance || []).map((item: any) => [item.id, item])), budgets: stored.budgets || [] },
+            finance: { ...(get().finance || {}), transactions: Object.fromEntries((stored.finance || []).map((item: any) => [item.id, item])), budgets: Object.fromEntries((stored.budgets || []).map((item: any) => [item.id, item])) },
             shopping: { items: stored.shopping || [] }, entertainment: { media: stored.entertainment || [] },
             timesheetEntries: stored.timesheet || [], sleep_logs: stored.sleep_logs || [], nutrition_logs: stored.nutrition_logs || [],
             notes: stored.notes || [], goals: stored.goals || [], documents: stored.documents || [], habits: stored.habits || [], subscriptions: stored.subscriptions || [],
-            portfolio: Array.isArray(stored.user?.portfolio) ? normalizePortfolio(stored.user.portfolio) : get().portfolio,
+            portfolio: normalizePortfolio(stored.user?.portfolio),
             metric_logs: stored.metric_logs || [], moodLogs: stored.moodLogs || [], vitalsLogs: stored.vitalsLogs || [], medications: stored.medications || [],
             workouts: { sessions: stored.workout_sessions || [], exercisesBySession: {} },
             trainingPlan: stored.user?.trainingPlan || null, nutritionStrategy: stored.user?.nutritionStrategy || null, lifestyleTips: stored.user?.lifestyleTips || [], medicalData: stored.user?.medicalData || null, physiqueTargets: stored.user?.physiqueTargets || null, assessmentQA: stored.user?.assessmentQA || [], skills: stored.user?.skills || [], calendar_events: stored.user?.calendar_events || [], wellnessData: stored.user?.wellnessData || null,
           });
+          return stored;
         } catch (err) {
           console.error('[useStore] fetchInitialData error:', err);
-          set({ isLoading: false });
+          if (current() && request === initialRequest) set({ isLoading: false, initialLoadError: err });
+          throw err;
         }
+      },
+
+      // App calls this when authentication changes, before loading an account.
+      resetSessionData: () => {
+        initialRequest += 1;
+        set((state: any) => ({
+          user: null, initialLoadError: null, preferenceSaveError: null, isLoading: false,
+          _sessionVersion: state._sessionVersion + 1, _dataRevision: state._dataRevision + 1,
+          notes: [], goals: [], sleep_logs: [], metric_logs: [], nutrition_logs: [], moodLogs: [], vitalsLogs: [], medications: [],
+          habits: [], habitLogsByHabit: {}, subscriptions: [], documents: [], portfolio: [],
+          shopping: { items: [] }, entertainment: { media: [] }, timesheetEntries: [], timesheet: { sessions: [] },
+          finance: { transactions: {}, budgets: {} }, workouts: { sessions: [], exercisesBySession: {} },
+          skills: [], calendar_events: [], trainingPlan: null, nutritionStrategy: null, lifestyleTips: [], medicalData: null,
+          physiqueTargets: null, assessmentQA: [], wellnessData: null, bodyProfile: null, healthProfile: {},
+          socialProfiles: [], databases: [], appConfig: {}, lastCheckIn: null, checkInAlertDismissedDate: null,
+        }));
       },
 
       fetchWorkoutExercisesForSession: async (sessionId: string) => {
@@ -289,47 +380,7 @@ const useStore = create<any>()(
         }
       },
 
-      addWorkoutFromTrainingDay: async (day: any) => {
-        if (!day) return;
-        const volume = (day.exercises || []).reduce(
-          (s: any, e: any) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0),
-          0
-        );
-        const today = new Date().toISOString().slice(0, 10);
-        const sessionRes = await apiSync('/workout_sessions', 'POST', {
-          date: today,
-          notes: day.muscleGroup || day.day,
-          duration_minutes: null,
-        });
-        if (!sessionRes?.id) return;
-
-        const exercisesPayload = {
-          exercises: (day.exercises || []).map((ex: any) => ({
-            exercise_name: ex.name,
-            sets: Number(ex.sets) || null,
-            reps: Number(ex.reps) || null,
-            weight_kg: Number(ex.weight) || null,
-            notes: null,
-          })),
-        };
-        await apiSync(`/workout_sessions/${sessionRes.id}/exercises`, 'POST', exercisesPayload);
-
-        set((state: any) => ({
-          workouts: {
-            sessions: [
-              {
-                id: sessionRes.id,
-                date: today,
-                notes: day.muscleGroup || day.day,
-                duration_minutes: null,
-                volume,
-              },
-              ...state.workouts.sessions,
-            ],
-            exercisesBySession: state.workouts.exercisesBySession,
-          },
-        }));
-      },
+      addWorkoutFromTrainingDay: createWorkoutCompletion(set, get),
 
       deleteWorkoutSession: async (id: string) => {
         await apiSync(`/workout_sessions/${id}`, 'DELETE');
@@ -343,55 +394,11 @@ const useStore = create<any>()(
         }));
       },
 
-      addShoppingItem: async (item: any) => {
-        const res = await apiSync('/shopping', 'POST', item);
-        if (res?.id) {
-          set((state: any) => ({
-            shopping: {
-              ...state.shopping,
-              items: [
-                { ...item, id: res.id, purchased: false },
-                ...state.shopping.items,
-              ],
-            },
-          }));
-        }
-      },
-
-      updateShoppingItem: async (id: string, updates: any) => {
-        const res = await apiSync(`/shopping/${id}`, 'PUT', updates);
-        set((state: any) => ({
-          shopping: {
-            ...state.shopping,
-            items: state.shopping.items.map((item: any) => item.id === id ? { ...item, ...updates, ...(res || {}) } : item),
-          },
-        }));
-      },
-
-      deleteShoppingItem: (id: string) => {
-        apiSync(`/shopping/${id}`, 'DELETE');
-        set((state: any) => ({
-          shopping: {
-            ...state.shopping,
-            items: state.shopping.items.filter((i: any) => i.id !== id),
-          },
-        }));
-      },
-
-      toggleShoppingPurchased: (id: string) => {
-        const item = get().shopping.items.find((i: any) => i.id === id);
-        if (item) {
-          apiSync(`/shopping/${id}`, 'PUT', { purchased: !item.purchased });
-          set((state: any) => ({
-            shopping: {
-              ...state.shopping,
-              items: state.shopping.items.map((i: any) =>
-                i.id === id ? { ...i, purchased: !item.purchased } : i
-              ),
-            },
-          }));
-        }
-      },
+      addShoppingItem: shoppingItems.add,
+      updateShoppingItem: shoppingItems.update,
+      deleteShoppingItem: shoppingItems.remove,
+      convertShoppingToExpense: createShoppingConversion(set, get, shoppingItems),
+      toggleShoppingPurchased: (id: string) => shoppingItems.update(id, (item: any) => ({ purchased: !item.purchased, stage: item.purchased ? 'future' : 'purchased' })),
 
       toggleShoppingItem: (id: string) => get().toggleShoppingPurchased(id),
 
@@ -426,114 +433,30 @@ const useStore = create<any>()(
         }));
       },
 
-      addMediaItem: async (item: any) => {
-        const res = await apiSync('/entertainment', 'POST', item);
-        if (res?.id) {
-          set((state: any) => ({
-            entertainment: {
-              ...state.entertainment,
-              media: [...state.entertainment.media, { ...item, id: res.id }],
-            },
-          }));
-        }
-      },
+      addMediaItem: mediaItems.add,
+      updateMediaItem: mediaItems.update,
+      deleteMediaItem: mediaItems.remove,
+      updateMediaProgress: (id: string, field: string, value: any) => mediaItems.update(id, { [field]: value }),
 
-      deleteMediaItem: async (id: string) => {
-        apiSync(`/entertainment/${id}`, 'DELETE');
-        set((state: any) => ({
-          entertainment: {
-            ...state.entertainment,
-            media: state.entertainment.media.filter((m: any) => m.id !== id),
-          },
-        }));
-      },
+      // Manual subscription indicators, not linked accounts or watch sync.
+      setEntertainmentSync: (sync: any) => get().updateWellnessData((data: any) => ({ ...data, entertainment: { ...data?.entertainment, ...sync } })),
 
-      updateMediaProgress: async (id: string, field: string, value: any) => {
-        const item = get().entertainment.media.find((m: any) => m.id === id);
-        if (item) {
-          const updates = { ...item, [field]: value };
-          apiSync('/entertainment', 'POST', updates);
-          set((state: any) => ({
-            entertainment: {
-              ...state.entertainment,
-              media: state.entertainment.media.map((m: any) =>
-                m.id === id ? { ...m, [field]: value } : m
-              ),
-            },
-          }));
-        }
-      },
+      addNote: notes.add,
+      deleteNote: notes.remove,
+      updateNote: notes.update,
 
-      // OTT sync state — persisted in store (not local useState)
-      entertainmentSync: { otts: ['Netflix'] } as any,
-      setEntertainmentSync: (sync: any) => set({ entertainmentSync: sync }),
+      addGoal: goals.add,
+      deleteGoal: goals.remove,
+      updateGoal: goals.update,
 
-      addNote: async (note: any) => {
-        const res = await apiSync('/notes', 'POST', note);
-        if (res?.id) {
-          set((state: any) => ({ notes: [{ ...note, id: res.id }, ...state.notes] }));
-        }
-      },
-      deleteNote: (id: string) => {
-        apiSync(`/notes/${id}`, 'DELETE');
-        set((state: any) => ({ notes: state.notes.filter((n: any) => n.id !== id) }));
-      },
-      updateNote: (id: string, updates: any) => {
-        apiSync(`/notes/${id}`, 'PUT', updates);
-        set((state: any) => ({ notes: state.notes.map((n: any) => n.id === id ? { ...n, ...updates } : n) }));
-      },
+      saveSleepLog: sleep.upsertDate,
 
-      addGoal: async (goal: any) => {
-        const res = await apiSync('/goals', 'POST', goal);
-        if (res?.id) {
-          set((state: any) => ({ goals: [{ ...goal, id: res.id }, ...state.goals] }));
-        }
-      },
-      deleteGoal: (id: string) => {
-        apiSync(`/goals/${id}`, 'DELETE');
-        set((state: any) => ({ goals: state.goals.filter((g: any) => g.id !== id) }));
-      },
-      updateGoal: (id: string, updates: any) => {
-        apiSync(`/goals/${id}`, 'PUT', updates);
-        set((state: any) => ({ goals: state.goals.map((g: any) => g.id === id ? { ...g, ...updates } : g) }));
-      },
+      addDocument: documents.add,
+      deleteDocument: documents.remove,
 
-      saveSleepLog: async (log: any) => {
-        const existing = get().sleep_logs.find((entry: any) => entry.date === log.date);
-        const saved = existing?.id
-          ? (await apiSync(`/sleep_logs/${existing.id}`, 'PUT', log), { ...existing, ...log })
-          : await apiSync('/sleep_logs', 'POST', log);
-        set((state: any) => ({
-          sleep_logs: [{ ...log, ...saved }, ...state.sleep_logs.filter((l: any) => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date))
-        }));
-        return saved;
-      },
-
-      addDocument: async (doc: any) => {
-        const res = await apiSync('/documents', 'POST', doc);
-        if (res?.id) {
-          set((state: any) => ({ documents: [{ ...doc, id: res.id }, ...state.documents] }));
-        }
-      },
-      deleteDocument: (id: string) => {
-        apiSync(`/documents/${id}`, 'DELETE');
-        set((state: any) => ({ documents: state.documents.filter((d: any) => d.id !== id) }));
-      },
-
-      addHabit: async (habit: any) => {
-        const res = await apiSync('/habits', 'POST', habit);
-        if (res?.id) {
-          set((state: any) => ({ habits: [...state.habits, { ...habit, id: res.id, completed_dates: [], streak: 0 }] }));
-        }
-      },
-      deleteHabit: (id: string) => {
-        apiSync(`/habits/${id}`, 'DELETE');
-        set((state: any) => ({ habits: state.habits.filter((h: any) => h.id !== id) }));
-      },
-      updateHabit: (id: string, updates: any) => {
-        apiSync(`/habits/${id}`, 'PUT', updates);
-        set((state: any) => ({ habits: state.habits.map((h: any) => h.id === id ? { ...h, ...updates } : h) }));
-      },
+      addHabit: (habit: any) => habits.add({ completed_dates: [], streak: 0, ...habit }),
+      deleteHabit: habits.remove,
+      updateHabit: habits.update,
 
       fetchHabitLogsForHabit: async (habitId: string) => {
         const logs = await apiSync(`/habit_logs/${habitId}`, 'GET');
@@ -564,74 +487,39 @@ const useStore = create<any>()(
         });
       },
 
-      addSubscription: async (sub: any) => {
-        const res = await apiSync('/subscriptions', 'POST', sub);
-        if (res?.id) {
-          set((state: any) => ({ subscriptions: [...state.subscriptions, { ...sub, id: res.id, active: 1 }] }));
-        }
-      },
-      deleteSubscription: (id: string) => {
-        apiSync(`/subscriptions/${id}`, 'DELETE');
-        set((state: any) => ({ subscriptions: state.subscriptions.filter((s: any) => s.id !== id) }));
-      },
+      addSubscription: (sub: any) => subscriptions.add({ active: 1, ...sub }),
+      deleteSubscription: subscriptions.remove,
 
-      updateTrainingPlan: async (data: any) => { set({ trainingPlan: data }); apiSync('/training_plan', 'POST', data); },
-      updateNutritionStrategy: async (data: any) => { set({ nutritionStrategy: data }); apiSync('/nutrition_strategy', 'POST', data); },
-      updateLifestyleTips: async (data: any) => { set({ lifestyleTips: data }); apiSync('/lifestyle_tips', 'POST', data); },
-      updateMedicalData: async (data: any) => { set({ medicalData: data }); apiSync('/medical_data', 'POST', data); },
-      updatePhysiqueTargets: async (data: any) => {
-        set({ physiqueTargets: data });
-        const request = physiqueSyncQueue.then(() => apiSync('/physique_targets', 'POST', data));
-        physiqueSyncQueue = request.catch(() => undefined);
-        return request;
+      updateTrainingPlan: (data: any) => saveSingleton('trainingPlan', '/training_plan', data),
+      updateNutritionStrategy: (data: any) => saveSingleton('nutritionStrategy', '/nutrition_strategy', data),
+      updateLifestyleTips: (data: any) => saveSingleton('lifestyleTips', '/lifestyle_tips', data),
+      updateMedicalData: (data: any) => saveSingleton('medicalData', '/medical_data', data),
+      updatePhysiqueTargets: (data: any) => saveSingleton('physiqueTargets', '/physique_targets', data),
+      updateAssessmentQA: (data: any) => saveSingleton('assessmentQA', '/assessment_qa', data),
+      updateSkills: (data: any) => saveSingleton('skills', '/skills', data),
+      addSkill: (skill: any) => saveSingleton('skills', '/skills', (current: any) => [...(current || []), skill]),
+      updateSkill: (id: any, updates: any) => saveSingleton('skills', '/skills', (current: any) => (current || []).map((item: any) => item.id === id ? { ...item, ...updates } : item)),
+      deleteSkill: (id: any) => saveSingleton('skills', '/skills', (current: any) => (current || []).filter((item: any) => item.id !== id)),
+      updateCalendarEvents: (data: any) => saveSingleton('calendar_events', '/calendar_events', data),
+      setDatabases: async (data: any[]) => {
+        const current = captureSession(get);
+        const response = await apiSync('/custom-tables', 'PUT', data);
+        if (current()) set({ databases: Array.isArray(response) ? response : data });
+        return response;
       },
-      updateAssessmentQA: async (data: any) => { set({ assessmentQA: data }); apiSync('/assessment_qa', 'POST', data); },
-      updateSkills: async (data: any) => { set({ skills: data }); apiSync('/skills', 'POST', data); },
-      addSkill: async (skill: any) => {
-        const next = [...(get().skills || []), skill];
-        set({ skills: next });
-        try { await apiSync('/skills', 'POST', next); } catch { /* optimistic local state remains */ }
-      },
-      updateSkill: async (id: any, updates: any) => {
-        const next = (get().skills || []).map((item: any) => item.id === id ? { ...item, ...updates } : item);
-        set({ skills: next });
-        try { await apiSync('/skills', 'POST', next); } catch { /* optimistic local state remains */ }
-      },
-      deleteSkill: async (id: any) => {
-        const next = (get().skills || []).filter((item: any) => item.id !== id);
-        set({ skills: next });
-        try { await apiSync('/skills', 'POST', next); } catch { /* optimistic local state remains */ }
-      },
-      updateCalendarEvents: async (data: any) => { await apiSync('/calendar_events', 'POST', data); set({ calendar_events: data }); },
-      setDatabases: (data: any[]) => { set({ databases: data }); apiSync('/custom-tables', 'PUT', data); },
-      updateWellnessData: async (data: any) => { set({ wellnessData: data }); apiSync('/wellness_data', 'POST', data); },
+      updateWellnessData: (data: any) => saveSingleton('wellnessData', '/wellness_data', data),
+      updateActionCenterState: (updater: any) => get().updateWellnessData((data: any) => ({
+        ...(data || {}), actionCenter: typeof updater === 'function' ? updater(data?.actionCenter || {}) : updater,
+      })),
 
-      addMoodLog: async (log: any) => {
-        await apiSync('/mood_logs', 'POST', log);
-        set((state: any) => ({
-          moodLogs: [log, ...state.moodLogs.filter((l: any) => l.date !== log.date)].sort((a, b) => b.date.localeCompare(a.date)),
-        }));
-      },
+      addMoodLog: moods.upsertDate,
 
-      addVitalLog: async (log: any) => {
-        await apiSync('/vitals_logs', 'POST', log);
-        set((state: any) => ({
-          vitalsLogs: [log, ...state.vitalsLogs].sort((a, b) => b.date.localeCompare(a.date)),
-        }));
-      },
+      addVitalLog: vitals.add,
 
-      addMedication: async (medication: any) => {
-        const res = await apiSync('/medications', 'POST', medication);
-        if (res?.id) {
-          set((state: any) => ({ medications: [...state.medications, { ...medication, id: res.id }] }));
-        }
-      },
-
-      deleteMedication: async (id: string) => {
-        await apiSync(`/medications/${id}`, 'DELETE');
-        set((state: any) => ({ medications: state.medications.filter((m: any) => m.id !== id) }));
-      },
-    }),
+      addMedication: medications.add,
+      deleteMedication: medications.remove,
+    });
+    },
     {
       name: 'growthtrack-ultimate-v4',
       storage: createJSONStorage(() => safeLocalStorage),
@@ -654,6 +542,12 @@ const useStore = create<any>()(
     }
   )
 );
+
+// Direct user replacement is also a session boundary (including legacy callers).
+useStore.subscribe((state: any, previous: any) => {
+  const owner = (value: any) => value?.id ?? value?.email ?? null;
+  if (owner(state.user) !== owner(previous.user)) useStore.setState({ initialLoadError: null, preferenceSaveError: null, _sessionVersion: state._sessionVersion + 1 });
+});
 
 export const selectUser = (s: any) => s.user;
 export const selectSetUser = (s: any) => s.setUser;
@@ -694,6 +588,8 @@ export const selectFetchInitialData = (s: any) => s.fetchInitialData;
 export const selectCheckServerHealth = (s: any) => s.checkServerHealth;
 export const selectServerStatus = (s: any) => s.serverStatus;
 export const selectIsLoading = (s: any) => s.isLoading;
+export const selectInitialLoadError = (s: any) => s.initialLoadError;
+export const selectPreferenceSaveError = (s: any) => s.preferenceSaveError;
 
 export const selectTimesheet = (s: any) => s.timesheet;
 export const selectAddTimesheetSession = (s: any) => s.addTimesheetSession;

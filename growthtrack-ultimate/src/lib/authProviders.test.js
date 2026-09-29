@@ -25,4 +25,9 @@ describe('authentication providers', () => {
     await expect(provider.signIn()).rejects.toThrow('not configured');
     expect(() => createAuthProvider({ type: 'clerk', enabled: true })).toThrow('not installed');
   });
+
+  it('propagates an unacknowledged logout instead of reporting success', async () => {
+    const client = vi.fn().mockRejectedValue(new Error('Server unavailable'));
+    await expect(new LocalAuthProvider(client).signOut()).rejects.toThrow('Server unavailable');
+  });
 });

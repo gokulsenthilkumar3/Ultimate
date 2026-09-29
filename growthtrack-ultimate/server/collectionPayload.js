@@ -1,4 +1,6 @@
 // Collection forms contain richer fields than the searchable database columns.
+import { fileToClient } from './domains/fileMetadata.js';
+import { workoutToClient } from './domains/workoutMetadata.js';
 // Keep those fields in each record's JSON data, and use the same contract for
 // collection endpoints and the initial dashboard snapshot.
 const FIELDS = {
@@ -23,7 +25,7 @@ const FIELDS = {
   goal_progress_logs: ['goalId', 'value', 'note', 'date'],
 };
 const WITHOUT_DATA = new Set(['finance', 'budgets', 'workout_sessions', 'progress_photos', 'goal_progress_logs']);
-const PROTECTED = new Set(['id', 'userId', 'user', 'createdBy', 'updatedBy', 'createdAt', 'updatedAt', 'created_at', '__proto__', 'prototype', 'constructor', 'logs', 'exercises', 'progressLogs']);
+const PROTECTED = new Set(['id', 'userId', 'user', 'createdBy', 'updatedBy', 'createdAt', 'updatedAt', 'expectedUpdatedAt', 'created_at', '__proto__', 'prototype', 'constructor', 'logs', 'exercises', 'progressLogs']);
 const NUMBERS = new Set(['amount', 'limit_amount', 'duration_minutes', 'volume', 'duration', 'hours', 'streak', 'cost', 'active', 'value']);
 
 function invalid(message) {
@@ -42,6 +44,8 @@ export function parseRecordData(value) {
 
 export function collectionToClient(name, record) {
   if (!record || !FIELDS[name]) return record;
+  if (name === 'documents') return fileToClient(record);
+  if (name === 'workout_sessions') return workoutToClient(record);
   const result = { ...parseRecordData(record.data), ...record };
   if (name === 'tasks') {
     result.dueDate = record.due_date ?? result.dueDate ?? '';
@@ -61,7 +65,6 @@ export function collectionToClient(name, record) {
     result.earnings = Number(result.earnings || 0);
     result.project ||= 'General';
   }
-  if (name === 'documents') result.name = result.name || record.title || 'Untitled document';
   if (name === 'goals') result.deadline = result.deadline || record.targetDate || '';
   if (name === 'vitals_logs') result.type = result.type || record.vital;
   if (name === 'medications') result.dose = result.dose || record.dosage;

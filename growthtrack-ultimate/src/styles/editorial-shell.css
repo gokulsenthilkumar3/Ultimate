@@ -1,0 +1,503 @@
+/* The authenticated shell and compatibility aliases. Legacy module styles are
+   intentionally isolated in the earlier layer while their routes migrate. */
+:root {
+  --ui-canvas: var(--gt-canvas);
+  --ui-canvas-2: var(--gt-canvas);
+  --font-body: var(--gt-font);
+  --font-display: var(--gt-font-display);
+}
+
+html { background: var(--gt-canvas); }
+body { color: var(--gt-text); }
+
+.app-shell[data-ui-system="editorial"] {
+  --bg-base: var(--gt-canvas);
+  --bg-main: var(--gt-canvas);
+  --bg-surface: var(--gt-surface);
+  --bg-card: var(--gt-surface);
+  --bg-glass: var(--gt-surface);
+  --bg-elevated: var(--gt-surface-raised);
+  --bg-input: var(--gt-surface);
+  --text-1: var(--gt-text);
+  --text-2: var(--gt-muted);
+  --text-3: var(--gt-subtle);
+  --border: var(--gt-border);
+  --border-strong: var(--gt-border-strong);
+  --accent: var(--gt-action);
+  --accent-secondary: var(--gt-action);
+  --accent-soft: color-mix(in srgb, var(--gt-action) 11%, transparent);
+  --domain-accent: var(--gt-action);
+  --domain-accent-soft: var(--accent-soft);
+  --success: var(--gt-success);
+  --warning: var(--gt-warning);
+  --danger: var(--gt-danger);
+  --info: var(--gt-info);
+  --ui-panel: var(--gt-surface);
+  --ui-panel-solid: var(--gt-surface);
+  --ui-panel-hover: var(--gt-surface-raised);
+  --ui-line: var(--gt-border);
+  --ui-line-strong: var(--gt-border-strong);
+  --ui-highlight: var(--gt-surface-raised);
+  --ui-shadow-sm: var(--gt-shadow-control);
+  --ui-shadow-lg: var(--gt-shadow-floating);
+  --ui-radius-card: var(--gt-radius-md);
+  --ui-radius-control: var(--gt-radius-sm);
+  --radius-xl: var(--gt-radius-xl);
+  --radius-lg: var(--gt-radius-lg);
+  --radius-md: var(--gt-radius-md);
+  --radius-sm: var(--gt-radius-sm);
+  --font-body: var(--gt-font);
+  --font-display: var(--gt-font-display);
+  --gt-shell-header: 4rem;
+  --gt-shell-content: 92rem;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  overflow-x: clip;
+  isolation: isolate;
+  background: var(--gt-canvas);
+  background-image: none;
+  color: var(--gt-text);
+  font: 400 1rem/1.5 var(--gt-font);
+}
+.app-shell[data-ui-system="editorial"]::before,
+.app-shell[data-ui-system="editorial"]::after { display: none; content: none; }
+.app-shell[data-ui-system="editorial"] .skip-to-content {
+  position: fixed;
+  inset-block-start: .5rem;
+  inset-inline-start: calc(var(--gt-shell-offset, 0px) + .5rem);
+  z-index: 200;
+  padding: .6rem .85rem;
+  border-radius: var(--gt-radius-sm);
+  background: var(--gt-action);
+  color: var(--gt-on-action);
+  transform: translateY(-160%);
+  text-decoration: none;
+}
+.app-shell[data-ui-system="editorial"] .skip-to-content:focus-visible { transform: translateY(0); }
+.app-shell[data-ui-system="editorial"] .mesh-bg,
+.app-shell[data-ui-system="editorial"] .v3-visual-stage { display: none; }
+.app-shell[data-ui-system="editorial"] .main-area {
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  max-inline-size: none;
+}
+.app-shell[data-ui-system="editorial"] .content-area {
+  inline-size: min(100%, var(--gt-shell-content));
+  max-inline-size: none;
+  min-block-size: calc(100vh - var(--gt-shell-header));
+  min-block-size: calc(100dvh - var(--gt-shell-header));
+  margin-inline: auto;
+  padding: clamp(1.25rem, 2.8vw, 2.75rem);
+  container-type: inline-size;
+}
+.app-shell[data-ui-system="editorial"] .content-area > :first-child { margin-block-start: 0; }
+.app-shell[data-ui-system="editorial"] .content-area h1 {
+  color: var(--gt-text);
+  font-family: var(--gt-font-display);
+  font-size: clamp(1.9rem, 2.2vw + 1.1rem, 2.8rem);
+  font-weight: 500;
+  letter-spacing: -.035em;
+  line-height: 1.12;
+}
+.app-shell[data-ui-system="editorial"] .content-area h2 {
+  color: var(--gt-text);
+  letter-spacing: -.025em;
+}
+.app-shell[data-ui-system="editorial"] :is(.metric-value, .stat-value, .stat-card__value, .finance-overview-ledger-amount, table) {
+  font-variant-numeric: tabular-nums;
+}
+.app-shell[data-ui-system="editorial"] :is(.glass-card, .gt-card, .card, .panel, .stat-card, .insight-card) {
+  border: 1px solid var(--gt-border);
+  border-radius: var(--gt-radius-md);
+  background: var(--gt-surface);
+  background-image: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.app-shell[data-ui-system="editorial"] :is(.glass-card, .gt-card, .card, .panel, .stat-card, .insight-card):hover {
+  transform: none;
+  box-shadow: none;
+}
+.app-shell[data-ui-system="editorial"] :is(.btn-primary, .btn-accent, .gt-button--primary) {
+  min-block-size: var(--gt-target-minimum);
+  border: 1px solid var(--gt-action);
+  border-radius: var(--gt-radius-sm);
+  background: var(--gt-action);
+  background-image: none;
+  box-shadow: none;
+  color: var(--gt-on-action);
+  font: 600 .875rem/1.3 var(--gt-font);
+}
+.app-shell[data-ui-system="editorial"] :is(.btn-secondary, .btn-ghost, .btn-sm, .gt-button--secondary) {
+  min-block-size: var(--gt-target-minimum);
+  border-radius: var(--gt-radius-sm);
+  box-shadow: none;
+}
+.app-shell[data-ui-system="editorial"] :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--gt-focus);
+  outline-offset: 2px;
+}
+.app-shell[data-ui-system="editorial"] :is(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
+.app-shell[data-ui-system="editorial"] :is(button, input, select, textarea) { font-family: var(--gt-font); }
+.app-shell[data-ui-system="editorial"] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-block-size: var(--gt-target-minimum);
+  border-color: var(--gt-border-strong);
+  border-radius: var(--gt-radius-sm);
+  background: var(--gt-surface);
+  color: var(--gt-text);
+}
+.app-shell[data-ui-system="editorial"] :is(.page-transition-wrapper, .card-enter) { animation: none; }
+
+/* One utility header. Page titles live in page content, never in duplicate chrome. */
+.app-shell[data-ui-system="editorial"] .app-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  inline-size: 100%;
+  max-inline-size: none;
+  min-block-size: var(--gt-shell-header);
+  margin: 0;
+  padding: .5rem clamp(1rem, 2.8vw, 2.75rem);
+  border: 0;
+  border-block-end: 1px solid var(--gt-border);
+  border-radius: 0;
+  background: var(--gt-surface);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.app-shell[data-ui-system="editorial"] .app-header__brand {
+  display: none;
+  align-items: center;
+  gap: .65rem;
+  margin: 0;
+  color: var(--gt-text);
+  text-decoration: none;
+}
+.app-shell[data-ui-system="editorial"] .app-header__mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.25rem;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border-radius: var(--gt-radius-sm);
+  background: var(--gt-action);
+  color: var(--gt-on-action);
+  box-shadow: none;
+  font: 700 1.25rem/1 var(--gt-font-display);
+}
+.app-shell[data-ui-system="editorial"] .app-header__brand-copy {
+  display: grid;
+  gap: 0;
+  line-height: 1.15;
+}
+.app-shell[data-ui-system="editorial"] .app-header__brand-copy strong {
+  font-size: .9rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+.app-shell[data-ui-system="editorial"] .app-header__brand-copy small {
+  margin: 0;
+  color: var(--gt-subtle);
+  font-size: .7rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.app-shell[data-ui-system="editorial"] .app-header__context {
+  display: block;
+  min-inline-size: 0;
+  color: var(--gt-muted);
+  font-size: .875rem;
+  font-weight: 600;
+}
+.app-shell[data-ui-system="editorial"] .app-header__search {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  inline-size: min(22rem, 38vw);
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+  margin: 0 0 0 auto;
+  padding: 0 .75rem;
+  border: 1px solid var(--gt-border);
+  border-radius: var(--gt-radius-sm);
+  background: var(--gt-canvas);
+  color: var(--gt-muted);
+  box-shadow: none;
+  text-align: start;
+  cursor: pointer;
+}
+.app-shell[data-ui-system="editorial"] .app-header__search:hover {
+  border-color: var(--gt-border-strong);
+  background: var(--gt-surface-raised);
+  color: var(--gt-text);
+}
+.app-shell[data-ui-system="editorial"] .app-header__search > span { flex: 1; font-size: .875rem; }
+.app-shell[data-ui-system="editorial"] .app-header__search kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  padding: .1rem .35rem;
+  border: 1px solid var(--gt-border);
+  border-radius: var(--gt-radius-xs);
+  background: var(--gt-surface);
+  color: var(--gt-subtle);
+  box-shadow: none;
+  font: 500 .7rem var(--gt-font);
+}
+.app-shell[data-ui-system="editorial"] .app-header__controls {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: .35rem;
+}
+.app-shell[data-ui-system="editorial"] :is(.header-control, .app-header__profile) {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+  padding: .5rem;
+  border: 1px solid transparent;
+  border-radius: var(--gt-radius-sm);
+  background: transparent;
+  color: var(--gt-muted);
+  box-shadow: none;
+  cursor: pointer;
+}
+.app-shell[data-ui-system="editorial"] :is(.header-control, .app-header__profile):hover {
+  border-color: var(--gt-border);
+  background: var(--gt-surface-raised);
+  color: var(--gt-text);
+  transform: none;
+}
+.app-shell[data-ui-system="editorial"] .app-header__profile > span {
+  display: inline;
+  max-inline-size: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gt-text);
+  font-size: .8125rem;
+  font-weight: 600;
+}
+.app-shell[data-ui-system="editorial"] .app-header__status {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  border: 0;
+  color: var(--gt-warning);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.app-shell[data-ui-system="editorial"] .header-control__badge {
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  display: grid;
+  place-items: center;
+  min-inline-size: 1rem;
+  block-size: 1rem;
+  padding-inline: .15rem;
+  border: 1px solid var(--gt-surface);
+  border-radius: var(--gt-radius-pill);
+  background: var(--gt-danger);
+  color: var(--gt-surface);
+  font: 700 .625rem/1 var(--gt-font);
+}
+
+/* A compact area rail; modules are a drawer until there is truly wide space. */
+.app-shell[data-ui-system="editorial"] .gt-app-navigation {
+  z-index: 70;
+  inline-size: auto;
+  color: var(--gt-text);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-rail {
+  inline-size: 5rem;
+  gap: .35rem;
+  padding: max(.6rem, env(safe-area-inset-top)) .4rem max(.6rem, env(safe-area-inset-bottom));
+  border-inline-end: 1px solid var(--gt-border);
+  background: var(--gt-surface);
+  box-shadow: none;
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-brand {
+  margin-block-end: .85rem;
+  color: var(--gt-on-action);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-brand > span {
+  display: grid;
+  place-items: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  border-radius: var(--gt-radius-sm);
+  background: var(--gt-action);
+  color: var(--gt-on-action);
+  font: 700 1.3rem/1 var(--gt-font-display);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-rail :is(a, button) {
+  min-block-size: 3.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--gt-radius-sm);
+  color: var(--gt-muted);
+  background: transparent;
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-rail :is(a, button) span {
+  font-size: .7rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-rail :is(a, button):hover,
+.app-shell[data-ui-system="editorial"] .gt-navigation-rail .is-active {
+  border-color: transparent;
+  background: var(--gt-surface-raised);
+  color: var(--gt-action);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-rail .is-active {
+  box-shadow: inset 3px 0 var(--gt-action);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-panel {
+  inline-size: 12.5rem;
+  padding: 0;
+  border-inline-end: 1px solid var(--gt-border);
+  background: var(--gt-surface);
+  box-shadow: none;
+}
+.app-shell[data-ui-system="editorial"] .gt-app-navigation[data-panel-mode="overlay"] .gt-navigation-panel {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 5rem;
+  z-index: 4;
+  inline-size: min(18rem, calc(100vw - 5rem));
+  box-shadow: var(--gt-shadow-floating);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-panel > header {
+  min-block-size: 4rem;
+  padding-inline: 1rem;
+  border-color: var(--gt-border);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-panel > header small {
+  color: var(--gt-subtle);
+  font-size: .6875rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-panel > header h2 {
+  font: 500 1.35rem/1.1 var(--gt-font-display);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-panel > nav { padding: .65rem; }
+.app-shell[data-ui-system="editorial"] .gt-navigation-module {
+  min-block-size: 2.75rem;
+  gap: .6rem;
+  padding: .55rem .65rem;
+  border-radius: var(--gt-radius-sm);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-module strong { font-size: .8125rem; font-weight: 550; }
+.app-shell[data-ui-system="editorial"] .gt-navigation-module small { display: none; }
+.app-shell[data-ui-system="editorial"] .gt-navigation-module.is-active {
+  border-color: transparent;
+  border-inline-start: 3px solid var(--gt-action);
+  background: var(--gt-surface-raised);
+  color: var(--gt-action);
+}
+.app-shell[data-ui-system="editorial"] .gt-navigation-shade { background: rgb(0 0 0 / .4); }
+
+/* Mobile navigation is anchored, not a floating pill over page actions. */
+.app-shell[data-ui-system="editorial"] .gt-mobile-dock {
+  z-index: 80;
+  inset-inline: 0;
+  inset-block-end: 0;
+  max-inline-size: none;
+  gap: 0;
+  margin: 0;
+  padding: .4rem .35rem max(.4rem, env(safe-area-inset-bottom));
+  border: 0;
+  border-block-start: 1px solid var(--gt-border);
+  border-radius: 0;
+  background: var(--gt-surface);
+  box-shadow: 0 -5px 20px rgb(15 20 17 / .06);
+}
+.app-shell[data-ui-system="editorial"] .gt-mobile-dock :is(a, button) {
+  min-block-size: 3.35rem;
+  gap: .2rem;
+  border-radius: var(--gt-radius-sm);
+  color: var(--gt-muted);
+}
+.app-shell[data-ui-system="editorial"] .gt-mobile-dock :is(a, button) span {
+  font-size: .68rem;
+  font-weight: 550;
+}
+.app-shell[data-ui-system="editorial"] .gt-mobile-dock .is-active {
+  border: 0;
+  background: var(--gt-surface-raised);
+  color: var(--gt-action);
+  box-shadow: inset 0 2px var(--gt-action);
+}
+.app-shell[data-ui-system="editorial"] .gt-mobile-menu {
+  border-color: var(--gt-border);
+  border-radius: var(--gt-radius-lg) var(--gt-radius-lg) 0 0;
+  background: var(--gt-surface);
+}
+
+.app-shell[data-ui-system="editorial"][data-density="compact"] .content-area {
+  padding-block: clamp(.9rem, 1.8vw, 1.5rem);
+}
+.app-shell[data-ui-system="editorial"][data-density="compact"] :is(.glass-card, .gt-card, .card, .panel) {
+  padding: var(--gt-space-4);
+}
+@media (max-width: 1023px) {
+  .app-shell[data-ui-system="editorial"] .app-header__context { display: none; }
+}
+@media (max-width: 639px) {
+  .app-shell[data-ui-system="editorial"] .app-header {
+    gap: .25rem;
+    min-block-size: 3.75rem;
+    padding: .35rem max(.75rem, env(safe-area-inset-right)) .35rem max(.75rem, env(safe-area-inset-left));
+  }
+  .app-shell[data-ui-system="editorial"] .app-header__brand { display: flex; margin-inline-end: auto; }
+  .app-shell[data-ui-system="editorial"] .app-header__search {
+    inline-size: 2.75rem;
+    min-inline-size: 2.75rem;
+    margin-inline-start: 0;
+    padding: .6rem;
+    border-color: transparent;
+    background: transparent;
+  }
+  .app-shell[data-ui-system="editorial"] .app-header__search :is(span, kbd),
+  .app-shell[data-ui-system="editorial"] .header-control--theme,
+  .app-shell[data-ui-system="editorial"] .app-header__profile > span { display: none; }
+  .app-shell[data-ui-system="editorial"] .app-header__controls { gap: 0; }
+  .app-shell[data-ui-system="editorial"] .app-header__status { font-size: 0; padding-inline: .25rem; }
+  .app-shell[data-ui-system="editorial"] .app-header__status svg { inline-size: 1.15rem; block-size: 1.15rem; }
+  .app-shell[data-ui-system="editorial"] .content-area {
+    min-block-size: calc(100dvh - 3.75rem);
+    padding: 1rem 1rem calc(7rem + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 360px) {
+  .app-shell[data-ui-system="editorial"] .app-header__brand-copy small { display: none; }
+  .app-shell[data-ui-system="editorial"] .app-header__brand-copy strong { font-size: .82rem; }
+  .app-shell[data-ui-system="editorial"] .gt-mobile-dock :is(a, button) span { font-size: .62rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell[data-ui-system="editorial"] *, .app-shell[data-ui-system="editorial"] *::before,
+  .app-shell[data-ui-system="editorial"] *::after { animation-duration: .01ms; transition-duration: .01ms; scroll-behavior: auto; }
+}
+@media (forced-colors: active) {
+  .app-shell[data-ui-system="editorial"] {
+    --gt-canvas: Canvas; --gt-surface: Canvas; --gt-surface-raised: Canvas;
+    --gt-text: CanvasText; --gt-muted: CanvasText; --gt-subtle: CanvasText;
+    --gt-border: CanvasText; --gt-action: Highlight; --gt-on-action: HighlightText;
+  }
+  .app-shell[data-ui-system="editorial"] :is(.glass-card, .gt-card, .card, .panel) { box-shadow: none; }
+}

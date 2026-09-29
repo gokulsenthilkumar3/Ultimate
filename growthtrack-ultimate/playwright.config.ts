@@ -1,28 +1,3 @@
-import { defineConfig, devices } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './tests/e2e',
-  timeout: 30_000,
-  retries: 1,
-  use: {
-    baseURL: 'http://localhost:5000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'mobile-chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-  ],
-  webServer: {
-    command: 'npm run dev',
-    port: 5000,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
-});
+// Safe default: Vite-only preview and owner-isolated API fixtures. Historical
+// specs are not safe to run against the owner's database and await migration.
+export { default } from './playwright.foundation.config';

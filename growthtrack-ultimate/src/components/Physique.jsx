@@ -1,6 +1,6 @@
 import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useMemo, lazy, Suspense } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import useHashTab from '../hooks/useHashTab';
 import { datedLogs, finiteMetric, metricValue } from '../lib/metricSeries';
 import {
   Zap, Target, Layers, Activity, User, Ruler, Scale, Info,
@@ -133,8 +133,6 @@ function convertValue(val, toIn) {
 }
 
 export default function Physique({ user }) {
-  const location = useLocation();
-  const navigate = useNavigate();
   const toast = useToast();
   const physiqueTargets = useStore(selectPhysiqueTargets);
   const updatePhysiqueTargets = useStore(selectUpdatePhysiqueTargets);
@@ -148,7 +146,7 @@ export default function Physique({ user }) {
   const [targetDraft,   setTargetDraft]   = useState({});
   const unitMode = String(user?.measurementSystem || '').toLowerCase().startsWith('imperial') ? 'in' : 'cm';
   // Sub-tab: 'blueprint' (default body metrics) | '3d' (HumanoidViewer embedded)
-  const subTab = ['3d', 'targets', 'history'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'blueprint';
+  const [subTab, selectView] = useHashTab(['blueprint', 'measurements', '3d', 'targets', 'history'], 'blueprint');
   const metricLogs = useStore(s => s.metric_logs ?? EMPTY_LIST);
 
   // ── Body-fat calculator state ─────────────────────────────────────────
@@ -241,7 +239,7 @@ export default function Physique({ user }) {
               aria-pressed={subTab === tab.id}
               className={`physique-segmented-nav__item${subTab === tab.id ? ' is-active' : ''}`}
               onClick={() => {
-                navigate({ pathname: location.pathname, hash: tab.id === 'blueprint' ? '' : `#${tab.id}` });
+                selectView(tab.id);
               }}
             >
               {tab.label}
@@ -267,7 +265,7 @@ export default function Physique({ user }) {
       {subTab === 'history' && <div className="glass-card physique-subpanel"><div className="eyebrow"><TrendingUp size={14} /> Measurement history</div><h3 className="text-display">Your body over time</h3>{datedLogs(metricLogs).length === 0 ? <p className="text-secondary">Save metric check-ins in Progress to build a history timeline.</p> : <div className="physique-history-list">{datedLogs(metricLogs).reverse().slice(0, 20).map((log, index) => <div className="physique-history-row" key={log.id || `${log.date}-${index}`}><strong>{formatDate(log.date, user)}</strong><span>{[['weight', 'kg'], ['bodyFat', '%'], ['waist', 'cm'], ['chest', 'cm']].filter(([key]) => metricValue(log, key) !== null).map(([key, unit]) => `${key === 'bodyFat' ? 'Body fat' : key} ${['kg', 'cm'].includes(unit) ? formatMeasurement(metricValue(log, key), unit, user) : `${metricValue(log, key)}${unit}`}`).join(' · ') || `${log.metric || log.type || 'Check-in'} · ${finiteMetric(log.value) ?? 'Saved'}`}</span></div>)}</div>}</div>}
 
       {/* ── Blueprint sub-tab (original content) ───────────────────────────── */}
-      {subTab === 'blueprint' && (<>
+      {['blueprint', 'measurements'].includes(subTab) && (<>
 
       {/* Zone cards */}
 

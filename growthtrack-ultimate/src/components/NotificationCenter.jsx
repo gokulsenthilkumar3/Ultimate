@@ -1,270 +1,93 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import {
-  Bell, BellOff, CheckCheck, Trash2, RefreshCw,
-  AlertCircle, Clock, Target, Flame, TrendingDown, Info, X
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Bell, RefreshCw } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import Button from './ui/Button';
+import Card from './ui/Card';
+import PageState from './ui/PageState';
 
-// ── Notification type config ────────────────────────────────────────────────
-const TYPE_CONFIG = {
-  habit_missed:    { icon: Flame,        color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   label: 'Missed Habit'    },
-  task_overdue:    { icon: AlertCircle,  color: '#f97316', bg: 'rgba(249,115,22,0.1)',  label: 'Overdue Task'    },
-  goal_deadline:   { icon: Target,       color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)',  label: 'Goal Deadline'   },
-  metric_alert:    { icon: TrendingDown, color: '#0ea5e9', bg: 'rgba(14,165,233,0.1)',  label: 'Metric Alert'    },
-  general:         { icon: Info,         color: '#6b7280', bg: 'rgba(107,114,128,0.1)', label: 'Info'            },
-};
+const CATEGORIES = [
+  ['tasks', 'Tasks'], ['goals', 'Goals'], ['habits', 'Habits'],
+  ['calendar', 'Calendar'], ['subscriptions', 'Financial renewals'],
+];
 
-const PRIORITY_ORDER = ['habit_missed', 'task_overdue', 'goal_deadline', 'metric_alert', 'general'];
-
-// ── NotifCard ─────────────────────────────────────────────────────────────────────
-function NotifCard({ notif, onRead, onDismiss, onNavigate }) {
-  const cfg = TYPE_CONFIG[notif.type] || TYPE_CONFIG.general;
-  const Icon = cfg.icon;
-
-  return (
-    <article
-      aria-label={`${notif.read ? 'Read' : 'Unread'} notification: ${notif.title}`}
-      style={{
-        display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-        padding: '0.9rem 1rem',
-        borderRadius: '14px',
-        background: notif.read ? 'rgba(255,255,255,0.02)' : cfg.bg,
-        border: `1px solid ${notif.read ? 'rgba(255,255,255,0.06)' : cfg.color + '40'}`,
-        transition: 'background 0.2s, border-color 0.2s',
-        opacity: notif.read ? 0.65 : 1,
-        position: 'relative',
-      }}
-    >
-      {/* unread dot */}
-      {!notif.read && (
-        <span style={{
-          position: 'absolute', top: '10px', right: '10px',
-          width: 7, height: 7, borderRadius: '50%',
-          background: cfg.color, boxShadow: `0 0 6px ${cfg.color}`,
-        }} />
-      )}
-
-      {/* icon */}
-      <div style={{
-        width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
-        background: `${cfg.color}1a`, border: `1px solid ${cfg.color}30`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Icon size={17} color={cfg.color} />
-      </div>
-
-      {/* content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: cfg.color,
-                         background: `${cfg.color}18`, border: `1px solid ${cfg.color}35`,
-                         padding: '1px 7px', borderRadius: 99, letterSpacing: '0.04em' }}>
-            {cfg.label.toUpperCase()}
-          </span>
-          <span style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>
-            <Clock size={9} style={{ display: 'inline', marginRight: '3px', verticalAlign: 'middle' }} />
-            {notif.time}
-          </span>
-        </div>
-        <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-1)',
-                    margin: '0 0 3px 0', lineHeight: 1.3 }}>{notif.title}</p>
-        <p style={{ fontSize: '0.76rem', color: 'var(--text-3)', margin: 0, lineHeight: 1.5 }}>{notif.body}</p>
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          {!notif.read && (
-            <button
-              onClick={() => onRead(notif.id)}
-              style={{
-                marginTop: '6px', fontSize: '0.68rem', fontWeight: 700,
-                color: cfg.color, background: 'none', border: 'none',
-                cursor: 'pointer', padding: 0,
-              }}
-            >
-              Mark as read
-            </button>
-          )}
-          {notif.link && (
-            <button
-            onClick={() => { onRead(notif.id); onNavigate && onNavigate(notif.link); }}
-            style={{
-              marginTop: '6px', fontSize: '0.68rem', fontWeight: 700,
-              color: cfg.color, background: 'none', border: 'none',
-              cursor: 'pointer', padding: 0, textDecoration: 'underline',
-            }}
-          >
-            Go to {notif.link} →
-          </button>
-          )}
-        </div>
-      </div>
-
-      {/* dismiss */}
-      <button
-        onClick={() => onDismiss(notif.id)}
-        title="Dismiss"
-        aria-label={`Dismiss ${notif.title}`}
-        className="hover-btn-close"
-        style={{
-          width: '24px', height: '24px', padding: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: '1px solid transparent', cursor: 'pointer',
-          color: 'var(--text-3)', flexShrink: 0
-        }}
-      ><X size={13} /></button>
-    </article>
-  );
-}
-
-// ── Main export ──────────────────────────────────────────────────────────────────────
-export default function NotificationCenter({ onNavigate, notificationState }) {
+export default function NotificationCenter({ notificationState }) {
   const toast = useToast();
-  const {
-    notifications = [],
-    unreadCount = 0,
-    loading = false,
-    refresh = () => {},
-    markRead = () => {},
-    markAllRead = () => {},
-    dismiss = () => {},
-    clearAll = () => {},
-  } = notificationState || {};
-  // Active type filter
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [view, setView] = useState('unread');
+  const [category, setCategory] = useState('all');
+  const [actionError, setActionError] = useState('');
+  const state = notificationState || {};
+  const { notifications = [], dismissedNotifications = [], unreadCount = 0, preferences, saving, loading, refreshing, error, mutationError } = state;
+  const disabled = Boolean(saving || loading || error || !state.hasLoaded);
+  const list = (view === 'dismissed' ? dismissedNotifications : notifications)
+    .filter(item => view !== 'unread' || !item.read)
+    .filter(item => category === 'all' || item.category === category);
 
-  const visible = useMemo(() => {
-    let list = notifications;
-    if (typeFilter !== 'all') list = list.filter(n => n.type === typeFilter);
-    return list;
-  }, [notifications, typeFilter]);
+  async function perform(action, success) {
+    setActionError('');
+    try {
+      await action();
+      if (success) toast.success(success);
+    } catch (failure) {
+      setActionError(failure.message || 'The change could not be confirmed. Refresh before retrying.');
+    }
+  }
 
-  // Counts per type for filter chips
-  const typeCounts = useMemo(() => {
-    const counts = {};
-    notifications.forEach(n => {
-      counts[n.type] = (counts[n.type] || 0) + 1;
-    });
-    return counts;
-  }, [notifications]);
-
-  const handleMarkAllRead = useCallback(() => {
-    markAllRead();
-    toast.success('All notifications marked as read');
-  }, [markAllRead, toast]);
-
-  const handleClearAll = useCallback(() => {
-    clearAll();
-    toast.info('All notifications cleared');
-  }, [clearAll, toast]);
-
-  return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '1rem' }}>
-
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                    gap: '1rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ position: 'relative' }}>
-            <Bell size={22} color="var(--accent)" />
-            {unreadCount > 0 && (
-              <span style={{
-                position: 'absolute', top: -6, right: -6,
-                minWidth: 16, height: 16, borderRadius: 99,
-                background: '#ef4444', color: '#fff',
-                fontSize: '0.6rem', fontWeight: 900,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '0 4px', boxShadow: '0 0 8px rgba(239,68,68,0.6)',
-              }}>{unreadCount}</span>
-            )}
-          </div>
-          <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-1)', margin: 0 }}>
-              Notifications
-            </h2>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginTop: '2px' }}>
-              {visible.length} alert{visible.length !== 1 ? 's' : ''}
-              {unreadCount > 0 && <span style={{ color: '#ef4444', marginLeft: '6px' }}>· {unreadCount} unread</span>}
-            </p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <button onClick={refresh} title="Refresh" aria-label="Refresh notifications" disabled={loading}
-            style={{ padding: '7px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)',
-                     border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                     color: 'var(--text-3)', opacity: loading ? 0.5 : 1 }}>
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          </button>
-          {unreadCount > 0 && (
-            <button onClick={handleMarkAllRead}
-              style={{ display: 'flex', alignItems: 'center', gap: '5px',
-                       padding: '7px 13px', borderRadius: '10px', fontSize: '0.75rem',
-                       fontWeight: 700, background: 'rgba(255,255,255,0.06)',
-                       border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                       color: 'var(--text-2)', transition: 'all 0.15s' }}>
-              <CheckCheck size={14} /> Mark all read
-            </button>
-          )}
-          {visible.length > 0 && (
-            <button onClick={handleClearAll}
-              style={{ display: 'flex', alignItems: 'center', gap: '5px',
-                       padding: '7px 13px', borderRadius: '10px', fontSize: '0.75rem',
-                       fontWeight: 700, background: 'rgba(239,68,68,0.08)',
-                       border: '1px solid rgba(239,68,68,0.25)', cursor: 'pointer',
-                       color: '#ef4444', transition: 'all 0.15s' }}>
-              <Trash2 size={14} /> Clear all
-            </button>
-          )}
-        </div>
+  if (!notificationState) return <PageState state="unavailable" title="Notifications are unavailable" description="The notification service is not connected." />;
+  return <section style={{ maxWidth: 800, marginInline: 'auto', padding: '1rem', display: 'grid', gap: '1rem' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+      <div><h1><Bell size={22} aria-hidden="true" /> Notifications</h1>
+        <p>{unreadCount} unread reminder{unreadCount === 1 ? '' : 's'} · Stored source records only</p></div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem' }}>
+        <Button variant="secondary" disabled={refreshing || saving || !state.enabled} onClick={() => perform(state.refresh)}>
+          <RefreshCw size={15} aria-hidden="true" /> Refresh notifications
+        </Button>
+        <Button variant="secondary" disabled={disabled || !unreadCount} onClick={() => perform(state.markAllRead, 'Reminders marked as read.')}>Mark all read</Button>
+        <Button variant="secondary" disabled={disabled || !notifications.length} onClick={() => perform(state.clearAll, 'Current reminders dismissed.')}>Dismiss current reminders</Button>
       </div>
-
-      {/* Type filter chips */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.25rem' }}>
-        {[['all', 'All', notifications.length], ...PRIORITY_ORDER.map(t => [
-          t,
-          TYPE_CONFIG[t].label,
-          typeCounts[t] || 0,
-        ])].map(([v, l, ct]) => {
-          const active = typeFilter === v;
-          const cfg = TYPE_CONFIG[v];
-          return (
-            <button key={v} onClick={() => setTypeFilter(v)} aria-pressed={active}
-              style={{
-                padding: '4px 12px', borderRadius: 99, fontSize: '0.72rem', fontWeight: 700,
-                border: `1px solid ${active ? (cfg?.color || 'var(--accent)') + '60' : 'rgba(255,255,255,0.1)'}`,
-                background: active ? (cfg?.color || 'var(--accent)') + '18' : 'transparent',
-                color: active ? (cfg?.color || 'var(--accent)') : 'var(--text-3)',
-                cursor: 'pointer', transition: 'all 0.15s',
-              }}>
-              {l}{ct > 0 ? ` (${ct})` : ''}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Notification list */}
-      {visible.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-3)' }}>
-          <BellOff size={40} style={{ opacity: 0.15, marginBottom: '0.75rem' }} />
-          <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-2)', marginBottom: '4px' }}>
-            You’re all caught up!
-          </p>
-          <p style={{ fontSize: '0.78rem' }}>
-            {typeFilter !== 'all'
-              ? 'No notifications of this type.'
-              : 'No missed habits, overdue tasks, or upcoming goal deadlines.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          {visible.map(notif => (
-            <NotifCard
-              key={notif.id}
-              notif={notif}
-              onRead={markRead}
-              onDismiss={dismiss}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </div>
-      )}
     </div>
-  );
+    {(actionError || mutationError) && <p role="alert">{actionError || mutationError.message}</p>}
+    {error && <PageState state="error" title="Notifications could not be loaded" description={error.message} onRetry={() => perform(state.refresh)} />}
+    {loading && <PageState state="loading" title="Loading reminders" />}
+    {!state.enabled && <p role="status">Notifications are paused for this account. Enable them in Profile &amp; Settings.</p>}
+    {preferences && <Card style={{ padding: '1rem' }}>
+      <h2>Reminder preferences</h2>
+      <p>Changes are shown after the server acknowledges them. Financial renewals start off. Reminders never complete or edit source records.</p>
+      <fieldset disabled={disabled} style={{ border: 0, padding: 0, display: 'flex', flexWrap: 'wrap', gap: '.75rem 1.5rem' }}>
+        <legend className="sr-only">Reminder preferences</legend>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', minHeight: 44 }}>
+          <input type="checkbox" checked={preferences.enabled} onChange={event => perform(() => state.updatePreferences({ enabled: event.target.checked }), 'Reminder preference saved.')} />Enable in-app reminders
+        </label>
+        {CATEGORIES.map(([key, label]) => <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', minHeight: 44 }}>
+          <input type="checkbox" checked={preferences.categories[key]} onChange={event => perform(() => state.updatePreferences({ categories: { [key]: event.target.checked } }), 'Reminder preference saved.')} />{label}
+        </label>)}
+      </fieldset>
+      {state.timeZone && <small>Due dates use your profile timezone: {state.timeZone}.</small>}
+    </Card>}
+    <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      {['unread', 'all', 'dismissed'].map(filter => <Button key={filter} variant="secondary" aria-pressed={view === filter} onClick={() => setView(filter)}>{filter[0].toUpperCase() + filter.slice(1)}</Button>)}
+      <label>Source <select value={category} onChange={event => setCategory(event.target.value)}>
+        <option value="all">All sources</option>{CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+      </select></label>
+    </div>
+    {state.hasLoaded && !error && !loading && !list.length && <p role="status">
+      {!preferences?.enabled ? 'In-app reminders are paused.' : view === 'dismissed' ? 'No dismissed reminders.' : view === 'unread' ? 'No unread reminders.' : 'No current reminders from the enabled sources.'}
+    </p>}
+    <div role="list" aria-label="Reminders" aria-busy={saving || loading}>
+      {list.map(item => <Card as="article" key={item.id} role="listitem" aria-label={(item.read ? 'Read' : 'Unread') + ' reminder: ' + item.title}
+        style={{ marginBlockEnd: '.75rem', padding: '1rem', overflowWrap: 'anywhere' }}>
+        <h2 style={{ fontSize: '1rem' }}>{item.title}</h2>
+        <p><strong>Due:</strong> <time dateTime={item.dueDate}>{item.dueDate}</time>{item.dueTime ? ' at ' + item.dueTime : ''}</p>
+        <p>{item.reason}</p>
+        <p><Link to={item.href}>Open source: {item.source.label}</Link></p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem' }}>
+          {item.dismissed ? <Button variant="secondary" disabled={disabled} onClick={() => perform(() => state.restore(item.id), 'Reminder restored.')}>Restore reminder</Button>
+            : <>
+              <Button variant="secondary" disabled={disabled} onClick={() => perform(() => item.read ? state.markUnread(item.id) : state.markRead(item.id), item.read ? 'Reminder marked unread.' : 'Reminder marked read.')}>{item.read ? 'Mark unread' : 'Mark as read'}</Button>
+              <Button variant="secondary" disabled={disabled} onClick={() => perform(() => state.dismiss(item.id), 'Reminder dismissed.')}>Dismiss reminder</Button>
+            </>}
+        </div>
+      </Card>)}
+    </div>
+  </section>;
 }

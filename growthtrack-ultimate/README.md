@@ -31,8 +31,9 @@ npm run build:desktop
 ```
 
 The generated installer is written to a fresh timestamped folder next to the
-project, such as `../growthtrack-release-20260911184500`. For a local
-database-only check, run `npm run db:sync`; the server resolves `file:./dev.db`
+project, such as `../growthtrack-release-20260911184500`. `npm run db:sync`
+uses Prisma schema push: use it only with a disposable local database, never
+an owner's or production database. The server resolves `file:./dev.db`
 relative to the project directory rather than the shell's current directory.
 
 The desktop build bundles the generated Prisma client into
@@ -43,7 +44,17 @@ PowerShell at the repository root.
 
 ---
 
-**GrowthTrack Ultimate** is a high-density, minimal personal operations hub. It merges daily task tracking, habits, and finance with a **live, parametric 3D Humanoid Twin**. Built on the custom **v4 Deep Space Design System**, it delivers a cinematic, animatic experience with holographic HUDs, scan-line boot sequences, and ambient cosmic particle fields.
+**GrowthTrack Ultimate** is a private personal operations hub for finance,
+wellness, work and life. Its six-area route system and responsive component
+foundation support light, dark, AMOLED, palette and density preferences.
+The optional 3D physique view loads on demand; measurements and history do
+not require WebGL. External integrations remain setup-required until real
+authorization and provider validation are complete.
+
+Current handoff: [implementation status](./docs/IMPLEMENTATION_STATUS.md),
+[routes](./docs/ROUTES.md), [components](./docs/COMPONENTS.md),
+[backend contracts](./server/backend-contracts.md), and
+[safe migration](./docs/MIGRATION.md).
 
 <br/>
 
@@ -51,10 +62,10 @@ PowerShell at the repository root.
 
 | System | Module | Status | Description |
 | :--- | :--- | :---: | :--- |
-| **💠 Core** | **Operations Hub** | `ONLINE` | Track daily habits, sleep, nutrition, tasks, and finances in a high-density, dark-themed UI. |
-| **🧬 Twin** | **Digital Chamber** | `ONLINE` | A full-screen interactive 3D model that morphs and adapts based on your real-world body metrics. |
-| **🧠 Memory**| **Dynamic Data Layer** | `SYNCED` | Powered by Zustand with local storage persistence for offline-ready, zero-latency state management. |
-| **✨ VFX** | **Premium v4 Engine** | `ACTIVE` | Electric cyan accents, glassmorphism UI, chromatic aberration, and cinematic micro-interactions. |
+| **Core** | Six product areas | `LOCAL` | Canonical routes, responsive navigation and server-backed records. |
+| **Physique** | Optional 3D Mirror | `OPTIONAL` | Lazy-loaded visualization; manual measurements work without WebGL. |
+| **Drafts** | Recoverable work | `LOCAL ONLY` | Owner-scoped browser drafts are not automatically submitted or synchronized. |
+| **Connections** | Provider integrations | `SETUP REQUIRED` | CSV and manual entry remain available; a saved link is not a connected account. |
 
 <br/>
 

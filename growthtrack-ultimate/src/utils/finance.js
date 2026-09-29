@@ -4,22 +4,23 @@
  */
 
 import { formatCurrency } from './userFormatters';
+import { financeMinor, totalMoney } from './financeModel';
 
 /** Format money using the signed-in user's Profile → Formatting & Culture. */
 export const fmtINR = (n, user) => formatCurrency(n, user);
 
 /** Sum all transactions of a given type */
 export const sumByType = (transactions, type) =>
-  transactions
+  totalMoney(transactions
     .filter((t) => t.type === type)
-    .reduce((s, t) => s + t.amount, 0);
+    .map((t) => t.amount));
 
 /** Calculate balance = income - expenses - investments */
 export const calcBalance = (transactions) => {
   const income      = sumByType(transactions, 'Income');
   const expenses    = sumByType(transactions, 'Expense');
   const investments = sumByType(transactions, 'Investment');
-  return income - expenses - investments;
+  return (financeMinor(income) - financeMinor(expenses) - financeMinor(investments)) / 100;
 };
 
 /** Build chart data array, filtering out zero-value segments */

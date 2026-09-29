@@ -43,15 +43,21 @@ describe('interface regressions', () => {
     render(<ConfirmDialog open title="Delete record?" onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
   });
-  it('keeps a failed file record open and allows retry', async () => {
-    const save = vi.fn().mockRejectedValue(new Error('network'));
+  it('keeps a failed real file upload open and allows retry', async () => {
+    const save = vi.fn().mockRejectedValueOnce(new Error(uiMessages.connection)).mockResolvedValueOnce(undefined);
     const close = vi.fn();
     const { container } = render(<UploadModal onUpload={save} onClose={close} />);
-    await userEvent.upload(container.querySelector('input[type=file]'), new File(['example'], 'notes.txt'));
-    await userEvent.click(screen.getByRole('button', { name: 'Save file record' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Check your connection and try again');
+    const file = new File(['example'], 'notes.txt');
+    await userEvent.upload(container.querySelector('input[type=file]'), file);
+    await userEvent.click(screen.getByRole('button', { name: 'Upload file' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(uiMessages.connection);
     expect(close).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Save file record' })).toBeEnabled();
+    expect(save).toHaveBeenLastCalledWith(file);
+    expect(screen.getByRole('button', { name: 'Upload file' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Upload file' }));
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith(file);
+    expect(close).toHaveBeenCalledTimes(1);
   });
   it.each([TextField, SelectField])('preserves external and validation descriptions', Field => {
     render(<><p id="outside">Additional instructions</p>{React.createElement(Field, { label: 'Value', hint: 'Hint', error: 'Fix this field', 'aria-describedby': 'outside', 'aria-invalid': false })}</>);

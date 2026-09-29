@@ -9,7 +9,7 @@ export default function EmptyState({ icon = 'CircleHelp', title, description, ac
   const id = useId();
   const Icon = typeof icon === 'string' ? (ICONS[icon] || CircleHelp) : icon;
   const action = actionLabel || ctaLabel;
-  return <section className={`empty-state gt-empty-state ${className}`.trim()} role="status" aria-labelledby={`${id}-title`}>
+  return <section className={`empty-state gt-empty-state ${className}`.trim()} data-responsive-foundation role="status" aria-labelledby={`${id}-title`}>
     <span className="empty-state__icon" aria-hidden="true"><Icon size={26} strokeWidth={1.6} /></span>
     <h2 id={`${id}-title`} className="empty-state__title">{title}</h2>
     {description && <p className="empty-state__desc">{description}</p>}

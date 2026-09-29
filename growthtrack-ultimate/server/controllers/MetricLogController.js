@@ -1,4 +1,5 @@
 import BaseController from './BaseController.js';
+import { mutationInput, mutationCondition, nextUpdatedAt, redactedAuditFields } from '../domains/mutations.js';
 
 class MetricLogController extends BaseController {
   constructor(model, name, metricPayloadFn = null, stripProtectedFieldsFn = null, auditCrudFn = null, metricToClientFn = null, parseStoredJsonFn = null) {
@@ -18,7 +19,8 @@ class MetricLogController extends BaseController {
 
   async create(req, res) {
     try {
-      const { id, ...rawData } = req.body;
+      const id = req.body?.id;
+      const rawData = mutationInput(req.body);
       let data = this.metricPayload(rawData);
       
       Object.keys(data).forEach(k => {
@@ -50,7 +52,10 @@ class MetricLogController extends BaseController {
       const current = await this.model.findFirst({ where: { id: req.params.id, userId: req.user.id } });
       if (!current) return res.status(404).json({ error: 'Record not found.' });
       
-      let data = this.metricPayload({ ...this.parseStoredJson(current?.data, {}), ...req.body });
+      const input = mutationInput(req.body);
+      const where = mutationCondition(req, current);
+      const updatedAt = nextUpdatedAt(current);
+      let data = this.metricPayload({ ...this.parseStoredJson(current?.data, {}), ...input });
       
       Object.keys(data).forEach(k => {
         if (typeof data[k] === 'object' && data[k] !== null) {
@@ -59,17 +64,18 @@ class MetricLogController extends BaseController {
       });
       
       const item = await this.model.updateMany({
-        where: { id: req.params.id, userId: req.user.id },
+        where,
         data: {
           ...data,
-          updatedBy: req.user.id
+          updatedBy: req.user.id,
+          updatedAt,
         }
       });
-      if (!item.count) return res.status(404).json({ error: 'Record not found.' });
+      if (!item.count) return res.status(409).json({ error: 'This record has changed. Refresh before saving.', code: 'VERSION_CONFLICT' });
       if (this.auditCrud) {
-        await this.auditCrud({ action: 'update', table_name: this.name, item_id: req.params.id, details: { fields: Object.keys(req.body) }, userId: req.user.id, req });
+        await this.auditCrud({ action: 'update', table_name: this.name, item_id: req.params.id, details: redactedAuditFields(input), userId: req.user.id, req });
       }
-      res.json({ success: true, count: item.count });
+      res.json({ success: true, count: item.count, updatedAt });
     } catch (e) {
       this.sendError(res, e, `${this.name} update`);
     }

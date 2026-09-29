@@ -1,9 +1,12 @@
 import safeLocalStorage from '../utils/safeLocalStorage';
-import React, { useState, useRef, useEffect, useMemo, useId } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
+import { useNavigate } from 'react-router-dom';
+import useHashTab from '../hooks/useHashTab';
+import { featurePath } from '../config/featureRegistry';
 import {
   User, Camera, Save, X, Upload, CheckCircle,
   Shield, Layout, Globe,
-  MessageCircle, Trash2, Plus, RefreshCw
+  MessageCircle, Trash2, Plus
 } from 'lucide-react';
 
 import useStore, { apiSync } from '../store/useStore';
@@ -16,13 +19,15 @@ import getCroppedImg from '../utils/cropImage';
 import { apiRequest } from '../lib/apiClient';
 import { metricsToBodyProfile } from '../lib/physiqueProfile';
 import { getCurrencySymbol } from '../utils/userFormatters';
+import { listDrafts, removeOwnerDrafts } from '../lib/drafts';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 const TABS = [
   { id: 'personal', label: 'Account', description: 'Identity, contact, and personal details', icon: User },
   { id: 'physical', label: 'Body & measurements', description: 'Body profile and measurement defaults', icon: Shield },
-  { id: 'security', label: 'Privacy & security', description: 'Password, sessions, and data protection', icon: Shield },
+  { id: 'security', label: 'Privacy & security', description: 'Password, sessions, AI and local drafts', icon: Shield },
   { id: 'appearance', label: 'Display', description: 'Theme, units, language, and accessibility', icon: Layout },
-  { id: 'integrations', label: 'Connections', description: 'Linked services and social profiles', icon: Globe },
+  { id: 'integrations', label: 'Connections', description: 'Service availability and social profiles', icon: Globe },
 ];
 
 
@@ -236,6 +241,7 @@ const BODY_APPEARANCE_TEXT_FIELDS = Object.freeze([
 ]);
 
 export default function ProfileEditor() {
+  const navigate = useNavigate();
   const user = useStore(s => s.user);
   const updateUser = useStore(s => s.updateUser);
   const updateBodyProfile = useStore(s => s.updateBodyProfile);
@@ -247,15 +253,19 @@ export default function ProfileEditor() {
   const setReducedMotion = useStore(s => s.setReducedMotion);
   const density = useStore(s => s.density || 'comfortable');
   const setDensity = useStore(s => s.setDensity);
-  const documentProviders = useStore(s => s.appConfig?.documentProviders);
-  const providerLabels = useMemo(() => (documentProviders || []).filter(provider => provider.enabled !== false).map(provider => provider.label), [documentProviders]);
   const toast = useToast();
 
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = useHashTab(TABS.map(tab => tab.id), 'personal');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [saveState, setSaveState] = useState({ status: 'idle', message: '' });
+  const [sessionState, setSessionState] = useState({ status: 'idle', expiresAt: null, events: [], error: '' });
+  const [connectionState, setConnectionState] = useState({ status: 'idle', items: [], error: '' });
+  const [draftState, setDraftState] = useState({ status: 'idle', items: [], error: '' });
+  const [draftRefresh, setDraftRefresh] = useState(0);
+  const [confirmClearDrafts, setConfirmClearDrafts] = useState(false);
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({});
@@ -277,6 +287,46 @@ export default function ProfileEditor() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [imageToCrop, setImageToCrop] = useState(null);
   const [cropperModalOpen, setCropperModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'security' || !user?.id) return undefined;
+    let current = true;
+    setSessionState({ status: 'loading', expiresAt: null, events: [], error: '' });
+    Promise.allSettled([apiRequest('/api/auth/me'), apiRequest('/api/logs/sessions')]).then(([session, history]) => {
+      if (!current) return;
+      setSessionState({
+        status: session.status === 'fulfilled' ? 'ready' : 'error',
+        expiresAt: session.status === 'fulfilled' ? session.value.expiresAt : null,
+        events: history.status === 'fulfilled' && Array.isArray(history.value) ? history.value.slice(0, 5) : [],
+        error: session.status === 'rejected' ? 'Current session details are unavailable.' : history.status === 'rejected' ? 'Recent session activity is unavailable.' : '',
+      });
+    });
+    return () => { current = false; };
+  }, [activeTab, user?.id]);
+
+  useEffect(() => {
+    if (activeTab !== 'integrations') return undefined;
+    let current = true;
+    setConnectionState({ status: 'loading', items: [], error: '' });
+    apiRequest('/api/capabilities').then(result => {
+      if (current) setConnectionState({ status: 'ready', items: Array.isArray(result.connections) ? result.connections : [], error: '' });
+    }).catch(() => {
+      if (current) setConnectionState({ status: 'error', items: [], error: 'Connection availability could not be checked.' });
+    });
+    return () => { current = false; };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'security' || !user?.id) return undefined;
+    let current = true;
+    setDraftState({ status: 'loading', items: [], error: '' });
+    listDrafts(String(user.id)).then(items => {
+      if (current) setDraftState({ status: 'ready', items, error: '' });
+    }).catch(() => {
+      if (current) setDraftState({ status: 'error', items: [], error: 'Local drafts could not be read in this browser.' });
+    });
+    return () => { current = false; };
+  }, [activeTab, user?.id, draftRefresh]);
 
   useEffect(() => {
     if (user && !isLoaded) {
@@ -375,9 +425,6 @@ export default function ProfileEditor() {
         privacyLevel: user?.privacyLevel || 'Private',
         emailNotifications: user?.emailNotifications !== false,
         smsNotifications: user?.smsNotifications === true,
-        cloudSyncEnabled: user?.cloudSyncEnabled || false,
-        syncProvider: user?.syncProvider || providerLabels[0] || '',
-        autoSyncInterval: user?.autoSyncInterval || 'Daily',
         
         primaryGoal: user?.primaryGoal || '',
         notifications: user?.notifications ?? true,
@@ -389,7 +436,7 @@ export default function ProfileEditor() {
       });
       setIsLoaded(true);
     }
-  }, [isLoaded, providerLabels, user]);
+  }, [isLoaded, user]);
 
 
   // Track changes to show the "Save Changes" button
@@ -478,9 +525,6 @@ export default function ProfileEditor() {
       privacyLevel: user?.privacyLevel || 'Private',
       emailNotifications: user?.emailNotifications !== false,
       smsNotifications: user?.smsNotifications === true,
-      cloudSyncEnabled: user?.cloudSyncEnabled || false,
-      syncProvider: user?.syncProvider || providerLabels[0] || '',
-      autoSyncInterval: user?.autoSyncInterval || 'Daily',
       
       primaryGoal: user?.primaryGoal || '',
       notifications: user?.notifications ?? true,
@@ -491,7 +535,7 @@ export default function ProfileEditor() {
     }) || avatarPreview !== (user?.avatar || null);
     
     setHasChanges(isChanged);
-  }, [avatarPreview, formData, isLoaded, providerLabels, user]);
+  }, [avatarPreview, formData, isLoaded, user]);
 
   const handleAvatarClick = () => {
     if (avatarPreview) setIsPreviewModalOpen(true);
@@ -642,6 +686,7 @@ export default function ProfileEditor() {
   };
 
   const handleChange = (field, value) => {
+    setSaveState({ status: 'idle', message: '' });
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       setFormData(prev => ({ ...prev, [parent]: { ...prev[parent], [child]: value } }));
@@ -677,25 +722,31 @@ export default function ProfileEditor() {
   };
 
   const handleSave = async () => {
+    if (saveState.status === 'saving') return;
     if (currentPassword || newPassword || confirmPassword) {
       if (!currentPassword) {
+        setSaveState({ status: 'error', message: 'Enter your current password to change it.' });
         toast.error('Current password is required to change password');
         return;
       }
       if (!newPassword) {
+        setSaveState({ status: 'error', message: 'Enter a new password.' });
         toast.error('New password is required');
         return;
       }
       if (newPassword !== confirmPassword) {
+        setSaveState({ status: 'error', message: 'The new passwords do not match.' });
         toast.error('New passwords do not match');
         return;
       }
       if (newPassword.length < 12) {
+        setSaveState({ status: 'error', message: 'Use at least 12 characters for the new password.' });
         toast.error('New password must be at least 12 characters');
         return;
       }
     }
 
+    setSaveState({ status: 'saving', message: 'Saving your changes…' });
     try {
       const submitData = { ...formData };
       
@@ -715,20 +766,13 @@ export default function ProfileEditor() {
       if (avatarPreview && avatarPreview !== user?.avatar) submitData.avatar = avatarPreview;
       if (!avatarPreview) submitData.avatar = null;
 
-      // 1. Save general profile data locally (Zustand)
-      await updateUser(submitData);
-
-      // Keep the normalized BodyProfile cache in sync in this session too.
-      // includeEmpty clears values removed from the editor instead of leaving
-      // a stale 3D measurement until the next full reload.
-      await updateBodyProfile(metricsToBodyProfile(submitData, {}, { includeEmpty: true }));
-
-      // 2. If credentials (name, email, or password) are being updated, hit PUT /api/auth/profile
+      // Verify credential changes before saving the rest of the profile.
       const hasCredsChanges = 
         formData.name !== user?.name || 
         formData.email !== user?.email ||
         newPassword;
 
+      let credentialUser = null;
       if (hasCredsChanges) {
         const resData = await apiRequest('/api/auth/profile', {
           method: 'PUT',
@@ -739,11 +783,7 @@ export default function ProfileEditor() {
             newPassword: newPassword || undefined
           })
         });
-        // Update user state in store with actual DB saved credentials
-        await updateUser({
-          name: resData.user.user_metadata?.full_name || formData.name,
-          email: resData.user.email
-        });
+        credentialUser = resData.user;
 
         safeLocalStorage.setItem('growthtrack-user', JSON.stringify({
           id: resData.user.id,
@@ -752,8 +792,17 @@ export default function ProfileEditor() {
         }));
       }
 
+      await updateUser({
+        ...submitData,
+        ...(credentialUser ? { name: credentialUser.user_metadata?.full_name || formData.name, email: credentialUser.email } : {}),
+      });
+
+      // Keep the normalized BodyProfile cache in sync in this session too.
+      await updateBodyProfile(metricsToBodyProfile(submitData, {}, { includeEmpty: true }));
+
       toast.success('Profile saved successfully');
       setHasChanges(false);
+      setSaveState({ status: 'saved', message: 'Changes saved.' });
       
       // Clear password inputs
       setCurrentPassword('');
@@ -761,6 +810,18 @@ export default function ProfileEditor() {
       setConfirmPassword('');
     } catch (err) {
       toast.error(err.message || 'Failed to save profile');
+      setSaveState({ status: 'error', message: `${err.message || 'Could not save your changes.'} Review your profile before retrying; some changes may have saved.` });
+    }
+  };
+
+  const clearLocalDrafts = async () => {
+    try {
+      await removeOwnerDrafts(String(user.id));
+      setConfirmClearDrafts(false);
+      setDraftRefresh(value => value + 1);
+    } catch (error) {
+      setDraftState(current => ({ ...current, error: 'Local drafts could not be removed. Please try again.' }));
+      throw error;
     }
   };
 
@@ -768,64 +829,54 @@ export default function ProfileEditor() {
   const bodyLengthUnit = String(formData.measurementSystem || '').startsWith('Imperial') ? 'in' : 'cm';
 
   return (
-    <div className="fade-in module-page" style={{ padding: '1rem 0', maxWidth: '1000px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
+    <div className="gt-editorial-settings fade-in module-page">
+      <header className="gt-editorial-settings__header">
         <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Identity & Profile</p>
-          <h2 className="text-display" style={{ fontSize: '2.2rem' }}>Settings</h2>
-          <p className="text-secondary">Manage your personal data, appearance, and preferences.</p>
+          <p className="gt-editorial-settings__eyebrow">YOUR ACCOUNT / GROWTH<span aria-hidden="true">TRACK</span></p>
+          <h1 className="gt-editorial-settings__title">A considered space for your details.</h1>
+          <p className="gt-editorial-settings__intro">Review your identity, privacy, connections and display preferences.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', height: '44px' }}>
+        <div className="gt-editorial-settings__save">
           {hasChanges && (
-            <button onClick={handleSave} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', animation: 'fadeIn 0.3s' }}>
-              <Save size={16} /> SAVE CHANGES
+            <button type="button" onClick={handleSave} disabled={saveState.status === 'saving'} className="gt-editorial-settings__primary" aria-busy={saveState.status === 'saving'}>
+              <Save size={16} aria-hidden="true" /> {saveState.status === 'saving' ? 'Saving…' : 'Save changes'}
             </button>
           )}
+          {saveState.message && <p className="gt-editorial-settings__save-status" role={saveState.status === 'error' ? 'alert' : 'status'} data-state={saveState.status}>{saveState.message}</p>}
         </div>
-      </div>
+      </header>
 
-      <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        {/* Sidebar Tabs */}
-        <div className="glass-card" style={{ flex: '0 0 240px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div className="gt-editorial-settings__layout">
+        <nav className="gt-editorial-settings__nav" aria-label="Account settings sections">
           {TABS.map(tab => {
             const isActive = activeTab === tab.id;
             return (
               <button
+                type="button"
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '14px 18px', borderRadius: '12px',
-                  background: isActive ? 'var(--bg-elevated)' : 'transparent',
-                  border: `1px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
-                  color: isActive ? 'var(--accent)' : 'var(--text-2)',
-                  fontWeight: isActive ? 700 : 500,
-                  fontSize: '0.95rem',
-                  fontFamily: 'var(--font-display)',
-                  letterSpacing: '0.01em',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  textAlign: 'left'
-                }}
+                className="gt-editorial-settings__nav-item"
+                aria-current={isActive ? 'page' : undefined}
               >
-                <tab.icon size={16} />
-                <span style={{ display: 'grid', gap: 2 }}><strong>{tab.label}</strong><small style={{ color: 'var(--text-3)', fontSize: '.68rem', lineHeight: 1.3 }}>{tab.description}</small></span>
+                <tab.icon size={18} aria-hidden="true" />
+                <span><strong>{tab.label}</strong><small>{tab.description}</small></span>
               </button>
             );
           })}
-        </div>
+        </nav>
 
-        {/* Content Area */}
-        <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="gt-editorial-settings__content">
           
           {/* Always show Avatar header */}
           <div className="glass-card" style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '2rem' }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
               
-              <div
+              <button
+                type="button"
+                className="gt-editorial-settings__avatar-trigger"
                 onClick={handleAvatarClick}
+                aria-label={avatarPreview ? 'View profile photo' : 'Upload profile photo'}
                 style={{
                   width: '96px', height: '96px', borderRadius: '50%',
                   background: avatarPreview ? 'transparent' : 'var(--bg-elevated)',
@@ -844,16 +895,19 @@ export default function ProfileEditor() {
                 ) : (
                   <User size={32} color="var(--text-3)" />
                 )}
-              </div>
+              </button>
 
               {!avatarUploading && (
                 <button
+                  type="button"
                   onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                   title="Upload new picture"
+                  aria-label="Upload new profile photo"
+                  className="gt-editorial-settings__avatar-action"
                   style={{
                     position: 'absolute', bottom: '-2px', right: '-2px',
                     background: 'var(--accent)', border: '2px solid var(--bg-surface)',
-                    borderRadius: '50%', width: '32px', height: '32px',
+                    borderRadius: '50%', width: '44px', height: '44px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: 'white', cursor: 'pointer', zIndex: 10
                   }}>
@@ -863,18 +917,19 @@ export default function ProfileEditor() {
 
               {avatarPreview && (
                 <button
+                  type="button"
                   onClick={removeAvatar}
+                  className="gt-editorial-settings__avatar-action"
+                  aria-label="Remove profile photo"
                   style={{ 
                     position: 'absolute', top: '-2px', right: '-2px', 
                     background: 'var(--danger)', border: '2px solid var(--bg-surface)', 
-                    borderRadius: '50%', width: '28px', height: '28px', 
+                    borderRadius: '50%', width: '44px', height: '44px', 
                     display: 'flex', alignItems: 'center', justifyContent: 'center', 
                     cursor: 'pointer', color: 'white',
                     boxShadow: '0 4px 12px rgba(248, 113, 113, 0.4)',
                     transition: 'transform 0.2s'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                   title="Remove photo"
                 >
                   <X size={14} strokeWidth={2.5} />
@@ -889,12 +944,12 @@ export default function ProfileEditor() {
           </div>
 
           {/* Active Tab Panel */}
-          <div className="glass-card" style={{ padding: '2.5rem 2rem', overflow: 'visible' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <section className="gt-editorial-settings__panel" aria-labelledby="gt-editorial-settings-panel-title">
+            <h2 id="gt-editorial-settings-panel-title" className="gt-editorial-settings__panel-title">
               {React.createElement(TABS.find(t => t.id === activeTab).icon, { size: 18, color: 'var(--accent)' })}
               {TABS.find(t => t.id === activeTab).label}
-            </h3>
-            <p className="text-secondary" style={{ marginTop: '-1.35rem', marginBottom: '1.75rem' }}>{TABS.find(t => t.id === activeTab).description}</p>
+            </h2>
+            <p className="gt-editorial-settings__panel-description">{TABS.find(t => t.id === activeTab).description}</p>
 
             {activeTab === 'personal' && (
               <>
@@ -934,79 +989,89 @@ export default function ProfileEditor() {
             )}
 
             {activeTab === 'security' && (
-              <div className="profile-security-panel">
-                <div className="profile-security-note">
-                  <Shield size={22} />
-                  <div><strong>Owner-only access</strong><p>Signup is disabled. Sessions use an encrypted, HttpOnly cookie and every protected request is written to the audit log.</p></div>
-                </div>
-                <div className="profile-field-grid">
-                  <div className="field">
-                    <span>Current password</span>
-                    <input type="password" autoComplete="current-password" className="form-input" value={currentPassword} onChange={e => { setCurrentPassword(e.target.value); setHasChanges(true); }} />
-                  </div>
-                  <div className="field">
-                    <span>New password</span>
-                    <input type="password" autoComplete="new-password" className="form-input" value={newPassword} onChange={e => { setNewPassword(e.target.value); setHasChanges(true); }} placeholder="12 characters minimum" />
-                  </div>
-                  <div className="field">
-                    <span>Confirm new password</span>
-                    <input type="password" autoComplete="new-password" className="form-input" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setHasChanges(true); }} />
-                  </div>
-                </div>
-              </div>
-            )}
+              <div className="gt-editorial-settings__stack">
+                <section className="gt-editorial-settings__section" aria-labelledby="gt-privacy-title">
+                  <p className="gt-editorial-settings__index">01 / VISIBILITY</p>
+                  <h3 id="gt-privacy-title">Your data stays under your account.</h3>
+                  <p>New account signup is disabled. Saved records are scoped to your signed-in account.</p>
+                  <dl className="gt-editorial-settings__facts">
+                    <div><dt>Saved privacy preference</dt><dd>{formData.privacyLevel || 'Private'}</dd></div>
+                    <div><dt>Public sharing</dt><dd>Unavailable</dd></div>
+                  </dl>
+                  <p className="gt-editorial-settings__fine-print">The privacy preference is a stored label; it does not change access to your records. Public profile publishing is not available.</p>
+                </section>
 
-            {/* Cloud Sync Tab */}
-            {activeTab === 'integrations' && (
-              <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-                  <RefreshCw size={24} color="var(--accent)" />
-                  <h3 className="text-display" style={{ fontSize: '1.4rem', margin: 0 }}>Cloud Synchronization</h3>
-                </div>
-                
-                <div style={{ padding: '1.5rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-1)' }}>Sync Settings</h4>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '1rem' }}>
-                    <div>
-                      <p style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-2)' }}>Enable Cloud Sync</p>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginTop: '4px' }}>Automatically back up your data to the cloud.</p>
-                    </div>
-                    <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
-                      <input 
-                        type="checkbox" 
-                        style={{ opacity: 0, width: 0, height: 0 }} 
-                        checked={formData.cloudSyncEnabled || false}
-                        onChange={e => handleChange('cloudSyncEnabled', e.target.checked)}
-                      />
-                      <span style={{
-                        position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: formData.cloudSyncEnabled ? 'var(--accent)' : 'var(--bg-dark)',
-                        transition: '.3s', borderRadius: '24px', border: '1px solid var(--border)'
-                      }}>
-                        <span style={{
-                          position: 'absolute', height: '18px', width: '18px', left: formData.cloudSyncEnabled ? '22px' : '3px', bottom: '2px',
-                          backgroundColor: 'white', transition: '.3s', borderRadius: '50%'
-                        }} />
-                      </span>
-                    </label>
+                <section className="gt-editorial-settings__section" aria-labelledby="gt-session-title">
+                  <p className="gt-editorial-settings__index">02 / ACCESS</p>
+                  <h3 id="gt-session-title">Password & sessions</h3>
+                  <p>Changing your password signs out other sessions. You can sign out this session from the account menu.</p>
+                  <div className="gt-editorial-settings__session" aria-live="polite">
+                    <strong>Current session</strong>
+                    {sessionState.status === 'loading' && <span>Checking…</span>}
+                    {sessionState.expiresAt && <span>Signed in · Expires {new Date(sessionState.expiresAt).toLocaleString()}</span>}
+                    {sessionState.error && <span role="status">{sessionState.error}</span>}
                   </div>
-                  
-                  {formData.cloudSyncEnabled && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                      <Field label="Sync Provider" field="syncProvider" options={providerLabels} formData={formData} handleChange={handleChange} />
-                      <Field label="Auto-Sync Interval" field="autoSyncInterval" options={['Real-time', 'Hourly', 'Daily', 'Weekly']} formData={formData} handleChange={handleChange} />
-                    </div>
-                  )}
-                </div>
+                  {sessionState.events.length > 0 && <details className="gt-editorial-settings__details">
+                    <summary>Recent session activity</summary>
+                    <ul>{sessionState.events.map((event, index) => <li key={event.id || `${event.timestamp}-${index}`}><span>{event.action || 'Session event'}</span><time dateTime={event.timestamp}>{event.timestamp ? new Date(event.timestamp).toLocaleString() : 'Time unavailable'}</time></li>)}</ul>
+                  </details>}
+                  <p className="gt-editorial-settings__fine-print">A list of active devices and individual session revocation are not available.</p>
+                  <div className="gt-editorial-settings__fields">
+                    <label>Current password<input type="password" autoComplete="current-password" className="form-input" value={currentPassword} onChange={e => { setCurrentPassword(e.target.value); setHasChanges(true); setSaveState({ status: 'idle', message: '' }); }} /></label>
+                    <label>New password<input type="password" autoComplete="new-password" className="form-input" value={newPassword} onChange={e => { setNewPassword(e.target.value); setHasChanges(true); setSaveState({ status: 'idle', message: '' }); }} placeholder="12 characters minimum" /></label>
+                    <label>Confirm new password<input type="password" autoComplete="new-password" className="form-input" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setHasChanges(true); setSaveState({ status: 'idle', message: '' }); }} /></label>
+                  </div>
+                </section>
+
+                <section className="gt-editorial-settings__section" aria-labelledby="gt-ai-context-title">
+                  <p className="gt-editorial-settings__index">03 / AI CONTEXT</p>
+                  <h3 id="gt-ai-context-title">Choose context for each message.</h3>
+                  <p>In Agents, you select individual records before sending. Wellness, financial and journal records require separate consent there. Your typed message is also sent to the configured model server.</p>
+                  <p className="gt-editorial-settings__fine-print">These choices last for that chat only; there is no account-wide AI consent switch.</p>
+                  <button type="button" className="gt-editorial-settings__secondary" onClick={() => navigate(featurePath('ai'))}>Open AI context choices</button>
+                </section>
+
+                <section className="gt-editorial-settings__section" aria-labelledby="gt-local-data-title">
+                  <p className="gt-editorial-settings__index">04 / THIS BROWSER</p>
+                  <h3 id="gt-local-data-title">Local drafts & data</h3>
+                  <p>Recoverable drafts are kept in this browser for your account. Clearing them does not delete saved server records.</p>
+                  {draftState.status === 'loading' && <p role="status">Checking local drafts…</p>}
+                  {draftState.status === 'ready' && <>
+                    <p role="status">{draftState.items.length} local {draftState.items.length === 1 ? 'draft' : 'drafts'} found.</p>
+                    {draftState.items.length > 0 && <>
+                      <ul className="gt-editorial-settings__draft-list">{draftState.items.map(draft => <li key={draft.key}>{draft.module.replace(/[-_]/g, ' ')}<time dateTime={draft.updatedAt}>{new Date(draft.updatedAt).toLocaleString()}</time></li>)}</ul>
+                      <button type="button" className="gt-editorial-settings__danger" onClick={() => setConfirmClearDrafts(true)}>Clear my local drafts</button>
+                    </>}
+                  </>}
+                  {draftState.error && <p role="alert" className="gt-editorial-settings__error">{draftState.error}</p>}
+                  <p className="gt-editorial-settings__fine-print">Full account export and account deletion controls are not available here.</p>
+                </section>
               </div>
             )}
 
             {activeTab === 'integrations' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <section className="gt-editorial-settings__section" aria-labelledby="gt-connections-title">
+                <p className="gt-editorial-settings__index">01 / SERVICE CONNECTIONS</p>
+                <h3 id="gt-connections-title">Connect only when a provider is ready.</h3>
+                <p>Service access requires a provider connection and your consent in its own flow. Saving a social profile link below does not grant access.</p>
+                {connectionState.status === 'loading' && <p role="status">Checking connection availability…</p>}
+                {connectionState.error && <p role="alert" className="gt-editorial-settings__error">{connectionState.error}</p>}
+                {connectionState.status === 'ready' && <ul className="gt-editorial-settings__connections">{connectionState.items.map(connection => <li key={connection.provider}>
+                  <span><strong>{connection.provider.replace(/_/g, ' ')}</strong><small>{connection.reason || 'Provider status is unavailable.'}</small></span>
+                  <span className="gt-editorial-settings__badge">{connection.status === 'setup-required' ? 'Setup required' : connection.status || 'Unavailable'}</span>
+                </li>)}</ul>}
+                <p className="gt-editorial-settings__fine-print">Automatic cloud backup is not available. This page does not authorize any provider or start synchronization.</p>
+              </section>
+            )}
+
+            {activeTab === 'integrations' && (
+              <div className="gt-editorial-settings__stack">
                 
                 {/* Current Links */}
-                <div>
-                  <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Your Links</h4>
+                <section className="gt-editorial-settings__section" aria-labelledby="gt-social-links-title">
+                  <p className="gt-editorial-settings__index">02 / MANUAL PROFILES</p>
+                  <h3 id="gt-social-links-title">Your social links</h3>
+                  <p>These are profile addresses you add manually. They are not connected accounts and do not give GrowthTrack access to those services.</p>
                   
                   {formData.socialLinks?.length === 0 ? (
                     <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px dashed var(--border)' }}>
@@ -1029,7 +1094,7 @@ export default function ProfileEditor() {
                               <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{link.platform}</div>
                               <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{link.url}</div>
                             </div>
-                            <button className="btn-icon" style={{ color: 'var(--danger)', opacity: 0.7 }}
+                            <button type="button" className="gt-editorial-settings__icon-button" aria-label={`Remove ${link.platform} link`}
                               onClick={() => {
                                 setFormData({ ...formData, socialLinks: formData.socialLinks.filter(l => l.id !== link.id) });
                                 setHasChanges(true);
@@ -1041,43 +1106,35 @@ export default function ProfileEditor() {
                       })}
                     </div>
                   )}
-                </div>
+                </section>
 
                 {/* Add New Link */}
-                <div style={{ padding: '1.5rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <section className="gt-editorial-settings__section">
                   <h4 style={{ fontSize: '0.9rem', fontWeight: 800, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Plus size={16} color="var(--accent)" /> Add New Link
                   </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: newSocialPlatform === 'Other' ? '1fr 1fr 2fr auto' : '1fr 2fr auto', gap: '1rem', alignItems: 'flex-end' }}>
+                  <div className="gt-editorial-settings__add-link">
                     <div>
-                      <label className="form-label">Platform</label>
-                      <select className="form-input" value={newSocialPlatform} onChange={e => setNewSocialPlatform(e.target.value)} >
+                      <label className="form-label" htmlFor="gt-social-platform">Platform</label>
+                      <select id="gt-social-platform" className="form-input" value={newSocialPlatform} onChange={e => setNewSocialPlatform(e.target.value)} >
                         {Object.keys(SOCIAL_THEMES).map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
                     </div>
                     {newSocialPlatform === 'Other' && (
                       <div>
-                        <label className="form-label">Custom Name</label>
-                        <input className="form-input" value={newSocialCustomName} onChange={e => setNewSocialCustomName(e.target.value)} placeholder="e.g. Substack"  />
+                        <label className="form-label" htmlFor="gt-social-custom">Custom Name</label>
+                        <input id="gt-social-custom" className="form-input" value={newSocialCustomName} onChange={e => setNewSocialCustomName(e.target.value)} placeholder="e.g. Substack"  />
                       </div>
                     )}
                     <div>
-                      <label className="form-label">URL or Username</label>
-                      <input className="form-input" placeholder="e.g. https://... or @username" value={newSocialUrl} onChange={e => setNewSocialUrl(e.target.value)}  />
+                      <label className="form-label" htmlFor="gt-social-url">URL or Username</label>
+                      <input id="gt-social-url" className="form-input" placeholder="e.g. https://... or @username" value={newSocialUrl} onChange={e => setNewSocialUrl(e.target.value)}  />
                     </div>
-                    <button className="btn-primary" style={{ height: '42px', padding: '0 1.5rem' }} onClick={handleAddLink}>
+                    <button type="button" className="gt-editorial-settings__secondary" onClick={handleAddLink}>
                       Add
                     </button>
                   </div>
-                </div>
-
-                <div className="profile-security-note">
-                  <Globe size={22} />
-                  <div>
-                    <strong>OAuth connectors only</strong>
-                    <p>GitHub, Google Drive, Dropbox, Calendar, and streaming services must be connected by their approved OAuth/API flow. Tokens and passwords are never entered or stored in this browser.</p>
-                  </div>
-                </div>
+                </section>
 
               </div>
             )}
@@ -1255,7 +1312,7 @@ export default function ProfileEditor() {
                 <div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Theme</h4>
                   <div className="appearance-options">
-                    {['light', 'dark', 'amoled'].map(option => <button key={option} className={theme === option ? 'is-active' : ''} onClick={() => setTheme(option)}><span data-theme-preview={option} />{option}</button>)}
+                    {['system', 'light', 'dark', 'amoled'].map(option => <button type="button" key={option} className={theme === option ? 'is-active' : ''} aria-pressed={theme === option} onClick={() => setTheme(option)}><span data-theme-preview={option} />{option}</button>)}
                   </div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', margin: '1.5rem 0 1rem' }}>Accent</h4>
                   <div className="appearance-options appearance-options--palette">
@@ -1312,9 +1369,17 @@ export default function ProfileEditor() {
               </div>
             )}
 
-          </div>
+          </section>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmClearDrafts}
+        title="Clear local drafts?"
+        description="This removes the recoverable drafts for your account from this browser. Saved server records will remain. The drafts cannot be restored."
+        confirmLabel="Clear drafts"
+        onConfirm={clearLocalDrafts}
+        onCancel={() => setConfirmClearDrafts(false)}
+      />
       
       {/* Avatar Full-screen Preview Modal */}
       {isPreviewModalOpen && avatarPreview && (
@@ -1322,7 +1387,7 @@ export default function ProfileEditor() {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
           zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setIsPreviewModalOpen(false)}>
-          <button style={{ 
+          <button type="button" aria-label="Close profile photo preview" style={{ 
             position: 'absolute', top: '2rem', right: '2rem', 
             background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '50%', 
             color: 'white', cursor: 'pointer', padding: '12px',

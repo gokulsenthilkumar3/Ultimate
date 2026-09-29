@@ -1,4 +1,6 @@
-import React, { useState, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { finiteObservation, observationDate } from '../utils/projectGoal';
 import {
   ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, AreaChart, Area, Legend, ReferenceLine,
@@ -6,12 +8,8 @@ import {
 import { TrendingUp, BarChart2, Zap, Brain, Moon, Activity, Shield, Target } from 'lucide-react';
 import useStore from '../store/useStore';
 import { EMPTY_LIST, EMPTY_RECORD } from '../lib/emptyValues';
-import { currentStreak } from '../lib/metricSeries';
+import { currentStreak, localDateKey } from '../lib/metricSeries';
 import { formatNumber } from '../utils/userFormatters';
-
-// Lazy-load heavy sub-panels so they only download when selected
-const Logs = lazy(() => import('./Logs'));
-const TransformationPredictor = lazy(() => import('./TransformationPredictor'));
 
 const TOOLTIP_STYLE = {
   background: 'var(--gt-surface)',
@@ -26,19 +24,20 @@ const TOOLTIP_STYLE = {
 
 // ── Correlation coefficient (Pearson) ─────────────────────────────────────
 function pearson(xs, ys) {
-  if (xs.length !== ys.length || xs.length < 2) return null;
+  if (xs.length !== ys.length || xs.length < 5) return null;
   const n  = xs.length;
   const mx = xs.reduce((a, b) => a + b, 0) / n;
   const my = ys.reduce((a, b) => a + b, 0) / n;
   const num = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0);
   const dx  = Math.sqrt(xs.reduce((s, x) => s + (x - mx) ** 2, 0));
   const dy  = Math.sqrt(ys.reduce((s, y) => s + (y - my) ** 2, 0));
-  if (dx === 0 || dy === 0) return 0;
+  if (dx === 0 || dy === 0) return null;
   return +(num / (dx * dy)).toFixed(3);
 }
 
 function corrStrength(r) {
-  const abs = Math.abs(r || 0);
+  if (r === null) return { label: 'Unavailable', color: 'var(--gt-muted)' };
+  const abs = Math.abs(r);
   if (abs >= 0.7) return { label: 'Strong',   color: r > 0 ? 'var(--gt-success)' : 'var(--gt-danger)' };
   if (abs >= 0.4) return { label: 'Moderate', color: 'var(--gt-warning)' };
   if (abs >= 0.2) return { label: 'Weak',     color: 'var(--gt-muted)' };
@@ -50,9 +49,11 @@ function groupMetricByDate(metrics, type) {
   const map = {};
   (metrics || []).forEach(m => {
     if ((m.type || '').toLowerCase() === type.toLowerCase()) {
-      const d = (m.date || '').slice(0, 10);
+      const d = observationDate(m.date);
+      const value = finiteObservation(m.value);
+      if (!d || value === null) return;
       if (!map[d]) map[d] = [];
-      map[d].push(Number(m.value) || 0);
+      map[d].push(value);
     }
   });
   return map;
@@ -95,7 +96,7 @@ function CorrelationPanel({ title, xLabel, yLabel, color, data, r, user }) {
             </ScatterChart>
           </ResponsiveContainer>
           <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', textAlign: 'center' }}>
-            {data.length} matched days · {r !== null && Math.abs(r) >= 0.4 ? `${r > 0 ? 'Positive' : 'Negative'} correlation suggests ${xLabel} impacts ${yLabel}` : 'Insufficient correlation detected'}
+            {data.length} matched days · {r !== null && Math.abs(r) >= 0.4 ? `${r > 0 ? 'Positive' : 'Negative'} association between ${xLabel} and ${yLabel}` : 'Insufficient correlation detected'}
           </p>
         </>
       )}
@@ -107,8 +108,8 @@ function CorrelationPanel({ title, xLabel, yLabel, color, data, r, user }) {
 function CrossDomainTrend({ metrics, sleepLogs, user }) {
   const dates = useMemo(() => {
     const set = new Set();
-    (metrics || []).forEach(m => { if (m.date) set.add(m.date.slice(0, 10)); });
-    (sleepLogs || []).forEach(s => { if (s.date) set.add(s.date); });
+    (metrics || []).forEach(m => { const date = observationDate(m.date); if (date) set.add(date); });
+    (sleepLogs || []).forEach(s => { const date = observationDate(s.date); if (date) set.add(date); });
     return [...set].sort().slice(-60);
   }, [metrics, sleepLogs]);
 
@@ -117,7 +118,7 @@ function CrossDomainTrend({ metrics, sleepLogs, user }) {
   const energyMap   = useMemo(() => meanMap(groupMetricByDate(metrics, 'energy')), [metrics]);
   const workoutMap  = useMemo(() => meanMap(groupMetricByDate(metrics, 'workout_intensity')), [metrics]);
 
-  const chartData = useMemo(() => dates.filter(d => sleepMap[d] || moodMap[d] || energyMap[d]).map(d => ({
+  const chartData = useMemo(() => dates.filter(d => sleepMap[d] != null || moodMap[d] != null || energyMap[d] != null || workoutMap[d] != null).map(d => ({
     date: d.slice(5), sleep: sleepMap[d], mood: moodMap[d], energy: energyMap[d], workout: workoutMap[d],
   })), [dates, sleepMap, moodMap, energyMap, workoutMap]);
 
@@ -176,15 +177,12 @@ export default function Analytics() {
   const habits    = state.habits       || EMPTY_LIST;
   const habitLogsByHabit = state.habitLogsByHabit || EMPTY_RECORD;
   const goals     = state.goals        || EMPTY_LIST;
-  const metricLogs = state.metric_logs || EMPTY_LIST;
   const user = state.user;
 
   const [view, setView] = useState('correlations');
-  // Top-level Command Center tab
-  const [commandTab, setCommandTab] = useState('correlations');
 
   // ── Build correlation datasets ────────────────────────────────────────
-  const sleepByDate  = useMemo(() => Object.fromEntries(sleepLogs.map(s => [s.date, Number(s.duration) || 0])), [sleepLogs]);
+  const sleepByDate = useMemo(() => meanMap(groupMetricByDate(sleepLogs.map(s => ({ type: 'sleep', date: s.date, value: s.duration })), 'sleep')), [sleepLogs]);
   const moodByDate   = useMemo(() => meanMap(groupMetricByDate(metrics, 'mood')), [metrics]);
   const energyByDate = useMemo(() => meanMap(groupMetricByDate(metrics, 'energy')), [metrics]);
   // ── All dates where we have paired data ─────────────────────────────
@@ -215,14 +213,14 @@ export default function Analytics() {
   const rSleepEnergy = useMemo(() => pearson(sleepEnergyData.map(d => d.x), sleepEnergyData.map(d => d.y)), [sleepEnergyData]);
   const rEnergyMood  = useMemo(() => pearson(energyMoodData.map(d => d.x), energyMoodData.map(d => d.y)), [energyMoodData]);
 
-  // Task completion rate (7-day rolling)
+  // Due-date cohorts: completion on another day must not double-count a task.
   const taskCompletionRate = useMemo(() => {
     const data = [];
     for (let i = 29; i >= 0; i--) {
       const d  = new Date(); d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const dayTasks = tasks.filter(t => (t.due_date || '').startsWith(key) || (t.completed_at || '').startsWith(key));
-      const done     = dayTasks.filter(t => t.completed).length;
+      const key = localDateKey(d);
+      const dayTasks = tasks.filter(t => observationDate(t.due_date) === key);
+      const done = dayTasks.filter(t => t.completed === true || t.completed === 1 || ['done', 'completed'].includes(String(t.status).toLowerCase())).length;
       const rate     = dayTasks.length > 0 ? Math.round((done / dayTasks.length) * 100) : null;
       data.push({ date: key.slice(5), rate, total: dayTasks.length });
     }
@@ -239,10 +237,16 @@ export default function Analytics() {
 
   // Goal progress distribution
   const goalProgressData = useMemo(() =>
-    goals.map(g => ({
-      name: g.title?.slice(0, 20),
-      pct: g.target_value ? Math.min(100, Math.round((Number(g.current_value || 0) / Number(g.target_value)) * 100)) : g.status === 'completed' ? 100 : 0,
-    })).sort((a, b) => b.pct - a.pct),
+    goals.map((g, index) => {
+      const current = finiteObservation(g.current_value);
+      const target = finiteObservation(g.target_value);
+      const completed = ['completed', 'done'].includes(String(g.status).toLowerCase());
+      return {
+        id: g.id ?? index, name: g.title,
+        pct: completed ? 100 : current !== null && current >= 0 && target !== null && target > 0
+          ? Math.min(100, Math.round((current / target) * 100)) : null,
+      };
+    }).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1)),
   [goals]);
 
   return (
@@ -254,43 +258,11 @@ export default function Analytics() {
         <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Cross-domain correlations · Audit logs · Growth forecast</p>
       </div>
 
-      {/* ── Command Center Tab Bar ────────────────────────────────────── */}
-      <div role="tablist" aria-label="Analytics sections" style={{
-
-        display: 'flex', gap: '4px', padding: '4px',
-        background: 'var(--bg-elevated)', borderRadius: '14px',
-        border: '1px solid var(--border)', marginBottom: '1.75rem',
-        width: 'fit-content',
-      }}>
-        {[
-          { id: 'correlations', label: '📈 Correlations' },
-          { id: 'logs',         label: '🔐 Audit Logs' },
-          { id: 'forecast',     label: '🚀 Growth Forecast' },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={commandTab === tab.id}
-            aria-controls={`analytics-panel-${tab.id}`}
-            onClick={() => setCommandTab(tab.id)}
-            style={{
-              padding: '8px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-              fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.03em',
-              transition: 'all 0.2s ease',
-              background: commandTab === tab.id ? 'var(--accent)' : 'transparent',
-              color: commandTab === tab.id ? '#fff' : 'var(--text-2)',
-              boxShadow: commandTab === tab.id ? '0 4px 14px rgba(var(--accent-rgb),0.4)' : 'none',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Correlations sub-tab (original Analytics content) ────────────── */}
-      {commandTab === 'correlations' && (
-      <div id="analytics-panel-correlations" role="tabpanel" aria-label="Correlations analytics">
+      <nav aria-label="Related insight modules" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        <Link to="/hub/logs">Audit Logs</Link>
+        <Link to="/insights/forecast">Growth Forecast</Link>
+      </nav>
+      <div aria-label="Correlations analytics">
 
       {/* Summary chips */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
@@ -363,7 +335,6 @@ export default function Analytics() {
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={6} />
                   <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} domain={[0, 100]} unit="%" />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${formatNumber(v, user, { maximumFractionDigits: 0 })}%`, 'Completion']} />
-                  <ReferenceLine y={80} stroke="#f59e0b" strokeDasharray="4 2" label={{ value: '80% target', fill: '#f59e0b', fontSize: 9, position: 'insideTopRight' }} />
                   <Area type="monotone" dataKey="rate" name="Completion" stroke="#10b981" fill="url(#gTask)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -401,14 +372,14 @@ export default function Analytics() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
               {goalProgressData.map(g => (
-                <div key={g.name}>
+                <div key={g.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
                     <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>{g.name}</span>
-                    <span style={{ fontSize: '0.72rem', color: g.pct >= 100 ? '#10b981' : 'var(--text-3)' }}>{g.pct}%</span>
+                    <span style={{ fontSize: '0.72rem', color: g.pct >= 100 ? '#10b981' : 'var(--text-3)' }}>{g.pct === null ? 'Progress unavailable' : g.pct + '%'}</span>
                   </div>
-                  <div style={{ height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px' }}>
+                  {g.pct !== null && <div style={{ height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px' }}>
                     <div style={{ height: '100%', width: `${g.pct}%`, background: g.pct >= 100 ? '#10b981' : g.pct >= 60 ? '#f59e0b' : 'var(--accent)', borderRadius: '99px', transition: 'width 0.5s' }} />
-                  </div>
+                  </div>}
                 </div>
               ))}
             </div>
@@ -416,26 +387,6 @@ export default function Analytics() {
         </div>
       )}
         </div>
-      )}{/* end correlations sub-tab */}
-
-
-      {/* ── Audit Logs sub-tab ────────────────────────────────────── */}
-      {commandTab === 'logs' && (
-        <Suspense fallback={<div style={{height:'40vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spin-ring"/></div>}>
-          <div id="analytics-panel-logs" role="tabpanel">
-          <Logs />
-          </div>
-        </Suspense>
-      )}
-
-      {/* ── Growth Forecast sub-tab ────────────────────────────────── */}
-      {commandTab === 'forecast' && (
-        <Suspense fallback={<div style={{height:'40vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spin-ring"/></div>}>
-          <div id="analytics-panel-forecast" role="tabpanel">
-          <TransformationPredictor logs={metricLogs} />
-          </div>
-        </Suspense>
-      )}
     </div>
   );
 }

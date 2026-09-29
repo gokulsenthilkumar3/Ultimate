@@ -6,13 +6,13 @@ import ContextFooter from './ContextFooter';
 describe('ContextFooter', () => {
   it('reports current context and online readiness', () => {
     render(<ContextFooter activeTab="finance" serverStatus="online" />);
-    expect(screen.getByText('Finance / Finance')).toBeVisible();
-    expect(screen.getByText('Local workspace ready')).toBeVisible();
+    expect(screen.getByText('Finance / Overview')).toBeVisible();
+    expect(screen.getByText('Server connected')).toBeVisible();
   });
 
   it('makes offline mode explicit', () => {
     render(<ContextFooter activeTab="sleep" serverStatus="offline" />);
-    expect(screen.getByText('Offline mode')).toBeVisible();
+    expect(screen.getByText('Server unavailable')).toBeVisible();
   });
 });
 

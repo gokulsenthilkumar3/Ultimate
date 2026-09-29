@@ -1,96 +1,100 @@
-import React, { lazy, Suspense } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { HeartPulse, Activity, Moon } from 'lucide-react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
-import { handleTabKeyDown } from '../hooks/useHashTab';
-import Card from './ui/Card';
-import LoadingSkeleton from './ui/LoadingSkeleton';
-import Tabs from './ui/Tabs';
+import { featurePath } from '../config/featureRegistry';
+import { datedLogs, finiteMetric, localDateKey } from '../lib/metricSeries';
+import { formatDate, formatNumber } from '../utils/userFormatters';
 
-const Overview = lazy(() => import('./Overview'));
-const SleepDashboard = lazy(() => import('./SleepDashboard'));
-const Lifestyle = lazy(() => import('./Lifestyle'));
-const MindWellness = lazy(() => import('./MindWellness'));
-const Medical = lazy(() => import('./Medical'));
-const HealthExtras = lazy(() => import('./HealthExtras'));
-const HabitsMatrix = lazy(() => import('./HabitsMatrix'));
-const Physique = lazy(() => import('./Physique'));
-const Assessment = lazy(() => import('./Assessment'));
-const Training = lazy(() => import('./Training'));
-const StrengthMetrics = lazy(() => import('./StrengthMetrics'));
-const Nutrition = lazy(() => import('./Nutrition'));
-const HydrationTracker = lazy(() => import('./HydrationTracker'));
-
-const AREAS = [
-  ['overview', 'Overview', Overview], ['sleep', 'Sleep', SleepDashboard], ['lifestyle', 'Lifestyle', Lifestyle],
-  ['mind', 'Mind & Wellness', MindWellness], ['medical', 'Medical', Medical], ['health', 'Health+', HealthExtras],
-  ['habits', 'Habits', HabitsMatrix], ['physique', 'Physique', Physique], ['assessment', 'Assessment', Assessment],
-  ['training', 'Training', Training], ['strength', 'Strength', StrengthMetrics], ['nutrition', 'Nutrition', Nutrition],
-  ['hydration', 'Hydration', HydrationTracker],
+const EMPTY = Object.freeze([]);
+const MOOD_NAMES = { 1: 'Rough', 2: 'Low', 3: 'Neutral', 4: 'Good', 5: 'Excellent' };
+const SHORTCUTS = [
+  ['sleep', 'log', 'Log sleep'], ['mind', 'checkin', 'Mood check-in'], ['habits', 'today', 'Today’s habits'],
+  ['training', 'logger', 'Log a workout'], ['nutrition', 'daily', 'Nutrition'], ['hydration', 'today', 'Hydration'],
+  ['medical', 'vitals', 'Medical records'], ['physique', 'measurements', 'Body measurements'],
+  ['lifestyle', 'routines', 'Lifestyle'], ['health', 'senses', 'Health+'],
+  ['strength', 'log', 'Strength'], ['assessment', 'questionnaire', 'Assessment'],
 ];
 
-function AreaLoading() {
-  return <LoadingSkeleton variant="wellness" />;
-}
+export default function WellnessCommand({ user: suppliedUser, onOpenCheckIn, onDismissCheckIn, checkInAvailable = false }) {
+  const storedUser = useStore(state => state.user);
+  const user = suppliedUser || storedUser;
+  const habits = useStore(state => state.habits) || EMPTY;
+  const sleep = useStore(state => state.sleep_logs) || EMPTY;
+  const moods = useStore(state => state.moodLogs) || EMPTY;
+  const metrics = useStore(state => state.metric_logs) || EMPTY;
+  const habitLogs = useStore(state => state.habitLogsByHabit) || {};
+  const today = localDateKey(new Date());
+  const latestSleep = datedLogs(sleep).filter(log => {
+    const hours = finiteMetric(log.duration ?? log.hours);
+    return hours !== null && hours > 0 && hours <= 24;
+  }).at(-1);
+  const latestMood = datedLogs(moods).filter(log => MOOD_NAMES[Number(log.mood)]).at(-1);
+  const checkedOff = habits.filter(habit => (habit.completed_dates || []).includes(today)
+    || (habitLogs[habit.id] || []).some(log => log.date === today && log.completed !== false)).length;
+  const canCheckIn = Boolean(checkInAvailable && typeof onOpenCheckIn === 'function');
+  const focus = canCheckIn ? {
+    title: 'Make today’s check-in',
+    description: 'The daily check-in is available now.',
+    label: 'Open daily check-in', href: null,
+  } : habits.length > checkedOff ? {
+    title: 'Review today’s habits',
+    description: String(habits.length - checkedOff) + ' tracked habit' + (habits.length - checkedOff === 1 ? '' : 's') + ' without a check-off today.',
+    label: 'Open habits', href: featurePath('habits', 'today'),
+  } : !latestSleep ? {
+    title: 'Record your sleep',
+    description: 'No dated sleep entry is available in your records.',
+    label: 'Log sleep', href: featurePath('sleep', 'log'),
+  } : !latestMood ? {
+    title: 'Make a mood check-in',
+    description: 'No dated mood check-in is available in your records.',
+    label: 'Mood check-in', href: featurePath('mind', 'checkin'),
+  } : {
+    title: 'Review your wellness record',
+    description: 'See your latest observations and choose what to record next.',
+    label: 'Open sleep history', href: featurePath('sleep', 'history'),
+  };
+  const activity = [
+    ...sleep.map((log, index) => ({ key: 'sleep-' + (log.id ?? index), title: 'Sleep entry', date: log.date, href: featurePath('sleep', 'history') })),
+    ...moods.map((log, index) => ({ key: 'mood-' + (log.id ?? index), title: 'Mood check-in', date: log.date, href: featurePath('mind', 'trends') })),
+    ...metrics.map((log, index) => ({ key: 'metric-' + (log.id ?? index), title: 'Health metric', date: log.date, href: featurePath('physique', 'history') })),
+  ].filter(item => typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(item.date) && Number.isFinite(Date.parse(item.date)))
+    .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
-export default function WellnessCommand({ user, setActiveTab }) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const hash = location.hash.slice(1).toLowerCase();
-  const activeArea = ['3d', 'blueprint', 'targets', 'history'].includes(hash)
-    ? 'physique' : AREAS.some(([id]) => id === hash) ? hash : 'overview';
-  const setActiveArea = (area) => navigate({ pathname: location.pathname, search: location.search, hash: area === 'physique' ? '#3d' : `#${area}` });
-  
-  const habits = useStore(s => s.habits) || [];
-  const sleep = useStore(s => s.sleepLogs) || [];
-  const metrics = useStore(s => s.metricLogs) || [];
-  
-  const ActiveArea = AREAS.find(([id]) => id === activeArea)?.[2] || Overview;
-  
-  const cards = [
-    { label: 'Habits tracked', value: habits.length, icon: Activity, color: 'var(--gt-success)' },
-    { label: 'Sleep entries', value: sleep.length, icon: Moon, color: 'var(--gt-action)' },
-    { label: 'Health metrics', value: metrics.length, icon: HeartPulse, color: 'var(--gt-warning)' },
-  ];
-
-  return <div className="module-page wellness-command">
-    <Card className="page-header wellness-command__header">
-      <div>
-        <p className="eyebrow">Wellness</p>
-        <h1>Feel well, one day at a time.</h1>
-        <p className="page-subtitle">A clear view of your sleep, habits, movement, and energy.</p>
-      </div>
-      <div className="wellness-command__pulse">
-        <HeartPulse size={18} aria-hidden="true" /> Your wellness workspace
-      </div>
-    </Card>
-    
-    <Tabs 
-      className="wellness-command__tabs" 
-      label="Wellness areas" 
-      idPrefix="wellness-tab" 
-      tabs={AREAS.map(([id, label]) => ({ value: id, label, panelId: 'wellness-area-panel' }))} 
-      value={activeArea} 
-      onChange={setActiveArea} 
-      onKeyDown={event => handleTabKeyDown(event, { tabs: AREAS.map(([id]) => ({ id })), activeTab: activeArea, selectTab: setActiveArea, idPrefix: 'wellness-tab' })} 
-    />
-    
-    {activeArea === 'overview' && (
-      <div className="dashboard-grid dashboard-grid--three wellness-command__stats" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-        {cards.map(({ label, value, icon, color }) => (
-          <Card key={label} className="wellness-command__stat" style={{ '--wellness-stat': color }}>
-            {React.createElement(icon, { size: 20, color, 'aria-hidden': true })}
-            <strong>{value}</strong>
-            <span>{label}</span>
-          </Card>
-        ))}
-      </div>
-    )}
-    
-    <section id="wellness-area-panel" role="tabpanel" aria-labelledby={`wellness-tab-${activeArea}`}>
-      <Suspense fallback={<AreaLoading />}>
-        <ActiveArea user={user} setActiveTab={setActiveTab} />
-      </Suspense>
+  return <section className="module-page editorial-overview editorial-overview--wellness" aria-labelledby="wellness-title">
+    <header className="editorial-overview__masthead">
+      <div><p className="editorial-overview__eyebrow">Wellness / Overview</p><h1 id="wellness-title">Wellness, on the record</h1>
+        <p className="editorial-overview__subtitle">Sleep, mood, and habits from your saved entries.</p></div>
+      <p className="editorial-overview__asof">Today · {formatDate(today, user)}</p>
+    </header>
+    <section className="editorial-overview__lead" aria-labelledby="wellness-next-title">
+      <div><p className="editorial-overview__eyebrow">Next useful action</p><h2 id="wellness-next-title">{focus.title}</h2><p>{focus.description}</p>
+        {canCheckIn ? <><button className="editorial-overview__primary" type="button" onClick={onOpenCheckIn}>{focus.label}<span aria-hidden="true"> →</span></button>
+          {typeof onDismissCheckIn === 'function' && <button className="editorial-overview__secondary" type="button" onClick={onDismissCheckIn}>Not today</button>}</>
+          : <Link className="editorial-overview__primary" to={focus.href}>{focus.label}<span aria-hidden="true"> →</span></Link>}</div>
+      <dl className="editorial-overview__observations">
+        <div><dt>Latest sleep</dt><dd>{latestSleep ? formatNumber(latestSleep.duration ?? latestSleep.hours, user) + ' hours' : 'Not recorded'}</dd>
+          <p>{latestSleep ? 'Recorded for ' + formatDate(latestSleep.date, user) : 'No dated sleep entries.'}</p></div>
+        <div><dt>Latest mood</dt><dd>{latestMood ? MOOD_NAMES[Number(latestMood.mood)] : 'Not recorded'}</dd>
+          <p>{latestMood ? 'Recorded for ' + formatDate(latestMood.date, user) : 'No dated mood check-ins.'}</p></div>
+      </dl>
     </section>
-  </div>;
+    <dl className="editorial-overview__facts" aria-label="Wellness record summary">
+      <div><dt>Habits today</dt><dd>{formatNumber(checkedOff, user, { maximumFractionDigits: 0 })} recorded check-offs</dd>
+        <p>{formatNumber(habits.length, user, { maximumFractionDigits: 0 })} habits tracked · {formatDate(today, user)}</p></div>
+      <div><dt>Sleep entries</dt><dd>{formatNumber(sleep.length, user, { maximumFractionDigits: 0 })}</dd></div>
+      <div><dt>Health metrics</dt><dd>{formatNumber(metrics.length, user, { maximumFractionDigits: 0 })}</dd></div>
+    </dl>
+    <div className="editorial-overview__lower">
+      <section className="editorial-overview__section" aria-labelledby="wellness-activity-title">
+        <div className="editorial-overview__section-heading"><div><p className="editorial-overview__eyebrow">Freshness</p><h2 id="wellness-activity-title">Latest dated records</h2></div>
+          <Link to={featurePath('physique', 'history')}>Measurement history</Link></div>
+        {activity.length ? <ol className="editorial-overview__activity">{activity.map(item => <li key={item.key}><Link to={item.href}>{item.title}</Link><time dateTime={item.date}>{formatDate(item.date, user)}</time></li>)}</ol>
+          : <p className="editorial-overview__empty">No dated wellness records yet. Your saved entries will appear here.</p>}
+      </section>
+      <nav className="editorial-overview__section" aria-label="Wellness shortcuts">
+        <p className="editorial-overview__eyebrow">Record in</p><h2>Wellness modules</h2>
+        <ul className="editorial-overview__links">{SHORTCUTS.map(([id, view, label]) => <li key={id}><Link to={featurePath(id, view)}>{label}<span aria-hidden="true">↗</span></Link></li>)}</ul>
+      </nav>
+    </div>
+  </section>;
 }

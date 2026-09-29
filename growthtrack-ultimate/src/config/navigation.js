@@ -5,6 +5,7 @@ import {
   Settings, ShieldCheck, ShoppingBag, Sparkles, Target, TrendingUp, Trophy,
   Users, Utensils, WalletCards, Waves, CheckCircle,
 } from 'lucide-react';
+import { FEATURES, FEATURE_BY_ID } from './featureRegistry';
 
 const TAB_CORE = {
   overview: { label: 'Overview', group: 'insights', icon: Home, emoji: '🏠', keywords: ['home', 'today', 'dashboard'] },
@@ -55,53 +56,50 @@ const TAB_CORE = {
   pricing: { label: 'Plans', group: 'system', icon: ShieldCheck, emoji: '✨', keywords: ['pricing', 'subscription'] },
 };
 
-export const TABS = Object.freeze(Object.fromEntries(Object.entries(TAB_CORE).map(([id, meta]) => [id, Object.freeze({
-  id,
-  canonicalPath: `/${id}`,
-  description: `${meta.label} workspace`,
-  aliases: [],
-  availability: 'ready',
-  area: meta.group,
-  shortLabel: meta.label,
-  order: 0,
-  navigation: 'secondary',
-  pageTemplate: ['analytics', 'dashboards', 'progress', 'forecast'].includes(id) ? 'analytics' : ['profile', 'settings'].includes(id) ? 'settings' : ['physique', 'ai'].includes(id) ? 'immersive' : 'record',
-  ...meta,
-})])));
+const AREA_GROUP = { finance: 'money', insights: 'insights', wellness: 'wellness', workspace: 'work', life: 'life', hub: 'system' };
+const AREA_ICON = { finance: WalletCards, insights: TrendingUp, wellness: HeartPulse, workspace: BriefcaseBusiness, life: Users, hub: LayoutDashboard };
+export const TABS = Object.freeze(Object.fromEntries(FEATURES.map(feature => {
+  const meta = TAB_CORE[feature.id] || { icon: AREA_ICON[feature.area], emoji: '▦', keywords: [] };
+  return [feature.id, Object.freeze({
+    ...meta, ...feature, group: AREA_GROUP[feature.area], description: `${feature.label} · ${feature.area}`,
+    shortLabel: feature.label, order: 0, navigation: 'secondary', pageTemplate: feature.template,
+  })];
+})));
 
 export const GROUPS = {
-  insights: { label: 'Insights', icon: TrendingUp, tabs: ['insights', 'actions', 'overview', 'current', 'analytics', 'dashboards', 'progress', 'forecast'] },
-  money: { label: 'Finance', icon: WalletCards, tabs: ['finance'] },
+  insights: { label: 'Insights', icon: TrendingUp, tabs: ['overview', 'actions', 'current', 'analytics', 'dashboards', 'progress', 'forecast'] },
+  money: { label: 'Finance', icon: WalletCards, tabs: FEATURES.filter(item => item.area === 'finance').map(item => item.id) },
   wellness: { label: 'Wellness', icon: HeartPulse, tabs: ['wellness', 'sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration'] },
-  work: { label: 'Workspace', icon: BriefcaseBusiness, tabs: ['workspace', 'tasks', 'projects', 'timesheet', 'skills', 'goals'] },
+  work: { label: 'Workspace', icon: BriefcaseBusiness, tabs: ['workspace', 'calendar', 'documents', 'notes', 'tasks', 'projects', 'timesheet', 'skills', 'goals'] },
   life: { label: 'Life', icon: Users, tabs: ['life', 'social', 'entertainment', 'maps'] },
   system: { label: 'Hub', icon: LayoutDashboard, tabs: ['hub', 'apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
 };
 
 // Finance is the primary command and appears first in the main navigation.
 export const GROUP_ORDER = ['money', 'insights', 'wellness', 'work', 'life', 'system'];
-export const MOBILE_QUICK_GROUPS = ['insights', 'money', 'wellness', 'work', 'life', 'system'];
+export const MOBILE_QUICK_GROUPS = ['money', 'insights', 'wellness', 'work'];
+const LEGACY_DEFAULT_GROUP_ORDER = ['wellness', 'insights', 'work', 'money', 'life', 'system'];
 export const TAB_GROUP_MAP = Object.fromEntries(Object.entries(TABS).map(([id, tab]) => [id, tab.group]));
-export const ROUTE_ALIASES = { humanoid: 'physique', analytics: 'insights', dashboards: 'insights', forecast: 'insights', calendar: 'workspace', documents: 'workspace', notes: 'workspace', settings: 'profile' };
+export const ROUTE_ALIASES = Object.fromEntries(FEATURES.flatMap(item => item.aliases.map(alias => [alias, item.id])));
 export const MODULE_DEFINITIONS = Object.freeze(Object.values(TABS).map(meta => Object.freeze({
   ...meta,
   aliases: Object.entries(ROUTE_ALIASES).filter(([, target]) => target === meta.id).map(([alias]) => alias),
 })));
 export const NAVIGABLE_MODULES = {
-  ...Object.fromEntries(Object.entries(TABS).map(([id, meta]) => [id, meta.label])),
-  wellness: 'Wellness Command',
-  humanoid: 'Humanoid', analytics: 'Analytics', dashboards: 'Dashboards', forecast: 'Growth Forecast',
-  calendar: 'Calendar', documents: 'Documents', notes: 'Notes', settings: 'Profile & Settings',
+  ...Object.fromEntries(Object.entries(FEATURE_BY_ID).map(([id, meta]) => [id, meta.label])),
 };
 
 export function normalizeGroupOrder(saved = []) {
   const valid = Array.isArray(saved) ? saved.filter(id => Object.hasOwn(GROUPS, id)) : [];
+  // Prior releases persisted their old default with removed 'today'/'body'
+  // entries. Treat that exact sequence as an obsolete default, not a choice.
+  if (valid.join('|') === LEGACY_DEFAULT_GROUP_ORDER.join('|')) return [...GROUP_ORDER];
   return [...new Set([...valid, ...GROUP_ORDER])];
 }
 
 export function normalizeTabOrder(saved, available) {
-  const valid = [...new Set((Array.isArray(available) ? available : []).filter(id => Object.hasOwn(TABS, id)))];
-  return [...new Set([...(Array.isArray(saved) ? saved : []).filter(id => valid.includes(id)), ...valid])];
+  const valid = [...new Set((Array.isArray(available) ? available : []).map(id => ROUTE_ALIASES[id] || id).filter(id => Object.hasOwn(TABS, id)))];
+  return [...new Set([...(Array.isArray(saved) ? saved : []).map(id => ROUTE_ALIASES[id] || id).filter(id => valid.includes(id)), ...valid])];
 }
 
 export function navigationGroups(configured = []) {

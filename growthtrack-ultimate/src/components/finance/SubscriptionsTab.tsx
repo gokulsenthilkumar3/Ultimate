@@ -1,110 +1,97 @@
-import React, { useMemo, useState } from 'react';
-import { Calendar, Plus, Radar, Trash2, Settings } from 'lucide-react';
-import Switch from '../ui/Switch';
+import { useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import type { Transaction } from '../../schemas';
+import type { FinanceUser, MoneyFormatter, Subscription } from '../../utils/financeModel';
+import { financeAmount, financeError, financeMinor, validFinanceDate } from '../../utils/financeModel';
+import { formatDate } from '../../utils/userFormatters';
+import EmptyState from '../ui/EmptyState';
 
-
-export default function SubscriptionsTab({ fmtINR, currencySymbol, showAddSub, setShowAddSub, subForm, setSubForm, addSubscription, subs, handleDeleteSubscription, transactions, toast }: any) {
-  const [autoAdd, setAutoAdd] = useState(false);
-
+interface Props {
+  subs: Subscription[]; transactions: Transaction[]; today: string; user: FinanceUser; currencySymbol: string; formatMoney: MoneyFormatter;
+  onSave: (subscription: Omit<Subscription, 'id'> & { id?: string }, editing?: boolean) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}
+const blank = { name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1, cycle: 'monthly' as const };
+type SubForm = Omit<typeof blank, 'cycle'> & { cycle: 'monthly' | 'yearly' };
+export default function SubscriptionsTab({ subs, transactions, today, user, currencySymbol, formatMoney, onSave, onDelete }: Props) {
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('view');
+  const view = requested && ['active', 'upcoming', 'archived'].includes(requested) ? requested : 'active';
+  const [showEditor, setShowEditor] = useState(false);
+  const [editing, setEditing] = useState<Subscription | null>(null);
+  const [form, setForm] = useState<SubForm>(blank);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [confirmation, setConfirmation] = useState<{ row: Subscription; action: 'archive' | 'delete' } | null>(null);
+  const pending = useRef(false);
+  const draftId = useRef(crypto.randomUUID());
+  const visible = subs.filter(row => view === 'archived' ? row.active === 0 : view === 'upcoming' ? row.active !== 0 && Boolean(row.next_date || row.nextDate) : row.active !== 0).sort((a, b) => (a.next_date || a.nextDate || '9999').localeCompare(b.next_date || b.nextDate || '9999'));
   const suggestions = useMemo(() => {
-    const groups = new Map();
-    (transactions || []).filter(transaction => transaction.type === 'Expense').forEach(transaction => {
-      const key = String(transaction.note || transaction.category || '').trim().toLowerCase();
-      if (!key) return;
-      const rows = groups.get(key) || [];
-      rows.push(transaction); groups.set(key, rows);
-    });
-    return [...groups.entries()].flatMap(([key, rows]) => {
-      if (rows.length < 2 || subs.some(subscription => String(subscription.name).toLowerCase() === key)) return [];
-      const amounts = rows.map(row => Number(row.amount) || 0);
-      const average = amounts.reduce((sum, value) => sum + value, 0) / amounts.length;
-      const stable = amounts.every(value => average > 0 && Math.abs(value - average) / average <= 0.2);
-      return stable ? [{ name: rows[0].note || rows[0].category, cost: average, category: rows[0].category || 'Other', occurrences: rows.length }] : [];
+    const groups = new Map<string, Transaction[]>();
+    for (const row of transactions.filter(tx => tx.type === 'Expense')) {
+      const key = (row.note || row.category).trim().toLowerCase();
+      if (key) groups.set(key, [...(groups.get(key) || []), row]);
+    }
+    return [...groups].flatMap(([key, rows]) => {
+      const dates = [...new Set(rows.map(row => row.date))].sort();
+      const cost = Math.round(rows.reduce((sum, row) => sum + financeMinor(row.amount), 0) / rows.length) / 100;
+      const span = dates.length > 1 ? (Date.parse(dates.at(-1) + 'T12:00:00Z') - Date.parse(dates[0] + 'T12:00:00Z')) / 86400000 : 0;
+      return rows.length >= 2 && span >= 21 && !subs.some(row => row.name.toLowerCase() === key) && cost > 0 && rows.every(row => Math.abs(financeMinor(row.amount) - financeMinor(cost)) / financeMinor(cost) <= 0.2) ? [{ name: rows[0].note || rows[0].category, cost, category: rows[0].category, occurrences: dates.length }] : [];
     }).slice(0, 6);
   }, [subs, transactions]);
-
-  return (
-    <div className="glass-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h3 className="card-title"><Calendar size={18}/> Recurring Subscriptions & Bills</h3>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-2)' }}>
-            <Settings size={14} /> Suggest confident matches
-            <Switch label="Automatically add confirmed suggestions" checked={autoAdd} onChange={setAutoAdd} />
-          </label>
-          <button className="btn-primary btn-sm" onClick={() => setShowAddSub(!showAddSub)}>
-            {showAddSub ? 'Cancel' : <><Plus size={15}/> Add manually</>}
-          </button>
-        </div>
-      </div>
-      
-      <section className="subscription-detection">
-        <div>
-          <Radar size={20}/>
-          <span>
-            <strong>Recurring-payment suggestions</strong>
-            <small>Detected locally from similar expense descriptions and amounts. {autoAdd ? 'Suggestions are highlighted; you still confirm each one.' : 'Review before adding.'}</small>
-          </span>
-        </div>
-        {suggestions.length ? (
-          <div className="subscription-suggestions">
-            {suggestions.map(suggestion => (
-              <article key={suggestion.name}>
-                <span>
-                  <strong>{suggestion.name}</strong>
-                  <small>{suggestion.occurrences} similar payments · about {fmtINR(suggestion.cost)}</small>
-                </span>
-                <button onClick={async () => { 
-                  await addSubscription({ name: suggestion.name, cost: suggestion.cost, category: suggestion.category, next_date: '', auto_renew: 1 }); 
-                  toast.success('Subscription added for review.'); 
-                }}>Add</button>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>No strong recurring pattern detected yet. Import more statements or add a subscription manually.</p>
-        )}
-      </section>
-
-      {showAddSub && (
-        <div style={{ padding: '1.5rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--accent)', marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 180px' }}><label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Name</label><input value={subForm.name} onChange={e => setSubForm({ ...subForm, name: e.target.value })} className="form-input" placeholder="Netflix, Gym, etc." /></div>
-          <div style={{ flex: '1 1 100px' }}><label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Cost ({currencySymbol})</label><input type="number" value={subForm.cost} onChange={e => setSubForm({ ...subForm, cost: e.target.value })} className="form-input" placeholder="499" /></div>
-          <div style={{ flex: '1 1 120px' }}><label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Category</label><select value={subForm.category} onChange={e => setSubForm({ ...subForm, category: e.target.value })} className="form-input">{['OTT', 'Utilities', 'Fitness', 'Learning', 'Insurance', 'Rent', 'Credit'].map(c => <option key={c}>{c}</option>)}</select></div>
-          <div style={{ flex: '1 1 140px' }}><label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Next Bill Date</label><input type="date" value={subForm.next_date} onChange={e => setSubForm({ ...subForm, next_date: e.target.value })} className="form-input" /></div>
-          <div style={{ flex: '1 1 60px' }}><label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Icon</label><input value={subForm.icon} onChange={e => setSubForm({ ...subForm, icon: e.target.value })} className="form-input" placeholder="🍿" /></div>
-          <button className="btn-primary" onClick={async () => {
-            if (!subForm.name || !subForm.cost) return toast.error('Name and cost are required');
-            await addSubscription({ ...subForm, cost: parseFloat(subForm.cost) });
-            setShowAddSub(false);
-            setSubForm({ name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1 });
-            toast.success('Subscription added');
-          }}>Save subscription</button>
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-        {subs.map(sub => (
-          <div key={sub.id} style={{ padding: '1.5rem', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Calendar size={22} aria-hidden="true" />
-                <div><h4 style={{ fontSize: '1.1rem', fontWeight: 800 }}>{sub.name}</h4><span className="label-caps" style={{ color: 'var(--text-3)', fontSize: '0.65rem' }}>{sub.category}</span></div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--danger)', marginBottom: '4px' }}>{fmtINR(sub.cost)}</div>
-                <button aria-label={`Delete ${sub.name}`} onClick={() => handleDeleteSubscription(sub.id)} className="btn-icon btn-icon--danger"><Trash2 size={15}/></button>
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-              <div>
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>Next Billing Date</p>
-                <p style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>{sub.next_date || sub.nextDate || 'Not set'}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending.current) return;
+    setError('');
+    try {
+      if (!form.name.trim()) throw new Error('Enter a subscription name.');
+      const cost = financeAmount(form.cost);
+      if (form.next_date && !validFinanceDate(form.next_date)) throw new Error('Enter a valid renewal date.');
+      pending.current = true; setSaving(true);
+      await onSave({ ...(editing || {}), ...form, id: editing?.id || draftId.current, name: form.name.trim(), cost, active: editing?.active ?? 1 }, Boolean(editing));
+      draftId.current = crypto.randomUUID();
+      setShowEditor(false); setEditing(null); setForm(blank);
+    } catch (failure) { setError(financeError(failure) + ' Your subscription entries are still available.'); }
+    finally { pending.current = false; setSaving(false); }
+  }
+  async function confirm() {
+    if (!confirmation || pending.current) return;
+    pending.current = true; setSaving(true); setError('');
+    try {
+      if (confirmation.action === 'delete') await onDelete(confirmation.row.id);
+      else await onSave({ ...confirmation.row, active: 0, auto_renew: 0, cancelled_date: today });
+      setConfirmation(null);
+    } catch (failure) { setError(financeError(failure)); }
+    finally { pending.current = false; setSaving(false); }
+  }
+  return <>
+    <div className="finance-controls"><label className="finance-field">Subscription view<select className="form-input" value={view} disabled={saving} onChange={event => { const next = new URLSearchParams(params); next.set('view', event.target.value); setParams(next); }}><option value="active">Active</option><option value="upcoming">Upcoming renewals</option><option value="archived">Archived</option></select></label><button type="button" className="btn-primary" disabled={saving} onClick={() => { setEditing(null); setForm(blank); setShowEditor(true); setError(''); }}>Add subscription</button></div>
+    {error && <p role="alert" className="finance-error">{error}</p>}
+    {showEditor && <section className="glass-card"><div className="finance-card-heading"><h2>{editing ? 'Edit subscription' : 'New subscription'}</h2><button type="button" className="btn-sm" disabled={saving} onClick={() => setShowEditor(false)}>Cancel</button></div>
+      <form onSubmit={submit}><fieldset disabled={saving} style={{ border: 0, margin: 0, padding: 0 }}><div className="finance-fields">
+        <label>Name<input className="form-input" required maxLength={120} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
+        <label>Cost ({currencySymbol})<input className="form-input" required type="number" min="0.01" step="0.01" value={form.cost} onChange={event => setForm({ ...form, cost: event.target.value })} /></label>
+        <label>Billing cycle<select className="form-input" value={form.cycle} onChange={event => setForm({ ...form, cycle: event.target.value === 'yearly' ? 'yearly' : 'monthly' })}><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
+        <label>Category<input className="form-input" value={form.category} onChange={event => setForm({ ...form, category: event.target.value })} /></label>
+        <label>Next bill date<input className="form-input" type="date" value={form.next_date} onChange={event => setForm({ ...form, next_date: event.target.value })} /></label>
+        <label>Icon<input className="form-input" maxLength={8} value={form.icon} onChange={event => setForm({ ...form, icon: event.target.value })} /></label>
+        <label><span>Auto renew</span><input type="checkbox" checked={Boolean(form.auto_renew)} onChange={event => setForm({ ...form, auto_renew: event.target.checked ? 1 : 0 })} /></label>
+      </div><button type="submit" className="btn-primary mt-sm">{saving ? 'Saving…' : 'Save subscription'}</button></fieldset></form>
+    </section>}
+    {confirmation && <div role="group" aria-label="Confirm subscription change" className="finance-error"><p>{confirmation.action === 'archive' ? 'Mark ' + confirmation.row.name + ' cancelled and archive it? This records cancellation in GrowthTrack; contact the provider to cancel billing.' : 'Delete ' + confirmation.row.name + '?'}</p><button type="button" className="btn-sm" disabled={saving} onClick={() => void confirm()}>{saving ? 'Saving…' : 'Confirm ' + confirmation.action}</button> <button type="button" className="btn-sm" disabled={saving} onClick={() => setConfirmation(null)}>Cancel change</button></div>}
+    {view !== 'archived' && <section className="subscription-detection"><strong>Recurring-payment suggestions</strong><p className="finance-note">Similar expenses on distinct dates at least three weeks apart. Review the billing cycle and renewal date before saving.</p>
+      {suggestions.length ? <div className="subscription-suggestions">{suggestions.map(suggestion => <article key={suggestion.name}><span><strong>{suggestion.name}</strong><small>{suggestion.occurrences} dates · about {formatMoney(suggestion.cost)}</small></span><button type="button" disabled={saving} onClick={() => { setEditing(null); setForm({ ...blank, name: suggestion.name, cost: String(suggestion.cost), category: suggestion.category }); setShowEditor(true); }}>Review suggestion</button></article>)}</div> : <p className="finance-note">No recurring pattern detected from available records.</p>}
+    </section>}
+    {!visible.length ? <EmptyState icon="DollarSign" title="No subscriptions in this view" description="Add a subscription and its next renewal date to track upcoming bills." /> : <div className="finance-card-grid">{visible.map(row => {
+      const minor = financeMinor(row.cost), yearly = row.cycle === 'yearly';
+      const monthly = (yearly ? Math.round(minor / 12) : minor) / 100;
+      const annual = (yearly ? minor : minor * 12) / 100;
+      const date = row.next_date || row.nextDate || '';
+      return <article key={row.id} className="glass-card"><div className="finance-card-heading"><h2>{row.name}</h2><strong>{formatMoney(row.cost)} / {yearly ? 'year' : 'month'}</strong></div><p className="finance-note">{row.category || 'Other'} · {formatMoney(monthly)} monthly equivalent · {formatMoney(annual)} yearly equivalent</p>
+        {!row.cycle && <p className="finance-note">Billing cycle is not recorded; equivalents assume monthly. Edit to confirm.</p>}
+        <p>{date ? 'Next bill: ' + formatDate(date, user) : 'Renewal date not set'}{row.active !== 0 && date && date <= today ? ' · Due for review' : ''}</p><p className="finance-note">{row.active === 0 ? 'Archived' + (row.cancelled_date ? ' · Cancelled ' + formatDate(row.cancelled_date, user) : '') : row.auto_renew ? 'Auto renew recorded' : 'Manual renewal recorded'}</p>
+        <div className="finance-controls"><button type="button" className="btn-sm" disabled={saving} onClick={() => { setEditing(row); setForm({ name: row.name, cost: String(row.cost), category: row.category || 'Other', next_date: date, icon: row.icon || '🍿', auto_renew: row.auto_renew ?? 1, cycle: row.cycle || 'monthly' }); setShowEditor(true); setError(''); }}>Edit {row.name}</button>{row.active !== 0 && <button type="button" className="btn-sm" disabled={saving} onClick={() => setConfirmation({ row, action: 'archive' })}>Record cancellation</button>}<button type="button" className="btn-sm" disabled={saving} onClick={() => setConfirmation({ row, action: 'delete' })}>Delete {row.name}</button></div>
+      </article>;
+    })}</div>}
+  </>;
 }

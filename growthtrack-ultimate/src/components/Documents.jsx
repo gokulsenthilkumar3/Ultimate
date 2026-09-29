@@ -1,6 +1,6 @@
 import { EMPTY_LIST } from '../lib/emptyValues';
 import { Z_INDEX } from '../constants';
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import {
   FileText, Cloud, HardDrive, UploadCloud, Folder, Trash2, Shield,
   Search, X, Lock, Globe, FileImage, FileVideo, FileAudio, Archive,
@@ -10,8 +10,10 @@ import {
 import { useToast } from '../hooks/useToast';
 import ConfirmDialog from './ui/ConfirmDialog';
 import useDialogFocus from '../hooks/useDialogFocus';
-import useStore, { selectDocuments, selectAddDocument, selectDeleteDocument } from '../store/useStore';
+import useStore from '../store/useStore';
 import { formatDate } from '../utils/userFormatters';
+import { listFiles, uploadFile, deleteFile, downloadFile, connectFileProvider } from '../api/files';
+import FileVaultPreview from './FileVaultPreview';
 
 // ── File type utilities ────────────────────────────────────────────────────────
 const FILE_TYPES = {
@@ -42,7 +44,6 @@ function getFileInfo(name = '') {
 // ── Drag-and-Drop Upload Modal ─────────────────────────────────────────────────
 export function UploadModal({ onUpload, onClose }) {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [fileType, setFileType] = useState('Private');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const dialogRef = useDialogFocus(true, () => { if (!uploading) onClose(); });
@@ -51,9 +52,9 @@ export function UploadModal({ onUpload, onClose }) {
 
   const handleFileSelect = (file) => {
     if (!file) return;
-    // Validate file size (max 50MB)
-    if (file.size > 50 * 1024 * 1024) {
-      setError('Choose a file smaller than 50 MB, then try again.');
+    if (!file.size || file.size > 25 * 1024 * 1024) {
+      setError('Choose a non-empty file up to 25 MB, then try again.');
+      setSelectedFile(null);
       return;
     }
     setError('');
@@ -79,11 +80,9 @@ export function UploadModal({ onUpload, onClose }) {
     setUploading(true);
     setError('');
     try {
-      const sizeKB = selectedFile.size / 1024;
-      const size = sizeKB < 1024 ? `${sizeKB.toFixed(1)} KB` : `${(sizeKB / 1024).toFixed(2)} MB`;
-      await onUpload({ name: selectedFile.name, size, type: fileType, date: new Date().toISOString() });
+      await onUpload(selectedFile);
       onClose();
-    } catch { setError('We could not save this file record. Check your connection and try again.'); }
+    } catch (failure) { setError(failure.payload?.error || failure.message || 'Upload failed. Try again.'); }
     finally { setUploading(false); }
   };
 
@@ -91,15 +90,15 @@ export function UploadModal({ onUpload, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Add file record" tabIndex={-1} className="glass-card slide-in-bottom" style={{ width: '100%', maxWidth: '460px', padding: '2rem', position: 'relative' }}>
-        <button type="button" aria-label="Close file record dialog" disabled={uploading} onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', transition: 'color 0.2s', minWidth: 44, minHeight: 44 }}
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Upload private file" tabIndex={-1} className="glass-card slide-in-bottom" style={{ width: '100%', maxWidth: '460px', padding: '2rem', position: 'relative' }}>
+        <button type="button" aria-label="Close upload dialog" disabled={uploading} onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', transition: 'color 0.2s', minWidth: 44, minHeight: 44 }}
           onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
           onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
         ><X size={18} /></button>
 
         <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>Digital Vault</p>
-        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '1.5rem' }}>Add file record</h3>
-        <p className="text-secondary">Save the file name and details to your list. The file itself stays on your device.</p>
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '1.5rem' }}>Upload private file</h3>
+        <p className="text-secondary">Upload the file to your private local vault. Downloads require your signed-in account.</p>
         {error && <p role="alert" className="gt-field__error">{error}</p>}
 
         {/* Drag-and-drop zone */}
@@ -108,7 +107,7 @@ export function UploadModal({ onUpload, onClose }) {
           role="button"
           tabIndex={uploading ? -1 : 0}
           aria-disabled={uploading}
-          aria-label="Choose a file, maximum 50 MB"
+          aria-label="Choose a file, maximum 25 MB"
           onKeyDown={event => { if (!uploading && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); fileRef.current?.click(); } }}
           onClick={() => fileRef.current?.click()}
           onDrop={handleDrop}
@@ -127,26 +126,17 @@ export function UploadModal({ onUpload, onClose }) {
           ) : (
             <>
               <p style={{ fontWeight: 600, color: 'var(--text-2)' }}>Drop file here or click to browse</p>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '4px' }}>Max 50MB · Any format</p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '4px' }}>Max 25 MB · Any format</p>
             </>
           )}
           <input ref={fileRef} type="file" disabled={uploading} style={{ display: 'none' }} onChange={e => handleFileSelect(e.target.files[0])} />
         </div>
 
-        <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Visibility</label>
-        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          {['Private', 'Public'].map(t => (
-            <button type="button" key={t} aria-pressed={fileType === t} disabled={uploading} onClick={() => setFileType(t)}
-              style={{ flex: 1, padding: '10px', borderRadius: '10px', border: `2px solid ${fileType === t ? 'var(--accent)' : 'var(--border)'}`, background: fileType === t ? 'var(--accent-soft)' : 'transparent', color: fileType === t ? 'var(--accent)' : 'var(--text-2)', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s' }}
-            >
-              {t === 'Private' ? <Lock size={14} /> : <Globe size={14} />} {t}
-            </button>
-          ))}
-        </div>
+        <p style={{ marginBottom: '1.5rem' }}><Lock size={14} /> Private · Only your account can access this file.</p>
 
         <button type="button" className="gt-button gt-button--primary" aria-busy={uploading || undefined} style={{ width: '100%', justifyContent: 'center', position: 'relative', overflow: 'hidden' }} onClick={handleConfirm} disabled={!selectedFile || uploading}>
           <UploadCloud size={16} style={{ position: 'relative', zIndex: 1 }} />
-          <span style={{ position: 'relative', zIndex: 1 }}>{uploading ? 'Saving file record…' : 'Save file record'}</span>
+          <span style={{ position: 'relative', zIndex: 1 }}>{uploading ? 'Uploading…' : 'Upload file'}</span>
         </button>
       </div>
     </div>
@@ -157,37 +147,49 @@ export function UploadModal({ onUpload, onClose }) {
 export default function Documents() {
   const user = useStore(s => s.user);
   const documentProviders = useStore(s => s.appConfig?.documentProviders ?? EMPTY_LIST);
-  const documents = useStore(selectDocuments);
-  const addDocument = useStore(selectAddDocument);
-  const deleteDocument = useStore(selectDeleteDocument);
-  const isLoading = useStore(s => s.isLoading);
+  const [documents, setDocuments] = useState([]);
+  const [usage, setUsage] = useState({ files: 0, bytes: 0 });
+  const [limits, setLimits] = useState({ maxTotalBytes: 250 * 1024 * 1024, maxFiles: 100 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const toast = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [syncedProviders, setSyncedProviders] = useState([]);
+  const [preview, setPreview] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [sortField, setSortField] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
   const [filterType, setFilterType] = useState('All');
 
-  const toggleSync = (provider) => {
-    if (syncedProviders.includes(provider)) {
-      setSyncedProviders(p => p.filter(x => x !== provider));
-      toast.success(`${provider} unlinked successfully.`);
-    } else {
-      toast.info(`Authenticating ${provider}…`);
-      setTimeout(() => {
-        setSyncedProviders(p => [...p, provider]);
-        toast.success(`${provider} linked successfully.`);
-      }, 1000);
-    }
+  const reloadFiles = async () => {
+    const result = await listFiles();
+    setDocuments(result.files);
+    setUsage(result.usage);
+    setLimits(result.limits);
+  };
+  useEffect(() => {
+    let active = true;
+    listFiles().then(result => {
+      if (!active) return;
+      setDocuments(result.files); setUsage(result.usage); setLimits(result.limits); setLoadError('');
+    }).catch(error => { if (active) setLoadError(error.payload?.error || error.message); })
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [user?.id]);
+
+  const toggleSync = async provider => {
+    try { await connectFileProvider(provider); }
+    catch (error) { toast.info(error.status === 501 ? `${provider} needs provider setup. No account was connected.` : error.message); }
   };
 
-  const handleUpload = async (fileData) => {
-    await addDocument(fileData);
-    toast.success(`${fileData.name} added to your file list.`);
+  const handleUpload = async file => {
+    const saved = await uploadFile(file);
+    setDocuments(previous => [saved, ...previous]);
+    setUsage(previous => ({ files: previous.files + 1, bytes: previous.bytes + saved.sizeBytes }));
+    await reloadFiles().catch(() => { toast.info('File uploaded. Refresh the vault to update its storage totals.'); });
+    toast.success(`${file.name} uploaded to your private vault.`);
   };
 
   const handleDelete = (id) => setConfirmDelete(id);
@@ -195,11 +197,14 @@ export default function Documents() {
   const doDelete = async () => {
     if (!confirmDelete) return;
     try {
-      await deleteDocument(confirmDelete);
+      const file = documents.find(item => item.id === confirmDelete);
+      const result = await deleteFile(confirmDelete, file?.updatedAt);
+      await reloadFiles();
+      if (result.storageCleanupPending) toast.info('File access removed. Storage cleanup needs attention.');
       toast.success('File deleted.');
       setSelectedIds(prev => { const n = new Set(prev); n.delete(confirmDelete); return n; });
-    } catch {
-      toast.error('Delete failed');
+    } catch (error) {
+      toast.error(error.payload?.error || error.message || 'Delete failed');
     } finally {
       setConfirmDelete(null);
     }
@@ -208,11 +213,13 @@ export default function Documents() {
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     try {
-      for (const id of selectedIds) await deleteDocument(id);
+      for (const id of selectedIds) await deleteFile(id, documents.find(file => file.id === id)?.updatedAt);
+      await reloadFiles();
       toast.success(`${selectedIds.size} file(s) deleted.`);
       setSelectedIds(new Set());
-    } catch {
-      toast.error('Bulk delete failed');
+    } catch (error) {
+      await reloadFiles().catch(() => {});
+      toast.error(error.payload?.error || error.message || 'Bulk delete failed');
     }
   };
 
@@ -246,20 +253,22 @@ export default function Documents() {
     list = [...list].sort((a, b) => {
       let valA = a[sortField] || '';
       let valB = b[sortField] || '';
-      const cmp = valA.localeCompare(valB);
+      const cmp = sortField === 'size' ? (a.sizeBytes || 0) - (b.sizeBytes || 0) : String(valA).localeCompare(String(valB));
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return list;
   }, [documents, searchTerm, filterType, sortField, sortDir]);
 
   const privateCount = (documents || []).filter(f => f.type === 'Private').length;
-  const publicCount = (documents || []).filter(f => f.type === 'Public').length;
-  const storagePercent = Math.min(100, Math.round(((documents || []).length / 100) * 100));
+  const legacyCount = documents.filter(file => file.metadataOnly).length;
+  const storagePercent = Math.min(100, Math.round(usage.bytes / limits.maxTotalBytes * 100));
 
   const SortIcon = sortDir === 'asc' ? SortAsc : SortDesc;
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
+      {loadError && <div role="alert"><p>{loadError}</p><button type="button" className="btn-ghost" onClick={() => reloadFiles().then(() => setLoadError('')).catch(error => setLoadError(error.message))}>Retry loading files</button></div>}
+      {preview && <FileVaultPreview key={preview.id} file={preview} onClose={() => setPreview(null)} />}
       {showUploadModal && <UploadModal onUpload={handleUpload} onClose={() => setShowUploadModal(false)} />}
       <ConfirmDialog
         open={!!confirmDelete}
@@ -277,12 +286,12 @@ export default function Documents() {
           <h2 className="text-display" style={{ fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Folder size={30} color="var(--accent)" /> Documents
           </h2>
-          <p className="text-secondary">{(documents || []).length} items synced · {storagePercent}% storage used</p>
+          <p className="text-secondary">{usage.files} stored files · {storagePercent}% storage used{legacyCount ? ` · ${legacyCount} legacy records without file bytes` : ''}</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {documentProviders.filter(item => item.enabled !== false).map(item => (
-            <button key={item.id} className={`btn-${syncedProviders.includes(item.label) ? 'primary' : 'ghost'}`} onClick={() => toggleSync(item.label)} title={`Sync ${item.label}`}>
-              <Cloud size={16} /> {syncedProviders.includes(item.label) ? 'Linked' : `Link ${item.label}`}
+            <button key={item.id} className="btn-ghost" onClick={() => toggleSync(item.label)} title={`Setup required for ${item.label}`}>
+              <Cloud size={16} /> Setup {item.label}
             </button>
           ))}
           <div style={{ width: 1, background: 'var(--border)', margin: '0 4px' }} />
@@ -296,12 +305,12 @@ export default function Documents() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         <div className="glass-card card-shine-wrap" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
           <h3 className="card-title"><HardDrive size={16} color="#10b981" style={{ display: 'inline', marginRight: '6px' }} />Local Vault Storage</h3>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginBottom: '1rem' }}>Encrypted storage for sensitive documents.</p>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginBottom: '1rem' }}>Private local files with authenticated access.</p>
           <div style={{ background: 'var(--bg-elevated)', height: '8px', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
             <div style={{ width: `${storagePercent}%`, height: '100%', background: storagePercent > 80 ? 'var(--danger)' : storagePercent > 60 ? 'var(--warning)' : '#10b981', transition: 'width 0.6s ease', borderRadius: '4px' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-3)' }}>
-            <span>{(documents || []).length} / 100 files</span>
+            <span>{(usage.bytes / 1024 / 1024).toFixed(1)} / {limits.maxTotalBytes / 1024 / 1024} MB · {usage.files} / {limits.maxFiles} files</span>
             <span style={{ color: storagePercent > 80 ? 'var(--danger)' : 'var(--text-3)' }}>{storagePercent}% used</span>
           </div>
         </div>
@@ -311,11 +320,11 @@ export default function Documents() {
           <div style={{ display: 'flex', gap: '2rem', marginTop: '0.75rem' }}>
             {[
               { label: 'Private', count: privateCount, color: 'var(--warning)', icon: Lock },
-              { label: 'Public', count: publicCount, color: 'var(--text-3)', icon: Globe },
+              { label: 'Legacy records', count: legacyCount, color: 'var(--text-3)', icon: FileText },
             ].map(({ label, count, color, icon: Icon }) => (
               <div key={label}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <Icon size={12} color={color} />
+                  {React.createElement(Icon, { size: 12, color })}
                   <span className="label-caps" style={{ fontSize: '0.6rem' }}>{label}</span>
                 </div>
                 <p style={{ fontSize: '1.8rem', fontWeight: 900, color, lineHeight: 1 }}>{count}</p>
@@ -343,7 +352,7 @@ export default function Documents() {
 
             {/* Filter by type */}
             <div style={{ display: 'flex', gap: '4px' }}>
-              {['All', 'Private', 'Public'].map(t => (
+              {['All', 'Private'].map(t => (
                 <button key={t} onClick={() => setFilterType(t)}
                   className={`btn-sm${filterType === t ? ' active' : ''}`}
                   style={{ padding: '4px 10px' }}
@@ -431,7 +440,7 @@ export default function Documents() {
                       <td style={{ padding: '0.85rem 1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <FileIcon size={18} className={fileIconClass} />
-                          <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-1)' }}>{file.name}</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-1)' }}>{file.name}{file.metadataOnly && <small> · Original file needed</small>}</span>
                         </div>
                       </td>
                       <td style={{ padding: '0.85rem 1rem', fontSize: '0.82rem', color: 'var(--text-3)', fontFamily: 'monospace' }}>{file.size}</td>
@@ -452,12 +461,16 @@ export default function Documents() {
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
                           <button
                             className="btn-icon"
-                            onClick={e => { e.stopPropagation(); toast.info('Preview not available in simulation.'); }}
+                            disabled={!file.previewKind}
+                            onClick={e => { e.stopPropagation(); setPreview(file); }}
+                            aria-label={`Preview ${file.name}`}
                             title="Preview"
                           ><Eye size={13} /></button>
                           <button
                             className="btn-icon"
-                            onClick={e => { e.stopPropagation(); toast.info('Download started.'); }}
+                            disabled={!file.available}
+                            onClick={async e => { e.stopPropagation(); try { await downloadFile(file); } catch (error) { toast.error(error.message); } }}
+                            aria-label={`Download ${file.name}`}
                             title="Download"
                           ><Download size={13} /></button>
                           <button

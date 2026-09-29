@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
+import { sharedServerUrl } from './desktop-config.js';
 let mainWindow;
 
 // GPU fallback is opt-in so the default desktop path can use WebGL. Machines
@@ -31,38 +32,37 @@ function showStartupFailure(error) {
 
 function prepareUserDatabase(userDatabase) {
   const appRoot = path.dirname(fileURLToPath(import.meta.url));
-  const bundledDatabase = path.join(process.resourcesPath, 'app', 'dev.db');
-  const localDatabase = path.join(appRoot, 'dev.db');
   fs.mkdirSync(path.dirname(userDatabase), { recursive: true });
-  if (!fs.existsSync(userDatabase)) {
-    const source = fs.existsSync(bundledDatabase) ? bundledDatabase : localDatabase;
-    if (fs.existsSync(source)) fs.copyFileSync(source, userDatabase);
-  }
-  if (!fs.existsSync(userDatabase)) return;
+  // Never silently copy an owner's development database into a new installation.
+  const existingDatabase = fs.existsSync(userDatabase);
 
   const prismaCli = path.join(appRoot, 'node_modules', 'prisma', 'build', 'index.js');
   const schema = path.join(appRoot, 'prisma', 'schema.prisma');
-  if (!fs.existsSync(prismaCli) || !fs.existsSync(schema)) return;
+  if (!fs.existsSync(prismaCli) || !fs.existsSync(schema)) {
+    if (!existingDatabase) throw new Error('Local database initialization is unavailable. Configure GROWTHTRACK_SERVER_URL for your private HTTPS deployment.');
+    return;
+  }
   const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', DATABASE_URL: `file:${userDatabase.replaceAll('\\', '/')}` };
   const status = spawnSync(process.execPath, [prismaCli, 'migrate', 'status', '--schema', schema], { cwd: appRoot, env, encoding: 'utf8', windowsHide: true });
   const statusText = `${status.stdout || ''}\n${status.stderr || ''}`;
-  const needsUpdate = /not yet applied|have not been applied|database schema is not up to date/i.test(statusText);
+  const needsUpdate = !existingDatabase || /not yet applied|have not been applied|database schema is not up to date/i.test(statusText);
   if (!needsUpdate) return;
 
   const answer = dialog.showMessageBoxSync({
     parent: mainWindow,
     type: 'question', title: 'GrowthTrack database update',
-    message: 'A newer app version has a database update available.',
-    detail: 'GrowthTrack will create a backup before updating your existing data. Continue with the safe update?',
+    message: existingDatabase ? 'A database update is available.' : 'Initialize a new, empty private database?',
+    detail: existingDatabase ? 'Close other processes using this database. A backup will be retained before migration.' : 'No existing account or development database will be copied. Owner setup is required after initialization.',
     buttons: ['Update safely', 'Skip for now'], defaultId: 0, cancelId: 1,
   });
-  if (answer !== 0) return;
-  fs.copyFileSync(userDatabase, `${userDatabase}.backup-${Date.now()}`);
+  if (answer !== 0) { if (!existingDatabase) throw new Error('Database initialization was canceled.'); return; }
+  if (existingDatabase) fs.copyFileSync(userDatabase, `${userDatabase}.backup-${Date.now()}`);
   const migration = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--schema', schema], { cwd: appRoot, env, encoding: 'utf8', windowsHide: true });
   if (migration.status !== 0) throw new Error(`Database update failed. Your backup is safe.\n${migration.stderr || migration.stdout || 'Unknown migration error.'}`);
 }
 
 async function createWindow() {
+  const shared = sharedServerUrl(process.env.GROWTHTRACK_SERVER_URL);
   const userDataDir = app.getPath('userData');
   const userDatabase = path.join(userDataDir, 'growthtrack.db');
   fs.mkdirSync(userDataDir, { recursive: true });
@@ -83,10 +83,16 @@ async function createWindow() {
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const allowed = new URL(`http://localhost:${process.env.PORT || 3001}`);
-    const destination = new URL(url);
-    if (destination.origin !== allowed.origin) event.preventDefault();
+    const allowed = shared || new URL(`http://localhost:${process.env.PORT || 3001}`);
+    try { if (new URL(url).origin !== allowed.origin) event.preventDefault(); }
+    catch { event.preventDefault(); }
   });
+  if (shared) {
+    // Shared mode never opens, copies, merges, or migrates a local database.
+    await mainWindow.loadURL(shared.href);
+    mainWindow.on('closed', () => { mainWindow = null; });
+    return;
+  }
   prepareUserDatabase(userDatabase);
   process.env.DATABASE_URL = `file:${userDatabase.replaceAll('\\', '/')}`;
 
@@ -99,7 +105,8 @@ async function createWindow() {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     try { await fetch(`http://localhost:${PORT}/api/health`); break; } catch { await new Promise((resolve) => setTimeout(resolve, 100)); }
   }
-  try { await mainWindow.loadURL(`http://localhost:${PORT}/`); } catch (error) { showStartupFailure(error); }
+  const frontendBase = process.env.FRONTEND_BASE_PATH || '/Ultimate/';
+  try { await mainWindow.loadURL(new URL(frontendBase, `http://localhost:${PORT}/`).href); } catch (error) { showStartupFailure(error); }
 
   mainWindow.on('closed', function () {
     mainWindow = null;

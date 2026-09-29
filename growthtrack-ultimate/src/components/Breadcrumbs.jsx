@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
 import { GROUPS, tabMeta } from '../config/navigation';
 
@@ -14,17 +15,17 @@ export default function Breadcrumbs({ activeTab, onNavigate }) {
 
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
-      <button type="button" className="breadcrumbs__home" onClick={() => onNavigate('overview')} aria-label="Go to Overview">
+      <Link className="breadcrumbs__home" to={tabMeta('overview').canonicalPath} aria-label="Go to Overview">
         <Home size={14} />
         <span>Ultimate</span>
-      </button>
+      </Link>
       <ChevronRight className="breadcrumbs__separator" size={14} aria-hidden="true" />
-      <button type="button" className="breadcrumbs__group" onClick={() => onNavigate(group.tabs[0])}>
+      <Link className="breadcrumbs__group" to={tabMeta(group.tabs[0]).canonicalPath}>
         <GroupIcon size={14} />
         <span>{group.label}</span>
-      </button>
+      </Link>
       <ChevronRight className="breadcrumbs__separator" size={14} aria-hidden="true" />
-      <span className="breadcrumbs__current" aria-current="page">{group?.tabs?.[0] === activeTab ? `${group.label} Command` : meta.label}</span>
+      <span className="breadcrumbs__current" aria-current="page">{meta.label}</span>
     </nav>
   );
 }

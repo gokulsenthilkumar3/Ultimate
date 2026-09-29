@@ -36,12 +36,22 @@ export default function HydrationTracker() {
   // True 24h rolling window — fetched from server
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logsLoaded, setLogsLoaded] = useState(false);
+  const [logsError, setLogsError] = useState('');
 
   const fetchLogs = async () => {
     setLoadingLogs(true);
-    const res = await apiSync('/hydration/logs', 'GET');
-    if (Array.isArray(res)) setLogs(res);
-    setLoadingLogs(false);
+    setLogsError('');
+    try {
+      const res = await apiSync('/hydration/logs', 'GET');
+      if (!Array.isArray(res)) throw new Error('Hydration history response was invalid.');
+      setLogs(res);
+      setLogsLoaded(true);
+    } catch (error) {
+      setLogsError(error instanceof Error ? error.message : 'Could not load hydration history.');
+    } finally {
+      setLoadingLogs(false);
+    }
   };
 
   useEffect(() => { fetchLogs(); }, []);
@@ -77,21 +87,37 @@ export default function HydrationTracker() {
     { name: 'Remaining', value: Math.max(0, goal - current) },
   ];
 
+  if (!logsLoaded) {
+    return (
+      <section className="fade-in" style={{ padding: '0.5rem 0' }}>
+        <h1 className="text-display" style={{ fontSize: '2rem' }}>Hydration Tracker</h1>
+        {loadingLogs ? <p role="status">Loading hydration history…</p> : (
+          <div role="alert">
+            <p>Hydration history is unavailable. No daily total can be shown until it loads.</p>
+            <button type="button" onClick={fetchLogs}>Retry hydration history</button>
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
       <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Hydration</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
+          <h1 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
             <Droplets size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
             Hydration Tracker
-          </h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>True rolling 24-hour window — auto-refreshes from server.</p>
+          </h1>
+          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Rolling 24-hour history from the server. Use Refresh to check for new entries.</p>
         </div>
-        <button onClick={fetchLogs} title="Refresh" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}>
+        <button onClick={fetchLogs} title="Refresh" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '4px', minHeight: 44, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem' }}>
           <RefreshCw size={14} className={loadingLogs ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
+
+      {logsError && <p role="alert">Refresh failed: {logsError} The totals below may be out of date.</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
         {/* Animated Wave Visual */}

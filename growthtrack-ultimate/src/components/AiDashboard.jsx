@@ -1,413 +1,289 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useId } from 'react';
+import { Send, Bot, User, Trash2, Copy, RefreshCw, Square, Database, Settings2, History, X, ArrowUpRight } from 'lucide-react';
 import useStore from '../store/useStore';
-import { Send, Bot, User, Trash2, Copy, Zap, RefreshCw, Sparkles, Info } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
-import { askLocalGrowthcast } from '../lib/growthcast';
-import { OllamaProvider, selectPreferredChatModel } from '../lib/aiProviders';
-import { formatCurrency } from '../utils/userFormatters';
+import { selectPreferredChatModel } from '../lib/aiProviders';
+import { EMPTY_AI_CONSENT, getAiContextCandidates, buildSelectedAiContext } from '../lib/aiContext';
+import { getAgentsReadiness, streamAgentsChat } from '../services/aiClient';
 import Button from './ui/Button';
-import Card from './ui/Card';
+import './AiDashboard.css';
 
-// ── Typing simulation component ────────────────────────────────────────────
-function TypedMessage({ text, speed = 12, onDone }) {
-  const [displayed, setDisplayed] = useState('');
-  const onDoneRef = useRef(onDone);
-
-  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
-
-  useEffect(() => {
-    let index = 0;
-    setDisplayed('');
-    const interval = setInterval(() => {
-      index += 1;
-      if (index <= text.length) {
-        setDisplayed(text.slice(0, index));
-      } else {
-        clearInterval(interval);
-        onDoneRef.current?.();
-      }
-    }, speed);
-    return () => clearInterval(interval);
-  }, [text, speed]);
-
-  return <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{displayed}<span style={{ opacity: displayed.length < text.length ? 1 : 0, marginLeft: '1px', animation: 'blink 1s step-end infinite' }}>▌</span></span>;
-}
-
-const QUICK_PROMPTS = [
-  { label: 'Today’s summary', prompt: 'Give me a quick summary of my progress today across health, habits, and tasks.' },
-  { label: 'Workout advice', prompt: 'Based on my training history and PRs, what should I focus on in my next workout?' },
-  { label: 'Goal check-in', prompt: 'How am I progressing toward my current goals? What should I prioritise?' },
-  { label: 'Sleep analysis', prompt: 'Analyse my recent sleep patterns and give me actionable advice to improve sleep quality.' },
-  { label: 'Finance tip', prompt: 'Give me a personalised finance tip based on my current income, expenses, and saving rate.' },
-  { label: 'Habit coaching', prompt: 'Which of my habits has the lowest completion rate? How can I improve it?' },
-  { label: 'Nutrition guide', prompt: 'Based on my nutrition goals, what macro adjustments would help me most right now?' },
-  { label: 'Weekly plan', prompt: 'Create a prioritised weekly action plan for me based on all my current data.' },
+const PROMPTS = [
+  { label: 'Plan my day', prompt: 'Help me prioritise my day using only the records I selected.' },
+  { label: 'Goal check-in', prompt: 'Review my selected goals and suggest one practical next step.' },
+  { label: 'Weekly plan', prompt: 'Draft a weekly plan. Ask about any information missing from the selected records.' },
+];
+const SENSITIVE_DOMAINS = [
+  ['wellness', 'Allow wellness records'],
+  ['finance', 'Allow financial records'],
+  ['journal', 'Allow journal entries'],
 ];
 
-const CACHE_KEY = 'gt_ai_cache_v2';
-function getCache() { try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || '[]'); } catch { return []; } }
-function setCache(msgs) { try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(msgs.slice(-40))); } catch { /* storage may be unavailable in private mode */ } }
-
 export default function AiDashboard() {
-  const toast = useToast();
   const state = useStore();
-  const aiConfig = state.appConfig?.aiAgent || {};
+  // New account/session means fresh memory and cancellation of the old request.
+  return <AiDashboardChat key={String(state.user?.id || 'signed-out') + ':' + state._sessionVersion} state={state} />;
+}
 
-  const [messages,    setMessages]    = useState(getCache);
-  const [input,       setInput]       = useState('');
-  const [loading,     setLoading]     = useState(false);
-  const [typing,      setTyping]      = useState(false);
-  const [model,       setModel]       = useState(() => `ollama-${aiConfig.model || 'unconfigured'}`);
-  const [showPrompts, setShowPrompts] = useState(messages.length === 0);
-  const [showGuide, setShowGuide] = useState(false);
-  const [availableModels, setAvailableModels] = useState([]);
-  const [modelStatus, setModelStatus] = useState('Checking local models…');
+function AiDashboardChat({ state }) {
+  const toast = useToast();
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [model, setModel] = useState('');
+  const [models, setModels] = useState([]);
+  const [readiness, setReadiness] = useState({ ready: false, reason: 'Checking model readiness…' });
+  const [refresh, setRefresh] = useState(0);
   const [responseStyle, setResponseStyle] = useState('standard');
+  const [consent, setConsent] = useState({ ...EMPTY_AI_CONSENT });
+  const [selected, setSelected] = useState([]);
+  const [openPanel, setOpenPanel] = useState(null);
+  const activeRequest = useRef(null);
+  const bottom = useRef(null);
+  const panelRef = useRef(null);
+  const triggerRefs = useRef({});
+  const panelIds = useId();
+  const preferredModel = state.appConfig?.aiAgent?.model;
+  const candidates = useMemo(() => getAiContextCandidates(state, consent), [state, consent]);
+  const context = useMemo(() => buildSelectedAiContext(state, selected, consent), [state, selected, consent]);
 
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
-
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typing]);
-  useEffect(() => { setCache(messages); }, [messages]);
   useEffect(() => {
-    let active = true;
-    new OllamaProvider(aiConfig).listModels().then(models => {
-      if (!active) return;
-      setAvailableModels(models);
-      setModelStatus(models.length ? `${models.length} installed local model${models.length === 1 ? '' : 's'}` : 'No local models installed');
-      const selected = selectPreferredChatModel(models, aiConfig.model);
-      if (selected) setModel(`ollama-${selected.id}`);
-    }).catch(error => {
-      if (!active) return;
-      setAvailableModels([]);
-      setModelStatus(error?.message || 'Ollama is unavailable');
-    });
-    return () => { active = false; };
-  }, [aiConfig.baseUrl, aiConfig.model, aiConfig.timeoutMs]);
-
-  // Build rich user context string
-  const userContext = useMemo(() => {
-    const u = state.user || {};
-    const goals     = (state.goals      || []).slice(0, 5);
-    const habits    = (state.habits     || []).slice(0, 8);
-    const tasks     = (state.tasks      || []).filter(t => !t.completed).slice(0, 5);
-    const metrics   = (state.metric_logs || []).slice(-10);
-    const sleep     = (state.sleep_logs  || []).slice(-7);
-    const finance   = state.finance || {};
-    const notes     = (state.notes       || []).slice(0, 5);
-    const subs      = (state.subscriptions || []).slice(0, 5);
-    const shopItems = (state.shopping?.items || []).slice(0, 5);
-    const meds      = (state.medications || []).slice(0, 5);
-    const timesheet = (state.timesheetEntries || []).slice(0, 5);
-
-    const formatGoal = g => `${g.title} (${Math.min(100, Math.round((Number(g.current_value || 0) / Number(g.target_value || 1)) * 100))}% done, status: ${g.status})`;
-    const formatHabit = h => `${h.name} (category: ${h.category})`;
-    const formatTask  = t => `${t.title} (priority: ${t.priority || 'normal'}, due: ${t.due_date || 'no date'})`;
-    const formatMetric = m => `${m.type}: ${m.value} ${m.unit || ''} on ${m.date}`;
-    const formatSleep  = s => `${s.date}: ${s.duration}h, quality ${s.quality}/10`;
-    const formatFin    = () => finance.accounts ? `balance: ${formatCurrency(Object.values(finance.accounts).reduce((s, a) => s + (a.balance || 0), 0), u)}` : '';
-    const formatNote   = n => n.title || 'Untitled Note';
-    const formatSub    = s => `${s.name} (${formatCurrency(s.cost, u)})`;
-    const formatShop   = i => i.name;
-    const formatMed    = m => `${m.name} (${m.dosage})`;
-    const formatTime   = t => `${t.task} (${t.hours}h)`;
-
-    return [
-      `User: ${u.name || 'User'}, age ${u.age || '?'}, gender ${u.gender || '?'}`,
-      goals.length     ? `Goals: ${goals.map(formatGoal).join('; ')}`        : '',
-      habits.length    ? `Habits: ${habits.map(formatHabit).join(', ')}`     : '',
-      tasks.length     ? `Open tasks: ${tasks.map(formatTask).join('; ')}`   : '',
-      metrics.length   ? `Recent metrics: ${metrics.map(formatMetric).join('; ')}` : '',
-      sleep.length     ? `Sleep (last 7d): ${sleep.map(formatSleep).join('; ')}` : '',
-      formatFin()      ? `Finance — ${formatFin()}`                          : '',
-      notes.length     ? `Notes: ${notes.map(formatNote).join(', ')}`         : '',
-      subs.length      ? `Subscriptions: ${subs.map(formatSub).join(', ')}`  : '',
-      shopItems.length ? `Shopping: ${shopItems.map(formatShop).join(', ')}` : '',
-      meds.length      ? `Medications: ${meds.map(formatMed).join(', ')}`    : '',
-      timesheet.length ? `Timesheet: ${timesheet.map(formatTime).join(', ')}` : '',
-    ].filter(Boolean).join('\n');
-  }, [state]);
-
-  const sendMessage = useCallback(async (text) => {
-    const msg = (text || input).trim();
-    if (!msg || loading) return;
-    setInput('');
-    setShowPrompts(false);
-
-    const userMsg = { role: 'user', content: msg, id: Date.now() };
-    setMessages(prev => [...prev, userMsg]);
-    setLoading(true);
-
-    try {
-      // Build a single prompt from system context + conversation history + new message
-      const historyText = messages.slice(-6).map(m =>
-        `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
-      ).join('\n');
-
-      const fullPrompt = [
-        'You are GrowthTrack AI — a personal growth assistant with access to the user\'s real data.',
-        'Be concise, encouraging, and data-driven. Use Markdown for structure when helpful.',
-        responseStyle === 'multiple-choice' ? 'Use guided multiple choice: ask one clear question at a time, offer 3–5 mutually exclusive choices with short trade-offs, and always allow a free-text answer. Never assume which choice the user selected.' : '',
-        '',
-        '=== User Context ===',
-        userContext,
-        '',
-        historyText ? `=== Conversation so far ===\n${historyText}\n` : '',
-        `User: ${msg}`,
-        'Assistant:',
-      ].filter(v => v !== undefined).join('\n');
-
-      let response;
-      try {
-        const ollamaModel = model.replace(/^ollama-/, '');
-        response = await askLocalGrowthcast(fullPrompt, { ...aiConfig, model: ollamaModel });
-      } catch (fbErr) {
-        // Fallback or error handling
-        console.warn('[AiDashboard] AI Model unavailable:', fbErr.message);
-        response = null;
-      }
-
-      if (!response) {
-        response = 'Your assistant is taking a moment to reconnect. Please try again shortly.';
-      }
-
-      const aiMsg = { role: 'assistant', content: response, id: Date.now() + 1, typing: true };
-      setMessages(prev => [...prev, aiMsg]);
-      setTyping(true);
-    } catch (err) {
-      const errMsg = 'We couldn’t finish that response. Your conversation is still here—please try again.';
-      setMessages(prev => [...prev, { role: 'assistant', content: errMsg, id: Date.now() + 1, error: true }]);
-      toast.error(errMsg);
-    } finally {
-      setLoading(false);
-    }
-  }, [input, loading, messages, userContext, model, responseStyle, toast, aiConfig]);
-
-  const handleTypingDone = useCallback((msgId) => {
-    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, typing: false } : m));
-    setTyping(false);
+    try { sessionStorage.removeItem('gt_ai_cache_v2'); } catch { /* storage may be unavailable */ }
+    return () => { activeRequest.current?.abort(); };
   }, []);
 
-  const copyMessage = (content) => {
-    navigator.clipboard.writeText(content).then(() => toast.success('Copied to your clipboard.')).catch(() => toast.error('We couldn’t copy that. Please try again.'));
-  };
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    setReadiness({ ready: false, reason: 'Checking model readiness…' });
+    getAgentsReadiness({ signal: controller.signal }).then(status => {
+      if (!active) return;
+      setModels(status.models);
+      setReadiness(status);
+      setModel(current => status.models.some(item => item.id === current) ? current : selectPreferredChatModel(status.models, preferredModel)?.id || '');
+    }).catch(error => {
+      if (!active) return;
+      setModels([]);
+      setModel('');
+      setReadiness({ ready: false, reason: controller.signal.aborted ? 'Checking model readiness timed out. Try refreshing models.' : error.message || 'Agents is unavailable.' });
+    }).finally(() => clearTimeout(timer));
+    return () => { active = false; clearTimeout(timer); controller.abort(); };
+  }, [preferredModel, refresh]);
 
-  const clearChat = () => {
-    setMessages([]);
-    setShowPrompts(true);
-    sessionStorage.removeItem(CACHE_KEY);
-    toast.info('This conversation has been cleared.');
-  };
+  useEffect(() => { bottom.current?.scrollIntoView?.({ block: 'nearest' }); }, [messages]);
 
-  // Safe React-based markdown renderer — no dangerouslySetInnerHTML, no XSS risk.
-  // Parses lines and inline tokens into React elements only.
-  const SafeMarkdown = ({ text }) => {
-    if (!text) return null;
-
-    const parseInline = (str, key) => {
-      // Split on **bold** and `code` tokens, return React nodes
-      const parts = [];
-      const re = /(\*\*(.*?)\*\*|`([^`]+)`)/g;
-      let last = 0, m, i = 0;
-      while ((m = re.exec(str)) !== null) {
-        if (m.index > last) parts.push(<React.Fragment key={`t${key}-${i++}`}>{str.slice(last, m.index)}</React.Fragment>);
-        if (m[0].startsWith('**')) {
-          parts.push(<strong key={`b${key}-${i++}`} style={{ color: 'var(--text-1)' }}>{m[2]}</strong>);
-        } else {
-          parts.push(<code key={`c${key}-${i++}`} style={{ background: 'rgba(255,255,255,0.1)', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.88em' }}>{m[3]}</code>);
-        }
-        last = m.index + m[0].length;
-      }
-      if (last < str.length) parts.push(<React.Fragment key={`t${key}-${i}`}>{str.slice(last)}</React.Fragment>);
-      return parts;
-    };
-
-    const lines = text.split('\n');
-    const nodes = [];
-    let i = 0;
-
-    while (i < lines.length) {
-      const line = lines[i];
-      // Code block
-      if (line.startsWith('```')) {
-        const codeLines = [];
-        i++;
-        while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++; }
-        nodes.push(
-          <pre key={`pre${i}`} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '0.75rem 1rem', overflowX: 'auto', fontSize: '0.82rem', fontFamily: 'monospace', margin: '0.5rem 0', whiteSpace: 'pre' }}>
-            <code>{codeLines.join('\n')}</code>
-          </pre>
-        );
-      } else if (/^#{1,3} /.test(line)) {
-        const level = line.match(/^(#+)/)[1].length;
-        const content = line.replace(/^#+\s/, '');
-        const Tag = `h${Math.min(level + 2, 6)}`;
-        nodes.push(<Tag key={`h${i}`} style={{ fontSize: level === 1 ? '1rem' : '0.9rem', fontWeight: 800, color: 'var(--text-1)', margin: '0.6rem 0 0.25rem' }}>{parseInline(content, `h${i}`)}</Tag>);
-      } else if (/^[-*] /.test(line)) {
-        nodes.push(<li key={`li${i}`} style={{ marginLeft: '1.25rem', listStyle: 'disc', marginBottom: '2px', fontSize: '0.85rem' }}>{parseInline(line.slice(2), `li${i}`)}</li>);
-      } else if (line.trim() === '') {
-        nodes.push(<br key={`br${i}`} />);
-      } else {
-        nodes.push(<p key={`p${i}`} style={{ margin: '0.15rem 0', fontSize: '0.85rem', lineHeight: 1.65 }}>{parseInline(line, `p${i}`)}</p>);
-      }
-      i++;
+  useEffect(() => {
+    if (!openPanel) return undefined;
+    panelRef.current?.querySelector('button')?.focus();
+    function onKeyDown(event) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setOpenPanel(null);
+      triggerRefs.current[openPanel]?.focus();
     }
+    function onPointerDown(event) {
+      if (!panelRef.current?.contains(event.target) && !triggerRefs.current[openPanel]?.contains(event.target)) setOpenPanel(null);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [openPanel]);
 
-    return <div style={{ wordBreak: 'break-word' }}>{nodes}</div>;
-  };
+  function closePanel() {
+    triggerRefs.current[openPanel]?.focus();
+    setOpenPanel(null);
+  }
 
-  return (
-    <div className="agent-workspace">
-      {/* Header */}
-      <Card className="agent-workspace__header">
-        <div>
-          <p className="eyebrow">Your assistant</p>
-          <h2><Bot size={22} aria-hidden="true" /> GrowthTrack AI</h2>
-          <p>Ask for a clear next step, a thoughtful review, or a plan for the week.</p>
-        </div>
-        <div className="agent-workspace__actions">
-          <label className="agent-workspace__model"><span>Model</span><select value={model} onChange={e => setModel(e.target.value)}>
-            <optgroup label="Installed Ollama models">
-              {!availableModels.length && <option value="ollama-unconfigured">No installed model found</option>}
-              {availableModels.map(item => <option key={item.id} value={`ollama-${item.id}`}>{item.label}</option>)}
-            </optgroup>
-          </select><small>{modelStatus}</small></label>
-          <label className="agent-workspace__model"><span>Answer style</span><select value={responseStyle} onChange={event => setResponseStyle(event.target.value)}><option value="standard">Standard</option><option value="multiple-choice">Multiple-choice coaching</option></select></label>
-          <Button variant="secondary" onClick={() => setShowGuide(!showGuide)} title="Prompting Guide"><Info size={15} /> Guide</Button>
-          <Button variant="secondary" onClick={clearChat} title="Clear conversation"><Trash2 size={15} /> Clear</Button>
-        </div>
-      </Card>
+  function changeConsent(domain, checked) {
+    if (!checked) setSelected(keys => keys.filter(key => !candidates.some(record => record.key === key && record.domain === domain)));
+    setConsent(current => ({ ...current, [domain]: checked }));
+  }
 
-      {/* Context chip */}
-      <div className="agent-workspace__privacy">
-        <div>
-          <Sparkles size={10} />
-          Uses the relevant workspace context to make answers more useful. Your message stays in this private workspace.
-        </div>
+  function clearChat() {
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    setLoading(false);
+    setMessages([]);
+    setInput('');
+    setSelected([]);
+    setConsent({ ...EMPTY_AI_CONSENT });
+  }
+
+  async function sendMessage(value = input) {
+    const prompt = value.trim();
+    if (!prompt || prompt.length > 8000 || activeRequest.current || !readiness.ready || !state.user?.id || !model) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    const requestId = crypto.randomUUID();
+    const scopeKey = JSON.stringify({ context, consent });
+    // Changed or revoked context must not leak back through conversation history.
+    const completedTurns = new Set(messages.filter(message => message.role === 'assistant' && message.status === 'complete').map(message => message.turnId));
+    const history = messages.filter(message => completedTurns.has(message.turnId) && message.scopeKey === scopeKey && message.content)
+      .slice(-15).map(({ role, content }) => ({ role, content: content.slice(0, 8000) }));
+    const sources = context.map(({ id, type, label }) => ({ id, type, label }));
+    setMessages(current => [...current,
+      { id: requestId + '-user', turnId: requestId, role: 'user', content: prompt, scopeKey, sources, status: 'complete' },
+      { id: requestId, turnId: requestId, role: 'assistant', content: '', scopeKey, status: 'streaming' },
+    ]);
+    setInput('');
+    setLoading(true);
+    const update = patch => {
+      if (activeRequest.current === controller) setMessages(current => current.map(message => message.id === requestId ? { ...message, ...patch } : message));
+    };
+    try {
+      await streamAgentsChat({
+        model, messages: [...history, { role: 'user', content: prompt }],
+        context, consent, responseStyle, signal: controller.signal,
+        onDelta: delta => {
+          if (activeRequest.current !== controller || controller.signal.aborted) return;
+          setMessages(current => current.map(message => message.id === requestId ? { ...message, content: message.content + delta } : message));
+        },
+      });
+      update({ status: controller.signal.aborted ? 'stopped' : 'complete' });
+    } catch (error) {
+      if (controller.signal.aborted) update({ status: 'stopped' });
+      else {
+        update({ status: 'error', error: error.message || 'The response could not be completed.' });
+        if (activeRequest.current === controller) setInput(prompt);
+      }
+    } finally {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
+    }
+  }
+
+  const canSend = readiness.ready && Boolean(model && state.user?.id) && !loading;
+  const turnCount = messages.filter(message => message.role === 'user').length;
+  const selectedModel = models.find(item => item.id === model);
+  const readinessText = !state.user?.id ? 'Sign in to use GrowthTrack AI.'
+    : readiness.ready ? models.length + ' installed chat model' + (models.length === 1 ? '' : 's') : readiness.reason;
+  const panels = [
+    { id: 'context', label: 'Context', detail: `${context.length} selected`, icon: <Database size={16} aria-hidden="true" /> },
+    { id: 'settings', label: 'Model', detail: selectedModel?.label || selectedModel?.id || 'Unavailable', icon: <Settings2 size={16} aria-hidden="true" /> },
+    { id: 'history', label: 'Session', detail: `${turnCount} ${turnCount === 1 ? 'question' : 'questions'}`, icon: <History size={16} aria-hidden="true" /> },
+  ];
+
+  return <section className="gt-ai" aria-label="GrowthTrack AI chat">
+    <header className="gt-ai__masthead">
+      <div className="gt-ai__heading">
+        <p className="gt-ai__eyebrow"><span>01</span> / THE INTELLIGENCE DESK</p>
+        <h2>GrowthTrack <em>AI</em></h2>
+        <p>Make sense of what matters, one question at a time.</p>
       </div>
-
-      {showGuide && (
-        <Card style={{ margin: '1rem', padding: '1rem', background: 'var(--bg-elevated)', border: '1px solid var(--accent)' }}>
-          <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Info size={16}/> Prompting Guide</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginBottom: '0.5rem' }}>For multiple-choice questions or structured decisions, format your prompt clearly:</p>
-          <pre style={{ background: 'var(--bg-dark)', padding: '0.5rem', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--text-1)', marginBottom: '0.5rem' }}>
-            What should I focus on today?{'\n'}
-            A) Finish the presentation{'\n'}
-            B) Do a 5k run{'\n'}
-            C) Read a book
-          </pre>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>The agent evaluates your recent data and highlights the best choice.</p>
-        </Card>
-      )}
-
-      {/* Chat messages */}
-      <div className="agent-workspace__messages" aria-live="polite">
-        {/* Quick prompts */}
-        {showPrompts && (
-          <div className="agent-workspace__prompts">
-            <p><Zap size={14} aria-hidden="true" /> A good place to start</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
-              {QUICK_PROMPTS.map(p => (
-                <Card as="button" interactive type="button" key={p.label} onClick={() => sendMessage(p.prompt)} disabled={loading} className="agent-workspace__prompt">{p.label}</Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {messages.length === 0 && !showPrompts && (
-          <div className="agent-workspace__empty">
-            <Bot size={40} aria-hidden="true" />
-            <p>Ask about your health, goals, finances, or focus—and we’ll work through it together.</p>
-          </div>
-        )}
-
-        {messages.map((msg, idx) => {
-          const isUser   = msg.role === 'user';
-          const isLast   = idx === messages.length - 1;
-          const isTyping = msg.typing && isLast;
-
-          return (
-            <div key={msg.id} style={{
-              display: 'flex', gap: '0.75rem', flexDirection: isUser ? 'row-reverse' : 'row',
-              alignItems: 'flex-start', animation: 'fadeIn 0.3s ease',
-            }}>
-              {/* Avatar */}
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isUser ? 'var(--accent)' : 'rgba(99,102,241,0.2)', border: `1.5px solid ${isUser ? 'var(--accent)' : 'rgba(99,102,241,0.4)'}` }}>
-                {isUser ? <User size={15} color="#000" /> : <Bot size={15} color="#818cf8" />}
-              </div>
-
-              {/* Bubble */}
-              <div style={{ maxWidth: '78%', position: 'relative' }}>
-                <div style={{
-                  padding: '0.85rem 1rem', borderRadius: isUser ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                  background: isUser ? 'var(--accent)' : msg.error ? 'rgba(248,113,113,0.1)' : 'rgba(255,255,255,0.05)',
-                  border: isUser ? 'none' : `1px solid ${msg.error ? 'rgba(248,113,113,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                  color: isUser ? '#000' : 'var(--text-1)', fontSize: '0.85rem', lineHeight: 1.65,
-                }}>
-                  {isUser ? (
-                    <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</span>
-                  ) : isTyping ? (
-                    <TypedMessage text={msg.content} speed={10} onDone={() => handleTypingDone(msg.id)} />
-                  ) : (
-                    <SafeMarkdown text={msg.content} />
-                  )}
-                </div>
-                {!isUser && !isTyping && !msg.error && (
-                  <button onClick={() => copyMessage(msg.content)} title="Copy response"
-                    style={{ position: 'absolute', bottom: '-20px', right: '0', background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '2px', fontSize: '0.62rem', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <Copy size={10} /> copy
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Loading dots */}
-        {loading && (
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(99,102,241,0.2)', border: '1.5px solid rgba(99,102,241,0.4)', flexShrink: 0 }}>
-              <Bot size={15} color="#818cf8" />
-            </div>
-            <div style={{ padding: '0.85rem 1.2rem', borderRadius: '4px 16px 16px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '5px', alignItems: 'center' }}>
-              {[0, 0.2, 0.4].map((delay, i) => (
-                <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#818cf8', animation: `bounce 1s ease ${delay}s infinite` }} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div ref={bottomRef} />
+      <div className="gt-ai__readiness" role="status">
+        <span className={`gt-ai__signal${readiness.ready && state.user?.id ? ' gt-ai__signal--ready' : ''}`} aria-hidden="true" />
+        <span>{readinessText}</span>
       </div>
+    </header>
 
-      {/* Input bar */}
-      <div style={{ flexShrink: 0, display: 'flex', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-          placeholder="Ask about your health, goals, habits, or finances… (Shift+Enter for newline)"
-          rows={1}
-          disabled={loading || typing}
-          style={{
-            flex: 1, background: 'none', border: 'none', outline: 'none', color: 'var(--text-1)',
-            fontSize: '0.85rem', resize: 'none', lineHeight: 1.5, fontFamily: 'inherit',
-            maxHeight: '120px', overflowY: 'auto',
-          }}
-          onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }}
-        />
-        <button onClick={() => sendMessage()} disabled={loading || typing || !input.trim()} style={{
-          width: '38px', height: '38px', borderRadius: '10px', border: 'none',
-          background: loading || !input.trim() ? 'rgba(255,255,255,0.1)' : 'var(--accent)',
-          color: loading || !input.trim() ? 'var(--text-3)' : '#000',
-          cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          transition: 'background 0.2s',
-        }}>
-          {loading ? <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={15} />}
-        </button>
+    <div className="gt-ai__toolbar">
+      <div className="gt-ai__controls" role="group" aria-label="Chat controls">
+        {panels.map(({ id, label, detail, icon }) => <button key={id} ref={node => { triggerRefs.current[id] = node; }} type="button"
+          className={`gt-ai__control${openPanel === id ? ' gt-ai__control--active' : ''}`}
+          aria-label={`${label}, ${detail}`}
+          aria-expanded={openPanel === id} aria-controls={openPanel === id ? `${panelIds}-${id}` : undefined}
+          onClick={() => setOpenPanel(current => current === id ? null : id)}>
+          {icon}<span className="gt-ai__control-label">{label}<small>{detail}</small></span>
+        </button>)}
       </div>
+      <p className="gt-ai__scope">{context.length ? `${context.length} records selected` : 'No records attached'} <span aria-hidden="true">·</span> Messages go to the model server</p>
+
+      {openPanel && <section id={`${panelIds}-${openPanel}`} ref={panelRef} className={`gt-ai__panel gt-ai__panel--${openPanel}`} aria-label={`${openPanel === 'history' ? 'Session history' : openPanel === 'settings' ? 'Model settings' : 'Context selection'}`}
+        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && !triggerRefs.current[openPanel]?.contains(event.relatedTarget)) setOpenPanel(null); }}>
+        <div className="gt-ai__panel-head">
+          <div><p className="gt-ai__eyebrow">CHAT CONTROL / {openPanel === 'context' ? '01' : openPanel === 'settings' ? '02' : '03'}</p>
+            <h3>{openPanel === 'context' ? 'Choose your sources' : openPanel === 'settings' ? 'Model & response' : 'This session'}</h3></div>
+          <button type="button" className="gt-ai__close" aria-label={`Close ${openPanel} panel`} onClick={closePanel}><X size={18} aria-hidden="true" /></button>
+        </div>
+
+        {openPanel === 'context' && <div className="gt-ai__panel-body">
+          <p className="gt-ai__panel-intro">Only checked records are sent to the deployment’s model server. Your typed messages are also sent. Chat stays in memory and clears when you leave this page or change accounts.</p>
+          <fieldset className="gt-ai__consent" disabled={loading}>
+            <legend>Optional sensitive context</legend>
+            {SENSITIVE_DOMAINS.map(([domain, label]) => <label key={domain}>
+              <input type="checkbox" checked={consent[domain]} onChange={event => changeConsent(domain, event.target.checked)} /><span>{label}</span>
+            </label>)}
+          </fieldset>
+          <div className="gt-ai__record-head"><h4>Select records ({context.length}/20 selected)</h4><span>EXPLICIT SELECTION</span></div>
+          {!candidates.length && <p className="gt-ai__empty-records">No records available. Load your workspace or enable a sensitive category to review it.</p>}
+          <div className="gt-ai__records">
+            {candidates.map(record => <label key={record.key}>
+              <input type="checkbox" checked={selected.includes(record.key)} disabled={loading || (context.length >= 20 && !selected.includes(record.key))}
+                onChange={event => setSelected(keys => event.target.checked ? [...keys, record.key] : keys.filter(key => key !== record.key))} />
+              <span><strong>{record.group}: {record.label}</strong><small>{record.text}</small></span>
+            </label>)}
+          </div>
+          {context.length > 0 && <div className="gt-ai__selected"><h4>Attached to the next question</h4><ul aria-label="Selected source records">{context.map(record => <li key={record.type + record.id}>{record.label} <small>({record.type} · {record.id})</small></li>)}</ul></div>}
+        </div>}
+
+        {openPanel === 'settings' && <div className="gt-ai__panel-body gt-ai__settings">
+          <p className="gt-ai__panel-intro">Use an installed chat-capable model. Changing settings affects your next message.</p>
+          <label>Model
+            <select value={model} disabled={loading || !readiness.ready} onChange={event => setModel(event.target.value)}>
+              {!models.length && <option value="">No chat model available</option>}
+              {models.map(item => <option key={item.id} value={item.id}>{item.label || item.id}</option>)}
+            </select>
+          </label>
+          <label>Answer style
+            <select value={responseStyle} disabled={loading} onChange={event => setResponseStyle(event.target.value)}>
+              <option value="standard">Standard</option><option value="multiple-choice">Multiple-choice coaching</option>
+            </select>
+          </label>
+          <Button variant="secondary" disabled={loading} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={15} aria-hidden="true" /> Refresh models</Button>
+        </div>}
+
+        {openPanel === 'history' && <div className="gt-ai__panel-body">
+          <p className="gt-ai__panel-intro">This conversation stays in memory for this page and account session. It is cleared when you leave the page or change accounts.</p>
+          <div className="gt-ai__history-count"><strong>{String(turnCount).padStart(2, '0')}</strong><span>{turnCount === 1 ? 'question in this session' : 'questions in this session'}</span></div>
+          {turnCount > 0 && <ol className="gt-ai__history-list" aria-label="Questions in this session">
+            {messages.filter(message => message.role === 'user').map((message, index) => <li key={message.id}><button type="button" onClick={() => {
+              setOpenPanel(null);
+              document.getElementById(`gt-ai-message-${message.id}`)?.focus();
+            }}><span>{String(index + 1).padStart(2, '0')}</span>{message.content}<ArrowUpRight size={15} aria-hidden="true" /></button></li>)}
+          </ol>}
+          <Button variant="secondary" onClick={() => { clearChat(); closePanel(); }}><Trash2 size={15} aria-hidden="true" /> Clear conversation</Button>
+          <div className="gt-ai__draft-note"><strong>Drafts only</strong><p>Suggestions are drafts. Review and save changes manually in the relevant page.</p>
+            <Button disabled title="Agents action execution is not supported">Confirm proposed actions</Button></div>
+        </div>}
+      </section>}
     </div>
-  );
+
+    <div className="gt-ai__thread" role="log" aria-label="Conversation" aria-live="polite" aria-busy={loading}>
+      {!messages.length && <div className="gt-ai__welcome">
+        <p className="gt-ai__eyebrow">A SPACE TO THINK CLEARLY</p>
+        <h3>Start with a question.<br /><em>Find your next move.</em></h3>
+        <p>{!state.user?.id ? 'Sign in to ask a question. You can still draft a message below.' : readiness.ready ? 'Choose records in Context for a personal answer, or ask without attaching any data.' : 'The assistant is unavailable until a chat model is ready. You can still draft a message below.'}</p>
+        <div className="gt-ai__prompts" aria-label="Suggested questions">{PROMPTS.map(prompt => <Button key={prompt.label} variant="secondary" disabled={!canSend} onClick={() => sendMessage(prompt.prompt)}>{prompt.label}<ArrowUpRight size={14} aria-hidden="true" /></Button>)}</div>
+      </div>}
+      {messages.map((message, index) => <article id={`gt-ai-message-${message.id}`} tabIndex={-1} className={`gt-ai__message gt-ai__message--${message.role}`} key={message.id} aria-label={message.role === 'user' ? 'Your message' : 'Assistant response'}>
+        <div className="gt-ai__message-meta"><span>{message.role === 'user' ? <User size={15} aria-hidden="true" /> : <Bot size={15} aria-hidden="true" />}{message.role === 'user' ? 'YOU' : 'GROWTHTRACK AI'}</span><span>{String(Math.floor(index / 2) + 1).padStart(2, '0')}{message.role === 'assistant' && ` · ${message.status === 'streaming' ? 'WRITING' : message.status === 'stopped' ? 'STOPPED' : message.status === 'error' ? 'UNAVAILABLE' : 'DRAFT'}`}</span></div>
+        <div className="gt-ai__message-content">
+          <p>{message.content || (message.status === 'streaming' ? 'Waiting for the model…' : '')}</p>
+          {message.sources?.length > 0 && <small>Shared records: {message.sources.map(source => source.label).join(', ')}</small>}
+          {message.status === 'stopped' && <small>Response stopped. This answer is incomplete.</small>}
+          {message.error && <p className="gt-ai__message-error" role="alert">{message.error}</p>}
+          {message.role === 'assistant' && message.content && <Button size="sm" variant="ghost" aria-label="Copy response" onClick={() => navigator.clipboard.writeText(message.content).then(() => toast.success('Copied.')).catch(() => toast.error('Could not copy the response.'))}><Copy size={13} aria-hidden="true" /> Copy</Button>}
+        </div>
+      </article>)}
+      <div ref={bottom} />
+    </div>
+
+    <div className="gt-ai__composer-area">
+      <form className="gt-ai__composer" onSubmit={event => { event.preventDefault(); sendMessage(); }}>
+        <textarea aria-label="Message" value={input} maxLength={8000} rows={2} disabled={loading}
+          placeholder="Ask what you want to understand…"
+          onChange={event => setInput(event.target.value)}
+          onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); sendMessage(); } }} />
+        {loading ? <Button variant="secondary" onClick={() => activeRequest.current?.abort()}><Square size={15} aria-hidden="true" /> Stop response</Button>
+          : <Button type="submit" disabled={!canSend || !input.trim()}><Send size={15} aria-hidden="true" /> Send message</Button>}
+      </form>
+      <div className="gt-ai__composer-foot"><span>Enter to send · Shift + Enter for a new line</span><span>AI suggestions are drafts; review before saving.</span></div>
+    </div>
+  </section>;
 }

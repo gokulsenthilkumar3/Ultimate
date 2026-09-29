@@ -203,7 +203,7 @@ export default function Notes() {
         <div className="notes-sidebar-header">
           <div>
             <p className="label-caps" style={{ color: 'var(--accent)', fontSize: '0.58rem' }}>Notes</p>
-            <h3 className="notes-sidebar-title">My Notes</h3>
+            <h1 className="notes-sidebar-title">My Notes</h1>
           </div>
           <button onClick={newNote} className="btn-primary" style={{ padding: '5px 10px', fontSize: '0.72rem' }}><Plus size={12} /> New</button>
         </div>

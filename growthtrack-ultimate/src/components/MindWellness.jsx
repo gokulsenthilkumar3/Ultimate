@@ -1,6 +1,7 @@
 import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import useStore, { selectMoodLogs, selectAddMoodLog } from '../store/useStore';
+import { JOURNAL_SOURCE, LEGACY_JOURNAL_KEY, validLegacyJournals, journalPayload } from '../store/journalActions';
 import {
   Brain, TrendingUp, Zap, Wind, Plus, Activity,
   BookOpen, BarChart2, Heart, ChevronDown, ChevronUp, Trash2,
@@ -9,6 +10,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { useToast } from '../hooks/useToast';
+import useHashTab from '../hooks/useHashTab';
 import { formatDate, formatTime, formatNumber, getUserLocale } from '../utils/userFormatters';
 
 const MOODS = [
@@ -57,10 +59,10 @@ function getLast14Days() {
 function moodSleepCorrelation(moodLogs, sleepLogs) {
   if (!moodLogs.length || !sleepLogs.length) return null;
   const sleepMap = {};
-  sleepLogs.forEach(l => { sleepMap[l.date] = parseFloat(l.duration) || 0; });
+  sleepLogs.forEach(l => { sleepMap[l.date] = parseFloat(l.duration ?? l.hours) || 0; });
   const pairs = moodLogs.slice(0, 14)
     .filter(l => sleepMap[l.date] !== undefined)
-    .map(l => ({ mood: l.mood, sleep: sleepMap[l.date] }));
+    .map(l => ({ mood: Number(l.mood), sleep: sleepMap[l.date] }));
   if (pairs.length < 3) return null;
   const n    = pairs.length;
   const mAvg = pairs.reduce((s, p) => s + p.mood, 0) / n;
@@ -169,18 +171,30 @@ function BreathingExercise() {
 }
 
 // ── Journal component ─────────────────────────────────────────────────────────
-const JOURNAL_KEY = 'gt_journal_entries';
 function loadJournal() {
-  try { return JSON.parse(safeLocalStorage.getItem(JOURNAL_KEY) || '[]'); } catch { return []; }
+  try { return validLegacyJournals(JSON.parse(safeLocalStorage.getItem(LEGACY_JOURNAL_KEY) || '[]')); } catch { return []; }
 }
 
 function Journal() {
   const user = useStore(s => s.user);
-  const [entries,   setEntries]   = useState(() => loadJournal());
+  const notes = useStore(s => s.notes);
+  const addNote = useStore(s => s.addNote);
+  const deleteNote = useStore(s => s.deleteNote);
+  const importLegacyJournals = useStore(s => s.importLegacyJournals);
+  const entries = useMemo(() => (notes || []).filter(note => note.source === JOURNAL_SOURCE && (!note.userId || note.userId === user?.id)).map(note => ({
+    ...note, text: note.content ?? note.text ?? '', date: note.date || String(note.createdAt || '').slice(0, 10),
+    time: note.time || note.createdAt, wordCount: note.wordCount ?? String(note.content || '').trim().split(/\s+/).filter(Boolean).length,
+  })).sort((a, b) => String(b.time || b.date).localeCompare(String(a.time || a.date))), [notes, user?.id]);
+  const [legacy, setLegacy] = useState(null);
+  const [selectedLegacy, setSelectedLegacy] = useState([]);
+  const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [text,      setText]      = useState('');
   const [expanded,  setExpanded]  = useState(null);
   const [prompt,    setPrompt]    = useState('');
   const toast = useToast();
+  useEffect(() => { setText(''); setLegacy(null); setSelectedLegacy([]); setConfirmed(false); setError(''); setExpanded(null); }, [user?.id]);
 
   const PROMPTS = [
     'What are three things you are grateful for today?',
@@ -195,34 +209,61 @@ function Journal() {
   const randomPrompt = () => setPrompt(PROMPTS[Math.floor(Math.random() * PROMPTS.length)]);
   useEffect(() => { randomPrompt(); }, []);
 
-  const save = () => {
+  const save = async () => {
+    if (saving) return;
     if (!text.trim()) return toast.error('Write something first');
     const entry = {
-      id:   Date.now(),
+      id:   crypto.randomUUID(),
       date: new Date().toISOString().slice(0, 10),
       time: new Date().toISOString(),
       text: text.trim(),
       prompt: prompt || null,
       wordCount: text.trim().split(/\s+/).filter(Boolean).length,
     };
-    const updated = [entry, ...entries].slice(0, 50); // keep last 50
-    setEntries(updated);
-    safeLocalStorage.setItem(JOURNAL_KEY, JSON.stringify(updated));
-    setText('');
-    randomPrompt();
-    toast.success('Journal entry saved');
+    setSaving(true); setError('');
+    try {
+      await addNote(journalPayload(entry));
+      setText(''); randomPrompt(); toast.success('Journal entry saved');
+    } catch (error) { setError(error?.message || 'Journal could not be saved. Your draft is kept; try again.'); }
+    finally { setSaving(false); }
   };
 
-  const remove = (id) => {
-    const updated = entries.filter(e => e.id !== id);
-    setEntries(updated);
-    safeLocalStorage.setItem(JOURNAL_KEY, JSON.stringify(updated));
+  const remove = async (id) => {
+    setError('');
+    try { await deleteNote(id); }
+    catch (error) { setError(error?.message || 'Journal could not be deleted. Try again.'); }
+  };
+  const importSelected = async () => {
+    if (saving || !confirmed || !selectedLegacy.length) return;
+    setSaving(true); setError('');
+    try {
+      await importLegacyJournals(selectedLegacy.map(index => legacy[index]), confirmed);
+      setSelectedLegacy([]); setConfirmed(false);
+      toast.success('Selected journals imported. The local originals are kept as a backup.');
+    } catch (error) { setError(error?.message || 'Import failed. Originals are kept; you can safely retry.'); }
+    finally { setSaving(false); }
   };
 
   const totalWords = entries.reduce((s, e) => s + (e.wordCount || 0), 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {error && <p role="alert">{error}</p>}
+      <div className="glass-card" style={{ padding: '1rem' }}>
+        <button className="btn-sm" onClick={() => setLegacy(loadJournal())}>Preview legacy journals on this device</button>
+        {legacy && <div>
+          <p>These local entries may belong to another account. Select only your entries. Originals are kept after import.</p>
+          {legacy.length === 0 && <p>No legacy journals found.</p>}
+          {legacy.map((entry, index) => <label key={index} style={{ display: 'block', margin: '0.75rem 0' }}>
+            <input type="checkbox" disabled={saving} checked={selectedLegacy.includes(index)} onChange={event => setSelectedLegacy(previous => event.target.checked ? [...previous, index] : previous.filter(value => value !== index))} />
+            {entry.date} · {entry.text}
+          </label>)}
+          {legacy.length > 0 && <>
+            <label><input type="checkbox" checked={confirmed} disabled={saving} onChange={event => setConfirmed(event.target.checked)} /> I confirm these selected entries belong to my signed-in account.</label>
+            <button className="btn-primary" onClick={importSelected} disabled={saving || !confirmed || !selectedLegacy.length}>Import selected journals</button>
+          </>}
+        </div>}
+      </div>
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem' }}>
         {[
@@ -263,6 +304,7 @@ function Journal() {
         <textarea
           className="form-input"
           value={text}
+          disabled={saving}
           onChange={e => setText(e.target.value)}
           placeholder="Start writing here..."
           rows={5}
@@ -272,8 +314,8 @@ function Journal() {
           <span style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>
             {text.trim().split(/\s+/).filter(Boolean).length} words
           </span>
-          <button className="btn-primary" onClick={save} disabled={!text.trim()} style={{ padding: '0.5rem 1.5rem' }}>
-            Save Entry
+          <button className="btn-primary" onClick={save} disabled={saving || !user?.id || !text.trim()} style={{ padding: '0.5rem 1.5rem' }}>
+            {saving ? 'Saving…' : 'Save Entry'}
           </button>
         </div>
       </div>
@@ -302,6 +344,7 @@ function Journal() {
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <button
                       className="btn-icon"
+                      aria-label="Delete journal entry"
                       style={{ color: 'var(--danger)', padding: '4px' }}
                       onClick={ev => { ev.stopPropagation(); remove(e.id); }}
                     >
@@ -472,7 +515,7 @@ function MoodTrends({ moodLogs, sleepLogs, user }) {
             const entry = logMap[date];
             const color = entry ? MOOD_COLORS[entry.mood] : 'rgba(255,255,255,0.04)';
             return (
-              <div key={date} title={entry ? `${date}: ${MOODS.find(m => m.value === entry.mood)?.label}` : date}
+              <div key={date} title={entry ? `${date}: ${MOODS.find(m => m.value === Number(entry.mood))?.label}` : date}
                 style={{
                   flex: '1 1 40px', height: '44px', borderRadius: '8px',
                   background: color,
@@ -480,7 +523,7 @@ function MoodTrends({ moodLogs, sleepLogs, user }) {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
                   cursor: entry ? 'default' : 'default',
                 }}>
-                {entry && <span style={{ fontSize: '1rem' }}>{MOODS.find(m => m.value === entry.mood)?.icon}</span>}
+                {entry && <span style={{ fontSize: '1rem' }}>{MOODS.find(m => m.value === Number(entry.mood))?.icon}</span>}
                 <span style={{ fontSize: '0.55rem', color: entry ? 'rgba(255,255,255,0.6)' : 'var(--text-3)', fontWeight: 700 }}>
                   {new Intl.DateTimeFormat(getUserLocale(user), { weekday: 'short' }).format(new Date(date)).slice(0,1)}
                   {date.slice(8)}
@@ -499,24 +542,26 @@ export default function MindWellness() {
   const user        = useStore(s => s.user);
   const moodLogs    = useStore(selectMoodLogs);
   const addMoodLog  = useStore(selectAddMoodLog);
-  const sleepLogs   = useStore(s => s.sleepLogs) || [];
+  const sleepLogs   = useStore(s => s.sleep_logs) || [];
   const toast       = useToast();
 
   const today    = new Date().toISOString().slice(0, 10);
   const todayLog = moodLogs.find(l => l.date === today);
 
-  const [mood,      setMood]      = useState(todayLog?.mood    || null);
+  const [mood,      setMood]      = useState(Number(todayLog?.mood) || null);
   const [energy,    setEnergy]    = useState(todayLog?.energy  || null);
   const [note,      setNote]      = useState(todayLog?.note    || '');
   const [tags,      setTags]      = useState(todayLog?.tags    || []);
   const [saved,     setSaved]     = useState(!!todayLog);
-  const [activeTab, setActiveTab] = useState('checkin');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [activeTab, setActiveTab] = useHashTab(['checkin', 'trends', 'journal', 'breathe'], 'checkin');
 
   const streak  = useMemo(() => getMoodStreak(moodLogs), [moodLogs]);
   const avgMood = useMemo(() => {
     if (!moodLogs.length) return null;
     const r = moodLogs.slice(0, 7);
-    return (r.reduce((s, l) => s + (l.mood || 0), 0) / r.length).toFixed(1);
+    return (r.reduce((s, l) => s + Number(l.mood || 0), 0) / r.length).toFixed(1);
   }, [moodLogs]);
   const moodLabel = MOODS.find(m => m.value === mood);
 
@@ -526,10 +571,14 @@ export default function MindWellness() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     if (!mood) return toast.error('Select a mood first');
-    await addMoodLog({ date: today, mood, energy, note, tags });
-    setSaved(true);
-    toast.success('Check-in saved ✓');
+    setSaving(true); setSaveError('');
+    try {
+      await addMoodLog({ date: today, mood, energy, note, tags });
+      setSaved(true); toast.success('Check-in saved ✓');
+    } catch (error) { setSaveError(error?.message || 'Check-in could not be saved. Try again.'); setSaved(false); }
+    finally { setSaving(false); }
   };
 
   const TABS = [
@@ -541,6 +590,7 @@ export default function MindWellness() {
 
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
+      {saveError && <p role="alert">{saveError}</p>}
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
@@ -564,7 +614,7 @@ export default function MindWellness() {
           { label: 'Streak',     value: `${streak}d`,                                                color: '#f59e0b', icon: Activity  },
           { label: '7d Avg Mood',value: avgMood ? `${avgMood}/5` : '—',                              color: Number(avgMood) >= 3.5 ? '#22c55e' : '#fb923c', icon: TrendingUp },
           { label: 'Total Logs', value: moodLogs.length,                                             color: '#a78bfa', icon: Brain     },
-          { label: 'Today',      value: todayLog ? MOODS.find(m => m.value === todayLog.mood)?.icon || '?' : '—', color: 'var(--text-1)', icon: Zap },
+          { label: 'Today',      value: todayLog ? MOODS.find(m => m.value === Number(todayLog.mood))?.icon || '?' : '—', color: 'var(--text-1)', icon: Zap },
         ].map(({ label, value, color, icon: Icon }) => (
           <div key={label} className="glass-card card-shine-wrap" style={{ padding: '0.85rem 1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -607,7 +657,7 @@ export default function MindWellness() {
             <p className="label-caps" style={{ marginBottom: '0.75rem' }}>How are you feeling?</p>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {MOODS.map(m => (
-                <button key={m.value} onClick={() => { setMood(m.value); setSaved(false); }}
+                <button key={m.value} disabled={saving} onClick={() => { setMood(m.value); setSaved(false); }}
                   style={{
                     flex: '1 1 70px',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
@@ -630,7 +680,7 @@ export default function MindWellness() {
             <p className="label-caps" style={{ marginBottom: '0.75rem' }}>Energy Level</p>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               {ENERGY_LEVELS.map(e => (
-                <button key={e.value} onClick={() => { setEnergy(e.value); setSaved(false); }}
+                <button key={e.value} disabled={saving} onClick={() => { setEnergy(e.value); setSaved(false); }}
                   style={{
                     flex: 1, padding: '0.65rem', borderRadius: '12px',
                     border: `2px solid ${energy === e.value ? e.color : 'var(--border)'}`,
@@ -650,7 +700,7 @@ export default function MindWellness() {
             <p className="label-caps" style={{ marginBottom: '0.75rem' }}>Emotional Tags <span style={{ color: 'var(--text-3)', fontWeight: 500 }}>(optional)</span></p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {TAGS.map(t => (
-                <button key={t} onClick={() => toggleTag(t)}
+                <button key={t} disabled={saving} onClick={() => toggleTag(t)}
                   style={{
                     padding: '4px 12px', borderRadius: 'var(--radius-pill)',
                     border: `1px solid ${tags.includes(t) ? '#a78bfa' : 'var(--border)'}`,
@@ -672,6 +722,7 @@ export default function MindWellness() {
               className="form-input"
               rows={2}
               value={note}
+              disabled={saving}
               onChange={e => { setNote(e.target.value); setSaved(false); }}
               placeholder="What's on your mind today?"
               style={{ width: '100%', resize: 'vertical' }}
@@ -682,7 +733,7 @@ export default function MindWellness() {
             className="btn-primary"
             style={{ width: '100%', padding: '0.85rem', opacity: saved ? 0.7 : 1 }}
             onClick={handleSave}
-            disabled={!mood}
+            disabled={saving || !mood}
           >
             {saved ? '✓ Check-in Saved — Update' : `Log ${moodLabel ? moodLabel.icon + ' ' + moodLabel.label : 'Mood'}`}
           </button>

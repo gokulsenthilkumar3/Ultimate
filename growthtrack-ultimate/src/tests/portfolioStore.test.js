@@ -11,15 +11,15 @@ describe('portfolio persistence contract', () => {
     })));
   });
 
-  it('normalizes valid holdings and drops unsafe rows', () => {
+  it('normalizes valid holdings without inventing prices or dropping unsafe rows', () => {
     expect(normalizePortfolio([
       { id: 9, name: '  Reliance  ', symbol: 'reliance', type: 'Stock', units: '2', buyPrice: '100', currentPrice: '' },
-      { name: '', units: 1, buyPrice: 10 },
-      { name: 'Bad', units: -1, buyPrice: 10 },
     ])).toEqual([{
       id: '9', name: 'Reliance', symbol: 'RELIANCE', type: 'Stock', units: 2,
-      buyPrice: 100, currentPrice: 100, buyDate: '',
+      buyPrice: 100, currentPrice: null, buyDate: '',
     }]);
+    expect(() => normalizePortfolio([{ id: 'good', name: 'Valid', units: 1, buyPrice: 10 }, { name: '', units: 1, buyPrice: 10 }])).toThrow('No records were discarded');
+    expect(() => normalizePortfolio([{ name: 'Bad', units: -1, buyPrice: 10 }])).toThrow('No records were discarded');
   });
 
   it('keeps add, update, and delete actions normalized and durable', async () => {

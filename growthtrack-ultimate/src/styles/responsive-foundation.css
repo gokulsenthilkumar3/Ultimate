@@ -1,0 +1,188 @@
+/* Import AFTER legacy styles. New components own this layer; the small shell bridge
+   extends the legacy layer to resolve existing !important declarations in that layer. */
+@layer gt-responsive-foundation {
+  [data-responsive-foundation] {
+    --rf-surface: var(--gt-surface, var(--v3-surface-solid, #fffdf9));
+    --rf-raised: var(--gt-surface-raised, var(--v3-raised, #f0eee8));
+    --rf-text: var(--gt-text, var(--v3-text, #202124));
+    --rf-muted: var(--gt-muted, var(--v3-text-secondary, #5f6268));
+    --rf-border: var(--gt-border, var(--v3-border, #dfdcd4));
+    --rf-accent: var(--gt-action, var(--v3-accent, #5c67e8));
+    --rf-focus: var(--gt-focus, var(--v3-accent, #5260df));
+    --rf-danger: var(--v2-danger, #ba3a3a);
+    --rf-safe-start: env(safe-area-inset-left, 0px);
+    --rf-safe-end: env(safe-area-inset-right, 0px);
+    box-sizing: border-box;
+    min-inline-size: 0;
+    color: var(--rf-text);
+    font-family: inherit;
+  }
+  [data-responsive-foundation] *, [data-responsive-foundation] *::before, [data-responsive-foundation] *::after { box-sizing: border-box; }
+  [data-responsive-foundation] :is(button, input:not([type=hidden]), select, textarea),
+  [data-responsive-foundation] a:not(.gt-foundation-text-link) { min-block-size: 44px !important; }
+  [data-responsive-foundation] :is(button, input[type=checkbox], input[type=radio]),
+  :is(.gt-navigation-rail, .gt-mobile-dock, .gt-detail-panel, .gt-navigation-panel, .gt-mobile-menu) :is(button, a) { min-inline-size: 44px !important; }
+  [data-responsive-foundation] :is(button, a, input, select, textarea, [tabindex]):focus-visible,
+  [data-responsive-foundation]:focus-visible { outline: 3px solid var(--rf-focus); outline-offset: 3px; }
+  [data-responsive-foundation] :is(button, a) { touch-action: manipulation; }
+  [data-responsive-foundation] :is(button, input, select, textarea) { font: inherit; }
+  [data-responsive-foundation] :is(p, h1, h2, h3, strong, small, label, td, th) { overflow-wrap: anywhere; }
+  [data-responsive-foundation] svg { flex-shrink: 0; }
+  [data-responsive-foundation]:dir(rtl) { --rf-safe-start: env(safe-area-inset-right, 0px); --rf-safe-end: env(safe-area-inset-left, 0px); }
+  .gt-foundation-sr-only { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+  .gt-app-navigation { position: fixed; inset-block: 0; inset-inline-start: 0; z-index: 80; display: flex; block-size: 100vh; block-size: 100dvh; }
+  .gt-navigation-rail { position: relative; z-index: 2; inline-size: 4.75rem; display: flex; flex-direction: column; align-items: stretch; gap: .5rem; padding: max(.5rem, env(safe-area-inset-top)) .4rem max(.5rem, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; background: var(--rf-surface); border-inline-end: 1px solid var(--rf-border); }
+  .gt-navigation-areas, .gt-navigation-utilities { display: grid; gap: .25rem; }
+  .gt-navigation-utilities { margin-block-start: auto; }
+  .gt-navigation-preference { color: var(--rf-danger); font-size: .75rem; overflow-wrap: anywhere; }
+  .gt-navigation-preference p { margin-block: .25rem; }
+  .gt-navigation-preference button { inline-size: 100%; font-size: .7rem; }
+  .gt-navigation-rail :is(a, button) { display: grid; justify-items: center; align-content: center; gap: .3rem; padding: .5rem .15rem; min-block-size: 3.25rem; border: 1px solid transparent; border-radius: .6rem; background: transparent; color: var(--rf-muted); text-decoration: none; text-align: center; cursor: pointer; }
+  .gt-navigation-rail :is(a, button) span { font-size: .7rem; line-height: 1.3; overflow-wrap: anywhere; }
+  .gt-navigation-rail .gt-navigation-brand { color: var(--rf-accent); }
+  .gt-navigation-avatar { display: grid; place-items: center; inline-size: 1.5rem; block-size: 1.5rem; border-radius: 50%; background: var(--rf-raised); color: var(--rf-text); }
+  .gt-navigation-rail :is(a, button):hover, .gt-navigation-rail .is-active { background: var(--rf-raised); color: var(--rf-accent); border-color: var(--rf-border); }
+  .gt-navigation-rail .is-active { border-inline-start: 3px solid var(--rf-accent); }
+  .gt-navigation-panel { inline-size: 16rem; display: flex; flex-direction: column; min-block-size: 0; background: var(--rf-surface); border-inline-end: 1px solid var(--rf-border); padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom); }
+  :is(.gt-navigation-panel, .gt-mobile-menu, .gt-detail-panel) > header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .75rem; border-block-end: 1px solid var(--rf-border); }
+  :is(.gt-navigation-panel, .gt-mobile-menu, .gt-detail-panel) > header :is(h2, p) { margin: 0; }
+  :is(.gt-navigation-panel, .gt-mobile-menu, .gt-detail-panel) > header h2 { font-size: 1.125rem; line-height: 1.4; }
+  :is(.gt-navigation-panel, .gt-mobile-menu, .gt-detail-panel) > header small { color: var(--rf-muted); }
+  :is(.gt-navigation-panel, .gt-mobile-menu, .gt-detail-panel) > header button { flex-shrink: 0; display: grid; place-items: center; border: 1px solid var(--rf-border); border-radius: .5rem; background: var(--rf-surface); color: var(--rf-text); cursor: pointer; }
+  .gt-navigation-panel > nav { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: .5rem; }
+  .gt-navigation-module, .gt-mobile-menu-items a { display: flex; align-items: center; gap: .65rem; padding: .6rem; border: 1px solid transparent; border-radius: .5rem; color: var(--rf-text); text-decoration: none; }
+  .gt-navigation-module span { display: grid; gap: .15rem; min-inline-size: 0; }
+  .gt-navigation-module strong { font-size: .875rem; }
+  .gt-navigation-module small { font-size: .75rem; color: var(--rf-muted); }
+  .gt-navigation-module:hover, .gt-navigation-module.is-active, .gt-mobile-menu-items a:hover, .gt-mobile-menu-items a[aria-current=page] { border-color: var(--rf-border); background: var(--rf-raised); }
+  .gt-navigation-module.is-active { border-inline-start: 3px solid var(--rf-accent); }
+  :is(.gt-navigation-panel, .gt-detail-panel) > footer { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem; border-block-start: 1px solid var(--rf-border); }
+  .gt-navigation-panel > footer button { flex: 1; display: flex; align-items: center; justify-content: center; gap: .4rem; border: 1px solid var(--rf-border); border-radius: .5rem; background: var(--rf-surface); color: var(--rf-text); cursor: pointer; }
+  .gt-navigation-panel > footer .is-danger { color: var(--rf-danger); }
+  .gt-navigation-shade { position: fixed; inset: 0; z-index: 3; background: rgb(0 0 0 / .45); }
+  .gt-app-navigation[data-mode=compact] .gt-navigation-panel { position: fixed; inset-block: 0; inset-inline-start: 4.75rem; z-index: 4; inline-size: min(20rem, calc(100vw - 4.75rem)); box-shadow: 0 1rem 3rem rgb(0 0 0 / .2); }
+
+  .gt-mobile-dock { position: fixed; z-index: 80; inset-inline: max(.5rem, var(--rf-safe-start)) max(.5rem, var(--rf-safe-end)); inset-block-end: max(.5rem, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, minmax(44px, 1fr)); gap: .15rem; max-inline-size: 34rem; margin-inline: auto; padding: .35rem; background: var(--rf-surface); border: 1px solid var(--rf-border); border-radius: 1rem; box-shadow: 0 .4rem 1.5rem rgb(0 0 0 / .15); }
+  .gt-mobile-dock :is(a, button) { display: grid; align-content: center; justify-items: center; gap: .25rem; padding: .4rem .15rem; border: 1px solid transparent; border-radius: .6rem; background: transparent; color: var(--rf-muted); text-decoration: none; text-align: center; }
+  .gt-mobile-dock span { font-size: .7rem; line-height: 1.3; overflow-wrap: anywhere; }
+  .gt-mobile-dock .is-active { color: var(--rf-accent); background: var(--rf-raised); border-block-end: 3px solid var(--rf-accent); }
+  .gt-mobile-backdrop, .gt-detail-backdrop { position: fixed; inset: 0; z-index: 120; display: flex; background: rgb(0 0 0 / .45); }
+  .gt-mobile-backdrop { align-items: flex-end; padding: max(.5rem, env(safe-area-inset-top)) max(.5rem, env(safe-area-inset-right)) 0 max(.5rem, env(safe-area-inset-left)); }
+  .gt-mobile-menu { inline-size: 100%; max-block-size: 90vh; max-block-size: 90dvh; display: flex; flex-direction: column; min-block-size: 0; padding-block-end: max(.75rem, env(safe-area-inset-bottom)); background: var(--rf-surface); border: 1px solid var(--rf-border); border-radius: 1rem 1rem 0 0; }
+  .gt-mobile-menu > .gt-search-field { flex-shrink: 0; margin: .75rem; }
+  .gt-mobile-menu > nav { overflow-y: auto; overscroll-behavior: contain; padding: 0 .75rem .75rem; }
+  .gt-mobile-menu h3 { margin-block: 1rem .35rem; color: var(--rf-muted); font-size: .875rem; }
+  .gt-mobile-menu-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr)); gap: .25rem; }
+
+  .gt-page-template { display: grid; gap: 1rem; inline-size: 100%; }
+  .gt-page-template .page-header-block { min-inline-size: 0; flex-wrap: wrap; }
+  .gt-page-template :is(.page-header-block__actions, .page-header-block__status) { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .gt-page-template__summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: 1rem; }
+  .gt-page-template__layout { display: grid; gap: 1rem; min-inline-size: 0; }
+  .gt-page-template__content, .gt-page-template__aside { min-inline-size: 0; }
+  .gt-page-template--command .gt-page-template__content, .gt-page-template--analytics .gt-page-template__content { display: grid; gap: 1rem; }
+  .gt-page-template--record .gt-page-template__content { display: flex; flex-direction: column; gap: .75rem; }
+  .gt-page-template--settings .gt-page-template__content { max-inline-size: 52rem; display: grid; align-content: start; gap: 1.5rem; }
+  .gt-page-template--detail .gt-page-template__content { max-inline-size: 65rem; }
+  .gt-page-template--immersive .gt-page-template__content { position: relative; min-block-size: min(60vh, 36rem); isolation: isolate; }
+  .gt-filter-bar { display: grid; gap: .5rem; padding: .75rem; background: var(--rf-surface); border: 1px solid var(--rf-border); border-radius: .75rem; }
+  .gt-filter-bar__controls { display: flex; align-items: flex-end; flex-wrap: wrap; gap: .75rem; }
+  .gt-filter-bar__controls > * { min-inline-size: 0; max-inline-size: 100%; }
+  .gt-filter-bar__controls > .gt-search-field { flex: 1 1 15rem; }
+  .gt-filter-bar__chips { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
+  .gt-filter-bar__chips button { padding: .4rem .75rem; background: var(--rf-raised); color: var(--rf-text); border: 1px solid var(--rf-border); border-radius: 2rem; }
+  .gt-data-table__scroll { max-inline-size: 100%; overflow-x: auto; overscroll-behavior-inline: contain; border: 1px solid var(--rf-border); border-radius: .75rem; background: var(--rf-surface); }
+  .gt-data-table table { inline-size: 100%; border-collapse: collapse; color: var(--rf-text); }
+  .gt-data-table caption { padding: .75rem; text-align: start; font-weight: 600; }
+  .gt-data-table :is(td, th) { padding: .5rem .75rem; border-block-start: 1px solid var(--rf-border); text-align: start; vertical-align: middle; }
+  .gt-data-table th { color: var(--rf-muted); font-weight: 600; }
+  .gt-data-table th button { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem; color: inherit; background: transparent; border: 0; text-align: inherit; cursor: pointer; }
+  .gt-data-table [data-align=end] { text-align: end; font-variant-numeric: tabular-nums; }
+  .gt-data-table tr[data-selected=true] { background: var(--rf-raised); }
+  .gt-data-table input[type=checkbox] { accent-color: var(--rf-accent); cursor: pointer; }
+  .gt-detail-backdrop { justify-content: flex-end; }
+  .gt-detail-panel { display: flex; flex-direction: column; min-block-size: 0; background: var(--rf-surface); border: 1px solid var(--rf-border); }
+  .gt-detail-panel--drawer { inline-size: min(32rem, 100%); block-size: 100vh; block-size: 100dvh; padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom); }
+  .gt-detail-panel--inline { border-radius: .75rem; }
+  .gt-detail-panel__body { overflow-y: auto; overscroll-behavior: contain; min-block-size: 0; padding: 1rem; flex: 1; }
+  .gt-file-uploader, .gt-connection-card { padding: 1rem; background: var(--rf-surface); border: 1px solid var(--rf-border); border-radius: .75rem; }
+  .gt-file-uploader { display: grid; gap: .75rem; border-style: dashed; }
+  .gt-file-uploader :is(input, p, ul) { max-inline-size: 100%; margin: 0; }
+  .gt-file-uploader input[type=file] { inline-size: 100%; padding: .35rem; }
+  .gt-file-uploader input::file-selector-button { min-block-size: 44px; margin-inline-end: .5rem; padding-inline: .75rem; border: 1px solid var(--rf-border); border-radius: .5rem; background: var(--rf-raised); color: var(--rf-text); font: inherit; }
+  .gt-connection-card header, .gt-connection-card footer { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+  .gt-connection-card h2 { margin: 0; font-size: 1.125rem; }
+  .gt-connection-card__status { font-weight: 600; }
+  .gt-draft-indicator { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .875rem; }
+  .gt-form-error { color: var(--rf-danger); padding-block: .5rem; }
+  .gt-form-error p { margin-block: 0 .25rem; font-weight: 600; }
+  .gt-form-error a { display: inline-flex; align-items: center; color: inherit; text-decoration: underline; }
+  .gt-tabs[data-responsive-foundation] { display: flex; gap: .5rem; max-inline-size: 100%; overflow-x: auto; padding: .25rem; }
+  .gt-tabs[data-responsive-foundation][aria-orientation=vertical] { flex-direction: column; }
+  /* Scoped extensions replace the legacy search field's physical positions. */
+  .gt-search-field[data-responsive-foundation] > svg { left: auto !important; right: auto !important; inset-inline-start: .75rem !important; }
+  .gt-search-field[data-responsive-foundation] > button { left: auto !important; right: auto !important; inset-inline-end: .25rem !important; }
+  .gt-search-field[data-responsive-foundation] > input { padding-inline: 2.5rem 3.25rem !important; }
+
+  @media (min-width: 1024px) {
+    .gt-page-template__layout[data-has-aside=true] { grid-template-columns: minmax(0, 1fr) minmax(14rem, 20rem); }
+  }
+  /* Navigation components choose the same numeric width contract in JS.
+     Avoid conflicting media-query rounding at the 640px WebKit boundary. */
+  @media (prefers-reduced-motion: reduce) {
+    [data-responsive-foundation], [data-responsive-foundation] *, [data-responsive-foundation] *::before, [data-responsive-foundation] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+  @media (forced-colors: active) {
+    [data-responsive-foundation] { --rf-surface: Canvas; --rf-raised: Canvas; --rf-text: CanvasText; --rf-muted: CanvasText; --rf-border: CanvasText; --rf-accent: Highlight; --rf-focus: Highlight; --rf-danger: CanvasText; }
+    [data-responsive-foundation] :is(a, button)[aria-current], [data-responsive-foundation] .is-active,
+    [data-responsive-foundation] [aria-selected=true] { outline: 2px solid Highlight; outline-offset: -2px; }
+    [data-responsive-foundation] :is(a, button, input, select) { forced-color-adjust: auto; }
+    .gt-mobile-dock, .gt-navigation-panel, .gt-detail-panel { box-shadow: none; }
+  }
+}
+
+/* Temporary geometry bridge for old !important declarations in legacy module CSS.
+   The new shell owns all visual styling in editorial-shell.css. */
+@layer gt-responsive-foundation {
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]) {
+    --gt-shell-offset: 76px;
+  }
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-mode="desktop"]:not([data-collapsed="true"])) {
+    --gt-shell-offset: 332px;
+  }
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-panel-mode="pinned"] .gt-navigation-panel) {
+    --gt-shell-offset: 332px;
+  }
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-mode="compact"]),
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-collapsed="true"]) {
+    --gt-shell-offset: 76px;
+  }
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-mobile-navigation) {
+    --gt-shell-offset: 0px;
+  }
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]) .command-subnav {
+    display: none !important;
+  }
+}
+@layer legacy {
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]) .main-area {
+    margin: 0 !important;
+    margin-inline: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    padding-top: var(--gt-shell-header, 68px) !important;
+    padding-inline-start: var(--gt-shell-offset) !important;
+    padding-inline-end: 0 !important;
+    min-inline-size: 0;
+  }
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]) .app-header {
+    left: auto !important;
+    right: auto !important;
+    inset-inline: auto !important;
+    min-height: 44px !important;
+  }
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-mobile-navigation) .content-area {
+    padding-block-end: calc(7rem + env(safe-area-inset-bottom)) !important;
+  }
+}

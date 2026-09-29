@@ -1,44 +1,89 @@
-import React, { useMemo } from 'react';
-import { Bot, Command, LogOut, Orbit, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
+import React, { useId, useRef, useState, useSyncExternalStore } from 'react';
+import { Link, NavLink } from 'react-router-dom';
+import { Bot, LogOut, PanelLeftClose, PanelLeftOpen, Settings, X } from 'lucide-react';
 import useStore from '../store/useStore';
-import { GROUP_ORDER, normalizeGroupOrder, normalizeTabOrder, navigationGroups, ROUTE_ALIASES, tabMeta } from '../config/navigation';
+import { tabMeta } from '../config/navigation';
+import useDialogFocus from '../hooks/useDialogFocus';
+import useNavigationFoundation, { useNavigationMode } from './ui/useNavigationFoundation';
+import useNavigationOverlay from './ui/useNavigationOverlay';
 
-const EMPTY_LIST = Object.freeze([]);
-const EMPTY_ORDER = Object.freeze({});
-const GROUP_HOME = Object.freeze({ money: 'finance', insights: 'insights', wellness: 'wellness', work: 'workspace', life: 'life', system: 'hub' });
-
-export default function PremiumSidebar({ activeTab, setActiveTab, user, onOpenSettings, onLogout }) {
-  const savedOrder = useStore(state => state.navigationOrder) || GROUP_ORDER;
-  const databaseNavigation = useStore(state => state.appConfig?.navigation?.groups) || EMPTY_LIST;
-  const runtimeGroups = useMemo(() => navigationGroups(databaseNavigation), [databaseNavigation]);
-  const navigationTabOrder = useStore(state => state.navigationTabOrder) || EMPTY_ORDER;
-  const collapsed = useStore(state => state.sidebarCollapsed);
+/** Requires a Router. Links own navigation; legacy setActiveTab is accepted but not invoked. */
+export default function PremiumSidebar({ activeTab, user, onOpenSettings, onLogout }) {
+  const { areas, activeGroup, highlightedTab, group } = useNavigationFoundation(activeTab);
+  const mode = useNavigationMode();
+  const pinnedMode = mode === 'desktop';
+  const collapsed = Boolean(useStore(state => state.sidebarCollapsed));
   const setCollapsed = useStore(state => state.setSidebarCollapsed);
-  const highlightedTab = ROUTE_ALIASES[activeTab] || activeTab;
-  const activeGroup = tabMeta(highlightedTab).group || 'system';
-  const navigationOrder = useMemo(() => normalizeGroupOrder(savedOrder), [savedOrder]);
-  const group = runtimeGroups[activeGroup];
-  const tabs = normalizeTabOrder(navigationTabOrder[activeGroup], group?.tabs || []);
+  const [drawerOpen, setDrawerOpen] = useNavigationOverlay(pinnedMode ? 'pinned' : mode);
+  const [preference, setPreference] = useState({ pending: false, error: '', retryValue: null });
+  const preferenceBusy = useRef(false);
+  const id = useId();
+  const modalOpen = !pinnedMode && mode !== 'mobile' && drawerOpen;
+  const panelOpen = pinnedMode ? !collapsed : modalOpen;
+  const dialogRef = useDialogFocus(modalOpen, () => setDrawerOpen(false));
+  if (mode === 'mobile') return null;
+  const saveCollapsed = async value => {
+    if (preferenceBusy.current) return;
+    preferenceBusy.current = true;
+    setPreference(previous => ({ ...previous, pending: true, retryValue: value }));
+    try {
+      if (typeof setCollapsed !== 'function') throw new Error('Navigation preference is unavailable');
+      await setCollapsed(value);
+      setPreference({ pending: false, error: '', retryValue: null });
+    } catch {
+      // The store owns rollback. Keep the failed intent available for an explicit retry.
+      setPreference({ pending: false, error: 'Could not save navigation preference.', retryValue: value });
+    } finally { preferenceBusy.current = false; }
+  };
+  const togglePanel = () => {
+    if (pinnedMode) void saveCollapsed(!collapsed);
+    else setDrawerOpen(!drawerOpen);
+  };
+  const closePanel = () => {
+    if (pinnedMode) {
+      void saveCollapsed(true);
+      document.getElementById(`${id}-toggle`)?.focus();
+    } else setDrawerOpen(false);
+  };
   const ownerName = String(user?.name || user?.fullName || 'Owner');
-
-  return <aside className="v2-navigation" data-collapsed={collapsed} aria-label="Application navigation">
-    <div className="v2-primary-rail">
-      <button className="v2-brand" onClick={() => setActiveTab('overview')} aria-label="GrowthTrack overview"><Orbit size={20} /></button>
-      <nav className="v2-area-list" aria-label="Product areas">
-        {navigationOrder.map(groupId => { const item = runtimeGroups[groupId]; if (!item) return null; const Icon = item.icon; return <button key={groupId} className={activeGroup === groupId ? 'is-active' : ''} aria-label={item.label} data-tooltip={`Open ${item.label}`} aria-current={activeGroup === groupId ? 'page' : undefined} onClick={() => setActiveTab(GROUP_HOME[groupId] || item.tabs[0])}><Icon size={19} /><span>{item.label}</span></button>; })}
+  return <aside className="gt-app-navigation" data-responsive-foundation data-mode={mode} data-panel-mode={pinnedMode ? 'pinned' : 'overlay'} data-collapsed={collapsed} aria-label="Application navigation">
+    <div className="gt-navigation-rail">
+      <Link className="gt-navigation-brand" to={tabMeta('overview').canonicalPath} aria-label="GrowthTrack Home"><span aria-hidden="true">G</span></Link>
+      <nav className="gt-navigation-areas" aria-label="Product areas">
+        {areas.map(area => { const Icon = area.icon; return <Link key={area.id} to={area.path}
+          className={`gt-navigation-area${activeGroup === area.id ? ' is-active' : ''}`}
+          aria-label={area.label} aria-current={activeGroup === area.id ? 'location' : null}>
+          <Icon size={20} aria-hidden="true" /><span>{area.label}</span>
+        </Link>; })}
       </nav>
-      <div className="v2-rail-utilities">
-        <button onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))} aria-label="Open command search" data-tooltip="Search"><Command size={18} /><span>Search</span></button>
-        <button onClick={() => setActiveTab('ai')} aria-label="Open Agents" data-tooltip="Agents"><Bot size={18} /><span>Agents</span></button>
-        <button className="v2-owner-avatar" onClick={onOpenSettings} aria-label="Open profile" data-tooltip="Profile">{ownerName[0].toUpperCase()}</button>
+      <button id={`${id}-toggle`} type="button" className="gt-navigation-toggle" onClick={togglePanel}
+        aria-label={panelOpen ? 'Close module navigation' : 'Open module navigation'} aria-expanded={panelOpen} aria-busy={pinnedMode && preference.pending || undefined} aria-controls={panelOpen ? `${id}-panel` : undefined}>
+        {panelOpen ? <PanelLeftClose size={20} aria-hidden="true" /> : <PanelLeftOpen size={20} aria-hidden="true" />}<span>Modules</span>
+      </button>
+      {preference.error && <div className="gt-navigation-preference">
+        <p role="alert">{preference.error}</p>
+        <button type="button" disabled={preference.pending} onClick={() => { void saveCollapsed(preference.retryValue); }}>{preference.pending ? 'Retrying…' : 'Retry navigation save'}</button>
+      </div>}
+      <div className="gt-navigation-utilities">
+        <Link to={tabMeta('ai').canonicalPath} aria-label="Open Agents"><Bot size={20} aria-hidden="true" /><span>Agents</span></Link>
+        {onOpenSettings && <button type="button" onClick={onOpenSettings} aria-label="Open profile"><span className="gt-navigation-avatar" aria-hidden="true">{ownerName[0].toUpperCase()}</span><span>Profile</span></button>}
       </div>
     </div>
-    <div className="v2-secondary-panel">
-      <header><div><small>Workspace</small><strong>{group?.label || 'GrowthTrack'}</strong></div><button onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? 'Open module navigation' : 'Close module navigation'}>{collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}</button></header>
-      <nav aria-label={`${group?.label || 'Workspace'} modules`}>
-        {tabs.map(tabId => { const meta = tabMeta(tabId); const Icon = meta.icon; return <button key={tabId} className={highlightedTab === tabId ? 'is-active' : ''} aria-current={highlightedTab === tabId ? 'page' : undefined} onClick={() => setActiveTab(tabId)}><Icon size={17} /><span><strong>{meta.label}</strong><small>{meta.description}</small></span></button>; })}
+    {modalOpen && <div className="gt-navigation-shade" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
+    {panelOpen && <section id={`${id}-panel`} className="gt-navigation-panel" ref={modalOpen ? dialogRef : undefined}
+      role={modalOpen ? 'dialog' : undefined} aria-modal={modalOpen || undefined} aria-labelledby={`${id}-title`} tabIndex={modalOpen ? -1 : undefined}>
+      <header><div><small>Workspace</small><h2 id={`${id}-title`}>{group.label}</h2></div>
+        <button type="button" onClick={closePanel} aria-label="Close modules">{modalOpen ? <X size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}</button>
+      </header>
+      <nav aria-label={`${group.label} modules`}>
+        {group.tabs.map(tabId => { const meta = tabMeta(tabId); const Icon = meta.icon; return <NavLink key={tabId} to={meta.canonicalPath} end
+          className={`gt-navigation-module${highlightedTab === tabId ? ' is-active' : ''}`} aria-current={highlightedTab === tabId ? 'page' : null}
+          onClick={() => setDrawerOpen(false)}><Icon size={18} aria-hidden="true" /><span><strong>{meta.label}</strong><small>{meta.description}</small></span></NavLink>; })}
       </nav>
-      <footer><button onClick={onOpenSettings}><Settings size={17} /><span>Settings</span></button><button className="is-danger" onClick={onLogout}><LogOut size={17} /><span>Sign out</span></button></footer>
-    </div>
+      {(onOpenSettings || onLogout) && <footer>
+        {onOpenSettings && <button type="button" onClick={onOpenSettings}><Settings size={18} aria-hidden="true" /><span>Settings</span></button>}
+        {onLogout && <button type="button" className="is-danger" onClick={onLogout}><LogOut size={18} aria-hidden="true" /><span>Sign out</span></button>}
+      </footer>}
+    </section>}
   </aside>;
 }

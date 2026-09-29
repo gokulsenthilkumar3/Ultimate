@@ -16,11 +16,17 @@ import useStore, {
   selectDeleteWorkoutSession,
 } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
-import { formatDate, formatMeasurement, getMeasurementUnit, convertMeasurementToMetric } from '../utils/userFormatters';
+import { formatMeasurement, getMeasurementUnit, convertMeasurement, convertMeasurementToMetric } from '../utils/userFormatters';
+import useHashTab from '../hooks/useHashTab';
+import Tabs from './ui/Tabs';
+import { readDraft, saveDraft, removeDraft } from '../lib/drafts';
+import { financeToday } from '../utils/financeModel';
 
 const DAYS  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LIFTS = ['benchPress', 'squat', 'deadlift', 'ohp'];
 const LIFT_LABELS = { benchPress: 'Bench Press', squat: 'Squat', deadlift: 'Deadlift', ohp: 'OHP' };
+const EMPTY_TRAINING = Object.freeze({});
+const EMPTY_SCHEDULE = Object.freeze([]);
 const TOOLTIP_STYLE = {
   background: 'var(--bg-glass)', border: '1px solid var(--border)',
   borderRadius: 'var(--radius-sm)', color: 'var(--text-1)',
@@ -36,22 +42,22 @@ function computePlannedVolume(schedule) {
   return schedule.reduce((t, d) => t + (d.exercises || []).reduce((s, e) => s + (Number(e.sets) * Number(e.reps) * Number(e.weight) || 0), 0), 0);
 }
 
-function compute7DayVolume(sessions) {
-  const now = new Date();
+function compute7DayVolume(sessions, user) {
+  const today = Date.parse(`${financeToday(user)}T00:00:00Z`);
   return sessions.filter(s => {
-    if (!s.date) return false;
-    const diff = (now - new Date(s.date)) / (1000 * 60 * 60 * 24);
-    return diff <= 7 && diff >= 0;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date || '')) return false;
+    const diff = (today - Date.parse(`${s.date}T00:00:00Z`)) / 86_400_000;
+    return diff < 7 && diff >= 0;
   }).reduce((sum, s) => sum + (Number(s.volume) || 0), 0);
 }
 
-function buildVolumeHistory(sessions) {
+function buildVolumeHistory(sessions, user) {
   const map = {};
   sessions.forEach(s => { if (s.date) map[s.date] = (map[s.date] || 0) + (Number(s.volume) || 0); });
   const result = [];
+  const today = Date.parse(`${financeToday(user)}T00:00:00Z`);
   for (let i = 29; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = new Date(today - i * 86_400_000).toISOString().slice(0, 10);
     result.push({ date: key.slice(5), volume: map[key] || 0 });
   }
   return result;
@@ -77,8 +83,8 @@ function buildOverloadData(schedule, sessions) {
     s._sets.forEach(set => {
       if (!set.exName) return;
       if (!byEx[set.exName]) byEx[set.exName] = { weights: [], volumes: [] };
-      const w = Number(set.actualWeight || set.plannedWeight || 0);
-      const r = Number(set.actualReps   || set.plannedReps   || 0);
+      const w = Number(set.actualWeight ?? 0);
+      const r = Number(set.actualReps ?? 0);
       if (w > 0 && r > 0) {
         byEx[set.exName].weights.push(w);
         byEx[set.exName].volumes.push(w * r);
@@ -103,18 +109,11 @@ function buildOverloadData(schedule, sessions) {
 
 // Recommend next weight based on simple linear progression (2.5kg every ~2 sessions)
 function recommendNext(history) {
-  if (history.length === 0) return null;
+  if (history.length < 2) return null;
   const last = history[history.length - 1].maxWeight;
   if (!last) return null;
-  // If 2+ sessions, check trend
-  if (history.length >= 2) {
-    const prev = history[history.length - 2].maxWeight;
-    const delta = last - prev;
-    if (delta > 0) return last + 2.5; // progressing — add 2.5kg
-    if (delta === 0) return last + 2.5; // stalled — try adding 2.5kg
-    return last; // deload — hold weight
-  }
-  return last + 2.5;
+  const prev = history[history.length - 2].maxWeight;
+  return last >= prev ? last + 2.5 : last;
 }
 
 function epley1RM(weight, reps) {
@@ -125,12 +124,8 @@ function epley1RM(weight, reps) {
 function ProgressiveOverloadTab({ schedule, sessions, user }) {
   const overloadData = useMemo(() => buildOverloadData(schedule, sessions), [schedule, sessions]);
   const exerciseNames = Object.keys(overloadData).filter(n => overloadData[n].length > 0);
-  const [activeEx, setActiveEx] = useState(exerciseNames[0] || null);
-
-  // Set activeEx when data loads
-  useEffect(() => {
-    if (!activeEx && exerciseNames.length > 0) setActiveEx(exerciseNames[0]);
-  }, [exerciseNames.join(',')]);
+  const [selectedEx, setActiveEx] = useState(null);
+  const activeEx = selectedEx && exerciseNames.includes(selectedEx) ? selectedEx : exerciseNames[0] || null;
 
   if (schedule.length === 0) {
     return (
@@ -169,7 +164,7 @@ function ProgressiveOverloadTab({ schedule, sessions, user }) {
     const d = last && prev ? last.maxWeight - prev.maxWeight : null;
     return {
       name, sessions: h.length,
-      currentWeight: last?.maxWeight || 0,
+      currentWeight: last?.maxWeight ?? null,
       nextTarget: recommendNext(h),
       trend: d,
     };
@@ -181,13 +176,13 @@ function ProgressiveOverloadTab({ schedule, sessions, user }) {
       <div className="glass-card">
         <span className="card-title">Progressive Overload Summary</span>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: '1rem' }}>
-          Recommended increases based on your logged session history. Click a row to see the trend chart.
+          Illustrative next weights use a simple +2.5 kg assumption after at least two logged sessions; these are not a training prescription. Select an exercise to inspect its real history.
         </p>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Exercise', 'Sessions', 'Last Weight', 'Next Target', 'Trend'].map(h => (
+                {['Exercise', 'Sessions', 'Last Weight', 'Illustrative next', 'Trend'].map(h => (
                   <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: h === 'Exercise' ? 'left' : 'center',
                                        color: 'var(--text-3)', fontWeight: 700, fontSize: '0.7rem',
                                        textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
@@ -201,20 +196,17 @@ function ProgressiveOverloadTab({ schedule, sessions, user }) {
                 const tc = row.trend === null ? 'var(--text-3)' : row.trend > 0 ? '#10b981' : row.trend < 0 ? '#ef4444' : 'var(--text-3)';
                 return (
                   <tr key={row.name}
-                    onClick={() => setActiveEx(row.name)}
                     style={{
                       borderBottom: '1px solid rgba(255,255,255,0.05)',
-                      cursor: 'pointer',
                       background: active ? 'rgba(255,255,255,0.04)' : 'transparent',
                       transition: 'background 0.15s',
                     }}>
                     <td style={{ padding: '0.6rem 0.75rem', fontWeight: 700, color: active ? 'var(--accent)' : 'var(--text-1)' }}>
-                      <Dumbbell size={12} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle', opacity: 0.6 }} />
-                      {row.name}
+                      <button type="button" onClick={() => setActiveEx(row.name)} aria-pressed={active} className="btn-ghost"><Dumbbell size={12} /> {row.name}</button>
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center', color: 'var(--text-3)' }}>{row.sessions}</td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center', fontWeight: 800 }}>
-                      {row.currentWeight ? formatMeasurement(row.currentWeight, 'kg', user) : '—'}
+                      {row.currentWeight != null ? formatMeasurement(row.currentWeight, 'kg', user) : '—'}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center' }}>
                       {row.nextTarget ? (
@@ -306,23 +298,32 @@ function ProgressiveOverloadTab({ schedule, sessions, user }) {
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function Training() {
   const user                = useStore(s => s.user);
-  const training             = useStore(selectTrainingPlan) || {};
+  const training             = useStore(selectTrainingPlan) ?? EMPTY_TRAINING;
   const setTraining          = useStore(selectUpdateTrainingPlan);
   const { sessions: workoutSessions } = useStore(selectWorkouts);
   const addWorkoutFromDay    = useStore(selectAddWorkoutFromTrainingDay);
   const deleteWorkoutSession = useStore(selectDeleteWorkoutSession);
   const toast = useToast();
 
-  const updateSection = useCallback((data) => setTraining({ ...training, ...data }), [training, setTraining]);
+  const [recordBusy, setRecordBusy] = useState(false);
+  const updateSection = useCallback(async (data) => {
+    if (recordBusy) return false;
+    setRecordBusy(true);
+    try { await setTraining({ ...training, ...data }); return true; }
+    catch { toast.error('Training changes were not saved. Your previous records are unchanged.'); return false; }
+    finally { setRecordBusy(false); }
+  }, [training, setTraining, toast, recordBusy]);
 
-  const schedule      = training.schedule  || [];
+  const schedule      = training.schedule  ?? EMPTY_SCHEDULE;
   const PRs           = training.PRs       || {};
   const prHistory     = training.prHistory || [];
   const streak        = training.streak    || 0;
   const longestStreak = training.longestStreak || 0;
 
-  const TABS = ['Schedule', 'Live Logger', 'PRs', 'Progressive Overload', 'Volume History', 'Sessions'];
-  const [activeTab, setActiveTab]     = useState('Schedule');
+  const TABS = [{ id: 'schedule', label: 'Schedule' }, { id: 'logger', label: 'Live Logger' }, { id: 'prs', label: 'PRs' }, { id: 'overload', label: 'Progressive Overload' }, { id: 'volume', label: 'Volume History' }, { id: 'sessions', label: 'Sessions' }];
+  const [view, setView] = useHashTab(TABS.map(item => item.id), 'schedule');
+  const activeTab = TABS.find(item => item.id === view)?.label || 'Schedule';
+  const setActiveTab = label => setView(TABS.find(item => item.label === label)?.id || label);
   const [expandedDay, setExpandedDay] = useState(null);
   const [newEx,  setNewEx]  = useState({ name: '', sets: '', reps: '', weight: '' });
   const [newDay, setNewDay] = useState({ day: 'Mon', muscleGroup: '' });
@@ -333,25 +334,58 @@ export default function Training() {
   // Live session logger
   const [activeSession,    setActiveSession]    = useState(null);
   const [sessionNotes,     setSessionNotes]     = useState('');
-  const [sessionRestTimer, setSessionRestTimer] = useState(null);
+  const [restEndsAt, setRestEndsAt] = useState(null);
   const [restSeconds,      setRestSeconds]      = useState(0);
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftStatus, setDraftStatus] = useState('Loading this device’s workout draft…');
+  useEffect(() => {
+    let alive = true;
+    if (!user?.id) return undefined;
+    readDraft(user.id, 'active-workout').then(draft => {
+      if (!alive) return;
+      if (draft?.data?.session?.day && Array.isArray(draft.data.session.sets) && Number.isFinite(draft.data.session.startTime)) {
+        setActiveSession(draft.data.session); setSessionNotes(draft.data.notes || ''); setRestEndsAt(draft.data.restEndsAt || null);
+        setDraftStatus('Workout recovered from this device. Review it before finishing; it has not been submitted.');
+      } else setDraftStatus('Active workouts are saved as local drafts, not automatically submitted.');
+      setDraftReady(true);
+    }).catch(() => { if (alive) { setDraftReady(true); setDraftStatus('Local draft recovery is unavailable. Keep this page open during an active workout.'); } });
+    return () => { alive = false; };
+  }, [user?.id]);
+  useEffect(() => {
+    if (!draftReady || !user?.id || !activeSession) return undefined;
+    const timeout = setTimeout(() => { void saveDraft(user.id, 'active-workout', { session: activeSession, notes: sessionNotes, restEndsAt })
+      .then(() => setDraftStatus('Workout draft saved on this device. Not submitted to the server.'))
+      .catch(() => setDraftStatus('Workout draft could not be saved locally. Keep this page open.')); }, 150);
+    return () => clearTimeout(timeout);
+  }, [draftReady, user?.id, activeSession, sessionNotes, restEndsAt]);
+  useEffect(() => {
+    if (!restEndsAt) { setRestSeconds(0); return undefined; }
+    const update = () => {
+      const seconds = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
+      setRestSeconds(seconds);
+      if (!seconds) setRestEndsAt(null);
+    };
+    update(); const interval = setInterval(update, 500);
+    return () => clearInterval(interval);
+  }, [restEndsAt]);
 
   const totalPlannedVolume = useMemo(() => computePlannedVolume(schedule), [schedule]);
-  const last7LoggedVolume  = useMemo(() => compute7DayVolume(workoutSessions), [workoutSessions]);
-  const volumeHistory      = useMemo(() => buildVolumeHistory(workoutSessions), [workoutSessions]);
+  const last7LoggedVolume  = useMemo(() => compute7DayVolume(workoutSessions, user), [workoutSessions, user]);
+  const volumeHistory      = useMemo(() => buildVolumeHistory(workoutSessions, user), [workoutSessions, user]);
   const maxVolume = useMemo(() => Math.max(...volumeHistory.map(d => d.volume), 1), [volumeHistory]);
 
-  const addDay = () => {
+  const addDay = async () => {
     if (!newDay.muscleGroup) return;
     if (schedule.find(d => d.day === newDay.day)) return toast.error(`${newDay.day} already in schedule`);
-    updateSection({ schedule: [...schedule, { ...newDay, exercises: [], id: Date.now() }] });
+    if (await updateSection({ schedule: [...schedule, { ...newDay, exercises: [], id: crypto.randomUUID() }] })) setNewDay({ day: newDay.day, muscleGroup: '' });
   };
 
-  const addExercise = (dayId) => {
+  const addExercise = async (dayId) => {
     if (!newEx.name) return;
-    const updated = schedule.map(d => d.id === dayId ? { ...d, exercises: [...(d.exercises || []), { ...newEx, id: Date.now() }] } : d);
-    updateSection({ schedule: updated });
-    setNewEx({ name: '', sets: '', reps: '', weight: '' });
+    if (!Number.isInteger(Number(newEx.sets)) || Number(newEx.sets) < 1 || Number(newEx.sets) > 100 || !Number.isInteger(Number(newEx.reps)) || Number(newEx.reps) < 1 || !Number.isFinite(Number(newEx.weight)) || Number(newEx.weight) < 0) return toast.error('Enter 1–100 sets, positive whole reps, and non-negative weight.');
+    const updated = schedule.map(d => d.id === dayId ? { ...d, exercises: [...(d.exercises || []), { ...newEx, weight: convertMeasurementToMetric(newEx.weight, 'kg', user), id: crypto.randomUUID() }] } : d);
+    if (await updateSection({ schedule: updated })) setNewEx({ name: '', sets: '', reps: '', weight: '' });
   };
 
   const removeExercise = (dayId, exId) => {
@@ -361,22 +395,26 @@ export default function Training() {
 
   const removeDay = (dayId) => updateSection({ schedule: schedule.filter(d => d.id !== dayId) });
 
-  const logPR = () => {
+  const logPR = async () => {
     if (!prForm.weight) return;
     const w = convertMeasurementToMetric(prForm.weight, 'kg', user);
+    if (!Number.isFinite(w) || w <= 0) return toast.error('Enter a positive weight.');
     const newPRs = { ...PRs, [prForm.lift]: Math.max(PRs[prForm.lift] || 0, w) };
-    const newHistory = [...prHistory, { date: new Date().toISOString().slice(0, 10), lift: prForm.lift, weight: w }];
-    updateSection({ PRs: newPRs, prHistory: newHistory });
+    const newHistory = [...prHistory, { date: financeToday(user), lift: prForm.lift, weight: w }];
+    if (!await updateSection({ PRs: newPRs, prHistory: newHistory })) return;
     setPrForm({ lift: prForm.lift, weight: '' });
     toast.success(`PR logged: ${LIFT_LABELS[prForm.lift]} ${formatMeasurement(w, 'kg', user)}`);
   };
 
-  const incrementStreak = () => {
-    const newStreak = streak + 1;
-    updateSection({ streak: newStreak, longestStreak: Math.max(longestStreak, newStreak) });
+  const incrementStreak = async () => {
+    if (training.lastCompletedDate === financeToday(user)) return;
+    const prior = new Date(`${financeToday(user)}T12:00:00Z`); prior.setUTCDate(prior.getUTCDate() - 1);
+    const newStreak = training.lastCompletedDate === prior.toISOString().slice(0, 10) ? streak + 1 : 1;
+    await updateSection({ streak: newStreak, longestStreak: Math.max(longestStreak, newStreak), lastCompletedDate: financeToday(user) });
   };
 
   const startSession = (day) => {
+    if (!draftReady || sessionBusy || activeSession) return toast.info('Finish or discard the current workout before starting another.');
     const sets = (day.exercises || []).flatMap(ex => {
       let prevWeight = null, prevReps = null;
       for (let i = workoutSessions.length - 1; i >= 0; i--) {
@@ -389,54 +427,66 @@ export default function Training() {
       return Array.from({ length: parseInt(ex.sets) || 3 }, (_, i) => ({
         id: `${ex.id}-${i}`, exName: ex.name, setNum: i + 1,
         plannedReps: ex.reps, plannedWeight: ex.weight,
-        actualReps: prevReps || ex.reps, actualWeight: prevWeight || ex.weight,
+        actualReps: prevReps ?? ex.reps, actualWeight: prevWeight ?? ex.weight,
         prevWeight, prevReps, done: false,
       }));
     });
-    setActiveSession({ day, startTime: Date.now(), sets });
+    if (!sets.length) return toast.error('Add an exercise to this day before starting.');
+    setActiveSession({ id: crypto.randomUUID(), day, startTime: Date.now(), date: financeToday(user), sets });
+    setRestEndsAt(null);
     setSessionNotes('');
     toast.success(`Session started: ${day.day} — ${day.muscleGroup}`);
   };
 
   const toggleSet = (setId) => {
+    if (sessionBusy || activeSession?.completion) return;
     setActiveSession(prev => ({ ...prev, sets: prev.sets.map(s => s.id === setId ? { ...s, done: !s.done } : s) }));
   };
 
   const updateSetValue = (setId, field, value) => {
+    if (sessionBusy || activeSession?.completion) return;
+    if (field === 'actualWeight' && value !== '') value = convertMeasurementToMetric(value, 'kg', user);
     setActiveSession(prev => ({ ...prev, sets: prev.sets.map(s => s.id === setId ? { ...s, [field]: value } : s) }));
   };
 
   const startRestTimer = (seconds = 90) => {
-    setRestSeconds(seconds);
-    if (sessionRestTimer) clearInterval(sessionRestTimer);
-    const interval = setInterval(() => {
-      setRestSeconds(prev => {
-        if (prev <= 1) { clearInterval(interval); setSessionRestTimer(null); toast.success('Rest over — next set!'); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-    setSessionRestTimer(interval);
+    if (activeSession?.completion) return;
+    setRestEndsAt(Date.now() + seconds * 1000);
   };
 
   const finishSession = async () => {
-    if (!activeSession) return;
-    const doneSets = activeSession.sets.filter(s => s.done);
+    if (!activeSession || sessionBusy) return;
+    const doneSets = activeSession.completion?.sets ?? activeSession.sets.filter(s => s.done);
+    if (!doneSets.length) return toast.error('Complete at least one set before finishing.');
+    if (doneSets.some(s => !Number.isInteger(Number(s.actualReps)) || Number(s.actualReps) <= 0 || !Number.isFinite(Number(s.actualWeight)) || Number(s.actualWeight) < 0)) return toast.error('Completed sets need positive whole reps and non-negative weights.');
     const volume   = doneSets.reduce((sum, s) => sum + (Number(s.actualReps) * Number(s.actualWeight) || 0), 0);
-    const elapsed  = Math.round((Date.now() - activeSession.startTime) / 60000);
-    await addWorkoutFromDay({ ...activeSession.day, _volume: volume, _sets: doneSets, _notes: sessionNotes || `${elapsed} min session — ${doneSets.length} sets completed` });
-    incrementStreak();
+    const elapsed  = activeSession.completion?.duration_minutes ?? Math.round((Date.now() - activeSession.startTime) / 60000);
+    const completion = activeSession.completion ?? { id: activeSession.id, date: activeSession.date, duration_minutes: elapsed, volume, sets: doneSets, notes: sessionNotes };
+    const frozenSession = activeSession.completion ? activeSession : { ...activeSession, completion };
+    setActiveSession(frozenSession);
+    setSessionBusy(true);
+    try {
+      await saveDraft(user.id, 'active-workout', { session: frozenSession, notes: completion.notes, restEndsAt });
+      await addWorkoutFromDay({ ...activeSession.day, _sessionId: completion.id, _date: completion.date, _durationMinutes: completion.duration_minutes, _volume: completion.volume, _sets: completion.sets, _notes: completion.notes });
+    } catch (error) { toast.error(`Workout was not confirmed. The same submission remains available for retry. ${error instanceof Error ? error.message : ''}`); setSessionBusy(false); return; }
+    setSessionBusy(false);
     setActiveSession(null);
-    if (sessionRestTimer) clearInterval(sessionRestTimer);
+    setRestEndsAt(null);
+    await removeDraft(user.id, 'active-workout').catch(() => toast.warning('Workout saved, but its local draft could not be removed.'));
     toast.success(`Session saved! Volume: ${formatMeasurement(volume, 'kg', user)} · ${elapsed} min`);
   };
 
-  const cancelSession = () => {
-    if (sessionRestTimer) clearInterval(sessionRestTimer);
+  const cancelSession = async () => {
+    if (sessionBusy || !window.confirm(activeSession?.completion
+      ? 'This submission may already exist on the server. Discard only the local draft? Review saved sessions before starting another.'
+      : 'Discard this unfinished workout and its local draft? Saved sessions are not affected.')) return;
+    setRestEndsAt(null);
     setActiveSession(null);
-    toast.error('Session cancelled');
+    await removeDraft(user.id, 'active-workout').catch(() => toast.warning('Local draft removal failed. It may be recovered next time.'));
+    toast.info('Unfinished session discarded');
   };
 
-  const prChartData    = prHistory.filter(h => h.lift === activePRLift).slice(-10).map(h => ({ date: h.date.slice(5), weight: convertMeasurementToMetric(h.weight, 'kg', user) }));
+  const prChartData    = prHistory.filter(h => h.lift === activePRLift).slice(-10).map(h => ({ date: h.date.slice(5), weight: h.weight }));
   const recentSessions = workoutSessions.slice(0, 15);
 
   return (
@@ -445,10 +495,10 @@ export default function Training() {
       <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Training</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
+          <h1 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
             <Dumbbell size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
             Training Matrix
-          </h2>
+          </h1>
           <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Schedule · Live logger · PRs · Progressive overload · Volume tracking</p>
         </div>
         {activeSession && (
@@ -476,18 +526,9 @@ export default function Training() {
         ))}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
-        {TABS.map(tab => (
-          <button key={tab} className={`btn-sm ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-            style={{ padding: '0.5rem 1rem', fontWeight: 800, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            {tab === 'Live Logger' && <Play size={13} />}
-            {tab === 'Progressive Overload' && <TrendingUp size={13} />}
-            {tab}
-          </button>
-        ))}
-      </div>
+      <p role="status">{sessionBusy ? 'Waiting for server acknowledgment…' : draftStatus}</p>
+      <Tabs tabs={TABS.map(item => ({ value: item.id, label: item.label, panelId: `training-panel-${item.id}` }))} value={view} onChange={setView} label="Training views" idPrefix="training-tab" />
+      <section role="tabpanel" id={`training-panel-${view}`} aria-labelledby={`training-tab-${view}`}>
 
       {/* ── SCHEDULE ── */}
       {activeTab === 'Schedule' && (
@@ -594,15 +635,16 @@ export default function Training() {
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {activeSession.completion && <span role="status" style={{ alignSelf: 'center', color: 'var(--warning)' }}>Submission frozen for safe retry. Changes are locked.</span>}
                     {restSeconds > 0 && (
                       <div style={{ padding: '0.5rem 1rem', borderRadius: '8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', fontWeight: 800, color: '#f59e0b', fontSize: '0.95rem' }}>
                         <Clock size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />{restSeconds}s
                       </div>
                     )}
-                    <button className="btn-ghost" style={{ borderColor: '#f59e0b', color: '#f59e0b', fontSize: '0.78rem' }} onClick={() => startRestTimer(90)}>⏱ Rest 90s</button>
-                    <button className="btn-ghost" style={{ borderColor: '#f59e0b', color: '#f59e0b', fontSize: '0.78rem' }} onClick={() => startRestTimer(180)}>⏱ Rest 3m</button>
-                    <button className="btn-primary" style={{ background: '#10b981', border: 'none' }} onClick={finishSession}><CheckCircle size={15} /> FINISH</button>
-                    <button className="btn-ghost" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', fontSize: '0.78rem' }} onClick={cancelSession}>CANCEL</button>
+                    <button disabled={Boolean(activeSession.completion)} className="btn-ghost" style={{ borderColor: '#f59e0b', color: '#f59e0b', fontSize: '0.78rem' }} onClick={() => startRestTimer(90)}>⏱ Rest 90s</button>
+                    <button disabled={Boolean(activeSession.completion)} className="btn-ghost" style={{ borderColor: '#f59e0b', color: '#f59e0b', fontSize: '0.78rem' }} onClick={() => startRestTimer(180)}>⏱ Rest 3m</button>
+                    <button disabled={sessionBusy} className="btn-primary" style={{ background: '#10b981', border: 'none' }} onClick={finishSession}><CheckCircle size={15} /> {sessionBusy ? 'SAVING…' : 'FINISH'}</button>
+                    <button className="btn-ghost" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', fontSize: '0.78rem' }} disabled={sessionBusy} onClick={cancelSession}>CANCEL</button>
                   </div>
                 </div>
               </div>
@@ -629,15 +671,15 @@ export default function Training() {
                             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>#{s.setNum}</span>
                             {s.prevWeight && !s.done && <span style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>Prev: {formatMeasurement(s.prevWeight, 'kg', user)}</span>}
                           </div>
-                          <input type="number" value={s.actualReps} onChange={e => updateSetValue(s.id, 'actualReps', e.target.value)}
-                            className="form-input" style={{ padding: '0.35rem', fontSize: '0.82rem', textAlign: 'center' }} disabled={s.done} />
-                          <input type="number" value={s.actualWeight} onChange={e => updateSetValue(s.id, 'actualWeight', e.target.value)}
-                            className="form-input" style={{ padding: '0.35rem', fontSize: '0.82rem', textAlign: 'center' }} disabled={s.done} />
+                          <input type="number" min="1" step="1" aria-label={`${exName} set ${s.setNum} reps`} value={s.actualReps} onChange={e => updateSetValue(s.id, 'actualReps', e.target.value)}
+                            className="form-input" style={{ padding: '0.35rem', fontSize: '0.82rem', textAlign: 'center' }} disabled={s.done || sessionBusy || Boolean(activeSession.completion)} />
+                          <input type="number" min="0" step="any" aria-label={`${exName} set ${s.setNum} weight (${getMeasurementUnit('kg', user)})`} value={s.actualWeight === '' ? '' : Math.round(convertMeasurement(s.actualWeight, 'kg', user) * 1000) / 1000} onChange={e => updateSetValue(s.id, 'actualWeight', e.target.value)}
+                            className="form-input" style={{ padding: '0.35rem', fontSize: '0.82rem', textAlign: 'center' }} disabled={s.done || sessionBusy || Boolean(activeSession.completion)} />
                           <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-2)' }}>
                             {formatMeasurement(Number(s.actualReps) * Number(s.actualWeight) || 0, 'kg', user)}
                           </span>
-                          <button onClick={() => { toggleSet(s.id); if (!s.done) startRestTimer(90); }}
-                            style={{ width: '36px', height: '36px', borderRadius: '8px', border: `2px solid ${s.done ? '#10b981' : 'var(--border)'}`, background: s.done ? 'rgba(16,185,129,0.2)' : 'var(--bg-elevated)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                          <button type="button" aria-label={`${exName} set ${s.setNum} completed`} aria-pressed={s.done} disabled={sessionBusy || Boolean(activeSession.completion)} onClick={() => { toggleSet(s.id); if (!s.done) startRestTimer(90); }}
+                            style={{ minWidth: '44px', minHeight: '44px', borderRadius: '8px', border: `2px solid ${s.done ? '#10b981' : 'var(--border)'}`, background: s.done ? 'rgba(16,185,129,0.2)' : 'var(--bg-elevated)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
                             {s.done ? <CheckCircle size={16} color="#10b981" /> : <div style={{ width: '12px', height: '12px', borderRadius: '3px', border: '2px solid var(--text-3)' }} />}
                           </button>
                         </div>
@@ -649,7 +691,7 @@ export default function Training() {
 
               <div className="glass-card">
                 <span className="card-title">Session Notes</span>
-                <textarea value={sessionNotes} onChange={e => setSessionNotes(e.target.value)}
+                <textarea aria-label="Session notes" disabled={sessionBusy || Boolean(activeSession.completion)} value={sessionNotes} onChange={e => setSessionNotes(e.target.value)}
                   className="form-input" rows={3} placeholder="How did it feel? PRs, pain, or observations…"
                   style={{ resize: 'vertical', marginTop: '0.75rem' }} />
               </div>
@@ -819,7 +861,7 @@ export default function Training() {
                       <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent)' }}>{formatMeasurement(s.volume || 0, 'kg', user)}</p>
                       <p style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>volume</p>
                     </div>
-                    <button onClick={() => deleteWorkoutSession(s.id)} className="hover-text-danger"
+                    <button onClick={async () => { if (!window.confirm('Delete this saved workout?')) return; try { await deleteWorkoutSession(s.id); } catch { toast.error('Workout deletion failed. Your saved session is unchanged.'); } }} className="hover-text-danger"
                       style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px' }}>
                       <Trash2 size={14} />
                     </button>
@@ -830,6 +872,7 @@ export default function Training() {
           )}
         </div>
       )}
+      </section>
     </div>
   );
 }

@@ -1,322 +1,109 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Trash2, AlertTriangle, Download } from 'lucide-react';
-import useStore, { selectFinance, selectUser, selectAddTransaction, selectDeleteTransaction, selectAddBudget, selectDeleteBudget, apiSync } from '../store/useStore';
+import { Suspense, lazy, useCallback, useMemo } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
+import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
-import '../styles/finance.css';
-import SIPCalculator from './SIPCalculator';
-import Shopping from './Shopping';
-import Portfolio from './Portfolio';
+import type { FinanceBudget as Budget, FinanceTransaction as Transaction, FinanceState, Subscription } from '../utils/financeModel';
+import { FinanceBudgetSchema, financeBudget, financeBreakdown, financeError, financeModule, financeMonths, financeToday, readFinanceTransactions, validFinanceDate } from '../utils/financeModel';
+import { saveFinanceBudget, saveFinanceSubscription, saveFinanceTransaction, deleteFinanceBudget, deleteFinanceSubscription, deleteFinanceTransaction } from '../utils/financeApi';
+import { fmtINR } from '../utils/finance';
+import { getCurrencySymbol } from '../utils/userFormatters';
 import OverviewTab from './finance/OverviewTab';
-const AnalyticsTab = React.lazy(() => import('./finance/AnalyticsTab'));
-const TrendsTab = React.lazy(() => import('./finance/TrendsTab'));
+import TransactionsTab from './finance/TransactionsTab';
 import BudgetingTab from './finance/BudgetingTab';
 import SubscriptionsTab from './finance/SubscriptionsTab';
 import SyncTab from './finance/SyncTab';
-import { fmtINR } from '../utils/finance';
-import { getCurrencySymbol } from '../utils/userFormatters';
-import Button from './ui/Button';
 import LoadingSkeleton from './ui/LoadingSkeleton';
-import SelectField from './ui/SelectField';
-import Tabs from './ui/Tabs';
-import { handleTabKeyDown } from '../hooks/useHashTab';
+import '../styles/finance.css';
+import './finance/finance.css';
 
+const AnalyticsTab = lazy(() => import('./finance/AnalyticsTab'));
+const TrendsTab = lazy(() => import('./finance/TrendsTab'));
 
-const CATEGORIES = ['Gym', 'Supplements', 'Food', 'Apparel', 'Equipment', 'Salary', 'Stocks', 'Crypto', 'Rent', 'Utilities', 'Transport', 'Medical', 'Entertainment', 'Learning'];
-const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'UPI (GPay/PhonePe)', 'Slice Card', 'Axio', 'HDFC Credit', 'SBI Debit'];
-const COLORS = ['var(--gt-action)', 'var(--gt-danger)', 'var(--gt-success)', 'var(--gt-warning)', '#5E5CE6', '#BF5AF2', '#64D2FF', '#FF9F0A'];
-const TOOLTIP_STYLE = { background: 'var(--gt-surface)', border: '1px solid var(--gt-border)', borderRadius: 'var(--gt-radius-sm)', color: 'var(--gt-text)', backdropFilter: 'blur(12px)', fontSize: '0.82rem', boxShadow: 'var(--gt-shadow-floating)' };
-
-const EMPTY_FORM = { type: 'Expense', category: '', amount: '', note: '', method: 'UPI (GPay/PhonePe)', date: new Date().toISOString().split('T')[0] };
-const API_BASE = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.VITE_API_BASE || '';
-const MAX_CSV_SIZE_BYTES = 2 * 1024 * 1024;
-
-// Build last N months as YYYY-MM strings
-function lastNMonths(n = 6) {
-  const months: string[] = [];
-  const now = new Date();
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(d.toISOString().slice(0, 7));
-  }
-  return months;
-}
-
-// Aggregate transactions into monthly buckets for trend chart
-function buildTrendData(transactions: any[], months: string[]) {
-  return months.map((month: string) => {
-    const txs = transactions.filter((t: any) => t.date && t.date.startsWith(month));
-    let income = 0, expenses = 0, investments = 0;
-    txs.forEach((t: any) => {
-      if (t.type === 'Income') income += t.amount;
-      else if (t.type === 'Expense') expenses += t.amount;
-      else if (t.type === 'Investment') investments += t.amount;
-    });
-    return { month: month.slice(5), income, expenses, investments, savings: income - expenses - investments };
-  });
-}
-
-// Day-of-month spend heatmap data for current month
-function buildDayHeatmap(transactions: any[], month: string) {
-  const map: Record<number, number> = {};
-  transactions.filter((t: any) => t.date && t.date.startsWith(month) && t.type === 'Expense').forEach((t: any) => {
-    const day = parseInt(t.date.slice(8), 10);
-    map[day] = (map[day] || 0) + t.amount;
-  });
-  const daysInMonth = new Date(parseInt(month.slice(0, 4)), parseInt(month.slice(5)), 0).getDate();
-  return Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, amount: map[i + 1] || 0 }));
-}
-
-export default function Finance() {
-  const finance = useStore(selectFinance);
-  const user = useStore(selectUser);
-  const formatMoney = useCallback((value: number) => fmtINR(value, user), [user]);
+export interface FinanceProps { initialTab?: string }
+/** Shell owns module links and the page heading. Finance renders only its active module. */
+export default function Finance({ initialTab }: FinanceProps) {
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const activeTab = financeModule(initialTab, location.pathname);
+  const finance = useStore((state: FinanceState) => state.finance);
+  const user = useStore((state: FinanceState) => state.user) || {};
+  const subscriptions = useStore((state: FinanceState) => state.subscriptions) || [];
+  const isLoading = useStore((state: FinanceState) => state.isLoading);
+  const loadError = useStore((state: FinanceState) => state.initialLoadError);
+  const fetchInitialData = useStore((state: FinanceState) => state.fetchInitialData);
+  const toast = useToast();
+  const formatMoney = useCallback((amount: number) => fmtINR(amount, user), [user]);
   const currencySymbol = getCurrencySymbol(user);
-  const transactions = useMemo(() => Object.values(finance?.transactions || {}) as any[], [finance?.transactions]);
-  const budgets = useMemo(() => Object.values(finance?.budgets || {}) as any[], [finance?.budgets]);
-  const addTransaction = useStore(selectAddTransaction);
-  const deleteTransaction = useStore(selectDeleteTransaction);
-  const addBudget = useStore(selectAddBudget);
-  const deleteBudget = useStore(selectDeleteBudget);
-  const toast = useToast() as any;
-
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [budgetForm, setBudgetForm] = useState({ category: '', limit_amount: '' });
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [ledgerQuery, setLedgerQuery] = useState('');
-  const [ledgerPage, setLedgerPage] = useState(1);
-  const [activeTab, setActiveTab] = useState(() => {
-    const hash = window.location.hash.substring(1).toLowerCase();
-    if (hash === 'portfolio') return 'Portfolio';
-    if (hash === 'sip' || hash === 'planning') return 'SIP';
-    if (hash === 'overview') return 'Overview';
-    if (hash === 'analytics') return 'Analytics';
-    if (hash === 'trends') return 'Trends';
-    if (hash === 'budgeting') return 'Budgeting';
-    if (hash === 'subscriptions') return 'Subscriptions';
-    if (hash === 'sync') return 'Sync';
-    return 'Overview';
+  const today = financeToday(user);
+  const currentMonth = today.slice(0, 7);
+  const rawMonth = params.get('month') || currentMonth;
+  const month = validFinanceDate(rawMonth + '-01') ? rawMonth : currentMonth;
+  const category = activeTab === 'Analytics' ? params.get('category') || '' : '';
+  const method = activeTab === 'Analytics' ? params.get('method') || '' : '';
+  const parsedTransactions = useMemo(() => readFinanceTransactions(Object.values(finance?.transactions || {})), [finance?.transactions]);
+  const transactions = parsedTransactions.rows;
+  const budgets = useMemo(() => Object.values(finance?.budgets || {}).flatMap(value => {
+    const raw = value as Budget;
+    const parsed = FinanceBudgetSchema.safeParse({ ...raw, month: raw.month || undefined });
+    return parsed.success && Number.isFinite(parsed.data.limit_amount) && parsed.data.limit_amount >= 0 ? [parsed.data] : [];
+  }), [finance?.budgets]);
+  const monthRows = transactions.filter(row => row.date.startsWith(month + '-') && (!category || row.category === category) && (!method || row.method === method));
+  const activeBudgets = budgets.filter(row => !row.month || row.month === month);
+  const previousMonth = financeMonths(2, month + '-01')[0];
+  const previousRows = transactions.filter(row => row.date.startsWith(previousMonth + '-') && (!category || row.category === category) && (!method || row.method === method));
+  const expenseCategories = financeBreakdown(monthRows, 'category');
+  const alerts = activeBudgets.flatMap(budget => {
+    const actual = expenseCategories.find(row => row.name === budget.category)?.value || 0;
+    const status = financeBudget(actual, budget.limit_amount);
+    return status.over || status.near ? [{ ...budget, actual, status }] : [];
   });
+  const knownMonths = [...new Set([...financeMonths(12, today), ...transactions.map(row => row.date.slice(0, 7)), ...budgets.map(row => row.month || '').filter(Boolean), month])].sort().reverse();
+  const subs: Subscription[] = subscriptions.filter(row => row && typeof row.name === 'string' && Number.isFinite(row.cost) && row.cost >= 0);
+  const invalidRecords = parsedTransactions.invalid + Object.values(finance?.budgets || {}).length - budgets.length + subscriptions.length - subs.length;
+  const periodModule = ['Overview', 'Analytics', 'Budgeting'].includes(activeTab);
 
-  const handleTabClick = useCallback((tab: string) => {
-    setActiveTab(tab);
-    window.location.hash = tab.toLowerCase();
-  }, []);
+  async function saveTransaction(transaction: Transaction, editing: boolean) {
+    await saveFinanceTransaction(transaction, editing);
+    toast.success(editing ? 'Transaction changes saved.' : 'Transaction saved.');
+  }
+  async function saveBudget(budget: Budget, editing: boolean) {
+    await saveFinanceBudget(budget, editing);
+    toast.success(editing ? 'Budget changes saved.' : 'Budget saved.');
+  }
+  async function removeBudget(id: string) { await deleteFinanceBudget(id); toast.info('Budget deleted.'); }
+  async function removeTransaction(id: string) { await deleteFinanceTransaction(id); }
+  async function saveSubscription(subscription: Omit<Subscription, 'id'> & { id?: string }, editing = Boolean(subscription.id)) {
+    await saveFinanceSubscription(subscription, editing);
+    toast.success('Subscription saved.');
+  }
+  async function removeSubscription(id: string) { await deleteFinanceSubscription(id); toast.info('Subscription deleted.'); }
+  function query(key: string, value: string) {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value); else next.delete(key);
+    setParams(next, { replace: true });
+  }
+  if (isLoading) return <LoadingSkeleton variant="finance" />;
+  if (loadError) return <div className="finance-workspace"><div role="alert" className="finance-error"><p>Finance records could not be loaded. {financeError(loadError)}</p><button type="button" className="btn-primary" onClick={() => void fetchInitialData?.().catch(error => toast.error(financeError(error)))}>Retry loading records</button></div></div>;
 
-  React.useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.substring(1).toLowerCase();
-      if (hash === 'portfolio') setActiveTab('Portfolio');
-      else if (hash === 'sip' || hash === 'planning') setActiveTab('SIP');
-      else if (hash === 'overview') setActiveTab('Overview');
-      else if (hash === 'analytics') setActiveTab('Analytics');
-      else if (hash === 'trends') setActiveTab('Trends');
-      else if (hash === 'budgeting') setActiveTab('Budgeting');
-      else if (hash === 'subscriptions') setActiveTab('Subscriptions');
-      else if (hash === 'sync') setActiveTab('Sync');
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
-  const [trendWindow, setTrendWindow] = useState(6);
-
-  const subs = useStore(s => s.subscriptions);
-  const addSubscription = useStore(s => s.addSubscription);
-  const deleteSubscription = useStore(s => s.deleteSubscription);
-  const [showAddSub, setShowAddSub] = useState(false);
-  const [subForm, setSubForm] = useState({ name: '', cost: '', category: 'OTT', next_date: '', icon: '🍿', auto_renew: 1 });
-
-  const [csvUploading, setCsvUploading] = useState(false);
-
-  const filteredTransactions = useMemo(() =>
-    transactions.filter(t => t.date && t.date.startsWith(selectedMonth)),
-  [transactions, selectedMonth]);
-  const visibleTransactions = useMemo(() =>
-    (selectedCategory ? filteredTransactions.filter(t => t.category === selectedCategory) : filteredTransactions)
-      .filter((transaction: any) => !ledgerQuery.trim() || [transaction.category, transaction.note, transaction.method, transaction.type]
-        .some(value => String(value || '').toLowerCase().includes(ledgerQuery.trim().toLowerCase()))),
-  [filteredTransactions, ledgerQuery, selectedCategory]);
-
-  React.useEffect(() => { setLedgerPage(1); }, [ledgerQuery, selectedCategory, selectedMonth]);
-
-  const { income, expenses, investments, balance, pieData, methodData } = useMemo(() => {
-    let inc = 0, exp = 0, inv = 0;
-    const catMap: Record<string, number> = {}, methodMap: Record<string, number> = {};
-    filteredTransactions.forEach(t => {
-      if (t.type === 'Income') inc += t.amount;
-      else if (t.type === 'Expense') {
-        exp += t.amount;
-        catMap[t.category] = (catMap[t.category] || 0) + t.amount;
-        methodMap[t.method || 'Unknown'] = (methodMap[t.method || 'Unknown'] || 0) + t.amount;
-      }
-      else if (t.type === 'Investment') inv += t.amount;
-    });
-    return {
-      income: inc, expenses: exp, investments: inv, balance: inc - exp - inv,
-      pieData: Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value),
-      methodData: Object.entries(methodMap).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value),
-    };
-  }, [filteredTransactions]);
-
-  const statCards = useMemo(() => [
-    { label: 'Net Monthly Balance', value: formatMoney(balance), icon: Wallet, color: balance >= 0 ? 'var(--success)' : 'var(--danger)' },
-    { label: 'Total Income', value: '+' + formatMoney(income), icon: ArrowUpRight, color: 'var(--success)' },
-    { label: 'Total Expenses', value: '-' + formatMoney(expenses), icon: ArrowDownRight, color: 'var(--danger)' },
-    { label: 'Invested / Saved', value: formatMoney(investments), icon: TrendingUp, color: 'var(--info)' },
-  ], [balance, income, expenses, investments, formatMoney]);
-
-  // Multi-month trend data
-  const trendMonths = useMemo(() => lastNMonths(trendWindow), [trendWindow]);
-  const trendData = useMemo(() => buildTrendData(transactions, trendMonths), [transactions, trendMonths]);
-
-  // Day heatmap data
-  const dayHeatmapData = useMemo(() => buildDayHeatmap(transactions, selectedMonth), [transactions, selectedMonth]);
-  const maxDaySpend = useMemo(() => Math.max(...dayHeatmapData.map(d => d.amount), 1), [dayHeatmapData]);
-
-  // Savings rate
-  const savingsRate = income > 0 ? ((income - expenses) / income * 100).toFixed(1) : '0.0';
-
-  // Budget breach alerts
-  const budgetAlerts = useMemo(() => {
-    return budgets.filter((b: any) => {
-      const actual = pieData.find(d => d.name === b.category)?.value || 0;
-      return (actual as number) >= (b.limit_amount as number) * 0.8;
-    }).map((b: any) => {
-      const actual = pieData.find(d => d.name === b.category)?.value || 0;
-      return { ...b, actual, pct: Math.round(((actual as number) / (b.limit_amount as number)) * 100) };
-    });
-  }, [budgets, pieData]);
-
-  const handleAdd = useCallback(async () => {
-    if (!form.category) return toast.error('Please select a category.');
-    if (!form.method) return toast.error('Please select a payment method.');
-    const amt = parseFloat(form.amount);
-    if (!form.amount || isNaN(amt) || amt <= 0) return toast.error(`Amount must be greater than ${formatMoney(0)}.`);
-    try {
-      await addTransaction({ ...form, amount: amt, id: Date.now().toString() });
-      setForm(EMPTY_FORM);
-      toast.success(`${form.type} added successfully.`);
-    } catch {
-      toast.error('Could not save this entry. Your form data is still available.');
-    }
-  }, [form, addTransaction, toast, formatMoney]);
-
-  const handleDeleteTransaction = useCallback(async (id: any) => {
-    const txToRestore = transactions.find((t: any) => t.id === id);
-    try {
-      await deleteTransaction(id);
-      toast.info('Transaction deleted', 5000, {
-        action: { label: 'Undo', onClick: () => { if (txToRestore) addTransaction(txToRestore); } }
-      });
-    } catch {
-      toast.error('Delete failed. The transaction was restored.');
-    }
-  }, [transactions, deleteTransaction, addTransaction, toast]);
-
-  const handleDeleteBudget = useCallback((id: any) => {
-    const bToRestore = budgets.find((t: any) => t.id === id);
-    deleteBudget(id);
-    toast.info('Budget deleted', 5000, {
-      action: { label: 'Undo', onClick: () => { if (bToRestore) addBudget(bToRestore); } }
-    });
-  }, [budgets, deleteBudget, addBudget, toast]);
-
-  const handleDeleteSubscription = useCallback((id: any) => {
-    const subToRestore = subs.find((t: any) => t.id === id);
-    deleteSubscription(id);
-    toast.info('Subscription deleted', 5000, {
-      action: { label: 'Undo', onClick: () => { if (subToRestore) addSubscription(subToRestore); } }
-    });
-  }, [subs, deleteSubscription, addSubscription, toast]);
-
-  const handleCsvImport = async (event: any) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.csv')) { toast.error('Please upload a .csv file'); event.target.value = ''; return; }
-    if (file.size > MAX_CSV_SIZE_BYTES) { toast.error('CSV files must be 2 MB or smaller.'); event.target.value = ''; return; }
-    setCsvUploading(true);
-    try {
-      const text = await file.text();
-      const res = await apiSync('/finance/import/csv', 'POST', { content: text });
-      toast.success(`Imported ${res?.imported || 0} transactions from CSV`);
-    } catch { toast.error('CSV import failed'); }
-    finally {
-      setCsvUploading(false);
-      event.target.value = '';
-    }
-  };
-
-  const handleCsvExport = () => window.open(`${API_BASE}/api/finance/export`, '_blank');
-
-  const financeTabs = ['Overview', 'Analytics', 'Trends', 'Budgeting', 'Subscriptions', 'Portfolio', 'SIP', 'Shopping', 'Sync'];
-
-  return (
-    <div className="fade-in module-page finance-container">
-      {/* Header */}
-      <header className="finance-header">
-        <div>
-          <p className="label-caps finance-header-label">Finance</p>
-          <h2 className="text-display finance-header-title">A clearer view of your money.</h2>
-          <p className="text-secondary">Review your spending, plan ahead, and keep the next step simple.</p>
-        </div>
-        <div className="finance-header-actions">
-          <Button variant="secondary" icon={<Download size={16} />} onClick={handleCsvExport}>Export CSV</Button>
-          <SelectField label="Month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="finance-month-input" options={lastNMonths(12).map(m => ({ value: m, label: m }))} />
-        </div>
-      </header>
-
-      {/* Budget breach alerts */}
-      {budgetAlerts.length > 0 && (
-        <div className="finance-alerts-container">
-          {budgetAlerts.map(b => (
-            <div key={b.id} className={`finance-alert ${b.pct >= 100 ? 'finance-alert-danger' : 'finance-alert-warning'}`} role="status">
-              <AlertTriangle className="finance-alert-icon" size={18} aria-hidden="true" />
-              <span className="finance-alert-text">
-                {b.category}: {formatMoney(b.actual)} / {formatMoney(b.limit_amount)} ({b.pct}%)
-                {b.pct >= 100 ? ' — this budget needs attention.' : ' — getting close to the limit.'}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <Tabs className="finance-tabs" label="Finance areas" idPrefix="finance-tab" tabs={financeTabs.map(tab => ({ value: tab, label: tab, panelId: 'finance-tabpanel' }))} value={activeTab} onChange={handleTabClick} onKeyDown={event => handleTabKeyDown(event, { tabs: financeTabs.map(id => ({ id })), activeTab, selectTab: handleTabClick, idPrefix: 'finance-tab' })} />
-      <section id="finance-tabpanel" role="tabpanel" aria-labelledby={`finance-tab-${activeTab}`}>
-      {activeTab === 'Overview' && <OverviewTab {...{ statCards, savingsRate, methodData, COLORS, fmtINR: formatMoney, currencySymbol, form, setForm, CATEGORIES, PAYMENT_METHODS, handleAdd, dayHeatmapData, maxDaySpend, filteredTransactions: visibleTransactions, selectedCategory, onClearCategory: () => setSelectedCategory(''), handleDeleteTransaction, expenses, selectedMonth, ledgerQuery, setLedgerQuery, ledgerPage, setLedgerPage }} />}
-      <React.Suspense fallback={<LoadingSkeleton variant="finance" />}>
-        {activeTab === 'Analytics' && <AnalyticsTab {...{ COLORS, fmtINR: formatMoney, currencySymbol, form, pieData, TOOLTIP_STYLE, expenses, onCategorySelect: (category: string) => setSelectedCategory((current) => current === category ? '' : category) }} />}
-        {activeTab === 'Trends' && <TrendsTab {...{ fmtINR: formatMoney, currencySymbol, form, TOOLTIP_STYLE, trendWindow, setTrendWindow, trendData, expenses }} />}
-      </React.Suspense>
-      {activeTab === 'Budgeting' && <BudgetingTab {...{ fmtINR: formatMoney, currencySymbol, form, CATEGORIES, pieData, budgetForm, setBudgetForm, addBudget, budgets, expenses, renderBudgetRow, handleDeleteBudget, toast }} />}
-      {activeTab === 'Subscriptions' && <SubscriptionsTab {...{ fmtINR: formatMoney, currencySymbol, showAddSub, setShowAddSub, subForm, setSubForm, addSubscription, subs, handleDeleteSubscription, transactions, toast }} />}
-      {activeTab === 'Portfolio' && <div className="fade-in"><Portfolio /></div>}
-      {activeTab === 'SIP' && <div className="fade-in"><SIPCalculator /></div>}
-      {activeTab === 'Shopping' && <div className="fade-in"><Shopping /></div>}
-      {activeTab === 'Sync' && <SyncTab {...{ csvUploading, handleCsvImport }} />}
-      </section>
-    </div>
-  );
-}
-
-function renderBudgetRow({ id, name, actual, limit, onDelete, fmtINR: formatMoney }: any) {
-  const percent = Math.min((actual / limit) * 100, 100);
-  const isOver = actual > limit;
-  const money = typeof formatMoney === 'function' ? formatMoney : (value: number) => fmtINR(value);
-  return (
-    <div key={id || name} className="finance-budget-row">
-      <div className="finance-budget-header">
-        <span className="finance-budget-name">{name}</span>
-        <div className="flex-center">
-          <span className={isOver ? 'finance-budget-actual-danger' : 'finance-budget-actual'}>{money(actual)}</span>
-          <span className="finance-budget-slash">/</span>
-          <span>{money(limit)}</span>
-          {onDelete && <button onClick={onDelete} className="btn-icon hover-text-danger finance-budget-delete" title="Delete budget" aria-label="Delete budget"><Trash2 size={12}/></button>}
-        </div>
-      </div>
-      <div className="finance-budget-bar-container">
-        <div className={`finance-budget-bar ${isOver ? 'finance-budget-bar-danger' : actual / limit >= 0.8 ? 'finance-budget-bar-warning' : 'finance-budget-bar-success'}`} ref={el => { if (el) el.style.width = `${percent}%`; }} />
-      </div>
-    </div>
-  );
+  return <div className="module-page finance-container finance-workspace" data-finance-module={activeTab}>
+    {invalidRecords > 0 && <p role="alert" className="finance-error">{invalidRecords} finance records have invalid fields and are excluded from calculations. Review the source records before relying on totals.</p>}
+    {periodModule && <div className="finance-controls">
+      <label className="finance-field">Month<select className="form-input" value={month} onChange={event => query('month', event.target.value)}>{knownMonths.map(value => <option key={value}>{value}</option>)}</select></label>
+      {activeTab === 'Analytics' && <>
+        <label className="finance-field">Analysis category<select className="form-input" value={category} onChange={event => query('category', event.target.value)}><option value="">All categories</option>{[...new Set(transactions.map(row => row.category))].sort().map(value => <option key={value}>{value}</option>)}</select></label>
+        <label className="finance-field">Analysis payment method<select className="form-input" value={method} onChange={event => query('method', event.target.value)}><option value="">All methods</option>{[...new Set(transactions.map(row => row.method).filter((value): value is string => Boolean(value)))].sort().map(value => <option key={value}>{value}</option>)}</select></label>
+      </>}
+    </div>}
+    {(activeTab === 'Overview' || activeTab === 'Budgeting') && alerts.length > 0 && <div className="finance-alerts-container">{alerts.map(budget => <p key={budget.id} role="status" className={'finance-alert ' + (budget.status.over ? 'finance-alert-danger' : 'finance-alert-warning')}><AlertTriangle size={18} aria-hidden="true" /><span>{budget.category}: {formatMoney(budget.actual)} / {formatMoney(budget.limit_amount)} · {budget.status.zero ? 'Zero limit exceeded' : budget.status.over ? 'Budget exceeded' : 'Near the limit'}</span></p>)}</div>}
+    {activeTab === 'Overview' && <OverviewTab transactions={monthRows} budgets={activeBudgets} subscriptions={subs} {...{ month, today, user, currencySymbol, formatMoney }} onSave={saveTransaction} />}
+    {activeTab === 'Transactions' && <TransactionsTab {...{ transactions, today, user, currencySymbol, formatMoney }} onSave={saveTransaction} onDelete={removeTransaction} />}
+    <Suspense fallback={<LoadingSkeleton variant="finance" />}>
+      {activeTab === 'Analytics' && <AnalyticsTab transactions={monthRows} previousTransactions={previousRows} {...{ month, previousMonth, today, method, formatMoney }} />}
+      {activeTab === 'Trends' && <TrendsTab {...{ transactions, today, formatMoney }} />}
+    </Suspense>
+    {activeTab === 'Budgeting' && <BudgetingTab {...{ budgets, transactions, month, currencySymbol, formatMoney }} onSave={saveBudget} onDelete={removeBudget} />}
+    {activeTab === 'Subscriptions' && <SubscriptionsTab subs={subs} {...{ transactions, today, user, currencySymbol, formatMoney }} onSave={saveSubscription} onDelete={removeSubscription} />}
+    {activeTab === 'Sync' && <SyncTab formatMoney={formatMoney} />}
+  </div>;
 }

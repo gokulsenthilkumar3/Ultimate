@@ -1,0 +1,23 @@
+/* Ordered migration: legacy module rules remain only until their routes migrate. */
+@layer tokens, legacy, components, gt-responsive-foundation, shell;
+@import './design-tokens.css' layer(tokens);
+@import '../index.css' layer(legacy);
+@import '../theme-v4.css' layer(legacy);
+@import './chamber.css' layer(legacy);
+@import './premium.css' layer(legacy);
+@import './ui-components.css' layer(components);
+@import './ultimate-ui.css' layer(legacy);
+@import './design-system.css' layer(components);
+@import './editorial-components.css' layer(components);
+@import './editorial-overviews.css' layer(components);
+@import './editorial-settings.css' layer(components);
+@import './responsive-foundation.css';
+@import './editorial-shell.css' layer(shell);
+
+@layer components {
+  :root {
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: var(--gt-font-display);
+    --gt-font-sans: var(--font-body);
+  }
+}

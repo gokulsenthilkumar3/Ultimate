@@ -3,24 +3,22 @@ import React from 'react';
 /**
  * PageHeader — consistent page-level header used across all dashboard modules.
  *
- * @param {string} accent  - Small caps accent label (e.g., "Finance")
- * @param {React.ReactNode} icon - Lucide icon element
- * @param {string} title   - Main heading text
- * @param {string} [subtitle] - Optional subtitle / description
- * @param {React.ReactNode} [actions] - Optional right-aligned action buttons
+ * @param {{ title: string, accent?: string, icon?: React.ReactNode,
+ * subtitle?: string, actions?: React.ReactNode, status?: React.ReactNode,
+ * headingLevel?: 1 | 2 }} props
  */
 export default function PageHeader({ accent, icon, title, subtitle, actions, status, headingLevel = 1 }) {
   const Heading = headingLevel === 2 ? 'h2' : 'h1';
   return (
-    <div className="page-header-block" data-has-actions={Boolean(actions)}>
-      <div>
-        <p className="label-caps page-header-block__accent">{accent}</p>
-        <Heading className="text-display page-header-block__title">
-          {icon && <span className="page-header-block__icon">{icon}</span>}
+    <div className="page-header-block gt-editorial-header" data-has-actions={Boolean(actions)} data-has-status={Boolean(status)}>
+      <div className="gt-editorial-header__intro">
+        {accent && <p className="gt-editorial-header__eyebrow">{accent}</p>}
+        <Heading className="gt-editorial-header__title">
+          {icon && <span className="gt-editorial-header__icon" aria-hidden="true">{icon}</span>}
           {title}
         </Heading>
         {subtitle && (
-          <p className="page-header-block__subtitle">{subtitle}</p>
+          <p className="gt-editorial-header__subtitle">{subtitle}</p>
         )}
       </div>
       {actions && (

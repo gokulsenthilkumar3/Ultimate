@@ -1,389 +1,254 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Trash2, Edit3, Check, X, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Download, Plus, Upload } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
-import EmptyState from './ui/EmptyState';
-import { localDateKey } from '../lib/metricSeries';
-import { expandRecurring, validateCalendarEvent, buildCalendarExport } from '../lib/calendarDates';
-import { formatDate } from '../utils/userFormatters';
+import { featurePath } from '../config/featureRegistry';
+import { getUserLocale } from '../utils/userFormatters';
+import Button from './ui/Button';
+import TextField from './ui/TextField';
+import SelectField from './ui/SelectField';
+import Modal from './ui/Modal';
+import PageState from './ui/PageState';
+import PageTemplate from './ui/PageTemplate';
+import FormError from './ui/FormError';
+import FileUploader from './ui/FileUploader';
+import ConnectionCard from './ui/ConnectionCard';
+import useCalendarWidth from './calendar/useCalendarWidth';
+import { addDays, addMonths, CALENDAR_VIEWS, calendarRange, calendarView, dateLabel, normalizeEvent, occurrencesInRange, occurrencesOnDay, parseDateKey, persistMutation, RECURRENCES, resolveTimeZone, todayKey, validateEvent } from './calendar/calendarModel';
+import { buildICS, downloadICS, MAX_ICS_BYTES, parseICS, readICSFile } from './calendar/calendarICS';
 
-const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const EVENT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280', '#22c55e', '#fb923c'];
-const RECUR_OPTIONS = [
-  { value: 'none',    label: 'No recurrence' },
-  { value: 'daily',   label: 'Daily' },
-  { value: 'weekly',  label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly',  label: 'Yearly' },
-];
-const EVENT_TYPES = ['Event', 'Meeting', 'Reminder', 'Task', 'Birthday', 'Holiday', 'Personal', 'Work'];
 const EMPTY_EVENTS = Object.freeze([]);
+const EVENT_TYPES = ['Event', 'Meeting', 'Reminder', 'Task', 'Birthday', 'Holiday', 'Personal', 'Work'];
+const VIEW_LABELS = { month: 'Month', week: 'Week', agenda: 'Agenda', connections: 'Connections' };
+const style = `
+.gt-calendar{container:gt-calendar / inline-size;min-width:0}
+.gt-calendar :is(button,input,select,textarea){min-height:44px}
+.gt-calendar :is(button,a){touch-action:manipulation}
+.gt-calendar :is(h2,h3,p,span,label){overflow-wrap:anywhere}
+.gt-calendar a[aria-current=page]{font-weight:700;text-decoration:underline}
+.gt-calendar-views,.gt-calendar-period,.gt-calendar-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem}
+.gt-calendar-views a{display:inline-flex;align-items:center;min-height:44px;padding:.5rem .75rem;border:1px solid var(--gt-border,#ccc);border-radius:.5rem;color:var(--gt-text,inherit)}
+.gt-calendar-period h2{font-size:1rem;flex:1;margin:0}
+.gt-calendar-month-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(14rem,20rem);gap:1rem}
+.gt-calendar-month-scroll{overflow:auto;max-width:100%;padding:.25rem}
+.gt-calendar-month{width:100%;min-width:24rem;table-layout:fixed;border-spacing:.2rem}
+.gt-calendar-month th{font-size:.8rem;padding:.5rem 0}
+.gt-calendar-month td{padding:0;vertical-align:top}
+.gt-calendar-day{display:block;min-width:44px;width:100%;min-height:6rem!important;padding:.5rem;border:1px solid var(--gt-border,#ccc);border-radius:.5rem;background:var(--gt-surface,#fff);color:var(--gt-text,#202124);text-align:start}
+.gt-calendar-day[aria-pressed=true]{outline:2px solid var(--gt-action,#5c67e8);outline-offset:-2px}
+.gt-calendar-day[data-outside=true]{background:var(--gt-surface-raised,#eee)}
+.gt-calendar-preview{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;margin-top:.3rem}
+.gt-calendar-week{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(13rem,100%),1fr));gap:.75rem}
+.gt-calendar-day-section,.gt-calendar-selected-day{min-width:0;padding:.75rem;border:1px solid var(--gt-border,#ccc);border-radius:.75rem;background:var(--gt-surface,#fff)}
+.gt-calendar-day-section>h2,.gt-calendar-selected-day>h2{font-size:1rem;margin-block:0 .75rem}
+.gt-calendar-event-list{list-style:none;padding:0;margin:0;display:grid;gap:.75rem}
+.gt-calendar-event{min-width:0;padding:.75rem;border:1px solid var(--gt-border,#ccc);border-inline-start:3px solid var(--calendar-event-color,var(--gt-action,#5c67e8));border-radius:.5rem}
+.gt-calendar-event h3{font-size:1rem;margin:0}
+.gt-calendar-event p{margin-block:.35rem;font-size:.875rem}
+.gt-calendar-event .gt-calendar-actions{margin-top:.5rem}
+.gt-calendar-form{display:grid;gap:1rem}
+.gt-calendar-form-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr));gap:.75rem}
+.gt-calendar-form textarea{width:100%;min-height:6rem}
+.gt-calendar-form fieldset{min-width:0;padding:0;border:0}
+.gt-calendar-form .gt-calendar-check{display:flex;align-items:center;gap:.5rem;min-height:44px}
+.gt-calendar-check input{min-width:44px;accent-color:var(--gt-action)}
+.gt-calendar-connections{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(17rem,100%),1fr));gap:1rem}
+@container gt-calendar (max-width:850px){.gt-calendar-month-layout{grid-template-columns:minmax(0,1fr)}}
+@media(forced-colors:active){.gt-calendar-event{border-color:CanvasText}.gt-calendar-day[aria-pressed=true]{outline-color:Highlight}.gt-calendar-views a[aria-current=page]{outline:2px solid Highlight}}
+`;
 
-function isSameDay(d1, d2) {
-  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+function blankEvent(date, zone) {
+  return { id: crypto.randomUUID(), title: '', date, endDate: '', allDay: true, startTime: '', endTime: '', timeZone: zone, recurrence: 'none', type: 'Event', color: '#6366f1', description: '', location: '' };
+}
+function EventForm({ editor, onChange, onSubmit, onCancel, busy, id }) {
+  const form = editor.form;
+  const field = name => ({ value: form[name] || '', onChange: event => onChange({ ...form, [name]: event.target.value }) });
+  return <form className="gt-calendar-form" onSubmit={onSubmit} noValidate aria-describedby={editor.error ? `${id}-error` : undefined}>
+    <fieldset disabled={busy}><div className="gt-calendar-form-fields">
+      <TextField data-dialog-autofocus label="Event title" required maxLength={200} {...field('title')} />
+      <TextField label="Start date" type="date" required {...field('date')} />
+      <TextField label="End date" type="date" hint="All-day end dates are inclusive." {...field('endDate')} />
+      <label className="gt-calendar-check"><input type="checkbox" checked={form.allDay} onChange={event => onChange({ ...form, allDay: event.target.checked })} />All day event</label>
+      {!form.allDay && <>
+        <TextField label="Start time" type="time" required {...field('startTime')} />
+        <TextField label="End time" type="time" {...field('endTime')} />
+        <TextField label="Event timezone" required hint="IANA name (e.g. Asia/Kolkata) or UTC+05:30. Repeated clock times use the first occurrence." {...field('timeZone')} />
+      </>}
+      <SelectField label="Event type" options={EVENT_TYPES.map(value => ({ value, label: value }))} {...field('type')} />
+      <SelectField label="Recurrence" options={RECURRENCES.map(value => ({ value, label: value === 'none' ? 'Does not repeat' : value[0].toUpperCase() + value.slice(1) }))} {...field('recurrence')} />
+      <TextField label="Location" maxLength={1000} {...field('location')} />
+      <TextField label="Event color" type="color" {...field('color')} />
+      <label htmlFor={`${id}-description`}>Description<textarea id={`${id}-description`} maxLength={10000} {...field('description')} /></label>
+    </div></fieldset>
+    {editor.original?.recurrence && editor.original.recurrence !== 'none' && <p>Editing changes the complete recurring series.</p>}
+    <FormError id={`${id}-error`}>{editor.error}</FormError>
+    <div className="gt-calendar-actions"><Button variant="secondary" disabled={busy} onClick={onCancel}>Cancel</Button><Button type="submit" loading={busy} loadingLabel="Saving event…">Save event</Button></div>
+  </form>;
+}
+function EventList({ items, day, locale, zone, onEdit, onDelete, busy }) {
+  if (!items.length) return <p>No events.</p>;
+  return <ul className="gt-calendar-event-list">{items.map(event => <li key={event.occurrenceId}>
+    <article className="gt-calendar-event" style={{ '--calendar-event-color': event.color }}>
+      <h3>{event.title}</h3>
+      <p><time dateTime={event.date}>{dateLabel(event.date, locale)}</time>{event.coveredEnd > event.date && <> – <time dateTime={event.coveredEnd}>{dateLabel(event.coveredEnd, locale)}</time></>}</p>
+      <p>{event.allDay ? 'All day' : `${event.startTime}${event.endTime ? ' – ' + event.endTime : ''} · ${zone}`}{event.date < day ? ' · Continues' : ''}</p>
+      {event.recurrence !== 'none' && <p>Repeats {event.recurrence}</p>}
+      {event.location && <p>Location: {event.location}</p>}{event.description && <p>{event.description}</p>}
+      <div className="gt-calendar-actions">
+        <Button variant="secondary" disabled={busy} aria-label={`Edit ${event.title}, ${event.date}`} onClick={() => onEdit(event.source)}>Edit{event.recurrence !== 'none' ? ' series' : ''}</Button>
+        <Button variant="danger" disabled={busy} aria-label={`Delete ${event.title}, ${event.date}`} onClick={() => onDelete(event.source)}>Delete{event.recurrence !== 'none' ? ' series' : ''}</Button>
+      </div>
+    </article>
+  </li>)}</ul>;
 }
 
-
-
 export default function Calendar() {
-  const toast = useToast();
-  const user = useStore(s => s.user);
-  const events              = useStore(s => s.calendar_events ?? EMPTY_EVENTS);
-  const _updateAll          = useStore(s => s.updateCalendarEvents);
-  const addEvent            = (ev) => _updateAll && _updateAll([...events, ev]);
-  const updateEvent         = (id, updates) => _updateAll && _updateAll(events.map(e => e.id === id ? { ...e, ...updates } : e));
-  const deleteEvent         = (id) => _updateAll && _updateAll(events.filter(e => e.id !== id));
-
-  const today = useMemo(() => new Date(), []);
-  const [year,  setYear]  = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
-  const [view,  setView]  = useState('month');
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editId,  setEditId]  = useState(null);
-  const [editForm, setEditForm] = useState({});
-
-  const [form, setForm] = useState({
-    title: '', date: localDateKey(today), endDate: '',
-    startTime: '', endTime: '', type: 'Event', color: EVENT_COLORS[0],
-    description: '', location: '', recurrence: 'none', allDay: true,
-  });
-
-  // Build visible range for month view
-  const { calDays, viewStart, viewEnd } = useMemo(() => {
-    const firstDay = new Date(year, month, 1);
-    const lastDay  = new Date(year, month + 1, 0);
-    const startDow = firstDay.getDay();
-    const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
-
-    const days = [];
-    const vs = new Date(firstDay); vs.setDate(vs.getDate() - startDow);
-    for (let i = 0; i < totalCells; i++) {
-      const d = new Date(vs); d.setDate(vs.getDate() + i);
-      days.push(d);
+  const user = useStore(state => state.user);
+  const events = useStore(state => state.calendar_events ?? EMPTY_EVENTS);
+  const updateCalendarEvents = useStore(state => state.updateCalendarEvents);
+  const toast = useToast(), location = useLocation(), navigate = useNavigate();
+  const root = useRef(null), width = useCalendarWidth(root), id = useId();
+  const timezone = useMemo(() => {
+    try { return { zone: resolveTimeZone(user?.timezone), error: '' }; }
+    catch (error) { return { zone: 'UTC', error: `${error.message} The calendar is displaying UTC.` }; }
+  }, [user?.timezone]);
+  const zone = timezone.zone, locale = getUserLocale(user);
+  const [clock, setClock] = useState(() => new Date());
+  const today = todayKey(zone, clock);
+  const [anchor, setAnchor] = useState(() => today);
+  const [selectedDay, setSelectedDay] = useState(() => today);
+  const [editor, setEditor] = useState(null);
+  const [transfer, setTransfer] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const operationBusy = useRef(false);
+  const explicit = new URLSearchParams(location.search).get('view');
+  const view = calendarView(explicit, width);
+  const range = useMemo(() => calendarRange(anchor, view), [anchor, view]);
+  const occurrenceStart = range.days[0], occurrenceEnd = range.days.at(-1);
+  const occurrences = useMemo(() => occurrencesInRange(events, occurrenceStart, occurrenceEnd, zone), [events, occurrenceStart, occurrenceEnd, zone]);
+  const invalidEvents = useMemo(() => events.filter(event => validateEvent(event, zone)), [events, zone]);
+  const [pageError, setPageError] = useState('');
+  useEffect(() => { const timer = setInterval(() => setClock(new Date()), 60000); return () => clearInterval(timer); }, []);
+  const viewHref = value => {
+    const params = new URLSearchParams(location.search); params.set('view', value);
+    return `${featurePath('calendar')}?${params}`;
+  };
+  useEffect(() => {
+    if (explicit && !CALENDAR_VIEWS.includes(explicit) && width != null) {
+      const params = new URLSearchParams(location.search); params.set('view', view);
+      navigate(`${featurePath('calendar')}?${params}`, { replace: true });
     }
+  }, [explicit, location.search, navigate, view, width]);
 
-    const ve = new Date(vs); ve.setDate(vs.getDate() + totalCells - 1);
-    return { calDays: days, viewStart: vs, viewEnd: ve };
-  }, [year, month]);
-
-  // Expand recurring events across the visible range
-  const expandedEvents = useMemo(() => {
-    const result = [];
-    events.forEach(ev => {
-      const dates = expandRecurring(ev, viewStart, viewEnd);
-      dates.forEach(d => result.push({ ...ev, date: d, _recurring: Boolean(ev.recurrence && ev.recurrence !== 'none') }));
-    });
-    return result;
-  }, [events, viewStart, viewEnd]);
-
-  const eventsOnDay = useCallback((day) => {
-    const key = localDateKey(day);
-    return expandedEvents.filter(e => e.date === key);
-  }, [expandedEvents]);
-
-  const doAdd = async () => {
-    const error = validateCalendarEvent(form);
-    if (error) { toast.error(error); return; }
-    if (saving) return;
-    const ev = { ...form, title: form.title.trim(), id: crypto.randomUUID() };
-    setSaving(true);
+  const startNew = date => { if (!operationBusy.current) setEditor({ original: null, form: blankEvent(date, zone), error: '' }); };
+  const startEdit = original => { if (!operationBusy.current) setEditor({ original: { ...original }, form: { ...blankEvent(original.date || today, zone), ...original, allDay: original.allDay !== false, timeZone: original.timeZone || zone }, error: '' }); };
+  const closeEditor = () => { if (!operationBusy.current) setEditor(null); };
+  const closeTransfer = () => { if (!operationBusy.current) setTransfer(null); };
+  const persist = operation => persistMutation(operation, { update: updateCalendarEvents, getState: useStore.getState, setState: useStore.setState });
+  const submitEvent = async event => {
+    event.preventDefault();
+    if (operationBusy.current) return;
+    const error = validateEvent(editor.form, zone);
+    if (error) { setEditor(previous => ({ ...previous, error })); return; }
+    operationBusy.current = true; setBusy(true);
     try {
-    await addEvent(ev);
-    setForm({ title: '', date: localDateKey(today), endDate: '', startTime: '', endTime: '', type: 'Event', color: EVENT_COLORS[0], description: '', location: '', recurrence: 'none', allDay: true });
-    setShowAdd(false);
-    toast.success(`📅 "${ev.title}" added`);
-    } catch { toast.error('Event could not be saved. Your draft is still here.'); }
-    finally { setSaving(false); }
+      await persist({ kind: editor.original ? 'update' : 'create', original: editor.original, event: normalizeEvent(editor.form, zone) });
+      setEditor(null); toast.success(editor.original ? 'Event updated.' : 'Event added.');
+    } catch (error) { setEditor(previous => previous && ({ ...previous, error: `${error.message} Your form is still here.` })); }
+    finally { operationBusy.current = false; setBusy(false); }
   };
-
-  const doDelete = async (id) => {
-    const ev = events.find(e => e.id === id);
-    try { await deleteEvent(id); toast.info(`${ev?.title} deleted`); }
-    catch { toast.error('Event could not be deleted. Try again.'); }
+  const prepareImport = async files => {
+    const preview = parseICS(await readICSFile(files[0]), { timeZone: zone });
+    const existing = new Set(events.map(event => event.icsUid || `${event.id}@growthtrack`));
+    const additions = preview.events.filter(event => !existing.has(event.icsUid));
+    if (!additions.length) throw new Error('All events in this file already exist. Nothing to import.');
+    setTransfer({ kind: 'import', events: additions, warnings: preview.warnings, duplicateCount: preview.events.length - additions.length, error: '', fileName: files[0].name });
   };
-
-  const saveEdit = async () => {
-    const error = validateCalendarEvent(editForm);
-    if (error) { toast.error(error); return; }
-    try { await updateEvent(editId, editForm); setEditId(null); toast.success('Event updated'); }
-    catch { toast.error('Event could not be updated. Your draft is still here.'); }
+  const prepareExport = () => {
+    setPageError('');
+    try {
+      if (invalidEvents.length) throw new Error('Correct invalid saved events before exporting.');
+      const selected = occurrences.filter(event => event.date <= range.end && event.coveredEnd >= range.start);
+      setTransfer({ kind: 'export', content: buildICS(selected), count: selected.length, start: range.start, end: range.end, error: '' });
+    } catch (error) { setPageError(error.message); }
   };
+  const confirmTransfer = async () => {
+    if (operationBusy.current) return;
+    operationBusy.current = true; setBusy(true);
+    try {
+      if (transfer.kind === 'export') { downloadICS(transfer.content); toast.info('Calendar download requested.'); }
+      else {
+        await persist(transfer.kind === 'delete' ? { kind: 'delete', original: transfer.original } : { kind: 'import', events: transfer.events });
+        toast.success(transfer.kind === 'delete' ? 'Event deleted.' : 'Calendar import acknowledged.');
+      }
+      setTransfer(null);
+    } catch (error) { setTransfer(previous => ({ ...previous, error: error.message })); }
+    finally { operationBusy.current = false; setBusy(false); }
+  };
+  const requestDelete = original => setTransfer({ kind: 'delete', original: { ...original }, error: '' });
+  const movePeriod = direction => {
+    setAnchor(previous => view === 'month' ? addMonths(previous, direction) : addDays(previous, direction * (view === 'week' ? 7 : 30)));
+  };
+  const periodLabel = view === 'month' ? dateLabel(range.start, locale, { day: undefined }) : `${dateLabel(range.start, locale)} – ${dateLabel(range.end, locale)}`;
+  const eventList = day => <EventList items={occurrencesOnDay(occurrences, day)} day={day} locale={locale} zone={zone} onEdit={startEdit} onDelete={requestDelete} busy={busy} />;
+  const dayHeading = day => dateLabel(day, locale, { weekday: 'long' });
+  const activeDay = range.days.includes(selectedDay) ? selectedDay : range.start;
+  const dayKeyDown = (event, day) => {
+    const index = range.days.indexOf(day), dow = (parseDateKey(day).getUTCDay() + 6) % 7;
+    const rtl = getComputedStyle(event.currentTarget).direction === 'rtl';
+    const delta = event.key === 'ArrowDown' ? 7 : event.key === 'ArrowUp' ? -7 : event.key === 'ArrowRight' ? rtl ? -1 : 1 : event.key === 'ArrowLeft' ? rtl ? 1 : -1 : event.key === 'Home' ? -dow : event.key === 'End' ? 6 - dow : null;
+    if (delta == null || !range.days[index + delta]) return;
+    event.preventDefault(); const next = range.days[index + delta]; setSelectedDay(next); document.getElementById(`${id}-day-${next}`)?.focus();
+  };
+  const confirmTitle = transfer?.kind === 'delete' ? 'Confirm event deletion' : transfer?.kind === 'export' ? 'Confirm calendar export' : 'Confirm calendar import';
 
-  // iCal export
-  const exportICal = useCallback(() => {
-    const ical = buildCalendarExport(events);
-    const url = URL.createObjectURL(new Blob([ical], { type: 'text/calendar;charset=utf-8' }));
-    const a = document.createElement('a'); a.href = url; a.download = 'growthtrack-calendar.ics'; a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${events.length} events as .ics`);
-  }, [events, toast]);
-
-  const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); };
-  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); };
-  const goToday   = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); };
-
-  const selectedDayEvents = useMemo(() => {
-    if (!selectedDate) return [];
-    const key = localDateKey(selectedDate);
-    return expandedEvents.filter(e => e.date === key).sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
-  }, [selectedDate, expandedEvents]);
-
-  const upcomingEvents = useMemo(() => {
-    const todayKey = localDateKey(today);
-    return expandedEvents.filter(e => e.date >= todayKey).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
-  }, [expandedEvents, today]);
-
-  return (
-    <div style={{ padding: '0.5rem 0' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Schedule</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Calendar</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{events.length} events · Recurring support · iCal export</p>
+  return <section className="gt-calendar" ref={root} data-responsive-foundation data-calendar-view={view}>
+    <style>{style}</style>
+    <PageTemplate type="record" title="Calendar" accent="Workspace" subtitle={`${events.length} saved events · Display timezone: ${zone}`} actions={<>
+      <Button variant="secondary" disabled={busy} icon={<Upload size={18} />} onClick={() => setTransfer({ kind: 'select' })}>Import .ics</Button>
+      <Button variant="secondary" disabled={busy} icon={<Download size={18} />} onClick={prepareExport}>Export .ics</Button>
+      <Button disabled={busy} icon={<Plus size={18} />} onClick={() => startNew(selectedDay || today)}>Add event</Button>
+    </>} toolbar={<nav className="gt-calendar-views" aria-label="Calendar views">{CALENDAR_VIEWS.map(value => <Link key={value} to={viewHref(value)} aria-current={view === value ? 'page' : undefined}>{VIEW_LABELS[value]}</Link>)}</nav>}>
+      <FormError>{timezone.error || pageError}</FormError>
+      {invalidEvents.length > 0 && <section aria-label="Invalid saved events"><p role="alert">{invalidEvents.length} saved event(s) need correction before display or export.</p>{invalidEvents.map(event => <Button key={event.id} variant="secondary" disabled={busy} onClick={() => startEdit(event)}>Correct {event.title || 'untitled event'}</Button>)}</section>}
+      {view !== 'connections' && <div className="gt-calendar-period">
+        <Button variant="secondary" aria-label={`Previous ${view === 'agenda' ? '30 days' : view}`} onClick={() => movePeriod(-1)} icon={<ChevronLeft size={18} />} />
+        <h2 aria-live="polite">{periodLabel}</h2>
+        <Button variant="secondary" aria-label={`Next ${view === 'agenda' ? '30 days' : view}`} onClick={() => movePeriod(1)} icon={<ChevronRight size={18} />} />
+        <Button variant="secondary" onClick={() => { setAnchor(today); setSelectedDay(today); }}>Today</Button>
+      </div>}
+      {view === 'month' && <div className="gt-calendar-month-layout">
+        <div className="gt-calendar-month-scroll" role="region" tabIndex={0} aria-label={`Month calendar, ${periodLabel}`}>
+          <table className="gt-calendar-month"><caption className="gt-foundation-sr-only">{periodLabel}</caption><thead><tr>{Array.from({ length: 7 }, (_, index) => <th scope="col" key={index}>{dateLabel(addDays('2026-09-28', index), locale, { weekday: 'short', day: undefined, month: undefined, year: undefined })}</th>)}</tr></thead>
+            <tbody>{Array.from({ length: range.days.length / 7 }, (_, row) => <tr key={row}>{range.days.slice(row * 7, row * 7 + 7).map(day => {
+              const items = occurrencesOnDay(occurrences, day);
+              return <td key={day}><button id={`${id}-day-${day}`} className="gt-calendar-day" type="button" tabIndex={activeDay === day ? 0 : -1} aria-pressed={selectedDay === day} aria-current={day === today ? 'date' : undefined} data-outside={day.slice(0, 7) !== anchor.slice(0, 7)}
+                aria-label={`${dayHeading(day)}, ${items.length} event${items.length === 1 ? '' : 's'}${day === today ? ', Today' : ''}`} onKeyDown={event => dayKeyDown(event, day)} onClick={() => setSelectedDay(day)}>
+                <time dateTime={day}>{parseDateKey(day).getUTCDate()}</time>{items.slice(0, 3).map(item => <span className="gt-calendar-preview" key={item.occurrenceId}>{item.title}</span>)}{items.length > 3 && <span className="gt-calendar-preview">+{items.length - 3} more</span>}
+              </button></td>;
+            })}</tr>)}</tbody></table>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={exportICal} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
-            <Download size={12} /> Export .ics
-          </button>
-          <button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Add Event</button>
-        </div>
-      </div>
-
-      {/* Add form */}
-      {showAdd && (
-        <div className="glass-card mb-lg">
-          <p style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>New Event</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
-            <label className="sr-only" htmlFor="calendar-event-title">Event title</label>
-            <input id="calendar-event-title" aria-required="true" placeholder="Title *" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="form-input" style={{ gridColumn: 'span 2' }} />
-            <div>
-              <label htmlFor="calendar-event-start-date" style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Start Date *</label>
-              <input id="calendar-event-start-date" aria-required="true" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="form-input" />
-            </div>
-            <div>
-              <label htmlFor="calendar-event-end-date" style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>End Date</label>
-              <input id="calendar-event-end-date" type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className="form-input" />
-            </div>
-            {!form.allDay && (
-              <>
-                <label className="sr-only" htmlFor="calendar-event-start-time">Start time</label>
-                <input id="calendar-event-start-time" type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} className="form-input" />
-                <label className="sr-only" htmlFor="calendar-event-end-time">End time</label>
-                <input id="calendar-event-end-time" type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} className="form-input" />
-              </>
-            )}
-            <label className="sr-only" htmlFor="calendar-event-type">Event type</label>
-            <select id="calendar-event-type" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="form-input">
-              {EVENT_TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
-            <label className="sr-only" htmlFor="calendar-event-recurrence">Recurrence</label>
-            <select id="calendar-event-recurrence" value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))} className="form-input">
-              {RECUR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-            <label className="sr-only" htmlFor="calendar-event-location">Location</label>
-            <input id="calendar-event-location" placeholder="Location (optional)" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="form-input" />
-            <label className="sr-only" htmlFor="calendar-event-description">Description</label>
-            <input id="calendar-event-description" placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input" />
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <button type="button" role="switch" aria-checked={form.allDay} aria-label="All day event" onClick={() => setForm(f => ({ ...f, allDay: !f.allDay }))} style={{ width: '32px', height: '18px', borderRadius: '99px', background: form.allDay ? 'var(--accent)' : 'rgba(255,255,255,0.1)', position: 'relative', cursor: 'pointer' }}>
-                <div style={{ position: 'absolute', top: '2px', left: form.allDay ? '16px' : '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-              </button>
-              All day
-            </label>
-            <div style={{ display: 'flex', gap: '4px', marginLeft: '0.5rem' }}>
-              {EVENT_COLORS.map(c => (
-                <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-                  aria-label={`Use ${c} for this event`} aria-pressed={form.color === c}
-                  style={{ width: '18px', height: '18px', borderRadius: '50%', background: c, border: form.color === c ? '2px solid #fff' : '2px solid transparent', cursor: 'pointer', padding: 0 }} />
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-            <button onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-            <button onClick={doAdd} disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Add Event'}</button>
-          </div>
-        </div>
-      )}
-
-      {/* Nav + view toggle */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button aria-label="Previous month" onClick={prevMonth} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: 'var(--text-2)' }}><ChevronLeft size={14} /></button>
-          <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-1)', minWidth: '160px', textAlign: 'center' }}>{MONTHS[month]} {year}</span>
-          <button aria-label="Next month" onClick={nextMonth} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', color: 'var(--text-2)' }}><ChevronRight size={14} /></button>
-          <button onClick={goToday} style={{ padding: '5px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>Today</button>
-        </div>
-        <div style={{ display: 'flex', gap: '0.3rem' }}>
-          {['month', 'list'].map(v => (
-            <button key={v} onClick={() => setView(v)} aria-pressed={view === v} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', background: view === v ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === v ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{v}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="calendar-layout" style={{ display: 'grid', gridTemplateColumns: selectedDate ? 'minmax(0, 1fr) minmax(220px, 280px)' : 'minmax(0, 1fr)', gap: '1rem' }}>
-        {/* Month grid */}
-        {view === 'month' && (
-          <div>
-            {/* Days of week header */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '2px' }}>
-              {DAYS_OF_WEEK.map(d => (
-                <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-3)', padding: '4px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d}</div>
-              ))}
-            </div>
-
-            {/* Calendar cells */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
-              {calDays.map((day, idx) => {
-                const dayEvents = eventsOnDay(day);
-                const isToday   = isSameDay(day, today);
-                const isThisMonth = day.getMonth() === month;
-                const isSelected  = selectedDate && isSameDay(day, selectedDate);
-                const hasBirthday = dayEvents.some(e => e.type === 'Birthday');
-
-                return (
-                  <button key={idx} type="button" onClick={() => setSelectedDate(isSameDay(day, selectedDate || new Date(0)) ? null : day)}
-                    aria-label={`${formatDate(day, user, { style: 'long', weekday: true })}${dayEvents.length ? `, ${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : ', no events'}`}
-                    aria-pressed={Boolean(isSelected)}
-                    style={{
-                      minHeight: '80px', borderRadius: '8px', padding: '4px', cursor: 'pointer',
-                      width: '100%', textAlign: 'left', font: 'inherit',
-                      background: isSelected ? 'rgba(99,102,241,0.15)' : isToday ? 'rgba(99,102,241,0.07)' : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${isSelected ? 'rgba(99,102,241,0.5)' : isToday ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.05)'}`,
-                      opacity: isThisMonth ? 1 : 0.35,
-                      transition: 'background 0.1s',
-                    }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                      <span style={{
-                        fontSize: '0.75rem', fontWeight: isToday ? 900 : 600,
-                        width: '22px', height: '22px', borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: isToday ? 'var(--accent)' : 'transparent',
-                        color: isToday ? '#000' : isThisMonth ? 'var(--text-1)' : 'var(--text-3)',
-                      }}>{day.getDate()}</span>
-                      {hasBirthday && <span style={{ fontSize: '0.65rem' }}>🎂</span>}
-                    </div>
-                    {dayEvents.slice(0, 3).map(e => (
-                      <div key={e.id + e.date} style={{
-                        fontSize: '0.58rem', fontWeight: 700, padding: '1px 4px', borderRadius: '3px', marginBottom: '1px',
-                        background: `${e.color || '#6366f1'}25`, color: e.color || '#6366f1',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        display: 'flex', alignItems: 'center', gap: '2px',
-                      }}>
-                        {e._recurring && <RefreshCw size={7} style={{ flexShrink: 0 }} />}
-                        {e.startTime && <span style={{ opacity: 0.8 }}>{e.startTime.slice(0, 5)}</span>}
-                        {e.title}
-                      </div>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <div style={{ fontSize: '0.55rem', color: 'var(--text-3)', paddingLeft: '4px' }}>+{dayEvents.length - 3} more</div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* List view */}
-        {view === 'list' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {upcomingEvents.length === 0 ? (
-              <EmptyState icon={RefreshCw} title="No upcoming events" description="Add events using the button above." />
-            ) : (
-              upcomingEvents.map((e) => {
-                const isEditingThis = editId === e.id;
-                return (
-                  <div key={e.id + e.date} style={{ display: 'flex', gap: '0.75rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${e.color || '#6366f1'}33`, borderLeft: `3px solid ${e.color || '#6366f1'}` }}>
-                    {isEditingThis ? (
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <label className="form-label">Event title<input value={editForm.title || ''} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} className="form-input" style={{ fontSize: '0.85rem' }} /></label>
-                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                          <label className="form-label">Event date<input type="date" value={editForm.date || ''} onChange={ev => setEditForm(f => ({ ...f, date: ev.target.value }))} className="form-input" /></label>
-                          <label className="form-label">Repeats<select value={editForm.recurrence || 'none'} onChange={ev => setEditForm(f => ({ ...f, recurrence: ev.target.value }))} className="form-input">
-                            {RECUR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select></label>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button onClick={saveEdit} className="btn-primary" style={{ padding: '3px 10px', fontSize: '0.72rem' }}><Check size={11} /> Save</button>
-                          <button onClick={() => setEditId(null)} style={{ padding: '3px 10px', fontSize: '0.72rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ width: '42px', textAlign: 'center', flexShrink: 0, borderRight: `1px solid ${e.color}44`, paddingRight: '0.6rem' }}>
-                          <p style={{ fontSize: '0.6rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{formatDate(e.date, user, { month: 'short', year: false })}</p>
-                          <p style={{ fontSize: '1.4rem', fontWeight: 900, color: e.color, lineHeight: 1 }}>{new Date(e.date + 'T00:00:00').getDate()}</p>
-                          <p style={{ fontSize: '0.55rem', color: 'var(--text-3)' }}>{formatDate(e.date, user, { style: 'long' }).split(' ').slice(0, 1).join(' ')}</p>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <p style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-1)' }}>{e.title}</p>
-                            {e._recurring && <span style={{ fontSize: '0.6rem', color: e.color, display: 'flex', alignItems: 'center', gap: '2px' }}><RefreshCw size={9} /> {e.recurrence}</span>}
-                          </div>
-                          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '3px' }}>
-                            {e.startTime && <span>⏰ {e.startTime}{e.endTime ? ` – ${e.endTime}` : ''}</span>}
-                            {e.location && <span>📍 {e.location}</span>}
-                            <span style={{ padding: '1px 7px', borderRadius: '99px', background: `${e.color}15`, color: e.color, fontWeight: 700 }}>{e.type}</span>
-                          </div>
-                          {e.description && <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '3px' }}>{e.description}</p>}
-                        </div>
-                        <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
-                          <button aria-label={`Edit ${e.title}`} onClick={() => { setEditId(e.id); setEditForm({ ...events.find(ev => ev.id === e.id) }); }} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={12} /></button>
-                          <button aria-label={`Delete ${e.title}`} onClick={() => doDelete(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '3px' }}><Trash2 size={12} /></button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        {/* Day detail sidebar */}
-        {selectedDate && view === 'month' && (
-          <div>
-            <div className="glass-card" style={{ position: 'sticky', top: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                <div>
-                  <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase' }}>{DAYS_OF_WEEK[selectedDate.getDay()]}</p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-1)', lineHeight: 1 }}>{selectedDate.getDate()}</p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}</p>
-                </div>
-                <button onClick={() => setSelectedDate(null)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', alignSelf: 'flex-start', padding: '3px' }}><X size={15} /></button>
-              </div>
-
-              {selectedDayEvents.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-3)' }}>
-                  <p style={{ fontSize: '0.78rem' }}>No events</p>
-                  <button onClick={() => { setForm(f => ({ ...f, date: localDateKey(selectedDate) })); setShowAdd(true); }} className="btn-primary" style={{ marginTop: '0.75rem', padding: '5px 12px', fontSize: '0.72rem' }}><Plus size={11} /> Add</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  {selectedDayEvents.map(e => (
-                    <div key={e.id + e.date} style={{ padding: '0.65rem 0.75rem', borderRadius: '8px', background: `${e.color || '#6366f1'}12`, borderLeft: `3px solid ${e.color || '#6366f1'}` }}>
-                      <p style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-1)' }}>{e.title}</p>
-                      {e.startTime && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>⏰ {e.startTime}{e.endTime ? ` – ${e.endTime}` : ''}</p>}
-                      {e.location && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>📍 {e.location}</p>}
-                      {e._recurring && <p style={{ fontSize: '0.58rem', color: e.color, display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px' }}><RefreshCw size={8} /> Recurring: {e.recurrence}</p>}
-                      <button onClick={() => doDelete(e.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.5)', cursor: 'pointer', padding: '2px', marginTop: '4px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '3px' }}><Trash2 size={10} /> Delete</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+        <aside className="gt-calendar-selected-day" aria-label="Selected day events"><h2>{dayHeading(selectedDay)}</h2>{eventList(selectedDay)}<Button disabled={busy} onClick={() => startNew(selectedDay)}>Add event on this day</Button></aside>
+      </div>}
+      {view === 'week' && <div className="gt-calendar-week" aria-label="Week schedule">{range.days.map(day => <section key={day} className="gt-calendar-day-section" aria-labelledby={`${id}-week-${day}`}><h2 id={`${id}-week-${day}`}><time dateTime={day}>{dayHeading(day)}</time></h2>{eventList(day)}<Button variant="secondary" disabled={busy} aria-label={`Add event on ${day}`} onClick={() => startNew(day)}>Add event</Button></section>)}</div>}
+      {view === 'agenda' && <section aria-label="Agenda schedule">
+        {!occurrences.length ? <PageState state="empty" title="No events in this date range" description="Add an event or choose another date range." /> : range.days.filter(day => occurrencesOnDay(occurrences, day).length).map(day => <section key={day} className="gt-calendar-day-section" aria-labelledby={`${id}-agenda-${day}`}><h2 id={`${id}-agenda-${day}`}><time dateTime={day}>{dayHeading(day)}</time></h2>{eventList(day)}</section>)}
+      </section>}
+      {view === 'connections' && <section aria-label="Calendar connections"><p>Provider setup is required. No calendar provider is connected by this screen. ICS import and export work with local files.</p><div className="gt-calendar-connections">
+        {['Google Calendar', 'Outlook Calendar', 'CalDAV'].map(title => <ConnectionCard key={title} title={title} status="unavailable" description="No verified calendar connection or sync adapter is configured." />)}
+      </div><Link to={featurePath('profile', 'integrations')}>Open integration settings</Link></section>}
+    </PageTemplate>
+    {editor && <Modal open title={editor.original ? 'Edit event' : 'New event'} onClose={closeEditor}><EventForm editor={editor} id={id} busy={busy} onChange={form => setEditor(previous => ({ ...previous, form, error: '' }))} onSubmit={submitEvent} onCancel={closeEditor} /></Modal>}
+    {transfer?.kind === 'select' && <Modal open title="Import calendar file" onClose={closeTransfer}><p>Select a file to validate and review. No events are added until you confirm.</p><FileUploader label="ICS file" accept=".ics" maxSizeBytes={MAX_ICS_BYTES} onFilesSelected={prepareImport} /></Modal>}
+    {transfer && transfer.kind !== 'select' && <Modal open title={confirmTitle} onClose={closeTransfer} actions={<>
+      <Button variant="secondary" data-dialog-autofocus disabled={busy} onClick={closeTransfer}>Cancel</Button><Button variant={transfer.kind === 'delete' ? 'danger' : 'primary'} loading={busy} loadingLabel={transfer.kind === 'export' ? 'Preparing download…' : 'Saving changes…'} onClick={confirmTransfer}>{transfer.kind === 'delete' ? 'Delete event' : transfer.kind === 'export' ? 'Download reviewed .ics' : 'Import reviewed events'}</Button>
+    </>}>
+      {transfer.kind === 'delete' && <p>Delete “{transfer.original.title}”{transfer.original.recurrence && transfer.original.recurrence !== 'none' ? ' and its complete recurring series' : ''}?</p>}
+      {transfer.kind === 'export' && <p>Download {transfer.count} event occurrence(s) from {transfer.start} to {transfer.end}. Recurring series are expanded into individual occurrences in this range. This exports the reviewed snapshot to a local file.</p>}
+      {transfer.kind === 'import' && <><p>Add up to {transfer.events.length} validated event(s) from {transfer.fileName}. Existing UID matches are skipped; existing events are never replaced. {transfer.duplicateCount} duplicate(s) excluded.</p>{transfer.warnings.map(warning => <p key={warning}>{warning}</p>)}<ul>{transfer.events.map(event => <li key={event.id}>{event.title} · {event.date} · {event.allDay ? 'All day' : `${event.startTime} ${event.timeZone}`}{event.recurrence !== 'none' ? ` · Repeats ${event.recurrence}` : ''}</li>)}</ul></>}
+      <FormError>{transfer.error}</FormError>
+    </Modal>}
+  </section>;
 }
 

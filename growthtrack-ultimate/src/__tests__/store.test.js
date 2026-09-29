@@ -77,11 +77,13 @@ describe('useStore API Integration', () => {
   });
 
   it('addShoppingItem sends POST request and updates store', async () => {
-    const responseBody2 = { id: 42 };
-    global.fetch.mockResolvedValueOnce({
+    global.fetch.mockImplementationOnce((_url, options) => {
+      const created = JSON.parse(options.body);
+      return Promise.resolve({
       ok: true,
-      text: () => Promise.resolve(JSON.stringify(responseBody2)),
-      json: () => Promise.resolve(responseBody2),
+      text: () => Promise.resolve(JSON.stringify(created)),
+      json: () => Promise.resolve(created),
+      });
     });
     const newItem = { name: 'Whey Protein', estimatedCost: 3500 };
     await useStore.getState().addShoppingItem(newItem);
@@ -92,7 +94,7 @@ describe('useStore API Integration', () => {
       expect.objectContaining({ method: 'POST' })
     );
     expect(state.shopping.items.length).toBe(1);
-    expect(state.shopping.items[0].id).toBe(42);
+    expect(state.shopping.items[0].id).toEqual(expect.any(String));
     expect(state.shopping.items[0].name).toBe('Whey Protein');
   });
 

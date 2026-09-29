@@ -1,91 +1,53 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
-import { GROUPS, MOBILE_QUICK_GROUPS, TAB_GROUP_MAP, ROUTE_ALIASES, navigationGroups, normalizeGroupOrder, normalizeTabOrder, tabMeta } from '../config/navigation';
-import useStore from '../store/useStore';
+import React, { useId, useState } from 'react';
+import { Link, NavLink } from 'react-router-dom';
+import { Ellipsis, X } from 'lucide-react';
+import { tabMeta } from '../config/navigation';
 import useDialogFocus from '../hooks/useDialogFocus';
+import SearchField from './ui/SearchField';
+import useNavigationFoundation, { useNavigationMode } from './ui/useNavigationFoundation';
+import useNavigationOverlay from './ui/useNavigationOverlay';
 
-const QUICK_GROUPS = MOBILE_QUICK_GROUPS.map(id => ({ id, ...GROUPS[id], firstTab: GROUPS[id].tabs[0] }));
-
-export default function FloatingPillDock({ activeTab, onTabChange }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+/** Four saved-order destinations plus searchable access to all six areas. */
+export default function FloatingPillDock({ activeTab }) {
+  const { areas, activeGroup, highlightedTab } = useNavigationFoundation(activeTab);
+  const mode = useNavigationMode();
+  const [menuOpen, setMenuOpen] = useNavigationOverlay(mode);
   const [query, setQuery] = useState('');
-  const configuredGroups = useStore(state => state.appConfig?.navigation?.groups);
-  const savedOrder = useStore(state => state.navigationOrder);
-  const tabOrder = useStore(state => state.navigationTabOrder);
-  const groups = useMemo(() => navigationGroups(configuredGroups), [configuredGroups]);
-  const order = useMemo(() => normalizeGroupOrder(savedOrder), [savedOrder]);
-  const highlightedTab = ROUTE_ALIASES[activeTab] || activeTab;
-  const mappedGroup = TAB_GROUP_MAP[highlightedTab] || 'system';
-  const activeGroup = MOBILE_QUICK_GROUPS.includes(mappedGroup) ? mappedGroup : 'system';
-  const dialogRef = useDialogFocus(menuOpen, () => setMenuOpen(false));
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const viewport = window.matchMedia('(min-width: 769px)');
-    const closeOnDesktop = event => { if (event.matches) setMenuOpen(false); };
-    viewport.addEventListener('change', closeOnDesktop);
-    return () => viewport.removeEventListener('change', closeOnDesktop);
-  }, [menuOpen]);
-
-  const navigate = tab => {
-    setMenuOpen(false);
-    onTabChange(tab);
-  };
-  const matches = order.map(id => ({ id, ...groups[id], tabs: normalizeTabOrder(tabOrder?.[id], groups[id].tabs).filter(tab => {
+  const id = useId();
+  const open = mode === 'mobile' && menuOpen;
+  const dialogRef = useDialogFocus(open, () => setMenuOpen(false));
+  if (mode !== 'mobile') return null;
+  const quickAreas = areas.slice(0, 4);
+  const term = query.trim().toLocaleLowerCase();
+  const matches = areas.map(area => ({ ...area, tabs: area.tabs.filter(tab => {
     const meta = tabMeta(tab);
-    return `${meta.label} ${meta.keywords.join(' ')} ${groups[id].label}`.toLowerCase().includes(query.trim().toLowerCase());
-  }) })).filter(group => group.tabs.length);
-
-  return (
-    <>
-      <div className="floating-pill-dock-container">
-        <nav className="floating-pill-dock" aria-label="Quick navigation" data-testid="bottom-nav">
-          {QUICK_GROUPS.map(group => {
-            const isMore = group.id === 'system';
-            const isActive = activeGroup === group.id;
-            const Icon = group.icon;
-            return (
-              <button key={group.id}
-                className={`pill-dock-item ${isActive ? 'active' : ''}`}
-                onClick={() => {
-                  if (isMore) { setQuery(''); setMenuOpen(true); }
-                  else navigate(group.firstTab);
-                }}
-                aria-label={group.label}
-                aria-current={isActive ? 'page' : undefined}
-                aria-haspopup={isMore ? 'dialog' : undefined}
-                aria-expanded={isMore ? menuOpen : undefined}
-                aria-controls={isMore ? 'mobile-module-menu' : undefined}
-              >
-                <Icon className="pill-dock-icon" size={22} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="pill-dock-label nav-label">{group.label}</span>
-              </button>
-            );
-          })}
+    return `${area.label} ${meta.label} ${meta.description || ''} ${(meta.keywords || []).join(' ')}`.toLocaleLowerCase().includes(term);
+  }) })).filter(area => area.tabs.length);
+  const resultCount = matches.reduce((total, area) => total + area.tabs.length, 0);
+  return <div className="gt-mobile-navigation" data-responsive-foundation>
+    <nav className="gt-mobile-dock" aria-label="Quick navigation" data-testid="bottom-nav">
+      {quickAreas.map(area => { const Icon = area.icon; return <Link key={area.id} to={area.path}
+        className={`gt-mobile-destination${activeGroup === area.id ? ' is-active' : ''}`} aria-label={area.label}
+        aria-current={activeGroup === area.id ? 'location' : null}>
+        <Icon size={21} aria-hidden="true" /><span>{area.label}</span>
+      </Link>; })}
+      <button type="button" className={!quickAreas.some(area => area.id === activeGroup) ? 'is-active' : ''}
+        onClick={() => { setQuery(''); setMenuOpen(true); }} aria-label="More" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? `${id}-menu` : undefined}>
+        <Ellipsis size={21} aria-hidden="true" /><span>More</span>
+      </button>
+    </nav>
+    {open && <div className="gt-mobile-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setMenuOpen(false); }}>
+      <section id={`${id}-menu`} className="gt-mobile-menu" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} tabIndex={-1}>
+        <header><div><h2 id={`${id}-title`}>All modules</h2><p>Your complete workspace</p></div><button type="button" aria-label="Close all modules" onClick={() => setMenuOpen(false)}><X size={20} aria-hidden="true" /></button></header>
+        <SearchField data-dialog-autofocus label="Find a module" value={query} onChange={setQuery} resultCount={resultCount} />
+        <nav aria-label="All modules">
+          {matches.map(area => <section key={area.id}><h3>{area.label}</h3><div className="gt-mobile-menu-items">
+            {area.tabs.map(tab => { const meta = tabMeta(tab); const Icon = meta.icon; return <NavLink key={tab} to={meta.canonicalPath} end
+              aria-current={highlightedTab === tab ? 'page' : null} onClick={() => setMenuOpen(false)}><Icon size={18} aria-hidden="true" /><span>{meta.label}</span></NavLink>; })}
+          </div></section>)}
+          {!matches.length && <p role="status">No modules match “{query}”. Try another name.</p>}
         </nav>
-      </div>
-      {menuOpen && (
-        <div className="mobile-module-backdrop" onClick={() => setMenuOpen(false)}>
-          <section id="mobile-module-menu" className="mobile-module-menu" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="mobile-module-title" tabIndex={-1} onClick={event => event.stopPropagation()}>
-            <div className="mobile-module-menu__header">
-              <div><h2 id="mobile-module-title">All modules</h2><p>Your complete workspace</p></div>
-              <button className="header-control" aria-label="Close all modules" onClick={() => setMenuOpen(false)}><X size={20} /></button>
-            </div>
-            <label className="mobile-module-menu__search"><Search size={18} /><input data-dialog-autofocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Find a module…" aria-label="Find a module" /></label>
-            <nav className="mobile-module-menu__groups" aria-label="All modules">
-              {matches.map(group => <section key={group.id}>
-                <h3>{group.label}</h3>
-                <div className="mobile-module-menu__items">{group.tabs.map(tab => {
-                  const meta = tabMeta(tab);
-                  const Icon = meta.icon;
-                  return <button key={tab} onClick={() => navigate(tab)} aria-current={highlightedTab === tab ? 'page' : undefined}><Icon size={18} /><span>{meta.label}</span></button>;
-                })}</div>
-              </section>)}
-              {!matches.length && <p className="mobile-module-menu__empty" role="status">No modules match “{query}”. Try another name.</p>}
-            </nav>
-          </section>
-        </div>
-      )}
-    </>
-  );
+      </section>
+    </div>}
+  </div>;
 }

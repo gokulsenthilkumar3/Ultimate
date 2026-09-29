@@ -46,7 +46,8 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    try { await authProvider.signOut(); } catch { setCsrfToken(null); }
+    try { await authProvider.signOut(); }
+    catch (error) { return { error }; }
     clearSession();
     return { error: null };
   };

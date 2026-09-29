@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Building2, ChevronDown, CreditCard, FileSpreadsheet, Info, Landmark, ShieldCheck, Smartphone, Upload } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, Building2, ChevronDown, CreditCard, Info, Landmark, ShieldCheck, Smartphone } from 'lucide-react';
+import CsvImport from './CsvImport';
+import type { MoneyFormatter } from '../../utils/financeModel';
 
 const PROVIDERS = [
   { name: 'BHIM and UPI apps', icon: Smartphone, availability: 'Statement import', note: 'UPI apps usually do not provide a complete portable CSV. Export the linked bank-account statement and import it here.', steps: ['Open the bank account linked to BHIM, Google Pay, PhonePe or Paytm.', 'Download the statement for the required date range as CSV or Excel.', 'Import it below and review duplicates before applying.'] },
@@ -11,11 +13,10 @@ const PROVIDERS = [
 ];
 
 interface SyncTabProps {
-  csvUploading?: boolean;
-  handleCsvImport?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  formatMoney: MoneyFormatter;
 }
 
-export default function SyncTab({ csvUploading, handleCsvImport }: SyncTabProps) {
+export default function SyncTab({ formatMoney }: SyncTabProps) {
   const [expanded, setExpanded] = useState<string>('HDFC Bank');
   return <div className="finance-sync-container">
     <header className="finance-sync-header">
@@ -26,8 +27,8 @@ export default function SyncTab({ csvUploading, handleCsvImport }: SyncTabProps)
     <div className="finance-sync-trust">
       <ShieldCheck size={20}/>
       <div>
-        <strong>Local review before import</strong>
-        <span>CSV rows should be previewed, mapped, and checked for duplicates before they change your ledger.</span>
+        <strong>Review before import</strong>
+        <span>Map columns and review the server-validated rows and duplicate matches before confirming changes to your ledger.</span>
       </div>
     </div>
     
@@ -56,17 +57,7 @@ export default function SyncTab({ csvUploading, handleCsvImport }: SyncTabProps)
       ))}
     </section>
     
-    <section className="finance-sync-import">
-      <FileSpreadsheet size={24}/>
-      <div>
-        <strong>Import a bank statement</strong>
-        <p>Accepted now: CSV up to 2 MB. Use an official export and remove passwords or unrelated personal notes before importing.</p>
-      </div>
-      <label className="btn-primary" aria-disabled={csvUploading}>
-        {csvUploading ? 'Processing…' : <><Upload size={16}/> Choose CSV</>}
-        <input type="file" aria-label="Upload CSV statement" accept=".csv,text/csv" onChange={handleCsvImport} disabled={csvUploading} style={{ display: 'none' }}/>
-      </label>
-    </section>
+    <CsvImport formatMoney={formatMoney} />
     
     <p className="finance-sync-warning">
       <AlertTriangle size={15}/> GrowthTrack does not request bank passwords, card PINs, OTPs, or unofficial scraping access. A direct connector will appear only after a verified adapter, consent screen, encrypted token storage, revocation, and real sync tests are configured.
