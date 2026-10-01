@@ -11,6 +11,7 @@
 @import './editorial-components.css' layer(components);
 @import './editorial-overviews.css' layer(components);
 @import './editorial-settings.css' layer(components);
+@import './entertainment.css' layer(components);
 @import './responsive-foundation.css';
 @import './editorial-shell.css' layer(shell);
 

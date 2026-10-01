@@ -198,7 +198,7 @@ function MediaCard({ item, onDelete, onProgress }) {
               {STATUSES.map(s => <option key={s} value={s} style={{ color: 'var(--text-1)', background: 'var(--bg-surface)', fontWeight: 500 }}>{s}</option>)}
             </select>
           </div>
-          <button className="btn-primary" onClick={save}>{saving ? 'Saving…' : 'Save progress'}</button>
+          <button className="gt-button gt-button--primary" onClick={save} style={{ width: '100%', justifyContent: 'center' }}>{saving ? 'Saving…' : 'Save progress'}</button>
           </fieldset>
         </div>
 
@@ -322,16 +322,19 @@ export default function Entertainment() {
     <div className="fade-in module-page">
       {error && <p role="alert">{error}</p>}
       {/* Header */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Entertainment</p>
-        <h2 className="text-display" style={{ fontSize: '2rem', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.4rem' }}>
-          <Film size={24} color="var(--accent)" /> Entertainment Tracker
-        </h2>
-        <p className="text-secondary">Track your Anime, Series, Movies and Documentaries.</p>
-      </div>
+      <header className="page-header-block gt-editorial-header">
+        <div className="gt-editorial-header__intro">
+          <p className="gt-editorial-header__eyebrow">Life / Entertainment</p>
+          <h1 className="gt-editorial-header__title">
+            <span className="gt-editorial-header__icon"><Film size={24} /></span>
+            Entertainment Tracker
+          </h1>
+          <p className="gt-editorial-header__subtitle">Track your Anime, Series, Movies and Documentaries.</p>
+        </div>
+      </header>
 
       {/* KPI row */}
-      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.85rem', marginBottom: '1.5rem' }}>
+      <div className="stats-grid" style={{ marginBottom: '1.75rem' }}>
         {[
           { label: 'Total', value: stats.total, icon: Film, color: 'var(--accent)' },
           { label: 'Watching', value: stats.watching, icon: Eye, color: 'var(--info)' },
@@ -339,24 +342,25 @@ export default function Entertainment() {
           { label: 'Backlog', value: stats.backlog, icon: Clock, color: 'var(--warning)' },
           { label: 'Avg Rating', value: stats.avgRating, icon: Star, color: '#e5a50a' },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="glass-card card-shine-wrap" style={{ padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div key={label} className="glass-card stat-card card-shine-wrap" style={{ '--stat-accent': color }}>
+            <div className="stat-card__header">
+              <Icon size={16} />
               <span className="label-caps">{label}</span>
-              <Icon size={15} color={color} />
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 900, color, fontFamily: 'var(--font-display)', lineHeight: 1, marginTop: '0.3rem' }}>{value}</div>
+            <p className="stat-card__value">{value}</p>
           </div>
         ))}
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {TABS.map(tab => (
-          <button key={tab} className={`btn-sm${activeTab === tab ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab)}>
-            {tab}
-          </button>
-        ))}
+      <div className="gt-tabs" data-responsive-foundation style={{ marginBottom: '1.5rem' }}>
+        <div role="tablist">
+          {TABS.map(tab => (
+            <button key={tab} role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)}>
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* LIBRARY TAB */}
@@ -393,7 +397,7 @@ export default function Entertainment() {
                       style={{ width: '100%', accentColor: '#e5a50a' }} />
                   </div>
                 </div>
-                <button disabled={busy} onClick={handleAdd} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                <button disabled={busy} onClick={handleAdd} className="gt-button gt-button--primary" style={{ width: '100%', justifyContent: 'center' }}>
                   <Plus size={16} /> Add to Library
                 </button>
               </div>
@@ -419,8 +423,8 @@ export default function Entertainment() {
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                     {['All', ...STATUSES].map(s => (
                       <button key={s} onClick={() => setFilterStatus(s)}
-                        className={`btn-sm${filterStatus === s ? ' active' : ''}`}
-                        style={{ fontSize: '0.65rem', padding: '3px 8px' }}>
+                        className={`gt-button gt-button--sm ${filterStatus === s ? 'gt-button--primary' : 'gt-button--secondary'}`}
+                        style={{ fontSize: '0.7rem' }}>
                         {s}
                       </button>
                     ))}
@@ -432,8 +436,8 @@ export default function Entertainment() {
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                     {['All', ...TYPES].map(t => (
                       <button key={t} onClick={() => setFilterType(t)}
-                        className={`btn-sm${filterType === t ? ' active' : ''}`}
-                        style={{ fontSize: '0.65rem', padding: '3px 8px', color: filterType === t ? TYPE_COLOR[t] : undefined, borderColor: filterType === t ? TYPE_COLOR[t] : undefined }}>
+                        className={`gt-button gt-button--sm ${filterType === t ? 'gt-button--primary' : 'gt-button--secondary'}`}
+                        style={{ fontSize: '0.7rem', color: filterType === t ? undefined : TYPE_COLOR[t] }}>
                         {t}
                       </button>
                     ))}
@@ -445,9 +449,9 @@ export default function Entertainment() {
                   <div style={{ display: 'flex', gap: '4px' }}>
                     {[['added', 'Added'], ['title', 'Title'], ['rating', 'Rating'], ['progress', 'Progress']].map(([field, label]) => (
                       <button key={field} onClick={() => cycleSort(field)}
-                        className={`btn-sm${sortBy === field ? ' active' : ''}`}
-                        style={{ fontSize: '0.65rem', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        {label} {sortBy === field && <SortIcon size={10} />}
+                        className={`gt-button gt-button--sm ${sortBy === field ? 'gt-button--primary' : 'gt-button--secondary'}`}
+                        style={{ fontSize: '0.7rem' }}>
+                        {label} {sortBy === field && <SortIcon size={12} />}
                       </button>
                     ))}
                   </div>
