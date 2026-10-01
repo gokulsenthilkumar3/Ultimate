@@ -324,7 +324,7 @@ body { color: var(--gt-text); }
   color: var(--gt-text);
 }
 .app-shell[data-ui-system="editorial"] .gt-navigation-rail {
-  inline-size: 5rem;
+  inline-size: 4.75rem;
   gap: .35rem;
   padding: max(.6rem, env(safe-area-inset-top)) .4rem max(.6rem, env(safe-area-inset-bottom));
   border-inline-end: 1px solid var(--gt-border);
@@ -353,9 +353,10 @@ body { color: var(--gt-text); }
   background: transparent;
 }
 .app-shell[data-ui-system="editorial"] .gt-navigation-rail :is(a, button) span {
-  font-size: .7rem;
+  font-size: .625rem;
   font-weight: 500;
   line-height: 1.2;
+  letter-spacing: -.02em;
 }
 .app-shell[data-ui-system="editorial"] .gt-navigation-rail :is(a, button):hover,
 .app-shell[data-ui-system="editorial"] .gt-navigation-rail .is-active {
@@ -376,9 +377,9 @@ body { color: var(--gt-text); }
 .app-shell[data-ui-system="editorial"] .gt-app-navigation[data-panel-mode="overlay"] .gt-navigation-panel {
   position: fixed;
   inset-block: 0;
-  inset-inline-start: 5rem;
+  inset-inline-start: 4.75rem;
   z-index: 4;
-  inline-size: min(18rem, calc(100vw - 5rem));
+  inline-size: min(18rem, calc(100vw - 4.75rem));
   box-shadow: var(--gt-shadow-floating);
 }
 .app-shell[data-ui-system="editorial"] .gt-navigation-panel > header {

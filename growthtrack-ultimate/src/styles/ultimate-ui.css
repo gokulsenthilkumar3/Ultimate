@@ -285,7 +285,7 @@ input[type='range']::-moz-range-thumb { width: 24px; height: 24px; }
 }
 .module-page h3.text-display { letter-spacing: -.035em; }
 .page-header-block__subtitle, .module-page > div:first-child .text-secondary { max-width: 680px; margin-top: 10px; color: var(--text-2) !important; font-size: .91rem; line-height: 1.65; }
-.label-caps, .eyebrow { color: var(--accent) !important; font-size: .62rem !important; font-weight: 820 !important; letter-spacing: .14em !important; }
+.label-caps, .eyebrow { color: var(--accent); font-size: .62rem; font-weight: 820; letter-spacing: .14em; }
 .card-title { color: var(--text-1); font-size: .79rem; font-weight: 760; letter-spacing: -.01em; }
 .text-secondary { color: var(--text-2) !important; }
 
@@ -303,22 +303,22 @@ input[type='range']::-moz-range-thumb { width: 24px; height: 24px; }
 
 /* ── Surfaces and hierarchy ────────────────────────────────────────────── */
 .glass-card, .app-hub-hero, .app-hub-panel, .platform-analytics-card {
-  background: var(--ui-panel) !important;
-  border: 1px solid var(--ui-line) !important;
-  border-radius: var(--ui-radius-card) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(130%) !important;
-  backdrop-filter: blur(20px) saturate(130%) !important;
-  box-shadow: var(--ui-shadow-sm) !important;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-card);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  backdrop-filter: blur(20px) saturate(130%);
+  box-shadow: var(--ui-shadow-sm);
 }
 .glass-card::before { display: none !important; }
 .glass-card:hover, .platform-analytics-card:hover {
-  transform: translateY(-2px) !important;
-  border-color: var(--ui-line-strong) !important;
-  background: var(--ui-panel-hover) !important;
-  box-shadow: var(--ui-shadow-lg) !important;
+  transform: translateY(-2px);
+  border-color: var(--ui-line-strong);
+  background: var(--ui-panel-hover);
+  box-shadow: var(--ui-shadow-lg);
 }
 .glass-card:has(input:focus, textarea:focus, select:focus) { border-color: color-mix(in srgb, var(--accent) 38%, var(--ui-line)) !important; }
-.stats-grid { gap: 14px !important; }
+.stats-grid { gap: 14px; }
 .stats-grid .glass-card { min-height: 132px; }
 .dual-grid { gap: 18px !important; }
 .item-list { display: grid; gap: 8px; }
@@ -332,11 +332,11 @@ input[type='range']::-moz-range-thumb { width: 24px; height: 24px; }
   cursor: pointer; transition: transform var(--motion-fast) var(--ease-emphasized), box-shadow var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
 }
 .btn-primary, .btn--primary {
-  color: #fff !important; border: 1px solid color-mix(in srgb, var(--accent) 74%, #fff 12%) !important;
-  background: linear-gradient(145deg, var(--accent-secondary), var(--accent)) !important;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 1px rgba(255,255,255,.22) !important;
+  color: #fff; border: 1px solid color-mix(in srgb, var(--accent) 74%, #fff 12%);
+  background: linear-gradient(145deg, var(--accent-secondary), var(--accent));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 1px rgba(255,255,255,.22);
 }
-.btn-primary:hover, .btn--primary:hover { transform: translateY(-2px); filter: saturate(1.08) brightness(1.06); box-shadow: 0 15px 32px color-mix(in srgb, var(--accent) 28%, transparent) !important; }
+.btn-primary:hover, .btn--primary:hover { transform: translateY(-2px); filter: saturate(1.08) brightness(1.06); box-shadow: 0 15px 32px color-mix(in srgb, var(--accent) 28%, transparent); }
 .btn-primary:active, .btn--primary:active { transform: translateY(0) scale(.98); }
 .btn-secondary, .btn-ghost, .btn--ghost, .btn-sm, .btn-icon {
   color: var(--text-2) !important; border: 1px solid var(--ui-line) !important; background: var(--ui-highlight) !important; box-shadow: none !important;
@@ -639,17 +639,17 @@ body { background: var(--ui-canvas) !important; color: var(--text-1) !important;
 .btn-primary,
 .btn--primary,
 button.btn-primary {
-  color: #101217 !important;
-  border: 1px solid color-mix(in srgb, var(--accent) 78%, #fff 12%) !important;
-  background: var(--accent) !important;
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 1px rgba(255,255,255,.24) !important;
+  color: var(--gt-on-action);
+  border: 1px solid var(--gt-action);
+  background: var(--gt-action);
+  box-shadow: none;
 }
 .btn-primary:hover,
 .btn--primary:hover,
 button.btn-primary:hover {
-  filter: brightness(1.06) !important;
-  box-shadow: 0 13px 30px color-mix(in srgb, var(--accent) 24%, transparent) !important;
-  transform: translateY(-2px) !important;
+  filter: none;
+  box-shadow: none;
+  transform: none;
 }
 .btn-secondary,
 .btn-ghost,

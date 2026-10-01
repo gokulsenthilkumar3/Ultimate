@@ -35,10 +35,10 @@ export default function OverviewTab({ transactions, budgets, subscriptions, mont
     { label: 'Invested / saved', value: formatMoney(summary.investments), icon: TrendingUp, color: 'var(--info)' },
   ];
   return <>
+    <div className="finance-controls finance-overview-actions"><button type="button" className="btn-primary" onClick={() => setShowEntry(true)}>Add a transaction</button><Link to={featurePath('transactions')}>Open Transactions</Link></div>
+    {showEntry && <TransactionEditor {...{ today, currencySymbol, formatMoney, onSave }} onSaved={() => setShowEntry(false)} onCancel={() => setShowEntry(false)} />}
     <div className="stats-grid finance-kpi-grid">{cards.map(card => <StatCard key={card.label} {...card} />)}</div>
     <p className="finance-note">{summary.savingsRate === null ? 'Savings rate needs recorded income.' : 'Savings rate: ' + summary.savingsRate.toFixed(1) + '% of income after expenses.'} Totals use recorded transactions for {month}.</p>
-    <div className="finance-controls"><button type="button" className="btn-primary" onClick={() => setShowEntry(true)}>Quick transaction entry</button><Link to={featurePath('transactions')}>Open Transactions</Link></div>
-    {showEntry && <TransactionEditor {...{ today, currencySymbol, formatMoney, onSave }} onSaved={() => setShowEntry(false)} onCancel={() => setShowEntry(false)} />}
     <div className="finance-card-grid">
       <section className="glass-card"><div className="finance-card-heading"><h2>Spending by method</h2></div>
         {methods.length ? methods.map((row, index) => <div key={row.name} className="finance-overview-spending-list"><div className="finance-overview-spending-item-header"><span>{row.name}</span><strong>{formatMoney(row.value)}</strong></div><div className="finance-overview-spending-bar-container"><div className="finance-overview-spending-bar" style={{ width: (summary.expenses > 0 ? row.value / summary.expenses * 100 : 0) + '%', background: CHART_COLORS[index % CHART_COLORS.length] }} /></div></div>) : <EmptyState icon="DollarSign" title="No spending recorded" description="Add an expense to see spending by payment method." />}

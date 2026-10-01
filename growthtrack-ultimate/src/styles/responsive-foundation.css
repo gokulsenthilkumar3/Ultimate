@@ -146,15 +146,22 @@
    The new shell owns all visual styling in editorial-shell.css. */
 @layer gt-responsive-foundation {
   :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]) {
+    /* Rail only: compact or no panel */
     --gt-shell-offset: 76px;
   }
+  /* Desktop with panel open: rail (76px) + panel (256px) = 332px */
   :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-mode="desktop"]:not([data-collapsed="true"])) {
     --gt-shell-offset: 332px;
   }
+  /* Legacy pinned panel (wider threshold) */
   :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-panel-mode="pinned"] .gt-navigation-panel) {
     --gt-shell-offset: 332px;
   }
-  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-mode="compact"]),
+  /* Compact mode: rail only */
+  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-mode="compact"]) {
+    --gt-shell-offset: 76px;
+  }
+  /* Collapsed desktop: rail only */
   :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-collapsed="true"]) {
     --gt-shell-offset: 76px;
   }
@@ -171,7 +178,9 @@
     margin-inline: 0 !important;
     width: 100% !important;
     padding: 0 !important;
-    padding-top: var(--gt-shell-header, 68px) !important;
+    /* Header clearance: sticky header is 44px min; default to that for V3 shells.
+       editorial-shell.css overrides to --gt-shell-header on the editorial system. */
+    padding-top: 44px !important;
     padding-inline-start: var(--gt-shell-offset) !important;
     padding-inline-end: 0 !important;
     min-inline-size: 0;

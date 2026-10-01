@@ -45,9 +45,9 @@ export default function SyncTab({ formatMoney }: SyncTabProps) {
           {expanded === provider.name && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
               <div>
-                <p style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-2)', marginBottom: '0.25rem' }}>{provider.note}</p>
+                <p style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--gt-muted)', marginBottom: '0.25rem' }}>{provider.note}</p>
                 <ol>
-                  {provider.steps.map(step => <li key={step} style={{ fontSize: '0.78rem', color: 'var(--text-3)', margin: '2px 0' }}>{step}</li>)}
+                  {provider.steps.map(step => <li key={step} style={{ fontSize: '0.78rem', color: 'var(--gt-subtle)', margin: '2px 0' }}>{step}</li>)}
                 </ol>
               </div>
               <p className="finance-sync-warning"><AlertTriangle size={15}/> Direct authorization is unavailable for this provider. Use the provider’s official export, then review it locally before importing.</p>

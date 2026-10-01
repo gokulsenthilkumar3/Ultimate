@@ -73,7 +73,7 @@ input[type='date'].form-input,
 input[type='time'].form-input,
 input[type='datetime-local'].form-input {
   cursor: pointer;
-  color-scheme: dark;
+  color-scheme: inherit;
 }
 
 input[type='date']::-webkit-calendar-picker-indicator,

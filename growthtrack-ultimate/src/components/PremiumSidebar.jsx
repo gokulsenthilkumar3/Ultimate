@@ -11,7 +11,13 @@ import useNavigationOverlay from './ui/useNavigationOverlay';
 export default function PremiumSidebar({ activeTab, user, onOpenSettings, onLogout }) {
   const { areas, activeGroup, highlightedTab, group } = useNavigationFoundation(activeTab);
   const mode = useNavigationMode();
-  const pinnedMode = mode === 'desktop';
+  // The module panel is persistent on all desktop viewports (≥ 1024px);
+  // on compact/tablet it appears as a transient drawer.
+  const pinnedMode = useSyncExternalStore(
+    callback => { window.addEventListener('resize', callback); return () => window.removeEventListener('resize', callback); },
+    () => mode === 'desktop',
+    () => true,
+  );
   const collapsed = Boolean(useStore(state => state.sidebarCollapsed));
   const setCollapsed = useStore(state => state.setSidebarCollapsed);
   const [drawerOpen, setDrawerOpen] = useNavigationOverlay(pinnedMode ? 'pinned' : mode);

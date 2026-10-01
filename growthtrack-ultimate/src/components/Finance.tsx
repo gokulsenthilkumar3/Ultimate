@@ -20,8 +20,22 @@ import './finance/finance.css';
 const AnalyticsTab = lazy(() => import('./finance/AnalyticsTab'));
 const TrendsTab = lazy(() => import('./finance/TrendsTab'));
 
+const FINANCE_COPY: Record<string, string> = {
+  Overview: 'A clear view of recorded cash flow, budgets, and upcoming commitments.',
+  Transactions: 'Find, review, and correct the entries behind every total.',
+  Analytics: 'Understand where recorded money came from and where it went.',
+  Trends: 'Compare complete periods and see how spending changes over time.',
+  Budgeting: 'Set category limits and follow what remains this month.',
+  Subscriptions: 'Keep renewal dates and recurring costs in view.',
+  Sync: 'Review imports and connection availability before changing records.',
+};
+
+function monthLabel(value: string) {
+  return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(`${value}-01T12:00:00`));
+}
+
 export interface FinanceProps { initialTab?: string }
-/** Shell owns module links and the page heading. Finance renders only its active module. */
+/** Shell owns module links. Finance owns one clear heading for its active page. */
 export default function Finance({ initialTab }: FinanceProps) {
   const location = useLocation();
   const [params, setParams] = useSearchParams();
@@ -87,9 +101,13 @@ export default function Finance({ initialTab }: FinanceProps) {
   if (loadError) return <div className="finance-workspace"><div role="alert" className="finance-error"><p>Finance records could not be loaded. {financeError(loadError)}</p><button type="button" className="btn-primary" onClick={() => void fetchInitialData?.().catch(error => toast.error(financeError(error)))}>Retry loading records</button></div></div>;
 
   return <div className="module-page finance-container finance-workspace" data-finance-module={activeTab}>
+    <header className="finance-page-header">
+      <p className="finance-page-kicker">Finance</p>
+      <p className="finance-page-subtitle">{FINANCE_COPY[activeTab]}</p>
+    </header>
     {invalidRecords > 0 && <p role="alert" className="finance-error">{invalidRecords} finance records have invalid fields and are excluded from calculations. Review the source records before relying on totals.</p>}
     {periodModule && <div className="finance-controls">
-      <label className="finance-field">Month<select className="form-input" value={month} onChange={event => query('month', event.target.value)}>{knownMonths.map(value => <option key={value}>{value}</option>)}</select></label>
+      <label className="finance-field">Period<select className="form-input" value={month} onChange={event => query('month', event.target.value)}>{knownMonths.map(value => <option key={value} value={value}>{monthLabel(value)}</option>)}</select></label>
       {activeTab === 'Analytics' && <>
         <label className="finance-field">Analysis category<select className="form-input" value={category} onChange={event => query('category', event.target.value)}><option value="">All categories</option>{[...new Set(transactions.map(row => row.category))].sort().map(value => <option key={value}>{value}</option>)}</select></label>
         <label className="finance-field">Analysis payment method<select className="form-input" value={method} onChange={event => query('method', event.target.value)}><option value="">All methods</option>{[...new Set(transactions.map(row => row.method).filter((value): value is string => Boolean(value)))].sort().map(value => <option key={value}>{value}</option>)}</select></label>

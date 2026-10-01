@@ -53,7 +53,7 @@
 .gt-settings-modal__error { color: var(--gt-danger); }
 
 .gt-editorial-settings__layout { display: grid; grid-template-columns: minmax(220px, 260px) minmax(0, 1fr); align-items: start; gap: clamp(var(--gt-space-4), 3vw, var(--gt-space-7)); }
-.gt-editorial-settings__nav { display: grid; gap: var(--gt-space-1); position: sticky; top: var(--gt-space-5); min-width: 0; }
+.gt-editorial-settings__nav { display: grid; gap: var(--gt-space-1); position: sticky; top: calc(var(--gt-shell-header, 4rem) + var(--gt-space-4)); min-width: 0; }
 .gt-editorial-settings__nav-item {
   display: flex;
   align-items: center;

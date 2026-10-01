@@ -6,6 +6,7 @@ import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
 import useHashTab, { handleTabKeyDown } from '../hooks/useHashTab';
+import Tabs from './ui/Tabs';
 import { readDraft, saveDraft, removeDraft } from '../lib/drafts';
 import { timerSeconds } from '../lib/timer';
 import { financeToday } from '../utils/financeModel';

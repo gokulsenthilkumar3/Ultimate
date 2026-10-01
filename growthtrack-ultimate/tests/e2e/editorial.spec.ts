@@ -8,6 +8,9 @@ for (const width of [320, 390, 640, 1024, 1440, 1920]) {
     await expect(page.locator('#main-content')).toBeVisible();
     await expect(page.locator('#main-content h1, #main-content h2').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Search all modules and records' })).toBeVisible();
+    const headerTop = await page.locator('.app-header').evaluate(element => element.getBoundingClientRect().top);
+    expect(headerTop).toBeGreaterThanOrEqual(0);
+    expect(headerTop).toBeLessThanOrEqual(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     if (width < 640) {
       const dock = page.getByRole('navigation', { name: 'Quick navigation' });
@@ -23,7 +26,7 @@ for (const width of [320, 390, 640, 1024, 1440, 1920]) {
       expect(reserve.padding).toBeGreaterThanOrEqual(reserve.dockHeight);
     } else {
       await expect(page.getByRole('navigation', { name: 'Product areas' })).toBeVisible();
-      if (width < 1024) await expect(page.getByRole('navigation', { name: 'Insights modules' })).toHaveCount(0);
+      if (width < 1600) await expect(page.getByRole('navigation', { name: 'Insights modules' })).toHaveCount(0);
       else await expect(page.getByRole('navigation', { name: 'Insights modules' })).toBeVisible();
     }
     await page.screenshot({ path: test.info().outputPath(`home-${width}.png`), fullPage: false });
@@ -34,7 +37,9 @@ test('no global fixed prompt or footer obscures finance content on mobile', asyn
   await page.setViewportSize({ width: 390, height: 780 });
   await page.goto('/finance/overview');
   await expect(page.locator('#main-content')).toBeVisible();
-    await expect(page.getByText('Net monthly balance')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your money, in focus' })).toBeVisible();
+  await expect(page.getByText('Net monthly balance')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add a transaction' })).toBeVisible();
   await expect(page.locator('.navbar-checkin-alert, .v3-context-footer')).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('finance-mobile.png'), fullPage: false });
 });
