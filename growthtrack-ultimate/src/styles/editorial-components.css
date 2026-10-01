@@ -300,6 +300,7 @@
 .gt-data-table th button:hover { color: var(--gt-action); }
 .gt-data-table th button:focus-visible,
 .gt-data-table input[type='checkbox']:focus-visible { outline: 3px solid var(--gt-focus); outline-offset: 2px; }
+.gt-data-table tbody tr { transition: background var(--gt-motion-fast) var(--gt-motion-ease); }
 .gt-data-table tbody tr:hover { background: color-mix(in srgb, var(--gt-action) 5%, var(--gt-surface)); }
 .gt-data-table tr[data-selected='true'] { background: color-mix(in srgb, var(--gt-action) 10%, var(--gt-surface)); }
 .gt-data-table input[type='checkbox'] { inline-size: 18px; block-size: 18px; accent-color: var(--gt-action); }
@@ -312,22 +313,33 @@
   padding-inline: var(--gt-space-4);
   font: 650 .875rem/1.3 var(--gt-font);
   box-shadow: var(--gt-shadow-control);
-  transition: transform var(--gt-motion-fast) var(--gt-motion-ease), background var(--gt-motion-fast) var(--gt-motion-ease), border-color var(--gt-motion-fast) var(--gt-motion-ease);
+  letter-spacing: -.01em;
+  transition: transform var(--gt-motion-fast) var(--gt-motion-ease),
+              background var(--gt-motion-fast) var(--gt-motion-ease),
+              box-shadow var(--gt-motion-fast) var(--gt-motion-ease),
+              border-color var(--gt-motion-fast) var(--gt-motion-ease);
 }
 .gt-button--sm { min-block-size: var(--gt-target-minimum); padding-inline: var(--gt-space-3); }
 .gt-button--lg { min-block-size: var(--gt-target-large); padding-inline: var(--gt-space-5); }
-.gt-button--primary { background: var(--gt-action); border-color: var(--gt-action); color: var(--gt-on-action); }
+.gt-button--primary {
+  background: linear-gradient(160deg, var(--gt-action) 0%, color-mix(in srgb, var(--gt-action) 80%, #000) 100%);
+  border-color: var(--gt-action);
+  color: var(--gt-on-action);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--gt-action) 40%, transparent),
+              0 4px 12px color-mix(in srgb, var(--gt-action) 28%, transparent),
+              var(--gt-shadow-control);
+}
 .gt-button--secondary { background: var(--gt-surface); border-color: var(--gt-border); color: var(--gt-text); }
 .gt-button--ghost,
 .gt-button--tertiary { background: transparent; border-color: transparent; color: var(--gt-text); box-shadow: none; }
 .gt-button--danger,
 .gt-button--destructive { background: var(--gt-danger); border-color: var(--gt-danger); color: var(--gt-on-action); }
 .gt-button--icon { inline-size: var(--gt-target-icon); block-size: var(--gt-target-icon); padding: 0; }
-.gt-button:hover:not(:disabled) { transform: translateY(-1px); filter: none; }
+.gt-button:hover:not(:disabled) { transform: translateY(-1px); filter: none; box-shadow: 0 2px 6px color-mix(in srgb, var(--gt-action) 30%, transparent), 0 6px 24px color-mix(in srgb, var(--gt-action) 18%, transparent); }
 .gt-button--secondary:hover:not(:disabled),
 .gt-button--ghost:hover:not(:disabled),
-.gt-button--tertiary:hover:not(:disabled) { background: color-mix(in srgb, var(--gt-action) 8%, var(--gt-surface)); }
-.gt-button:active:not(:disabled) { transform: translateY(0); }
+.gt-button--tertiary:hover:not(:disabled) { background: color-mix(in srgb, var(--gt-action) 8%, var(--gt-surface)); box-shadow: var(--gt-shadow-control); }
+.gt-button:active:not(:disabled) { transform: translateY(0); box-shadow: var(--gt-shadow-control); }
 .gt-button:disabled { opacity: .58; box-shadow: none; }
 .gt-button:focus-visible { outline: 3px solid var(--gt-focus); outline-offset: 3px; }
 .gt-button__spinner { animation: gt-editorial-spin .9s linear infinite; }
