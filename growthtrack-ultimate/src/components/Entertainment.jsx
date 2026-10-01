@@ -334,7 +334,7 @@ export default function Entertainment() {
       </header>
 
       {/* KPI row */}
-      <div className="stats-grid" style={{ marginBottom: '1.75rem' }}>
+      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.85rem', marginBottom: '1.75rem' }}>
         {[
           { label: 'Total', value: stats.total, icon: Film, color: 'var(--accent)' },
           { label: 'Watching', value: stats.watching, icon: Eye, color: 'var(--info)' },
