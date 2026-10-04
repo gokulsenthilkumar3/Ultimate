@@ -22,6 +22,7 @@ const COLORS = {
   family:   '\x1b[33m', // yellow
   equity:   '\x1b[35m', // magenta
   forex:    '\x1b[35m', // magenta
+  studio:   '\x1b[33m', // yellow
   reset:    '\x1b[0m',
   dim:      '\x1b[2m',
   bold:     '\x1b[1m',
@@ -81,12 +82,21 @@ const COMMANDS = {
   },
   forex: {
     cwd: path.join(root, 'Forex'),
-    // Requires Python venv. We try .venv; on failure we degrade gracefully.
-    command: process.platform === 'win32' ? '.venv\\Scripts\\python.exe' : '.venv/bin/python',
-    args: ['-m', 'streamlit', 'run', 'app/dashboard.py', '--server.port', '8501'],
+    command: process.platform === 'win32' ? path.join(root, 'Forex', '.venv', 'Scripts', 'python.exe') : path.join(root, 'Forex', '.venv', 'bin', 'python'),
+    args: ['-m', 'streamlit', 'run', 'app/dashboard.py', '--server.port', '8501', '--server.headless', 'true'],
     env: {},
     uiUrl: 'http://localhost:8501',
-    manual: 'Requires Python venv — run manually: cd Forex && .venv/Scripts/python -m streamlit run app/dashboard.py',
+    ports: [8501],
+    healthUrls: ['http://127.0.0.1:8501'],
+  },
+  studio: {
+    cwd: path.join(root, 'growthtrack-ultimate'),
+    command: 'node',
+    args: ['scripts/db-studio.mjs'],
+    env: { DB_STUDIO_PORT: '5556' },
+    uiUrl: 'http://localhost:5556',
+    ports: [5556],
+    healthUrls: ['http://127.0.0.1:5556/api/tables'],
   },
 };
 
@@ -117,7 +127,7 @@ async function serviceHealthy(url) {
 
 // ── Parse targets ─────────────────────────────────────────────────────────────
 const names = process.argv.slice(2).map(n => n.toLowerCase());
-const selected = names.length ? names : ['gateway', 'ultimate'];
+const selected = names.length ? names : ['gateway', 'ultimate', 'studio'];
 
 const unknown = selected.filter(n => !COMMANDS[n]);
 if (unknown.length) {

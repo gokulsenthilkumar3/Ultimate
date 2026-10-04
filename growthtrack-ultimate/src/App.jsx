@@ -61,6 +61,12 @@ const MODULE_COMPONENTS = {
   current: lazy(() => import('./components/Current')),
   notes: lazy(() => import('./components/Notes')),
   apps: lazy(() => import('./components/AppLauncher')),
+  finsync: lazy(() => import('./components/UnifiedWorkspace')),
+  oxfin: lazy(() => import('./components/UnifiedWorkspace')),
+  equity: lazy(() => import('./components/UnifiedWorkspace')),
+  forex: lazy(() => import('./components/UnifiedWorkspace')),
+  family: lazy(() => import('./components/UnifiedWorkspace')),
+  companion: lazy(() => import('./components/UnifiedWorkspace')),
   about: lazy(() => import('./components/About')),
   sip: lazy(() => import('./components/SIPCalculator')),
   habits: lazy(() => import('./components/HabitsMatrix')),
@@ -71,6 +77,7 @@ const MODULE_COMPONENTS = {
 };
 const Finance = lazy(() => import('./components/Finance'));
 const InsightsHub = lazy(() => import('./components/InsightsHub'));
+const UnifiedWorkspace = lazy(() => import('./components/UnifiedWorkspace'));
 const OnboardingWizard = lazy(() => import('./components/OnboardingWizard'));
 const SettingsModal = lazy(() => import('./components/SettingsModal'));
 const DailyCheckIn = lazy(() => import('./components/DailyCheckIn'));
@@ -84,6 +91,9 @@ const FINANCE_VIEWS = { finance: 'Overview', transactions: 'Transactions', finan
 function ModulePage({ feature, user, theme, setActiveTab, notificationState, onOpenCheckIn, onDismissCheckIn, checkInAvailable }) {
   if (FINANCE_VIEWS[feature.id]) return <Finance initialTab={FINANCE_VIEWS[feature.id]} />;
   if (['analytics', 'dashboards', 'forecast', 'progress'].includes(feature.id)) return <InsightsHub initialTab={feature.id} logs={useStore.getState().metric_logs} />;
+  if (['finsync', 'oxfin', 'equity', 'forex', 'family', 'companion'].includes(feature.id)) {
+    return <UnifiedWorkspace defaultApp={feature.id === 'companion' ? 'matrix' : feature.id} onNavigate={setActiveTab} />;
+  }
   if (feature.id === 'healthSync') return <PageState state="setup" title="Pair a health companion" description="Health imports require an authorized iOS or Android companion. No simulated readings are written. Device pairing is not configured in this deployment." />;
   const Component = MODULE_COMPONENTS[feature.id];
   return Component ? <Component user={user} setUser={useStore.getState().setUser} theme={theme} setTheme={useStore.getState().setTheme} setActiveTab={setActiveTab} onNavigate={setActiveTab} notificationState={notificationState} onOpenCheckIn={onOpenCheckIn} onDismissCheckIn={onDismissCheckIn} checkInAvailable={checkInAvailable} /> : <NotFound />;

@@ -67,31 +67,55 @@ export default function Notes() {
   const [search,    setSearch]    = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [viewMode,  setViewMode]  = useState('preview');
+  const [saveStatus, setSaveStatus] = useState('saved');
+  const [creating, setCreating] = useState(false);
   const autoSaveTimer = useRef(null);
+  const saveAttempt = useRef(0);
+  const savedDraft = useRef(null);
   const textRef = useRef(null);
 
-  const activeNote = useMemo(() => notes.find(n => n.id === activeId), [notes, activeId]);
+  // Mind journal entries share the legacy Note table, but never belong in the
+  // Workspace knowledge list or its search and tag facets.
+  const workspaceNotes = useMemo(() => notes.filter(n => n.source !== 'mind-journal'), [notes]);
+  const activeNote = useMemo(() => workspaceNotes.find(n => n.id === activeId), [workspaceNotes, activeId]);
 
   // Auto-save on content change
   useEffect(() => {
     if (!editMode || !activeId) return;
+    const draftKey = JSON.stringify(draft);
+    if (savedDraft.current?.id === activeId && savedDraft.current.key === draftKey) return;
+    const attempt = ++saveAttempt.current;
+    setSaveStatus('unsaved');
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
       if (typeof updateNote === 'function') {
-        updateNote(activeId, { ...draft, updatedAt: new Date().toISOString() });
+        setSaveStatus('saving');
+        Promise.resolve(updateNote(activeId, { ...draft, title: draft.title.trim() || 'Untitled Note' }))
+          .then(() => {
+            if (saveAttempt.current === attempt) {
+              savedDraft.current = { id: activeId, key: draftKey };
+              setSaveStatus('saved');
+            }
+          })
+          .catch(() => {
+            if (saveAttempt.current === attempt) {
+              setSaveStatus('failed');
+              toast.error('Note could not be saved. Your edits are still in the editor.');
+            }
+          });
       }
     }, 1200);
     return () => clearTimeout(autoSaveTimer.current);
-  }, [activeId, draft, editMode, updateNote]);
+  }, [activeId, draft, editMode, updateNote, toast]);
 
   const allTags = useMemo(() => {
     const tags = new Set();
-    notes.forEach(n => (n.tags || []).forEach(t => tags.add(t)));
+    workspaceNotes.forEach(n => (n.tags || []).forEach(t => tags.add(t)));
     return [...tags];
-  }, [notes]);
+  }, [workspaceNotes]);
 
   const filtered = useMemo(() => {
-    let list = [...notes];
+    let list = [...workspaceNotes];
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(n =>
@@ -108,11 +132,13 @@ export default function Notes() {
       if (!a.starred && b.starred) return 1;
       return (b.updatedAt || '').localeCompare(a.updatedAt || '');
     });
-  }, [notes, search, tagFilter]);
+  }, [workspaceNotes, search, tagFilter]);
 
-  const newNote = () => {
+  const newNote = async () => {
+    if (creating) return;
+    setCreating(true);
     const note = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       title: 'Untitled Note',
       content: '',
       tags: [],
@@ -122,53 +148,86 @@ export default function Notes() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    if (typeof addNote === 'function') addNote(note);
-    else if (typeof updateNote === 'function') updateNote(note.id, note);
-    setActiveId(note.id);
-    setDraft({ title: note.title, content: '', tags: [], color: COLORS[0] });
-    setEditMode(true);
-    setTimeout(() => textRef.current?.focus(), 100);
+    try {
+      if (typeof addNote !== 'function') throw new Error('Notes are unavailable.');
+      const saved = await addNote(note);
+      const initialDraft = { title: saved.title || note.title, content: saved.content || '', tags: saved.tags || [], color: saved.color || COLORS[0] };
+      saveAttempt.current++;
+      setActiveId(saved.id);
+      savedDraft.current = { id: saved.id, key: JSON.stringify(initialDraft) };
+      setDraft(initialDraft);
+      setSaveStatus('saved');
+      setEditMode(true);
+      setTimeout(() => textRef.current?.focus(), 100);
+    } catch {
+      toast.error('Note could not be created. Try again.');
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const openNote = (note) => {
+  const openNote = async (note) => {
+    if (editMode && activeId && activeId !== note.id && saveStatus !== 'saved') {
+      if (!await saveNote()) return;
+    }
+    const initialDraft = { title: note.title || '', content: note.content || '', tags: note.tags || [], color: note.color || COLORS[0] };
+    saveAttempt.current++;
     setActiveId(note.id);
-    setDraft({ title: note.title || '', content: note.content || '', tags: note.tags || [], color: note.color || COLORS[0] });
+    savedDraft.current = { id: note.id, key: JSON.stringify(initialDraft) };
+    setDraft(initialDraft);
     setEditMode(false);
+    setSaveStatus('saved');
   };
 
-  const saveNote = () => {
-    if (!activeId) return;
+  const saveNote = async () => {
+    if (!activeId) return false;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    const attempt = ++saveAttempt.current;
     const title = draft.title.trim() || 'Untitled Note';
     const updatedDraft = { ...draft, title };
-    if (typeof updateNote === 'function') {
-      updateNote(activeId, { ...updatedDraft, updatedAt: new Date().toISOString() });
+    setSaveStatus('saving');
+    try {
+      if (typeof updateNote !== 'function') throw new Error('Notes are unavailable.');
+      await updateNote(activeId, updatedDraft);
+      if (saveAttempt.current !== attempt) return false;
+      savedDraft.current = { id: activeId, key: JSON.stringify(updatedDraft) };
+      setDraft(updatedDraft);
+      setSaveStatus('saved');
+      setEditMode(false);
+      toast.success('Note saved successfully');
+      return true;
+    } catch {
+      if (saveAttempt.current !== attempt) return false;
+      setSaveStatus('failed');
+      toast.error('Note could not be saved. Your edits are still in the editor.');
+      return false;
     }
-    setDraft(updatedDraft);
-    setEditMode(false);
-    toast.success('Note saved successfully');
   };
 
-  const handleDelete = (id) => {
-    const n = notes.find(x => x.id === id);
-    if (typeof deleteNote === 'function') deleteNote(id);
-    if (activeId === id) { setActiveId(null); setEditMode(false); }
-    toast.info('Note deleted', 5000, { action: { label: 'Undo', onClick: () => { if (n && typeof addNote === 'function') addNote(n); } } });
+  const handleDelete = async (id) => {
+    const n = workspaceNotes.find(x => x.id === id);
+    try {
+      if (typeof deleteNote !== 'function') throw new Error('Notes are unavailable.');
+      await deleteNote(id);
+      if (activeId === id) { saveAttempt.current++; setActiveId(null); setEditMode(false); }
+      toast.info('Note deleted', 5000, { action: { label: 'Undo', onClick: () => { if (n && typeof addNote === 'function') addNote(n).catch(() => toast.error('Note could not be restored.')); } } });
+    } catch { toast.error('Note could not be deleted. Try again.'); }
   };
 
   const toggleStar = (id) => {
-    const n = notes.find(x => x.id === id);
-    if (n && typeof updateNote === 'function') updateNote(id, { starred: !n.starred, updatedAt: new Date().toISOString() });
+    const n = workspaceNotes.find(x => x.id === id);
+    if (n && typeof updateNote === 'function') updateNote(id, { starred: !n.starred }).catch(() => toast.error('Star could not be changed.'));
   };
 
   const togglePin = (id) => {
-    const n = notes.find(x => x.id === id);
-    if (n && typeof updateNote === 'function') updateNote(id, { pinned: !n.pinned, updatedAt: new Date().toISOString() });
+    const n = workspaceNotes.find(x => x.id === id);
+    if (n && typeof updateNote === 'function') updateNote(id, { pinned: !n.pinned }).catch(() => toast.error('Pin could not be changed.'));
   };
 
   const copyNote = (note) => {
     navigator.clipboard.writeText(`# ${note.title}\n\n${note.content}`).then(() => {
       toast.success('Copied to clipboard');
-    });
+    }).catch(() => toast.error('Note could not be copied.'));
   };
 
   const addTag = () => {
@@ -205,7 +264,7 @@ export default function Notes() {
             <p className="label-caps" style={{ color: 'var(--accent)', fontSize: '0.58rem' }}>Notes</p>
             <h1 className="notes-sidebar-title">My Notes</h1>
           </div>
-          <button onClick={newNote} className="btn-primary" style={{ padding: '5px 10px', fontSize: '0.72rem' }}><Plus size={12} /> New</button>
+          <button onClick={newNote} disabled={creating} className="btn-primary" style={{ padding: '5px 10px', fontSize: '0.72rem' }}><Plus size={12} /> {creating ? 'Creating…' : 'New'}</button>
         </div>
 
         {/* Search */}
@@ -240,7 +299,7 @@ export default function Notes() {
         {filtered.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 0', color: 'var(--text-3)', textAlign: 'center', gap: '0.5rem' }}>
             <FileText size={28} style={{ opacity: 0.25 }} />
-            <p style={{ fontSize: '0.78rem' }}>{notes.length === 0 ? 'Create your first note' : 'No notes match'}</p>
+            <p style={{ fontSize: '0.78rem' }}>{workspaceNotes.length === 0 ? 'Create your first note' : 'No notes match'}</p>
           </div>
         ) : (
           <div className="notes-list-scroll">
@@ -276,7 +335,7 @@ export default function Notes() {
           <>
             <FileText size={40} className="notes-empty-icon" />
             <p style={{ fontSize: '0.88rem', fontWeight: 700 }}>Select a note or create a new one</p>
-            <button onClick={newNote} className="btn-primary"><Plus size={14} /> New Note</button>
+            <button onClick={newNote} disabled={creating} className="btn-primary"><Plus size={14} /> {creating ? 'Creating…' : 'New Note'}</button>
           </>
         ) : (
           <>
@@ -304,7 +363,7 @@ export default function Notes() {
                 {viewMode === 'edit' && (
                   <div className="notes-autosave-indicator">
                     <span className="notes-autosave-dot" />
-                    <span>{wordCount}w · Auto-saved</span>
+                    <span role="status" aria-live="polite">{wordCount}w · {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'failed' ? 'Save failed' : saveStatus === 'unsaved' ? 'Unsaved changes' : 'Saved'}</span>
                   </div>
                 )}
                 <button onClick={() => { if (editMode) saveNote(); else setEditMode(true); }}
@@ -385,15 +444,7 @@ export default function Notes() {
                 <span className="notes-footer-picker-title">Color Theme</span>
                 <div className="notes-color-dots">
                   {COLORS.map(c => (
-                    <button key={c} onClick={() => {
-                      setDraft(d => {
-                        const next = { ...d, color: c };
-                        if (typeof updateNote === 'function' && activeId) {
-                          updateNote(activeId, { ...next, updatedAt: new Date().toISOString() });
-                        }
-                        return next;
-                      });
-                    }}
+                    <button key={c} onClick={() => setDraft(d => ({ ...d, color: c }))}
                       className={`notes-color-dot ${draft.color === c ? 'active' : ''}`}
                       aria-label={`Use ${c} note color`}
                       aria-pressed={draft.color === c}

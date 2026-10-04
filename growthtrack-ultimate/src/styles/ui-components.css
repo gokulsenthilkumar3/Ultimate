@@ -996,7 +996,9 @@ button.btn {
   animation: uiModalIn 240ms var(--ease-emphasized, ease) both;
   max-height: calc(100svh - 2rem);
   overflow-y: auto;
-  scrollbar-width: thin;
+}
+@supports (scrollbar-width: thin) {
+  .modal { scrollbar-width: thin; }
 }
 
 @keyframes uiModalIn {
@@ -1035,7 +1037,10 @@ button.btn {
    §14  TABS
    ─────────────────────────────────────────────────────────────────────────── */
 
-.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); overflow-x: auto; }
+@supports (scrollbar-width: none) {
+  .tabs { scrollbar-width: none; }
+}
 .tabs::-webkit-scrollbar { display: none; }
 
 .tab-item {

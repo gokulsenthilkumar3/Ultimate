@@ -21,7 +21,8 @@ test('returns aggregate health without failing when products are offline', () =>
   const response = await fetch(`${base}/health`);
   const payload = await response.json();
   assert.equal(payload.status, 'online');
-  assert.equal(payload.services.length, 7);
+  assert.equal(payload.services.length, 8);
+  assert.ok(payload.services.some(service => service.id === 'studio'));
   assert.equal(payload.products.length, 5);
 }));
 

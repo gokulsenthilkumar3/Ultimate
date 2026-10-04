@@ -3,952 +3,936 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GrowthTrack Ultimate API Explorer</title>
+  <title>GrowthTrack Ultimate — API Explorer & Interactive Docs</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-darker: #09090b;
-      --bg-dark: #0f0f13;
-      --bg-card: rgba(20, 20, 25, 0.7);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --text-main: #f4f4f5;
-      --text-muted: #a1a1aa;
+      --bg: #07070a;
+      --sidebar: #0d0d12;
+      --card: #14141e;
+      --card-hover: #1b1b28;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(139, 92, 246, 0.5);
+      --text: #f4f4f7;
+      --muted: #a1a1aa;
       --primary: #8b5cf6;
-      --primary-hover: #7c3aed;
-      --primary-glow: rgba(139, 92, 246, 0.35);
-      --success: #10b981;
+      --primary-light: #c084fc;
+      --primary-dim: rgba(139, 92, 246, 0.14);
+      --emerald: #10b981;
+      --emerald-dim: rgba(16, 185, 129, 0.14);
+      --amber: #f59e0b;
       --danger: #ef4444;
-      --warning: #f59e0b;
-      --info: #06b6d4;
+      --cyan: #06b6d4;
+      --font-sans: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
     }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    /* Scrollbars styling */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: var(--bg-darker);
-      color: var(--text-main);
-      font-family: 'Outfit', sans-serif;
-      min-height: 100vh;
+      background: radial-gradient(circle at 60% 0%, #17112c 0%, var(--bg) 65%);
+      color: var(--text);
+      font-family: var(--font-sans);
+      height: 100vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
-
     header {
-      background-color: var(--bg-dark);
-      border-bottom: 1px solid var(--border-color);
-      padding: 1rem 2rem;
+      background: rgba(13, 13, 18, 0.85);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      height: 64px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      height: 70px;
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
-      z-index: 10;
+      justify-content: space-between;
+      padding: 0 2rem;
+      flex-shrink: 0;
+      z-index: 20;
     }
-
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.85rem;
     }
-
-    .brand-logo {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, var(--primary), var(--info));
-      border-radius: 8px;
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      border-radius: 9px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      color: white;
-      box-shadow: 0 0 15px var(--primary-glow);
+      font-size: 1.15rem;
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
     }
-
     .brand-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      letter-spacing: -0.025em;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #fff, #c084fc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-
-    .brand-badge {
-      background-color: rgba(139, 92, 246, 0.15);
-      border: 1px solid rgba(139, 92, 246, 0.3);
-      color: #c084fc;
-      font-size: 0.75rem;
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
       padding: 0.15rem 0.5rem;
       border-radius: 9999px;
+      background: var(--primary-dim);
+      color: var(--primary-light);
+      border: 1px solid rgba(139, 92, 246, 0.25);
+    }
+    .header-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .header-btn {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem;
       font-weight: 500;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      transition: all 0.15s;
     }
-
-    .auth-section {
+    .header-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .header-btn-accent {
+      color: #c084fc;
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+    .auth-bar {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.75rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.3rem 0.75rem;
     }
-
-    .token-status {
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--text-muted);
+    .auth-label {
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
     }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
+    .btn-token-action {
+      padding: 0.15rem 0.5rem;
+      font-size: 0.75rem;
+    }
+    .btn-hidden {
+      display: none;
+    }
+    .token-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background-color: var(--danger);
+      background: var(--danger);
     }
-
-    .status-dot.active {
-      background-color: var(--success);
-      box-shadow: 0 0 8px var(--success);
+    .token-dot.active {
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
     }
-
-    .main-container {
+    .layout {
       display: flex;
       flex: 1;
       overflow: hidden;
-      height: calc(100vh - 70px);
     }
-
-    /* Sidebar Styles */
+    /* Sidebar */
     .sidebar {
       width: 320px;
-      background-color: var(--bg-dark);
-      border-right: 1px solid var(--border-color);
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      height: 100%;
+      flex-shrink: 0;
     }
-
-    .search-box {
+    .sidebar-search {
       padding: 1rem;
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
     }
-
     .search-input {
       width: 100%;
-      padding: 0.75rem 1rem;
-      background-color: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-color);
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      color: white;
-      font-family: inherit;
-      font-size: 0.9rem;
+      padding: 0.5rem 0.85rem;
+      color: var(--text);
+      font-size: 0.85rem;
       outline: none;
       transition: all 0.2s;
     }
-
     .search-input:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
-      background-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.25);
     }
-
+    .method-filters {
+      display: flex;
+      gap: 0.3rem;
+    }
+    .filter-btn {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+    }
     .endpoint-list {
       flex: 1;
       overflow-y: auto;
-      padding: 1rem 0.5rem;
+      padding: 0.75rem 0.5rem;
     }
-
     .category-group {
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
-
     .category-title {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      padding: 0.5rem 0.75rem;
+      font-size: 0.72rem;
       font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.25rem 0.6rem;
+      margin-bottom: 0.25rem;
+      display: flex;
+      justify-content: space-between;
     }
-
     .endpoint-item {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      padding: 0.5rem 0.65rem;
+      border-radius: 7px;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.6rem 0.75rem;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 0.85rem;
-      color: var(--text-muted);
+      gap: 0.6rem;
+      margin-bottom: 0.2rem;
+      transition: all 0.15s;
       border: 1px solid transparent;
-      margin-bottom: 0.25rem;
     }
-
     .endpoint-item:hover {
-      background-color: rgba(255, 255, 255, 0.03);
-      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
     }
-
     .endpoint-item.active {
-      background-color: rgba(139, 92, 246, 0.08);
-      border-color: rgba(139, 92, 246, 0.25);
-      color: white;
+      background: var(--primary-dim);
+      border-color: rgba(139, 92, 246, 0.3);
     }
-
-    .method-badge {
-      font-size: 0.7rem;
+    .method-pill {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
       font-weight: 700;
-      padding: 0.2rem 0.4rem;
+      padding: 0.15rem 0.4rem;
       border-radius: 4px;
-      width: 55px;
+      min-width: 44px;
       text-align: center;
-      text-transform: uppercase;
     }
-
-    .method-get { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .method-post { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-    .method-put { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .method-delete { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-
-    .route-text {
-      font-family: 'JetBrains Mono', monospace;
-      white-space: nowrap;
+    .method-get    { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .method-post   { background: rgba(139, 92, 246, 0.18); color: #c084fc; }
+    .method-put    { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .method-delete { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .endpoint-route {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #e2e8f0;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
     }
-
-    /* Content Area */
-    .content-area {
+    /* Main Area */
+    .main-area {
       flex: 1;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      height: 100%;
-      background-color: var(--bg-darker);
+      grid-template-columns: 1.15fr 1fr;
+      overflow: hidden;
     }
-
-    @media (max-width: 1024px) {
-      .content-area {
-        grid-template-columns: 1fr;
-        overflow-y: auto;
-      }
-    }
-
     .panel {
-      padding: 1.5rem;
       display: flex;
       flex-direction: column;
-      height: 100%;
       overflow: hidden;
-      border-right: 1px solid var(--border-color);
+      border-right: 1px solid var(--border);
     }
-
     .panel-header {
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(20, 20, 28, 0.4);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.25rem;
-      flex-shrink: 0;
     }
-
     .panel-title {
       font-size: 1.1rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      font-weight: 700;
     }
-
     .panel-body {
       flex: 1;
       overflow-y: auto;
+      padding: 1.5rem 1.75rem;
       display: flex;
       flex-direction: column;
       gap: 1.25rem;
-      padding-right: 0.25rem;
     }
-
-    /* Card/Sections */
-    .glass-card {
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1.25rem;
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
+    /* Request Detail */
+    .route-bar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
     }
-
-    .form-group {
-      margin-bottom: 1rem;
+    .full-route-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.92rem;
+      outline: none;
     }
-
-    .form-group:last-child {
-      margin-bottom: 0;
+    .endpoint-desc-text {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.45;
     }
-
-    .form-label {
-      display: block;
+    .param-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .param-label {
       font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 0.4rem;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--primary-light);
     }
-
-    .form-row {
+    .param-row {
       display: flex;
       gap: 0.75rem;
-    }
-
-    .input-field {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      background-color: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: white;
-      font-family: inherit;
-      font-size: 0.9rem;
-      outline: none;
-      transition: all 0.2s;
-    }
-
-    .input-field:focus {
-      border-color: var(--primary);
-      background-color: rgba(255, 255, 255, 0.04);
-    }
-
-    .btn {
-      padding: 0.75rem 1.25rem;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      font-family: inherit;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
+      margin-top: 0.5rem;
     }
-
-    .btn-primary {
-      background-color: var(--primary);
-      color: white;
-      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
-    }
-
-    .btn-primary:hover {
-      background-color: var(--primary-hover);
-      box-shadow: 0 4px 20px var(--primary-glow);
-    }
-
-    .btn-secondary {
-      background-color: rgba(255, 255, 255, 0.05);
-      border-color: var(--border-color);
-      color: var(--text-main);
-    }
-
-    .btn-secondary:hover {
-      background-color: rgba(255, 255, 255, 0.08);
-    }
-
-    .btn-sm {
-      padding: 0.4rem 0.8rem;
-      font-size: 0.8rem;
-      border-radius: 6px;
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    /* Interactive API Details */
-    .api-url-bar {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background-color: rgba(0, 0, 0, 0.25);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 0.5rem 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-    }
-
-    .json-editor-container {
-      position: relative;
-      flex: 1;
+    .json-editor-box {
       display: flex;
       flex-direction: column;
-      min-height: 250px;
-    }
-
-    .json-textarea {
-      flex: 1;
-      width: 100%;
-      background-color: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: #c084fc;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      padding: 1rem;
-      outline: none;
-      resize: none;
-      line-height: 1.5;
-    }
-
-    .json-textarea:focus {
-      border-color: var(--primary);
-    }
-
-    /* Response View */
-    .response-meta {
-      display: flex;
-      gap: 1rem;
-      font-size: 0.85rem;
-    }
-
-    .meta-tag {
-      background-color: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-color);
-      padding: 0.35rem 0.75rem;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .response-status-success {
-      color: var(--success);
-      border-color: rgba(16, 185, 129, 0.2);
-      background-color: rgba(16, 185, 129, 0.05);
-    }
-
-    .response-status-error {
-      color: var(--danger);
-      border-color: rgba(239, 68, 68, 0.2);
-      background-color: rgba(239, 68, 68, 0.05);
-    }
-
-    .json-viewer {
-      flex: 1;
-      background-color: #050507;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 1rem;
-      overflow: auto;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: #38bdf8;
-    }
-
-    /* Tabs */
-    .tabs {
-      display: flex;
       gap: 0.5rem;
-      border-bottom: 1px solid var(--border-color);
-      margin-bottom: 1rem;
-    }
-
-    .tab {
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      color: var(--text-muted);
-      border-bottom: 2px solid transparent;
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
-
-    .tab:hover {
-      color: var(--text-main);
-    }
-
-    .tab.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    /* Helper Utility Classes */
-    .flex-1 {
       flex: 1;
+      min-height: 200px;
     }
-    .mt-3 {
-      margin-top: 0.75rem;
+    .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--muted);
     }
-    .mt-4 {
-      margin-top: 1rem;
-    }
-    .justify-end {
-      justify-content: flex-end;
-    }
-    .text-muted-color {
-      color: var(--text-muted);
-    }
-    .text-white-bold {
-      color: white;
-      font-weight: 500;
-    }
-    .mb-2 {
-      margin-bottom: 0.5rem;
-    }
-    .btn-xs {
+    .btn-editor-tool {
       padding: 0.2rem 0.5rem;
       font-size: 0.75rem;
     }
-    .flex-shrink-0 {
-      flex-shrink: 0;
+    .json-textarea {
+      width: 100%;
+      flex: 1;
+      min-height: 200px;
+      background: #09090f;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      outline: none;
+      resize: vertical;
     }
-    .flex-row-end {
+    .json-textarea:focus {
+      border-color: var(--primary);
+    }
+    .btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.45rem 0.9rem;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .btn-send {
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      padding: 0.65rem 1.5rem;
+      font-size: 0.9rem;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+    }
+    .btn-send:hover {
+      box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+      transform: translateY(-1px);
+    }
+    /* Response Panel */
+    .response-meta {
       display: flex;
-      justify-content: flex-end;
+      align-items: center;
+      gap: 0.65rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }
+    .status-code-badge {
+      padding: 0.2rem 0.6rem;
+      border-radius: 5px;
+      font-weight: 700;
+    }
+    .status-2xx { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-4xx { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .status-5xx { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .response-viewer {
+      flex: 1;
+      background: #09090f;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.84rem;
+      color: #cbd5e1;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    /* Tab controls in builder */
+    .builder-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .builder-tab {
+      border: 0;
+      background: transparent;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.3rem 0.6rem;
+      border-radius: 5px;
+      transition: all 0.15s;
+    }
+    .builder-tab.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .curl-pre {
+      background: #09090f;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+    }
+    .auth-helper-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .auth-helper-heading {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+    :where(button, a, input, textarea, .endpoint-item, .builder-tab):focus-visible {
+      outline: 2px solid var(--primary-light);
+      outline-offset: 2px;
+    }
+    @media (max-width: 900px) {
+      body { height: auto; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
+      header { height: auto; min-height: 64px; padding: 0.85rem 1rem; gap: 0.75rem; flex-wrap: wrap; position: static; }
+      .brand, .header-links { min-width: 0; flex-wrap: wrap; }
+      .header-links { width: 100%; gap: 0.5rem; }
+      .layout { display: block; overflow: visible; min-width: 0; }
+      .sidebar { width: 100%; max-height: 280px; border-right: 0; border-bottom: 1px solid var(--border); }
+      .endpoint-list { min-height: 100px; }
+      .main-area { display: block; overflow: visible; min-width: 0; }
+      .panel { min-height: 380px; overflow: visible; border-right: 0; border-bottom: 1px solid var(--border); }
+      .panel-header { padding: 0.9rem 1rem; gap: 0.75rem; flex-wrap: wrap; }
+      .panel-body { padding: 1rem; overflow: visible; min-width: 0; }
+      .route-bar, .editor-toolbar, .response-meta { min-width: 0; flex-wrap: wrap; }
+      .full-route-input { min-width: 0; }
+      .builder-tabs, .method-filters { overflow-x: auto; }
+      .json-textarea, .response-viewer, .curl-pre { max-width: 100%; overflow-wrap: anywhere; }
+    }
+    @media (max-width: 520px) {
+      .brand-title { font-size: 1rem; }
+      .badge { display: none; }
+      .header-btn { min-height: 40px; display: inline-flex; align-items: center; }
+      .auth-bar { width: 100%; flex-wrap: wrap; }
+      .sidebar-search { padding: 0.75rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
   </style>
 </head>
 <body>
   <header>
     <div class="brand">
-      <div class="brand-logo">G</div>
-      <div class="brand-title">GrowthTrack Ultimate</div>
-      <span class="brand-badge">API Explorer</span>
+      <div class="brand-icon">⚡</div>
+      <div class="brand-title">GrowthTrack API Explorer</div>
+      <span class="badge">v2.0 • REST</span>
     </div>
-    <div class="auth-section">
-      <div class="token-status">
-        <span class="status-dot" id="token-status-dot"></span>
-        <span id="token-status-text">Unauthenticated</span>
+    <div class="header-links">
+      <div class="auth-bar">
+        <span class="token-dot" id="auth-dot"></span>
+        <span id="auth-label" class="auth-label">Unauthenticated</span>
+        <button class="btn btn-token-action" onclick="promptCustomToken()">Set JWT</button>
+        <button class="btn btn-token-action btn-hidden" id="btn-clear-token" onclick="clearToken()">Clear</button>
       </div>
-      <button class="btn btn-secondary btn-sm" id="clear-token-btn" disabled>Clear JWT</button>
+      <a href="http://127.0.0.1:5000/Ultimate/" target="_blank" rel="noopener noreferrer" class="header-btn header-btn-accent">🚀 Open Ultimate (:5000)</a>
+      <a href="http://localhost:5556/" target="_blank" rel="noopener noreferrer" class="header-btn">🗄️ DB Studio (:5556)</a>
+      <a href="http://localhost:3000/health" target="_blank" rel="noopener noreferrer" class="header-btn">🌐 Gateway (:3000)</a>
     </div>
   </header>
 
-  <div class="main-container">
+  <div class="layout">
     <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="search-box">
-        <input type="text" class="search-input" id="search-endpoints" placeholder="Filter endpoints...">
+    <aside class="sidebar">
+      <div class="sidebar-search">
+        <label for="search-input" class="sr-only">Search endpoints</label>
+        <input type="text" id="search-input" class="search-input" placeholder="Search 25+ endpoints (Press /)" oninput="filterEndpoints()">
+        <div class="method-filters">
+          <button class="filter-btn active" onclick="setMethodFilter('ALL')">ALL</button>
+          <button class="filter-btn" onclick="setMethodFilter('GET')">GET</button>
+          <button class="filter-btn" onclick="setMethodFilter('POST')">POST</button>
+          <button class="filter-btn" onclick="setMethodFilter('PUT')">PUT</button>
+          <button class="filter-btn" onclick="setMethodFilter('DELETE')">DEL</button>
+        </div>
       </div>
-      <div class="endpoint-list" id="endpoints-container">
-        <!-- Generated Dynamically -->
-      </div>
-    </div>
+      <div class="endpoint-list" id="endpoint-list"></div>
+    </aside>
 
-    <!-- Content Area -->
-    <div class="content-area">
-      <!-- Request Panel -->
-      <div class="panel">
+    <!-- Main Workspace -->
+    <main class="main-area">
+      <!-- Left Panel: Request Builder -->
+      <section class="panel">
         <div class="panel-header">
-          <div class="panel-title">Request Builder</div>
+          <span class="panel-title">Request Builder</span>
+          <button class="btn btn-send" onclick="sendRequest()">▶ Send (Ctrl+Enter)</button>
         </div>
 
         <div class="panel-body">
-          <!-- Auth Helper Quick Card -->
-          <div class="glass-card">
-            <div class="tabs">
-              <div class="tab active" id="tab-auth-login" onclick="switchAuthTab('login')">Login / Signup</div>
-              <div class="tab" id="tab-auth-token" onclick="switchAuthTab('token')">Custom Bearer Token</div>
-            </div>
+          <div class="route-bar">
+            <span id="active-method" class="method-pill method-get">GET</span>
+            <input type="text" id="active-route" class="full-route-input" readonly placeholder="Selected Route" title="Selected API Route" aria-label="Selected API Route">
+            <button class="btn" onclick="copyRoute()" title="Copy route">📋</button>
+          </div>
 
-            <div id="auth-form-tab">
-              <div class="form-row">
-                <div class="form-group flex-1">
-                  <label class="form-label" for="auth-email">Email</label>
-                  <input type="email" class="input-field" id="auth-email" value="admin@growthtrack.ultimate" placeholder="Email address">
-                </div>
-                <div class="form-group flex-1">
-                  <label class="form-label" for="auth-password">Password</label>
-                  <input type="password" class="input-field" id="auth-password" value="password123" placeholder="Password">
-                </div>
-              </div>
-              <div class="form-group hidden mt-3" id="signup-fullname-group">
-                <label class="form-label" for="auth-fullname">Full Name (for Signup)</label>
-                <input type="text" class="input-field" id="auth-fullname" placeholder="John Doe">
-              </div>
-              <div class="form-row mt-4 justify-end">
-                <button class="btn btn-secondary btn-sm" onclick="toggleSignupFields()" id="toggle-signup-btn">Toggle Signup Mode</button>
-                <button class="btn btn-primary btn-sm" onclick="executeAuthAction()" id="auth-submit-btn">Login</button>
-              </div>
-            </div>
+          <div id="endpoint-desc" class="endpoint-desc-text"></div>
 
-            <div id="auth-token-tab" class="hidden">
-              <div class="form-group">
-                <label class="form-label" for="bearer-token-input">Authorization Token (Bearer)</label>
-                <input type="text" class="input-field" id="bearer-token-input" placeholder="Paste custom token here..." oninput="setCustomToken(this.value)">
-              </div>
+          <div id="id-param-box" class="param-box btn-hidden">
+            <label for="param-id" class="param-label">Path Parameter (:id)</label>
+            <div class="param-row">
+              <input type="text" id="param-id" class="search-input" placeholder="Enter ID (e.g. 1 or uuid)" title="Path Parameter ID">
             </div>
           </div>
 
-          <!-- URL / Method Bar -->
-          <div class="glass-card">
-            <div class="form-group">
-              <label class="form-label">Target Endpoint</label>
-              <div class="api-url-bar">
-                <span id="req-method" class="method-badge method-get">GET</span>
-                <span class="text-muted-color">http://localhost:3001</span>
-                <span id="req-route" class="text-white-bold">/api/health</span>
+          <div class="builder-tabs">
+            <button type="button" class="builder-tab active" id="tab-btn-body" onclick="switchBuilderTab('body')">Payload (JSON)</button>
+            <button type="button" class="builder-tab" id="tab-btn-curl" onclick="switchBuilderTab('curl')">cURL Snippet</button>
+            <button type="button" class="builder-tab" id="tab-btn-auth" onclick="switchBuilderTab('auth')">Quick Auth Helper</button>
+          </div>
+
+          <!-- Tab: Payload -->
+          <div id="builder-body-panel" class="json-editor-box">
+            <div class="editor-toolbar">
+              <span>Request Body</span>
+              <div>
+                <button class="btn btn-editor-tool" onclick="beautifyBody()">Beautify</button>
+                <button class="btn btn-editor-tool" onclick="resetDefaultBody()">Reset Payload</button>
               </div>
             </div>
-
-            <div class="form-group" id="url-params-group">
-              <!-- Dynamically populated for ID-based routes -->
-            </div>
+            <label for="body-input" style="display:none">JSON Body</label>
+            <textarea id="body-input" class="json-textarea" placeholder="{}" title="Request Body JSON"></textarea>
           </div>
 
-          <!-- Body JSON -->
-          <div class="glass-card json-editor-container" id="body-section">
-            <div class="panel-header mb-2">
-              <span class="form-label" for="request-body">Request Body (JSON)</span>
-              <button class="btn btn-secondary btn-sm btn-xs" onclick="formatRequestJson()">Beautify</button>
+          <!-- Tab: cURL -->
+          <div id="builder-curl-panel" class="json-editor-box btn-hidden">
+            <div class="editor-toolbar">
+              <span>Executable cURL command</span>
+              <button class="btn btn-editor-tool" onclick="copyCurl()">Copy cURL</button>
             </div>
-            <textarea class="json-textarea" id="request-body" placeholder="{}"></textarea>
+            <pre id="curl-output" class="curl-pre"></pre>
           </div>
 
-          <div class="flex-shrink-0 flex-row-end">
-            <button class="btn btn-primary" id="send-request-btn" onclick="sendRequest()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-              Send Request
-            </button>
+          <!-- Tab: Quick Auth -->
+          <div id="builder-auth-panel" class="json-editor-box btn-hidden">
+            <div class="param-box">
+              <h4 class="auth-helper-heading">1-Click Local Login</h4>
+              <div class="auth-helper-form">
+                <input type="email" id="login-email" class="search-input" autocomplete="username" placeholder="Owner email" title="Login Email">
+                <input type="password" id="login-pwd" class="search-input" autocomplete="current-password" placeholder="Password" title="Login Password">
+                <button class="btn btn-primary" onclick="quickLogin()" style="justify-content:center">Login & Set Bearer Token</button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Response Panel -->
-      <div class="panel">
+      <!-- Right Panel: Live Response -->
+      <section class="panel">
         <div class="panel-header">
-          <div class="panel-title">Response</div>
-          <div class="response-meta hidden" id="response-meta-container">
-            <div class="meta-tag" id="resp-status">Status: --</div>
-            <div class="meta-tag" id="resp-time">Time: -- ms</div>
+          <span class="panel-title">Response</span>
+          <div class="response-meta btn-hidden" id="response-meta">
+            <span id="resp-status" class="status-code-badge status-2xx">200 OK</span>
+            <span id="resp-time" style="color:var(--muted)">⚡ 0 ms</span>
+            <button class="btn btn-editor-tool" onclick="copyResponse()">Copy JSON</button>
           </div>
         </div>
 
         <div class="panel-body">
-          <pre class="json-viewer" id="response-body-viewer">Click "Send Request" to trigger API calls...</pre>
+          <div id="response-viewer" class="response-viewer">Select an endpoint on the left and click "Send Request" to test live.</div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   </div>
 
   <script>
-    // List of endpoints in the system
     const endpoints = [
-      { category: 'Authentication', name: 'Health Check', method: 'GET', route: '/api/health', desc: 'Verify API Server connectivity' },
-      { category: 'Authentication', name: 'User Log In', method: 'POST', route: '/api/auth/login', desc: 'Authenticate and receive a JWT token', defaultBody: { email: 'admin@growthtrack.ultimate', password: 'password123' } },
-      { category: 'Authentication', name: 'User Sign Up', method: 'POST', route: '/api/auth/signup', desc: 'Create a new user profile', defaultBody: { email: 'user@example.com', password: 'password123', fullName: 'John Doe' } },
-      { category: 'Authentication', name: 'Current User Profile', method: 'GET', route: '/api/auth/me', desc: 'Retrieve authenticated user session metadata', requiresAuth: true },
+      // System & Diagnostics
+      { category: '⚡ System & Health', name: 'API Health Check', method: 'GET', route: '/api/health', desc: 'Verify API engine status, SQLite latency & memory telemetry' },
+      { category: '⚡ System & Health', name: 'Capabilities & Modules', method: 'GET', route: '/api/capabilities', desc: 'Inspect available features, identity providers and Stripe readiness', requiresAuth: true },
+      { category: '⚡ System & Health', name: 'Gateway Health Matrix', method: 'GET', route: '/api/gateway/health', desc: 'Poll status across all connected ecosystem micro-services' },
+      { category: '⚡ System & Health', name: 'Database Tables Summary', method: 'GET', route: '/api/database/tables', desc: 'Returns row counts and schema overview for all user models', requiresAuth: true },
 
-      { category: 'Collections', name: 'Get Tasks', method: 'GET', route: '/tasks', desc: 'Fetch all tasks for the logged in user', requiresAuth: true },
-      { category: 'Collections', name: 'Create Task', method: 'POST', route: '/tasks', desc: 'Create a new task', requiresAuth: true, defaultBody: { title: 'Review GrowthTrack Roadmap', priority: 'medium', done: false } },
-      { category: 'Collections', name: 'Update Task', method: 'PUT', route: '/tasks/:id', desc: 'Modify an existing task', requiresAuth: true, hasId: true, defaultBody: { title: 'Updated Task Name', priority: 'high', done: true } },
-      { category: 'Collections', name: 'Delete Task', method: 'DELETE', route: '/tasks/:id', desc: 'Remove a task by ID', requiresAuth: true, hasId: true },
+      // Auth & Identity
+      { category: '🔐 Auth & Identity', name: 'User Login', method: 'POST', route: '/api/auth/login', desc: 'Authenticate local owner and receive signed JWT session token', defaultBody: { email: '', password: '' } },
+      { category: '🔐 Auth & Identity', name: 'User Signup', method: 'POST', route: '/api/auth/signup', desc: 'Register local account credentials', defaultBody: { email: '', password: '', fullName: '' } },
+      { category: '🔐 Auth & Identity', name: 'Session Me Profile', method: 'GET', route: '/api/auth/me', desc: 'Get active logged-in user profile, subscription & role', requiresAuth: true },
+      { category: '🔐 Auth & Identity', name: 'Identity Providers', method: 'GET', route: '/api/auth/providers', desc: 'List configured OAuth and local authentication adapters' },
+      { category: '🔐 Auth & Identity', name: 'Issue Product Handoff', method: 'POST', route: '/api/integrations/handoff', desc: 'Create signed HMAC-SHA-256 handoff token for companion app', requiresAuth: true, defaultBody: { productId: 'finsync' } },
 
-      { category: 'Collections', name: 'Get Finance', method: 'GET', route: '/finance', desc: 'Fetch user transaction logs', requiresAuth: true },
-      { category: 'Collections', name: 'Create Transaction', method: 'POST', route: '/finance', desc: 'Add a financial transaction', requiresAuth: true, defaultBody: { amount: 45.50, description: 'Grocery shopping', category: 'Food', type: 'expense', date: new Date().toISOString().split('T')[0] } },
+      // Health, Fitness & Biomarkers
+      { category: '🏋️ Fitness & Metrics', name: 'Get Body Metric Logs', method: 'GET', route: '/api/metric_logs', desc: 'Retrieve biometric measurements (weight, fat %, waist)', requiresAuth: true },
+      { category: '🏋️ Fitness & Metrics', name: 'Log Body Metric', method: 'POST', route: '/api/metric_logs', desc: 'Log biometric measurement record', requiresAuth: true, defaultBody: { date: new Date().toISOString().split('T')[0], weight: 75.5, bodyFat: 14.2, waist: 82.0 } },
+      { category: '🏋️ Fitness & Metrics', name: 'Get Workout Sessions', method: 'GET', route: '/api/workout_sessions', desc: 'List logged gym/training sessions and routines', requiresAuth: true },
+      { category: '🏋️ Fitness & Metrics', name: 'Create Workout Session', method: 'POST', route: '/api/workout_sessions', desc: 'Start or record a workout session', requiresAuth: true, defaultBody: { name: 'Upper Body Hypertrophy', date: new Date().toISOString(), durationMinutes: 65 } },
+      { category: '🏋️ Fitness & Metrics', name: 'Get Habit Trackers', method: 'GET', route: '/api/habits', desc: 'Fetch user habit list with streaks', requiresAuth: true },
+      { category: '🏋️ Fitness & Metrics', name: 'Create Habit', method: 'POST', route: '/api/habits', desc: 'Add new recurring habit', requiresAuth: true, defaultBody: { name: 'Read 20 mins', frequency: 'daily', target: 1 } },
+      { category: '🏋️ Fitness & Metrics', name: 'Toggle Habit Log', method: 'POST', route: '/api/habit_logs', desc: 'Check in or uncheck habit for date', requiresAuth: true, defaultBody: { habit_id: '1', date: new Date().toISOString().split('T')[0] } },
+      { category: '🏋️ Fitness & Metrics', name: 'Get Vitals Logs', method: 'GET', route: '/api/vitals_logs', desc: 'Heart rate, blood pressure, SPO2 measurements', requiresAuth: true },
 
-      { category: 'Collections', name: 'Get Habits', method: 'GET', route: '/habits', desc: 'Fetch user habit trackers', requiresAuth: true },
-      { category: 'Collections', name: 'Create Habit', method: 'POST', route: '/habits', desc: 'Create a new habit', requiresAuth: true, defaultBody: { name: 'Drink 3L Water', frequency: 'daily', target: 1, currentStreak: 0 } },
+      // Finance & Wealth
+      { category: '💰 Finance & Portfolio', name: 'Get Transactions', method: 'GET', route: '/api/finance', desc: 'Fetch personal ledger transactions', requiresAuth: true },
+      { category: '💰 Finance & Portfolio', name: 'Create Transaction', method: 'POST', route: '/api/finance', desc: 'Record new income or expense item', requiresAuth: true, defaultBody: { amount: 35.0, description: 'Lunch meeting', category: 'Food', type: 'expense', date: new Date().toISOString().split('T')[0] } },
+      { category: '💰 Finance & Portfolio', name: 'Get Budgets', method: 'GET', route: '/api/budgets', desc: 'Monthly expense budgets by category', requiresAuth: true },
+      { category: '💰 Finance & Portfolio', name: 'Get Subscriptions', method: 'GET', route: '/api/subscriptions', desc: 'Recurring software and membership billing', requiresAuth: true },
 
-      { category: 'Collections', name: 'Get Vitals Logs', method: 'GET', route: '/vitals_logs', desc: 'Fetch logged health vitals', requiresAuth: true },
-      { category: 'Collections', name: 'Create Vital Log', method: 'POST', route: '/vitals_logs', desc: 'Log new vitals metrics', requiresAuth: true, defaultBody: { heartRate: 72, bloodPressureSystolic: 120, bloodPressureDiastolic: 80, bodyTemp: 36.6, timestamp: new Date().toISOString() } },
+      // Productivity & Notes
+      { category: '📋 Productivity', name: 'Get Tasks', method: 'GET', route: '/api/tasks', desc: 'Kanban tasks and action items', requiresAuth: true },
+      { category: '📋 Productivity', name: 'Create Task', method: 'POST', route: '/api/tasks', desc: 'Add new task item', requiresAuth: true, defaultBody: { title: 'Review GrowthTrack Roadmap', priority: 'high', done: false } },
+      { category: '📋 Productivity', name: 'Get Notes', method: 'GET', route: '/api/notes', desc: 'Personal knowledge base markdown notes', requiresAuth: true },
+      { category: '📋 Productivity', name: 'Get Goals', method: 'GET', route: '/api/goals', desc: 'Milestone and quarterly OKR objectives', requiresAuth: true },
 
-      { category: 'Singletons', name: 'Get Profile Settings', method: 'POST', route: '/user', desc: 'Update profile properties (Singletons)', requiresAuth: true, defaultBody: { fullName: 'Updated User Name' } },
-      { category: 'Singletons', name: 'Update Training Plan', method: 'POST', route: '/training_plan', desc: 'Update parametric training schedules', requiresAuth: true, defaultBody: { schedule: 'Mon/Wed/Fri Strength Training', level: 'Intermediate' } },
-      { category: 'Singletons', name: 'Update Nutrition Strategy', method: 'POST', route: '/nutrition_strategy', desc: 'Update macro goals & dietary guidelines', requiresAuth: true, defaultBody: { dailyCalories: 2500, proteinTargetGrams: 160 } },
-      { category: 'Singletons', name: 'Update Lifestyle Tips', method: 'POST', route: '/lifestyle_tips', desc: 'Store wellness recommendations', requiresAuth: true, defaultBody: { tips: ['Sleep 8 hours', 'Avoid screens after 9pm'] } },
-
-      { category: 'Logs & Stripe', name: 'Get Audit Logs', method: 'GET', route: '/api/logs', desc: 'Retrieve raw server action logs' },
-      { category: 'Logs & Stripe', name: 'Create Audit Log', method: 'POST', route: '/api/logs', desc: 'Trigger a custom audit event', defaultBody: { action: 'custom_check', table_name: 'explorer', details: 'User tested Explorer endpoint' } },
-      { category: 'Logs & Stripe', name: 'Create Checkout Session', method: 'POST', route: '/api/create-checkout-session', desc: 'Initialize a Stripe checkout session', defaultBody: { userId: '123' } }
+      // Logs & Diagnostics
+      { category: '📝 Logs & Audits', name: 'Get Unified Logs', method: 'GET', route: '/api/logs', desc: 'Aggregated audit, session, and error logs', requiresAuth: true },
+      { category: '📝 Logs & Audits', name: 'Logging Diagnostics', method: 'GET', route: '/api/logs/diagnostics', desc: 'Self-test logging database health and counters', requiresAuth: true },
+      { category: '📝 Logs & Audits', name: 'Trigger Log Self-Test', method: 'POST', route: '/api/logs/diagnostics/self-test', desc: 'Write an authenticated self-test audit event', requiresAuth: true }
     ];
 
     let currentEndpoint = endpoints[0];
-    let jwtToken = localStorage.getItem('gt_api_explorer_jwt') || '';
-    let isSignupMode = false;
+    let selectedMethod = 'ALL';
+    let jwtToken = sessionStorage.getItem('gt_api_explorer_jwt') || '';
 
-    // Initialization
     window.addEventListener('load', () => {
       renderEndpoints();
-      updateTokenUI();
       selectEndpoint(endpoints[0]);
+      updateAuthUI();
 
-      // Search Filtering
-      document.getElementById('search-endpoints').addEventListener('input', (e) => {
-        renderEndpoints(e.target.value);
+      window.addEventListener('keydown', e => {
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          document.getElementById('search-input').focus();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          sendRequest();
+        }
       });
     });
 
-    function renderEndpoints(filter = '') {
-      const container = document.getElementById('endpoints-container');
+    function updateAuthUI() {
+      const dot = document.getElementById('auth-dot');
+      const label = document.getElementById('auth-label');
+      const clearBtn = document.getElementById('btn-clear-token');
+      if (jwtToken) {
+        dot.className = 'token-dot active';
+        label.innerText = 'Authenticated (JWT Active)';
+        clearBtn.classList.remove('btn-hidden');
+      } else {
+        dot.className = 'token-dot';
+        label.innerText = 'Unauthenticated';
+        clearBtn.classList.add('btn-hidden');
+      }
+      updateCurl();
+    }
+
+    function promptCustomToken() {
+      const val = prompt('Paste your Bearer JWT Token:', jwtToken);
+      if (val !== null) {
+        jwtToken = val.trim();
+        sessionStorage.setItem('gt_api_explorer_jwt', jwtToken);
+        updateAuthUI();
+      }
+    }
+
+    function clearToken() {
+      jwtToken = '';
+      sessionStorage.removeItem('gt_api_explorer_jwt');
+      updateAuthUI();
+    }
+
+    function setMethodFilter(method) {
+      selectedMethod = method;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.innerText === method);
+      });
+      renderEndpoints();
+    }
+
+    function filterEndpoints() {
+      renderEndpoints();
+    }
+
+    function renderEndpoints() {
+      const filter = document.getElementById('search-input').value.toLowerCase();
+      const container = document.getElementById('endpoint-list');
       container.innerHTML = '';
 
-      // Group endpoints by category
       const groups = {};
       endpoints.forEach(ep => {
-        if (filter && !ep.name.toLowerCase().includes(filter.toLowerCase()) && !ep.route.toLowerCase().includes(filter.toLowerCase())) {
-          return;
-        }
+        if (selectedMethod !== 'ALL' && ep.method !== selectedMethod) return;
+        if (filter && !ep.name.toLowerCase().includes(filter) && !ep.route.toLowerCase().includes(filter)) return;
         if (!groups[ep.category]) groups[ep.category] = [];
         groups[ep.category].push(ep);
       });
 
       for (const [category, list] of Object.entries(groups)) {
-        const groupDiv = document.createElement('div');
-        groupDiv.className = 'category-group';
-        
-        const title = document.createElement('div');
-        title.className = 'category-title';
-        title.innerText = category;
-        groupDiv.appendChild(title);
+        const groupEl = document.createElement('div');
+        groupEl.className = 'category-group';
+        groupEl.innerHTML = '<div class="category-title"><span>' + category + '</span><span>' + list.length + '</span></div>';
 
         list.forEach(ep => {
-          const item = document.createElement('div');
-          item.className = `endpoint-item ${currentEndpoint === ep ? 'active' : ''}`;
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'endpoint-item' + (currentEndpoint === ep ? ' active' : '');
+          item.setAttribute('aria-current', currentEndpoint === ep ? 'true' : 'false');
           item.onclick = () => selectEndpoint(ep);
-
-          const badge = document.createElement('span');
-          badge.className = `method-badge method-${ep.method.toLowerCase()}`;
-          badge.innerText = ep.method;
-
-          const route = document.createElement('span');
-          route.className = 'route-text';
-          route.innerText = ep.route;
-
-          item.appendChild(badge);
-          item.appendChild(route);
-          groupDiv.appendChild(item);
+          item.innerHTML = '<span class="method-pill method-' + ep.method.toLowerCase() + '">' + ep.method + '</span><span class="endpoint-route">' + ep.name + '</span>';
+          groupEl.appendChild(item);
         });
-
-        container.appendChild(groupDiv);
+        container.appendChild(groupEl);
       }
     }
 
     function selectEndpoint(ep) {
       currentEndpoint = ep;
-      
-      // Update sidebar active state highlight
-      document.querySelectorAll('.endpoint-item').forEach(item => item.classList.remove('active'));
-      renderEndpoints(document.getElementById('search-endpoints').value);
+      renderEndpoints();
 
-      // Update Request details
-      const methodBadge = document.getElementById('req-method');
-      methodBadge.className = `method-badge method-${ep.method.toLowerCase()}`;
-      methodBadge.innerText = ep.method;
-      
-      document.getElementById('req-route').innerText = ep.route;
+      const methodEl = document.getElementById('active-method');
+      methodEl.className = 'method-pill method-' + ep.method.toLowerCase();
+      methodEl.innerText = ep.method;
 
-      // Populate body section if POST/PUT
-      const bodySection = document.getElementById('body-section');
-      if (ep.method === 'POST' || ep.method === 'PUT') {
-        bodySection.classList.remove('hidden');
-        document.getElementById('request-body').value = JSON.stringify(ep.defaultBody || {}, null, 2);
+      document.getElementById('active-route').value = ep.route;
+      document.getElementById('endpoint-desc').innerText = ep.desc + (ep.requiresAuth ? ' • 🔒 Requires Bearer Auth Token' : ' • 🌐 Public Endpoint');
+
+      const hasId = ep.route.includes(':id') || ep.route.includes(':habitId');
+      const paramBox = document.getElementById('id-param-box');
+      if (hasId) {
+        paramBox.classList.remove('btn-hidden');
       } else {
-        bodySection.classList.add('hidden');
+        paramBox.classList.add('btn-hidden');
       }
 
-      // Populate ID param field if path includes :id
-      const paramsGroup = document.getElementById('url-params-group');
-      paramsGroup.innerHTML = '';
-      if (ep.hasId) {
-        paramsGroup.style.display = 'block';
-        paramsGroup.innerHTML = `
-          <label class="form-label" for="route-param-id">Route Parameter: id</label>
-          <input type="text" class="input-field" id="route-param-id" value="1" placeholder="Record ID (e.g. 1)">
-        `;
-      } else {
-        paramsGroup.style.display = 'none';
-      }
+      document.getElementById('body-input').value = ep.defaultBody ? JSON.stringify(ep.defaultBody, null, 2) : '';
+      updateCurl();
     }
 
-    // Auth Form tab actions
-    function switchAuthTab(tab) {
-      document.getElementById('tab-auth-login').classList.toggle('active', tab === 'login');
-      document.getElementById('tab-auth-token').classList.toggle('active', tab === 'token');
-      
-      document.getElementById('auth-form-tab').classList.toggle('hidden', tab !== 'login');
-      document.getElementById('auth-token-tab').classList.toggle('hidden', tab !== 'token');
-    }
-
-    function toggleSignupFields() {
-      isSignupMode = !isSignupMode;
-      document.getElementById('signup-fullname-group').style.display = isSignupMode ? 'block' : 'none';
-      document.getElementById('auth-submit-btn').innerText = isSignupMode ? 'Sign Up' : 'Login';
-      document.getElementById('toggle-signup-btn').innerText = isSignupMode ? 'Toggle Login Mode' : 'Toggle Signup Mode';
-    }
-
-    async function executeAuthAction() {
-      const email = document.getElementById('auth-email').value;
-      const password = document.getElementById('auth-password').value;
-      const fullName = document.getElementById('auth-fullname').value;
-      
-      const submitBtn = document.getElementById('auth-submit-btn');
-      submitBtn.disabled = true;
-      submitBtn.innerText = isSignupMode ? 'Signing up...' : 'Logging in...';
-
-      const url = isSignupMode ? '/api/auth/signup' : '/api/auth/login';
-      const bodyObj = isSignupMode ? { email, password, fullName } : { email, password };
-
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyObj)
-        });
-
-        const data = await response.json();
-        if (response.ok && data.token) {
-          saveToken(data.token);
-          displayResponse(data, response.status, 200); // Mock time roughly
+    function switchBuilderTab(tab) {
+      ['body', 'curl', 'auth'].forEach(t => {
+        document.getElementById('tab-btn-' + t).classList.toggle('active', t === tab);
+        const panel = document.getElementById('builder-' + t + '-panel');
+        if (t === tab) {
+          panel.classList.remove('btn-hidden');
         } else {
-          displayResponse(data, response.status, 0);
+          panel.classList.add('btn-hidden');
         }
-      } catch (err) {
-        displayResponse({ error: err.message }, 500, 0);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = isSignupMode ? 'Sign Up' : 'Login';
-      }
+      });
+      if (tab === 'curl') updateCurl();
     }
 
-    function saveToken(token) {
-      jwtToken = token;
-      localStorage.setItem('gt_api_explorer_jwt', token);
-      document.getElementById('bearer-token-input').value = token;
-      updateTokenUI();
-    }
-
-    function setCustomToken(val) {
-      jwtToken = val;
-      localStorage.setItem('gt_api_explorer_jwt', val);
-      updateTokenUI();
-    }
-
-    function updateTokenUI() {
-      const dot = document.getElementById('token-status-dot');
-      const text = document.getElementById('token-status-text');
-      const clearBtn = document.getElementById('clear-token-btn');
-
-      if (jwtToken) {
-        dot.className = 'status-dot active';
-        text.innerText = 'Authenticated (JWT Active)';
-        clearBtn.disabled = false;
-        document.getElementById('bearer-token-input').value = jwtToken;
-      } else {
-        dot.className = 'status-dot';
-        text.innerText = 'Unauthenticated';
-        clearBtn.disabled = true;
-        document.getElementById('bearer-token-input').value = '';
-      }
-    }
-
-    document.getElementById('clear-token-btn').addEventListener('click', () => {
-      jwtToken = '';
-      localStorage.removeItem('gt_api_explorer_jwt');
-      updateTokenUI();
-    });
-
-    function formatRequestJson() {
-      const area = document.getElementById('request-body');
+    function beautifyBody() {
       try {
-        area.value = JSON.stringify(JSON.parse(area.value), null, 2);
+        const parsed = JSON.parse(document.getElementById('body-input').value);
+        document.getElementById('body-input').value = JSON.stringify(parsed, null, 2);
       } catch (e) {
-        alert('Invalid JSON structure: ' + e.message);
+        alert('Invalid JSON: ' + e.message);
       }
     }
 
-    // Run custom request
-    async function sendRequest() {
-      const sendBtn = document.getElementById('send-request-btn');
-      sendBtn.disabled = true;
-      
+    function resetDefaultBody() {
+      document.getElementById('body-input').value = currentEndpoint.defaultBody ? JSON.stringify(currentEndpoint.defaultBody, null, 2) : '';
+      updateCurl();
+    }
+
+    function updateCurl() {
       let route = currentEndpoint.route;
-      if (currentEndpoint.hasId) {
-        const idVal = document.getElementById('route-param-id').value || '1';
-        route = route.replace(':id', idVal);
+      const paramId = document.getElementById('param-id').value || '1';
+      route = route.replace(':id', paramId).replace(':habitId', paramId);
+      const url = window.location.origin + route;
+
+      let curl = 'curl -X ' + currentEndpoint.method + ' "' + url + '"';
+      curl += ' \\\n  -H "Content-Type: application/json"';
+      if (jwtToken) {
+        curl += ' \\\n  -H "Authorization: Bearer ' + jwtToken + '"';
       }
+      if (['POST', 'PUT', 'PATCH'].includes(currentEndpoint.method)) {
+        const body = document.getElementById('body-input').value.trim();
+        if (body) {
+          curl += ' \\\n  -d \'' + body.replace(/'/g, "'\\''") + '\'';
+        }
+      }
+      document.getElementById('curl-output').innerText = curl;
+    }
+
+    async function sendRequest() {
+      let route = currentEndpoint.route;
+      const paramId = document.getElementById('param-id').value || '1';
+      route = route.replace(':id', paramId).replace(':habitId', paramId);
 
       const headers = { 'Content-Type': 'application/json' };
-      if (jwtToken) {
-        headers['Authorization'] = `Bearer ${jwtToken}`;
-      }
+      if (jwtToken) headers['Authorization'] = 'Bearer ' + jwtToken;
 
       const options = {
         method: currentEndpoint.method,
         headers
       };
 
-      if (currentEndpoint.method === 'POST' || currentEndpoint.method === 'PUT') {
-        const bodyText = document.getElementById('request-body').value;
-        try {
-          options.body = JSON.stringify(JSON.parse(bodyText));
-        } catch (e) {
-          alert('Request Body must be valid JSON');
-          sendBtn.disabled = false;
-          return;
+      if (['POST', 'PUT', 'PATCH'].includes(currentEndpoint.method)) {
+        const bodyText = document.getElementById('body-input').value.trim();
+        if (bodyText) {
+          try {
+            options.body = JSON.stringify(JSON.parse(bodyText));
+          } catch (e) {
+            alert('Request body is not valid JSON: ' + e.message);
+            return;
+          }
         }
       }
 
-      const startTime = performance.now();
+      const viewer = document.getElementById('response-viewer');
+      viewer.innerText = '⚡ Sending request...';
+      const meta = document.getElementById('response-meta');
+      meta.classList.add('btn-hidden');
+
+      const t0 = performance.now();
       try {
-        const response = await fetch(route, options);
-        const duration = Math.round(performance.now() - startTime);
-        
+        const res = await fetch(route, options);
+        const duration = (performance.now() - t0).toFixed(1);
+
         let data;
-        try {
-          data = await response.json();
-        } catch {
-          data = { message: await response.text() };
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+          viewer.innerText = JSON.stringify(data, null, 2);
+        } else {
+          data = await res.text();
+          viewer.innerText = data;
         }
-        
-        displayResponse(data, response.status, duration);
+
+        meta.classList.remove('btn-hidden');
+        const statusBadge = document.getElementById('resp-status');
+        statusBadge.innerText = res.status + ' ' + (res.statusText || 'OK');
+        statusBadge.className = 'status-code-badge ' + (res.status < 300 ? 'status-2xx' : res.status < 500 ? 'status-4xx' : 'status-5xx');
+        document.getElementById('resp-time').innerText = '⚡ ' + duration + ' ms';
       } catch (err) {
-        const duration = Math.round(performance.now() - startTime);
-        displayResponse({ error: 'Network request failed', details: err.message }, 500, duration);
-      } finally {
-        sendBtn.disabled = false;
+        viewer.innerText = 'Network Error: ' + err.message;
       }
     }
 
-    function displayResponse(data, status, duration) {
-      // Show meta information
-      const meta = document.getElementById('response-meta-container');
-      meta.style.display = 'flex';
-      
-      const statusTag = document.getElementById('resp-status');
-      statusTag.innerText = `Status: ${status}`;
-      statusTag.className = `meta-tag ${status >= 200 && status < 300 ? 'response-status-success' : 'response-status-error'}`;
+    async function quickLogin() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-pwd').value;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.token) {
+          jwtToken = data.token;
+          sessionStorage.setItem('gt_api_explorer_jwt', jwtToken);
+          updateAuthUI();
+          alert('✓ Login successful! Bearer token stored in explorer session.');
+        } else {
+          alert('Login failed: ' + (data.error || 'Invalid credentials'));
+        }
+      } catch (e) {
+        alert('Login request failed: ' + e.message);
+      }
+    }
 
-      document.getElementById('resp-time').innerText = `Time: ${duration} ms`;
-
-      // Show formatted response body
-      const viewer = document.getElementById('response-body-viewer');
-      viewer.innerText = JSON.stringify(data, null, 2);
+    function copyRoute() {
+      navigator.clipboard.writeText(document.getElementById('active-route').value);
+    }
+    function copyCurl() {
+      navigator.clipboard.writeText(document.getElementById('curl-output').innerText);
+    }
+    function copyResponse() {
+      navigator.clipboard.writeText(document.getElementById('response-viewer').innerText);
     }
   </script>
 </body>

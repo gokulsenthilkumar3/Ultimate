@@ -50,6 +50,7 @@
   font-weight: 720;
   letter-spacing: -.045em;
   line-height: 1.07;
+  overflow-wrap: break-word;
   text-wrap: balance;
 }
 .editorial-overview__subtitle {
@@ -72,6 +73,7 @@
   align-items: center;
   min-inline-size: 0;
   padding: clamp(var(--gt-space-4), 3vw, var(--gt-space-6));
+  border: 1px solid var(--gt-border);
   border: 1px solid color-mix(in srgb, var(--gt-action) 24%, var(--gt-border));
   border-block-start: 3px solid var(--gt-action);
   border-radius: var(--gt-radius-lg);

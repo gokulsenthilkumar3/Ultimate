@@ -54,6 +54,12 @@ const TAB_CORE = {
   about: { label: 'About', group: 'system', icon: Sparkles, emoji: 'ℹ️', keywords: ['version'] },
   notifications: { label: 'Notifications', group: 'system', icon: Bell, emoji: '🔔', keywords: ['alerts', 'reminders'] },
   pricing: { label: 'Plans', group: 'system', icon: ShieldCheck, emoji: '✨', keywords: ['pricing', 'subscription'] },
+  finsync: { label: 'FinSync', group: 'money', icon: WalletCards, emoji: '💳', keywords: ['banking', 'budget', 'cards', 'sync'] },
+  oxfin: { label: 'OxFin', group: 'money', icon: Landmark, emoji: '🏦', keywords: ['wallets', 'cards', 'investments', 'intelligence'] },
+  equity: { label: 'Equity Lens', group: 'money', icon: TrendingUp, emoji: '📊', keywords: ['stocks', 'nifty', 'options', 'markets'] },
+  forex: { label: 'Forex Forecast', group: 'insights', icon: Sparkles, emoji: '📈', keywords: ['forex', 'ml', 'currency', 'prediction'] },
+  family: { label: 'Family Connect', group: 'life', icon: Users, emoji: '🌳', keywords: ['family', 'trees', 'memories', 'vault'] },
+  companion: { label: 'Apps Suite', group: 'system', icon: Cloud, emoji: '🎛️', keywords: ['companion', 'suite', 'ecosystem', 'integrated', 'matrix'] },
 };
 
 const AREA_GROUP = { finance: 'money', insights: 'insights', wellness: 'wellness', workspace: 'work', life: 'life', hub: 'system' };
@@ -67,12 +73,12 @@ export const TABS = Object.freeze(Object.fromEntries(FEATURES.map(feature => {
 })));
 
 export const GROUPS = {
-  insights: { label: 'Insights', icon: TrendingUp, tabs: ['overview', 'actions', 'current', 'analytics', 'dashboards', 'progress', 'forecast'] },
+  insights: { label: 'Insights', icon: TrendingUp, tabs: ['overview', 'actions', 'current', 'analytics', 'dashboards', 'progress', 'forecast', 'forex'] },
   money: { label: 'Finance', icon: WalletCards, tabs: FEATURES.filter(item => item.area === 'finance').map(item => item.id) },
   wellness: { label: 'Wellness', icon: HeartPulse, tabs: ['wellness', 'sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration'] },
   work: { label: 'Workspace', icon: BriefcaseBusiness, tabs: ['workspace', 'calendar', 'documents', 'notes', 'tasks', 'projects', 'timesheet', 'skills', 'goals'] },
-  life: { label: 'Life', icon: Users, tabs: ['life', 'social', 'entertainment', 'maps'] },
-  system: { label: 'Hub', icon: LayoutDashboard, tabs: ['hub', 'apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
+  life: { label: 'Life', icon: Users, tabs: ['life', 'family', 'social', 'entertainment', 'maps'] },
+  system: { label: 'Hub', icon: LayoutDashboard, tabs: ['hub', 'companion', 'apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
 };
 
 // Finance is the primary command and appears first in the main navigation.

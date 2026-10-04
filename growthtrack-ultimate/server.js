@@ -29,6 +29,7 @@ import { registerFrontend } from './server/frontend.js';
 import createAgentsRouter from './server/agents/router.js';
 import createNotificationsRouter from './server/notifications/router.js';
 import { normalizePortfolioPayload } from './server/domains/portfolio.js';
+import { renderServerHealthHtml } from './server/serverHealthHtml.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -115,7 +116,71 @@ app.use('/api', (req, res, next) => {
 
 // Root path is reserved for the frontend (dist/index.html)
 
-app.get('/api/health', (req, res) => res.status(200).json({ status: 'online', service: 'GrowthTrack API' }));
+app.get(['/api/health', '/health'], async (req, res) => {
+  const t0 = performance.now();
+  let dbStatus = 'CONNECTED';
+  let dbLatency = 0;
+  try {
+    await prisma.$queryRawUnsafe('SELECT 1');
+    dbLatency = Number((performance.now() - t0).toFixed(2));
+  } catch (e) {
+    dbStatus = 'DISCONNECTED';
+    dbLatency = -1;
+  }
+
+  const mem = process.memoryUsage();
+  const uptimeSeconds = Math.round(process.uptime());
+  const hours = Math.floor(uptimeSeconds / 3600);
+  const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+  const seconds = uptimeSeconds % 60;
+  const uptimeFormatted = `${hours > 0 ? hours + 'h ' : ''}${minutes}m ${seconds}s`;
+  const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024 * 10) / 10;
+  const heapTotalMB = Math.round(mem.heapTotal / 1024 / 1024 * 10) / 10;
+  const rssMB = Math.round(mem.rss / 1024 / 1024 * 10) / 10;
+  const heapPercent = Math.round((mem.heapUsed / mem.heapTotal) * 100);
+
+  const payload = {
+    status: dbStatus === 'CONNECTED' ? 'online' : 'degraded',
+    service: 'GrowthTrack Ultimate Core API',
+    version: require('./package.json').version,
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    nodeVersion: process.version,
+    platform: `${process.platform}-${process.arch}`,
+    uptimeSeconds,
+    uptimeFormatted,
+    memory: { heapUsedMB, heapTotalMB, rssMB, heapPercent },
+    database: {
+      provider: 'SQLite (Prisma + LibSQL adapter)',
+      file: 'dev.db',
+      status: dbStatus,
+      latencyMs: dbLatency,
+    },
+    subsystems: {
+      auth: 'Local owner sessions and authentication routes are configured',
+      bodyTwin: '3D physique and morphology routes are configured',
+      metrics: 'Metric, body, vital and mood routes are configured',
+      workouts: 'Session, routine and exercise routes are configured',
+      finance: 'Budget, transaction and portfolio routes are configured',
+      databaseBrowser: 'Owner browser is configured; separate local Studio is optional',
+      apiDocs: 'Local API Explorer is available at /api/docs',
+      gateway: 'Gateway is a separate optional service; see :3000/health for reachability'
+    }
+  };
+
+  if (req.accepts('html') && req.query.format !== 'json') {
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https:; frame-ancestors 'self' http://localhost:* http://127.0.0.1:*");
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    return res.end(renderServerHealthHtml(payload));
+  }
+  res.json(payload);
+});
+app.get(['/api/docs', '/docs', '/api-explorer.html'], (req, res) => {
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:; frame-ancestors 'self' http://localhost:* http://127.0.0.1:*");
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.sendFile(path.join(__dirname, 'api-explorer.html'));
+});
 app.get('/api/auth/providers', (req, res) => res.json({ providers: enabledIdentityProviders() }));
 app.get('/api/capabilities', authMiddleware, createCapabilitiesHandler({
   prisma, version: require('./package.json').version,

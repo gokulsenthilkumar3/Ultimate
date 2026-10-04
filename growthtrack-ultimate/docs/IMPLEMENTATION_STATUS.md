@@ -89,3 +89,25 @@ See [ROUTES.md](ROUTES.md), [COMPONENTS.md](COMPONENTS.md),
 `server/agents/README.md` for current contracts. The approved whole-app plan
 remains the feature/acceptance target; this document marks implemented scope.
 
+## Follow-up (2026-10-04)
+
+`MASTER_PRODUCT_SPEC.md` inventories the original 54 registered module routes and their
+views against the full product target; `NOTES_VERTICAL_SLICE.md` defines the first
+reference slice. Notes now waits for create/save/delete acknowledgement, reports
+unsaved/saving/failed states, preserves failed edits in the editor, and excludes
+private Mind journal entries from Workspace search and tags. This does not add
+revision-based sync, offline conflict recovery, native clients, or schema migration.
+Focused Notes and store persistence tests passed (48 tests across 2 files), as did
+Notes ESLint and TypeScript typecheck.
+
+## Interface and companion follow-up (2026-10-04)
+
+The current working tree adds six companion discovery routes, bringing the route
+registry to 60 modules. The Ultimate Apps Suite now presents native Ultimate
+destinations and explicit migration gaps for FinSync, OxFin, Forex, NiftyLens,
+and Family Connect; it no longer embeds standalone sites or claims that their
+identity/data has merged. Original applications remain available during migration.
+The five local API, DB, and health page templates received responsive, focus,
+and reduced-motion CSS. DB Studio opens SQLite read-only and renders record
+values as text. At 390px, browser checks found no horizontal overflow on all
+five templates. This is UI and safety progress, not companion feature/data parity.

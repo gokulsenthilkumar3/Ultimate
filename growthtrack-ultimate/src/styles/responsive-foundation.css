@@ -137,7 +137,9 @@
     [data-responsive-foundation] { --rf-surface: Canvas; --rf-raised: Canvas; --rf-text: CanvasText; --rf-muted: CanvasText; --rf-border: CanvasText; --rf-accent: Highlight; --rf-focus: Highlight; --rf-danger: CanvasText; }
     [data-responsive-foundation] :is(a, button)[aria-current], [data-responsive-foundation] .is-active,
     [data-responsive-foundation] [aria-selected=true] { outline: 2px solid Highlight; outline-offset: -2px; }
-    [data-responsive-foundation] :is(a, button, input, select) { forced-color-adjust: auto; }
+    @supports (forced-color-adjust: auto) {
+      [data-responsive-foundation] :is(a, button, input, select) { forced-color-adjust: auto; }
+    }
     .gt-mobile-dock, .gt-navigation-panel, .gt-detail-panel { box-shadow: none; }
   }
 }

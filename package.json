@@ -13,6 +13,8 @@
     "dev:family": "node scripts/workspace.mjs family",
     "dev:equity": "node scripts/workspace.mjs equity",
     "dev:forex": "node scripts/workspace.mjs forex",
+    "dev:studio": "node scripts/workspace.mjs studio",
+    "db:studio": "node scripts/workspace.mjs studio",
     "test:gateway": "node --test tests/gateway.test.mjs",
     "build:desktop": "npm --prefix growthtrack-ultimate run build:desktop",
     "build": "npm --prefix growthtrack-ultimate run build",

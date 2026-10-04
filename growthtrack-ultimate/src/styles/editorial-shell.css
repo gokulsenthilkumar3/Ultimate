@@ -156,6 +156,7 @@ body { color: var(--gt-text); }
   transform: translateY(-1px);
   box-shadow: 0 2px 6px color-mix(in srgb, var(--gt-canvas) 50%, transparent),
               0 8px 28px color-mix(in srgb, var(--gt-canvas) 38%, transparent);
+  border-color: var(--gt-border);
   border-color: color-mix(in srgb, var(--gt-action) 18%, var(--gt-border));
 }
 .app-shell[data-ui-system="editorial"] :is(.btn-primary, .btn-accent, .gt-button--primary) {
@@ -208,6 +209,7 @@ body { color: var(--gt-text); }
   margin: 0;
   padding: .5rem clamp(1rem, 2.8vw, 2.75rem);
   border: 0;
+  border-block-end: 1px solid var(--gt-border);
   border-block-end: 1px solid color-mix(in srgb, var(--gt-border) 70%, transparent);
   border-radius: 0;
   background: color-mix(in srgb, var(--gt-surface) 88%, transparent);
@@ -368,6 +370,7 @@ body { color: var(--gt-text); }
   inline-size: 4.75rem;
   gap: .3rem;
   padding: max(.6rem, env(safe-area-inset-top)) .45rem max(.6rem, env(safe-area-inset-bottom));
+  border-inline-end: 1px solid var(--gt-border);
   border-inline-end: 1px solid color-mix(in srgb, var(--gt-border) 80%, transparent);
   background: color-mix(in srgb, var(--gt-canvas) 60%, var(--gt-surface));
   box-shadow: 1px 0 0 color-mix(in srgb, var(--gt-border) 40%, transparent);
@@ -408,6 +411,7 @@ body { color: var(--gt-text); }
   color: var(--gt-action);
 }
 .app-shell[data-ui-system="editorial"] .gt-navigation-rail .is-active {
+  border-color: var(--gt-border);
   border-color: color-mix(in srgb, var(--gt-action) 22%, var(--gt-border));
   background: color-mix(in srgb, var(--gt-action) 10%, var(--gt-surface));
   color: var(--gt-action);
@@ -417,6 +421,7 @@ body { color: var(--gt-text); }
 .app-shell[data-ui-system="editorial"] .gt-navigation-panel {
   inline-size: 13rem;
   padding: 0;
+  border-inline-end: 1px solid var(--gt-border);
   border-inline-end: 1px solid color-mix(in srgb, var(--gt-border) 80%, transparent);
   background: color-mix(in srgb, var(--gt-surface) 97%, var(--gt-canvas));
   box-shadow: 1px 0 0 color-mix(in srgb, var(--gt-border) 35%, transparent);
@@ -456,6 +461,7 @@ body { color: var(--gt-text); }
 .app-shell[data-ui-system="editorial"] .gt-navigation-module strong { font-size: .8rem; font-weight: 580; letter-spacing: -.01em; }
 .app-shell[data-ui-system="editorial"] .gt-navigation-module small { display: none; }
 .app-shell[data-ui-system="editorial"] .gt-navigation-module.is-active {
+  border-color: var(--gt-border);
   border-color: color-mix(in srgb, var(--gt-action) 25%, var(--gt-border));
   border-inline-start: 2px solid var(--gt-action);
   background: color-mix(in srgb, var(--gt-action) 8%, var(--gt-surface));

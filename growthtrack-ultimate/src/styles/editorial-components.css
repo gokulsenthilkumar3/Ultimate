@@ -115,6 +115,7 @@
   flex: none;
   inline-size: var(--gt-target-icon);
   block-size: var(--gt-target-icon);
+  border: 1px solid var(--gt-border);
   border: 1px solid color-mix(in srgb, var(--gt-action) 28%, var(--gt-border));
   border-radius: var(--gt-radius-sm);
   background: color-mix(in srgb, var(--gt-action) 9%, var(--gt-surface));
@@ -122,11 +123,13 @@
 }
 .gt-page-state[data-state='error'] .gt-page-state__icon,
 .gt-page-state[data-state='database-failure'] .gt-page-state__icon {
+  border-color: var(--gt-danger);
   border-color: color-mix(in srgb, var(--gt-danger) 38%, var(--gt-border));
   background: color-mix(in srgb, var(--gt-danger) 9%, var(--gt-surface));
   color: var(--gt-danger);
 }
 .gt-page-state[data-state='success'] .gt-page-state__icon {
+  border-color: var(--gt-success);
   border-color: color-mix(in srgb, var(--gt-success) 38%, var(--gt-border));
   background: color-mix(in srgb, var(--gt-success) 9%, var(--gt-surface));
   color: var(--gt-success);
@@ -145,8 +148,11 @@
   border: 1px solid var(--gt-border);
   border-radius: var(--gt-radius-md);
   background: color-mix(in srgb, var(--gt-surface) 80%, var(--gt-canvas));
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+}
+@supports (scrollbar-width: none) {
+  .gt-tabs[data-responsive-foundation] {
+    scrollbar-width: none;
+  }
 }
 .gt-tabs[data-responsive-foundation]::-webkit-scrollbar { display: none; }
 .gt-tabs[data-responsive-foundation] [role='tab'] {

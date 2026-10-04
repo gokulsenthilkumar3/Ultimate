@@ -4,7 +4,7 @@ import safeLocalStorage from '../utils/safeLocalStorage';
 import useStore, { selectPinnedTabs, selectTogglePinnedTab } from '../store/useStore';
 import { GROUPS, NAVIGABLE_MODULES, TABS, tabMeta } from '../config/navigation';
 import { PRODUCTS } from '../config/products';
-import { apiRequest } from '../lib/apiClient';
+import UnifiedWorkspace from './UnifiedWorkspace';
 import '../styles/app-hub.css';
 
 const DOCK_APP_IDS = ['overview', 'physique', 'tasks', 'finance', 'insights', 'habits', 'workspace'];
@@ -75,7 +75,7 @@ export default function AppLauncher({ setActiveTab }) {
   const [groupFilter, setGroupFilter] = useState('all');
   const [clickCounts, setClickCounts] = useState(getClickCounts);
   const [serviceState, setServiceState] = useState({ loading: true, services: {} });
-  const [embeddedProduct, setEmbeddedProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   useEffect(() => {
     let active = true;
     const refresh = async () => {
@@ -116,24 +116,20 @@ export default function AppLauncher({ setActiveTab }) {
     setClickCounts(counts);
     setActiveTab?.(id);
   };
-  const launchProduct = async product => {
-    setEmbeddedProduct({ ...product, loading: true });
-    try {
-      const handoff = await apiRequest('/api/integrations/handoff', { method: 'POST', body: JSON.stringify({ productId: product.id }) });
-      setEmbeddedProduct({ ...product, url: handoff.launchUrl });
-    } catch {
-      setEmbeddedProduct({ ...product, url: product.uiUrl });
-    }
+  const launchProduct = product => {
+    setSelectedProduct(product);
   };
 
-  if (embeddedProduct) return <section className="app-hub-embedded" aria-label={`${embeddedProduct.name} in Ultimate`}>
-    <header className="app-hub-embedded__header">
-      <button type="button" className="btn btn--ghost" onClick={() => setEmbeddedProduct(null)}>← Back to Apps Hub</button>
-      <div><strong>{embeddedProduct.icon} {embeddedProduct.name}</strong><span>Running inside Ultimate</span></div>
-      <a href={embeddedProduct.url || embeddedProduct.uiUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">Open separately <ArrowUpRight size={15} /></a>
-    </header>
-    {embeddedProduct.loading ? <div className="app-hub-embedded__loading" role="status">Connecting to {embeddedProduct.name}…</div> : <iframe className="app-hub-embedded__frame" title={`${embeddedProduct.name} application`} src={embeddedProduct.url} allow="clipboard-read; clipboard-write" />}
-  </section>;
+  if (selectedProduct) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.2rem 0.5rem' }}>
+        <button type="button" className="btn btn--ghost" onClick={() => setSelectedProduct(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
+          ← Back to Apps Hub Library
+        </button>
+      </div>
+      <UnifiedWorkspace defaultApp={selectedProduct.id || 'matrix'} onNavigate={id => { if (id === 'apps') setSelectedProduct(null); }} />
+    </div>
+  );
 
   return (
     <div className="app-hub-shell">
@@ -172,7 +168,7 @@ export default function AppLauncher({ setActiveTab }) {
                 <button type="button" onClick={() => launchProduct(product)}
                   data-tip={isOffline ? product.command : undefined}
                   aria-label={`Open ${product.name}${isOffline ? ' (run ' + product.command + ' to start locally)' : ''}`}
-                >Open app <ArrowUpRight size={14} /></button>
+                >View integration <ArrowUpRight size={14} /></button>
                 <a href={`http://localhost:3000${product.healthUrl}`} target="_blank" rel="noopener noreferrer">API</a>
               </div>
               <button className="product-card__command" type="button" title="Copy local start command" onClick={() => navigator.clipboard?.writeText(product.command)}><Copy size={12} /> {product.command}</button>
@@ -216,4 +212,3 @@ export default function AppLauncher({ setActiveTab }) {
     </div>
   );
 }
-
