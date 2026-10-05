@@ -247,6 +247,14 @@ describe('record and singleton contracts', () => {
     expect(JSON.parse(apiRequest.mock.calls[0][1].body).expectedUpdatedAt).toBe(oldVersion);
     expect(state().notes[0]).toMatchObject({ updatedAt: newVersion, createdBy: 'owner' });
   });
+  it('retains an editor base version after a newer note snapshot arrives and preserves the server body on rejection', async () => {
+    const base = '2026-09-29T10:00:00.000Z', newer = '2026-09-29T10:02:00.000Z';
+    useStore.setState({ notes: [{ id: 'n', content: 'New server body', updatedAt: newer }] });
+    apiRequest.mockRejectedValueOnce(Object.assign(new Error('Version conflict'), { status: 409 }));
+    await expect(state().updateNote('n', { content: 'Older draft' }, { expectedUpdatedAt: base })).rejects.toMatchObject({ status: 409 });
+    expect(JSON.parse(apiRequest.mock.calls[0][1].body).expectedUpdatedAt).toBe(base);
+    expect(state().notes[0]).toMatchObject({ content: 'New server body', updatedAt: newer });
+  });
   it('keeps concurrent finance additions when a deletion rolls back', async () => {
     useStore.setState({ finance: { transactions: { first: { id: 'first', amount: 50 } }, budgets: { old: { id: 'old', limit_amount: 100 } } } });
     const transaction = deferred(), budget = deferred();

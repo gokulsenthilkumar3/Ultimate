@@ -191,6 +191,7 @@ The nested Forex ensemble directory is retained as legacy/reference material; `F
 
 ## Documentation
 
+- [Transformation blueprint: accessibility, architecture, and copy](docs/GROWTHTRACK_TRANSFORMATION_BLUEPRINT.md)
 - [Workspace operations](WORKSPACE.md)
 - [Architecture overview](docs/ARCHITECTURE.md)
 - [Ultimate design system](growthtrack-ultimate/docs/DESIGN_SYSTEM.md)

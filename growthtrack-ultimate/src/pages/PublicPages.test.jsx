@@ -76,6 +76,8 @@ describe('public pages', () => {
   it('provides owner-only entry and readable legal destinations', () => {
     const { rerender } = render(<MemoryRouter><LandingPage /></MemoryRouter>);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Make room for what matters.');
+    expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('href', '#public-content');
+    expect(document.getElementById('public-content')).toHaveAttribute('tabindex', '-1');
     expect(screen.getAllByRole('link', { name: /Owner sign in/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
     rerender(<MemoryRouter><PrivacyPage /></MemoryRouter>);

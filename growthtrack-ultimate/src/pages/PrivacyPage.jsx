@@ -53,6 +53,7 @@ const sections = [
 export default function PrivacyPage() {
   return (
     <main className="gt-public gt-public--legal">
+      <a className="gt-public__skip" href="#public-content" tabIndex={0}>Skip to main content</a>
       <div className="gt-public__wrap">
         <header className="gt-public__header">
           <Link className="gt-public__brand" to="/welcome" aria-label="GrowthTrack home"><span className="gt-public__brand-mark" aria-hidden="true">G<span>.</span></span><span>GrowthTrack</span></Link>
@@ -60,7 +61,7 @@ export default function PrivacyPage() {
         </header>
 
         <div className="gt-public-legal">
-          <div className="gt-public-legal__intro">
+          <div className="gt-public-legal__intro" id="public-content" tabIndex={-1}>
             <p className="gt-public__eyebrow"><span className="gt-public__eyebrow-rule" /> The details / 01</p>
             <h1>Privacy, <em>plainly put.</em></h1>
             <p className="gt-public-legal__lead">How GrowthTrack handles the information in an owner-operated workspace. The exact services and safeguards vary by deployment.</p>

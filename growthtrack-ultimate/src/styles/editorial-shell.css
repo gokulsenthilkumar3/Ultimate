@@ -163,8 +163,8 @@ body { color: var(--gt-text); }
   min-block-size: var(--gt-target-minimum);
   border: 1px solid var(--gt-action);
   border-radius: var(--gt-radius-sm);
-  background: linear-gradient(160deg, var(--gt-action) 0%, color-mix(in srgb, var(--gt-action) 80%, #000) 100%);
-  background-image: none; /* let the shorthand win */
+  background: var(--gt-action);
+  background-image: none;
   box-shadow: 0 1px 3px color-mix(in srgb, var(--gt-action) 40%, transparent),
               0 4px 12px color-mix(in srgb, var(--gt-action) 28%, transparent);
   color: var(--gt-on-action);
@@ -192,7 +192,7 @@ body { color: var(--gt-text); }
   background: var(--gt-surface);
   color: var(--gt-text);
 }
-.app-shell[data-ui-system="editorial"] :is(.page-transition-wrapper, .card-enter) { animation: none; }
+.app-shell[data-ui-system="editorial"] :is(.page-transition-wrapper, .card-enter, .notes-container) { animation: none; }
 
 /* One utility header. Page titles live in page content, never in duplicate chrome. */
 .app-shell[data-ui-system="editorial"] .app-header {

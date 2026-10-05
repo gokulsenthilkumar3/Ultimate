@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests/e2e', testMatch: ['**/foundation.spec.ts', '**/editorial.spec.ts', '**/editorial-routes.spec.ts'], timeout: 30_000, retries: 0, workers: 3,
+  testDir: './tests/e2e', testMatch: ['**/foundation.spec.ts', '**/editorial.spec.ts', '**/editorial-routes.spec.ts', '**/notes-slice.spec.ts'], timeout: 30_000, retries: 0, workers: 3,
   use: { baseURL: 'http://127.0.0.1:5176', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
