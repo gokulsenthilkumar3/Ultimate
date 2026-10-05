@@ -37,6 +37,7 @@ export default function LoginPage() {
 
   return (
     <main className="gt-public gt-public--login">
+      <a className="gt-public__skip" href="#public-content" tabIndex={0}>Skip to main content</a>
       <div className="gt-public__wrap">
         <header className="gt-public__header">
           <Link className="gt-public__brand" to="/welcome" aria-label="GrowthTrack home">
@@ -47,7 +48,7 @@ export default function LoginPage() {
         </header>
 
         <div className="gt-public-login">
-          <section className="gt-public-login__story" aria-labelledby="login-story-title">
+          <section className="gt-public-login__story" id="public-content" tabIndex={-1} aria-labelledby="login-story-title">
             <p className="gt-public__eyebrow"><span className="gt-public__eyebrow-rule" /> Owner access</p>
             <h1 id="login-story-title">A little space to <em>see the whole picture.</em></h1>
             <p>Return to the work, routines, and records that make this space yours.</p>

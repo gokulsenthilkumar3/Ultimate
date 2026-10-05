@@ -1,11 +1,21 @@
-# GrowthTrack implementation status (2026-09-29)
+# GrowthTrack implementation status (baseline 2026-09-29; updated 2026-10-05)
 
 This is an implementation snapshot, not a claim that the whole approved plan is
 production-ready. Scope is `growthtrack-ultimate` only. No owner database was
 migrated, merged, reset, or used by automated tests. The sibling applications
 under `D:/Projects/Tracker` were not changed.
 
-## Implemented in this checkout
+## Notes, architecture and accessibility increment (2026-10-05)
+
+- Implemented real Notes view selection, reviewed Markdown import/export, retained failed/conflicting edits and an explicit comparison/recovery workflow. Encrypted owner-scoped browser drafts survive reload; recovery pauses autosave and offers a separate copy. Local saves are reported independently of server acknowledgements. Notes retains its original read version during background refreshes.
+- Introduced portable Notes content/draft/file contracts and browser adapters selected in an application composition root. The existing record store and legacy API remain in use.
+- Added public skip links and focus targets, module/view navigation focus, semantic Notes colors and 44px actions. Fixed transparent primary buttons caused by the previous gradient reset. Removed the Notes entrance animation so controls do not move while a user starts interacting.
+- Added the [transformation blueprint](../../docs/GROWTHTRACK_TRANSFORMATION_BLUEPRINT.md), grounded in this repository, including architecture choices, accessibility audit, copy examples, README template and documentation lifecycle.
+- Verification: 67 focused tests across Notes, Markdown rules, encryption, store persistence and public pages pass; TypeScript and production build pass. Targeted JavaScript ESLint has zero errors and the existing App `user` dependency warning. The build retains a large Three.js chunk warning. The final Notes browser run passed all 12 Notes scenarios; after fixing explicit skip-link keyboard inclusion, a focused rerun passed all 3 public-page scenarios (Chromium, Firefox, WebKit). These fixtures intercept every API call and do not use owner data.
+
+Remaining: full offline sign-in/startup, idempotent create/import retries, integer revisions and versioned sync, Notes knowledge workflows and native clients. Browser encryption uses a key available to the browser profile and does not protect a compromised profile. No production database or deployment was changed. This increment does not establish WCAG AA certification or full platform parity.
+
+## Earlier implemented baseline
 
 - Six-area typed route registry, canonical links/redirects, validated `view`
   parameter, public/login/not-found paths and full login return destination.

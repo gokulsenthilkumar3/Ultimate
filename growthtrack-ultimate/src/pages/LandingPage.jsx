@@ -30,6 +30,7 @@ const chapters = [
 export default function LandingPage() {
   return (
     <main className="gt-public gt-public--landing">
+      <a className="gt-public__skip" href="#public-content" tabIndex={0}>Skip to main content</a>
       <div className="gt-public__wrap">
         <header className="gt-public__header">
           <Link className="gt-public__brand" to="/welcome" aria-label="GrowthTrack home">
@@ -42,7 +43,7 @@ export default function LandingPage() {
           </nav>
         </header>
 
-        <section className="gt-public-hero" aria-labelledby="public-hero-title">
+        <section className="gt-public-hero" id="public-content" tabIndex={-1} aria-labelledby="public-hero-title">
           <div className="gt-public-hero__copy">
             <p className="gt-public__eyebrow"><span className="gt-public__eyebrow-rule" /> A private workspace for one</p>
             <h1 id="public-hero-title">Make room for <em>what matters.</em></h1>

@@ -1,11 +1,25 @@
 /* notes.css — GrowthTrack Ultimate Notes Page Styling */
 
 .notes-container {
+  --text-1: var(--gt-text);
+  --text-2: var(--gt-muted);
+  --text-3: var(--gt-subtle);
+  --bg-card: var(--gt-surface);
+  --bg-surface: var(--gt-surface);
+  --bg-glass: var(--gt-surface);
+  --bg-input: var(--gt-surface);
+  --bg-elevated: var(--gt-surface-raised);
+  --accent: var(--gt-action);
+  --accent-soft: color-mix(in srgb, var(--gt-action) 10%, transparent);
+  --border: var(--gt-border);
+  --border-strong: var(--gt-border-strong);
+  --success: var(--gt-success);
+  --danger: var(--gt-danger);
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 1.5rem;
-  height: calc(100vh - 160px);
-  min-height: 580px;
+  align-items: start;
+  min-height: 600px;
   padding: 0.5rem 0;
   animation: fadeIn 0.4s var(--ease) both;
 }
@@ -20,8 +34,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  overflow: hidden;
-  height: 100%;
+  overflow: visible;
 }
 
 .notes-sidebar-header {
@@ -108,7 +121,10 @@
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
+  max-height: min(480px, 55dvh);
+  min-height: 200px;
 }
+.notes-record-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 
 .notes-list-scroll::-webkit-scrollbar {
   width: 6px;
@@ -131,7 +147,7 @@
 .note-card {
   display: flex;
   flex-direction: column;
-  height: 125px;
+  height: 205px;
   padding: 1rem 1.15rem;
   border-radius: var(--radius-md);
   background: var(--bg-card);
@@ -264,7 +280,7 @@
 .note-card-actions {
   display: flex;
   gap: 4px;
-  opacity: 0.5;
+  opacity: 1;
   transition: opacity 0.2s var(--ease);
 }
 
@@ -291,11 +307,11 @@
 }
 
 .note-card-action-btn.star-active {
-  color: #f59e0b;
+  color: var(--gt-warning);
 }
 
 .note-card-action-btn.pin-active {
-  color: #f59e0b;
+  color: var(--gt-warning);
 }
 
 .note-card-action-btn.delete-btn:hover {
@@ -314,6 +330,7 @@
   overflow: hidden;
   box-shadow: var(--shadow-card);
   transition: all 0.4s var(--ease);
+  min-height: 600px;
 }
 
 .notes-detail-pane:focus-within {
@@ -733,10 +750,31 @@
   }
 
   .notes-sidebar {
-    max-height: min(440px, 58dvh);
+    max-height: none;
   }
 
   .notes-detail-pane {
     min-height: 560px;
   }
+}
+
+.notes-view-controls, .notes-file-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.notes-view-controls button { flex: 1; min-height: 44px; border: 1px solid var(--gt-border); border-radius: var(--gt-radius-sm); background: var(--gt-surface); color: var(--gt-text); cursor: pointer; font: inherit; font-size: .8rem; }
+.notes-view-controls button[aria-pressed='true'] { background: var(--gt-action); color: var(--gt-on-action); }
+.notes-import-preview { max-height: 45vh; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; padding: 16px; background: var(--gt-surface-raised); border-radius: var(--gt-radius-sm); }
+.notes-local-status { margin: 0; color: var(--gt-muted); font-size: .8rem; line-height: 1.5; }
+.notes-recoveries { display: grid; gap: 8px; max-height: 200px; overflow-y: auto; flex-shrink: 0; padding: 12px; border: 1px solid var(--gt-border); border-radius: var(--gt-radius-sm); color: var(--gt-text); }
+.notes-recovery-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--gt-warning); background: var(--gt-surface-raised); color: var(--gt-text); }
+.notes-recovery-notice p { flex: 1 1 20rem; margin: 0; }
+.notes-container :is(.note-card-action-btn, .notes-fmt-btn, .notes-mode-btn, .notes-tag-btn, .notes-tag-badge, .notes-color-dot, .notes-tag-input) { min-width: 44px; min-height: 44px; }
+.notes-container :is(button, input, textarea, a):focus-visible { outline: 3px solid var(--gt-focus); outline-offset: 2px; }
+.notes-container .note-card-tag { background: var(--accent-soft); color: var(--gt-action); border-color: var(--gt-border); }
+.notes-toolbar, .notes-toolbar-left, .notes-toolbar-right, .note-card-footer, .notes-footer-picker, .notes-color-dots { flex-wrap: wrap; }
+.notes-toolbar-right { justify-content: flex-end; }
+.notes-color-dots { min-width: 0; }
+.notes-formatting-bar { flex-wrap: wrap; }
+.notes-container .notes-autosave-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .notes-container, .notes-container .notes-empty-icon { animation: none; }
+  .notes-container * { transition: none; }
 }

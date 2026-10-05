@@ -19,10 +19,14 @@ export function createRecordActions(set: any, get: any, key: string, route: stri
       if (current()) set((state: any) => ({ [key]: [saved, ...(state[key] || []).filter((row: any) => String(row.id) !== String(saved.id))] }));
       return saved;
     }),
-    update: (id: string, patch: any) => run(id, async current => {
+    update: (id: string, patch: any, condition?: { expectedUpdatedAt?: string }) => run(id, async current => {
       const previous = (get()[key] || []).find((row: any) => String(row.id) === String(id));
       const updates = typeof patch === 'function' ? patch(previous) : patch;
-      const response = requireAcknowledgement(await apiSync(`${route}/${encodeURIComponent(id)}`, 'PUT', mutationPayload(previous, updates)));
+      const payload = mutationPayload(previous, updates);
+      // An editor can retain the version it actually read. A background refresh
+      // must not silently rebase an unfinished draft onto a newer server body.
+      if (condition?.expectedUpdatedAt !== undefined) payload.expectedUpdatedAt = condition.expectedUpdatedAt;
+      const response = requireAcknowledgement(await apiSync(`${route}/${encodeURIComponent(id)}`, 'PUT', payload));
       const saved = { ...previous, ...updates, ...recordFields(response) };
       if (current()) set((state: any) => ({ [key]: (state[key] || []).map((row: any) => String(row.id) === String(id) ? { ...row, ...updates, ...recordFields(response) } : row) }));
       return saved;

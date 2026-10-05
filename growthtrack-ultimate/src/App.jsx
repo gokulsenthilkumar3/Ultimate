@@ -59,7 +59,7 @@ const MODULE_COMPONENTS = {
   maps: lazy(() => import('./components/Maps')),
   documents: lazy(() => import('./components/Documents')),
   current: lazy(() => import('./components/Current')),
-  notes: lazy(() => import('./components/Notes')),
+  notes: lazy(() => import('./app/NotesRoute')),
   apps: lazy(() => import('./components/AppLauncher')),
   finsync: lazy(() => import('./components/UnifiedWorkspace')),
   oxfin: lazy(() => import('./components/UnifiedWorkspace')),
@@ -88,7 +88,7 @@ const PUBLIC_PAGES = {
 };
 const FINANCE_VIEWS = { finance: 'Overview', transactions: 'Transactions', financeAnalytics: 'Analytics', financeTrends: 'Trends', budgeting: 'Budgeting', subscriptions: 'Subscriptions', financeSync: 'Sync' };
 
-function ModulePage({ feature, user, theme, setActiveTab, notificationState, onOpenCheckIn, onDismissCheckIn, checkInAvailable }) {
+function ModulePage({ feature, view, user, theme, setActiveTab, notificationState, onOpenCheckIn, onDismissCheckIn, checkInAvailable }) {
   if (FINANCE_VIEWS[feature.id]) return <Finance initialTab={FINANCE_VIEWS[feature.id]} />;
   if (['analytics', 'dashboards', 'forecast', 'progress'].includes(feature.id)) return <InsightsHub initialTab={feature.id} logs={useStore.getState().metric_logs} />;
   if (['finsync', 'oxfin', 'equity', 'forex', 'family', 'companion'].includes(feature.id)) {
@@ -96,7 +96,7 @@ function ModulePage({ feature, user, theme, setActiveTab, notificationState, onO
   }
   if (feature.id === 'healthSync') return <PageState state="setup" title="Pair a health companion" description="Health imports require an authorized iOS or Android companion. No simulated readings are written. Device pairing is not configured in this deployment." />;
   const Component = MODULE_COMPONENTS[feature.id];
-  return Component ? <Component user={user} setUser={useStore.getState().setUser} theme={theme} setTheme={useStore.getState().setTheme} setActiveTab={setActiveTab} onNavigate={setActiveTab} notificationState={notificationState} onOpenCheckIn={onOpenCheckIn} onDismissCheckIn={onDismissCheckIn} checkInAvailable={checkInAvailable} /> : <NotFound />;
+  return Component ? <Component {...(feature.id === 'notes' ? { view: view || 'all', onViewChange: next => setActiveTab('notes', next) } : {})} user={user} setUser={useStore.getState().setUser} theme={theme} setTheme={useStore.getState().setTheme} setActiveTab={setActiveTab} onNavigate={setActiveTab} notificationState={notificationState} onOpenCheckIn={onOpenCheckIn} onDismissCheckIn={onDismissCheckIn} checkInAvailable={checkInAvailable} /> : <NotFound />;
 }
 
 export default function App() {
@@ -160,6 +160,7 @@ export default function App() {
 
   // URLs own navigation. Compatibility with modules that still set activeTab is temporary.
   const previous = useRef({ location: '', tab: storeActiveTab });
+  const previousFocusedRoute = useRef(null);
   useEffect(() => {
     if (!session || publicPage || !route.feature || route.redirect) return;
     const key = location.pathname + location.search + location.hash;
@@ -172,6 +173,17 @@ export default function App() {
     document.title = `GrowthTrack — ${route.feature.label}`;
     if (changedLocation) logPageView(route.feature.id);
   }, [location.pathname, location.search, location.hash, storeActiveTab, storeSetActiveTab, navigate, session, publicPage, route.feature, route.redirect, initialDataReady]);
+
+  // Client-side navigation does not move browser focus. Announce the new main
+  // region to keyboard and screen-reader users when the module/view changes.
+  useEffect(() => {
+    if (!session || publicPage || !route.feature || route.redirect) return;
+    const routeKey = `${route.feature.id}:${route.view || ''}`;
+    if (previousFocusedRoute.current && previousFocusedRoute.current !== routeKey) {
+      document.getElementById('main-content')?.focus();
+    }
+    previousFocusedRoute.current = routeKey;
+  }, [session, publicPage, route.feature, route.view, route.redirect]);
 
   const retryInitialLoad = useCallback(async () => {
     setLoadError(null);
@@ -225,7 +237,7 @@ export default function App() {
         <main id="main-content" className="content-area" tabIndex={-1} aria-busy={isLoading} data-page-template={route.feature?.template}>
           {serverStatus === 'offline' && <PageState state="offline" title="Server unavailable" description="Previously loaded records may be visible. Saving requires a connection; unfinished entries are not automatically submitted." onRetry={checkServerHealth} />}
           <ErrorBoundary resetKey={activeTab}><Suspense fallback={<LoadingSkeleton variant={group} />}>
-            {!route.feature ? <NotFound /> : loadError || initialLoadError ? <PageState state="error" title="Your records could not be loaded" description="This is a connection or server error, not an empty account. Retry before making changes." onRetry={retryInitialLoad} /> : isLoading || !initialDataReady ? <LoadingSkeleton variant={group} /> : <ModulePage key={activeTab} feature={route.feature} user={user} theme={theme} setActiveTab={setActiveTab} notificationState={notificationState} onOpenCheckIn={() => setShowCheckIn(true)} onDismissCheckIn={() => setCheckInAlertDismissedDate(todayStr)} checkInAvailable={onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr} />}
+            {!route.feature ? <NotFound /> : loadError || initialLoadError ? <PageState state="error" title="Your records could not be loaded" description="This is a connection or server error, not an empty account. Retry before making changes." onRetry={retryInitialLoad} /> : isLoading || !initialDataReady ? <LoadingSkeleton variant={group} /> : <ModulePage key={activeTab} feature={route.feature} view={route.view} user={user} theme={theme} setActiveTab={setActiveTab} notificationState={notificationState} onOpenCheckIn={() => setShowCheckIn(true)} onDismissCheckIn={() => setCheckInAlertDismissedDate(todayStr)} checkInAvailable={onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr} />}
           </Suspense></ErrorBoundary>
         </main>
         <PremiumSidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} onOpenSettings={() => setShowSettings(true)} onLogout={requestLogout} />
@@ -234,4 +246,3 @@ export default function App() {
     </div>
   </ToastProvider></ErrorBoundary>;
 }
-
