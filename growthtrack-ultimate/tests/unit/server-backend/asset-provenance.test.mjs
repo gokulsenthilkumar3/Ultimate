@@ -33,9 +33,9 @@ test('the repository manifest covers every shipped asset with current hashes and
   assert.deepEqual([release.ok, release.errors], [true, []], 'release builds pass once every licence is verified');
 });
 
-test('finds 3D formats anywhere in public and textures beside the models', async t => {
-  const root = await fixture(t, { 'public/a.glb': 'x', 'public/assets/models/skin.png': 'x', 'public/logo.png': 'x', 'public/deep/scene.gltf': 'x' });
-  assert.deepEqual(await shippedAssets(root), ['public/a.glb', 'public/assets/models/skin.png', 'public/deep/scene.gltf']);
+test('finds 3D formats anywhere in public and textures beside models and wardrobe assets', async t => {
+  const root = await fixture(t, { 'public/a.glb': 'x', 'public/assets/models/skin.png': 'x', 'public/assets/wardrobe/fabric.png':'x', 'public/logo.png': 'x', 'public/deep/scene.gltf': 'x' });
+  assert.deepEqual(await shippedAssets(root), ['public/a.glb', 'public/assets/models/skin.png', 'public/assets/wardrobe/fabric.png', 'public/deep/scene.gltf']);
 });
 
 test('fails on unlisted files, stale hashes, malformed components and missing listed files', async t => {

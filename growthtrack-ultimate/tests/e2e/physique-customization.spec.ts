@@ -131,7 +131,8 @@ test('underwear, gym and casual have visible variants, fit and saved colors',asy
   await page.setViewportSize({width:1440,height:1050});await page.goto('/wellness/physique?view=3d');
   const canvas=page.locator('.chamber-canvas-wrap canvas');await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-wardrobe-source','authored-garment',{timeout:30000});
-  await expect(canvas).toHaveAttribute('data-wardrobe-vertices','6993');
+  const wardrobeManifest=await (await page.request.get('/assets/wardrobe/manifest.json')).json();
+  await expect(canvas).toHaveAttribute('data-wardrobe-vertices',String(wardrobeManifest.garments.tee.vertexCount));
   const editor=page.getByRole('tablist',{name:'Avatar editor'});
   await editor.getByRole('tab',{name:'Clothing',exact:true}).click();
   const panel=page.getByRole('tabpanel',{name:'Clothing',exact:true});
@@ -143,7 +144,7 @@ test('underwear, gym and casual have visible variants, fit and saved colors',asy
     for(const style of variants) {
       await panel.getByRole('combobox',{name:'Garment style'}).selectOption(style);
       await canvas.scrollIntoViewIfNeeded();
-      await expect(canvas).toHaveAttribute('data-wardrobe-source','authored-garment');
+      await expect(canvas).toHaveAttribute('data-wardrobe-source','authored-garment',{timeout:30000});
       await expect(canvas).toHaveAttribute('data-wardrobe-style',style);
       await canvas.screenshot({path:test.info().outputPath(`${preset.toLowerCase()}-${style}.png`)});
     }
@@ -159,6 +160,10 @@ test('underwear, gym and casual have visible variants, fit and saved colors',asy
   await panel.getByRole('combobox',{name:'Garment surface'}).selectOption('pinstripe');
   for(const name of ['Garment ease (cm)','Hem length (%)','Waist rise (cm)','Fabric detail (%)']) await panel.getByRole('slider',{name,exact:true}).press('End');
   await panel.getByLabel('Top color',{exact:true}).fill('#668899');
+  await canvas.scrollIntoViewIfNeeded();await canvas.screenshot({path:test.info().outputPath('casual-maximum-adjustments.png')});
+  for(const name of ['Garment ease (cm)','Hem length (%)','Waist rise (cm)','Fabric detail (%)']) await panel.getByRole('slider',{name,exact:true}).press('Home');
+  await canvas.scrollIntoViewIfNeeded();await canvas.screenshot({path:test.info().outputPath('casual-minimum-adjustments.png')});
+  for(const name of ['Garment ease (cm)','Hem length (%)','Waist rise (cm)','Fabric detail (%)']) await panel.getByRole('slider',{name,exact:true}).press('End');
   await expect.poll(()=>targets().wardrobePreferences?.outfits?.CASUAL?.topColor).toBe('#668899');
   expect(targets().keep).toBe('preserve');
   await page.reload();await editor.getByRole('tab',{name:'Clothing',exact:true}).click();
@@ -179,4 +184,57 @@ test('underwear, gym and casual have visible variants, fit and saved colors',asy
   await expect.poll(()=>targets().wardrobePreferences?.outfits?.CASUAL?.hemLength).toBe(100);
   expect(targets().wardrobePreferences.outfits.GYM.variant).toBe('training');
   expect(errors).toEqual([]);
+});
+
+test('wardrobe coverage, original textures and shadows render from front, side and back after body edits',async({page})=> {
+  test.setTimeout(180000);
+  await seed(page);page.setDefaultTimeout(30000);
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{if(message.type()==='error'&&/WebGLProgram|VALIDATE_STATUS|Shader Error/.test(message.text()))errors.push(message.text());});
+  await page.setViewportSize({width:1440,height:1050});await page.goto('/wellness/physique?view=3d');
+  const canvas=page.locator('.chamber-canvas-wrap canvas'),editor=page.getByRole('tablist',{name:'Avatar editor'});
+  await canvas.scrollIntoViewIfNeeded();await expect(canvas).toHaveAttribute('data-wardrobe-source','authored-garment',{timeout:30000});
+  await editor.getByRole('tab',{name:'View',exact:true}).click();
+  await page.locator('.workspace-field').filter({hasText:'Quality'}).getByRole('combobox').selectOption('balanced');
+  await page.getByRole('combobox',{name:'Model background',exact:true}).selectOption('color');
+  await page.getByLabel('Background color',{exact:true}).fill('#d8dde6');
+  await editor.getByRole('tab',{name:'Measure',exact:true}).click();
+  await page.getByRole('slider',{name:'Current Weight',exact:true}).press('ArrowRight');
+  await expect(page.getByRole('slider',{name:'Current Weight',exact:true})).toHaveValue('75');
+  await editor.getByRole('tab',{name:'Clothing',exact:true}).click();
+  const panel=page.getByRole('tabpanel',{name:'Clothing',exact:true});
+  for(const [preset,style] of [['Underwear','boxerBriefs'],['Gym','training'],['Casual','sweatshirt'],['Formal','suit'],['Swimwear','board']]) {
+    await panel.getByRole('button',{name:preset,exact:true}).click();
+    await panel.getByRole('combobox',{name:'Garment style'}).selectOption(style);
+    if(preset==='Formal')await panel.getByRole('combobox',{name:'Garment surface'}).selectOption('source');
+    await canvas.scrollIntoViewIfNeeded();
+    await expect(canvas).toHaveAttribute('data-wardrobe-source','authored-garment',{timeout:30000});await expect(canvas).toHaveAttribute('data-wardrobe-style',style);
+    for(const view of ['Front','Side','Back']) {
+      await page.locator('.chamber-overlay-top').getByRole('button',{name:view,exact:true}).click();
+      await canvas.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+      await canvas.screenshot({path:test.info().outputPath(`wardrobe-${preset.toLowerCase()}-${view.toLowerCase()}.png`)});
+    }
+  }
+  await editor.getByRole('tab',{name:'Measure',exact:true}).click();
+  await expect(page.getByRole('slider',{name:'Current Weight',exact:true})).toHaveValue('75');
+  expect(errors).toEqual([]);
+});
+
+test('anatomical wardrobe links to anatomy controls and returning to underwear stays covered on reload',async({page})=> {
+  await seed(page);page.setDefaultTimeout(30000);
+  await page.goto('/wellness/physique?view=3d');
+  const canvas=page.locator('.chamber-canvas-wrap canvas'),editor=page.getByRole('tablist',{name:'Avatar editor'});
+  await canvas.scrollIntoViewIfNeeded();await expect(canvas).toHaveAttribute('data-wardrobe-source','authored-garment',{timeout:30000});
+  await editor.getByRole('tab',{name:'Clothing',exact:true}).click();
+  const panel=page.getByRole('tabpanel',{name:'Clothing',exact:true});
+  await expect(panel.getByRole('button',{name:'Anatomical',exact:true})).toBeEnabled();await panel.getByRole('button',{name:'Anatomical',exact:true}).click();
+  await panel.getByRole('button',{name:'Customize anatomy',exact:true}).click();
+  await expect(editor.getByRole('tab',{name:'Anatomy',exact:true})).toHaveAttribute('aria-selected','true');
+  await editor.getByRole('tab',{name:'Clothing',exact:true}).click();
+  await panel.getByRole('button',{name:'Wear underwear',exact:true}).click();
+  await expect(panel.getByRole('button',{name:'Underwear',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(panel.locator('.wardrobe-options__status')).toHaveText('Outfit saved');
+  await page.reload();await editor.getByRole('tab',{name:'Clothing',exact:true}).click();
+  await expect(panel.getByRole('button',{name:'Underwear',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByRole('group',{name:'Choose or drag a body part'}).getByRole('button',{name:'Private anatomy',exact:true})).toHaveCount(0);
 });

@@ -5,11 +5,16 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {glbMeshFixture} from '../../tests/helpers/glbMeshFixture';
 import {createAuthoredGarment} from './authoredGarments';
 import {wardrobeDefaults} from '../../lib/wardrobePreferences';
+import {ShaderLib} from 'three';
+import {createClothMaterial} from './WardrobeShader';
 
 let garments;
 beforeAll(async()=> {
-  const bytes=readFileSync('public/assets/wardrobe/wardrobe-v1.glb');
-  garments=(await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene.children;
+  const manifest=JSON.parse(readFileSync('public/assets/wardrobe/manifest.json','utf8'));
+  garments=await Promise.all(Object.values(manifest.garments).map(async record=> {
+    const bytes=readFileSync('public/assets/wardrobe/'+record.geometry);
+    return (await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene.children[0];
+  }));
 });
 it('uses independent authored topology and normalized pose weights for every outfit source',()=> {
   const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');
@@ -49,4 +54,39 @@ it('changes geometric ease, length and waist position without rewriting body mea
   expect(relaxed.geometry.attributes.position.array).not.toEqual(fitted.geometry.attributes.position.array);
   expect(body.geometry.attributes.position.array).toEqual(before);
   fitted.dispose();relaxed.dispose();
+});
+
+it('keeps authored sleeve seams intact and masks ankle-weighted shins above the trouser cuff',()=> {
+  const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');
+  const cloth=createClothMaterial('CASUAL',body.geometry,{...wardrobeDefaults('CASUAL'),hemLength:120},{mesh:garments[1]});
+  for(const material of [cloth,cloth.userData.depthMaterial,cloth.userData.distanceMaterial]) {
+    const lib=material===cloth?ShaderLib.physical:material===cloth.userData.depthMaterial?ShaderLib.depth:ShaderLib.distance;
+    const shader={vertexShader:lib.vertexShader,fragmentShader:lib.fragmentShader,uniforms:{}};
+    material.onBeforeCompile(shader);
+    expect(shader.fragmentShader).toContain('bool torsoCloth = vGarmentCoverage.y > .2;');
+  }
+  expect(cloth.userData.uniforms.uBodyLowerBand.value.x).toBeGreaterThan(0);
+  const restore=cloth.userData.maskBody(body.material,body),regions=body.geometry.attributes.garmentRegion;
+  for(let i=0;i<regions.count;i++) if(regions.getX(i)===6)expect(body.geometry.attributes.garmentCoverage.getX(i)).toBe(1);
+  restore();cloth.dispose();
+});
+
+it('keeps both sides of UV seams sewn together when applying ease and body morphs',()=> {
+  const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');
+  body.morphTargetInfluences[body.morphTargetDictionary.overall_mass]=.4;
+  for(const source of garments) {
+    const garment=createAuthoredGarment(body,source,{easeCm:6,fit:'relaxed'}),weld=garment.geometry.getAttribute('_garment_weld'),seen=new Map();
+    const position=garment.geometry.attributes.position,normal=garment.geometry.attributes.normal;
+    let seams=0;
+    for(let i=0;i<weld.count;i++) {
+      const id=weld.getX(i),other=seen.get(id);
+      if(other===undefined){seen.set(id,i);continue;}
+      seams++;
+      for(let k=0;k<3;k++) {
+        expect(position.getComponent(i,k)).toBeCloseTo(position.getComponent(other,k),5);
+        expect(normal.getComponent(i,k)).toBeCloseTo(normal.getComponent(other,k),5);
+      }
+    }
+    expect(seams).toBeGreaterThan(0);garment.dispose();
+  }
 });

@@ -171,6 +171,28 @@
       "sameComponentsAs": "public/assets/models/humanoid-adult-v2.glb"
     },
     {
+      "path": "public/assets/wardrobe/shirt-v1.glb",
+      "sha256": "b4a245691dc53e87620fd1fceb55f0e43d4b3c835faaaa6bd827dd336bb1bdf2",
+      "components": [
+        {
+          "name": "Authored garment patterns, topology, UVs and surface maps",
+          "source": "MakeHuman CC0 system assets; verified archive b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107; per-member hashes and copyright records in public/assets/wardrobe/manifest.json and .mhclo/.mhmat notices",
+          "licence": "CC0 1.0 Universal; explicit September 2020 CC0 notices; official catalog https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+          "modified": true,
+          "status": "verified",
+          "reviewed": "2026-10-20"
+        },
+        {
+          "name": "Measured body surface bindings and garment adaptation",
+          "source": "scripts/build-wardrobe-assets.mjs and src/components/morphEngine/authoredGarments.js; approved CC0 body and normalized pose weights",
+          "licence": "Project MIT (LICENSE); underlying body CC0-1.0",
+          "modified": true,
+          "status": "project"
+        }
+      ],
+      "builtBy": "compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs"
+    },
+    {
       "path": "public/assets/wardrobe/shirt_diffuse.png",
       "sha256": "482fb90fe73d6a672c5601f1c238ef85285b0e54b99ee012f2935d542c2a60ad",
       "components": [
@@ -215,8 +237,52 @@
       "builtBy": "compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs"
     },
     {
+      "path": "public/assets/wardrobe/suit-v1.glb",
+      "sha256": "b660f3342e239fc109eca41484f08595290582539fae468e56edc6b2db516e1d",
+      "components": [
+        {
+          "name": "Authored garment patterns, topology, UVs and surface maps",
+          "source": "MakeHuman CC0 system assets; verified archive b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107; per-member hashes and copyright records in public/assets/wardrobe/manifest.json and .mhclo/.mhmat notices",
+          "licence": "CC0 1.0 Universal; explicit September 2020 CC0 notices; official catalog https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+          "modified": true,
+          "status": "verified",
+          "reviewed": "2026-10-20"
+        },
+        {
+          "name": "Measured body surface bindings and garment adaptation",
+          "source": "scripts/build-wardrobe-assets.mjs and src/components/morphEngine/authoredGarments.js; approved CC0 body and normalized pose weights",
+          "licence": "Project MIT (LICENSE); underlying body CC0-1.0",
+          "modified": true,
+          "status": "project"
+        }
+      ],
+      "builtBy": "compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs"
+    },
+    {
       "path": "public/assets/wardrobe/suit_diffuse.png",
       "sha256": "f5926ac10e0d677bbd7a084c5a04310ed4816bfe9f5dc0e3b4c0323a48619d50",
+      "components": [
+        {
+          "name": "Authored garment patterns, topology, UVs and surface maps",
+          "source": "MakeHuman CC0 system assets; verified archive b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107; per-member hashes and copyright records in public/assets/wardrobe/manifest.json and .mhclo/.mhmat notices",
+          "licence": "CC0 1.0 Universal; explicit September 2020 CC0 notices; official catalog https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+          "modified": true,
+          "status": "verified",
+          "reviewed": "2026-10-20"
+        },
+        {
+          "name": "Measured body surface bindings and garment adaptation",
+          "source": "scripts/build-wardrobe-assets.mjs and src/components/morphEngine/authoredGarments.js; approved CC0 body and normalized pose weights",
+          "licence": "Project MIT (LICENSE); underlying body CC0-1.0",
+          "modified": true,
+          "status": "project"
+        }
+      ],
+      "builtBy": "compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs"
+    },
+    {
+      "path": "public/assets/wardrobe/sweatshirt-v1.glb",
+      "sha256": "0a22d926ada75cacb264c6ffd25c4c4c5ae41a9a1f42baaad36cff6d534e85c9",
       "components": [
         {
           "name": "Authored garment patterns, topology, UVs and surface maps",
@@ -281,6 +347,28 @@
       "builtBy": "compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs"
     },
     {
+      "path": "public/assets/wardrobe/tee-v1.glb",
+      "sha256": "05ac8415add5440174daf862ec34be73b257e376cf22b6eff643015d140728c2",
+      "components": [
+        {
+          "name": "Authored garment patterns, topology, UVs and surface maps",
+          "source": "MakeHuman CC0 system assets; verified archive b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107; per-member hashes and copyright records in public/assets/wardrobe/manifest.json and .mhclo/.mhmat notices",
+          "licence": "CC0 1.0 Universal; explicit September 2020 CC0 notices; official catalog https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+          "modified": true,
+          "status": "verified",
+          "reviewed": "2026-10-20"
+        },
+        {
+          "name": "Measured body surface bindings and garment adaptation",
+          "source": "scripts/build-wardrobe-assets.mjs and src/components/morphEngine/authoredGarments.js; approved CC0 body and normalized pose weights",
+          "licence": "Project MIT (LICENSE); underlying body CC0-1.0",
+          "modified": true,
+          "status": "project"
+        }
+      ],
+      "builtBy": "compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs"
+    },
+    {
       "path": "public/assets/wardrobe/tee_diffuse.png",
       "sha256": "b13950859a2bf6ab149aa7e6c9c1e0043be6be7f3f52acb9bbac21c1e1d846d7",
       "components": [
@@ -323,28 +411,6 @@
         }
       ],
       "builtBy": "compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs"
-    },
-    {
-      "path": "public/assets/wardrobe/wardrobe-v1.glb",
-      "sha256": "93dd5d35e0dba145f348e28d90e40e8789c8978bb01ae2778ee700fdbbbb0310",
-      "components": [
-        {
-          "name": "Authored garment patterns, topology, UVs and surface maps",
-          "source": "MakeHuman CC0 system assets; verified archive b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107; per-member hashes and copyright records in public/assets/wardrobe/manifest.json and .mhclo/.mhmat notices",
-          "licence": "CC0 1.0 Universal; explicit September 2020 CC0 notices; official catalog https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
-          "modified": true,
-          "status": "verified",
-          "reviewed": "2026-10-20"
-        },
-        {
-          "name": "Measured body surface bindings and garment adaptation",
-          "source": "scripts/build-wardrobe-assets.mjs and src/components/morphEngine/authoredGarments.js; approved CC0 body and normalized pose weights",
-          "licence": "Project MIT (LICENSE); underlying body CC0-1.0",
-          "modified": true,
-          "status": "project"
-        }
-      ],
-      "builtBy": "compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs"
     }
   ],
   "licenseEvidence": [
@@ -367,6 +433,11 @@
       "sha256": "1c127914605cd57229207c460e44aeb7661dfc17f30febc1d04f1c10ce601677",
       "source": "GrowthTrack Ultimate project MIT licence",
       "verified": "2026-10-20"
+    },
+    {
+      "path": "docs/licenses/wardrobe-cc0-notices.txt",
+      "sha256": "9f6a5e514a267171e4634e3f0205e43447749c2fee17474b19bdd3f54861d659",
+      "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
     }
   ]
 }

@@ -453,9 +453,11 @@ export default function HumanoidClone({
   // surface bindings and shares the pose rig. Custom assets retain the shell
   // fallback when they do not match the approved binding topology.
   useEffect(() => {
-    if (useProcedural || !bodyMesh || !scene || !skeleton || !clothMaterial) return undefined;
+    if(!clothMaterial) {publishGarmentEvidence(renderer.domElement,wardrobe,null);return undefined;}
+    if (useProcedural || !bodyMesh || !scene || !skeleton) return undefined;
     const parent = bodyMesh.parent || scene;
     const shell=createAuthoredGarment(bodyMesh,wardrobeAsset?.mesh,wardrobeOptions || {}) || createGarmentGeometry(bodyMesh,wardrobeOptions || {});
+    const restoreBody=shell.authored?clothMaterial.userData.maskBody(material,bodyMesh):null;
     const overlay = new THREE.SkinnedMesh(shell.geometry, clothMaterial);
     overlay.userData.garmentShell=shell;
     overlay.name = `GrowthTrackCloth_${cloneKey}`;
@@ -480,9 +482,10 @@ export default function HumanoidClone({
     return () => {
       parent.remove(overlay);
       shell.dispose();
+      restoreBody?.();
       if (clothOverlayRef.current === overlay) clothOverlayRef.current = null;
     };
-  }, [bodyMesh, cloneKey, clothMaterial, scene, skeleton, useProcedural,wardrobeOptions,wardrobeAsset,wardrobe,renderer]);
+  }, [bodyMesh, cloneKey, clothMaterial, scene, skeleton, useProcedural,wardrobeOptions,wardrobeAsset,wardrobe,renderer,material]);
 
   // An aura must share the body's parent, bind matrix and morphs. A sibling
   // outside the normalized scene produces detached glowing face/hand patches.

@@ -14,8 +14,12 @@ export function createAuthoredGarment(body,source,options={}) {
   const coordinates=new Float32Array(rest.count*3);
   for(let i=0;i<rest.count;i++) {coordinates[i*3]=rest.getX(i)*scale;coordinates[i*3+1]=(rest.getY(i)-bounds.min.y)*scale;coordinates[i*3+2]=rest.getZ(i)*scale;}
   geometry.setAttribute('garmentCoordinates',new BufferAttribute(coordinates,3));
+  const weld=geometry.getAttribute('_garment_weld'),groups=new Map();
+  if(weld)for(let i=0;i<weld.count;i++){const id=weld.getX(i);if(!groups.has(id))groups.set(id,[]);groups.get(id).push(i);}
+  const seams=[...groups.values()].filter(group=>group.length>1);
   const evaluated=new Map(),point=new Vector3(),delta=new Vector3(),normal=new Vector3();
-  const ease=(Number(options.easeCm) || 0)*height/175*({fitted:.4,regular:1,relaxed:1.8}[options.fit] || 1);
+  const ease=(Number(options.easeCm) || 0)*height/175;
+  const nativeFit={fitted:.65,regular:1,relaxed:1.6}[options.fit] || 1;
   const length=(Number(options.hemLength)||100)/100;
   let previous='';
   const update=()=> {
@@ -37,6 +41,10 @@ export function createAuthoredGarment(body,source,options={}) {
       for(let k=0;k<3;k++) delta.addScaledVector(vertex(bindings.getComponent(i,k)),bary.getComponent(i,k));
       delta.sub(new Vector3().fromBufferAttribute(anchors,i));
       point.fromBufferAttribute(rest,i).add(delta);
+      // Fit scales the authored pattern's native clearance. Added ease remains
+      // an independent centimetre offset rather than changing with the fit menu.
+      delta.fromBufferAttribute(rest,i).sub(new Vector3().fromBufferAttribute(anchors,i));
+      point.addScaledVector(delta,nativeFit-1);
       normal.fromBufferAttribute(sourceGeometry.attributes.normal,i);
       point.addScaledVector(normal,ease);
       // Extend lower hems in garment space. Authored folds and cuff construction
@@ -48,7 +56,12 @@ export function createAuthoredGarment(body,source,options={}) {
       }
       point.toArray(position.array,i*3);
     }
-    position.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingSphere();
+    position.needsUpdate=true;geometry.computeVertexNormals();
+    for(const group of seams) {
+      normal.set(0,0,0);for(const i of group)normal.add(point.fromBufferAttribute(geometry.attributes.normal,i));normal.normalize();
+      for(const i of group)geometry.attributes.normal.setXYZ(i,normal.x,normal.y,normal.z);
+    }
+    geometry.computeBoundingSphere();
   };
   update();
   return {geometry,update,authored:true,dispose:()=>geometry.dispose()};

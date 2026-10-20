@@ -38,6 +38,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     manifest = {'schemaVersion': 1, 'license': 'CC0-1.0', 'sourceUrl': 'https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html',
                 'archiveSha256': ARCHIVE_SHA, 'inputs': [], 'garments': {}}
+    notices = []
     with zipfile.ZipFile(archive) as bundle:
         for key, stem in SOURCES.items():
             folder = cache / stem
@@ -51,16 +52,27 @@ def main():
                     raise ValueError(f'Missing CC0 notice: {member}')
                 (folder / (stem + suffix)).write_bytes(content)
                 manifest['inputs'].append({'member': member, 'sha256': hashlib.sha256(content).hexdigest(), 'bytes': len(content)})
-            fitted = converter.fit_proxy(compiler.load_obj(folder / (stem + '.obj')), folder / (stem + '.mhclo'), body)
+            source = compiler.load_obj(folder / (stem + '.obj'))
+            # MakeHuman's nfaces is per-vertex valence. The accessory converter
+            # expects per-polygon corner counts under that same key. Passing
+            # valence through dropped the fourth corner of unrelated quads.
+            source['nfaces'] = np.where(source['fvert'][:, 0] == source['fvert'][:, 3], 3, 4).astype(np.uint8)
+            fitted = converter.fit_proxy(source, folder / (stem + '.mhclo'), body)
+            triangle_count = int((source['nfaces'].astype(np.int64) - 2).sum())
+            if len(fitted['indices']) != triangle_count * 3:
+                raise ValueError(f'{stem}: garment conversion dropped polygon corners')
+            notices.append(stem + '\n' + (folder / (stem + '.mhclo')).read_text().split('uuid ')[0])
             # Neutral authored coordinates, UVs, seam topology and folds. Body
             # bindings are generated against the exact released GLB next.
             geometry = {field: fitted[field].tolist() for field in ('positions', 'normals', 'uv_values', 'indices')}
             geometry['original_index'] = fitted['original_index'].tolist()
-            (cache / (key + '.json')).write_text(json.dumps(geometry, separators=(',', ':')))
+            compiled = json.dumps(geometry, separators=(',', ':')).encode()
+            (cache / (key + '.json')).write_bytes(compiled)
             for suffix in ('_normal.png', '_diffuse.png'):
                 if (folder / (stem + suffix)).exists():
                     shutil.copyfile(folder / (stem + suffix), output / (key + suffix))
-            manifest['garments'][key] = {'source': stem, 'normal': key + '_normal.png' if (folder / (stem + '_normal.png')).exists() else None, 'diffuse': key + '_diffuse.png'}
+            manifest['garments'][key] = {'source': stem, 'sourceTriangleCount': triangle_count, 'geometrySha256': hashlib.sha256(compiled).hexdigest(), 'normal': key + '_normal.png' if (folder / (stem + '_normal.png')).exists() else None, 'diffuse': key + '_diffuse.png'}
+    (ROOT / 'docs/licenses/wardrobe-cc0-notices.txt').write_text('\n'.join(notices), encoding='utf-8', newline='\n')
     (cache / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print('Compiled four licensed garment sets with authored topology, UVs and surface maps')
 

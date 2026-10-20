@@ -37,17 +37,21 @@ const attribute=(array,size)=> {
 };
 const at=(array,i)=>new Vector3().fromArray(array,i*3);
 for(const [name,entry] of Object.entries(manifest.garments)) {
-  const data=JSON.parse(fs.readFileSync(path.join(cache,name+'.json'),'utf8'));
+  const compiled=fs.readFileSync(path.join(cache,name+'.json'));
+  if(hash(compiled)!==entry.geometrySha256)throw new Error(`${name}: compiled source hash mismatch; run compile_wardrobe.py.`);
+  const data=JSON.parse(compiled);
   // A sewing mesh is much coarser than the measured body. Subdivide its faces
   // before binding so curved hips and shoulders cannot pierce large triangles.
-  const mids=new Map(),triangles=[];let originalId=Math.max(...data.original_index)+1;
+  const mids=new Map(),geometricMids=new Map(),triangles=[];let originalId=Math.max(...data.original_index)+1;
   const midpoint=(a,b)=> {
     const key=a<b?a+':'+b:b+':'+a;if(mids.has(key))return mids.get(key);
     const id=data.positions.length;
     data.positions.push(data.positions[a].map((v,k)=>(v+data.positions[b][k])/2));
     data.normals.push(data.normals[a].map((v,k)=>(v+data.normals[b][k])/2));
     data.uv_values.push(data.uv_values[a].map((v,k)=>(v+data.uv_values[b][k])/2));
-    data.original_index.push(originalId++);mids.set(key,id);return id;
+    const originalA=data.original_index[a],originalB=data.original_index[b],physicalEdge=originalA<originalB?originalA+':'+originalB:originalB+':'+originalA;
+    if(!geometricMids.has(physicalEdge))geometricMids.set(physicalEdge,originalId++);
+    data.original_index.push(geometricMids.get(physicalEdge));mids.set(key,id);return id;
   };
   for(let i=0;i<data.indices.length;i+=3){const[a,b,c]=data.indices.slice(i,i+3),ab=midpoint(a,b),bc=midpoint(b,c),ca=midpoint(c,a);triangles.push(a,ab,ca,ab,b,bc,ca,bc,c,ab,bc,ca);}
   data.indices=triangles;const count=data.positions.length;
@@ -84,17 +88,39 @@ for(const [name,entry] of Object.entries(manifest.garments)) {
     coverage[i*4+2]=top && /Shoulder|UpperArm/.test(jointName)?1:0;
     coverage[i*4+3]=top && /ForeArm/.test(jointName)?1:0;
   }
-  const attributes={POSITION:attribute(points,3),NORMAL:attribute(normals,3),TEXCOORD_0:attribute(uvs,2),JOINTS_0:attribute(joints,4),WEIGHTS_0:attribute(weights,4),_BODY_INDICES:attribute(ids,3),_BODY_BARY:attribute(bary,3),_BODY_ANCHOR:attribute(anchors,3),_GARMENT_COVERAGE:attribute(coverage,4)};
+  // UV atlas seams duplicate vertices. Share their physical normals so ease
+  // offsets cannot pull the two sides apart and expose cracks in sewn fabric.
+  const fitted=new BufferGeometry();fitted.setAttribute('position',new Float32BufferAttribute(points,3));fitted.setIndex(data.indices);fitted.computeVertexNormals();
+  const sharedNormals=new Map();
+  data.original_index.forEach((id,i)=>{if(!sharedNormals.has(id))sharedNormals.set(id,new Vector3());sharedNormals.get(id).add(new Vector3().fromBufferAttribute(fitted.attributes.normal,i));});
+  data.original_index.forEach((id,i)=>sharedNormals.get(id).clone().normalize().toArray(normals,i*3));fitted.dispose();
+  const attributes={POSITION:attribute(points,3),NORMAL:attribute(normals,3),TEXCOORD_0:attribute(uvs,2),JOINTS_0:attribute(joints,4),WEIGHTS_0:attribute(weights,4),_BODY_INDICES:attribute(ids,3),_BODY_BARY:attribute(bary,3),_BODY_ANCHOR:attribute(anchors,3),_GARMENT_COVERAGE:attribute(coverage,4),_GARMENT_WELD:attribute(new Uint32Array(data.original_index),1)};
   meshes.push({name,extras:{...manifest.binding,source:entry.source},primitives:[{attributes,indices:attribute(new Uint32Array(data.indices),1)}]});
-  entry.vertexCount=count;
+  entry.vertexCount=count;entry.geometry=name+'-v1.glb';
   console.log(`${name}: ${count} authored vertices, ${data.indices.length/3} triangles`);
 }
-const json={asset:{version:'2.0',generator:'Ultimate licensed wardrobe binding'},buffers:[{byteLength:offset}],bufferViews:views,accessors,meshes,nodes:meshes.map((_,mesh)=>({mesh})),scenes:[{nodes:meshes.map((_,i)=>i)}],scene:0};
-const jsonBytes=Buffer.from(JSON.stringify(json)),jsonChunk=Buffer.alloc((jsonBytes.length+3)&~3,32);jsonBytes.copy(jsonChunk);
-const binary=Buffer.concat(chunks),header=Buffer.alloc(12),jh=Buffer.alloc(8),bh=Buffer.alloc(8);
-header.writeUInt32LE(0x46546c67);header.writeUInt32LE(2,4);header.writeUInt32LE(28+jsonChunk.length+binary.length,8);
-jh.writeUInt32LE(jsonChunk.length);jh.writeUInt32LE(0x4e4f534a,4);bh.writeUInt32LE(binary.length);bh.writeUInt32LE(0x004e4942,4);
-fs.writeFileSync(path.join(out,'wardrobe-v1.glb'),Buffer.concat([header,jh,jsonChunk,bh,binary]));
+const encode=(json,binary)=> {
+  const jsonBytes=Buffer.from(JSON.stringify(json)),jsonChunk=Buffer.alloc((jsonBytes.length+3)&~3,32);jsonBytes.copy(jsonChunk);
+  const header=Buffer.alloc(12),jh=Buffer.alloc(8),bh=Buffer.alloc(8);
+  header.writeUInt32LE(0x46546c67);header.writeUInt32LE(2,4);header.writeUInt32LE(28+jsonChunk.length+binary.length,8);
+  jh.writeUInt32LE(jsonChunk.length);jh.writeUInt32LE(0x4e4f534a,4);bh.writeUInt32LE(binary.length);bh.writeUInt32LE(0x004e4942,4);
+  return Buffer.concat([header,jh,jsonChunk,bh,binary]);
+};
+// Ship individually requested garments. Loading a pair of briefs should not
+// download the 32k-vertex suit and every other wardrobe style first.
+for(const mesh of meshes) {
+  const primitive=mesh.primitives[0],selected=[...Object.values(primitive.attributes),primitive.indices];
+  const subChunks=[],subViews=[],subAccessors=[];let subOffset=0;
+  for(const id of selected) {
+    const accessor=accessors[id],view=views[accessor.bufferView],chunk=chunks[accessor.bufferView];
+    subChunks.push(chunk);subViews.push({...view,byteOffset:subOffset});
+    subAccessors.push({...accessor,bufferView:subViews.length-1});subOffset+=chunk.length;
+  }
+  const attributes=Object.fromEntries(Object.entries(primitive.attributes).map(([key,id])=>[key,selected.indexOf(id)]));
+  const subMesh={...mesh,primitives:[{attributes,indices:selected.indexOf(primitive.indices)}]};
+  const json={asset:{version:'2.0',generator:'Ultimate licensed wardrobe binding'},buffers:[{byteLength:subOffset}],bufferViews:subViews,accessors:subAccessors,meshes:[subMesh],nodes:[{mesh:0}],scenes:[{nodes:[0]}],scene:0};
+  fs.writeFileSync(path.join(out,manifest.garments[mesh.name].geometry),encode(json,Buffer.concat(subChunks)));
+}
 manifest.outputs=fs.readdirSync(out).filter(file=>file.endsWith('.png')||file.endsWith('.glb')).map(file=>{const bytes=fs.readFileSync(path.join(out,file));return{file,sha256:hash(bytes),bytes:bytes.length};});
 fs.writeFileSync(path.join(out,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 const components=[{name:'Authored garment patterns, topology, UVs and surface maps',source:`MakeHuman CC0 system assets; verified archive ${manifest.archiveSha256}; per-member hashes and copyright records in public/assets/wardrobe/manifest.json and .mhclo/.mhmat notices`,licence:'CC0 1.0 Universal; explicit September 2020 CC0 notices; official catalog https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html',modified:true,status:'verified',reviewed:'2026-10-20'},
@@ -102,5 +128,8 @@ const components=[{name:'Authored garment patterns, topology, UVs and surface ma
 const prefix='public/assets/wardrobe/';
 provenance.assets=provenance.assets.filter(asset=>!asset.path.startsWith(prefix));
 provenance.assets.push(...manifest.outputs.map(file=>({path:prefix+file.file,sha256:file.sha256,components,builtBy:'compile_wardrobe.py; resize_wardrobe_maps.ps1 (1024px); build-wardrobe-assets.mjs'})));
+const noticePath='docs/licenses/wardrobe-cc0-notices.txt';
+provenance.licenseEvidence=provenance.licenseEvidence.filter(entry=>entry.path!==noticePath);
+provenance.licenseEvidence.push({path:noticePath,sha256:hash(Buffer.from(fs.readFileSync(path.join(root,noticePath),'utf8').replace(/\r\n/g,'\n'))),source:manifest.sourceUrl});
 fs.writeFileSync(provenancePath,JSON.stringify(provenance,null,2)+'\n');
 geometry.dispose();console.log('Wardrobe geometry and provenance written');

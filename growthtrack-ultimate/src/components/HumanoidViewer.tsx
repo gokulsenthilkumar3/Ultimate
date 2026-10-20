@@ -52,6 +52,7 @@ import { trackEvent } from '../lib/analytics';
 import AvatarEvidence from './physique/AvatarEvidence';
 import AvatarViewOptions from './physique/AvatarViewOptions';
 import WardrobeOptions from './physique/WardrobeOptions';
+import {preloadWardrobeAsset} from './morphEngine/useWardrobeAsset';
 import useWardrobePreferences from '../hooks/useWardrobePreferences';
 import useAvatarPresentation from '../hooks/useAvatarPresentation';
 import { AVATAR_EXPOSURE, DEFAULT_AVATAR_PRESENTATION } from '../lib/avatarPresentation';
@@ -264,6 +265,7 @@ export default function HumanoidViewer() {
   const wardrobe          = use3DStore((s) => s.wardrobeState);
   const wardrobePreferences=use3DStore(s=>s.wardrobePreferences);
   const wardrobeControls=useWardrobePreferences();
+  useEffect(()=>{if(wardrobe!=='ANATOMICAL')preloadWardrobeAsset(wardrobe,wardrobePreferences.outfits[wardrobe]).catch(()=>{});},[wardrobe,wardrobePreferences]);
   const anatomyDepth      = use3DStore((s) => s.anatomyDepth);
   const captureRedacted = use3DStore((s) => s.captureRedacted);
   const selectedPart      = use3DStore((s) => s.focusedBodyPart);
