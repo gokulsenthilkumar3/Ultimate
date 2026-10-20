@@ -55,6 +55,10 @@ import WardrobeOptions from './physique/WardrobeOptions';
 import {preloadWardrobeAsset} from './morphEngine/useWardrobeAsset';
 import useWardrobePreferences from '../hooks/useWardrobePreferences';
 import useAvatarPresentation from '../hooks/useAvatarPresentation';
+import useAvatarPresentationMode from '../hooks/useAvatarPresentationMode';
+import {captureAvatarImage} from './morphEngine/captureRuntime';
+import {safeFilename} from '../lib/avatarCapturePolicy';
+import AnimationPanel from './morphEngine/AnimationPanel';
 import { AVATAR_EXPOSURE, DEFAULT_AVATAR_PRESENTATION } from '../lib/avatarPresentation';
 import { buildAvatarEvidence } from '../lib/avatarEvidence';
 import '../styles/avatar-workspace.css';
@@ -254,6 +258,8 @@ export default function HumanoidViewer() {
   const cameraPreset      = use3DStore((s) => s.cameraPreset);
   const autoRotate        = use3DStore((s) => s.autoRotate);
   const modelDropTarget = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const captureBusy = useRef(false);
   const [partDragOver, setPartDragOver] = useState(false);
   const [guideMetric, setGuideMetric] = useState('chest');
   const [showShareModal, setShowShareModal] = useState(false);
@@ -369,6 +375,7 @@ export default function HumanoidViewer() {
   const modelEvidence = useMemo(() => buildAvatarEvidence({ diagnostics:modelDiagnostics, metrics:currentMetrics, qualityGate }), [modelDiagnostics,currentMetrics,qualityGate]);
   const presentationPreferences = useAvatarPresentation();
   const prefersReducedMotion = useStore((s: any) => s.reducedMotion) || rendererTelemetry.reducedMotion;
+  const presentation = useAvatarPresentationMode(viewportRef, Boolean(prefersReducedMotion));
   const updateBodyProfile = useStore((s: any) => s.updateBodyProfile);
   const updatePhysiqueTargets = useStore((s: any) => s.updatePhysiqueTargets);
   const saveMetricLog = useStore((s: any) => s.saveMetricLog);
@@ -492,10 +499,10 @@ export default function HumanoidViewer() {
     queueProfileSave(next, goalMetrics, manualMorphOverrides);
   }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateCurrentMetric]);
 
-  const selectSkinTone = (tone: string) => {
-    const next = { ...currentMetrics, skinTone: tone, skinColor: FITZPATRICK_SWATCHES.find(s => s.id === tone)?.hex || '#bc8970' };
-    setCurrentMetrics(next);
-    queueProfileSave(next, goalMetrics, manualMorphOverrides);
+  const selectSkinTone = (tone: string, context = 'current') => {
+    const next = { ...(context === 'goal' ? goalMetrics : currentMetrics), skinTone: tone, skinColor: FITZPATRICK_SWATCHES.find(s => s.id === tone)?.hex || '#bc8970' };
+    if (context === 'goal') {setGoalMetrics(next); queueProfileSave(currentMetrics, next, manualMorphOverrides);}
+    else {setCurrentMetrics(next); queueProfileSave(next, goalMetrics, manualMorphOverrides);}
   };
 
   const updateGoalAppearance = useCallback((key: string, value: string | number) => {
@@ -547,6 +554,9 @@ export default function HumanoidViewer() {
   const setShowSettings = (_open: boolean) => {};
 
   const skinTone = currentMetrics.skinTone || 'IV';
+  const skinEditorMetrics = avatarWorkspace.avatarContext === 'goal' ? {...currentMetrics,...goalMetrics} : currentMetrics;
+  const skinEditorTone = skinEditorMetrics.skinTone || 'IV';
+  const updateSkinAppearance = avatarWorkspace.avatarContext === 'goal' ? updateGoalAppearance : updateCurrentAppearance;
   const eyeColor = currentMetrics.eyeColor || '#6b3b20';
   const hairA = { style: currentMetrics.hairStyle || 'short', color: currentMetrics.hairColor || '#2c1a0a' };
   const hairB = { style: goalMetrics.hairStyle || 'short', color: goalMetrics.hairColor || '#2c1a0a' };
@@ -611,7 +621,7 @@ export default function HumanoidViewer() {
   // ── Keyboard shortcuts: 1–6 for view modes, Escape for settings
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement)?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement)?.closest('input, textarea, select, [contenteditable="true"]')) return;
       const mode = VIEW_MODES.find((m) => m.key === e.key);
       if (mode && canUseViewMode(mode.id)) setViewMode(mode.id);
       if (e.key === 'Escape') { setShowSettings(false); setShowEditor(false); }
@@ -693,7 +703,6 @@ export default function HumanoidViewer() {
     () => resolveBodyMetrics(goalMetrics, currentMetrics),
     [currentMetrics, goalMetrics],
   );
-  const overallScore = progressSummary.score ?? 0;
 
   // ── Export screenshot
   const waitForProtectedRedraw = useCallback(() => new Promise<void>((resolve) => {
@@ -701,34 +710,43 @@ export default function HumanoidViewer() {
   }), []);
 
   const captureScreenshot = useCallback(async () => {
-    const canvas = document.querySelector('.chamber-viewport canvas') as HTMLCanvasElement | null;
+    const canvas = viewportRef.current?.querySelector('canvas');
     if (!canvas) { toast.error('No 3D viewport found.'); return; }
-    if (captureRedacted) return;
+    if (captureBusy.current) return;
+    captureBusy.current = true;
     try {
       setCaptureRedacted(true);
       await waitForProtectedRedraw();
       const link = document.createElement('a');
-      link.download = `MirrorChamber_${new Date().toISOString().split('T')[0]}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.download = safeFilename('physique');
+      link.href = captureAvatarImage(canvas, {scale:avatarWorkspace.captureScale});
       link.click();
       toast.success('Screenshot exported with private anatomy hidden.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'The image could not be rendered. Try a smaller image resolution.');
     } finally {
       setCaptureRedacted(false);
+      captureBusy.current = false;
     }
-  }, [captureRedacted, setCaptureRedacted, toast, waitForProtectedRedraw]);
+  }, [avatarWorkspace.captureScale, setCaptureRedacted, toast, waitForProtectedRedraw]);
 
   const handleShareAvatar = useCallback(async () => {
-    const canvas = document.querySelector('.chamber-viewport canvas') as HTMLCanvasElement | null;
-    if (captureRedacted) return;
+    const canvas = viewportRef.current?.querySelector('canvas');
+    if (!canvas) { toast.error('No 3D viewport found.'); return; }
+    if (captureBusy.current) return;
+    captureBusy.current = true;
     try {
       setCaptureRedacted(true);
       await waitForProtectedRedraw();
-      setShareImageSrc(canvas ? canvas.toDataURL('image/png') as any : null);
+      setShareImageSrc(captureAvatarImage(canvas, {scale:avatarWorkspace.captureScale}) as any);
       setShowShareModal(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'The protected image could not be rendered.');
     } finally {
       setCaptureRedacted(false);
+      captureBusy.current = false;
     }
-  }, [captureRedacted, setCaptureRedacted, waitForProtectedRedraw]);
+  }, [avatarWorkspace.captureScale, setCaptureRedacted, toast, waitForProtectedRedraw]);
 
   const handleSaveSnapshot = useCallback(async () => {
     try {
@@ -770,7 +788,7 @@ export default function HumanoidViewer() {
 
   return (
     <>
-    <div className="chamber fade-in chamber-fullscreen-wrap" data-density={avatarWorkspace.density} data-interface-effects={avatarWorkspace.interfaceEffects ? 'on' : 'off'} style={{ '--avatar-inspector-width': `${avatarWorkspace.inspectorWidth}px` } as React.CSSProperties}>
+    <div className="chamber fade-in chamber-fullscreen-wrap" data-presentation={presentation.active ? 'on' : 'off'} data-density={avatarWorkspace.density} data-interface-effects={avatarWorkspace.interfaceEffects ? 'on' : 'off'} style={{ '--avatar-inspector-width': `${avatarWorkspace.inspectorWidth}px` } as React.CSSProperties}>
       <header className="chamber-topbar">
         <div className="chamber-topbar__brand">
           <div className="chamber-topbar__title-row">
@@ -804,7 +822,13 @@ export default function HumanoidViewer() {
       {/* ═══ VIEWPORT + EDITOR LAYOUT ═══ */}
       <div className="chamber-layout">
         {/* ── VIEWPORT ── */}
-        <div className="chamber-viewport">
+        <div ref={viewportRef} className="chamber-viewport" data-controls-idle={presentation.active && presentation.controlsIdle ? 'true' : 'false'}>
+          {presentation.active && <div className="avatar-presentation-controls">
+            <button className="chamber-pill" onClick={() => setAutoRotate(!autoRotate)} aria-label={autoRotate ? 'Pause presentation rotation' : 'Play presentation rotation'}>{autoRotate ? <Pause size={16}/> : <Play size={16}/>}</button>
+            <button className="chamber-pill" onClick={captureScreenshot}><Download size={16}/> Save protected image</button>
+            <span>Drag to orbit · Scroll to zoom · Space to pause</span>
+          </div>}
+          {presentation.active && <button className="chamber-pill avatar-presentation-exit" onClick={presentation.exit}><Minimize2 size={16}/> Exit presentation <kbd>Esc</kbd></button>}
           {/* Top overlay bar */}
           <div className="chamber-overlay-top">
             <div className="chamber-view-modes" role="group" aria-label="Comparison mode">
@@ -1130,11 +1154,14 @@ export default function HumanoidViewer() {
                   <h4 className="chamber-editor__heading"><Palette size={14} /> Skin</h4>
                   <p className="chamber-note">Appearance controls are visual. They do not infer ethnicity or a medical condition.</p>
                   <div className="workspace-swatch-row">{FITZPATRICK_SWATCHES.map((s) => <button key={s.id} title={s.label} aria-label={s.label}
-                    className={skinTone === s.id && (!currentMetrics.skinColor || String(currentMetrics.skinColor).toUpperCase() === s.hex.toUpperCase()) ? 'active' : ''} style={{ background: s.hex }} onClick={() => selectSkinTone(s.id)} />)}</div>
-                  <label className="workspace-field"><span>Base skin color</span><input type="color" value={/^#[0-9a-f]{6}$/i.test(String(currentMetrics.skinColor)) ? String(currentMetrics.skinColor) : FITZPATRICK_SWATCHES.find(s => s.id === skinTone)?.hex || '#bc8970'} onChange={event => updateCurrentAppearance('skinColor', event.target.value)} /></label>
-                  <p className="chamber-note">Choose a continuous base color under neutral lighting. These appearance presets are not measured sun-response phototypes. Regional pigmentation and tan are separate layers; local controls remain recorded-only until their masks are implemented.</p>
+                    className={skinEditorTone === s.id && (!skinEditorMetrics.skinColor || String(skinEditorMetrics.skinColor).toUpperCase() === s.hex.toUpperCase()) ? 'active' : ''} style={{ background: s.hex }} onClick={() => selectSkinTone(s.id,avatarWorkspace.avatarContext)} />)}</div>
+                  <label className="workspace-field"><span>Base skin color</span><input aria-label="Base skin color" type="color" value={/^#[0-9a-f]{6}$/i.test(String(skinEditorMetrics.skinColor)) ? String(skinEditorMetrics.skinColor) : FITZPATRICK_SWATCHES.find(s => s.id === skinEditorTone)?.hex || '#bc8970'} onChange={event => updateSkinAppearance('skinColor', event.target.value)} /></label>
+                  <p className="chamber-note">Choose the color of skin usually covered from the sun. Tan adds pigment separately, so it never replaces this base color. Appearance presets are not measured sun-response phototypes.</p>
+                  <label className="workspace-field"><span>Undertone</span><select aria-label="Skin undertone" value={['cool','neutral','warm'].includes(String(skinEditorMetrics.skinUndertone)) ? String(skinEditorMetrics.skinUndertone) : 'neutral'} onChange={event=>updateSkinAppearance('skinUndertone',event.target.value)}><option value="cool">Cool / pink</option><option value="neutral">Neutral</option><option value="warm">Warm / golden</option></select></label>
+                  {[{key:'skinTan',label:'Tan amount',help:'Adds pigment to sun-exposed regions. Palms, inner arms and covered regions receive less.'},{key:'skinFlush',label:'Skin flush',help:'Adds a subtle blood-color layer; it does not infer stress or health.'}].map(layer=><label className="avatar-range-field" key={layer.key}><span>{layer.label}<output>{Math.round(Number(skinEditorMetrics[layer.key] || 0)*100)}%</output></span><input type="range" aria-label={layer.label} min="0" max="1" step=".01" value={Number(skinEditorMetrics[layer.key] || 0)} onChange={event=>updateSkinAppearance(layer.key,Number(event.target.value))}/><small>{layer.help}</small></label>)}
+                  <p className="chamber-note">Regional exposure is an approximation from the mesh. Matching tan lines to specific garments still needs authored texture masks.</p>
                   <button className="chamber-pill" onClick={() => handleCinematicPreset('ANALYTIC')}><Sun size={15} /> Lock neutral inspection lighting</button>
-                  <div className="workspace-unavailable"><span>Undertone, pigmentation, freckles and scars</span><strong>Planned · texture masks required</strong></div>
+                  <div className="workspace-unavailable"><span>Freckles, scars and detailed pigment maps</span><strong>Planned · authored texture masks required</strong></div>
                 </div>
               )}
 
@@ -1415,13 +1442,14 @@ export default function HumanoidViewer() {
                     onEffectChange={handleCinematicSetting} gpuTier={quality} reducedMotion={Boolean(prefersReducedMotion)}
                     onReset={() => presentationPreferences.change(DEFAULT_AVATAR_PRESENTATION)} saveStatus={presentationPreferences.saveStatus} />
                   <label className="workspace-field"><span>Quality</span><select value={avatarWorkspace.qualityPreference} onChange={(e) => {
-                    const preference = e.target.value; setAvatarWorkspace({ qualityPreference: preference });
+                    const preference = e.target.value; presentationPreferences.change({ qualityPreference: preference });
                     if (preference !== 'automatic') setQuality({ performance: 'LOW', balanced: 'MED', high: 'HIGH' }[preference]);
                   }}><option value="automatic">Automatic ({quality})</option><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="high">High</option></select></label>
                   <label className="workspace-field"><span>Renderer</span><select value={renderMode} onChange={(e) => setRenderMode(e.target.value)}><option value="WEBGL">Interactive 3D</option><option value="SPRITE">2D fallback</option></select></label>
-                  <label className="workspace-switch"><span>Presentation mode<small>Enables optional cinematic lighting.</small></span><input type="checkbox" checked={avatarWorkspace.presentationMode} onChange={(e) => { setAvatarWorkspace({ presentationMode: e.target.checked }); handleCinematicPreset(e.target.checked ? 'PORTRAIT' : 'ANALYTIC'); }} /></label>
+                  <div className="avatar-motion-options"><p className="chamber-note">Preview poses and motion. Measurement and anatomy editors use a neutral pose. Selecting a motion starts playback.</p><AnimationPanel inline/></div>
+                  <div className="workspace-field"><span>Presentation<small>Full screen. Exit restores your view. Shortcut: P.</small></span><button className="chamber-pill" onClick={presentation.enter}><Maximize2 size={15}/> Enter presentation</button></div>
                   <label className="workspace-switch"><span>Auto rotate</span><input type="checkbox" checked={autoRotate} onChange={(e) => setAutoRotate(e.target.checked)} /></label>
-                  <label className="workspace-switch"><span>Protect screenshots and sharing</span><input type="checkbox" checked={captureRedacted} onChange={(e) => setCaptureRedacted(e.target.checked)} /></label>
+                  <p className="chamber-note"><ShieldCheck size={14}/> Screenshots and shared images always cover private anatomy.</p>
                   <details className="chamber-note"><summary>Model diagnostics</summary><p>{modelEvidence.assetLabel}. {modelEvidence.missingParts.length ? `Features absent from the v2 inventory: ${modelEvidence.missingParts.join(', ')}.` : 'Visual realism requires a separate assessment of the rendered result.'}</p><p>Runtime: {modelDiagnostics?.health || 'Loading'} · {rendererTelemetry?.fps == null ? 'Collecting frame sample' : `${rendererTelemetry.fps} FPS`} · {quality} tier.</p></details>
                 </div>
               )}
@@ -1631,7 +1659,6 @@ export default function HumanoidViewer() {
         <SocialShareModal 
           onClose={() => setShowShareModal(false)}
           imageSrc={shareImageSrc}
-          score={overallScore}
         />
       )}
     </>

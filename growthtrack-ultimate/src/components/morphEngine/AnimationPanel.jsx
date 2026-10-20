@@ -27,7 +27,7 @@ function speedLabel(speed) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ANIMATION PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-export default function AnimationPanel() {
+export default function AnimationPanel({inline=false}) {
   const [open, setOpen] = useState(false);
 
   const animationId  = use3DStore((s) => s.animationState.animationId);
@@ -50,13 +50,14 @@ export default function AnimationPanel() {
   };
 
   return (
-    <div className={`anim-panel ${open ? 'anim-panel--open' : ''}`}>
+    <div className={`anim-panel ${open ? 'anim-panel--open' : ''}${inline?' anim-panel--inline':''}`}>
       {/* Floating trigger button */}
       <button
         className="anim-panel__trigger"
         onClick={() => setOpen((v) => !v)}
         title={open ? 'Close Animation Panel' : 'Open Animation Panel'}
         aria-expanded={open}
+        aria-label="Pose and motion controls"
         id="anim-panel-toggle"
       >
         <span className="anim-panel__trigger-icon">
@@ -72,7 +73,7 @@ export default function AnimationPanel() {
 
       {/* Panel dropdown */}
       {open && (
-        <div className="anim-panel__dropdown" role="dialog" aria-label="Animation controls">
+        <div className="anim-panel__dropdown" role="region" aria-label="Animation controls">
           <div className="anim-panel__header">
             <span className="anim-panel__title">Pose & Animation</span>
             <button
@@ -90,6 +91,8 @@ export default function AnimationPanel() {
                 className={`anim-panel__card ${animationId === preset.id ? 'anim-panel__card--active' : ''}`}
                 onClick={() => handleSelect(preset.id)}
                 title={preset.label}
+                aria-label={preset.label}
+                aria-pressed={animationId===preset.id}
                 id={`anim-card-${preset.id}`}
               >
                 <span className="anim-panel__card-icon">{preset.icon}</span>
@@ -111,6 +114,7 @@ export default function AnimationPanel() {
                   onClick={toggleAnimation}
                   id="anim-play-pause"
                   title={playing ? 'Pause animation' : 'Play animation'}
+                  aria-label={playing ? 'Pause animation' : 'Play animation'}
                 >
                   {playing ? '⏸' : '▶'}
                 </button>

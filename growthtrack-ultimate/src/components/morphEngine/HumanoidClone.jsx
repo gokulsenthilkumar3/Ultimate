@@ -46,6 +46,8 @@ import { createAnatomyGuides } from './anatomyGuides';
 import { createGarmentGeometry } from './garmentGeometry';
 import {createAuthoredGarment,publishGarmentEvidence} from './authoredGarments';
 import {useWardrobeAsset} from './useWardrobeAsset';
+import {registerCaptureGuard} from './captureRuntime';
+import {protectAvatarCapture} from './protectedCapture';
 
 const ProceduralHumanoid = React.lazy(() => import("./ProceduralHumanoid"));
 
@@ -125,6 +127,8 @@ export default function HumanoidClone({
   const wardrobeAsset=useWardrobeAsset(wardrobe,wardrobeOptions,renderMode==='normal' && isClothPreset(wardrobe));
   const renderer=useThree(state=>state.gl);
   const animationState = use3DStore((s) => s.animationState);
+  const reducedMotion=use3DStore(s=>s.rendererQualityTelemetry.reducedMotion);
+  const measurementView=use3DStore(s=>s.avatarWorkspace.inspectorOpen && ['measurements','anatomy'].includes(s.avatarWorkspace.inspectorSection));
   const anatomyProfile = use3DStore(s => s.anatomyCustomization[cloneKey === 'B' ? 'goal' : 'current']);
   const anatomyPreview = use3DStore(s => s.anatomyPreview);
   const privateDeformer=useMemo(()=>createPrivateAnatomyDeformer(privateAnatomyMesh,bodyMesh),[privateAnatomyMesh,bodyMesh]);
@@ -239,6 +243,7 @@ export default function HumanoidClone({
         return createSkinMaterial(toneIndex, bodyMesh?.material || null, {
           bodyHairIntensity: renderMetrics?.bodyHairDensity ?? 0,
           skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,
+          skinAppearance:renderMetrics,
           vertexColors: true,
           pubicRegion: pubicAnchor && {
             ...pubicAnchor,
@@ -257,8 +262,14 @@ export default function HumanoidClone({
   const privateMaterial = useMemo(() => {
     if (renderMode !== "normal") return material;
     const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[skinTone] ?? 3;
-    return applyAnatomySurface(createSkinMaterial(toneIndex, null, { skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex }));
+    return applyAnatomySurface(createSkinMaterial(toneIndex, null, { skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,skinAppearance:renderMetrics }));
   }, [material, renderMetrics, renderMode, skinTone]);
+
+  useEffect(()=>{
+    if(useProcedural || !visible)return;
+    return registerCaptureGuard(renderer.domElement,()=>protectAvatarCapture({body:bodyMesh,
+      privateMesh:privateAnatomyMesh,guides:anatomyGuidesRef.current,material,wardrobe}));
+  },[renderer,bodyMesh,privateAnatomyMesh,material,wardrobe,useProcedural,visible]);
 
   useEffect(()=> {
     if(!privateDeformer) return;
@@ -597,6 +608,7 @@ export default function HumanoidClone({
         skinColorHex:         renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,
         vascularityIntensity: interpolator.getWeight("vascularity_intensity"),
         bodyHairIntensity:    renderMetrics?.bodyHairDensity ?? 0,
+        microDetail:          gpuTier!=='LOW',
         time: _.clock.elapsedTime
       });
     }
@@ -668,8 +680,8 @@ export default function HumanoidClone({
       <PostureRig
         skeleton={skeleton}
         posture={posture}
-        animationId={animationState?.animationId || 'idle'}
-        playing={animationState?.playing !== false}
+        animationId={measurementView || reducedMotion && !animationState.userInitiated ? 'standing' : animationState?.animationId || 'idle'}
+        playing={!measurementView && animationState?.playing !== false && (!reducedMotion || animationState.userInitiated)}
         speed={animationState?.speed || 1}
       />
     </group>

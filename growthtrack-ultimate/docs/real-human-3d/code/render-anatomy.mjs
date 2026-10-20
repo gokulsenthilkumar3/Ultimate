@@ -89,7 +89,9 @@ function render(text) {
 }
 
 const mode = process.argv[2];
-const current = readFileSync(TARGET, 'utf8');
+// Git's Windows checkout converts Markdown to CRLF; generated content uses LF.
+// Compare content rather than reporting every Windows checkout as stale.
+const current = readFileSync(TARGET, 'utf8').replace(/\r\n/g, '\n');
 const updated = render(current);
 if (mode === '--write') { writeFileSync(TARGET, updated); console.log('03-anatomy-spec.md updated'); }
 else if (mode === '--check') { if (updated !== current) { console.error('03-anatomy-spec.md is out of date: run render-anatomy.mjs --write'); process.exit(1); } console.log('03-anatomy-spec.md is up to date'); }

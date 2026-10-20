@@ -51,6 +51,9 @@ const gridFragmentShader = /* glsl */ `
   }
 `;
 
+const glowVertexShader=`varying vec2 vGlowUv;void main(){vGlowUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
+const glowFragmentShader=`uniform vec3 uGlowColor;varying vec2 vGlowUv;void main(){float falloff=pow(max(0.0,1.0-length((vGlowUv-.5)*2.0)),3.0);gl_FragColor=vec4(uGlowColor,falloff*.045);}`;
+
 function FloorGrid({ profile }) {
   const material = useMemo(
     () =>
@@ -124,10 +127,11 @@ export default function ChamberFloor() {
       {/* Subtle radial gradient glow behind models — adds atmospheric depth */}
       <mesh position={[0, 0.8, -2.1]} rotation={[0, 0, 0]}>
         <planeGeometry args={[5.5, 6.5]} />
-        <meshBasicMaterial
-          color={profile.rim}
+        <shaderMaterial
+          vertexShader={glowVertexShader}
+          fragmentShader={glowFragmentShader}
+          uniforms={{uGlowColor:{value:new THREE.Color(profile.rim)}}}
           transparent
-          opacity={0.045}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}

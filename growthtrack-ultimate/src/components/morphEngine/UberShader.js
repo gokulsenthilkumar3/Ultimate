@@ -328,6 +328,7 @@ export function updateSkinUniforms(mat, {
   anatomyDepth         = 100,
   vascularityIntensity = 0,
   bodyHairIntensity    = 0,
+  microDetail          = true,
   time                 = 0,
 } = {}) {
   updatePhysicalSkinMaterial(mat, {
@@ -336,6 +337,7 @@ export function updateSkinUniforms(mat, {
     anatomyDepth,
     vascularityIntensity,
     bodyHairIntensity,
+    microDetail,
     time,
   });
 }

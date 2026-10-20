@@ -1,9 +1,17 @@
 import React from 'react';
-import { AVATAR_DENSITY_OPTIONS, AVATAR_GUIDE_OPTIONS, AVATAR_PANEL_WIDTH, AVATAR_EXPOSURE, AVATAR_EFFECT_OPTIONS, resolveAvatarEffects } from '../../lib/avatarPresentation';
+import { AVATAR_DENSITY_OPTIONS, AVATAR_GUIDE_OPTIONS, AVATAR_PANEL_WIDTH, AVATAR_EXPOSURE, AVATAR_EFFECT_OPTIONS, AVATAR_CAMERA_MODES, resolveAvatarEffects } from '../../lib/avatarPresentation';
 
 export default function AvatarViewOptions({ preferences, onChange, cinematic, onEffectChange, gpuTier, reducedMotion, onReset, saveStatus }) {
   const active = resolveAvatarEffects({ cinematic, gpuTier, reducedMotion, mode:gpuTier === 'HIGH' ? 'FULL' : 'PARTIAL' });
   return <div className="avatar-view-options">
+    <fieldset><legend>Camera and capture</legend>
+      <label className="workspace-field"><span>Camera mode</span><select aria-label="Camera mode" value={preferences.cameraMode} onChange={e=>onChange({cameraMode:e.target.value,...(e.target.value==='HANGING'?{showStage:false}:{})})}>{AVATAR_CAMERA_MODES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
+      <p>Turntable circles at one angle. Free orbit tilts above the floor. Floating removes the floor and allows views from below.</p>
+      <p>Closest zoom follows the available skin detail. Zooming beyond that point would enlarge pixels rather than reveal more anatomy.</p>
+      <label className="avatar-range-field"><span>Rotation speed <output>{preferences.autoRotateSpeed} °/s</output></span><input type="range" aria-label="Auto rotation speed" min="4" max="30" step="1" value={preferences.autoRotateSpeed} onChange={e=>onChange({autoRotateSpeed:Number(e.target.value)})}/></label>
+      <label className="workspace-field"><span>Image resolution</span><select aria-label="Capture resolution" value={preferences.captureScale} onChange={e=>onChange({captureScale:Number(e.target.value)})}><option value="1">Standard · 1×</option><option value="2">High · 2×</option><option value="4">Print · 4×</option></select></label>
+      <small>Export and sharing always cover private anatomy. Large images are limited to the device’s supported size.</small>
+    </fieldset>
     <fieldset><legend>Make this workspace yours</legend><p>Uses your app theme and palette. Layout choices are saved separately from body measurements.</p>
       <label className="workspace-field"><span>Spacing</span><select aria-label="Avatar spacing" value={preferences.density} onChange={e => onChange({ density:e.target.value })}>{AVATAR_DENSITY_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
       <label className="workspace-field"><span>Measurement help</span><select aria-label="Measurement help detail" value={preferences.guideDetail} onChange={e => onChange({ guideDetail:e.target.value })}>{AVATAR_GUIDE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
@@ -15,7 +23,7 @@ export default function AvatarViewOptions({ preferences, onChange, cinematic, on
       <label className="workspace-field"><span>Background</span><select aria-label="Model background" value={preferences.backgroundMode} onChange={e=>onChange({backgroundMode:e.target.value})}><option value="scene">Scene preset</option><option value="color">Custom color</option><option value="gradient">Custom gradient</option></select></label>
       {preferences.backgroundMode !== 'scene' && <label className="workspace-field"><span>{preferences.backgroundMode === 'gradient' ? 'Top color' : 'Background color'}</span><input type="color" aria-label="Background color" value={preferences.backgroundColor} onChange={e=>onChange({backgroundColor:e.target.value})}/></label>}
       {preferences.backgroundMode === 'gradient' && <label className="workspace-field"><span>Bottom color</span><input type="color" aria-label="Background bottom color" value={preferences.backgroundBottomColor} onChange={e=>onChange({backgroundBottomColor:e.target.value})}/></label>}
-      <label className="workspace-switch"><span>Stage floor and decorations<small>Hide the stage for a plain background.</small></span><input type="checkbox" aria-label="Stage floor and decorations" checked={preferences.showStage} onChange={e=>onChange({showStage:e.target.checked})}/></label>
+      <label className="workspace-switch"><span>Stage floor and decorations<small>Hide the stage for a plain background.</small></span><input type="checkbox" aria-label="Stage floor and decorations" checked={preferences.showStage} onChange={e=>onChange({showStage:e.target.checked,...(e.target.checked && preferences.cameraMode==='HANGING'?{cameraMode:'ORBIT'}:{})})}/></label>
     </fieldset>
     <fieldset><legend>Light and finishing effects</legend><p>Effects keep your measurements unchanged. Availability follows the quality tier and reduced-motion preference.</p>
       <label className="workspace-field"><span>Lighting</span><select aria-label="Model lighting" value={preferences.lightingMode} onChange={e=>onChange({lightingMode:e.target.value})}><option value="neutral">Neutral inspection</option><option value="cinematic">Cinematic scene</option></select></label>

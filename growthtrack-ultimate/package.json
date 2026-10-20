@@ -50,6 +50,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:human-spec": "node scripts/test-human-spec.mjs",
     "test:run": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

@@ -5,7 +5,7 @@
 
 import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree }    from "@react-three/fiber";
-import { Html, AdaptiveDpr, AdaptiveEvents } from "@react-three/drei";
+import { Html, AdaptiveEvents } from "@react-three/drei";
 import * as THREE                        from "three";
 
 import StudioLighting      from "./morphEngine/StudioLighting";
@@ -23,11 +23,17 @@ import { BODY_PART_MAP } from './morphEngine/bodyRegions';
 import { BODY_METRICS } from '../lib/physiqueProfile';
 import { validateBodyMetric } from '../lib/bodyMetricContract';
 import { formatMeasurement }                 from "../utils/userFormatters";
+import {createGovernor,observe,TIERS} from './morphEngine/qualityGovernor';
+import {registerCaptureScene} from './morphEngine/captureRuntime';
+
+const policyTier=tier=>tier==='MED'?'BALANCED':tier;
+const runtimeTier=tier=>tier==='BALANCED'?'MED':tier;
+const selectedTier=preference=>({performance:'LOW',balanced:'MED',high:'HIGH'})[preference];
 
 const LOD_CONFIG = {
   [GPU_TIERS.HIGH]: {
-    shadowMapSize:   4096,
-    shadowType:      THREE.PCFSoftShadowMap,
+    shadowMapSize:   2048,
+    shadowType:      THREE.PCFShadowMap,
     antialias:       true,
     dpr:             [1, 2],
     samples:         128,
@@ -70,10 +76,16 @@ function applyRendererTuning(renderer, lodConfig, exposure) {
 function RendererTuning({ lodConfig }) {
   const gl = useThree((state) => state.gl);
   const exposure = use3DStore((state) => state.cinematicState.exposure);
+  const setDpr=useThree(state=>state.setDpr);
 
   useEffect(() => {
     applyRendererTuning(gl, lodConfig, exposure);
-  }, [exposure, gl, lodConfig]);
+    const policy=TIERS[policyTier(lodConfig.tier)];
+    setDpr(Math.min(window.devicePixelRatio || 1,policy.dprCap));
+    gl.domElement.setAttribute('data-quality-tier',lodConfig.tier);
+    gl.domElement.setAttribute('data-quality-dpr',String(gl.getPixelRatio()));
+    gl.domElement.setAttribute('data-quality-shadow-map',String(lodConfig.shadowMapSize || 0));
+  }, [exposure, gl, lodConfig,setDpr]);
 
   return null;
 }
@@ -84,6 +96,14 @@ function QualityTelemetry({ reducedMotion }) {
   const setTelemetry = use3DStore((state) => state.setRendererQualityTelemetry);
   const samplesRef = useRef([]);
   const elapsedRef = useRef(0);
+  const preference=use3DStore(s=>s.avatarWorkspace.qualityPreference);
+  const governor=useRef(createGovernor('AUTO',policyTier(gpuTier)));
+
+  useEffect(()=>{
+    const selected=selectedTier(preference);
+    governor.current=createGovernor(selected?policyTier(selected):'AUTO',policyTier(use3DStore.getState().gpuTier),{budgetMs:matchMedia('(pointer: coarse)').matches?1000/30:1000/60});
+    if(selected)use3DStore.getState().setGpuTier(selected);
+  },[preference]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -120,6 +140,10 @@ function QualityTelemetry({ reducedMotion }) {
   useFrame((_, delta) => {
     if (!Number.isFinite(delta) || delta <= 0 || delta > 0.2) return;
     const milliseconds = delta * 1000;
+    const current=policyTier(use3DStore.getState().gpuTier);
+    if(governor.current.tier!==current)governor.current={...governor.current,tier:current,samples:[],settle:45};
+    const result=observe(governor.current,milliseconds,performance.now());governor.current=result.state;
+    if(result.change){use3DStore.getState().setGpuTier(runtimeTier(result.change.to));setTelemetry({qualityChange:result.change.reason});}
     const samples = samplesRef.current;
     samples.push(milliseconds);
     if (samples.length > 120) samples.shift();
@@ -193,9 +217,10 @@ function MeasurementLandmarks() {
 
 function CanvasScene({ lodConfig, reducedMotion }) {
   const showStage=use3DStore(state=>state.avatarWorkspace.showStage);
+  const captureState=useThree();
+  useEffect(()=>registerCaptureScene(captureState.gl.domElement,captureState),[captureState]);
   return (
     <>
-      <AdaptiveDpr />
       <AdaptiveEvents />
       <RendererTuning lodConfig={lodConfig} />
       <QualityTelemetry reducedMotion={reducedMotion} />
@@ -220,9 +245,7 @@ function CanvasScene({ lodConfig, reducedMotion }) {
       {showStage && <SpatialGuide reducedMotion={reducedMotion} />}
       <MeasurementLandmarks />
 
-      {lodConfig.postFx !== "NONE" && (
-        <PostProcessingStack mode={lodConfig.postFx} reducedMotion={reducedMotion} />
-      )}
+      <PostProcessingStack mode={lodConfig.postFx} reducedMotion={reducedMotion} />
 
       <Suspense fallback={null}>
         <TabErrorBoundary
@@ -261,7 +284,8 @@ function useGlCreated(setLodConfig) {
     if (initialized.current) return;
     initialized.current = true;
 
-    detectAndSetGpuTier(gl);
+    const selected=selectedTier(use3DStore.getState().avatarWorkspace.qualityPreference);
+    if(selected)use3DStore.getState().setGpuTier(selected);else detectAndSetGpuTier(gl);
     const tier   = use3DStore.getState().gpuTier || GPU_TIERS.MED;
     const config = LOD_CONFIG[tier];
     setLodConfig(config);
@@ -328,7 +352,7 @@ export default function ChamberCanvas({ className = "", style = {} }) {
       <Canvas
         gl={{
           powerPreference:      "high-performance",
-          antialias:            lodConfig.antialias,
+          antialias:            false,
           alpha:                false,
           stencil:              true,
           depth:                true,

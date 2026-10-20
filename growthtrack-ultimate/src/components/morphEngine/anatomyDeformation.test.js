@@ -94,12 +94,12 @@ it('uses dimensions or an explicit volume mode for internal schematic guides',()
   expect(Math.PI/6*dims[0]*dims[1]*dims[2]).toBeCloseTo(30,8);
   expect(testisGuideDimensions({lengthCm:4,widthCm:3,depthCm:2,volumeMl:30,inputMode:'dimensions'})).toEqual([4,3,2]);
 });
-it('excludes internal schematic guides from exported surface geometry',()=> {
+it('excludes private anatomy and internal schematic guides from exported surface geometry',()=> {
   const {body,anatomy}=glbMeshFixture(),deformer=createPrivateAnatomyDeformer(anatomy,body);
   const evidence=deformer.apply(profile()),root=new Group();root.add(anatomy);
   const guides=createAnatomyGuides(anatomy,evidence);root.add(guides);
   expect(guides.children.filter(mesh=>mesh.name.startsWith('Schematic_'))).toHaveLength(2);
   const baked=bakeAvatarSurface(root);
-  expect(baked.children.map(mesh=>mesh.name)).toEqual(['GrowthTrackPrivateAnatomy']);
+  expect(baked.children).toHaveLength(0);
   guides.userData.dispose();baked.children.forEach(mesh=>mesh.geometry.dispose());
 });

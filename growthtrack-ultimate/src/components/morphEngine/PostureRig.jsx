@@ -154,6 +154,8 @@ export default function PostureRig({ skeleton, posture, animationId = 'idle', pl
   const animTime = useRef(0);
   const preset = ANIMATION_PRESET_MAP[animationId];
 
+  useEffect(()=>{animTime.current=0;},[animationId]);
+
   // Advance animation time
   useFrame((_, delta) => {
     if (!playing || !preset) return;

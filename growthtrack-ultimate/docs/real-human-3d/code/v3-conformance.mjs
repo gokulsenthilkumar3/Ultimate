@@ -8,6 +8,8 @@
 // Profiles: `full` = every part and texture tile in one assembled file (the S2 gate); `core` = the small first-paint file
 // (rig, body, morphs, low-resolution textures; parts and tiles arrive separately).
 import { readFileSync } from 'node:fs';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import { FACE_BLENDSHAPES, RIG_GROUPS, RIG_JOINT_BUDGET, TILE_MIN_TEXELS } from './anatomy-spec.mjs';
 
 const FACE_REGIONS = new Set(['Head', 'Neck', 'Neck1', 'Jaw', 'LeftEye', 'RightEye', 'Tongue0', 'Tongue1', 'Tongue2']);
@@ -98,7 +100,7 @@ export function toMarkdown(report, file = '') {
     '| Result | Level | Check | Detail |', '| --- | --- | --- | --- |', ...rows].join('\n');
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2); const file = args.find((a) => !a.startsWith('--'));
   if (!file) { console.error('usage: v3-conformance.mjs <audit.json> [--profile core|full] [--md]'); process.exit(2); }
   const profile = args.includes('--profile') ? args[args.indexOf('--profile') + 1] : 'full';

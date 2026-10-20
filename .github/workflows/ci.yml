@@ -57,6 +57,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Digital human specification contracts
+        run: npm run test:human-spec
+
       - name: Unit and component tests with coverage
         run: npm run test:run
 

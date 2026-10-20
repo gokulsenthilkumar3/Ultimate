@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {resolveSkinAppearance,skinLayerMultiplier,skinOpticsGLSL} from './skinAppearance';
 
 export const FITZPATRICK_TABLE = Object.freeze([
   { base: [1.00, 0.91, 0.84], sss: [1.00, 0.72, 0.64], spec: [0.95, 0.85, 0.80] },
@@ -59,7 +60,7 @@ export function pubicHairDensity(pattern) {
 }
 
 function installSurfaceDetailShader(material) {
-  material.customProgramCacheKey = () => 'growthtrack-physical-skin-v5';
+  material.customProgramCacheKey = () => 'growthtrack-physical-skin-v7';
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uVascularityIntensity = material.uniforms.uVascularityIntensity;
     shader.uniforms.uBodyHairIntensity = material.uniforms.uBodyHairIntensity;
@@ -67,18 +68,24 @@ function installSurfaceDetailShader(material) {
     shader.uniforms.uPubicHairColor = material.uniforms.uPubicHairColor;
     shader.uniforms.uPubicOrigin = material.uniforms.uPubicOrigin;
     shader.uniforms.uUnitsPerCm = material.uniforms.uUnitsPerCm;
+    shader.uniforms.uSkinLayers = material.uniforms.uSkinLayers;
+    shader.uniforms.uSkinMicroDetail = material.uniforms.uSkinMicroDetail;
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
         `#include <common>
          varying vec3 vGrowthTrackBasePosition;
-         varying vec2 vGrowthTrackSkinUv;`,
+         varying vec2 vGrowthTrackSkinUv;
+         attribute float skinExposure;
+         attribute float skinBlood;
+         varying vec2 vSkinRegion;`,
       )
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
          vGrowthTrackBasePosition = position;
-         vGrowthTrackSkinUv = uv;`,
+         vGrowthTrackSkinUv = uv;
+         vSkinRegion=vec2(skinExposure,skinBlood);`,
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
@@ -90,6 +97,10 @@ function installSurfaceDetailShader(material) {
          uniform vec3 uPubicHairColor;
          uniform vec3 uPubicOrigin;
          uniform float uUnitsPerCm;
+         uniform vec3 uSkinLayers;
+         uniform float uSkinMicroDetail;
+         varying vec2 vSkinRegion;
+         ${skinOpticsGLSL()}
          varying vec3 vGrowthTrackBasePosition;
          varying vec2 vGrowthTrackSkinUv;
 
@@ -165,6 +176,7 @@ function installSurfaceDetailShader(material) {
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
+         diffuseColor.rgb *= skinLayerMultiplier(uSkinLayers,vSkinRegion.x,vSkinRegion.y);
          float vein = growthTrackVeins(vGrowthTrackSkinUv) * clamp(uVascularityIntensity, 0.0, 1.0);
          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.80, 0.85, 0.95), vein * 0.32);
          float bodyHair = growthTrackBodyHair(vGrowthTrackBasePosition, vGrowthTrackSkinUv)
@@ -176,7 +188,22 @@ function installSurfaceDetailShader(material) {
            float coverage = growthTrackPubicStrands(regionPosition.xy);
            diffuseColor.rgb = mix(diffuseColor.rgb, uPubicHairColor, pubic * coverage * clamp(uPubicHair, 0.0, 1.0));
          }`,
-      );
+      )
+      .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+        if(uSkinMicroDetail>0.0){
+          // Rest positions in glTF metres keep the grain continuous across UV
+          // seams. Fade detail below a pixel rather than aliasing into dots.
+          vec3 skinMm=vGrowthTrackBasePosition*1000.0;
+          float footprint=max(length(dFdx(skinMm)),length(dFdy(skinMm)));
+          float resolved=1.0-smoothstep(.35,1.2,footprint);
+          float relief=(growthTrackValueNoise(skinMm.xy*2.2)+growthTrackValueNoise(skinMm.yz*2.2)+growthTrackValueNoise(skinMm.zx*2.2)-1.5)*.000025*resolved;
+          vec3 sx=dFdx(-vViewPosition),sy=dFdy(-vViewPosition);
+          vec3 r1=cross(sy,normal),r2=cross(normal,sx);
+          float determinant=dot(sx,r1);
+          vec3 gradient=sign(determinant)*(dFdx(relief)*r1+dFdy(relief)*r2);
+          if(abs(determinant)>1e-12)normal=normalize(abs(determinant)*normal-gradient);
+        }
+      `);
   };
 }
 
@@ -185,8 +212,10 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
   const sourceMaterial = mapOrMaterial?.isMaterial ? mapOrMaterial : null;
   const map = sourceMaterial?.map || (mapOrMaterial?.isTexture ? mapOrMaterial : null);
   const surfaceDetail = Boolean(sourceMaterial && options.surfaceDetail !== false);
+  const appearance=resolveSkinAppearance(options.skinAppearance);
+  const adjustedBase=surfaceDetail?tone.base:tone.base.map((channel,i)=>channel*skinLayerMultiplier({...appearance,exposure:0})[i]);
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(...skinAlbedoTint(tone.base, Boolean(map))),
+    color: new THREE.Color(...skinAlbedoTint(adjustedBase, Boolean(map))),
     roughness: THREE.MathUtils.clamp(sourceMaterial?.roughness ?? 0.56, 0.44, 0.72),
     metalness: 0,
     map,
@@ -227,6 +256,8 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     ...(material.userData ?? {}),
     growthTrackSkinMaterial: true,
     aoStrategy: 'baked-base-color',
+    layeredSkinShader:surfaceDetail,
+    skinAppearance:appearance,
     // Shown only while the anatomy is revealed (HumanoidClone sets uPubicHair).
     pubicHairDensity: options.pubicRegion ? pubicHairDensity(options.pubicRegion.pattern) : 0,
   };
@@ -243,6 +274,8 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     uPubicOrigin: { value: new THREE.Vector3(...(options.pubicRegion?.origin || [0, 0, 0])) },
     uUnitsPerCm: { value: Number(options.pubicRegion?.unitsPerCm) || 0 },
     uTime: { value: 0 },
+    uSkinLayers:{value:new THREE.Vector3(appearance.tan*appearance.capacity,appearance.undertone,appearance.flush)},
+    uSkinMicroDetail:{value:1},
   };
   if (surfaceDetail) installSurfaceDetailShader(material);
   return material;
@@ -254,6 +287,7 @@ export function updatePhysicalSkinMaterial(material, {
   anatomyDepth = 100,
   vascularityIntensity = 0,
   bodyHairIntensity = 0,
+  microDetail = true,
   time = 0,
 } = {}) {
   // Delta, aura and other diagnostic ShaderMaterials also expose `uniforms`.
@@ -263,7 +297,9 @@ export function updatePhysicalSkinMaterial(material, {
   const tone = /^#[0-9a-f]{6}$/i.test(String(skinColorHex || ''))
     ? toneFrom(String(skinColorHex))
     : toneFrom(fitzpatrickIndex);
-  material.color?.setRGB(...skinAlbedoTint(tone.base, Boolean(material.map)));
+  const appearance=material.userData.skinAppearance;
+  const multiplier=material.userData.layeredSkinShader?[1,1,1]:skinLayerMultiplier({...appearance,exposure:0});
+  material.color?.setRGB(...skinAlbedoTint(tone.base.map((channel,i)=>channel*multiplier[i]), Boolean(material.map)));
   material.emissive?.setRGB(...tone.sss);
   material.attenuationColor?.setRGB(...tone.sss);
   material.sheenColor?.setRGB(...tone.sss);
@@ -275,4 +311,5 @@ export function updatePhysicalSkinMaterial(material, {
   material.uniforms.uVascularityIntensity.value = vascularityIntensity;
   material.uniforms.uBodyHairIntensity.value = bodyHairIntensity;
   material.uniforms.uTime.value = time;
+  material.uniforms.uSkinMicroDetail.value = microDetail?1:0;
 }

@@ -116,7 +116,11 @@ export const BODY_METRIC_GROUPS = [
 export const BODY_METRICS = BODY_METRIC_GROUPS.flatMap((group) => group.metrics);
 export const BODY_METRIC_MAP = Object.fromEntries(BODY_METRICS.map((metric) => [metric.key, metric]));
 
+/** @type {ReadonlyArray<readonly [string, string | null]>} */
 export const BODY_APPEARANCE_FIELDS = Object.freeze([
+  // Renderer layers live in physiqueTargets.appearanceMetrics. They are not
+  // new database columns or body measurements.
+  ['skinTan', null], ['skinFlush', null],
   ['skinTone', 'skinTone'], ['skinFitzpatrickIndex', 'skinFitzpatrickIndex'], ['skinColor', 'skinColorHex'], ['skinUndertone', 'skinUndertone'], ['skinTextureVariant', 'skinTextureVariant'], ['skinFreckleDensity', 'skinFreckleDensity'], ['skinFeatureMap', 'skinFeatureMap'],
   ['eyeColor', 'eyeColorHex'], ['eyePattern', 'eyePattern'], ['eyelidShape', 'eyelidShape'], ['eyelashStyle', 'eyelashStyle'], ['scleraColor', 'scleraColorHex'], ['irisLimbalRing', 'irisLimbalRing'], ['lipColor', 'lipColorHex'],
   ['hairStyle', 'hairStyle'], ['hairColor', 'hairColorHex'], ['hairTexture', 'hairTexture'], ['hairlineStyle', 'hairlineStyle'], ['hairPart', 'hairPart'],
@@ -168,6 +172,7 @@ export function bodyProfileToMetrics(profile = {}) {
   }));
   const fitzpatrickIndex = finite(profile?.skinFitzpatrickIndex);
   const appearance = Object.fromEntries(BODY_APPEARANCE_FIELDS.flatMap(([key, field]) => {
+    if(!field)return [];
     let value = profile?.[field];
     if (key === 'skinTone' && !value && fitzpatrickIndex != null) value = ['I', 'II', 'III', 'IV', 'V', 'VI'][Math.max(0, Math.min(5, Math.round(fitzpatrickIndex)))];
     if (key === 'anatomyRevealConsent') return value === undefined ? [] : [[key, value === true]];
@@ -180,11 +185,12 @@ export function bodyProfileToMetrics(profile = {}) {
 
 export function bodyProfileToGoals(profile = {}, physiqueTargets = {}) {
   const storedGoals = physiqueTargets?.goalMetrics || {};
-  return Object.fromEntries(BODY_METRICS.flatMap((metric) => {
+  const appearance=Object.fromEntries(BODY_APPEARANCE_FIELDS.flatMap(([key])=>storedGoals[key]==null || storedGoals[key]===''?[]:[[key,storedGoals[key]]]));
+  return {...appearance,...Object.fromEntries(BODY_METRICS.flatMap((metric) => {
     const databaseValue = metric.targetField ? finite(profile?.[metric.targetField]) : null;
     const value = databaseValue ?? finite(storedGoals?.[metric.key]);
     return value == null || !validateBodyMetric(metric.key, value, { allowEmpty: false }).valid ? [] : [[metric.key, value]];
-  }));
+  }))};
 }
 
 export function getInvalidBodyProfileMeasurements(profile = {}, physiqueTargets = {}) {
@@ -213,6 +219,7 @@ export function metricsToBodyProfile(current = {}, goal = {}, { includeEmpty = f
     if (metric.targetField && (goalValid || (includeEmpty && goalValue == null && Object.prototype.hasOwnProperty.call(goal, metric.key)))) payload[metric.targetField] = goalValid ? goalValue : null;
   });
   BODY_APPEARANCE_FIELDS.forEach(([key, field]) => {
+    if(!field)return;
     const value = current?.[key];
     if (key === 'anatomyRevealConsent') {
       if (value !== undefined) payload[field] = Boolean(value);

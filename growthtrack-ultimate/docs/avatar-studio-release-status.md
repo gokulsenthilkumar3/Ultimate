@@ -5,7 +5,7 @@
 - Height-required measurement editor with anatomical measurement guidance, explicit draft saving, reset and undo.
 - Drafts use the authenticated owner's existing physique-target storage. Ordered persistence now propagates failures to callers.
 - Baseline snapshots copy measurements, appearance fields, weights and asset version. Reload retains snapshot metadata; future edits do not mutate baseline values.
-- Download body GLB evaluates the current mesh's morphs, skinning and transforms, removes live rig/morph bindings and normalizes stature to the entered height in metres. This is a static body export; custom runtime shader effects are not baked. Available in Current body / Anatomical mode and includes visible adult anatomy.
+- The static GLB export helper evaluates current morphs, skinning and transforms and normalizes stature to the entered height in metres. It excludes private anatomy, schematic guides and private measurements. Custom runtime shader effects and garment clipping are not baked; this helper is not a production garment exporter.
 - Closed mesh-section extraction welds section endpoints without changing UV topology. Invalid/open contours yield no circumference. Fit results do not invent achieved measurements for uncalibrated assets.
 - Blender source preparation imports the existing GLB, retains runtime topology, adds a hidden subdivision reference, produces neutral front/side/back renders and a hash manifest. The reference is NOT an artist-refined sculpt.
 

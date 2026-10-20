@@ -1,6 +1,7 @@
 import { getMetricCompleteness } from './bodyMetricFallbacks';
 
-export function buildAvatarEvidence({ metrics = {}, diagnostics, qualityGate } = {}) {
+/** @param {{metrics?: object, diagnostics?: any, qualityGate?: import('./rendererQualityGate').QualityGateResult | null}} [options] */
+export function buildAvatarEvidence({ metrics = {}, diagnostics = null, qualityGate = null } = {}) {
   const measurements = getMetricCompleteness(metrics);
   const checks = qualityGate?.checks || [];
   const passed = checks.filter(c => c.status === 'pass').length;

@@ -1,4 +1,6 @@
 import { fitModelFeatures } from './fitModelFeatures';
+import {scopeFacialMorphs} from './facialMorphScope';
+import {prepareSkinRegions} from '../body3d/skinAppearance';
 /**
  * GrowthTrack Ultimate — Layer 3: Parametric Morph Engine
  * useModelLoader.js
@@ -291,6 +293,8 @@ export function useModelLoader(modelPreference = {}) {
       if (bodyMesh) {
         // Local posterior shaping must not mutate the GLTF cache or goal clone.
         bodyMesh.geometry = bodyMesh.geometry.clone();
+        bodyMesh.userData.facialScope=scopeFacialMorphs(bodyMesh);
+        prepareSkinRegions(bodyMesh);
         fitModelFeatures(bodyMesh, featureMeshes);
         // Normalize the model so the humanoid reads like a full body figure.
         // Many GLBs arrive with an offset origin or inconsistent scale, which

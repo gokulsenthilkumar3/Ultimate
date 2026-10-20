@@ -22,10 +22,13 @@ import {
   ToneMappingEffect,
   ToneMappingMode,
   VignetteEffect,
+  SMAAEffect,
 } from "postprocessing";
 
 import use3DStore from "../../store/use3DStore";
 import { resolveAvatarEffects } from '../../lib/avatarPresentation';
+import {TIERS} from './qualityGovernor';
+import {registerCaptureComposer} from './captureRuntime';
 
 function addEffectPass(composer, camera, effect, passes) {
   const pass = new EffectPass(camera, effect);
@@ -50,16 +53,18 @@ function restoreToneMapping(renderer, previous) {
 
 export default function PostProcessingStack({ mode, reducedMotion = false }) {
   const { gl, scene, camera, size } = useThree();
+  const dpr=useThree(state=>state.viewport.dpr);
   const cinematic = use3DStore((state) => state.cinematicState);
   const gpuTier = use3DStore((state) => state.gpuTier);
   const highTier = gpuTier === "HIGH";
   const fullEffects = mode === "FULL" && highTier && !reducedMotion;
+  const samples=Math.min(TIERS[gpuTier==='MED'?'BALANCED':gpuTier]?.msaa || 0,gl.capabilities.maxSamples || 0);
   const active = resolveAvatarEffects({ cinematic, gpuTier, reducedMotion, mode });
   const activeEffectNames = Object.entries(active).filter(([,enabled]) => enabled).map(([name]) => name).join(',');
 
   const pipeline = useMemo(() => {
     const composer = new EffectComposer(gl, {
-      multisampling: fullEffects ? 4 : 0,
+      multisampling: samples,
       frameBufferType: THREE.HalfFloatType,
       depthBuffer: true,
       stencilBuffer: true,
@@ -70,6 +75,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     const renderPass = new RenderPass(scene, camera);
     composer.addPass(renderPass);
     passes.push(renderPass);
+    if(samples===0){const smaa=new SMAAEffect();effects.push(smaa);addEffectPass(composer,camera,smaa,passes);}
 
     if (active.depthOfField) {
       const depthOfField = new DepthOfFieldEffect(camera, {
@@ -189,12 +195,19 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     active.vignette,
     gl,
     fullEffects,
+    samples,
     scene,
   ]);
 
   useEffect(() => {
     pipeline.composer.setSize(size.width, size.height);
-  }, [pipeline, size.height, size.width]);
+  }, [pipeline, size.height, size.width,dpr]);
+
+  useEffect(()=>{
+    gl.domElement.setAttribute('data-quality-msaa',String(samples));
+    gl.domElement.setAttribute('data-quality-antialias',samples?'MSAA':'SMAA');
+    return registerCaptureComposer(gl.domElement,pipeline.composer);
+  },[gl,pipeline,samples]);
 
   useEffect(() => {
     gl.domElement.setAttribute('data-active-effects', activeEffectNames);

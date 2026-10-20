@@ -1,4 +1,5 @@
 import { Box3, Vector3 } from 'three';
+import {measureTextureDensity} from './textureDensity';
 
 // Bounds come from evaluated skin vertices, so focus follows the asset, morphs
 // and pose rather than assuming a particular model's hand/foot positions.
@@ -25,6 +26,8 @@ export function createRegionFrameSampler(body, anatomy) {
     }
   }
   const point = new Vector3();
+  const texture=Array.isArray(body.material)?body.material[0]?.map:body.material?.map;
+  const densities=measureTextureDensity(body.geometry,texture?.image,members);
   const origin = new Vector3();
   function measure(mesh, vertices) {
     const box = new Box3();
@@ -39,7 +42,9 @@ export function createRegionFrameSampler(body, anatomy) {
     if (root) root.getWorldPosition(origin); else origin.set(0,0,0);
     body.updateWorldMatrix(true, false); body.skeleton.update();
     const result = Object.fromEntries(Object.entries(members).flatMap(([key,vertices]) => {
-      const frame = measure(body,vertices); return frame ? [[key,frame]] : [];
+      const frame = measure(body,vertices);
+      if(frame && densities[key])frame.texelsPerWorldUnit=densities[key]/Math.max(body.matrixWorld.getMaxScaleOnAxis(),1e-9);
+      return frame ? [[key,frame]] : [];
     }));
     if (includePrivate && anatomy) {
       anatomy.updateWorldMatrix(true, false);

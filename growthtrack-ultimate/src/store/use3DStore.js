@@ -854,6 +854,7 @@ const use3DStore = create(
           animationState: {
             ...state.animationState,
             animationId: animationId || 'idle',
+            userInitiated:true,
             playing: opts.playing !== undefined ? Boolean(opts.playing) : true,
             speed: opts.speed !== undefined ? Math.max(0.1, Math.min(4, Number(opts.speed) || 1)) : state.animationState.speed,
           },
@@ -866,6 +867,7 @@ const use3DStore = create(
           animationState: {
             ...state.animationState,
             playing: !state.animationState.playing,
+            userInitiated:true,
           },
         }), false, 'toggleAnimation');
       },

@@ -7,16 +7,26 @@ import useStore from '../../store/useStore';
 import { BODY_PART_MAP } from './bodyRegions';
 import { fitHumanFrame, fitRegionFrame, nearestOrbitAngle } from './cameraFraming';
 import { useAnatomyEligibility } from './useAnatomyEligibility';
+import {constrain,autoRotate as advanceRotation,DEFAULTS as CAMERA_LIMITS} from './viewerCamera';
+import {closestDetailedDistance} from './textureDensity';
+
+function updateClipping(camera,distance){
+  const near=Math.max(.005,Math.min(.1,distance*.025)),far=Math.max(20,distance*40);
+  if(camera.near!==near || camera.far!==far){camera.near=near;camera.far=far;camera.updateProjectionMatrix();}
+}
 
 export default function CameraRig() {
   const orbitRef = useRef();
   const { camera, gl, size } = useThree();
+  const dpr=useThree(state=>state.viewport.dpr);
   const cameraPreset = use3DStore((s) => s.cameraPreset);
   const cameraZoom = use3DStore((s) => s.cameraZoom);
   const cameraRevision = use3DStore((s) => s.cameraRevision);
   const viewMode = use3DStore((s) => s.viewMode);
   const autoRotate = use3DStore((s) => s.autoRotate);
-  const cameraMotion = use3DStore((s) => s.cinematicState.cameraMotion);
+  const cameraMode=use3DStore(s=>s.avatarWorkspace.cameraMode);
+  const showStage=use3DStore(s=>s.avatarWorkspace.showStage);
+  const rotationSpeed=use3DStore(s=>s.avatarWorkspace.autoRotateSpeed);
   const focusedBodyPart = use3DStore((s) => s.focusedBodyPart);
   const modelFrame = use3DStore((s) => s.modelFrame);
   const avatarContext = use3DStore(s => s.avatarWorkspace.avatarContext);
@@ -34,6 +44,7 @@ export default function CameraRig() {
   const manualStart = useRef(false);
   const previousZoom = useRef(cameraZoom);
   const baseDistance = useRef(4);
+  const interacting=useRef(false),resumeAt=useRef(0);
 
   const reportCamera = useCallback(() => {
     const controls = orbitRef.current;
@@ -43,6 +54,9 @@ export default function CameraRig() {
       cameraTarget: controls.target.toArray().map(v => v.toFixed(4)).join(','),
       cameraPosition: camera.position.toArray().map(v => v.toFixed(4)).join(','),
       cameraFocus: use3DStore.getState().focusedBodyPart || 'body',
+      cameraMode:use3DStore.getState().avatarWorkspace.cameraMode,
+      cameraMinDistance:controls.minDistance.toFixed(4),
+      cameraAzimuth:controls.getAzimuthalAngle().toFixed(5),cameraPolar:controls.getPolarAngle().toFixed(5),
       cameraRegionSource: use3DStore.getState().modelRegionFrames[use3DStore.getState().avatarWorkspace.avatarContext === 'goal' ? 'B' : 'A'][use3DStore.getState().focusedBodyPart]?.source || 'reference' };
     for (const [key, value] of Object.entries(fields)) if (gl.domElement.dataset[key] !== value) gl.domElement.setAttribute(`data-${key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)}`, value);
   }, [camera, gl]);
@@ -73,13 +87,14 @@ export default function CameraRig() {
     }
     baseDistance.current = distance / zoom;
     previousZoom.current = zoom;
-    controls.minDistance = Math.max(0.12, baseDistance.current * 0.35);
-    controls.maxDistance = Math.min(40, baseDistance.current * 3.4);
+    const detailDistance=region?closestDetailedDistance({pixelHeight:size.height*dpr,fov:camera.fov,texelsPerUnit:regionFrames[focusedBodyPart]?.texelsPerWorldUnit}):0;
+    controls.minDistance = Math.max(0.12, baseDistance.current * 0.35,detailDistance);
+    controls.maxDistance = Math.max(controls.minDistance*1.1,Math.min(40, baseDistance.current * 3.4));
     const start = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
     const theta = cameraPreset === 'CUSTOM' && !region ? start.theta : THREE.MathUtils.degToRad(hint.azimuth || 0);
     let phi = cameraPreset === 'CUSTOM' && !region ? start.phi : THREE.MathUtils.degToRad(90 - (hint.elevation || 0));
-    // Low-angle views must stay above the floor at every viewport size.
-    phi = Math.min(phi, Math.acos(THREE.MathUtils.clamp((0.12 - target.y) / distance, -1, 1)));
+    const bounded=constrain({target:target.toArray(),azimuth:theta,polar:phi,distance},{mode:cameraMode,floorY:showStage && cameraMode!=='HANGING'?0:null,minDistance:controls.minDistance,maxDistance:controls.maxDistance});
+    phi=bounded.polar;
     animation.current = {
       current: start,
       target: new THREE.Spherical(distance, phi, nearestOrbitAngle(start.theta, theta)),
@@ -87,7 +102,7 @@ export default function CameraRig() {
       immediate: initialFrame.current || reducedMotion,
     };
     initialFrame.current = false;
-  }, [camera, cameraPreset, cameraRevision, focusedBodyPart, modelFrame, regionFrames, privateAllowed, reducedMotion, size.height, size.width, viewMode]);
+  }, [camera, cameraPreset, cameraRevision, focusedBodyPart, modelFrame, regionFrames, privateAllowed, reducedMotion, size.height, size.width, viewMode,cameraMode,showStage,dpr]);
 
   // Zoom around the user's current target and direction, including after a pan.
   useEffect(() => {
@@ -106,10 +121,12 @@ export default function CameraRig() {
     if (!controls) return;
     const onStart = () => {
       animation.current = null;
+      interacting.current=true;
       manualStart.current = use3DStore.getState().cameraPreset !== 'CUSTOM';
-      use3DStore.setState({ cameraPreset: 'CUSTOM', autoRotate: false });
+      use3DStore.setState({ cameraPreset: 'CUSTOM' });
     };
     const onEnd = () => {
+      interacting.current=false;resumeAt.current=performance.now()+3000;
       const zoom = THREE.MathUtils.clamp(camera.position.distanceTo(controls.target) / baseDistance.current, 0.35, 3.4);
       previousZoom.current = zoom;
       use3DStore.getState().setCameraZoom(zoom);
@@ -143,7 +160,7 @@ export default function CameraRig() {
     return () => { canvas.removeEventListener('pointerdown', down); canvas.removeEventListener('pointerup', up); canvas.removeEventListener('pointercancel', cancel); };
   }, [gl]);
 
-  useFrame(({ clock }, delta) => {
+  useFrame((_, delta) => {
     const controls = orbitRef.current;
     if (!controls) return;
     const transition = animation.current;
@@ -158,15 +175,27 @@ export default function CameraRig() {
       camera.position.copy(offset.current.setFromSpherical(current).add(transition.center));
       controls.update();
       if (Math.abs(current.radius - transition.target.radius) + Math.abs(current.phi - transition.target.phi) + Math.abs(current.theta - transition.target.theta) + transition.center.distanceTo(transition.destination) < 0.001) animation.current = null;
-    } else if (autoRotate && cameraMotion && !reducedMotion && cameraPreset === 'FRONT' && !focusedBodyPart) {
-      const targetAngle = Math.sin(clock.elapsedTime * 0.24) * THREE.MathUtils.degToRad(9);
-      controls.setAzimuthalAngle(THREE.MathUtils.lerp(controls.getAzimuthalAngle(), targetAngle, 1 - Math.exp(-delta * 1.8)));
+    } else if (autoRotate && !interacting.current && performance.now()>=resumeAt.current && cameraMode!=='TOP') {
+      const next=advanceRotation({target:controls.target.toArray(),azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle(),distance:camera.position.distanceTo(controls.target)},delta,{degPerSec:rotationSpeed},{mode:cameraMode,floorY:showStage && cameraMode!=='HANGING'?0:null});
+      controls.setAzimuthalAngle(next.azimuth);
     }
+    // Recompute after pan and dolly, not just on preset changes. Even a target
+    // panned below the stage must leave a feasible camera position above it.
+    const distance=camera.position.distanceTo(controls.target),floor=showStage && cameraMode!=='HANGING'?0:null;
+    if(floor!==null)controls.target.y=Math.max(controls.target.y,floor+CAMERA_LIMITS.floorMargin-distance+.001);
+    const state={target:controls.target.toArray(),azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle(),distance};
+    const bounded=constrain(state,{mode:cameraMode,floorY:floor,minDistance:controls.minDistance,maxDistance:controls.maxDistance});
+    const fixed=cameraMode==='TURNTABLE'||cameraMode==='TOP';
+    controls.minPolarAngle=fixed?bounded.polar:.02;
+    controls.maxPolarAngle=fixed?bounded.polar:floor===null?Math.PI-.02:Math.min(Math.PI-.02,Math.acos(THREE.MathUtils.clamp((floor+CAMERA_LIMITS.floorMargin-controls.target.y)/Math.max(distance,.001),-1,1)));
+    controls.update();
+    if(floor!==null)camera.position.setY(Math.max(camera.position.y,floor+CAMERA_LIMITS.floorMargin));
+    updateClipping(camera,camera.position.distanceTo(controls.target));
     reportCamera();
   });
 
   return <OrbitControls ref={orbitRef} rotateSpeed={0.7} zoomSpeed={0.8} minDistance={0.12} maxDistance={40}
-    minPolarAngle={THREE.MathUtils.degToRad(5)} maxPolarAngle={THREE.MathUtils.degToRad(115)}
+    minPolarAngle={.02} maxPolarAngle={Math.PI/2}
     enablePan panSpeed={0.65} screenSpacePanning enableDamping={!reducedMotion} dampingFactor={0.08}
     mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
     touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}

@@ -7,6 +7,9 @@ dist/
 .gstack/
 .tmp/
 build/
+!growthtrack-ultimate/build/
+growthtrack-ultimate/build/*
+!growthtrack-ultimate/build/serviceWorkerPlugin.js
 coverage/
 __pycache__/
 .pytest_cache/

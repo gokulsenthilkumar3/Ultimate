@@ -13,7 +13,6 @@
 // real GPU. --strict exits with status 1 if any claim fails.
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 // Playwright is loaded here so a different installation can be named (PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs) when the
 // browser build installed on the machine does not match the version pinned in package.json.
@@ -104,6 +103,7 @@ claim('G3-pixels', 'head texture is stretched no more than 1.25 px per texel at 
 await page.getByRole('tab', { name: 'View', exact: true }).click(); await page.waitForTimeout(800);
 const autoRotate = page.locator('label.workspace-switch', { hasText: 'Auto rotate' }).locator('input');
 await autoRotate.check();
+await canvas.scrollIntoViewIfNeeded();
 const samples = []; for (let i = 0; i < 10; i += 1) { samples.push((await camera()).azimuthDeg); await page.waitForTimeout(800); }
 await autoRotate.uncheck();
 const unwrapped = samples.reduce((acc, a, i) => { if (i === 0) return [a]; let d = a - samples[i - 1]; d = ((d + 540) % 360) - 180; return [...acc, acc[i - 1] + d]; }, []);
@@ -111,28 +111,27 @@ const travelled = Math.max(...unwrapped) - Math.min(...unwrapped);
 claim('G2-autorotate', 'auto-rotate turns the view at least 20 degrees in 8 seconds', travelled >= 20, `${travelled.toFixed(1)} degrees`);
 
 // 4. Presentation mode is a real mode.
-const presentation = page.locator('label.workspace-switch', { hasText: 'Presentation mode' }).locator('input');
-await presentation.check(); await page.waitForTimeout(2500);
+await page.getByRole('button',{name:'Enter presentation',exact:true}).click(); await page.waitForTimeout(2500);
 const presented = await page.evaluate(() => ({ fullscreen: Boolean(document.fullscreenElement), editorVisible: Boolean(document.querySelector('.chamber-editor')) }));
 claim('G6-presentation', 'presentation mode enters fullscreen and hides the editor', presented.fullscreen && !presented.editorVisible, `fullscreen ${presented.fullscreen}, editor visible ${presented.editorVisible}`);
-await presentation.uncheck(); await page.waitForTimeout(800);
+await page.getByRole('button',{name:/Exit presentation/}).click(); await page.waitForTimeout(800);
 
 // 5. Quality tiers change real settings.
 const quality = page.locator('label.workspace-field', { hasText: 'Quality' }).locator('select');
 const context3d = () => page.evaluate(() => {
   const c = document.querySelector('.chamber-viewport canvas'); const gl = c.getContext('webgl2') || c.getContext('webgl'); const a = gl.getContextAttributes();
-  return { width: c.width, height: c.height, antialias: a.antialias };
+  return { width: c.width, height: c.height, antialias: a.antialias,composerSamples:Number(c.dataset.qualityMsaa),composerAA:c.dataset.qualityAntialias,shadowMap:Number(c.dataset.qualityShadowMap) };
 });
 const tiers = {};
 for (const tier of ['performance', 'balanced', 'high']) { await quality.selectOption(tier); await page.waitForTimeout(3500); tiers[tier] = await context3d(); }
-const distinct = new Set(Object.values(tiers).map((t) => `${t.width}x${t.height}/${t.antialias}`)).size;
-claim('G2-quality', 'Performance, Balanced and High differ in canvas size or antialiasing', distinct > 1, `${distinct} distinct setting(s): ${JSON.stringify(tiers)}`);
+const distinct = new Set(Object.values(tiers).map(t=>JSON.stringify(t))).size;
+claim('G2-quality', 'Performance, Balanced and High differ in render resolution, composer AA or shadows', distinct > 1, `${distinct} distinct setting(s): ${JSON.stringify(tiers)}`);
 
 // 6. Screenshot resolution.
 const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }).catch(() => null), page.getByRole('button', { name: 'Export', exact: true }).click()]);
 if (download) {
-  const tmp = path.join(fileURLToPath(new URL('.', import.meta.url)), `.audit-export-${Date.now()}.png`);
-  await download.saveAs(tmp); const buf = fs.readFileSync(tmp); fs.unlinkSync(tmp);
+  const chunks=[];for await(const chunk of await download.createReadStream())chunks.push(chunk);
+  const buf=Buffer.concat(chunks);
   const width = buf.readUInt32BE(16); const cssWidth = await canvas.evaluate((c) => c.clientWidth);
   claim('G5-export', 'the exported picture is at least twice the on-screen width', width >= 2 * cssWidth, `${width} px for a ${cssWidth} px canvas, ${buf.length} bytes`);
 } else claim('G5-export', 'the exported picture is at least twice the on-screen width', false, 'no download happened');
@@ -142,7 +141,7 @@ await page.locator('summary[aria-label="More avatar actions"]').click(); await p
 const shareButton = page.getByRole('button', { name: /Share protected view/i });
 if (await shareButton.count()) {
   await shareButton.first().click(); await page.waitForTimeout(2500);
-  const modalShare = page.getByRole('button', { name: /^Share$/ });
+  const modalShare = page.getByRole('button', { name: 'Share image',exact:true });
   if (await modalShare.count()) await modalShare.first().click(); await page.waitForTimeout(800);
   const shared = await page.evaluate(() => window.__shared);
   claim('G5-share', 'sharing passes the picture as a file to the browser share sheet', Boolean(shared && shared.files > 0), shared ? `shared ${JSON.stringify(shared)}` : 'navigator.share was not called');

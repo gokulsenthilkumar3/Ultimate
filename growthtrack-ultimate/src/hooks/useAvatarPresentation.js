@@ -13,7 +13,10 @@ export default function useAvatarPresentation() {
   const owner = useRef(userId);
   useEffect(() => {
     if (owner.current !== userId) { clearTimeout(timer.current); timer.current = null; draft.current = null; revision.current++; owner.current = userId; }
-    if (!draft.current) use3DStore.getState().setAvatarWorkspace(sanitizeAvatarPresentation(persisted));
+    if (!draft.current) {
+      const state=use3DStore.getState(),preferences=sanitizeAvatarPresentation(persisted);
+      state.setAvatarWorkspace(state.avatarWorkspace.presentationMode?{...preferences,cameraMode:state.avatarWorkspace.cameraMode}:preferences);
+    }
   }, [persisted,userId]);
   const change = useCallback(patch => {
     const next = sanitizeAvatarPresentation({ ...use3DStore.getState().avatarWorkspace, ...patch });

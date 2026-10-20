@@ -1,5 +1,6 @@
 import { Group, Mesh, BufferAttribute, Vector3, Box3 } from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import {publicBodyMetrics} from '../../lib/physiqueProfile';
 
 const sources = new Map();
 export function registerAvatarSource(key, source) {
@@ -15,7 +16,7 @@ export function bakeAvatarSurface(source) {
   const origin = source.getWorldPosition(new Vector3());
   source.traverseVisible((node) => {
     if (!node.isMesh || !node.geometry?.attributes.position) return;
-    if (/Aura|Cloth|ScalpCap|Schematic|PrivateMeasurementGuides/i.test(node.name)) return;
+    if (node.userData?.sensitive === true || /Aura|Cloth|ScalpCap|Schematic|PrivateMeasurementGuides|PrivateAnatomy/i.test(node.name)) return;
     node.skeleton?.update();
     const geometry = node.geometry.clone();
     const points = new Float32Array(geometry.attributes.position.count * 3);
@@ -40,7 +41,8 @@ export function bakeAvatarSurface(source) {
 export async function exportPersonalAvatar(key = 'A') {
   const source = sources.get(key);
   if (!source) throw new Error('Load the authored 3D model before exporting.');
-  const metadata = source.metadata();
+  const recorded = source.metadata();
+  const metadata = {schemaVersion:recorded.schemaVersion,metrics:publicBodyMetrics(recorded.metrics),asset:recorded.asset};
   const height = Number(metadata.metrics?.height);
   if (!(height > 0)) throw new Error('Enter your height before exporting a model in physical units.');
   const baked = bakeAvatarSurface(source.group);

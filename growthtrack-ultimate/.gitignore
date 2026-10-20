@@ -92,6 +92,9 @@ crash-dumps/
 
 # Build & Test output
 build/
+!/build/
+/build/*
+!/build/serviceWorkerPlugin.js
 coverage/
 .build_test/
 .vercel/
