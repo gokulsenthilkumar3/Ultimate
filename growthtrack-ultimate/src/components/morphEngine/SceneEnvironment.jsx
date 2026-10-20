@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Environment, Lightformer } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
@@ -7,25 +7,41 @@ import ErrorBoundary from "../ErrorBoundary";
 import use3DStore from "../../store/use3DStore";
 import { getCinematicSceneProfile } from "./cinematicProfiles";
 
-function applyAtmosphere(scene, profile) {
+function applyAtmosphere(scene, profile, preferences) {
   const previous = { background: scene.background, fog: scene.fog };
-  scene.background = new THREE.Color(profile.background);
-  scene.fog = new THREE.FogExp2(profile.fog, profile.fogDensity);
+  const custom=preferences.backgroundMode !== 'scene';
+  let texture;
+  if(preferences.backgroundMode === 'gradient') {
+    // Small local texture, independent of viewport size. No remote assets.
+    const canvas=document.createElement('canvas');canvas.width=1;canvas.height=256;
+    const context=canvas.getContext('2d');
+    if(context) {
+      const gradient=context.createLinearGradient(0,0,0,256);
+      gradient.addColorStop(0,preferences.backgroundColor);gradient.addColorStop(1,preferences.backgroundBottomColor);
+      context.fillStyle=gradient;context.fillRect(0,0,1,256);
+      texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+    }
+  }
+  scene.background = texture || new THREE.Color(custom ? preferences.backgroundColor : profile.background);
+  scene.fog = custom || preferences.lightingMode === 'neutral' ? null : new THREE.FogExp2(profile.fog, profile.fogDensity);
+  previous.texture=texture;
   return previous;
 }
 
 function restoreAtmosphere(scene, previous) {
   scene.background = previous.background;
   scene.fog = previous.fog;
+  previous.texture?.dispose();
 }
 
 function Atmosphere({ profile }) {
   const scene = useThree((state) => state.scene);
+  const {backgroundMode,backgroundColor,backgroundBottomColor,lightingMode}=use3DStore(state=>state.avatarWorkspace);
 
   useEffect(() => {
-    const previous = applyAtmosphere(scene, profile);
+    const previous = applyAtmosphere(scene, profile, {backgroundMode,backgroundColor,backgroundBottomColor,lightingMode});
     return () => restoreAtmosphere(scene, previous);
-  }, [profile, scene]);
+  }, [profile,scene,backgroundMode,backgroundColor,backgroundBottomColor,lightingMode]);
 
   return null;
 }
@@ -37,7 +53,7 @@ function EnvironmentRig({ profile, lodConfig }) {
     <>
       <Atmosphere profile={profile} />
       {/* One local studio capture owns scene.environment; no network HDR dependency. */}
-      <Environment key={profile.id} background={false} resolution={resolution} frames={1} environmentIntensity={profile.environmentIntensity ?? 0.42}>
+      <Environment key={`${profile.id}-${profile.key}`} background={false} resolution={resolution} frames={1} environmentIntensity={profile.environmentIntensity ?? 0.42}>
         {/* Key: primary studio spot — left-high, large area for soft wraparound */}
         <Lightformer intensity={4.0} color={profile.key} position={[-1.5, 4.2, 2.2]} rotation={[0.25, 0.15, 0]} scale={[5.0, 1.6, 1]} />
         {/* Fill: right-side large soft box — reduces harsh shadow areas */}
@@ -57,7 +73,8 @@ function EnvironmentRig({ profile, lodConfig }) {
 
 export default function SceneEnvironment({ lodConfig }) {
   const environment = use3DStore((state) => state.cinematicState.sceneEnvironment);
-  const profile = getCinematicSceneProfile(environment);
+  const lightingMode=use3DStore(state=>state.avatarWorkspace.lightingMode);
+  const profile = useMemo(()=>getCinematicSceneProfile(environment,lightingMode),[environment,lightingMode]);
 
   return (
     <ErrorBoundary fallback={<Atmosphere profile={profile} />}>

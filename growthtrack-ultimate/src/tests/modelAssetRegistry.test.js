@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { resolveModelAsset } from '../components/morphEngine/modelAssetRegistry';
 
 describe('model asset registry', () => {
+  it('promotes the assessed male attachment upgrade at both quality levels',()=> {
+    expect(resolveModelAsset({modelPreset:'male'},'HIGH')).toMatchObject({path:expect.stringMatching(/humanoid-adult-v2\.glb$/),version:'v2',anatomySex:'male',source:'default',v2Ready:true});
+    expect(resolveModelAsset({modelPreset:'male'},'LOW').path).toMatch(/humanoid-adult-v2-lite\.glb$/);
+    expect(resolveModelAsset({modelPreset:'female'}).v2Ready).toBe(false);
+    expect(resolveModelAsset({modelPreset:'male',modelVersion:'legacy'}).path).toMatch(/humanoid-base-lite\.glb$/);
+    expect(resolveModelAsset({avatarAsset:'humanoid-base.glb',modelPreset:'male'}).source).toBe('profile');
+  });
   it('selects a logical mesh preset without requiring viewer changes', () => {
     const result = resolveModelAsset({ modelPreset: 'auto', biologicalSex: 'female' }, 'HIGH');
     expect(result.preset).toBe('female');

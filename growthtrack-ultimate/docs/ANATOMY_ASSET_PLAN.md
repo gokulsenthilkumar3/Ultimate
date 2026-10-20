@@ -2,7 +2,7 @@
 
 Historical sourcing plan and implementation record, 2026-10-19. Sections 1–6 describe the original findings and proposed authored replacement; sections 7–9 record subsequent code and asset changes. The application uses the model for adult body-measurement comparison.
 
-Current runtime update (2026-10-20): the bundled assets now support independent section deformation and optional schematic guides through `anatomyDeformation.js`. Dimensions outside the original two-morph bands are retained and visualized; those bands are advisory. See the implementation status at the end of [Human realism and visual measurement plan](HUMAN_REALISM_AND_MEASUREMENT_PLAN.md). Earlier two-channel descriptions below document the historical implementation.
+Current runtime update (2026-10-20): the bundled assets now support independent section deformation and optional schematic guides through `anatomyDeformation.js`. The v3 runtime embeds hidden root rings in the pelvic surface, anchors the sac neck and supports independent foreskin retraction and orientation per endpoint. Dimensions outside the original two-morph bands are retained and visualized; those bands are advisory. See the attachment fixes and remaining authored-topology requirements in [Human realism and visual measurement plan](HUMAN_REALISM_AND_MEASUREMENT_PLAN.md). Earlier two-channel descriptions below document the historical implementation.
 
 For the researched state-aware measurements, independent scrotal and buttock controls, regional skin appearance, and migration plan, see [Adult anatomy customization research plan](ANATOMY_CUSTOMIZATION_RESEARCH_PLAN.md). That plan supersedes the original population-range clamping and unspecified-measurement defaults in section 4 below; it is proposed work, not a list of implemented controls.
 
@@ -108,6 +108,10 @@ are written to the ignored `.tmp/anatomy-realism-review/` directory. Previous
 shipped GLBs were backed up there before promotion. The provenance manifest
 records the promoted hashes; adult eligibility, default covering and capture
 redaction remain enforced by the existing tests.
+
+## 10. Assessed asset derivatives, 2026-10-20
+
+The male default now selects `humanoid-adult-v2.glb` / `humanoid-adult-v2-lite.glb`. `scripts/upgrade-human-attachments.mjs` derives these from the assessed CC0 originals, embeds hidden attachment tissue, transfers pelvic skin weights and follows all 58 body morph channels. Measurement rings, source body/face data, image bytes, rig nodes and bind matrices remain intact. The original assets remain available for explicit legacy choices and covered fallback bases. `ASSET_LICENCE_RESOLUTION.md` section 4c records the current licence and hash evidence; the runtime surface remains procedural.
 
 ## Sources
 

@@ -37,7 +37,7 @@ test('live evidence, customization and renderer effects persist without changing
   await page.getByRole('checkbox',{name:'Interface effects',exact:true}).uncheck();
   await expect(chamber).toHaveAttribute('data-density','compact');
   await expect(chamber).toHaveAttribute('data-interface-effects','off');
-  await expect.poll(() => state.targets().viewerPreferences).toEqual({density:'compact',guideDetail:'concise',interfaceEffects:false,inspectorWidth:480});
+  await expect.poll(() => state.targets().viewerPreferences).toMatchObject({density:'compact',guideDetail:'concise',interfaceEffects:false,inspectorWidth:480});
   await expect(page.getByText('Layout saved',{exact:true})).toBeVisible();
 
   const canvas = page.locator('.chamber-canvas-wrap canvas');

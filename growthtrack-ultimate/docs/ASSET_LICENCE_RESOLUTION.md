@@ -2,6 +2,8 @@
 
 Status: **resolved, 2026-10-19.** Both GLBs were rebuilt from pinned CC0 sources (section 4a) and promoted; every component in `ASSET-PROVENANCE.json` is `verified` or `project`, and `npm run check:assets -- --release` passes. Archived licence texts and source manifests are in `docs/licenses/`. The application-export route (section 3) remains available as a cross-check.
 
+Update, **2026-10-20:** the assessed sources were reverified against the pinned upstream licence and system-asset catalog. `node scripts/verify-human-sources.mjs` verified all 97 cached source files against their recorded hashes, including git blob identities where applicable. Archived licence texts also match the pinned upstream hashes. The new adult-v2 full/lite derivatives use these same components and project-authored attachment binding; see section 4c. No commissioned anatomy sculpt is included.
+
 ## 1. The problem, precisely
 
 `ASSET-PROVENANCE.json` marks four components of each GLB as unresolved:
@@ -89,6 +91,19 @@ Added inputs, same pinned sources and verification:
 - From the CC0 system-assets zip: `eyebrows/eyebrow001` and `eyelashes/eyelashes01` (proxy, material and texture; same CC0 header). Both are recorded as verified components in `ASSET-PROVENANCE.json` and in the refreshed extract manifest.
 
 Promoted hashes (adult base and face features): full `9ed4afbb…`, lite `adb36e49…`. Superseded the same day by the rebuild with the project-modelled anatomy and the contact-only occlusion bake (no new third-party inputs): full `faea01f2ef89fb7ae2572177b5e7c960c602a2dfa5c1e633955404b90283b3fc`, lite `3fa9ae0a182f4954bd848e413607c73aa1c8b3b6d06c7db515c874452131091d`. `check:assets -- --release` passes with 8 components.
+
+## 4c. Assessed human attachment upgrade (2026-10-20)
+
+`npm run humanoid:upgrade` builds `humanoid-adult-v2.glb` and `humanoid-adult-v2-lite.glb` from the reviewed original pair. It refuses a source hash mismatch or unresolved component and verifies the archived licence text before producing derivatives. The provenance manifest records each source-to-derivative hash chain and the project-authored upgrade component. Release checks now verify archived licence hashes and derivative source identities as well as packaged file hashes.
+
+The added attachment upgrade follows the project's MIT licence. Its licence-file hash is recorded alongside the two archived upstream CC0 statements; the original MakeHuman component licences remain unchanged.
+
+The upgrade seats hidden attachment tissue against pelvic triangles, transfers normalized body skin weights to 961 root/neck vertices, and adds pelvic follow deltas for all 58 body morph names. Visible shaft measurement sections, private size deltas, body geometry, rig nodes/bind matrices, UVs, facial proxies, materials and embedded image bytes are retained. Male profiles use the upgraded pair by default; explicit legacy/custom choices and covered female/neutral fallbacks remain available. The v2 label denotes this binding upgrade, not an authored or scanned replacement.
+
+Sources rechecked:
+
+- [Pinned MakeHuman v1.3.0 licence](https://github.com/makehumancommunity/makehuman/blob/1f508f6083b2f823dab15de924b3bde72e08d77c/LICENSE.md), section C: bundled graphical assets are CC0; application source code has a separate licence.
+- [MakeHuman system-asset catalog](https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html): the selected eyes, short02 hair, brow/lash and skin assets are listed as CC0. File identities match `docs/licenses/makehuman-system-assets-cc0-extract-manifest.json`.
 
 ## 5. Acceptance
 

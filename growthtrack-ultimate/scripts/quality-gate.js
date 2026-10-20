@@ -46,6 +46,8 @@ function runCommand(name, command, args = [], { advisory = false } = {}) {
 
 function verifyRequiredFiles() {
   const files = [
+    'public/assets/models/humanoid-adult-v2.glb',
+    'public/assets/models/humanoid-adult-v2-lite.glb',
     'public/assets/models/humanoid-base.glb',
     'public/assets/models/humanoid-base-lite.glb',
     'src/components/ChamberCanvas.jsx',
@@ -137,7 +139,7 @@ runNode('Automated regression suite', path.join(projectRoot, 'node_modules/vites
 runNode('Production build', path.join(projectRoot, 'node_modules/vite/bin/vite.js'), ['build']);
 verifyBundleBudgets();
 runNode('Strict authored GLB', path.join(projectRoot, 'scripts/validate-glb.js'));
-runNode('Strict mobile GLB', path.join(projectRoot, 'scripts/validate-glb.js'), ['public/assets/models/humanoid-base-lite.glb']);
+runNode('Strict mobile GLB', path.join(projectRoot, 'scripts/validate-glb.js'), ['public/assets/models/humanoid-adult-v2-lite.glb']);
 
 const blockingFailures = results.filter((result) => result.status === 'fail');
 const advisories = results.filter((result) => result.status === 'warn');

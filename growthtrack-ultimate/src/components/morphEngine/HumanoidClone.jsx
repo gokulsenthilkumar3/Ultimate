@@ -18,7 +18,7 @@
  */
 
 import React, { useRef, useEffect, useMemo } from "react";
-import { createPortal, useFrame }             from "@react-three/fiber";
+import { createPortal, useFrame, useThree }             from "@react-three/fiber";
 import { useShallow }                         from "zustand/react/shallow";
 import * as THREE                             from "three";
 
@@ -37,13 +37,15 @@ import { isAnatomyVisible } from './anatomyVisibility';
 import { useAnatomyEligibility } from './useAnatomyEligibility';
 import { registerAvatarSource } from './avatarExport';
 import { STRAND_FEATURES, createHairCardMaterial, createStrandMaterial, scalpHairline } from './featureMaterials';
-import { applyAnatomySurface } from './anatomySurface';
+import { applyAnatomySurface, updateAnatomySurface } from './anatomySurface';
 import { createMorphNormalUpdater } from './deformedGeometryNormals';
 import { createRegionFrameSampler } from './regionFrames';
 import { ANATOMY_CALIBRATION_VERSION } from './anatomyCalibration';
 import { createPrivateAnatomyDeformer, createButtockDeformer, ANATOMY_PREVIEW_VERSION } from './anatomyDeformation';
 import { createAnatomyGuides } from './anatomyGuides';
 import { createGarmentGeometry } from './garmentGeometry';
+import {createAuthoredGarment,publishGarmentEvidence} from './authoredGarments';
+import {useWardrobeAsset} from './useWardrobeAsset';
 
 const ProceduralHumanoid = React.lazy(() => import("./ProceduralHumanoid"));
 
@@ -120,6 +122,8 @@ export default function HumanoidClone({
   const captureRedacted = use3DStore((s) => s.captureRedacted);
   const wardrobe = use3DStore((s) => s.wardrobeState);
   const wardrobeOptions=use3DStore(s=>s.wardrobePreferences.outfits[s.wardrobeState] || null);
+  const wardrobeAsset=useWardrobeAsset(wardrobe,wardrobeOptions,renderMode==='normal' && isClothPreset(wardrobe));
+  const renderer=useThree(state=>state.gl);
   const animationState = use3DStore((s) => s.animationState);
   const anatomyProfile = use3DStore(s => s.anatomyCustomization[cloneKey === 'B' ? 'goal' : 'current']);
   const anatomyPreview = use3DStore(s => s.anatomyPreview);
@@ -261,7 +265,7 @@ export default function HumanoidClone({
     const evidence=privateDeformer.apply(anatomyProfile,{state:anatomyPreview.state,heightScale,
       baseColor:privateMaterial?.color || renderMetrics.skinColor,legacy:renderMetrics});
     anatomyEvidenceRef.current=evidence;
-    privateAnatomyMesh.userData.previewEvidence=evidence;
+    updateAnatomySurface(privateMaterial,evidence);
     use3DStore.getState().setAnatomyEvidence(cloneKey,evidence);
     buttockDeformer?.(anatomyProfile,{baseColor:privateMaterial?.color});
   },[privateDeformer,privateAnatomyMesh,buttockDeformer,anatomyProfile,anatomyPreview.state,heightScale,privateMaterial,renderMetrics,cloneKey]);
@@ -394,9 +398,9 @@ export default function HumanoidClone({
 
   const clothMaterial = useMemo(() => (
     renderMode === "normal" && isClothPreset(wardrobe)
-      ? createClothMaterial(wardrobe, bodyMesh?.geometry,wardrobeOptions || {})
+      ? createClothMaterial(wardrobe, bodyMesh?.geometry,wardrobeOptions || {},wardrobeAsset)
       : null
-  ), [bodyMesh, renderMode, wardrobe,wardrobeOptions]);
+  ), [bodyMesh, renderMode, wardrobe,wardrobeOptions,wardrobeAsset]);
 
   // Aura materials are GPU resources. Creating one in JSX would allocate a
   // fresh material on every parent render and leak the old shader until the
@@ -445,18 +449,22 @@ export default function HumanoidClone({
     Object.values(featureMaterials).forEach((featureMaterial) => featureMaterial.dispose());
   }, [featureMaterials]);
 
-  // WardrobeShader is intentionally a surface overlay: it reuses the authored
-  // body's exact geometry, skinning and morph targets, so clothing cannot drift
-  // after a measurement change or a future body-asset refresh.
+  // Separate authored garment topology follows measured body changes through
+  // surface bindings and shares the pose rig. Custom assets retain the shell
+  // fallback when they do not match the approved binding topology.
   useEffect(() => {
-    if (useProcedural || !bodyMesh || !scene || !skeleton || !clothMaterial) return undefined;
+    if(!clothMaterial) {publishGarmentEvidence(renderer.domElement,wardrobe,null);return undefined;}
+    if (useProcedural || !bodyMesh || !scene || !skeleton) return undefined;
     const parent = bodyMesh.parent || scene;
-    const shell=createGarmentGeometry(bodyMesh,wardrobeOptions || {});
+    const shell=createAuthoredGarment(bodyMesh,wardrobeAsset?.mesh,wardrobeOptions || {}) || createGarmentGeometry(bodyMesh,wardrobeOptions || {});
+    const restoreBody=shell.authored?clothMaterial.userData.maskBody(material,bodyMesh):null;
     const overlay = new THREE.SkinnedMesh(shell.geometry, clothMaterial);
     overlay.userData.garmentShell=shell;
     overlay.name = `GrowthTrackCloth_${cloneKey}`;
-    overlay.morphTargetDictionary = bodyMesh.morphTargetDictionary;
-    overlay.morphTargetInfluences = new Float32Array(bodyMesh.morphTargetInfluences?.length || 0);
+    if(!shell.authored) {
+      overlay.morphTargetDictionary = bodyMesh.morphTargetDictionary;
+      overlay.morphTargetInfluences = new Float32Array(bodyMesh.morphTargetInfluences?.length || 0);
+    }
     overlay.bind(skeleton, bodyMesh.bindMatrix);
     overlay.position.copy(bodyMesh.position);
     overlay.quaternion.copy(bodyMesh.quaternion);
@@ -465,15 +473,19 @@ export default function HumanoidClone({
     overlay.frustumCulled = false;
     overlay.castShadow = true;
     overlay.receiveShadow = true;
+    overlay.customDepthMaterial=clothMaterial.userData.depthMaterial;
+    overlay.customDistanceMaterial=clothMaterial.userData.distanceMaterial;
     parent.add(overlay);
     clothOverlayRef.current = overlay;
+    publishGarmentEvidence(renderer.domElement,wardrobe,shell,wardrobeOptions?.variant);
 
     return () => {
       parent.remove(overlay);
       shell.dispose();
+      restoreBody?.();
       if (clothOverlayRef.current === overlay) clothOverlayRef.current = null;
     };
-  }, [bodyMesh, cloneKey, clothMaterial, scene, skeleton, useProcedural,wardrobeOptions]);
+  }, [bodyMesh, cloneKey, clothMaterial, scene, skeleton, useProcedural,wardrobeOptions,wardrobeAsset,wardrobe,renderer,material]);
 
   // An aura must share the body's parent, bind matrix and morphs. A sibling
   // outside the normalized scene produces detached glowing face/hand patches.
@@ -553,7 +565,7 @@ export default function HumanoidClone({
     }
     if (clothOverlayRef.current) {
       clothOverlayRef.current.userData.garmentShell?.update();
-      interpolator.applyToMesh(clothOverlayRef.current, morphIndexMap);
+      if(!clothOverlayRef.current.userData.garmentShell?.authored) interpolator.applyToMesh(clothOverlayRef.current, morphIndexMap);
     }
     if (scalpRef.current) interpolator.applyToMesh(scalpRef.current, morphIndexMap);
     if (auraRef.current) interpolator.applyToMesh(auraRef.current, morphIndexMap);

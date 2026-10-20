@@ -6,6 +6,14 @@ import { createAnatomyCustomization } from '../../lib/anatomyCustomization';
 vi.mock('./MeasurementHelp', () => ({ default: () => null }));
 
 describe('private anatomy editing', () => {
+  it('names shape sliders and saves retraction separately from coverage and the other state',()=> {
+    const value=createAnatomyCustomization({current:{penis:{resting:{shape:{foreskinCoverage:100}},erect:{shape:{foreskinCoverage:30}}}}});
+    const save=vi.fn();render(<AnatomyCustomizationPanel value={value} onSave={save}/>);
+    const retraction=screen.getByRole('slider',{name:'Foreskin retraction'});
+    fireEvent.change(retraction,{target:{value:'70'}});
+    expect(save.mock.calls.at(-1)[0].current.penis).toMatchObject({resting:{shape:{foreskinCoverage:100,foreskinRetraction:70}},erect:{shape:{foreskinCoverage:30}}});
+    expect(screen.getByRole('slider',{name:'Elevation from horizontal'})).toBeInTheDocument();
+  });
   it('warns outside suggested limits and saves the entered value without a hard maximum', () => {
     const value=createAnatomyCustomization({current:{penis:{resting:{measurements:{lengthCm:22}}}}});
     const save=vi.fn();render(<AnatomyCustomizationPanel value={value} onSave={save}/>);

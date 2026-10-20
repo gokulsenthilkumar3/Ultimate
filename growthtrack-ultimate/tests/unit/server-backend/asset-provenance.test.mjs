@@ -33,9 +33,9 @@ test('the repository manifest covers every shipped asset with current hashes and
   assert.deepEqual([release.ok, release.errors], [true, []], 'release builds pass once every licence is verified');
 });
 
-test('finds 3D formats anywhere in public and textures beside the models', async t => {
-  const root = await fixture(t, { 'public/a.glb': 'x', 'public/assets/models/skin.png': 'x', 'public/logo.png': 'x', 'public/deep/scene.gltf': 'x' });
-  assert.deepEqual(await shippedAssets(root), ['public/a.glb', 'public/assets/models/skin.png', 'public/deep/scene.gltf']);
+test('finds 3D formats anywhere in public and textures beside models and wardrobe assets', async t => {
+  const root = await fixture(t, { 'public/a.glb': 'x', 'public/assets/models/skin.png': 'x', 'public/assets/wardrobe/fabric.png':'x', 'public/logo.png': 'x', 'public/deep/scene.gltf': 'x' });
+  assert.deepEqual(await shippedAssets(root), ['public/a.glb', 'public/assets/models/skin.png', 'public/assets/wardrobe/fabric.png', 'public/deep/scene.gltf']);
 });
 
 test('fails on unlisted files, stale hashes, malformed components and missing listed files', async t => {
@@ -71,4 +71,15 @@ test('a missing or unreadable manifest fails clearly', async t => {
   assert.match((await checkAssetProvenance({ root: missing })).errors[0], /missing/);
   const broken = await fixture(t, { 'public/a.glb': 'x' }, '{not json');
   assert.match((await checkAssetProvenance({ root: broken })).errors[0], /not valid JSON/);
+});
+
+test('release checks archived licence evidence and derivative source hashes',async t=> {
+  const root=await fixture(t,{'public/a.glb':'a','public/b.glb':'b','docs/LICENSE.md':'CC0\n'}, {
+    licenseEvidence:[null,{path:'docs/LICENSE.md',sha256:hash('changed')}],
+    assets:[{path:'public/a.glb',sha256:hash('a'),components:[component()]},{path:'public/b.glb',sha256:hash('b'),sourceAsset:'public/a.glb',sourceSha256:hash('wrong source'),components:[component()]}],
+  });
+  const result=await checkAssetProvenance({root,release:true});
+  assert.equal(result.ok,false);
+  assert.ok(result.errors.some(e=>e.includes('licence evidence hash mismatch')));
+  assert.ok(result.errors.some(e=>e.includes('source asset hash')));
 });

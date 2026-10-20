@@ -1,4 +1,5 @@
-humanoid-base.glb and humanoid-base-lite.glb are built from CC0 1.0 Universal
+humanoid-base.glb, humanoid-base-lite.glb, humanoid-adult-v2.glb and
+humanoid-adult-v2-lite.glb are built from CC0 1.0 Universal
 sources (licence status: VERIFIED, 2026-10-19):
 
 - Body mesh and morph targets: makehumancommunity/makehuman v1.3.0
@@ -23,3 +24,10 @@ Project-authored parts: the external-anatomy placeholder
 surface bakes from scripts/bake-geometry-surface.mjs, and the eye/hair
 attachment from scripts/calibrate-humanoid-features.mjs and
 scripts/repair-humanoid-feature-rig.mjs.
+
+The adult-v2 derivatives retain the assessed body, facial assets, textures and
+measurement sections. scripts/upgrade-human-attachments.mjs rebinds hidden
+pelvic attachment tissue to body triangles, skin weights and body morphs.
+This added binding is project-authored. It is not a scanned anatomy asset.
+Rebuild derivatives with npm run humanoid:upgrade. Archived licence hashes and
+the derivative-to-source hash chain are checked by npm run check:assets.

@@ -10,12 +10,17 @@ it('rejects unknown/prototype drops and covered private targets while accepting 
   expect(readDroppedBodyPart(transfer('anatomy'),true)).toBe('anatomy');
 });
 
-it('focuses a region without replacing custom light or effect settings', () => {
+it('focuses the goal region without replacing background, light, effects or measurements', () => {
+  const presentation = { backgroundMode:'gradient',backgroundColor:'#223344',backgroundBottomColor:'#ddeeff',lightingMode:'neutral',showStage:false };
+  use3DStore.getState().setAvatarWorkspace({ ...presentation,avatarContext:'goal',workspaceMode:'compare' });
   use3DStore.getState().setCinematicSetting('vignette',true);
   use3DStore.getState().setCinematicSetting('exposure',1.15);
   const before = { ...use3DStore.getState().cinematicState };
+  const measurements = [use3DStore.getState().cloneA.metrics,use3DStore.getState().cloneB.metrics];
   focusInspectionPart('leftHand');
   expect(use3DStore.getState().focusedBodyPart).toBe('leftHand');
   expect(use3DStore.getState().viewMode).toBe('SOLO');
   expect(use3DStore.getState().cinematicState).toEqual(before);
+  expect(use3DStore.getState().avatarWorkspace).toMatchObject({ ...presentation,avatarContext:'goal',workspaceMode:'goal' });
+  expect([use3DStore.getState().cloneA.metrics,use3DStore.getState().cloneB.metrics]).toEqual(measurements);
 });
