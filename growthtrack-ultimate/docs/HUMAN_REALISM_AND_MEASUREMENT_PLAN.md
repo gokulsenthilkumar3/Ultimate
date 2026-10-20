@@ -14,7 +14,7 @@ Implementation files: `src/lib/bodyMeasurementDefinitions.js`, `src/components/p
 
 Verification for this slice: production build passed; 30 focused unit tests passed; all five new Chrome inspection tests and two existing measurement/responsive-editor browser regressions passed. Browser coverage includes desktop orbit/pan, every public part's zoom directions, focus-preserving front/side views, native drag/drop, mobile touch drag/drop and pinch zoom, public/private help behavior, and base-color persistence. Touch behavior was tested through browser emulation, not physical-device testing. The existing large-chunk build warning remains.
 
-Companion: [interactive measurement guide](../../v3Plan_HumanRealism.html). Extends [adult anatomy research](ANATOMY_CUSTOMIZATION_RESEARCH_PLAN.md) and the [original model plan](../../v2Plan_3DModel.html).
+Companion: [interactive plan, tab by tab (revision 04)](../../v4Plan_3DModel.html) — a real 3D human fitted to entered measurements, organised by the Physique tabs; the earlier [measurement guide (revision 03)](../../v3Plan_HumanRealism.html) is kept. Extends [adult anatomy research](ANATOMY_CUSTOMIZATION_RESEARCH_PLAN.md) and the [original model plan](../../v2Plan_3DModel.html).
 
 ## 1. Outcome and limits
 
@@ -256,3 +256,13 @@ Private measurements now drive a section-based runtime surface on the bundled as
 Garments now use an owned geometry shell with body rig/morphs, per-bone coverage, geometric fit/ease, weave, seams, waistbands and hem trim. Underwear offers briefs/trunks/boxer briefs; gym offers tank/training/compression variants; casual offers sweatshirt/tee with joggers. Formal/swim previews and separate fabric/trim colors are also exposed. Outfit preferences persist separately and never restore Anatomical mode.
 
 The section surface is a procedural approximation, not a calibrated fit to a person. Body-follow morphs and pose can change achieved dimensions. Posterior volume remains an approximate envelope target. Garments do not simulate fabric drape. Full-body fitting calibration, production topology/attachment review, authored clothing, and perceptual likeness evaluation remain later phases.
+
+## Interactive plan page (revision 04)
+
+`v4Plan_3DModel.html` presents this plan one Physique tab at a time (Blueprint, Measurements, 3D Mirror, Targets, History, then Roadmap). It runs entirely in the browser, including from `file://`, with no network request.
+
+- **Model:** `plan-assets/human-preview.js` is generated from `public/assets/models/humanoid-base-lite.glb` (CC0 MakeHuman assets) by `npm run plan:model`, which needs `sharp` installed only for that step (`npm install --no-save sharp`). It keeps the body, eyes, hair, brows and lashes, 17 shape morphs, a joint-group map and downscaled textures. The external-anatomy mesh is not copied.
+- **Viewer:** `plan-assets/src/` is bundled with the app's pinned `three` into `plan-assets/human-stage.js` by `npm run plan:viewer`.
+- **Fitting:** `plan-assets/src/fit.mjs` is a small prototype of the P1 measure-then-fit loop: eight tape sites (neck, shoulders, chest, waist, hips, upper arm, thigh, calf) are measured on the morphed mesh and the shape controls are solved until each loop matches the entry, reporting `fitted` or `limit`. Landmark heights are placed by proportion on this one generic body; they are not detected on anyone.
+- **Honesty labels used on the page:** *Fitted*, *Model limit reached*, *Roughly shown* (weight, body fat, skin) and *Saved only* (shoulder width, chest depth, seat projection, lower-leg length), matching the availability states in section 7.
+- **Checks:** `npm run test:plan` covers the cross-section maths, fit tolerance on the real asset, and that the embedded preview matches the GLB it was built from. Regenerate both assets whenever the GLB changes.

@@ -17,6 +17,7 @@
     "dev:studio": "node scripts/workspace.mjs studio",
     "db:studio": "node scripts/workspace.mjs studio",
     "test:gateway": "node --test tests/gateway.test.mjs tests/workspace-proxy.test.mjs",
+    "test:plan": "node --test tests/plan-preview.test.mjs",
     "build:desktop": "npm --prefix growthtrack-ultimate run build:desktop",
     "build": "npm --prefix growthtrack-ultimate run build",
     "test": "npm --prefix growthtrack-ultimate run test",

@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Human Model Plan</title>
+<meta name="description" content="A real 3D human that reacts to the numbers you enter, organised by the Physique page's own tabs: Blueprint, Measurements, 3D Mirror, Targets and History.">
+<style>
+:root{color-scheme:light dark;--paper:#f5f4f0;--surface:#fff;--ink:#202b2b;--muted:#536563;--line:#d4ddda;--accent:#116c60;--accent-ink:#fff;--soft:#e4efeb;--warn:#7a4f00;--warn-bg:#fbf1dc;--bad:#9c3324;--bad-bg:#fbe9e5;--ok:#1d6b3a;--ok-bg:#e3f3e8;--stage-a:#f8fbf9;--stage-b:#d6e2db;--shadow:0 1px 2px rgba(32,43,43,.06),0 8px 24px rgba(32,43,43,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#111716;--surface:#192120;--ink:#e8efec;--muted:#a3b4af;--line:#2d3b37;--accent:#4cc9b4;--accent-ink:#06211c;--soft:#1d2e2a;--warn:#f0c46a;--warn-bg:#33290f;--bad:#f2998a;--bad-bg:#3a1d18;--ok:#8fd8a8;--ok-bg:#16301f;--stage-a:#222d2a;--stage-b:#0f1513;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25)}}
+*{box-sizing:border-box}
+html{scroll-padding-top:12px}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+h1,h2,h3,h4,p{margin:0}
+h1{font-size:clamp(26px,3.1vw,36px);line-height:1.15;font-weight:620;letter-spacing:-.03em;max-width:900px;margin:6px 0 8px}
+h2{font-size:24px;line-height:1.25;letter-spacing:-.02em;font-weight:620}
+h3{font-size:16px;line-height:1.35;font-weight:650}
+.eyebrow{color:var(--accent);font-size:11px;letter-spacing:.12em;font-weight:700;text-transform:uppercase}
+.lede{max-width:900px;color:var(--muted);font-size:15.5px;line-height:1.55}
+.meta-inline{text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);font-size:12.5px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.tiny{font-size:12px;color:var(--muted)}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.wrap{max-width:1320px;margin:0 auto;padding:0 28px}
+
+/* header */
+.top{padding:20px 0 0}
+.tabbar{display:flex;gap:16px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-top:14px}
+.tabbar .units{margin-bottom:8px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;color:var(--muted);font-size:13px;padding:14px 0 18px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 12px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true],.seg button[aria-checked=true]{background:var(--accent);color:var(--accent-ink)}
+nav[role=tablist]{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:-1px}
+nav[role=tablist] button{display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:11px 16px 10px;background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;color:var(--muted);text-align:left}
+nav[role=tablist] button b{font-size:14px;font-weight:650;color:var(--ink)}
+nav[role=tablist] button span{font-size:12px}
+nav[role=tablist] button .n{font-size:10px;letter-spacing:.1em;font-weight:700;color:var(--accent)}
+nav[role=tablist] button[aria-selected=true]{border-color:var(--accent);background:var(--soft)}
+nav[role=tablist] button[aria-selected=true] b{color:var(--accent)}
+
+/* workspace */
+.workspace{display:grid;grid-template-columns:minmax(360px,5fr) minmax(0,6fr);gap:30px;padding:20px 0 40px;align-items:start}
+.workspace[data-tab=roadmap]{grid-template-columns:minmax(0,1fr)}
+.workspace[data-tab=roadmap] .stage-col{display:none}
+.stage-col{position:sticky;top:12px}
+.stage-card{position:relative;height:var(--stage-h,clamp(500px,calc(100vh - 40px),760px));border:1px solid var(--line);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,var(--stage-a),var(--stage-b));box-shadow:var(--shadow);touch-action:none}
+.stage{position:absolute;inset:0}
+.stage-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.stage-canvas:active{cursor:grabbing}
+.stage-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.stage-label{position:absolute;left:0;top:0;background:var(--surface);color:var(--ink);border:1.5px solid var(--accent);border-radius:99px;padding:3px 11px;font-size:12px;font-weight:650;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.12);will-change:transform}
+.stage-label.is-quiet{font-weight:560;opacity:.92}
+.stage-label.is-action{cursor:pointer}
+.stage-label.is-action:hover{background:var(--soft)}
+.stage-top{position:absolute;left:12px;right:12px;top:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;pointer-events:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;background:var(--surface);border:1px solid var(--line);color:var(--ink);pointer-events:auto}
+.chip.quiet{color:var(--muted);font-weight:500}
+.stage-bar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;pointer-events:none}
+.stage-bar>*{pointer-events:auto}
+.stage-bar .seg button{padding:6px 11px}
+.stage-bar .btn{background:var(--surface)}
+.stage-msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px;color:var(--muted);font-size:14px;background:linear-gradient(180deg,var(--stage-a),var(--stage-b))}
+.stage-msg[hidden]{display:none}
+.stage-msg img{max-height:70%;max-width:80%;margin:0 auto 12px;display:block;opacity:.95}
+.spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);margin:0 auto 12px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+.stage-caption{padding:10px 4px 0;font-size:12.5px;color:var(--muted)}
+.split-handle{position:absolute;top:0;bottom:0;width:0;left:50%;pointer-events:none}
+.split-handle[hidden]{display:none}
+.split-handle .line{position:absolute;top:0;bottom:0;left:-1px;width:2px;background:var(--accent)}
+.split-handle .knob{position:absolute;top:50%;left:-19px;width:38px;height:38px;margin-top:-19px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);display:grid;place-items:center;pointer-events:auto;cursor:ew-resize;font-size:15px;touch-action:none;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.split-tags{position:absolute;top:48px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none}
+.split-tags[hidden]{display:none}
+
+/* panels */
+.panels{min-width:0}
+.panel[hidden]{display:none}
+.panel-head{margin-bottom:14px}
+.panel-head .eyebrow{display:block;margin-bottom:4px}
+.panel-head p{color:var(--muted);max-width:680px;margin-top:6px}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 18px}
+.toc a{font-size:12px;font-weight:600;text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 11px;background:var(--surface)}
+.toc a:hover{color:var(--accent);border-color:var(--accent)}
+.block{margin:0 0 18px;padding:20px 22px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.block>.kicker{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.kicker .num{width:22px;height:22px;border-radius:50%;background:var(--soft);color:var(--accent);font-size:11px;font-weight:700;display:grid;place-items:center;flex:none}
+.kicker h3{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.block p+p{margin-top:10px}
+.block>h4,.block h4{font-size:15px;margin:0 0 6px}
+.block.plan{background:var(--soft);border-color:transparent}
+.gate{margin-top:14px;padding:12px 14px;border-left:3px solid var(--accent);background:var(--paper);border-radius:0 8px 8px 0;font-size:13.5px}
+.block.plan .gate{background:var(--surface)}
+ul.plain{margin:8px 0 0;padding-left:20px}
+ul.plain li{margin:4px 0}
+details.more{margin:0 0 18px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+details.more>summary{cursor:pointer;padding:12px 18px;font-weight:650;font-size:14px;list-style:none;display:flex;justify-content:space-between;gap:10px;align-items:center}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::after{content:"+";font-size:18px;color:var(--accent)}
+details.more[open]>summary::after{content:"−"}
+details.more>.inner{padding:2px 18px 16px;border-top:1px solid var(--line)}
+details.more>.inner>*:first-child{margin-top:14px}
+
+/* buttons, inputs */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-size:13.5px;font-weight:600;color:var(--ink)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{color:var(--accent-ink);filter:brightness(1.07)}
+.btn.ghost{background:none}
+.btn.small{padding:5px 10px;font-size:12.5px}
+.btn[aria-pressed=true]{background:var(--soft);border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+label.fld{display:block;font-size:13px;font-weight:650;margin-bottom:4px}
+.input{width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:9px 11px;font-size:15px}
+.input:focus-visible{outline-offset:0;border-color:var(--accent)}
+.input[aria-invalid=true]{border-color:var(--bad)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row.tight{gap:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=color]{width:46px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer}
+.status{display:inline-flex;align-items:flex-start;gap:6px;padding:4px 10px;border-radius:8px;font-size:12.5px;font-weight:600;line-height:1.4}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;margin-top:5px;flex:none;background:currentColor}
+.status.ok{background:var(--ok-bg);color:var(--ok)}
+.status.warn{background:var(--warn-bg);color:var(--warn)}
+.status.bad{background:var(--bad-bg);color:var(--bad)}
+.status.off{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
+.tag{display:inline-block;font-size:11px;background:var(--soft);padding:3px 9px;color:var(--accent);border-radius:99px;font-weight:650}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:var(--paper)}
+.stat span{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.stat strong{display:block;font-size:22px;line-height:1.25;font-weight:620;font-variant-numeric:tabular-nums;margin:2px 0}
+.stat small{display:block;font-size:11.5px;color:var(--muted);line-height:1.35}
+.stat.empty strong{color:var(--muted)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .25s}
+@media (prefers-reduced-motion:reduce){.bar>i{transition:none}}
+.essentials{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:12px}
+.essentials button{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);text-align:left;font-size:13.5px}
+.essentials button:hover{border-color:var(--accent)}
+.essentials .v{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
+.essentials .todo .v{color:var(--accent);font-weight:650}
+.tick{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:800;margin-right:8px;background:var(--ok-bg);color:var(--ok);flex:none}
+.todo .tick{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
+.zonelist{display:grid;gap:8px;margin-top:10px}
+.zone{display:grid;grid-template-columns:1fr minmax(130px,auto);gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.zone:hover,.zone:focus-within{border-color:var(--accent);background:var(--soft)}
+
+/* measurement guide */
+.picker{display:grid;gap:12px}
+.picker h4{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.pick{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--surface);font-size:13px;font-weight:600}
+.pick:hover{border-color:var(--accent)}
+.pick[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pick .dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.pick .dot.on{background:var(--ok)}
+.pick[aria-pressed=true] .dot.on{background:var(--accent-ink)}
+.facts{display:grid;gap:12px;margin:14px 0 0}
+.fact h5{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin:0 0 2px;font-weight:700}
+.ms-title{font-size:24px;line-height:1.25;letter-spacing:-.02em;font-weight:620;margin:0}
+.fact p{font-size:14px;color:var(--ink)}
+.meter{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.meter strong{font-size:30px;font-weight:620;font-variant-numeric:tabular-nums;line-height:1.1}
+.meter span{color:var(--muted);font-size:13px}
+.readout{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.stepper{display:flex;gap:6px;align-items:stretch}
+.stepper .input{font-size:22px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums}
+.stepper .btn{min-width:44px;justify-content:center;font-size:18px}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+.hint.warn{color:var(--warn)}
+.feet{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* tables, lists */
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.table-wrap{overflow-x:auto}
+.defs{margin:0;display:grid;gap:0}
+.defs div{padding:10px 0;border-bottom:1px solid var(--line)}
+.defs div:last-child{border:0}
+.defs dt{font-weight:650;font-size:14px}
+.defs dd{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+
+/* targets, history */
+.goal{padding:12px 0;border-bottom:1px solid var(--line)}
+.goal:last-child{border:0}
+.goal-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.goal-vals{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.goal-vals .arrow{color:var(--muted)}
+.goal-vals strong{font-variant-numeric:tabular-nums}
+.delta{font-size:13px;color:var(--muted)}
+.mile{display:flex;gap:10px;align-items:flex-start;padding:8px 0}
+.mile input{margin-top:5px;width:18px;height:18px;accent-color:var(--accent)}
+.scrub{display:grid;gap:8px}
+.scrub-ticks{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.summary-line{font-size:16px;line-height:1.5}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-size:11px;font-family:inherit}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .line{fill:none;stroke:var(--accent);stroke-width:2.5}
+.chart .pt{fill:var(--surface);stroke:var(--accent);stroke-width:2;cursor:pointer}
+.chart .pt.on{fill:var(--accent)}
+.slice svg{width:100%;max-width:360px;height:auto;display:block;margin:0 auto}
+.slice text{fill:var(--muted);font-size:11px;font-family:inherit}
+
+/* misc */
+.phase{display:grid;grid-template-columns:44px 1fr;gap:6px 16px;padding:18px 0;border-bottom:1px solid var(--line)}
+.phase:last-child{border:0}
+.phase .num{color:var(--accent);font-size:22px;font-weight:600}
+.phase p{font-size:14px;color:var(--muted)}
+.phase .gate{margin-top:8px}
+.shows{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sources li{margin:10px 0}
+.sources span{display:block;font-size:13px;color:var(--muted)}
+.diagram svg{width:100%;max-width:420px;height:auto;display:block;margin:0 auto}
+.diagram svg text{font-family:system-ui,sans-serif;fill:var(--muted);font-size:12px}
+.diagram .body{fill:var(--stage-b);stroke:var(--muted);stroke-width:1.5}
+.diagram .measure{stroke:var(--accent);stroke-width:3;fill:none}
+.diagram .ext{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 4}
+footer{padding:22px 0 46px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.skip{position:absolute;left:-999px;top:8px;background:var(--surface);padding:8px 12px;border-radius:8px;z-index:50}
+.skip:focus{left:8px}
+
+@media (max-width:1040px){
+  .workspace{grid-template-columns:minmax(0,1fr);gap:16px;padding-top:16px}
+  .stage-col{position:sticky;top:0;z-index:20;margin:0 -14px;background:var(--paper);padding:8px 14px 0}
+  .stage-card{height:clamp(300px,44vh,460px)}
+  .stage-caption{display:none}
+  .stats{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:640px){
+  .wrap{padding:0 14px}
+  nav[role=tablist] button{padding:9px 10px}
+  nav[role=tablist] button span{display:none}
+  .block{padding:16px 15px}
+  .grid2,.grid3,.essentials{grid-template-columns:1fr}
+  .zone{grid-template-columns:1fr}
+  .stage-bar .seg button{padding:6px 8px;font-size:12px}
+  .stage-label{font-size:11px;padding:2px 8px}
+  .chip{font-size:11px;padding:3px 8px}
+}
+@media print{.stage-col,.toc{display:none}.workspace{display:block}.panel[hidden]{display:block}}
+</style>
+</head>
+<body>
+<a class="skip" href="#panels">Skip to the plan</a>
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">Ultimate / physique / plan revision 04 <span class="meta-inline">· Updated 20 October 2026 · <a href="growthtrack-ultimate/docs/HUMAN_REALISM_AND_MEASUREMENT_PLAN.md">Full implementation plan</a></span></div>
+  <h1>A real 3D human that reacts to your numbers</h1>
+  <p class="lede">Turn the model, type a measurement, watch it change. Each tab of the Physique page gets the same four parts: what you see on the model, your numbers in plain words, what you enter, and what this plan adds. <span class="muted">Interactive preview — nothing is saved or sent.</span></p>
+  <div class="tabbar">
+  <nav role="tablist" aria-label="Physique tabs" id="tabs">
+    <button role="tab" id="tab-blueprint" aria-controls="panel-blueprint" aria-selected="true" tabindex="0" data-tab="blueprint"><span class="n">01</span><b>Blueprint</b><span>Your overview</span></button>
+    <button role="tab" id="tab-measurements" aria-controls="panel-measurements" aria-selected="false" tabindex="-1" data-tab="measurements"><span class="n">02</span><b>Measurements</b><span>Record &amp; estimate</span></button>
+    <button role="tab" id="tab-mirror" aria-controls="panel-mirror" aria-selected="false" tabindex="-1" data-tab="mirror"><span class="n">03</span><b>3D Mirror</b><span>Explore &amp; compare</span></button>
+    <button role="tab" id="tab-targets" aria-controls="panel-targets" aria-selected="false" tabindex="-1" data-tab="targets"><span class="n">04</span><b>Targets</b><span>Your next steps</span></button>
+    <button role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1" data-tab="history"><span class="n">05</span><b>History</b><span>See what changed</span></button>
+    <button role="tab" id="tab-roadmap" aria-controls="panel-roadmap" aria-selected="false" tabindex="-1" data-tab="roadmap"><span class="n">06</span><b>Roadmap</b><span>Delivery &amp; research</span></button>
+  </nav>
+  <span class="seg units" role="group" aria-label="Units"><button type="button" id="units-metric" aria-pressed="true">Metric · cm, kg</button><button type="button" id="units-imperial" aria-pressed="false">Imperial · in, lb</button></span>
+  </div>
+</header>
+
+<main class="workspace" id="workspace" data-tab="blueprint">
+  <aside class="stage-col" aria-label="3D human model">
+    <div class="stage-card" id="stage-card" role="group" aria-label="3D human model. The same information is in the numbers beside it.">
+      <div class="stage" id="stage"></div>
+      <div class="stage-top">
+        <span class="chip" id="stage-subject">Sample person · Alex</span>
+        <span class="chip quiet" id="stage-hint">Drag to turn · scroll to zoom</span>
+      </div>
+      <div class="split-tags" id="split-tags" hidden><span class="chip">Now</span><span class="chip">Goal</span></div>
+      <div class="split-handle" id="split-handle" hidden><div class="line"></div><div class="knob" id="split-knob" role="slider" tabindex="0" aria-label="Compare now and goal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">↔</div></div>
+      <div class="stage-bar" role="toolbar" aria-label="Camera">
+        <span class="seg" role="group" aria-label="View"><button type="button" data-view="front" aria-pressed="true">Front</button><button type="button" data-view="three" aria-pressed="false">¾</button><button type="button" data-view="side" aria-pressed="false">Side</button><button type="button" data-view="back" aria-pressed="false">Back</button></span>
+        <button type="button" class="btn small" id="turn" aria-pressed="false" title="Slowly turn the model">⟳ Turn</button>
+        <button type="button" class="btn small" id="reset-view">Reset</button>
+      </div>
+      <div class="stage-msg" id="stage-msg" role="status"><div><div class="spinner" aria-hidden="true"></div><p id="stage-msg-text">Loading the 3D model…</p></div></div>
+    </div>
+    <p class="stage-caption" id="stage-caption">A generic adult body built from the app's open (CC0) MakeHuman asset. It is fitted to the numbers on this page, not scanned from anyone.</p>
+  </aside>
+
+  <div class="panels" id="panels">
+
+  <!-- ============ 01 BLUEPRINT ============ -->
+  <section class="panel" id="panel-blueprint" role="tabpanel" aria-labelledby="tab-blueprint" tabindex="0">
+    <div class="panel-head"><span class="tag">Your overview</span><h2>Blueprint — where you are, at a glance</h2><p>The first thing you see: a body you recognise as human, your four headline numbers, and a clear next step. Empty is a normal state — nothing is guessed for you.</p></div>
+    <div class="toc"><a href="#bp-model">On the model</a><a href="#bp-numbers">Your numbers</a><a href="#bp-enter">What you enter</a><a href="#bp-plan">What this plan adds</a></div>
+
+    <div class="block" id="bp-model"><div class="kicker"><span class="num">1</span><h3>On the model</h3></div>
+      <p>The model stands in a neutral pose with three tape loops and a height line drawn <em>on its surface</em>, using your numbers. Tap a label, or the body itself, to jump to that measurement.</p>
+      <div class="row" style="margin-top:12px"><span class="muted small">Show this for:</span>
+        <span class="seg" role="group" aria-label="Sample data"><button type="button" id="profile-sample" aria-pressed="true">Sample person</button><button type="button" id="profile-empty" aria-pressed="false">Nothing recorded yet</button></span></div>
+    </div>
+
+    <div class="block" id="bp-numbers"><div class="kicker"><span class="num">2</span><h3>Your numbers, in plain words</h3></div>
+      <div class="stats" id="bp-stats"></div>
+      <p class="small muted" id="bp-sentence" style="margin-top:12px" aria-live="polite"></p>
+      <div style="margin-top:16px"><div class="row" style="justify-content:space-between"><h4>Essentials recorded</h4><strong id="bp-count" class="small"></strong></div>
+        <div class="bar" style="margin-top:6px"><i id="bp-bar" style="width:0"></i></div>
+        <div class="essentials" id="bp-essentials"></div>
+        <p class="hint">Eleven numbers are enough for a good first model. Tap one to measure it.</p></div>
+    </div>
+
+    <div class="block" id="bp-enter"><div class="kicker"><span class="num">3</span><h3>What you enter</h3></div>
+      <h4>Your training focus, by body zone</h4>
+      <p class="small muted">Choose a phase for each zone. The zone lights up on the model while you choose.</p>
+      <div class="zonelist" id="bp-zones"></div>
+      <p class="hint">Entry pattern: a plain zone name, a short list of phases, and a calm “Saved” confirmation. No codes, no free text.</p>
+    </div>
+
+    <div class="block plan" id="bp-plan"><div class="kicker"><span class="num">4</span><h3>What this plan adds to Blueprint</h3></div>
+      <ul class="plain">
+        <li>Replace the flat sketch with the real 3D model, drawn from <strong>your</strong> numbers (today it shows four fixed labels on a silhouette).</li>
+        <li>Every number carries a plain meaning and a “From your profile / Not recorded” line — never a bare code.</li>
+        <li>Labels and body parts are shortcuts into Measurements.</li>
+      </ul>
+      <div class="gate"><strong>Done when</strong> a first-time visitor can say what each number is, tap one to measure it, and see the model change — with zero numbers recorded and with all eleven.</div>
+    </div>
+  </section>
+
+  <!-- ============ 02 MEASUREMENTS ============ -->
+  <section class="panel" id="panel-measurements" role="tabpanel" aria-labelledby="tab-measurements" tabindex="0" hidden>
+    <div class="panel-head"><span class="tag">Record &amp; estimate</span><h2>Measurements — one picture, one sentence, one tool</h2><p>Pick a measurement. The model shows <em>exactly where</em> it is taken, in plain words how to do it, and what changes. Type a number, adjust by eye, or skip.</p></div>
+    <div class="toc"><a href="#ms-model">On the model</a><a href="#ms-numbers">Your numbers</a><a href="#ms-enter">What you enter</a><a href="#ms-more">Go deeper</a><a href="#ms-plan">What this plan adds</a></div>
+
+    <div class="block" id="ms-model"><div class="kicker"><span class="num">1</span><h3>On the model — choose a measurement</h3></div>
+      <div class="picker" id="ms-picker"></div>
+    </div>
+
+    <div class="block" id="ms-numbers"><div class="kicker"><span class="num">2</span><h3>Your numbers — what it is, where, how</h3></div>
+      <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h4 id="ms-title" class="ms-title"></h4><span class="tag" id="ms-kind" style="margin-top:6px"></span></div><div id="ms-status"></div></div>
+      <div class="facts" id="ms-facts"></div>
+    </div>
+
+    <div class="block" id="ms-enter"><div class="kicker"><span class="num">3</span><h3>What you enter</h3></div>
+      <div class="seg" role="group" aria-label="How do you want to add this?" id="ms-route"><button type="button" data-route="number" aria-pressed="true">Enter a number</button><button type="button" data-route="eye" aria-pressed="false">Adjust by eye</button><button type="button" data-route="skip" aria-pressed="false">Skip for now</button></div>
+      <div id="ms-entry" style="margin-top:14px"></div>
+      <div class="readout" id="ms-readout" aria-live="polite"></div>
+    </div>
+
+    <div class="block" id="ms-bodyfat"><div class="kicker"><span class="num">+</span><h3>Optional · estimate your body fat</h3></div>
+      <p class="small muted">Uses the U.S. Navy tape method with the numbers you already entered. It is an estimate, often several points off, and is only used if you press the button.</p>
+      <div class="row" style="margin:10px 0"><span class="seg" role="group" aria-label="Formula"><button type="button" id="bf-m" aria-pressed="true">Male formula</button><button type="button" id="bf-f" aria-pressed="false">Female formula</button></span></div>
+      <div id="bf-list" class="essentials"></div>
+      <div class="readout"><div class="meter"><strong id="bf-value">—</strong><span id="bf-note">Add the measurements above</span></div><div class="row" style="margin-top:10px"><button type="button" class="btn" id="bf-use" disabled>Use this estimate</button></div></div>
+    </div>
+
+    <details class="more" id="ms-more"><summary>Why one tape reading isn’t enough — width, depth and girth</summary>
+      <div class="inner">
+        <p>Two people can read the same number on a tape and still be shaped differently. <strong>Girth</strong> is all the way around; <strong>width</strong> is straight across; <strong>depth</strong> is front to back. This slice is cut from the 3D model at the measurement you picked, seen from above.</p>
+        <div class="grid2" style="margin-top:12px;align-items:center"><div class="slice" id="slice"></div><div id="slice-facts"></div></div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+        <h4>Play with it: same tape, different shape</h4>
+        <div class="grid2" style="margin-top:8px"><div class="slice"><svg viewBox="0 0 300 200" role="img" aria-label="An oval with adjustable width and depth"><ellipse id="ov-shape" cx="150" cy="100" rx="100" ry="66" fill="var(--soft)" stroke="var(--accent)" stroke-width="2"/><line id="ov-w" class="measure" x1="50" y1="100" x2="250" y2="100" stroke="var(--accent)" stroke-width="2"/><line id="ov-d" x1="150" y1="34" x2="150" y2="166" stroke="var(--accent)" stroke-width="2"/><text x="215" y="92">width</text><text x="156" y="52">depth</text></svg></div>
+          <div><label class="fld" for="ov-ratio">Shape of the slice</label><input id="ov-ratio" type="range" min="0.65" max="2.4" step="0.01" value="1.5"><div class="tiny" id="ov-word" aria-live="polite"></div>
+          <div class="grid2" style="margin-top:10px"><div class="stat"><span>Width</span><strong id="ov-wv"></strong></div><div class="stat"><span>Depth</span><strong id="ov-dv"></strong></div></div></div></div>
+        <p class="hint">The tape stays fixed at 80 cm all the way round while the shape changes (ellipse maths, Ramanujan’s approximation). A real torso isn’t a perfect oval — compare with the slice above.</p>
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+        <h4>Words used on this page</h4>
+        <dl class="defs">
+          <div><dt>Girth (circumference)</dt><dd>A complete loop around a body part. Not a width, and not a diameter.</dd></div>
+          <div><dt>Width / breadth</dt><dd>A straight line from one side to the other. Shoulder width across the bony tips differs from the widest point of the shoulder muscles.</dd></div>
+          <div><dt>Depth</dt><dd>Front to back thickness at one level, for example chest depth.</dd></div>
+          <div><dt>Projection</dt><dd>How far a shape sticks out from a named flat reference, such as the seat behind a line dropped from the hip joint.</dd></div>
+          <div><dt>Landmark</dt><dd>A spot you can find by touch, such as the top edge of the hip bone (iliac crest) or the bony tip of the shoulder (acromion).</dd></div>
+          <div><dt>Soft tape</dt><dd>A flexible measuring tape. Snug, level, not squeezing the skin.</dd></div>
+          <div><dt>Fitted / Saved only</dt><dd>“Fitted” means the model was adjusted until it measures what you typed. “Saved only” means the number is kept, but the preview doesn’t use it yet.</dd></div>
+        </dl>
+      </div></details>
+
+    <details class="more" id="ms-private"><summary>Optional · private measurements (adults only)</summary>
+      <div class="inner">
+        <p class="small muted">These belong to the private anatomy area of the app, behind its own adult and privacy controls. They are not drawn on this page’s model. The schematic below only explains how “base”, “middle” and “distal” loops are defined: a loop at a named section, perpendicular to the part’s own centre line.</p>
+        <div class="diagram" style="margin-top:10px"><svg viewBox="0 0 400 200" role="img" aria-label="Neutral schematic of a tube with three marked sections: base, middle and distal"><rect x="30" y="50" width="34" height="100" rx="4" fill="var(--paper)" stroke="var(--muted)"/><path class="body" d="M64 78Q150 70 330 84Q352 88 352 100Q352 112 330 116Q150 130 64 122Z"/><ellipse cx="90" cy="100" rx="9" ry="26" fill="none" stroke="var(--muted)" stroke-dasharray="3 4"/><ellipse cx="200" cy="100" rx="9" ry="25" fill="none" stroke="var(--muted)" stroke-dasharray="3 4"/><ellipse cx="300" cy="100" rx="9" ry="20" fill="none" stroke="var(--muted)" stroke-dasharray="3 4"/><text x="70" y="176">Base</text><text x="178" y="176">Middle</text><text x="278" y="176">Distal</text><text x="20" y="40">Attachment end</text><text x="290" y="44">Tip end →</text></svg></div>
+        <ul class="plain small"><li><strong>Base</strong> = near where it attaches to the body. <strong>Distal</strong> = farther from the attachment. A loop is a full circle of tape, not a straight width.</li><li>Record the state (at rest or erect) and the section together. Leave anything unclear as “not recorded”.</li><li>Entry pattern for these fields: a plain name, a diagram, “Skip”, and a clear “Saved only / shown in preview” label.</li></ul>
+      </div></details>
+
+    <div class="block plan" id="ms-plan"><div class="kicker"><span class="num">4</span><h3>What this plan adds to Measurements</h3></div>
+      <ul class="plain">
+        <li>Plain names first (“Waist — all the way around”), technical words second. One site, one tool, one common mistake per field.</li>
+        <li>Three honest routes for every field: <strong>enter a number</strong>, <strong>adjust by eye</strong>, or <strong>skip</strong>. Unknown stays unknown — never zero.</li>
+        <li>Units switch in one click (cm/in, kg/lb, ft + in) without changing what is stored.</li>
+        <li>A live check — “the model measures 84.0 cm” — plus a status chip: <em>Fitted</em>, <em>Model limit</em>, <em>Roughly shown</em> or <em>Saved only</em>.</li>
+        <li>Waist keeps its measuring method, because the WHO midpoint and the hip-bone level are different places.</li>
+      </ul>
+      <div class="gate"><strong>Done when</strong> at least four of five first-time testers find the right spot and the right tool for each essential measurement without being told, and the model agrees with every fitted entry within 0.5 cm.</div>
+    </div>
+  </section>
+
+  <!-- ============ 03 3D MIRROR ============ -->
+  <section class="panel" id="panel-mirror" role="tabpanel" aria-labelledby="tab-mirror" tabindex="0" hidden>
+    <div class="panel-head"><span class="tag">Explore &amp; compare</span><h2>3D Mirror — look around, and know what to trust</h2><p>Turn the model, zoom to a body part, change skin tone and tan, and check it in a second light. A plain table says what the model really shows today — instead of a percentage.</p></div>
+    <div class="toc"><a href="#mr-model">On the model</a><a href="#mr-numbers">Your numbers</a><a href="#mr-enter">What you enter</a><a href="#mr-plan">What this plan adds</a></div>
+
+    <div class="block" id="mr-model"><div class="kicker"><span class="num">1</span><h3>On the model — look around</h3></div>
+      <p>Drag to turn, scroll or pinch to zoom, right-drag or two fingers to slide. Pick a body part to zoom in and spotlight it — or just tap it on the model.</p>
+      <div class="chips" id="mr-parts" style="margin-top:12px"></div>
+      <p class="hint" id="mr-picked" aria-live="polite"></p>
+      <div class="row" style="margin-top:6px"><button type="button" class="btn small" id="mr-whole">Whole body</button><button type="button" class="btn small" id="mr-tape" aria-pressed="false">Show tape loops</button></div>
+    </div>
+
+    <div class="block" id="mr-numbers"><div class="kicker"><span class="num">2</span><h3>Your numbers — what this model can and can’t show</h3></div>
+      <p class="small muted" style="margin-bottom:8px">Replaces “70% human”. Each row is checked on its own.</p>
+      <div class="table-wrap"><table><thead><tr><th>Part of the model</th><th>Today in this preview</th><th>Status</th></tr></thead><tbody id="mr-table"></tbody></table></div>
+      <div class="grid2" style="margin-top:14px"><div class="stat"><span>Model height</span><strong id="mr-h">—</strong><small>Floor to crown, at your height entry</small></div><div class="stat"><span>Fitted tape measurements</span><strong id="mr-fit">—</strong><small>Of the 8 tape sites with an entry</small></div></div>
+    </div>
+
+    <div class="block" id="mr-enter"><div class="kicker"><span class="num">3</span><h3>What you enter — skin, tan and light</h3></div>
+      <p class="small muted">Skin tone, local pigment and tan are three separate layers. A darker region isn’t automatically a tan.</p>
+      <h4 style="margin-top:14px">1 · Base skin tone</h4>
+      <div class="chips" id="mr-swatches" role="group" aria-label="Skin tone presets" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:10px"><label class="fld" for="mr-skin" style="margin:0">Fine-tune</label><input type="color" id="mr-skin" value="#bc8970" aria-describedby="mr-skin-hint"><span class="tiny" id="mr-skin-hint">Any colour. Presets are descriptions of appearance, not medical types.</span></div>
+      <h4 style="margin-top:18px">2 · Local pigment</h4>
+      <div class="row"><label class="row tight"><input type="checkbox" id="mr-pig-on"> <span>Different colour on the left forearm</span></label><input type="color" id="mr-pig" value="#996951" disabled aria-label="Left forearm colour"></div>
+      <h4 style="margin-top:18px">3 · Tan</h4>
+      <div class="grid2"><div><label class="fld" for="mr-tan">Strength <output id="mr-tan-v">0%</output></label><input type="range" id="mr-tan" min="0" max="100" value="0"></div>
+        <div><label class="fld" for="mr-tan-pat">Where the sun reached</label><select id="mr-tan-pat" class="input"><option value="tee">T-shirt and shorts lines</option><option value="swim">Swimwear lines</option><option value="even">Even all over</option></select></div></div>
+      <h4 style="margin-top:18px">Light</h4>
+      <div class="seg" role="group" aria-label="Light" id="mr-light"><button type="button" data-light="studio" aria-pressed="true">Neutral studio</button><button type="button" data-light="warm" aria-pressed="false">Warm indoor</button><button type="button" data-light="cool" aria-pressed="false">Cool daylight</button></div>
+      <p class="hint">Check a colour under a second light before trusting it — phone photos include their own lighting and white balance.</p>
+      <div class="row" style="margin-top:12px"><button type="button" class="btn small" id="mr-reset">Reset skin, tan and light</button></div>
+    </div>
+
+    <details class="more"><summary>How realistic is “realistic”? — five layers, checked separately</summary>
+      <div class="inner"><dl class="defs">
+        <div><dt>1 · Shape</dt><dd>Today: eight tape sites fit to the model. Next: shoulders, torso and limbs as separate width, depth and contour controls.</dd></div>
+        <div><dt>2 · Surface</dt><dd>Today: a photo-based colour map, one global colour, one regional pigment, one tan layer. Next: pores and fine wrinkles (normal maps), roughness variation, light scattering under the skin.</dd></div>
+        <div><dt>3 · Face and eyes</dt><dd>Today: generic. Next: eyelid contact, lips, ears, hairline; a guided visual editor instead of dozens of face measurements.</dd></div>
+        <div><dt>4 · Hands and feet</dt><dd>Today: generic proportions, fixed pose. Next: finger and toe proportions, nails, arch.</dd></div>
+        <div><dt>5 · Movement</dt><dd>Today: a fixed A-pose, on purpose, so measurements are comparable. Next: seated, bent and raised poses with joint corrections.</dd></div>
+      </dl><p class="hint">Personal likeness — looking like <em>you</em> — is judged separately, once there are calibrated photos or a scan to compare with.</p></div></details>
+
+    <div class="block plan" id="mr-plan"><div class="kicker"><span class="num">4</span><h3>What this plan adds to the 3D Mirror</h3></div>
+      <ul class="plain">
+        <li>A capability table in plain words (“Fitted”, “Roughly shown”, “Saved only”) on every tab that shows the model.</li>
+        <li>A continuous skin-colour editor, with regional pigment and tan as <em>separate</em> layers and a second-light check.</li>
+        <li>Body-part shortcuts that keep working between tabs: a tapped part opens the right measurement.</li>
+        <li>Realism tracked in five layers, each with its own review — not one score.</li>
+      </ul>
+      <div class="gate"><strong>Done when</strong> there are no seams or double tints in the colour layers, a regional change affects only its own region, and reviewers consistently prefer the new renders under neutral <em>and</em> a second light.</div>
+    </div>
+  </section>
+
+  <!-- ============ 04 TARGETS ============ -->
+  <section class="panel" id="panel-targets" role="tabpanel" aria-labelledby="tab-targets" tabindex="0" hidden>
+    <div class="panel-head"><span class="tag">Your next steps</span><h2>Targets — see where your goals would take you</h2><p>Pick a goal for any measurement and compare <em>now</em> with <em>goal</em> on the same body. Targets are yours: the preview shows what the numbers look like, not how long they take.</p></div>
+    <div class="toc"><a href="#tg-model">On the model</a><a href="#tg-numbers">Your numbers</a><a href="#tg-enter">What you enter</a><a href="#tg-plan">What this plan adds</a></div>
+
+    <div class="block" id="tg-model"><div class="kicker"><span class="num">1</span><h3>On the model — now and goal together</h3></div>
+      <div class="seg" role="group" aria-label="Comparison style" id="tg-mode"><button type="button" data-mode="ghost" aria-pressed="true">Goal as an outline</button><button type="button" data-mode="split" aria-pressed="false">Slide to compare</button></div>
+      <p class="hint">The solid body is you now. The teal body (or the right side when sliding) is the goal. Both keep your height, so only shape differences show.</p>
+    </div>
+
+    <div class="block" id="tg-numbers"><div class="kicker"><span class="num">2</span><h3>Your numbers — the difference, in plain words</h3></div>
+      <p class="summary-line" id="tg-sentence" aria-live="polite"></p>
+      <div class="chips" id="tg-focus" style="margin-top:10px"></div>
+      <div id="tg-list" style="margin-top:12px"></div>
+    </div>
+
+    <div class="block" id="tg-enter"><div class="kicker"><span class="num">3</span><h3>What you enter</h3></div>
+      <div class="grid2"><div><label class="fld" for="tg-metric">Add a goal for</label><select id="tg-metric" class="input"></select></div><div><label class="fld" for="tg-value" id="tg-value-label">Goal</label><div class="row tight" style="flex-wrap:nowrap"><input id="tg-value" class="input" type="text" inputmode="decimal" placeholder="Your goal" autocomplete="off"><button type="button" class="btn primary" id="tg-add">Save goal</button></div></div></div>
+      <p class="hint" id="tg-hint" aria-live="polite"></p>
+      <h4 style="margin-top:16px">Milestones</h4><div id="tg-miles"></div>
+    </div>
+
+    <div class="block plan" id="tg-plan"><div class="kicker"><span class="num">4</span><h3>What this plan adds to Targets</h3></div>
+      <ul class="plain">
+        <li>Current and goal are two <strong>independent</strong> records on one body: a blank goal simply keeps your current value.</li>
+        <li>The goal is drawn on the same model, so “6 cm smaller” becomes something you can <em>see</em>, region by region.</li>
+        <li>A one-sentence summary and region shortcuts replace a table of bare differences.</li>
+        <li>The goal-fitting uses the same measuring check as Measurements — if the model can’t reach a goal, it says so.</li>
+      </ul>
+      <div class="gate"><strong>Done when</strong> editing a goal never changes the current record, and each goal row shows what it moves on the model, or says it is saved only.</div>
+    </div>
+  </section>
+
+  <!-- ============ 05 HISTORY ============ -->
+  <section class="panel" id="panel-history" role="tabpanel" aria-labelledby="tab-history" tabindex="0" hidden>
+    <div class="panel-head"><span class="tag">See what changed</span><h2>History — scrub through your check-ins</h2><p>Drag through time and watch the model move from one check-in to the next. Sample data below — nothing here is saved or sent.</p></div>
+    <div class="toc"><a href="#hs-model">On the model</a><a href="#hs-numbers">Your numbers</a><a href="#hs-enter">What you enter</a><a href="#hs-plan">What this plan adds</a></div>
+
+    <div class="block" id="hs-model"><div class="kicker"><span class="num">1</span><h3>On the model — travel through time</h3></div>
+      <div class="scrub"><label class="fld" for="hs-range">Check-in <output id="hs-date"></output></label><input type="range" id="hs-range" min="0" max="6" step="1" value="6" aria-describedby="hs-ticks"><div class="scrub-ticks" id="hs-ticks"></div></div>
+      <div class="row" style="margin-top:12px"><button type="button" class="btn small" id="hs-prev" aria-label="Previous check-in">← Earlier</button><button type="button" class="btn small" id="hs-next" aria-label="Next check-in">Later →</button><button type="button" class="btn small" id="hs-play">▶ Play</button><label class="row tight small"><input type="checkbox" id="hs-ghost" checked> <span>Show my first check-in as an outline</span></label></div>
+    </div>
+
+    <div class="block" id="hs-numbers"><div class="kicker"><span class="num">2</span><h3>Your numbers — what changed</h3></div>
+      <p class="summary-line" id="hs-sentence" aria-live="polite"></p>
+      <div class="grid2" style="margin-top:12px;align-items:end"><div><label class="fld" for="hs-metric">Chart this measurement</label><select id="hs-metric" class="input"></select></div><div class="stat"><span id="hs-latest-l">Latest</span><strong id="hs-latest-v">—</strong><small id="hs-latest-d"></small></div></div>
+      <div class="chart" id="hs-chart" style="margin-top:10px"></div>
+      <div class="table-wrap" style="margin-top:6px"><table><caption class="sr-only">Check-ins, newest first</caption><thead><tr><th>Date</th><th id="hs-col">Value</th><th>Change since first</th></tr></thead><tbody id="hs-table"></tbody></table></div>
+    </div>
+
+    <div class="block" id="hs-enter"><div class="kicker"><span class="num">3</span><h3>What you enter — a quick check-in</h3></div>
+      <p class="small muted">Fill in only what you measured. Everything else carries over from your last check-in.</p>
+      <div class="grid3" style="margin-top:10px"><div><label class="fld" for="ci-date">Date</label><input id="ci-date" class="input" type="date"></div><div><label class="fld" for="ci-weight" id="ci-weight-l">Weight</label><input id="ci-weight" class="input" type="text" inputmode="decimal" placeholder="Same as last"></div><div><label class="fld" for="ci-waist" id="ci-waist-l">Waist</label><input id="ci-waist" class="input" type="text" inputmode="decimal" placeholder="Same as last"></div></div>
+      <div class="row" style="margin-top:12px"><button type="button" class="btn primary" id="ci-save">Save check-in</button><span class="hint" id="ci-msg" role="status" style="margin:0"></span></div>
+      <p class="hint">Saving a check-in also becomes your “now” on the other tabs, so the model and your numbers stay in step.</p>
+    </div>
+
+    <div class="block plan" id="hs-plan"><div class="kicker"><span class="num">4</span><h3>What this plan adds to History</h3></div>
+      <ul class="plain">
+        <li>The model becomes the timeline: each check-in keeps its own fitted shape, and the scrubber blends between them.</li>
+        <li>A sentence first (“waist 8 cm smaller since March”), then the chart and table.</li>
+        <li>An outline of the first check-in sits behind the current one, so change is visible without reading numbers.</li>
+        <li>Each check-in remembers units and measuring method, so old inch entries are never silently relabelled.</li>
+      </ul>
+      <div class="gate"><strong>Done when</strong> scrubbing is smooth on the agreed devices, a check-in missing a measurement still renders, and the sentence matches the table exactly.</div>
+    </div>
+  </section>
+
+  <!-- ============ 06 ROADMAP ============ -->
+  <section class="panel" id="panel-roadmap" role="tabpanel" aria-labelledby="tab-roadmap" tabindex="0" hidden>
+    <div class="panel-head"><span class="tag">Delivery &amp; research</span><h2>Build realism in layers. Verify each one.</h2><p>“70%” and “100%” are feelings, not measurements. Shape accuracy, personal likeness, material quality, movement and usability are tracked separately — and every tab above has its own finish line.</p></div>
+    <div class="block"><div class="kicker"><span class="num">!</span><h3>Where the app is today</h3></div>
+      <p>The Physique page already saves many measurements, shape controls and regional colours. Its preview, however, applies only some of them, and measurements are mapped through fixed ranges rather than checked against the finished body. Every input needs an honest label — <em>shown on the model</em> or <em>saved only</em> — and this page demonstrates that label on every tab.</p></div>
+
+    <div class="block"><div class="kicker"><span class="num">≡</span><h3>Tab by tab: today → plan</h3></div>
+      <div class="table-wrap"><table><thead><tr><th>Tab</th><th>In the app today</th><th>This plan adds</th></tr></thead><tbody>
+        <tr><td><strong>Blueprint</strong></td><td>Four stat tiles, a flat body sketch with four fixed labels, essentials count, goals and body zones.</td><td>The real 3D model drawn from your numbers; plain meanings; labels and body parts as shortcuts into Measurements.</td></tr>
+        <tr><td><strong>Measurements</strong></td><td>Number boxes grouped by body part, a help panel, a body-fat estimator.</td><td>One picture, one sentence, one tool per field; enter / by eye / skip; unit switching; a live “model reads” check and status chips.</td></tr>
+        <tr><td><strong>3D Mirror</strong></td><td>Orbit viewer with editor tabs (Measure, Face, Hair, Skin, Anatomy, View).</td><td>A capability table instead of a percentage; separate skin, pigment and tan layers; a second-light check.</td></tr>
+        <tr><td><strong>Targets</strong></td><td>Goal rows with current, goal and difference; milestones.</td><td>Goal and current drawn on one body (outline or slide); a plain-words summary.</td></tr>
+        <tr><td><strong>History</strong></td><td>A chart and table of check-ins.</td><td>Scrub the model through time; a sentence summary; the first check-in as an outline.</td></tr>
+      </tbody></table></div></div>
+
+    <div class="block"><div class="kicker"><span class="num">→</span><h3>Delivery order and gates</h3></div>
+      <div class="phase"><span class="num">P0</span><div><h3>Understand the existing fields</h3><p>One shared definition per measurement; plain names, tools, a diagram, units and a status label. Unknown values stay empty.</p><div class="shows"><span class="tag">Measurements</span><span class="tag">Blueprint</span></div><div class="gate"><strong>Gate</strong> People can find the right spot without explanation.</div></div></div>
+      <div class="phase"><span class="num">P1</span><div><h3>Fit real shape, then re-measure</h3><p>Landmarks, section loops, width and depth, proportions and a bounded fitting step. Show what couldn’t be matched; never overwrite what was typed.</p><div class="shows"><span class="tag">Measurements</span><span class="tag">Targets</span><span class="tag">History</span></div><div class="gate"><strong>Gate</strong> The final body matches supported measurements within published tolerances; conflicts are visible.</div></div></div>
+      <div class="phase"><span class="num">P2</span><div><h3>Make the surface look alive</h3><p>Face and eyes, hands and feet, albedo / roughness / normal maps, skin light-scattering, hair, regional tan masks.</p><div class="shows"><span class="tag">3D Mirror</span></div><div class="gate"><strong>Gate</strong> Better renders under neutral and second light; no seams or double tint.</div></div></div>
+      <div class="phase"><span class="num">P3</span><div><h3>Complete adult anatomy support</h3><p>Independent states, local sections, curvature and private materials, behind the app’s existing adult and privacy controls.</p><div class="shows"><span class="tag">Measurements</span><span class="tag">3D Mirror</span></div><div class="gate"><strong>Gate</strong> Each enabled control changes its region, keeps locks and passes geometry and privacy checks.</div></div></div>
+      <div class="phase"><span class="num">P4</span><div><h3>Move naturally; optionally fit photos</h3><p>Joint corrections, seated and bent poses, optional multi-view capture with its own consent and deletion design, level-of-detail and device performance.</p><div class="shows"><span class="tag">3D Mirror</span><span class="tag">History</span></div><div class="gate"><strong>Gate</strong> Stable deformation and measured frame times. Personal likeness is assessed separately.</div></div></div>
+    </div>
+
+    <div class="block"><div class="kicker"><span class="num">?</span><h3>What every field must show</h3></div>
+      <div class="grid2"><div><h4>A friendly entry</h4><ul class="plain small"><li>A plain name and a one-sentence meaning</li><li>Where, in words you can find by touch</li><li>The tool, the pose, and one common mistake</li><li>Units you choose; typical range as a hint, never a wall</li><li>“Skip”, “Adjust by eye” and “Enter a number” as separate routes</li></ul></div>
+      <div><h4>An honest result</h4><ul class="plain small"><li>What the model measures now</li><li>Fitted · Model limit · Roughly shown · Saved only</li><li>Where the number came from: tape, helper, scan, estimate</li><li>Nothing sensitive in screenshots or analytics</li><li>Keyboard and screen-reader equivalents for every diagram</li></ul></div></div>
+      <p class="small muted" style="margin-top:10px">First implementation: height, protocol-specific waist, hips, shoulder width, chest depth, and base / middle / distal local sections.</p></div>
+
+    <div class="block"><div class="kicker"><span class="num">✓</span><h3>Evidence instead of “100%”</h3></div>
+      <p class="small muted">Proposed acceptance targets — freeze them after repeatability and device measurements.</p>
+      <ul class="plain small"><li><strong>Extraction:</strong> known circles, ovals and boxes return the right length, perimeter and area; open meshes give no volume.</li><li><strong>Fitting:</strong> length / width / depth within max(0.5 cm, 1%); girth within max(1 cm, 1%) on synthetic bodies. This tests the solver, not a scan.</li><li><strong>Repeatability:</strong> repeated real measurements; report median and 95th-percentile error and bias per measurement.</li><li><strong>Likeness:</strong> match calibrated front / side / back outlines where references exist; say which regions are missing.</li><li><strong>Appearance:</strong> fixed renders, two lights, rated per layer — never one realism percentage.</li><li><strong>Usability:</strong> ≥5 first-time users; ≥80% find each tested site and tool unaided.</li><li><strong>Performance:</strong> p95 frame time ≤ 33 ms on a mid-tier phone and ≤ 16.7 ms on the chosen desktop, at stated resolution.</li><li><strong>Regression:</strong> cm ↔ in round-trips, blank stays blank, imported method stays unknown, current and goal never mix.</li></ul></div>
+
+    <div class="block"><div class="kicker"><span class="num">i</span><h3>Research behind the plan</h3></div>
+      <ul class="sources" style="list-style:none;padding:0;margin:0">
+        <li><a href="https://www.dined.nl/en/database/tool">TU Delft / DINED — anthropometric dimensions</a><span>Distinct dimensions and measurement vocabulary.</span></li>
+        <li><a href="https://wwwn.cdc.gov/nchs/data/nhanes/public/2021/manuals/2021-Anthropometry-Procedures-Manual-508.pdf">CDC / NHANES — anthropometry procedures</a> · <a href="https://iris.who.int/bitstream/10665/44583/1/9789241501491_eng.pdf">WHO — waist circumference</a><span>Waist sites differ between protocols; don’t pool them silently.</span></li>
+        <li><a href="https://smpl-x.is.tue.mpg.de/">SMPL-X — body, hands and face</a><span>Research reference for integrated shape and pose; licensing needs separate review.</span></li>
+        <li><a href="https://docs.omniverse.nvidia.com/workflows/latest/rtx_rt-dh-setup.html">NVIDIA — digital human workflow</a><span>Skin, eyes, mouth and hair handled separately, with surface maps and light scattering.</span></li>
+        <li><a href="https://dermnetnz.org/topics/skin-phototype">DermNet — skin phototype</a> · <a href="https://threejs.org/manual/pages/color-management.html">three.js — colour management</a><span>Sun response is separate from appearance; handle display colours and linear data correctly.</span></li>
+        <li><a href="https://github.com/makehumancommunity/makehuman">MakeHuman community assets (CC0)</a><span>Source of this page’s preview body, via the app’s humanoid asset.</span></li>
+      </ul></div>
+
+    <div class="block"><div class="kicker"><span class="num">⚙</span><h3>About this preview</h3></div>
+      <ul class="plain small"><li>The body is generated from <code>growthtrack-ultimate/public/assets/models/humanoid-base-lite.glb</code> by <code>scripts/plan-preview/build-model.mjs</code>. The external-anatomy mesh in that file is not copied.</li>
+        <li>Tape loops are real cross-sections of the fitted mesh. Landmark heights are placed by proportion on this one generic body — not detected on anyone.</li>
+        <li>The preview uses one base body for everyone. Separate bases and personal likeness are roadmap items, not claims.</li>
+        <li>Everything runs in your browser. No account, storage, analytics or network request.</li></ul></div>
+  </section>
+
+  </div>
+</main>
+
+<footer>Generic illustrations and a generic 3D body only · No account connection, storage, analytics or network requests in this page · Research and implementation recommendations are kept apart in the <a href="growthtrack-ultimate/docs/HUMAN_REALISM_AND_MEASUREMENT_PLAN.md">full plan</a>.</footer>
+</div>
+
+<script src="plan-assets/human-preview.js"></script>
+<script src="plan-assets/human-stage.js"></script>
+<script src="plan-assets/plan-page.js"></script>
+</body>
+</html>
