@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — 3D human model plan, revision 04
+
+- Reworked the plan page's 3D person so it reads as a human rather than a mannequin. The face now has eyes (procedural iris, pupil, clear cornea with catchlights, warm sclera, looking at the viewer), strand eyebrows and eyelashes, and strand scalp hair in ten styles; the skin has a ten-step tone scale with undertone, freckles, flush, shine, pores, light that wraps past shadow edges, glowing thin skin and natural lips.
+- Added a Face and hair studio to the 3D Mirror tab: skin, hair (style, texture, shade, grey, length, density, thickness, parting, hairline, volume, shine), eyes (colour, iris and pupil size, whites), brows and lashes, nose and mouth, jaw, cheeks and ears. Fourteen face sizes are read off the drawn face in millimetres (inches in imperial); typing one adjusts the face to it or says where the limit is.
+- Roadmap tab: new "Research behind the face, eyes and hair" table with sources, what the preview does with each, and what is only a design choice. The preview body is now built from `humanoid-base.glb` (2048 px skin map, 22 morphs); hair, brows, lashes and irises are drawn in the browser, so the photo hair cards and eye texture are no longer shipped.
+- Tests grew from 5 to 16 (eye layout, landmarks, generated channels, readings and solver, hairline, seeded hair, strands following skin, brows and lid edge, colour tables).
+
+- Added `v4Plan_3DModel.html`: the model plan reorganised by the Physique page's own tabs (Blueprint, Measurements, 3D Mirror, Targets, History) plus a Roadmap. Each tab shows what you see on the model, your numbers in plain words, what you enter, and what the plan adds.
+- The page now shows a real, orbitable 3D human (generated from the app's CC0 humanoid asset) instead of flat silhouettes. Tape loops are real cross-sections of the fitted mesh, and entries are fitted until the model measures what was typed, with a visible status: fitted, model limit, roughly shown, or saved only.
+- Measurements are written for people: plain names, one landmark / tool / mistake each, metric or imperial (including ft + in), enter / adjust by eye / skip, soft range hints and an optional Navy body-fat estimate.
+- Added `plan-assets/` (preview model, bundled viewer, page script), build scripts under `growthtrack-ultimate/scripts/plan-preview/` (`npm run plan:model`, `npm run plan:viewer`) and `tests/plan-preview.test.mjs` (`npm run test:plan`). The previous revision, `v3Plan_HumanRealism.html`, is unchanged.
+
 ## Unreleased — runtime resilience
 
 - Added deterministic shared design-adapter generation and drift checks for all five companion products.

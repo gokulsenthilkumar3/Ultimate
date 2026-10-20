@@ -1,6 +1,6 @@
 # Adult anatomy customization: research and implementation plan
 
-> 2026-10-20 continuation: see [Human realism and visual measurement plan](HUMAN_REALISM_AND_MEASUREMENT_PLAN.md) and the [interactive measurement guide](../../v3Plan_HumanRealism.html). Some controls described below now exist in the working tree but remain recorded-only; the continuation contains the current audit, full-body scope, skin tone/tanning clarification and illustrated field requirements. The original research is retained below.
+> 2026-10-20 continuation: see [Human realism and visual measurement plan](HUMAN_REALISM_AND_MEASUREMENT_PLAN.md) and the [interactive plan, tab by tab](../../v4Plan_3DModel.html) (earlier [measurement guide](../../v3Plan_HumanRealism.html)). Some controls described below now exist in the working tree but remain recorded-only; the continuation contains the current audit, full-body scope, skin tone/tanning clarification and illustrated field requirements. The original research is retained below.
 
 Researched 2026-10-19 for `/Ultimate/wellness/physique?view=3d`.
 Status: proposed implementation; this document does not mean the controls exist yet.
