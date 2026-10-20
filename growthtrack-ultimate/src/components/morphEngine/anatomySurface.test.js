@@ -1,8 +1,19 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { ANATOMY_BUMP_SCALE, ANATOMY_SURFACE_SIZE, anatomySurfaceHeight, applyAnatomySurface, getAnatomySurfaceTexture } from './anatomySurface';
+import { ANATOMY_BUMP_SCALE, ANATOMY_SURFACE_SIZE, anatomySurfaceHeight, applyAnatomySurface, getAnatomySurfaceTexture, updateAnatomySurface } from './anatomySurface';
+import { createPhysicalSkinMaterial } from '../body3d/physicalSkinMaterial';
 
 describe('anatomy surface', () => {
+  it('keeps the physical skin shader and changes glans roughness with effective coverage',()=> {
+    const material=applyAnatomySurface(createPhysicalSkinMaterial(3,new THREE.MeshStandardMaterial()));
+    const shader={uniforms:{},vertexShader:THREE.ShaderLib.physical.vertexShader,fragmentShader:THREE.ShaderLib.physical.fragmentShader};
+    material.onBeforeCompile(shader);
+    expect(shader.fragmentShader).toContain('growthTrackValueNoise');
+    expect(shader.fragmentShader).toContain('float glansSurface');
+    updateAnatomySurface(material,{foreskinCoverage:.75});
+    expect(shader.uniforms.uAnatomyCoverage.value).toBe(.75);
+    material.dispose();
+  });
   it('keeps the shaft nearly flat and folds the scrotum', () => {
     const range = (v0, v1) => {
       const values = [];

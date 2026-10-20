@@ -6,9 +6,13 @@ import { resolveBodyMetrics } from './bodyMetricFallbacks';
 describe('saved avatar presentation contract', () => {
   it('whitelists choices, clamps width, and rejects malformed preferences', () => {
     for (const value of [null, [], 'compact', undefined]) expect(sanitizeAvatarPresentation(value)).toEqual(DEFAULT_AVATAR_PRESENTATION);
-    expect(sanitizeAvatarPresentation({ density:'compact', guideDetail:'concise', interfaceEffects:false, inspectorWidth:999, weight:80 })).toEqual({ density:'compact', guideDetail:'concise', interfaceEffects:false, inspectorWidth:AVATAR_PANEL_WIDTH.max });
+    expect(sanitizeAvatarPresentation({ density:'compact', guideDetail:'concise', interfaceEffects:false, inspectorWidth:999, weight:80 })).toEqual({ ...DEFAULT_AVATAR_PRESENTATION,density:'compact', guideDetail:'concise', interfaceEffects:false, inspectorWidth:AVATAR_PANEL_WIDTH.max });
     expect(sanitizeAvatarPresentation({ inspectorWidth:1 }).inspectorWidth).toBe(AVATAR_PANEL_WIDTH.min);
     expect(sanitizeAvatarPresentation({ density:'invalid', interfaceEffects:'false', inspectorWidth:NaN })).toEqual(DEFAULT_AVATAR_PRESENTATION);
+  });
+  it('retains custom backgrounds and independent neutral lighting, rejecting malformed colors',()=> {
+    expect(sanitizeAvatarPresentation({backgroundMode:'gradient',backgroundColor:'#abcdef',backgroundBottomColor:'#123456',showStage:false,lightingMode:'neutral'})).toMatchObject({backgroundMode:'gradient',backgroundColor:'#abcdef',backgroundBottomColor:'#123456',showStage:false,lightingMode:'neutral'});
+    expect(sanitizeAvatarPresentation({backgroundMode:'url',backgroundColor:'url(https://invalid)',lightingMode:'unknown'})).toMatchObject({backgroundMode:'scene',backgroundColor:DEFAULT_AVATAR_PRESENTATION.backgroundColor,lightingMode:'neutral'});
   });
   it('honors every effect toggle rather than applying an unconditional vignette', () => {
     const off = resolveAvatarEffects({ gpuTier:'HIGH', cinematic:{} });

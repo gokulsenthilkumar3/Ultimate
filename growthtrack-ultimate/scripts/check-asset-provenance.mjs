@@ -26,10 +26,11 @@ async function walk(directory) {
 export async function shippedAssets(root) {
   const publicDir = path.join(root, 'public');
   const modelsDir = path.join(publicDir, 'assets', 'models');
+  const wardrobeDir = path.join(publicDir, 'assets', 'wardrobe');
   return (await walk(publicDir))
     .filter(file => {
       const extension = path.extname(file).toLowerCase();
-      return ASSET_EXTENSIONS.has(extension) || (TEXTURE_EXTENSIONS.has(extension) && file.startsWith(modelsDir + path.sep));
+      return ASSET_EXTENSIONS.has(extension) || (TEXTURE_EXTENSIONS.has(extension) && [modelsDir,wardrobeDir].some(folder=>file.startsWith(folder + path.sep)));
     })
     .map(file => path.relative(root, file).split(path.sep).join('/'))
     .sort();
@@ -45,6 +46,20 @@ export async function checkAssetProvenance({ root, release = false } = {}) {
   catch (error) { return { ok: false, errors: [`${MANIFEST}: ${error.code === 'ENOENT' ? 'missing' : 'not valid JSON'}`], warnings }; }
   const entries = new Map((Array.isArray(manifest.assets) ? manifest.assets : []).map(entry => [entry.path, entry]));
   if (!Array.isArray(manifest.assets)) errors.push(`${MANIFEST}: "assets" must be a list.`);
+  if([...entries.values()].some(entry=>entry.sourceAsset) && (!Array.isArray(manifest.licenseEvidence) || !manifest.licenseEvidence.length))errors.push('Derivative assets require archived licence evidence.');
+
+  if(manifest.licenseEvidence!=null && !Array.isArray(manifest.licenseEvidence))errors.push('Licence evidence must be a list.');
+  for(const evidence of Array.isArray(manifest.licenseEvidence)?manifest.licenseEvidence:[]) {
+    if(!evidence || typeof evidence.path!=='string' || !evidence.path || path.isAbsolute(evidence.path) || evidence.path.split(/[\\/]/).includes('..')) {errors.push('Licence evidence needs a repository-relative path.');continue;}
+    try {
+      // Git may check text files out with CRLF; licence evidence hashes the
+      // archived upstream UTF-8 text with LF line endings.
+      const bytes=Buffer.from((await readFile(path.join(root,evidence.path),'utf8')).replace(/\r\n/g,'\n'));
+      const actual=createHash('sha256').update(bytes).digest('hex');
+      if(actual!==evidence.sha256)errors.push(`${evidence.path}: licence evidence hash mismatch.`);
+      if(evidence.gitBlobSha1 && createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex')!==evidence.gitBlobSha1)errors.push(`${evidence.path}: pinned upstream git blob mismatch.`);
+    } catch {errors.push(`${evidence.path}: licence evidence missing or unreadable.`);}
+  }
 
   const componentsOf = entry => entry.sameComponentsAs ? entries.get(entry.sameComponentsAs)?.components : entry.components;
   for (const file of await shippedAssets(root)) {
@@ -52,6 +67,7 @@ export async function checkAssetProvenance({ root, release = false } = {}) {
     if (!entry) { errors.push(`${file}: no provenance entry.`); continue; }
     const actual = await sha256(path.join(root, file));
     if (entry.sha256 !== actual) errors.push(`${file}: sha256 ${actual} does not match the recorded ${entry.sha256 || '(none)'}. Update the entry after reviewing the change.`);
+    if(entry.sourceAsset && (!entries.has(entry.sourceAsset) || entries.get(entry.sourceAsset).sha256!==entry.sourceSha256))errors.push(`${file}: source asset hash does not match its provenance.`);
     const components = componentsOf(entry);
     if (!Array.isArray(components) || !components.length) { errors.push(`${file}: no components listed${entry.sameComponentsAs ? ` (sameComponentsAs ${entry.sameComponentsAs} not found)` : ''}.`); continue; }
     components.forEach((component, index) => {

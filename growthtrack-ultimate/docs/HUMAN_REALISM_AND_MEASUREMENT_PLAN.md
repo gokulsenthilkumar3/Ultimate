@@ -14,6 +14,12 @@ Implementation files: `src/lib/bodyMeasurementDefinitions.js`, `src/components/p
 
 Verification for this slice: production build passed; 30 focused unit tests passed; all five new Chrome inspection tests and two existing measurement/responsive-editor browser regressions passed. Browser coverage includes desktop orbit/pan, every public part's zoom directions, focus-preserving front/side views, native drag/drop, mobile touch drag/drop and pinch zoom, public/private help behavior, and base-color persistence. Touch behavior was tested through browser emulation, not physical-device testing. The existing large-chunk build warning remains.
 
+Interaction follow-up, 2026-10-20: mobile part buttons now wrap so horizontal scrolling cannot cancel a diagonal touch drag. Full body also brings the model back into view. The inspection suite now covers native drops for all 17 public regions in goal context, explicitly revealed private-region drops and zoom, invalid and covered-private drop rejection, canceled/outside touch drops, wheel zoom, pinch in/out, two-finger pan, touch rotation and double-tap reset. These interactions leave recorded measurements and background/lighting preferences intact. Native-drag tests start the drag before scrolling the destination; touch tests keep both endpoints clear of fixed mobile navigation and wait for the evaluated model surface.
+
+Repeat the application scenarios with `npx playwright test --config playwright.inspection.config.ts`, `--config playwright.customization.config.ts`, `--config playwright.avatar-ui.config.ts`, and `--config playwright.physique.config.ts tests/e2e/physique-ui.spec.ts`. These configurations use frontend-only API fixtures. The companion scenarios exercise measurement drafts and validation, current/goal editing, persistence after reload, custom backgrounds, clothing variants, empty states, imperial conversion, partial-save failures, history/CSV export, and responsive keyboard navigation. Touch coverage uses Chrome emulation; physical-device validation remains separate.
+
+Follow-up verification: all seven inspection scenarios passed together; the four customization, one avatar-presentation, and eight physique-UI scenarios also passed across the targeted runs (20 distinct scenarios). All 11 focused interaction/presentation unit tests passed. Production build passed; lint reported no errors and 97 warnings elsewhere in the project. Browser runs used a frontend-only preview on port 5177 with an isolated Vite cache alongside the running application on port 5000.
+
 Companion: [interactive plan, tab by tab (revision 04)](../../v4Plan_3DModel.html) — a real 3D human fitted to entered measurements, organised by the Physique tabs; the earlier [measurement guide (revision 03)](../../v3Plan_HumanRealism.html) is kept. Extends [adult anatomy research](ANATOMY_CUSTOMIZATION_RESEARCH_PLAN.md) and the [original model plan](../../v2Plan_3DModel.html).
 
 ## 1. Outcome and limits
@@ -256,6 +262,32 @@ Private measurements now drive a section-based runtime surface on the bundled as
 Garments now use an owned geometry shell with body rig/morphs, per-bone coverage, geometric fit/ease, weave, seams, waistbands and hem trim. Underwear offers briefs/trunks/boxer briefs; gym offers tank/training/compression variants; casual offers sweatshirt/tee with joggers. Formal/swim previews and separate fabric/trim colors are also exposed. Outfit preferences persist separately and never restore Anatomical mode.
 
 The section surface is a procedural approximation, not a calibrated fit to a person. Body-follow morphs and pose can change achieved dimensions. Posterior volume remains an approximate envelope target. Garments do not simulate fabric drape. Full-body fitting calibration, production topology/attachment review, authored clothing, and perceptual likeness evaluation remain later phases.
+
+## Attachment, state and presentation fixes (2026-10-20)
+
+DEBUG REPORT
+
+| Item | Verified result |
+| --- | --- |
+| Symptom | Private anatomy appeared separated from the pelvis, especially in the erect state; increasing sac hang could detach its upper tissue. |
+| Root cause | Hidden shaft rings retained the resting direction after rotation. A fixture measured a root vertex 4.78 cm in front of the body surface. Hang translated the whole sac; the reproduction moved its attachment 9.4 cm. Legacy resting dimensions also leaked into an unrecorded erect endpoint. |
+| Fix | Runtime `section-surface-v3` embeds hidden root rings using pelvic triangle intersections, anchors upper sac tissue, keeps endpoint records independent, and exposes elevation, bend direction and foreskin retraction. Coverage changes the distal envelope, pigment and glans roughness without changing measured middle sections. Shape sliders now have explicit accessible names. |
+| Presentation | View preferences persist custom solid/gradient backgrounds, stage visibility and neutral/cinematic lighting through the existing physique-target API. Neutral lighting uses white lights and disables atmospheric tint; background changes do not change body measurements. |
+| Regression evidence | 58 focused tests passed across nine files. Chrome checks covered endpoint/appearance persistence, front/side attachment views in both states, saved custom backgrounds and clothing variants. Targeted lint passed. Production build passed with the existing large-chunk warning. |
+| Wider-suite concerns | A run with two workers passed 725 tests but retained failures in unchanged launcher/finance expectations; two UI suites could not launch the missing bundled Playwright Chromium. The focused browser workflows used installed Chrome. |
+| Status | DONE_WITH_CONCERNS: verified procedural rendering fixes, not a claim of clinical accuracy or complete personal likeness. |
+
+Remaining asset work: the pelvic junction uses overlapping surfaces rather than welded topology. The foreskin is a closed outer envelope; an inner surface, opening and detailed frenulum require authored topology. Tissue mechanics, intermediate erection physiology, scan-based calibration and pose-wide attachment validation remain separate asset/validation work. Current and goal records, numeric advisory warnings, adult reveal and capture redaction remain in place.
+
+## Assessed asset promotion (2026-10-20)
+
+Male profiles now load `humanoid-adult-v2.glb` (high quality) or `humanoid-adult-v2-lite.glb` (balanced/performance). These are derivatives of the assessed MakeHuman CC0 assets, generated by `npm run humanoid:upgrade`. Explicit legacy/custom asset preferences and covered female/neutral fallback behavior are preserved.
+
+The asset upgrade binds 961 hidden root and upper-sac vertices to pelvic triangles and normalized body skin weights, with body-follow deltas for all 58 body morph channels. Body/face vertex data, skeleton nodes and bind matrices, image bytes, materials, UVs, visible measurement rings and both private size deltas are preserved. Runtime section controls, resting/erect state records, current/goal independence, wardrobe preferences, custom backgrounds and adult/capture safeguards continue through the same stores and APIs.
+
+Verification: 97 cached source files matched pinned manifests. Archived licence texts matched upstream git blobs. All four bundled GLBs passed validation. Ninety-two focused tests and six provenance tests passed. Chrome workflows verified loading the upgraded model, endpoint persistence across reload, front/side attachment views, clothing variants and saved custom backgrounds. Production build and targeted lint passed. Expanded attachment checks covered mass, abdomen, pelvis, hips, glutes, torso/leg length and an abdomen corrective in both endpoint states.
+
+This is a binding upgrade of the assessed procedural model. It retains the authored-topology limitations listed above; it does not establish individual likeness or pose-wide clinical accuracy.
 
 ## Interactive plan page (revision 04)
 

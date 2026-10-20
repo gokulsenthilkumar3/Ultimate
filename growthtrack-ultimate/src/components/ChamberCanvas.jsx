@@ -192,6 +192,7 @@ function MeasurementLandmarks() {
 }
 
 function CanvasScene({ lodConfig, reducedMotion }) {
+  const showStage=use3DStore(state=>state.avatarWorkspace.showStage);
   return (
     <>
       <AdaptiveDpr />
@@ -205,18 +206,18 @@ function CanvasScene({ lodConfig, reducedMotion }) {
 
       <StudioLighting lodConfig={lodConfig} />
 
-      <ChamberVFX
+      {showStage && <ChamberVFX
         count={lodConfig.postFx === "NONE" ? 120 : lodConfig.postFx === "PARTIAL" ? 360 : 680}
         motionEnabled={!reducedMotion}
-      />
+      />}
 
       <Suspense fallback={null}>
-        <ChamberFloor />
+        {showStage && <ChamberFloor />}
       </Suspense>
 
       <CameraRig />
 
-      <SpatialGuide reducedMotion={reducedMotion} />
+      {showStage && <SpatialGuide reducedMotion={reducedMotion} />}
       <MeasurementLandmarks />
 
       {lodConfig.postFx !== "NONE" && (

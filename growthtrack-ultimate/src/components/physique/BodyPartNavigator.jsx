@@ -13,14 +13,15 @@ export default function BodyPartNavigator({ privateAllowed = false, dropTargetRe
   const pointer = useRef(null);
   const suppressClick = useRef(false);
   const [touchDrag, setTouchDrag] = useState(null);
+  const showModel = () => dropTargetRef?.current?.scrollIntoView({ block:'nearest',behavior:'auto' });
   const choose = id => {
     if (disabled) return;
     focusInspectionPart(id);
-    dropTargetRef?.current?.scrollIntoView({ block:'nearest',behavior:'auto' });
+    showModel();
   };
   const regions = BODY_PART_REGIONS.filter(r => !r.private || privateAllowed);
   return <section className="body-part-navigator" aria-label="Body part inspection">
-    <div className="body-part-navigator__heading"><div><strong>Inspect a body part</strong><p id="part-navigation-help">Choose a part or drag it onto the model. Drag the model to rotate; right-drag or Shift-drag to pan. Pinch or use two fingers to zoom and pan.</p></div><button type="button" className="chamber-pill" disabled={disabled} onClick={fit}><RotateCcw size={14} /> Full body</button></div>
+    <div className="body-part-navigator__heading"><div><strong>Inspect a body part</strong><p id="part-navigation-help">Choose a part or drag it onto the model. Drag the model to rotate; right-drag or Shift-drag to pan. Pinch or use two fingers to zoom and pan.</p></div><button type="button" className="chamber-pill" disabled={disabled} onClick={() => { fit(); showModel(); }}><RotateCcw size={14} /> Full body</button></div>
     <div className="body-part-navigator__parts" role="group" aria-label="Choose or drag a body part">
       {regions.map(region => <button key={region.name} type="button" draggable={!disabled} disabled={disabled}
         data-part={region.name}

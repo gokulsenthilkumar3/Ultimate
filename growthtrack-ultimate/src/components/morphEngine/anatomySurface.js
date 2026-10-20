@@ -71,6 +71,33 @@ export function applyAnatomySurface(material) {
   material.vertexColors = true;
   material.bumpMap = getAnatomySurfaceTexture();
   material.bumpScale = ANATOMY_BUMP_SCALE;
+  const compile=material.onBeforeCompile;
+  const cacheKey=material.customProgramCacheKey();
+  const coverage={value:0};
+  material.userData.anatomyCoverage=coverage;
+  material.onBeforeCompile=(shader,...args)=> {
+    compile.call(material,shader,...args);
+    shader.uniforms.uAnatomyCoverage=coverage;
+    shader.vertexShader=shader.vertexShader
+      .replace('#include <common>','#include <common>\nvarying vec2 vAnatomyUv;')
+      .replace('#include <begin_vertex>','#include <begin_vertex>\nvAnatomyUv = uv;');
+    shader.fragmentShader=shader.fragmentShader
+      .replace('#include <common>','#include <common>\nuniform float uAnatomyCoverage;\nvarying vec2 vAnatomyUv;')
+      .replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
+        float anatomyT = clamp((vAnatomyUv.y - 0.02) / 0.46, 0.0, 1.0);
+        float skinEdge = mix(0.70, 1.0, uAnatomyCoverage);
+        float skinCover = uAnatomyCoverage > 0.0 ? smoothstep(0.66, 0.73, anatomyT) * (1.0 - smoothstep(skinEdge - 0.025, skinEdge + 0.015, anatomyT)) : 0.0;
+        float glansSurface = (1.0 - step(0.5, vAnatomyUv.y)) * smoothstep(0.70, 0.78, anatomyT) * (1.0 - skinCover);
+        roughnessFactor = mix(roughnessFactor, 0.44, glansSurface);
+        roughnessFactor = mix(roughnessFactor, 0.74, step(0.5, vAnatomyUv.y));`);
+  };
+  // Compose with the physical skin shader instead of replacing its detail.
+  material.customProgramCacheKey=()=>`${cacheKey}-anatomy-v3`;
   material.needsUpdate = true;
   return material;
+}
+
+export function updateAnatomySurface(material,evidence) {
+  const coverage=material?.userData?.anatomyCoverage;
+  if(coverage) coverage.value=evidence?.foreskinCoverage ?? 0;
 }

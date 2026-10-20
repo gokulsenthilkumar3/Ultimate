@@ -17,7 +17,31 @@ function measure(mesh,unit,heightScale=1) {
   return {length:centers.slice(1).reduce((sum,p,i)=>sum+p.distanceTo(centers[i]),0)/unit,
     girth:Array.from({length:segments},(_,k)=>at(midRing*segments+k).distanceTo(at(midRing*segments+(k+1)%segments))).reduce((a,b)=>a+b,0)/unit};
 }
-describe.each(['humanoid-base.glb','humanoid-base-lite.glb'])('independent private dimensions on %s',file=> {
+describe.each(['humanoid-base.glb','humanoid-base-lite.glb','humanoid-adult-v2.glb','humanoid-adult-v2-lite.glb'])('independent private dimensions on %s',file=> {
+  it('keeps erection orientation independent of dimensions and does not reuse resting records',()=> {
+    const {body,anatomy}=glbMeshFixture(file),d=createPrivateAnatomyDeformer(anatomy,body),p=profile();
+    const unrecorded=d.apply(p,{state:'erect',legacy:{anatomyLengthCm:25,anatomyGirthCm:19}});
+    expect(unrecorded.requestedLengthCm).not.toBe(25);
+    p.penis.erect={measurements:{lengthCm:18,midCircumferenceCm:13},shape:{elevationDeg:45,curvature:30,curvatureDirectionDeg:90}};
+    d.apply(p,{state:'erect',heightScale:.85});
+    expect(measure(anatomy,d.unit,.85)).toMatchObject({length:expect.closeTo(18,2),girth:expect.closeTo(13,2)});
+    const {segments,baseRing,tipVertex}=anatomy.userData.layout;
+    const base=new Vector3();for(let k=0;k<segments;k++)base.addScaledVector(new Vector3().fromBufferAttribute(anatomy.geometry.attributes.position,baseRing*segments+k),1/segments);
+    const tip=new Vector3().fromBufferAttribute(anatomy.geometry.attributes.position,tipVertex);
+    expect(tip.y).toBeGreaterThan(base.y);
+  });
+  it('retracts foreskin without changing shaft measurements and keeps the UV seam smooth',()=> {
+    const {body,anatomy}=glbMeshFixture(file),d=createPrivateAnatomyDeformer(anatomy,body),p=profile();
+    p.penis.resting={measurements:{lengthCm:14,midCircumferenceCm:11},shape:{foreskinCoverage:100,foreskinRetraction:0}};
+    d.apply(p);const covered=anatomy.geometry.attributes.position.array.slice();
+    p.penis.resting.shape.foreskinRetraction=100;const retracted=d.apply(p);
+    expect(anatomy.geometry.attributes.position.array).not.toEqual(covered);
+    expect(retracted.foreskinCoverage).toBe(0);
+    expect(measure(anatomy,d.unit)).toMatchObject({length:expect.closeTo(14,2),girth:expect.closeTo(11,2)});
+    const {segments,baseRing}=anatomy.userData.layout,n=anatomy.geometry.attributes.normal;
+    const first=new Vector3().fromBufferAttribute(n,baseRing*segments),last=new Vector3().fromBufferAttribute(n,baseRing*segments+segments-1);
+    expect(first.dot(last)).toBeGreaterThan(.8);
+  });
   it('draws a value beyond the old limits and preserves circumference under curvature and stature',()=> {
     const {body,anatomy}=glbMeshFixture(file),deformer=createPrivateAnatomyDeformer(anatomy,body),p=profile();
     p.penis.resting={measurements:{lengthCm:22,midCircumferenceCm:17},shape:{curvature:30}};

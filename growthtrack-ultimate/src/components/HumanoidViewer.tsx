@@ -1346,7 +1346,7 @@ export default function HumanoidViewer() {
                       </button>
                     ))}
                   </div>
-                  <WardrobeOptions preset={wardrobe} preferences={wardrobePreferences} onChange={wardrobeControls.change} status={wardrobeControls.status}/>
+                  <WardrobeOptions preset={wardrobe} preferences={wardrobePreferences} onChange={wardrobeControls.change} status={wardrobeControls.status} onOpenAnatomy={()=>handleTabChange('anatomy')}/>
                   <p className="chamber-note">
                     {wardrobe === 'ANATOMICAL'
                       ? 'Anatomical mode — full body visible for measurement comparison.'

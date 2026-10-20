@@ -72,3 +72,14 @@ test('a missing or unreadable manifest fails clearly', async t => {
   const broken = await fixture(t, { 'public/a.glb': 'x' }, '{not json');
   assert.match((await checkAssetProvenance({ root: broken })).errors[0], /not valid JSON/);
 });
+
+test('release checks archived licence evidence and derivative source hashes',async t=> {
+  const root=await fixture(t,{'public/a.glb':'a','public/b.glb':'b','docs/LICENSE.md':'CC0\n'}, {
+    licenseEvidence:[null,{path:'docs/LICENSE.md',sha256:hash('changed')}],
+    assets:[{path:'public/a.glb',sha256:hash('a'),components:[component()]},{path:'public/b.glb',sha256:hash('b'),sourceAsset:'public/a.glb',sourceSha256:hash('wrong source'),components:[component()]}],
+  });
+  const result=await checkAssetProvenance({root,release:true});
+  assert.equal(result.ok,false);
+  assert.ok(result.errors.some(e=>e.includes('licence evidence hash mismatch')));
+  assert.ok(result.errors.some(e=>e.includes('source asset hash')));
+});

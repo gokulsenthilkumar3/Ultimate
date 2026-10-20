@@ -31,8 +31,9 @@ function NumberField({ label, unit, value, onChange, displayUnit = 'cm', step = 
 }
 
 function ShapeField({ label, value, onChange, min = 0, max = 100, unit = '%', defaultValue = 0 }) {
+  const id=useId();
   const safe = value!=null && Number.isFinite(Number(value)) ? Number(value) : defaultValue;
-  return <label className="anatomy-custom-shape"><span>{label}<output>{safe}{unit}</output></span><input type="range" min={min} max={max} step="1" value={safe} onChange={(event) => onChange(Number(event.target.value))} /></label>;
+  return <label className="anatomy-custom-shape" htmlFor={id}><span>{label}<output htmlFor={id}>{Number(safe.toFixed(1))}{unit}</output></span><input id={id} aria-label={label} aria-valuetext={`${Number(safe.toFixed(1))}${unit}`} type="range" min={min} max={max} step="1" value={safe} onChange={(event) => onChange(Number(event.target.value))} /></label>;
 }
 
 /** Private owner-authored adult body measurements and appearance preferences. */
@@ -109,7 +110,11 @@ export default function AnatomyCustomizationPanel({ value, onSave, onInspect, on
           <ShapeField label="Cross-section ovalness" defaultValue={50} value={selected.penis[state].shape?.ovalness} onChange={(n) => set(['penis', state, 'shape', 'ovalness'], n)} />
           <ShapeField label="Glans flare" defaultValue={50} value={selected.penis[state].shape?.glansFlare} onChange={(n) => set(['penis', state, 'shape', 'glansFlare'], n)} />
           <ShapeField label="Curvature" value={selected.penis[state].shape?.curvature} min={-60} max={60} unit="°" onChange={(n) => set(['penis', state, 'shape', 'curvature'], n)} />
+          <ShapeField label="Bend direction" value={selected.penis[state].shape?.curvatureDirectionDeg} min={-180} max={180} unit="°" onChange={(n)=>set(['penis',state,'shape','curvatureDirectionDeg'],n)} />
+          <ShapeField label="Elevation from horizontal" value={selected.penis[state].shape?.elevationDeg} defaultValue={state==='erect' ? Math.atan2(.18,.984)*180/Math.PI : 0} min={-85} max={85} unit="°" onChange={(n)=>set(['penis',state,'shape','elevationDeg'],n)} />
           <ShapeField label="Foreskin coverage" value={selected.penis[state].shape?.foreskinCoverage} onChange={(n) => set(['penis', state, 'shape', 'foreskinCoverage'], n)} />
+          <ShapeField label="Foreskin retraction" value={selected.penis[state].shape?.foreskinRetraction} onChange={(n)=>set(['penis',state,'shape','foreskinRetraction'],n)} />
+          <p className="anatomy-customizer__note">Coverage describes skin forward; retraction draws it back independently in each state. Bend direction: 0° sideways, 90° upward, −90° downward. Unset orientation uses the generic asset. This is a closed surface envelope; inner foreskin and an opening need authored topology.</p>
         </div>
         <label className="anatomy-customizer__select"><span>Measurement method</span><select value={selected.penis[state].measurementMethod || ''} onChange={(event) => set(['penis', state, 'measurementMethod'], event.target.value || null)}><option value="">Not specified</option><option value="visible">Visible junction to tip</option><option value="bone-pressed">Bone pressed</option><option value="manual-estimate">Visual estimate</option></select></label>
       </>}

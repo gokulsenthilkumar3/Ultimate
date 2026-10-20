@@ -41,6 +41,8 @@ export const CINEMATIC_SCENE_PROFILES = Object.freeze({
   }),
 });
 
-export function getCinematicSceneProfile(id) {
-  return CINEMATIC_SCENE_PROFILES[id] || CINEMATIC_SCENE_PROFILES.studio;
+const NEUTRAL_PROFILE = Object.freeze({ key:'#ffffff',fill:'#ffffff',rim:'#f4f4f4',accent:'#ffffff',environmentIntensity:.55 });
+export function getCinematicSceneProfile(id, lightingMode = 'cinematic') {
+  const profile=CINEMATIC_SCENE_PROFILES[id] || CINEMATIC_SCENE_PROFILES.studio;
+  return lightingMode === 'neutral' ? { ...profile,...NEUTRAL_PROFILE } : profile;
 }

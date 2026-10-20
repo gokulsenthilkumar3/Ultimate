@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "license": "CC0-1.0",
+  "sourceUrl": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+  "archiveSha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+  "inputs": [
+    {
+      "member": "clothes/male_casualsuit04/male_casualsuit04.obj",
+      "sha256": "9a56b7b1cb27589233dc048e8ccf1fd93d03f3a5c01a668f0e8a189ebdea7a34",
+      "bytes": 133848
+    },
+    {
+      "member": "clothes/male_casualsuit04/male_casualsuit04.mhclo",
+      "sha256": "8c1a2d3272cd51ba03f0840d593eddc6325d3d2c4c8529f8203d2c2cad3d0cef",
+      "bytes": 116682
+    },
+    {
+      "member": "clothes/male_casualsuit04/male_casualsuit04.mhmat",
+      "sha256": "0408dea995c10e078ab79a3b68fa3092bdf18d3241b74fa35d48fe5397b42430",
+      "bytes": 1396
+    },
+    {
+      "member": "clothes/male_casualsuit04/male_casualsuit04_normal.png",
+      "sha256": "006c0c0dfecaeda1a749f737ac15bfc228ebb76dbbcbf9871993e267a545ca69",
+      "bytes": 6112410
+    },
+    {
+      "member": "clothes/male_casualsuit04/male_casualsuit04_diffuse.png",
+      "sha256": "eb33337f43b006159773ab2fdff1293f51f72c3d0d24c132c2272b4deff9bcbe",
+      "bytes": 2742499
+    },
+    {
+      "member": "clothes/male_casualsuit02/male_casualsuit02.obj",
+      "sha256": "e07cbd1a43d21bd700e6598f01f74341a9dd66eac4e035c8be8de2650eac380f",
+      "bytes": 170324
+    },
+    {
+      "member": "clothes/male_casualsuit02/male_casualsuit02.mhclo",
+      "sha256": "f9e6821704a1508a02d5e416b2360785b705cfe5a130c359021a4b4570dcc43a",
+      "bytes": 145975
+    },
+    {
+      "member": "clothes/male_casualsuit02/male_casualsuit02.mhmat",
+      "sha256": "20ab695fd8f6986e243427e03f8f9ec5a1c394ce8736eb6359f135a129ffb36a",
+      "bytes": 1396
+    },
+    {
+      "member": "clothes/male_casualsuit02/male_casualsuit02_normal.png",
+      "sha256": "1c31a7a5fbbef1ee40176114295038703f370d163a3cf040f55b60c85369d12c",
+      "bytes": 6036834
+    },
+    {
+      "member": "clothes/male_casualsuit02/male_casualsuit02_diffuse.png",
+      "sha256": "8e1e63c471a8eb6ea8be48f2d540c15c81d2e7744ff80c8fdac86a6e6fde3179",
+      "bytes": 3094130
+    },
+    {
+      "member": "clothes/male_casualsuit03/male_casualsuit03.obj",
+      "sha256": "c55e02caa1f04126606eee5ac704637e9d3461bd527f26ade65e01973dc7aabb",
+      "bytes": 200956
+    },
+    {
+      "member": "clothes/male_casualsuit03/male_casualsuit03.mhclo",
+      "sha256": "ce796e4cc6ac312e0426d793ccc874d0d94c085e1c06764fe096ec8d59ae94c5",
+      "bytes": 170546
+    },
+    {
+      "member": "clothes/male_casualsuit03/male_casualsuit03.mhmat",
+      "sha256": "5fbf673d1db072aecb850ced389201ae729794deee851c0668e810e6ad082e5b",
+      "bytes": 1396
+    },
+    {
+      "member": "clothes/male_casualsuit03/male_casualsuit03_normal.png",
+      "sha256": "412c4610d3b2ea1cb04aa3c0715e747a7c9f61d865133b7d69f70eaa738cf99b",
+      "bytes": 9610278
+    },
+    {
+      "member": "clothes/male_casualsuit03/male_casualsuit03_diffuse.png",
+      "sha256": "d9079ed2e52d23e1ccce53ddc3d4397e48883729f9324c97c2737f4f79af5153",
+      "bytes": 3439064
+    },
+    {
+      "member": "clothes/male_elegantsuit01/male_elegantsuit01.obj",
+      "sha256": "3f6dfc8c10de6160b1e23aad6b4b201b7651914bf3ea5bc8a8aba03e0c0298ea",
+      "bytes": 633330
+    },
+    {
+      "member": "clothes/male_elegantsuit01/male_elegantsuit01.mhclo",
+      "sha256": "6e725b0adac1a07173a14e15207d0b0125d5510455ef6dee756b5fa1c51cccef",
+      "bytes": 515810
+    },
+    {
+      "member": "clothes/male_elegantsuit01/male_elegantsuit01.mhmat",
+      "sha256": "787bc0744174301c9ac0e33da4669bf37df9ac572ce950989f1bc6e71e938adf",
+      "bytes": 1293
+    },
+    {
+      "member": "clothes/male_elegantsuit01/male_elegantsuit01_diffuse.png",
+      "sha256": "eba3c9b662a35f145f28c8932fe96c01db258080daf1a1c09807def5497e3420",
+      "bytes": 1945326
+    }
+  ],
+  "garments": {
+    "tee": {
+      "source": "male_casualsuit04",
+      "normal": "tee_normal.png",
+      "diffuse": "tee_diffuse.png",
+      "vertexCount": 6993
+    },
+    "sweatshirt": {
+      "source": "male_casualsuit02",
+      "normal": "sweatshirt_normal.png",
+      "diffuse": "sweatshirt_diffuse.png",
+      "vertexCount": 8828
+    },
+    "shirt": {
+      "source": "male_casualsuit03",
+      "normal": "shirt_normal.png",
+      "diffuse": "shirt_diffuse.png",
+      "vertexCount": 10340
+    },
+    "suit": {
+      "source": "male_elegantsuit01",
+      "normal": null,
+      "diffuse": "suit_diffuse.png",
+      "vertexCount": 32109
+    }
+  },
+  "binding": {
+    "version": "authored-surface-v1",
+    "bodySha256": "7f2dc076c8db4bc149c61a23db21ff9f9bc012ea51c3064e826ea485baa5e070",
+    "bodyVertexCount": 16001
+  },
+  "outputs": [
+    {
+      "file": "shirt_diffuse.png",
+      "sha256": "482fb90fe73d6a672c5601f1c238ef85285b0e54b99ee012f2935d542c2a60ad",
+      "bytes": 1620619
+    },
+    {
+      "file": "shirt_normal.png",
+      "sha256": "0db6b263c6a80af005184b7bf168042a263e9d1ee0ec625932603d1e476e08e6",
+      "bytes": 1350558
+    },
+    {
+      "file": "suit_diffuse.png",
+      "sha256": "f5926ac10e0d677bbd7a084c5a04310ed4816bfe9f5dc0e3b4c0323a48619d50",
+      "bytes": 663287
+    },
+    {
+      "file": "sweatshirt_diffuse.png",
+      "sha256": "3dbaef145a33800e72adaf0993d46be9f9fadfcc052bfa3af1bf1081bbde3de2",
+      "bytes": 1321764
+    },
+    {
+      "file": "sweatshirt_normal.png",
+      "sha256": "64aa23832f4c2b0d04838b592dc3fa2290aba9740684f58670cc44676f62938f",
+      "bytes": 731218
+    },
+    {
+      "file": "tee_diffuse.png",
+      "sha256": "b13950859a2bf6ab149aa7e6c9c1e0043be6be7f3f52acb9bbac21c1e1d846d7",
+      "bytes": 1187411
+    },
+    {
+      "file": "tee_normal.png",
+      "sha256": "93d01b25bc00fdbb272c0a2909c282c06fc194b0a5ae9bb855927071ddc7dd98",
+      "bytes": 741964
+    },
+    {
+      "file": "wardrobe-v1.glb",
+      "sha256": "93dd5d35e0dba145f348e28d90e40e8789c8978bb01ae2778ee700fdbbbb0310",
+      "bytes": 7216212
+    }
+  ]
+}

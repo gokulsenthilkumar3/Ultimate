@@ -1,18 +1,21 @@
 const base = import.meta.env.BASE_URL;
 
 const DEFAULT_ASSETS = Object.freeze({
+  production: `${base}assets/models/humanoid-adult-v2.glb`,
+  lite: `${base}assets/models/humanoid-adult-v2-lite.glb`,
+});
+const LEGACY_ASSETS = Object.freeze({
   production: `${base}assets/models/humanoid-base.glb`,
   lite: `${base}assets/models/humanoid-base-lite.glb`,
 });
 
-// External anatomy carried by the shipped assets. Both contain the male
-// placeholder (see docs/ANATOMY_ASSET_PLAN.md). Any other asset must declare
+// External anatomy carried by the assessed full/lite pairs. They contain the
+// male procedural surface (see docs/ANATOMY_ASSET_PLAN.md). Other assets declare
 // `anatomySex` in its PrivateAnatomy node extras or it stays covered.
 const DEFAULT_ANATOMY_SEX = 'male';
 
-// v2 assets are opt-in until the authored topology and calibration gates pass.
-// Keeping them in the same registry lets the viewer promote an asset without
-// changing camera, morph, comparison, or persistence code.
+// Alternate authored assets remain opt-in. The bundled adult-v2 pair is an
+// attachment-binding upgrade of the assessed base, not an authored sculpt.
 const V2_ASSETS = Object.freeze({
   male: import.meta.env.VITE_HUMANOID_V2_MALE_MODEL || '',
   female: import.meta.env.VITE_HUMANOID_V2_FEMALE_MODEL || '',
@@ -22,8 +25,10 @@ const V2_ASSETS = Object.freeze({
 
 const configuredAssets = Object.freeze({
   male: import.meta.env.VITE_HUMANOID_MALE_MODEL || DEFAULT_ASSETS.production,
-  female: import.meta.env.VITE_HUMANOID_FEMALE_MODEL || DEFAULT_ASSETS.production,
-  neutral: import.meta.env.VITE_HUMANOID_NEUTRAL_MODEL || DEFAULT_ASSETS.production,
+  // No assessed female anatomy sculpt exists. Preserve the covered fallback;
+  // a male attachment upgrade must not masquerade as a female body variant.
+  female: import.meta.env.VITE_HUMANOID_FEMALE_MODEL || LEGACY_ASSETS.production,
+  neutral: import.meta.env.VITE_HUMANOID_NEUTRAL_MODEL || LEGACY_ASSETS.production,
 });
 
 const normalizePreset = (value) => {
@@ -53,22 +58,26 @@ export function resolveModelAsset(preference = {}, gpuTier = 'MED') {
       : preference.modelPreset || preference.biologicalSex,
   );
   const customAsset = safeAvatarAsset(preference.avatarAsset);
-  const configuredAsset = configuredAssets[preset] || configuredAssets.neutral;
+  const defaultAsset = configuredAssets[preset] || configuredAssets.neutral;
+  const configuredAsset = preference.modelVersion === 'legacy' && defaultAsset === DEFAULT_ASSETS.production ? LEGACY_ASSETS.production : defaultAsset;
   const configuredV2 = safeAvatarAsset(V2_ASSETS[preset]);
   const configuredV2Mobile = safeAvatarAsset(V2_ASSETS.mobile);
   const preferV2 = preference.modelVersion === 'v2' || preference.preferV2 === true;
   const selectedV2 = preferV2 && (gpuTier === 'HIGH' ? configuredV2 : configuredV2Mobile || configuredV2);
-  const useLiteDefault = gpuTier !== 'HIGH' && !customAsset && configuredAsset === DEFAULT_ASSETS.production;
-  const path = customAsset || selectedV2 || (useLiteDefault ? DEFAULT_ASSETS.lite : configuredAsset);
+  const isDefault=[DEFAULT_ASSETS.production,LEGACY_ASSETS.production].includes(configuredAsset);
+  const liteAsset=configuredAsset===DEFAULT_ASSETS.production?DEFAULT_ASSETS.lite:LEGACY_ASSETS.lite;
+  const useLiteDefault = gpuTier !== 'HIGH' && !customAsset && isDefault;
+  const path = customAsset || selectedV2 || (useLiteDefault ? liteAsset : configuredAsset);
+  const upgradedDefault=!customAsset && !selectedV2 && [DEFAULT_ASSETS.production,DEFAULT_ASSETS.lite].includes(path);
   return {
     path,
-    anatomySex: [DEFAULT_ASSETS.production, DEFAULT_ASSETS.lite].includes(path) ? DEFAULT_ANATOMY_SEX : null,
+    anatomySex: [...Object.values(DEFAULT_ASSETS),...Object.values(LEGACY_ASSETS)].includes(path) ? DEFAULT_ANATOMY_SEX : null,
     preset,
-    version: customAsset ? 'profile' : selectedV2 ? 'v2' : 'legacy',
-    source: customAsset ? 'profile' : selectedV2 ? 'environment-v2' : configuredAsset !== DEFAULT_ASSETS.production ? 'environment' : 'default',
-    isVariantReady: Boolean(customAsset || selectedV2 || configuredAsset !== DEFAULT_ASSETS.production),
-    v2Ready: Boolean(selectedV2),
+    version: customAsset ? 'profile' : selectedV2 || upgradedDefault ? 'v2' : 'legacy',
+    source: customAsset ? 'profile' : selectedV2 ? 'environment-v2' : !isDefault ? 'environment' : 'default',
+    isVariantReady: Boolean(customAsset || selectedV2 || upgradedDefault || !isDefault),
+    v2Ready: Boolean(selectedV2 || upgradedDefault),
   };
 }
 
-export { DEFAULT_ASSETS, V2_ASSETS };
+export { DEFAULT_ASSETS, LEGACY_ASSETS, V2_ASSETS };

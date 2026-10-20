@@ -33,6 +33,7 @@
  */
 
 import * as THREE from "three";
+import {CLOTHING_FABRICS} from '../../lib/wardrobePreferences';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WARDROBE CONFIGURATIONS
@@ -139,21 +140,25 @@ export const WARDROBE_CONFIGS = {
  * @param {string} preset - key from WARDROBE_PRESETS
  * @returns {THREE.ShaderMaterial | null}
  */
-export function createClothMaterial(preset = 'GYM', geometry = null, options = {}) {
+export function createClothMaterial(preset = 'GYM', geometry = null, options = {}, asset = null) {
   const config = WARDROBE_CONFIGS[preset];
   if (!config) return null;
   // BufferGeometry.computeBoundingBox includes every morph extreme. Garment
   // bands use the neutral surface, otherwise trousers include the feet and the
   // waistband/neckline drift with the asset's unused morph envelope.
   const box = geometry?.attributes.position ? new THREE.Box3().setFromBufferAttribute(geometry.attributes.position) : null;
+  const fabric=CLOTHING_FABRICS[options.fabric];
+  const detail=(options.textureStrength ?? 65)/100;
   const material = new THREE.MeshPhysicalMaterial({
-    color: options.topColor ? new THREE.Color(options.topColor) : new THREE.Color(...config.primaryColor), roughness: config.roughness,
-    metalness: 0, sheen: config.sheen, sheenRoughness: .85, clearcoat: 0, envMapIntensity: .4,
-    side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    color: '#ffffff', roughness: fabric?.roughness ?? config.roughness,
+    metalness: 0, sheen: fabric?.sheen ?? config.sheen, sheenRoughness: .85, clearcoat: 0, envMapIntensity: .6,
+    map:options.pattern==='source'?asset?.map || null:null,normalMap:asset?.normal || null,normalScale:new THREE.Vector2(detail,detail),
+    side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
-  const lowerBand = preset === 'UNDERWEAR' ? ({briefs:[.83,.97],trunks:[.76,.97],boxerBriefs:[.70,.97]}[options.variant] || config.coverage.lower)
-    : preset === 'GYM' ? options.variant === 'compression' ? [.57,.99] : [.62,.99] : config.coverage.lower;
-  const tank = preset === 'GYM' && options.variant !== 'training';
+  const lowerBand = [...(preset === 'UNDERWEAR' ? ({briefs:[.83,.97],trunks:[.76,.97],boxerBriefs:[.70,.97]}[options.variant] || config.coverage.lower)
+    : preset === 'GYM' ? options.variant === 'compression' ? [.57,.99] : [.62,.99] : preset==='SWIMWEAR' && options.variant==='short'?[.76,.96]:config.coverage.lower)];
+  lowerBand[0]=lowerBand[1]-(lowerBand[1]-lowerBand[0])*(options.hemLength || 100)/100;
+  const tank = preset === 'GYM' && (!options.variant || options.variant === 'tank');
   const sleeves = preset === 'CASUAL' ? options.variant === 'tee' ? 1 : 2 : preset === 'FORMAL' ? 2 : preset === 'GYM' && !tank ? 1 : 0;
   const uniforms = {
     uClothMin: { value: box?.min.y ?? -.81676 },
@@ -166,17 +171,14 @@ export function createClothMaterial(preset = 'GYM', geometry = null, options = {
     uBriefStyle:{value:preset==='UNDERWEAR' && options.variant==='briefs'?1:0},
     uTrimColor:{value:options.trimColor?new THREE.Color(options.trimColor):new THREE.Color(...config.secondaryColor)},
     uLowerColor: { value: options.bottomColor ? new THREE.Color(options.bottomColor) : new THREE.Color(...(preset === 'FORMAL' ? config.secondaryColor : config.primaryColor)) },
+    uTopColor:{value:options.topColor?new THREE.Color(options.topColor):new THREE.Color(...config.primaryColor)},
+    uWeave:{value:fabric?.weave ?? config.weaveType},uDetail:{value:detail},uPinstripe:{value:options.pattern==='pinstripe'?1:0},
   };
   material.userData={wardrobePreset:preset,options,uniforms};
-  material.customProgramCacheKey = () => 'cloth-shell-v3-' + preset;
-  material.onBeforeCompile = shader => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nattribute vec4 garmentCoverage;\nvarying vec4 vGarmentCoverage;\nuniform float uClothMin;\nuniform float uClothScale;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGarmentCoverage=garmentCoverage;\nvClothPosition = vec3(position.x * uClothScale, (position.y-uClothMin) * uClothScale, position.z * uClothScale);');
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nvarying vec4 vGarmentCoverage;\nuniform vec2 uTorsoBand;\nuniform vec2 uLowerBand;\nuniform float uTorsoWidth;\nuniform float uTankStyle;\nuniform float uSleeves;\nuniform float uBriefStyle;\nuniform vec3 uTrimColor;\nuniform vec3 uLowerColor;')
-      .replace('#include <color_fragment>', `#include <color_fragment>
+  material.customProgramCacheKey = () => 'authored-cloth-v4-' + preset;
+  const coverageCode=`
         bool lowerRegion = vGarmentCoverage.x > .2;
-        bool torsoRegion = vGarmentCoverage.y > .2;
+        bool torsoRegion = vGarmentCoverage.y > .2 && vGarmentCoverage.z < .2 && vGarmentCoverage.w < .2;
         bool lowerCloth = lowerRegion && vClothPosition.y >= uLowerBand.x && vClothPosition.y <= uLowerBand.y;
         if(uBriefStyle > .5 && vClothPosition.y < .80 + abs(vClothPosition.x)*.38) lowerCloth=false;
         bool torsoBand = vClothPosition.y >= uTorsoBand.x && vClothPosition.y <= uTorsoBand.y;
@@ -184,21 +186,37 @@ export function createClothMaterial(preset = 'GYM', geometry = null, options = {
         if (uTankStyle > 0.5) {
           bool tankBody = vClothPosition.y <= 1.43 && abs(vClothPosition.x) < uTorsoWidth;
           bool tankStraps = vClothPosition.y > 1.43 && abs(vClothPosition.x) > 0.155 && abs(vClothPosition.x) < 0.230;
-          torsoCloth = torsoBand && torsoRegion && (tankBody || tankStraps);
+          torsoCloth = torsoCloth && (tankBody || tankStraps);
         }
         bool sleeve = (uSleeves > .5 && vGarmentCoverage.z > .2) || (uSleeves > 1.5 && vGarmentCoverage.w > .2);
         torsoCloth = torsoCloth || sleeve;
         if (!lowerCloth && !torsoCloth) discard;
-        bool visibleLower = lowerCloth && !torsoCloth;
-        if (visibleLower) diffuseColor.rgb = uLowerColor;
+        bool visibleLower = lowerCloth && !torsoCloth;`;
+  const compile=(shader,depth=false)=> {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nattribute vec4 garmentCoverage;\nattribute vec3 garmentCoordinates;\nvarying vec4 vGarmentCoverage;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGarmentCoverage=garmentCoverage;\nvClothPosition=garmentCoordinates;');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nvarying vec4 vGarmentCoverage;\nuniform vec2 uTorsoBand;\nuniform vec2 uLowerBand;\nuniform float uTorsoWidth;\nuniform float uTankStyle;\nuniform float uSleeves;\nuniform float uBriefStyle;\nuniform vec3 uTrimColor;\nuniform vec3 uLowerColor;\nuniform vec3 uTopColor;\nuniform float uWeave;\nuniform float uDetail;\nuniform float uPinstripe;');
+    if(depth) {shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\n'+coverageCode);return;}
+    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+        ${coverageCode}
+        diffuseColor.rgb *= visibleLower ? uLowerColor : uTopColor;
         float waistband = visibleLower ? 1.0-smoothstep(.018,.030,abs(vClothPosition.y-uLowerBand.y+.022)) : 0.0;
         float hem = visibleLower ? 1.0-smoothstep(.008,.016,abs(vClothPosition.y-uLowerBand.x-.012)) : 0.0;
         float sideSeam = visibleLower ? smoothstep(.16,.21,abs(vClothPosition.x))*(1.0-smoothstep(.21,.23,abs(vClothPosition.x))) : 0.0;
         float topHem = torsoCloth && !sleeve ? 1.0-smoothstep(.006,.014,abs(vClothPosition.y-uTorsoBand.x-.014)) : 0.0;
         diffuseColor.rgb = mix(diffuseColor.rgb,uTrimColor,max(max(waistband,hem),max(topHem,sideSeam*.45)));
-        float weave=sin(vClothPosition.y*1250.0)*sin(vClothPosition.x*1400.0);
-        diffuseColor.rgb *= .98 + .02*weave;`);
+        float weave=sin(vClothPosition.y*650.0)*sin(vClothPosition.x*(uWeave>1.5?850.0:650.0));
+        diffuseColor.rgb *= 1.0-uDetail*.025 + uDetail*.025*weave;
+        float stripe=1.0-smoothstep(.025,.08,abs(fract(vClothPosition.x*65.0)-.5));
+        diffuseColor.rgb=mix(diffuseColor.rgb,uTrimColor,stripe*uPinstripe*.55);`);
   };
+  material.onBeforeCompile=shader=>compile(shader);
+  const depthMaterial=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking,side:THREE.DoubleSide});
+  const distanceMaterial=new THREE.MeshDistanceMaterial({side:THREE.DoubleSide});
+  for(const depth of [depthMaterial,distanceMaterial]) {depth.onBeforeCompile=shader=>compile(shader,true);depth.customProgramCacheKey=()=>material.customProgramCacheKey()+'-coverage';}
+  material.userData.depthMaterial=depthMaterial;material.userData.distanceMaterial=distanceMaterial;
+  material.addEventListener('dispose',()=>{depthMaterial.dispose();distanceMaterial.dispose();});
   return material;
 }
 

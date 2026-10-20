@@ -1,6 +1,7 @@
 /** Physically layered portrait rig shared by every digital-human render mode. */
 
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
+import { Object3D } from 'three';
 
 import use3DStore from "../../store/use3DStore";
 import { getCinematicSceneProfile } from "./cinematicProfiles";
@@ -71,8 +72,19 @@ function EdgeLights({ profile, lighting }) {
 
 export default function StudioLighting({ lodConfig }) {
   const environment = use3DStore((state) => state.cinematicState.sceneEnvironment);
-  const profile = getCinematicSceneProfile(environment);
+  const mode=use3DStore(state=>state.avatarWorkspace.lightingMode);
+  const profile = getCinematicSceneProfile(environment,mode);
   const lighting = LIGHTING_BY_TIER[lodConfig?.tier] || LIGHTING_BY_TIER.HIGH;
+  const target=useMemo(()=> {const object=new Object3D();object.position.set(0,1,0);return object;},[]);
+
+  if(mode === 'neutral') return <group name="neutral-inspection-lighting">
+    <primitive object={target}/>
+    <ambientLight intensity={.25} color="#ffffff"/>
+    <hemisphereLight color="#ffffff" groundColor="#9c9c9c" intensity={.5}/>
+    <directionalLight position={[-2,3,3]} target={target} color="#ffffff" intensity={1.8} castShadow={Boolean(lodConfig?.shadowMapSize)} shadow-mapSize-width={lodConfig?.shadowMapSize ?? 512} shadow-mapSize-height={lodConfig?.shadowMapSize ?? 512} shadow-normalBias={.002} shadow-bias={-.0001}/>
+    <directionalLight position={[2,1.5,3]} target={target} color="#ffffff" intensity={1.0}/>
+    <directionalLight position={[0,2,-3]} target={target} color="#ffffff" intensity={.65}/>
+  </group>;
 
   return (
     <group name="cinematic-portrait-lighting">

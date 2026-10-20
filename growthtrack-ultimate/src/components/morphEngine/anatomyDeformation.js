@@ -2,12 +2,13 @@ import { Box3, Color, Vector3 } from 'three';
 import { anatomyMorphWeights, ANATOMY_REFERENCE, CALIBRATION_REFERENCE_HEIGHT_CM } from './anatomyCalibration';
 import { sectionLoops } from '../../lib/avatarMeasurement';
 
-export const ANATOMY_PREVIEW_VERSION = 'section-surface-v2';
+export const ANATOMY_PREVIEW_VERSION = 'section-surface-v3';
 const finite = value => value !== '' && value != null && Number.isFinite(Number(value));
 // These numerical guards protect the GPU, never rewrite source measurements.
 const dimension = (value,fallback) => finite(value) ? Math.max(.01,Math.min(1000,Number(value))) : fallback;
 const volume = (value,fallback) => finite(value) ? Math.max(.000001,Math.min(1e12,Number(value))) : fallback;
 const control = (value,fallback = 0) => finite(value) ? Math.max(-1e4,Math.min(1e4,Number(value))) : fallback;
+const bounded=(value,min,max,fallback=0)=>Math.max(min,Math.min(max,control(value,fallback)));
 const mix = (a,b,t) => a + (b-a)*t;
 const smooth = (a,b,x) => { const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
 const read = (array,i) => new Vector3().fromArray(array,i*3);
@@ -18,6 +19,45 @@ function ellipsePerimeter(a,b,segments) {
   let result=0;
   for(let k=0;k<segments;k++) { const t=k/segments*Math.PI*2,n=(k+1)/segments*Math.PI*2; result+=Math.hypot(a*(Math.cos(t)-Math.cos(n)),b*(Math.sin(t)-Math.sin(n))); }
   return result;
+}
+
+// Front surface at an (x,y) point, by barycentric interpolation of the actual
+// pelvic triangles. Root rings must overlap this surface, not hang in front
+// of it after the visible shaft changes orientation.
+function pelvicSurface(body,junction,stature) {
+  const positions=body.geometry.attributes.position,index=body.geometry.index;
+  if(!index) return ()=>null;
+  const triangles=[];
+  for(let i=0;i<index.count;i+=3) {
+    const ids=[index.getX(i),index.getX(i+1),index.getX(i+2)];
+    const vertices=ids.map(id=>new Vector3().fromBufferAttribute(positions,id));
+    if(vertices.every(p=>Math.abs(p.y-junction.y)>stature*.16) || vertices.every(p=>Math.abs(p.x-junction.x)>stature*.18)) continue;
+    const [a,b,c]=vertices;
+    const denominator=(b.y-c.y)*(a.x-c.x)+(c.x-b.x)*(a.y-c.y);
+    if(Math.abs(denominator)<1e-12) continue;
+    triangles.push({a,b,c,denominator,minX:Math.min(a.x,b.x,c.x),maxX:Math.max(a.x,b.x,c.x),minY:Math.min(a.y,b.y,c.y),maxY:Math.max(a.y,b.y,c.y)});
+  }
+  return (x,y)=> {
+    let front=-Infinity;
+    for(const {a,b,c,denominator,minX,maxX,minY,maxY} of triangles) {
+      if(x<minX || x>maxX || y<minY || y>maxY) continue;
+      const u=((b.y-c.y)*(x-c.x)+(c.x-b.x)*(y-c.y))/denominator;
+      const v=((c.y-a.y)*(x-c.x)+(a.x-c.x)*(y-c.y))/denominator;
+      if(u>=-1e-6 && v>=-1e-6 && u+v<=1.000001) front=Math.max(front,u*a.z+v*b.z+(1-u-v)*c.z);
+    }
+    return Number.isFinite(front)?front:null;
+  };
+}
+
+/** Outer skin slides along the distal surface; it does not inflate the shaft.
+ * Coverage describes the unretracted state, retraction reveals the glans.
+ * This envelope uses the existing closed topology, not an internal foreskin mesh. */
+export function foreskinSurface(t,coverage,retraction) {
+  const effective=coverage*(1-retraction);
+  const edge=mix(.70,1,effective);
+  const cover=effective>0 ? smooth(.66,.73,t)*(1-smooth(edge-.025,edge+.015,t)) : 0;
+  const fold=coverage*retraction*Math.exp(-Math.pow((t-.69)/.035,2));
+  return {cover,fold,effective};
 }
 export function sectionRadii({ circumference,width,depth,ratio = 1,segments = 64,mode = 'circumference' }) {
   if (mode === 'dimensions' && (finite(width) || finite(depth))) {
@@ -63,31 +103,46 @@ export function createPrivateAnatomyDeformer(mesh,body) {
   const sacCenter=sacBounds.getCenter(new Vector3()),sacSize=sacBounds.getSize(new Vector3());
   const dorsal=read(base,baseRing*segments+Math.floor(segments/4)).sub(root).normalize();
   const junction=read(base,baseRing*segments+Math.floor(segments/4));
+  const surfaceZ=pelvicSurface(body,junction,bodyBounds.max.y-bodyBounds.min.y);
   const global=new Color();
   return {
     unit,junction:junction.toArray(),sacCenter:sacCenter.toArray(),sacSize:sacSize.toArray(),
     apply(profile = {},{state = 'resting',heightScale = 1,baseColor = '#bc8970',legacy = {}} = {}) {
+      heightScale=Number.isFinite(heightScale) && heightScale>0 ? heightScale : 1;
       const endpoint=profile.penis?.[state] || {},m=endpoint.measurements || {},shape=endpoint.shape || {};
-      const length=dimension(m.lengthCm,Object.hasOwn(m,'lengthCm') ? ANATOMY_REFERENCE.anatomyLengthCm.meanCm : dimension(legacy.anatomyLengthCm,ANATOMY_REFERENCE.anatomyLengthCm.meanCm));
-      const girth=dimension(m.midCircumferenceCm,Object.hasOwn(m,'midCircumferenceCm') ? ANATOMY_REFERENCE.anatomyGirthCm.meanCm : dimension(legacy.anatomyGirthCm,ANATOMY_REFERENCE.anatomyGirthCm.meanCm));
-      const ratio=.55+control(shape.ovalness,50)/100*.9;
-      const taper=control(shape.taper,50)/100-.5;
+      // Legacy length/girth describe the resting endpoint only. Never infer
+      // erection measurements from them or from the other endpoint.
+      const legacyEndpoint=state==='resting'?legacy:{};
+      const length=dimension(m.lengthCm,Object.hasOwn(m,'lengthCm') ? ANATOMY_REFERENCE.anatomyLengthCm.meanCm : dimension(legacyEndpoint.anatomyLengthCm,ANATOMY_REFERENCE.anatomyLengthCm.meanCm));
+      const girth=dimension(m.midCircumferenceCm,Object.hasOwn(m,'midCircumferenceCm') ? ANATOMY_REFERENCE.anatomyGirthCm.meanCm : dimension(legacyEndpoint.anatomyGirthCm,ANATOMY_REFERENCE.anatomyGirthCm.meanCm));
+      const ratio=.55+bounded(shape.ovalness,0,100,50)/100*.9;
+      const taper=bounded(shape.taper,0,100,50)/100-.5;
       const mode=endpoint.inputMode || 'circumference';
       const radii=sectionRadii({circumference:girth,width:m.widthCm,depth:m.depthCm,ratio,segments,mode});
       const startR=sectionRadii({circumference:dimension(m.baseCircumferenceCm,girth*(1+taper*.3)),ratio,segments});
       const endR=sectionRadii({circumference:dimension(m.distalCircumferenceCm,girth*(1-taper*.3)),ratio,segments});
-      const rootDorsal=state==='erect'?new Vector3(0,.984,-.18).normalize():dorsal;
-      const activeRoot=junction.clone().addScaledVector(rootDorsal,-startR[1]*unit);
       const positions=geometry.attributes.position.array;
-      const curve=control(shape.curvature)*Math.PI/180;
-      const coverage=control(shape.foreskinCoverage)/100;
-      const flare=control(shape.glansFlare,50)/100-.5;
+      const curve=bounded(shape.curvature,-60,60)*Math.PI/180;
+      const coverage=bounded(shape.foreskinCoverage,0,100)/100;
+      const retraction=bounded(shape.foreskinRetraction,0,100)/100;
+      const effectiveCoverage=coverage*(1-retraction);
+      const flare=bounded(shape.glansFlare,0,100,50)/100-.5;
+      const genericElevation=Math.atan2(.18,.984)*180/Math.PI;
+      const elevation=bounded(shape.elevationDeg,-85,85,genericElevation)*Math.PI/180;
+      const curveDirection=bounded(shape.curvatureDirectionDeg,-180,180)*Math.PI/180;
+      const restDirection=tip.clone().sub(root);
+      const restRotation=finite(shape.elevationDeg) ? Math.atan2(restDirection.y,restDirection.z)-elevation : 0;
+      const curveNormal=new Vector3(0,Math.cos(elevation),-Math.sin(elevation));
       const samples=ts.slice(baseRing).concat([1]);
       const relative=centres.slice(baseRing).concat([tip]).map((c,i)=> {
         const t=samples[i];
-        const p=state==='erect' ? new Vector3(0,t*.18,t*.984) : c.clone().sub(root).divideScalar(arc);
-        p.x+=Math.sin(curve)*t*t*.5; return p;
+        const p=state==='erect' ? new Vector3(0,t*Math.sin(elevation),t*Math.cos(elevation)) : c.clone().sub(root).divideScalar(arc).applyAxisAngle(new Vector3(1,0,0),restRotation);
+        const bend=Math.tan(curve/2)*t*t;
+        p.x+=Math.cos(curveDirection)*bend;p.addScaledVector(curveNormal,Math.sin(curveDirection)*bend);return p;
       });
+      const rootTangent=relative[1].clone().sub(relative[0]).normalize();
+      const rootDorsal=new Vector3().crossVectors(rootTangent,new Vector3(1,0,0)).normalize();
+      const activeRoot=junction.clone().addScaledVector(rootDorsal.lengthSq()>.1?rootDorsal:dorsal,-startR[1]*unit);
       const curveArc=relative.slice(1).reduce((sum,p,i)=>sum+p.distanceTo(relative[i]),0);
       const pointAt=t => {
         let index=samples.findIndex(v=>v>=t); if(index<0) index=samples.length-1;
@@ -108,17 +163,24 @@ export function createPrivateAnatomyDeformer(mesh,body) {
         const baselineRadius=read(base,ring*segments).distanceTo(centres[ring]);
         const midRadius=read(base,midRing*segments).distanceTo(centres[midRing]);
         const baseSilhouette=clamped>.68 ? baselineRadius/midRadius*(1+flare*.45*smooth(.67,.80,clamped)) : 1;
-        const covered=coverage*(1-smooth(.70+coverage*.18,.76+coverage*.23,clamped))*smooth(.64,.74,clamped);
-        const silhouette=mix(baseSilhouette,1.04,covered);
-        const foreskin=1+covered*.05;
+        const skin=foreskinSurface(clamped,coverage,retraction);
+        // The distal envelope rounds over the glans while the skin is forward.
+        // Retracted skin forms a small collar behind the corona. Neither acts
+        // on the measured base/middle sections or extends the centreline.
+        const skinSilhouette=mix(1.025,.26,smooth(.93,1,clamped));
+        const silhouette=mix(baseSilhouette,skinSilhouette,skin.cover)+skin.fold*.035;
         const sectionT=clamped<midT?clamped/Math.max(.01,midT):(clamped-midT)/Math.max(.01,.68-midT);
         const taperFactor=1+taper*.2*Math.sin(Math.PI*Math.max(0,Math.min(1,sectionT)));
         for(let k=0;k<segments;k++) {
           const angle=k/segments*Math.PI*2;
-          const p=c.clone().addScaledVector(lateral,Math.cos(angle)*interpolate(0)*unit*silhouette*taperFactor*foreskin)
-            .addScaledVector(cross,Math.sin(angle)*interpolate(1)*unit*silhouette*taperFactor*foreskin);
+          const p=c.clone().addScaledVector(lateral,Math.cos(angle)*interpolate(0)*unit*silhouette*taperFactor)
+            .addScaledVector(cross,Math.sin(angle)*interpolate(1)*unit*silhouette*taperFactor);
           // Remove stature stretching from local dimensions; the group applies it.
           p.y=junction.y+(p.y-junction.y)/heightScale;
+          if(ring<baseRing) {
+            const front=surfaceZ(p.x,p.y);
+            if(front!=null) p.z=Math.min(p.z,front-unit*(.25+.5*(baseRing-ring)/baseRing));
+          }
           p.toArray(positions,(ring*segments+k)*3);
         }
         if(ring>=baseRing) { if(previous) drawnArc+=c.distanceTo(previous); previous=c; }
@@ -140,7 +202,11 @@ export function createPrivateAnatomyDeformer(mesh,body) {
         const fold=control(envelope.foldDetail)/100*.06*unit*Math.sin(phi*90+uv.getX(i)*24);
         local.z+=fold;
         local.multiplyScalar(contraction).add(newSacCenter);
+        // Hang moves the lower envelope, never the attachment into the pelvis.
+        // Blend the upper neck to the authored tissue rather than translating
+        // the whole sac into a disconnected floating shape.
         local.y=junction.y+(local.y-junction.y)/heightScale;
+        local.lerp(read(base,i),1-smooth(.5,.65,phi));
         local.toArray(positions,i*3);
       }
       if(originalColors && geometry.attributes.color) {
@@ -152,7 +218,8 @@ export function createPrivateAnatomyDeformer(mesh,body) {
         }));
         for(let i=0;i<geometry.attributes.position.count;i++) {
           const v=uv.getY(i),u=uv.getX(i);
-          const groin=1-smooth(.025,.075,v),glans=smooth(.31+coverage*.05,.38+coverage*.10,v);
+          const t=Math.max(0,(v-.02)/.46),skin=foreskinSurface(t,coverage,retraction);
+          const groin=1-smooth(.025,.075,v),glans=smooth(.70,.78,t)*(1-skin.cover);
           const regions=i>=shaftEnd ? [['scrotum',1]] : [['groin',groin],['shaft',Math.max(0,1-groin-glans)],['glans',glans]];
           for(let axis=0;axis<3;axis++) {
             const channel=['r','g','b'][axis];
@@ -162,7 +229,8 @@ export function createPrivateAnatomyDeformer(mesh,body) {
               const edge=Math.max(.01,control(setting.tanEdge,50)/100);
               const tan=control(setting.tanIntensity)/100*smooth(0,edge,Math.sin(u*Math.PI));
               const detail=control(setting.surfaceDetail)/100*.015*Math.sin(u*150+v*200);
-              const baseValue=pigment ? pigment[channel]/Math.max(.001,global[channel]) : originalColors[i*3+axis];
+              const inherited=i<shaftEnd ? mix(originalColors[i*3+axis],originalColors[(midRing*segments+i%segments)*3+axis],skin.cover) : originalColors[i*3+axis];
+              const baseValue=pigment ? pigment[channel]/Math.max(.001,global[channel]) : inherited;
               result+=weight*(baseValue*(1-tan*.35)+detail);
             }
             colors[i*3+axis]=Math.max(0,result);
@@ -177,10 +245,12 @@ export function createPrivateAnatomyDeformer(mesh,body) {
         return {side,dimensions:testisGuideDimensions(record,[sacDims[1]*.65,sacDims[0]*.4,sacDims[2]*.7]),
           position:[newSacCenter.x+(index===0?1:-1)*sacDims[0]*unit*.22,junction.y+(newSacCenter.y-junction.y)/heightScale,newSacCenter.z],specified:Object.values(record).some(finite)};
       });
-      return { version:ANATOMY_PREVIEW_VERSION,state,heightScale,inputMode:mode,requestedLengthCm:length,
+      const evidence={ version:ANATOMY_PREVIEW_VERSION,state,heightScale,inputMode:mode,requestedLengthCm:length,foreskinCoverage:effectiveCoverage,foreskinRetraction:retraction,
         centrelineCm:drawnArc/unit,midWidthCm:radii[0]*2,midDepthCm:radii[1]*2,
         midCircumferenceCm:ellipsePerimeter(...radii,segments),guides,unit,
         approximation:'Procedural surface; body-follow morphs and pose may change achieved dimensions.' };
+      mesh.userData.previewEvidence=evidence;
+      return evidence;
     },
     reset() { geometry.attributes.position.array.set(original); geometry.attributes.position.needsUpdate=true; },
   };

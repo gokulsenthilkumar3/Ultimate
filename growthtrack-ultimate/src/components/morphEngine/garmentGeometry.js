@@ -40,6 +40,9 @@ export function createGarmentGeometry(body,{fit='regular'} = {}) {
   }
   geometry.setAttribute('garmentRegion',new Float32BufferAttribute(regions,1));
   geometry.setAttribute('garmentCoverage',new Float32BufferAttribute(coverage,4));
+  const coordinates=new Float32Array(position.count*3),scale=1.92/height;
+  for(let i=0;i<position.count;i++){coordinates[i*3]=position.getX(i)*scale;coordinates[i*3+1]=(position.getY(i)-bounds.min.y)*scale;coordinates[i*3+2]=position.getZ(i)*scale;}
+  geometry.setAttribute('garmentCoordinates',new Float32BufferAttribute(coordinates,3));
   const normal=new Vector3(); let lastVersion=-1;
   const update=()=> {
     if(lastVersion===source.attributes.position.version) return;

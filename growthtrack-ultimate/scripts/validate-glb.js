@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_GLB = path.resolve(__dirname, '../public/assets/models/humanoid-base.glb');
+const DEFAULT_GLB = path.resolve(__dirname, '../public/assets/models/humanoid-adult-v2.glb');
 const GLB_PATH = process.argv[2] ? path.resolve(process.cwd(), process.argv[2]) : DEFAULT_GLB;
 
 const SHADER_ONLY = new Set(['vascularity_intensity', 'fitzpatrick_index']);
