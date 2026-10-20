@@ -6,8 +6,9 @@
 <title>3D Human Model Plan</title>
 <meta name="description" content="A real 3D human that reacts to the numbers you enter, organised by the Physique page's own tabs: Blueprint, Measurements, 3D Mirror, Targets and History.">
 <style>
-:root{color-scheme:light dark;--paper:#f5f4f0;--surface:#fff;--ink:#202b2b;--muted:#536563;--line:#d4ddda;--accent:#116c60;--accent-ink:#fff;--soft:#e4efeb;--warn:#7a4f00;--warn-bg:#fbf1dc;--bad:#9c3324;--bad-bg:#fbe9e5;--ok:#1d6b3a;--ok-bg:#e3f3e8;--stage-a:#f8fbf9;--stage-b:#d6e2db;--shadow:0 1px 2px rgba(32,43,43,.06),0 8px 24px rgba(32,43,43,.06)}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#111716;--surface:#192120;--ink:#e8efec;--muted:#a3b4af;--line:#2d3b37;--accent:#4cc9b4;--accent-ink:#06211c;--soft:#1d2e2a;--warn:#f0c46a;--warn-bg:#33290f;--bad:#f2998a;--bad-bg:#3a1d18;--ok:#8fd8a8;--ok-bg:#16301f;--stage-a:#222d2a;--stage-b:#0f1513;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25)}}
+:root{color-scheme:light;--gl:max(28px,env(safe-area-inset-left,0px));--gr:max(28px,env(safe-area-inset-right,0px));--paper:#f5f4f0;--surface:#fff;--ink:#202b2b;--muted:#536563;--line:#d4ddda;--accent:#116c60;--accent-ink:#fff;--soft:#e4efeb;--warn:#7a4f00;--warn-bg:#fbf1dc;--bad:#9c3324;--bad-bg:#fbe9e5;--ok:#1d6b3a;--ok-bg:#e3f3e8;--stage-a:#f8fbf9;--stage-b:#d6e2db;--shadow:0 1px 2px rgba(32,43,43,.06),0 8px 24px rgba(32,43,43,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#111716;--surface:#192120;--ink:#e8efec;--muted:#a3b4af;--line:#2d3b37;--accent:#4cc9b4;--accent-ink:#06211c;--soft:#1d2e2a;--warn:#f0c46a;--warn-bg:#33290f;--bad:#f2998a;--bad-bg:#3a1d18;--ok:#8fd8a8;--ok-bg:#16301f;--stage-a:#222d2a;--stage-b:#0f1513;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);color-scheme:dark}}
+:root[data-theme=dark]{--paper:#111716;--surface:#192120;--ink:#e8efec;--muted:#a3b4af;--line:#2d3b37;--accent:#4cc9b4;--accent-ink:#06211c;--soft:#1d2e2a;--warn:#f0c46a;--warn-bg:#33290f;--bad:#f2998a;--bad-bg:#3a1d18;--ok:#8fd8a8;--ok-bg:#16301f;--stage-a:#222d2a;--stage-b:#0f1513;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);color-scheme:dark}
 *{box-sizing:border-box}
 html{scroll-padding-top:12px}
 body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
@@ -26,7 +27,8 @@ h3{font-size:16px;line-height:1.35;font-weight:650}
 .small{font-size:13px}
 .tiny{font-size:12px;color:var(--muted)}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.wrap{max-width:1320px;margin:0 auto;padding:0 28px}
+.wrap{max-width:1320px;margin:0 auto;padding-left:var(--gl);padding-right:var(--gr)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
 
 /* header */
 .top{padding:20px 0 0}
@@ -234,13 +236,13 @@ footer{padding:22px 0 46px;border-top:1px solid var(--line);font-size:12.5px;col
 
 @media (max-width:1040px){
   .workspace{grid-template-columns:minmax(0,1fr);gap:16px;padding-top:16px}
-  .stage-col{position:sticky;top:0;z-index:20;margin:0 -14px;background:var(--paper);padding:8px 14px 0}
+  .stage-col{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;margin:0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));background:var(--paper);padding:8px var(--gr) 0 var(--gl)}
   .stage-card{height:clamp(300px,44vh,460px)}
   .stage-caption{display:none}
   .stats{grid-template-columns:repeat(2,1fr)}
 }
 @media (max-width:640px){
-  .wrap{padding:0 14px}
+  :root{--gl:max(16px,env(safe-area-inset-left,0px));--gr:max(16px,env(safe-area-inset-right,0px))}
   nav[role=tablist] button{padding:9px 10px}
   nav[role=tablist] button span{display:none}
   .block{padding:16px 15px}
