@@ -3,10 +3,12 @@ import {beforeAll,expect,it} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {glbMeshFixture} from '../../tests/helpers/glbMeshFixture';
-import {createAuthoredGarment} from './authoredGarments';
+import {createAuthoredGarment,authoredGarmentLandmarks,waistHeightAt} from './authoredGarments';
 import {wardrobeDefaults} from '../../lib/wardrobePreferences';
-import {ShaderLib} from 'three';
+import {Box3,BufferGeometry,DoubleSide,Ray,ShaderLib,Vector3} from 'three';
+import {MeshBVH} from 'three-mesh-bvh';
 import {createClothMaterial} from './WardrobeShader';
+import {buildMorphWeights} from './metricsToBlendshapes';
 
 let garments;
 beforeAll(async()=> {
@@ -56,6 +58,31 @@ it('changes geometric ease, length and waist position without rewriting body mea
   fitted.dispose();relaxed.dispose();
 });
 
+it('retains the authored waistband above the seat for every lower outfit and keeps rise adjustable',()=> {
+  const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb'),bounds=new Box3().setFromBufferAttribute(body.geometry.attributes.position);
+  const scale=1.92/(bounds.max.y-bounds.min.y);
+  for(const [preset,source] of [['UNDERWEAR',garments[0]],['GYM',garments[0]],['CASUAL',garments[1]],['FORMAL',garments[2]],['FORMAL',garments[3]],['SWIMWEAR',garments[0]]]) {
+    const p=source.geometry.attributes.position,coverage=source.geometry.getAttribute('_garment_coverage');
+    let highest=-Infinity,waistVertex=-1;
+    for(let i=0;i<p.count;i++)if(coverage.getX(i)>.9) {
+      const y=(p.getY(i)-bounds.min.y)*scale;
+      if(y>highest){highest=y;waistVertex=i;}
+    }
+    const options=wardrobeDefaults(preset),cloth=createClothMaterial(preset,body.geometry,options,{mesh:source});
+    expect(cloth.userData.uniforms.uLowerBand.value.y).toBeGreaterThanOrEqual(highest-1e-6);
+    expect(cloth.userData.uniforms.uBodyLowerBand.value.y).toBeGreaterThan(1);
+    const low=createAuthoredGarment(body,source,{...options,easeCm:0,waistRiseCm:-3});
+    const high=createAuthoredGarment(body,source,{...options,easeCm:0,waistRiseCm:3});
+    expect(high.geometry.attributes.position.getY(waistVertex)-low.geometry.attributes.position.getY(waistVertex)).toBeCloseTo(6*(bounds.max.y-bounds.min.y)/175,5);
+    if(['UNDERWEAR','SWIMWEAR'].includes(preset)) {
+      const shader={vertexShader:ShaderLib.physical.vertexShader,fragmentShader:ShaderLib.physical.fragmentShader,uniforms:{}};
+      cloth.onBeforeCompile(shader);
+      expect(shader.fragmentShader).not.toContain('bool torsoCloth = vGarmentCoverage.y > .2;');
+    }
+    low.dispose();high.dispose();cloth.dispose();
+  }
+});
+
 it('keeps authored sleeve seams intact and masks ankle-weighted shins above the trouser cuff',()=> {
   const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');
   const cloth=createClothMaterial('CASUAL',body.geometry,{...wardrobeDefaults('CASUAL'),hemLength:120},{mesh:garments[1]});
@@ -69,6 +96,54 @@ it('keeps authored sleeve seams intact and masks ankle-weighted shins above the 
   const restore=cloth.userData.maskBody(body.material,body),regions=body.geometry.attributes.garmentRegion;
   for(let i=0;i<regions.count;i++) if(regions.getX(i)===6)expect(body.geometry.attributes.garmentCoverage.getX(i)).toBe(1);
   restore();cloth.dispose();
+});
+
+it('follows the front, side and back waist contour instead of masking or trimming at one flat height',()=> {
+  const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');
+  for(const source of garments) {
+    const landmarks=authoredGarmentLandmarks(source.geometry);
+    expect(landmarks.contour.length).toBeGreaterThan(20);
+    expect(landmarks.waistMax-landmarks.waistMin).toBeGreaterThan(.001);
+    for(const sample of landmarks.contour) {
+      const x=landmarks.center.x+Math.cos(sample.angle),z=landmarks.center.z+Math.sin(sample.angle);
+      expect(waistHeightAt(landmarks,x,z)).toBeCloseTo(sample.height,5);
+    }
+    const asset={mesh:source},options={...wardrobeDefaults('UNDERWEAR'),waistRiseCm:3};
+    const cloth=createClothMaterial('UNDERWEAR',body.geometry,options,asset),fallback=createClothMaterial('UNDERWEAR',body.geometry,options);
+    expect(cloth.customProgramCacheKey()).not.toBe(fallback.customProgramCacheKey());
+    const restore=cloth.userData.maskBody(body.material,body);
+    const values=body.geometry.getAttribute('garmentWaistHeight').array;
+    expect(Math.max(...values)-Math.min(...values)).toBeGreaterThan(.001);
+    const shader={vertexShader:ShaderLib.physical.vertexShader,fragmentShader:ShaderLib.physical.fragmentShader,uniforms:{}};
+    body.material.onBeforeCompile(shader);
+    expect(shader.fragmentShader).toContain('vGarmentWaistHeight+uWaistRise');
+    restore();cloth.dispose();fallback.dispose();
+  }
+});
+
+it('keeps upper fabric outside trousers at every rise after changing pelvis measurements',()=> {
+  const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');
+  const weights=buildMorphWeights({height:175,weight:75,bodyFat:19,waist:82,chest:99,hips:96,shoulders:112,arms:33,neck:37});
+  for(const [name,weight] of Object.entries(weights))if(body.morphTargetDictionary[name]!==undefined)body.morphTargetInfluences[body.morphTargetDictionary[name]]=weight;
+  for(const source of garments)for(const waistRiseCm of [-3,0,3]) {
+    const garment=createAuthoredGarment(body,source,{easeCm:1.2,fit:'regular',waistRiseCm}),g=garment.geometry,p=g.attributes.position,c=g.attributes.garmentCoverage,indices=[];
+    for(let i=0;i<g.index.count;i+=3){const ids=[g.index.getX(i),g.index.getX(i+1),g.index.getX(i+2)];if(ids.every(id=>c.getX(id)>.9))indices.push(...ids);}
+    const lower=new BufferGeometry();lower.setAttribute('position',p);lower.setIndex(indices);
+    const bvh=new MeshBVH(lower),ray=new Ray(),landmarks=authoredGarmentLandmarks(source.geometry);
+    let comparisons=0;
+    for(let i=0;i<p.count;i++)if(c.getY(i)>.9 && p.getY(i)<landmarks.waistMax+.05) {
+      ray.origin.set(0,p.getY(i),0);ray.direction.set(p.getX(i),0,p.getZ(i));const radius=ray.direction.length();ray.direction.normalize();
+      for(const hit of bvh.raycast(ray,DoubleSide)){comparisons++;expect(radius+1e-5).toBeGreaterThanOrEqual(hit.distance);}
+    }
+    for(let i=0;i<g.index.count;i+=3) {
+      const ids=[g.index.getX(i),g.index.getX(i+1),g.index.getX(i+2)];if(!ids.every(id=>c.getY(id)>.9))continue;
+      const center=new Vector3();for(const id of ids)center.add(new Vector3().fromBufferAttribute(p,id));center.divideScalar(3);
+      if(center.y>landmarks.waistMax+.05)continue;
+      ray.origin.set(0,center.y,0);ray.direction.set(center.x,0,center.z);const radius=ray.direction.length();ray.direction.normalize();
+      for(const hit of bvh.raycast(ray,DoubleSide))expect(radius+1e-5).toBeGreaterThanOrEqual(hit.distance);
+    }
+    expect(comparisons).toBeGreaterThan(0);lower.dispose();garment.dispose();
+  }
 });
 
 it('keeps both sides of UV seams sewn together when applying ease and body morphs',()=> {

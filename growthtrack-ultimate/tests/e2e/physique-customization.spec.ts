@@ -187,7 +187,7 @@ test('underwear, gym and casual have visible variants, fit and saved colors',asy
 });
 
 test('wardrobe coverage, original textures and shadows render from front, side and back after body edits',async({page})=> {
-  test.setTimeout(180000);
+  test.setTimeout(240000);
   await seed(page);page.setDefaultTimeout(30000);
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'&&/WebGLProgram|VALIDATE_STATUS|Shader Error/.test(message.text()))errors.push(message.text());});
@@ -213,6 +213,24 @@ test('wardrobe coverage, original textures and shadows render from front, side a
       await page.locator('.chamber-overlay-top').getByRole('button',{name:view,exact:true}).click();
       await canvas.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
       await canvas.screenshot({path:test.info().outputPath(`wardrobe-${preset.toLowerCase()}-${view.toLowerCase()}.png`)});
+    }
+    if(preset==='Casual') {
+      await editor.getByRole('tab',{name:'View',exact:true}).click();
+      await page.locator('.workspace-field').filter({hasText:'Quality'}).getByRole('combobox').selectOption('performance');
+      await canvas.scrollIntoViewIfNeeded();
+      await canvas.screenshot({path:test.info().outputPath('wardrobe-casual-back-no-shadows.png')});
+      await page.locator('.workspace-field').filter({hasText:'Quality'}).getByRole('combobox').selectOption('balanced');
+      await editor.getByRole('tab',{name:'Clothing',exact:true}).click();
+    }
+    for(const [rise,key,value] of [['low','Home','-3'],['high','End','3']]) {
+      await panel.getByRole('slider',{name:'Waist rise (cm)',exact:true}).press(key);
+      await expect(panel.getByRole('slider',{name:'Waist rise (cm)',exact:true})).toHaveValue(value);
+      await canvas.scrollIntoViewIfNeeded();
+      for(const view of ['Front','Side','Back']) {
+        await page.locator('.chamber-overlay-top').getByRole('button',{name:view,exact:true}).click();
+        await canvas.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+        await canvas.screenshot({path:test.info().outputPath(`wardrobe-${preset.toLowerCase()}-rise-${rise}-${view.toLowerCase()}.png`)});
+      }
     }
   }
   await editor.getByRole('tab',{name:'Measure',exact:true}).click();

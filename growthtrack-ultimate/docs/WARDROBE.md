@@ -15,15 +15,20 @@ The controls beneath each outfit affect the current preview and save independent
 
 - **Fit** scales the pattern's native clearance. **Garment ease** adds a separate normal offset in centimetres; these settings do not overwrite chest, waist, hip or private measurements.
 - **Hem length** adjusts the cut and lower garment geometry. **Waist rise** moves the waistband. Extended hems keep feet visible.
+
 - **Fabric** changes physical-material roughness, sheen and weave. **Fabric detail** controls surface detail. Casual/formal patterns use their authored normal maps; underwear and sportswear avoid the source jeans' normal-map details.
 - **Surface** supports a solid fabric, original garment texture, or pinstripes. Original texture colors are multiplied by the chosen tint, so their final color can differ from the color picker.
 - **Reset this outfit** affects only the selected outfit. Failed saves keep the preview and offer an explicit retry.
+
+Lower garments retain the waist opening from their authored pattern, rather than being cropped at the legacy shell's fixed hip-height band. Waistband trim and hidden-body masking follow that opening's curved front, side and back profile. Waist-rise edits move the waistband and its mask together, independently of body measurements. Underwear and swimwear keep the torso exposed.
 
 Saved wardrobe data stays under `physiqueTargets.wardrobePreferences`, using the existing owner-scoped functional update path. Old records receive presentation defaults. Other targets, anatomy records, lighting and custom backgrounds are preserved.
 
 ## Renderer and fitting
 
 `authoredGarments.js` follows the evaluated body surface using three-vertex barycentric bindings, then applies the body's pose through normalized skin weights. Each clone owns its garment buffers. Changing the current body does not alter the goal garment's geometry. Garment source buffers and body measurements remain unchanged.
+
+At the waist, upper fabric is separated from the outermost fitted trouser surface using a BVH and a small thickness clearance. Both vertices and triangle interiors are checked, and correction is shared across UV seams. The owned acceleration structure refits when body measurements or morphs change and is disposed with the garment. This addresses raised-waistband intersections with shirts; it does not simulate fabric drape. Authored and fallback shaders have separate cache keys, so a completed garment download replaces the temporary shell's cut rules.
 
 The importer preserves every source polygon corner using per-face corner counts, independently of MakeHuman's per-vertex connection counts. The offline binding step subdivides coarse garment faces and gives them outward clearance against the approved body surface. UV seam duplicates share physical offsets and smoothed normals, keeping sewn edges together as ease changes. Rendering omits hidden body interiors under covered fabric; exposed hands, feet, neck and garment openings remain available. Authored shirt openings are preserved instead of receiving a second bone-based sleeve cut. The same crop rules apply to garment depth and distance shadows. Body masking is removed on returning to Anatomical mode.
 
