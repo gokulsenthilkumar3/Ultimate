@@ -5,10 +5,14 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import Portfolio from './Portfolio';
 import { holdingSnapshot, portfolioSnapshotKey, summarizePortfolio } from './PortfolioData';
 import storage from '../utils/safeLocalStorage';
+import { runSyncTarget } from '../api/sync';
 
 const mocks = vi.hoisted(() => ({ state: {}, toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock('../store/useStore', () => ({ default: selector => selector(mocks.state) }));
 vi.mock('../hooks/useToast', () => ({ useToast: () => mocks.toast }));
+// Live price sources have their own tests; these cover manual holdings.
+vi.mock('./sync/SyncCenter', () => ({ default: () => null }));
+vi.mock('../api/sync', () => ({ runSyncTarget: vi.fn(), publishSyncData: vi.fn() }));
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }) => <div>{children}</div>, PieChart: ({ children }) => <div>{children}</div>,
   Pie: () => <div data-testid="allocation-chart" />, Cell: () => null, Tooltip: () => null,
@@ -35,7 +39,7 @@ function addForm() {
 describe('manual portfolio snapshots', () => {
   it('does not infer dated prices, gains, ROI, or a history from legacy holdings', () => {
     show();
-    expect(screen.queryByRole('button', { name: /refresh/i })).toBeNull();
+    expect(runSyncTarget).not.toHaveBeenCalled();
     expect(screen.getByText('Undated; verify manually')).toBeVisible();
     expect(screen.getAllByText('Unavailable').length).toBeGreaterThan(1);
     expect(screen.queryByText(/ROI|Trend|Overall ROI/i)).toBeNull();
@@ -43,6 +47,15 @@ describe('manual portfolio snapshots', () => {
     expect(screen.getByText('Performance history unavailable')).toBeVisible();
     expect(screen.queryByText(/Last 30 Days|Simulated based/i)).toBeNull();
     expect(mocks.state.setPortfolio).not.toHaveBeenCalled();
+  });
+  it('refreshes prices only through connected sources and says when none exist', async () => {
+    runSyncTarget.mockResolvedValueOnce({ results: [] });
+    show();
+    fireEvent.click(screen.getByRole('button', { name: /refresh prices/i }));
+    await waitFor(() => expect(mocks.toast.info).toHaveBeenCalledWith(expect.stringMatching(/connect a price source/i)));
+    expect(runSyncTarget).toHaveBeenCalledWith('portfolio');
+    expect(mocks.state.setPortfolio).not.toHaveBeenCalled();
+    expect(screen.getByText('Undated; verify manually')).toBeVisible();
   });
   it('requires a real date for a manually entered price', () => {
     show(); addForm();
@@ -138,6 +151,13 @@ describe('snapshot valuation integrity', () => {
     expect(holdingSnapshot({ ...holding, currentPrice: 95 }, snapshot).date).toBeNull();
     expect(holdingSnapshot({ ...holding, name: 'Different asset' }, snapshot).date).toBeNull();
     expect(portfolioSnapshotKey({ id: 'u1' })).not.toBe(portfolioSnapshotKey({ id: 'u2' }));
+  });
+  it('accepts a connected source quote only while the stored price is that quote', () => {
+    const quoted = { ...holding, currentPrice: 91.5, quote: { price: 91.5, date: '2026-10-16', source: 'mfapi.in' } };
+    expect(holdingSnapshot(quoted, {})).toEqual({ price: 91.5, date: '2026-10-16', source: 'mfapi.in' });
+    expect(summarizePortfolio([quoted], {})).toMatchObject({ totalValue: 183 });
+    expect(holdingSnapshot({ ...quoted, currentPrice: 95 }, {}).date).toBeNull();
+    expect(holdingSnapshot(quoted, { h1: { price: 91.5, date: '2026-10-17', name: 'ETF', symbol: 'ETF' } })).toMatchObject({ date: '2026-10-17', source: 'manual' });
   });
   it('does not use buy price as a current price or coerce malformed numbers', () => {
     expect(summarizePortfolio([{ ...holding, currentPrice: '' }], snapshot).totalValue).toBeNull();

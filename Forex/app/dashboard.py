@@ -31,7 +31,7 @@ handoff = st.query_params.get("ultimate_handoff")
 if handoff and "ultimate_identity" not in st.session_state:
     try:
         request = urllib.request.Request(
-            "http://localhost:3000/api/ultimate/api/integrations/consume",
+            "http://127.0.0.1:5300/api/ultimate/integrations/consume",
             data=json.dumps({"productId": "forex", "token": handoff}).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",

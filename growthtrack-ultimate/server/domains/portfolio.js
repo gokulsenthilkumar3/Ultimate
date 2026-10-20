@@ -1,7 +1,8 @@
 import { domainError } from './errors.js';
 
 const TYPES = new Set(['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other']);
-const MAX_BYTES = 512 * 1024;
+export const PORTFOLIO_MAX_BYTES = 512 * 1024;
+const MAX_BYTES = PORTFOLIO_MAX_BYTES;
 const MAX_PRICE = 1e12;
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const DATE_FIELDS = new Set(['date', 'buyDate', 'priceDate', 'currentPriceDate', 'snapshotDate', 'asOf', 'asOfDate', 'recordedAt', 'capturedAt', 'timestamp', 'updatedAt', 'createdAt', 'priceUpdatedAt']);

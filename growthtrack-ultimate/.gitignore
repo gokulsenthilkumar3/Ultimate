@@ -65,6 +65,11 @@ user-data/
 uploads/
 exports/
 backups/
+deploy/secrets/
+companions/android/.gradle/
+companions/android/local.properties
+companions/android/app/build/
+companions/ios/.build/
 conversation-exports/
 screenshots/
 crash-dumps/
@@ -92,6 +97,7 @@ coverage/
 .vercel/
 .netlify/
 prisma-generated/
+prisma/fresh-schema.sql
 release-v2/
 release-*/
 

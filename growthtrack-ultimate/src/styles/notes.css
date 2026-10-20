@@ -774,7 +774,17 @@
 .notes-color-dots { min-width: 0; }
 .notes-formatting-bar { flex-wrap: wrap; }
 .notes-container .notes-autosave-dot { animation: none; }
+.notes-knowledge-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; padding: 16px; border-bottom: 1px solid var(--gt-border); }
+.notes-knowledge-panel h3 { margin: 0 0 8px; color: var(--gt-muted); font-size: .8rem; }
+.notes-knowledge-panel ul, .notes-link-options, .notes-history-list { padding: 0; margin: 0; list-style: none; }
+.notes-knowledge-panel button { width: 100%; min-height: 44px; padding: 8px; border: none; border-radius: var(--gt-radius-sm); background: var(--gt-surface); color: var(--gt-action); text-align: start; overflow-wrap: anywhere; cursor: pointer; }
+.notes-wiki-link { padding: 4px 8px; min-height: 44px; border: 1px solid var(--gt-border); border-radius: var(--gt-radius-sm); background: var(--gt-surface-raised); color: var(--gt-action); font: inherit; cursor: pointer; }
+.notes-markdown-preview :is(h1,h2,h3,h4,h5,h6) { scroll-margin-top: 96px; }
+.notes-history-list li + li { margin-top: 24px; }
 @media (prefers-reduced-motion: reduce) {
   .notes-container, .notes-container .notes-empty-icon { animation: none; }
   .notes-container * { transition: none; }
 }
+.notes-sync-status { color: var(--text-secondary); font-size: 0.8rem; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.notes-sync-status:empty { display: none; }
+.notes-sync-status button { min-height: 44px; padding: 8px 12px; }

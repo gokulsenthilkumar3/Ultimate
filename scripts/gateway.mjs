@@ -1,9 +1,9 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { PRODUCTS } from '../growthtrack-ultimate/src/config/products.js';
+import { PRODUCTS, PRODUCT_UI_ROOT } from '../growthtrack-ultimate/src/config/products.js';
+import { NEXT_PRODUCTS, resolveApiRoute, proxyHttp } from './workspace-proxy.mjs';
 
-export const PORT = Number(process.env.GATEWAY_PORT || 3000);
+export const PORT = Number(process.env.GATEWAY_PORT || 5300);
 // API target ports must match what workspace.mjs assigns to each product.
 const targets = {
   ultimate: process.env.ULTIMATE_API_URL || 'http://127.0.0.1:3001',
@@ -11,9 +11,9 @@ const targets = {
   agent:    process.env.AGENT_API_URL    || 'http://127.0.0.1:11434',
   finsync:  process.env.FINSYNC_API_URL  || 'http://127.0.0.1:5101',
   oxfin:    process.env.OXFIN_API_URL    || 'http://127.0.0.1:5102',
-  family:   process.env.FAMILY_API_URL   || 'http://127.0.0.1:5104',
+  family:   process.env.FAMILY_API_URL   || 'http://127.0.0.1:3104',
   equity:   process.env.EQUITY_API_URL   || 'http://127.0.0.1:5105',
-  forex:    process.env.FOREX_API_URL    || 'http://127.0.0.1:8501',
+  forex:    process.env.FOREX_API_URL    || 'http://127.0.0.1:8000',
 };
 
 const serviceMeta = {
@@ -26,6 +26,7 @@ const serviceMeta = {
   equity:   { name: 'Equity / NiftyLens', icon: '📊', port: 5105, desc: 'NSE/BSE charts, options matrix & market screener', ui: 'http://localhost:5105' },
   forex:    { name: 'Forex ML Dashboard', icon: '📈', port: 8501, desc: 'Streamlit ensemble forecasting & exchange rate models', ui: 'http://localhost:8501' },
 };
+for (const product of PRODUCTS) serviceMeta[product.id].ui = `http://localhost:5000${product.uiUrl}`;
 
 const json = (res, status, body) => {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
@@ -34,11 +35,11 @@ const json = (res, status, body) => {
 
 async function probe(id, target) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 1800);
+  const timer = setTimeout(() => controller.abort(), Number(process.env.GATEWAY_PROBE_TIMEOUT_MS || 5000));
   const meta = serviceMeta[id] || { name: id };
   const t0 = performance.now();
   try {
-    const probePath = id === 'agent' ? '/api/tags' : id === 'studio' ? '/api/tables' : '/api/health';
+    const probePath = id === 'agent' ? '/api/tags' : id === 'studio' ? '/api/sources' : NEXT_PRODUCTS.has(id) ? `${PRODUCT_UI_ROOT}/${id}/` : id === 'family' || id === 'forex' ? '/health' : '/api/health?format=json';
     let response = await fetch(`${target}${probePath}`, { signal: controller.signal });
     if (!response.ok && id !== 'agent') response = await fetch(target, { signal: controller.signal });
     const latency = Math.round(performance.now() - t0);
@@ -49,31 +50,6 @@ async function probe(id, target) {
   } finally {
     clearTimeout(timer);
   }
-}
-
-function resolveRoute(pathname) {
-  if (pathname === '/db' || pathname.startsWith('/db/') || pathname.startsWith('/api/db/')) return { id: 'studio', path: pathname };
-  const match = pathname.match(/^\/api\/(ultimate|studio|agent|family|finsync|oxfin|forex|equity)(\/.*)?$/);
-  if (match) return { id: match[1], path: match[2] || '/' };
-  // Backwards-compatible Ultimate API contract for the existing frontend.
-  if (pathname.startsWith('/api/') || pathname.startsWith('/auth/')) return { id: 'ultimate', path: pathname };
-  return null;
-}
-
-function proxy(req, res, route) {
-  const upstream = new URL(route.path, targets[route.id]);
-  upstream.search = new URL(req.url, 'http://gateway.local').search;
-  const requestId = req.headers['x-request-id'] || randomUUID();
-  const upstreamRequest = http.request(upstream, {
-    method: req.method,
-    headers: { ...req.headers, host: upstream.host, 'x-request-id': requestId, 'x-forwarded-host': req.headers.host || '' },
-  }, upstreamResponse => {
-    res.writeHead(upstreamResponse.statusCode || 502, { ...upstreamResponse.headers, 'x-request-id': requestId });
-    upstreamResponse.pipe(res);
-  });
-  upstreamRequest.setTimeout(12_000, () => upstreamRequest.destroy(new Error('upstream timeout')));
-  upstreamRequest.on('error', () => json(res, 503, { error: 'Service unavailable', service: route.id, requestId }));
-  req.pipe(upstreamRequest);
 }
 
 function renderGatewayHtml(services, payload) {
@@ -557,17 +533,21 @@ function renderGatewayHtml(services, payload) {
 </html>`;
 }
 
-export function createGateway() {
+export function createGateway(options = {}) {
+  const serviceTargets = { ...targets, ...options.targets };
   return http.createServer(async (req, res) => {
     const origin = String(req.headers.origin || '');
-    if (/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) res.setHeader('access-control-allow-origin', origin);
+    if (/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) {
+      res.setHeader('access-control-allow-origin', origin);
+      res.setHeader('access-control-allow-credentials', 'true');
+    }
     res.setHeader('access-control-allow-methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.setHeader('access-control-allow-headers', 'content-type,x-csrf-token');
+    res.setHeader('access-control-allow-headers', 'content-type,x-csrf-token,authorization,x-request-id');
     res.setHeader('vary', 'Origin');
     if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
     const url = new URL(req.url, 'http://gateway.local');
-    if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/api/gateway/health')) {
-      const services = await Promise.all(Object.entries(targets).map(([id, target]) => probe(id, target)));
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health' || url.pathname === '/api/gateway/health')) {
+      const services = await Promise.all(Object.entries(serviceTargets).map(([id, target]) => probe(id, target)));
       const payload = {
         status: 'online',
         gateway: { port: PORT },
@@ -585,12 +565,17 @@ export function createGateway() {
     if (req.method === 'GET' && (url.pathname === '/api/products' || url.pathname === '/api/gateway/products')) {
       return json(res, 200, { products: PRODUCTS });
     }
-    const route = resolveRoute(url.pathname);
+    const productHealth = url.pathname.match(/^\/api\/(finsync|oxfin|equity)\/health$/);
+    if (req.method === 'GET' && productHealth) {
+      const result = await probe(productHealth[1], serviceTargets[productHealth[1]]);
+      return json(res, result.online ? 200 : 503, result);
+    }
+    const route = resolveApiRoute(url.pathname);
     if (!route) return json(res, 404, { error: 'Gateway route not found' });
-    proxy(req, res, route);
+    proxyHttp(req, res, serviceTargets[route.id], route.path);
   });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  createGateway().listen(PORT, '127.0.0.1', () => console.log(`[gateway] http://localhost:${PORT}`));
+  createGateway().listen(PORT, '127.0.0.1', () => console.log(`[gateway] http://127.0.0.1:${PORT}`));
 }

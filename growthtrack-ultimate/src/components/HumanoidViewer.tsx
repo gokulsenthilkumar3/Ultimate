@@ -33,13 +33,30 @@ import SocialShareModal from './SocialShareModal';
 import PhysiqueDataPanel from './PhysiqueDataPanel';
 import use3DStore, { CINEMATIC_PRESETS } from '../store/use3DStore';
 import useStore from '../store/useStore';
-import { BODY_APPEARANCE_FIELDS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, getInvalidBodyProfileMeasurements, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile } from '../lib/physiqueProfile';
+import { BODY_APPEARANCE_FIELDS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, getInvalidBodyProfileMeasurements, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile, publicBodyMetrics } from '../lib/physiqueProfile';
 import { BODY_METRIC_RANGES, validateBodyMetric } from '../lib/bodyMetricContract';
 import { buildRendererQualityGate } from '../lib/rendererQualityGate';
 import { getMetricCompleteness, resolveBodyMetrics } from '../lib/bodyMetricFallbacks';
-import { USER, BODY_PARTS, STATUS } from '../data/userData';
 import { useToast } from '../hooks/useToast';
+import { useAnatomyEligibility } from './morphEngine/useAnatomyEligibility';
+import { anatomyMorphWeights, resolveAnatomyCm } from './morphEngine/anatomyCalibration';
+import AnatomyCustomizationPanel from './physique/AnatomyCustomizationPanel';
+import BodyPartNavigator from './physique/BodyPartNavigator';
+import { BODY_PART_DRAG_TYPE, readDroppedBodyPart, focusInspectionPart } from './physique/bodyPartDrag';
+import { BODY_PART_MAP } from './morphEngine/bodyRegions';
+import MeasurementHelp from './physique/MeasurementHelp';
+import { getBodyMeasurementDefinition } from '../lib/bodyMeasurementDefinitions';
+import { createAnatomyCustomization } from '../lib/anatomyCustomization';
+import { computeHeightScale } from './morphEngine/metricsToBlendshapes';
 import { trackEvent } from '../lib/analytics';
+import AvatarEvidence from './physique/AvatarEvidence';
+import AvatarViewOptions from './physique/AvatarViewOptions';
+import WardrobeOptions from './physique/WardrobeOptions';
+import useWardrobePreferences from '../hooks/useWardrobePreferences';
+import useAvatarPresentation from '../hooks/useAvatarPresentation';
+import { AVATAR_EXPOSURE, DEFAULT_AVATAR_PRESENTATION } from '../lib/avatarPresentation';
+import { buildAvatarEvidence } from '../lib/avatarEvidence';
+import '../styles/avatar-workspace.css';
 import { formatDate, formatMeasurement, formatNumber } from '../utils/userFormatters';
 
 // Lazy load the heavy 3D canvas
@@ -115,11 +132,15 @@ const CAMERA_PRESETS = [
   { id: 'BACK',  label: 'Back'  },
 ];
 
+const PRIVATE_METRIC_LABELS: Record<string, string> = { anatomyLengthCm: 'Resting length', anatomyGirthCm: 'Mid-shaft circumference' };
+
 const WARDROBE_OPTIONS = [
   { id: 'ANATOMICAL', label: 'Anatomical', icon: UserRound },
   { id: 'UNDERWEAR',  label: 'Underwear',  icon: ShieldCheck },
   { id: 'GYM',        label: 'Gym',        icon: Dumbbell },
   { id: 'CASUAL',     label: 'Casual',     icon: Shirt },
+  { id: 'FORMAL',     label: 'Formal',     icon: Shirt },
+  { id: 'SWIMWEAR',   label: 'Swimwear',   icon: Globe },
 ];
 
 const QUALITY_OPTIONS = ['LOW', 'MED', 'HIGH'];
@@ -231,25 +252,33 @@ export default function HumanoidViewer() {
   const renderMode        = use3DStore((s) => s.renderMode);
   const cameraPreset      = use3DStore((s) => s.cameraPreset);
   const autoRotate        = use3DStore((s) => s.autoRotate);
-  const [isZoomed, setIsZoomed] = useState(false);
+  const modelDropTarget = useRef<HTMLDivElement>(null);
+  const [partDragOver, setPartDragOver] = useState(false);
+  const [guideMetric, setGuideMetric] = useState('chest');
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareImageSrc, setShareImageSrc] = useState(null);
   
   useEffect(() => {
-    trackEvent('Viewed Avatar', { score: 100 }); // Score gets evaluated, we will just pass a generic or default value because calculating overallScore here creates circular dependencies
+    trackEvent('Viewed Avatar');
   }, []);
   const wardrobe          = use3DStore((s) => s.wardrobeState);
+  const wardrobePreferences=use3DStore(s=>s.wardrobePreferences);
+  const wardrobeControls=useWardrobePreferences();
   const anatomyDepth      = use3DStore((s) => s.anatomyDepth);
   const captureRedacted = use3DStore((s) => s.captureRedacted);
   const selectedPart      = use3DStore((s) => s.focusedBodyPart);
   const currentMetrics    = use3DStore((s) => s.cloneA?.metrics || EMPTY_OBJECT);
   const goalMetrics       = use3DStore((s) => s.cloneB?.metrics || EMPTY_OBJECT);
   const modelDiagnostics  = use3DStore((s) => s.modelDiagnostics);
+  // Adult owner, matching body base and a declared asset; enforced again in the renderer.
+  const anatomy = useAnatomyEligibility(modelDiagnostics);
   const rendererTelemetry = use3DStore((s) => s.rendererQualityTelemetry);
   const morphOverrides    = use3DStore((s) => s.cloneA?.weights || EMPTY_OBJECT);
   const manualMorphOverrides = use3DStore((s) => s.morphOverrides?.current || EMPTY_OBJECT);
   const quality           = use3DStore((s) => s.gpuTier);
   const cinematic         = use3DStore((s) => s.cinematicState);
+  const anatomyPreview = use3DStore(s=>s.anatomyPreview);
+  const anatomyEvidence = use3DStore(s=>s.anatomyEvidence[s.avatarWorkspace.avatarContext==='goal'?'B':'A']);
   const heatmapMode       = use3DStore((s) => s.vfxState?.heatmap);
   const vascMode          = use3DStore((s) => s.vfxState?.vascularity);
   const auraMode          = use3DStore((s) => s.vfxState?.aura);
@@ -318,6 +347,10 @@ export default function HumanoidViewer() {
   const bodyProfile = bodyProfileState || EMPTY_OBJECT;
   const globalMetricLogs = metricLogsState || EMPTY_ARRAY;
   const persistedPhysique = persistedPhysiqueState || EMPTY_OBJECT;
+  const [anatomyDraft, setAnatomyDraft] = useState(() => createAnatomyCustomization(persistedPhysiqueState?.anatomyV2));
+  const anatomyDraftRef=useRef(anatomyDraft);
+  const anatomyPendingRef=useRef(false);
+  const profileSaveRevisionRef=useRef(0);
   const normalizedBodyProfile = useMemo(() => mergeBodyProfileSources(bodyProfile, legacyUser), [bodyProfile, legacyUser]);
   const invalidProfileMeasurements = useMemo(
     () => getInvalidBodyProfileMeasurements(normalizedBodyProfile, persistedPhysique),
@@ -331,16 +364,24 @@ export default function HumanoidViewer() {
     gpuTier: quality,
     settingsPersisted: Boolean(persistedPhysique?.renderSettings),
   }), [cinematic, modelDiagnostics, persistedPhysique?.renderSettings, quality, renderMode, rendererTelemetry]);
+  const modelEvidence = useMemo(() => buildAvatarEvidence({ diagnostics:modelDiagnostics, metrics:currentMetrics, qualityGate }), [modelDiagnostics,currentMetrics,qualityGate]);
+  const presentationPreferences = useAvatarPresentation();
+  const prefersReducedMotion = useStore((s: any) => s.reducedMotion) || rendererTelemetry.reducedMotion;
   const updateBodyProfile = useStore((s: any) => s.updateBodyProfile);
   const updatePhysiqueTargets = useStore((s: any) => s.updatePhysiqueTargets);
   const saveMetricLog = useStore((s: any) => s.saveMetricLog);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingProfileSaveRef=useRef<null|(()=>Promise<void>)>(null);
   const renderPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const queueProfileSave = useCallback((nextCurrent: any, nextGoal: any, nextMorphOverrides: any = manualMorphOverrides) => {
+  const queueProfileSave = useCallback((nextCurrent: any, nextGoal: any, nextMorphOverrides: any = manualMorphOverrides, nextAnatomy: any = anatomyDraft) => {
+    const sequence=++profileSaveRevisionRef.current;
+    const saveOwnerId=useStore.getState().user?.id;
     setAvatarWorkspace({ saveStatus: 'saving' });
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-    persistTimerRef.current = setTimeout(async () => {
+    const saveDraft=async () => {
+      if(pendingProfileSaveRef.current===saveDraft) pendingProfileSaveRef.current=null;
+      if(useStore.getState().user?.id!==saveOwnerId) return;
       try {
         const appearanceMetrics = Object.fromEntries(BODY_APPEARANCE_FIELDS.flatMap(([key]) => (
           nextCurrent?.[key] === undefined || nextCurrent?.[key] === null || nextCurrent?.[key] === ''
@@ -348,29 +389,33 @@ export default function HumanoidViewer() {
             : [[key, nextCurrent[key]]]
         )));
         await updateBodyProfile(metricsToBodyProfile(nextCurrent, nextGoal));
-        await updatePhysiqueTargets({
-          ...(persistedPhysique || {}),
+        await updatePhysiqueTargets((latest: any) => ({
+          ...(latest || {}),
           goalMetrics: nextGoal,
           appearanceMetrics: {
-            ...(persistedPhysique?.appearanceMetrics || {}),
+            ...(latest?.appearanceMetrics || {}),
             ...appearanceMetrics,
           },
           privateMetrics: {
-            ...(Number.isFinite(Number(nextCurrent?.d_size)) ? { d_size: Number(nextCurrent.d_size) } : {}),
-            ...(Number.isFinite(Number(nextCurrent?.d_girth)) ? { d_girth: Number(nextCurrent.d_girth) } : {}),
+            // Retired inch values stay as recorded; new entries are centimetres.
+            ...Object.fromEntries(['d_size', 'd_girth', 'anatomyLengthCm', 'anatomyGirthCm']
+              .filter((key) => nextCurrent?.[key] !== '' && nextCurrent?.[key] != null && Number.isFinite(Number(nextCurrent[key])))
+              .map((key) => [key, Number(nextCurrent[key])])),
           },
           morphOverrides: {
-            ...(persistedPhysique?.morphOverrides || {}),
+            ...(latest?.morphOverrides || {}),
             current: nextMorphOverrides,
           },
-        });
-        setAvatarWorkspace({ saveStatus: 'saved' });
+          anatomyV2: createAnatomyCustomization(nextAnatomy),
+        }));
+        if(sequence===profileSaveRevisionRef.current) { anatomyPendingRef.current=false;setAvatarWorkspace({ saveStatus: 'saved' }); }
       } catch {
-        setAvatarWorkspace({ saveStatus: 'error' });
-        toast.error('Could not save physique measurements.');
+        if(sequence===profileSaveRevisionRef.current) { setAvatarWorkspace({ saveStatus: 'error' });toast.error('Could not save physique measurements.'); }
       }
-    }, 650);
-  }, [manualMorphOverrides, persistedPhysique, setAvatarWorkspace, toast, updateBodyProfile, updatePhysiqueTargets]);
+    };
+    pendingProfileSaveRef.current=saveDraft;
+    persistTimerRef.current = setTimeout(saveDraft,650);
+  }, [anatomyDraft, manualMorphOverrides, persistedPhysique, setAvatarWorkspace, toast, updateBodyProfile, updatePhysiqueTargets]);
 
   const setAdvancedMorph = useCallback((key: string, value: number) => {
     const nextOverrides = { ...manualMorphOverrides, [key]: value };
@@ -387,8 +432,7 @@ export default function HumanoidViewer() {
     if (renderPersistTimerRef.current) clearTimeout(renderPersistTimerRef.current);
     renderPersistTimerRef.current = setTimeout(async () => {
       try {
-        const latest = useStore.getState().physiqueTargets || {};
-        await updatePhysiqueTargets({ ...latest, renderSettings: nextSettings });
+        await updatePhysiqueTargets((latest: any) => ({ ...(latest || {}), renderSettings: nextSettings }));
       } catch {
         toast.error('Could not save cinematic settings.');
       }
@@ -412,27 +456,33 @@ export default function HumanoidViewer() {
     if (rawValue.trim() === '') return;
     const validation = validateBodyMetric(key, rawValue, { allowEmpty: false });
     if (!validation.valid) {
-      toast.error(`${key}: ${validation.reason || 'Enter a valid measurement.'}`);
+      toast.error(`${PRIVATE_METRIC_LABELS[key] || key}: ${validation.reason || 'Enter a valid measurement.'}`);
       return;
     }
     const value = validation.value as number;
     const next = { ...currentMetrics, [key]: value };
+    // Timeline renders a historical snapshot by design, so live metric edits
+    // would otherwise update the store while leaving the visible model frozen.
+    if (viewMode === 'TIMELINE') setViewMode('SOLO');
+    setAvatarWorkspace({ avatarContext: 'current', workspaceMode: 'current' });
     updateCurrentMetric(key, value);
     queueProfileSave(next, goalMetrics, manualMorphOverrides);
-  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, toast, updateCurrentMetric]);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, setAvatarWorkspace, setViewMode, toast, updateCurrentMetric, viewMode]);
 
   const handleGoalValue = useCallback((key: string, rawValue: string) => {
     if (rawValue.trim() === '') return;
     const validation = validateBodyMetric(key, rawValue, { allowEmpty: false });
     if (!validation.valid) {
-      toast.error(`${key}: ${validation.reason || 'Enter a valid goal measurement.'}`);
+      toast.error(`${PRIVATE_METRIC_LABELS[key] || key}: ${validation.reason || 'Enter a valid goal measurement.'}`);
       return;
     }
     const value = validation.value as number;
     const next = { ...goalMetrics, [key]: value };
+    if (viewMode === 'TIMELINE') setViewMode('SOLO');
+    setAvatarWorkspace({ avatarContext: 'goal', workspaceMode: 'goal' });
     updateGoalMetric(key, value);
     queueProfileSave(currentMetrics, next, manualMorphOverrides);
-  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, toast, updateGoalMetric]);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, setAvatarWorkspace, setViewMode, toast, updateGoalMetric, viewMode]);
 
   const updateCurrentAppearance = useCallback((key: string, value: string | number) => {
     const next = { ...currentMetrics, [key]: value };
@@ -440,14 +490,44 @@ export default function HumanoidViewer() {
     queueProfileSave(next, goalMetrics, manualMorphOverrides);
   }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateCurrentMetric]);
 
+  const selectSkinTone = (tone: string) => {
+    const next = { ...currentMetrics, skinTone: tone, skinColor: FITZPATRICK_SWATCHES.find(s => s.id === tone)?.hex || '#bc8970' };
+    setCurrentMetrics(next);
+    queueProfileSave(next, goalMetrics, manualMorphOverrides);
+  };
+
   const updateGoalAppearance = useCallback((key: string, value: string | number) => {
     const next = { ...goalMetrics, [key]: value };
     updateGoalMetric(key as any, value as any);
     queueProfileSave(currentMetrics, next, manualMorphOverrides);
   }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateGoalMetric]);
 
+  const saveAnatomyDraft = useCallback((nextAnatomy: any) => {
+    anatomyDraftRef.current=nextAnatomy;anatomyPendingRef.current=true;
+    use3DStore.getState().setAnatomyCustomization(nextAnatomy);
+    const nextCurrent = { ...currentMetrics };
+    const nextGoal = { ...goalMetrics };
+    const currentRest = nextAnatomy?.current?.penis?.resting?.measurements || {};
+    const goalRest = nextAnatomy?.goal?.penis?.resting?.measurements || {};
+    const currentMap: Record<string, string> = { lengthCm: 'anatomyLengthCm', midCircumferenceCm: 'anatomyGirthCm' };
+    for (const [field, metric] of Object.entries(currentMap)) {
+      const value = currentRest[field];
+      if (value === null || Number.isFinite(value)) {
+        nextCurrent[metric] = value;
+        if (value === null || validateBodyMetric(metric, value).valid) updateCurrentMetric(metric as any, value as any);
+      }
+      const goalValue = goalRest[field];
+      if (goalValue === null || Number.isFinite(goalValue)) {
+        nextGoal[metric] = goalValue;
+        if (goalValue === null || validateBodyMetric(metric, goalValue).valid) updateGoalMetric(metric as any, goalValue as any);
+      }
+    }
+    setAnatomyDraft(nextAnatomy);
+    queueProfileSave(nextCurrent, nextGoal, manualMorphOverrides, nextAnatomy);
+  }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateCurrentMetric, updateGoalMetric]);
+
   const saveSnapshot = useCallback(async () => {
-    const snapshot = { id: Date.now().toString(), metrics: { ...currentMetrics }, date: new Date().toISOString(), label: 'Physique check-in' };
+    const snapshot = { id: Date.now().toString(), metrics: publicBodyMetrics(currentMetrics), date: new Date().toISOString(), label: 'Physique check-in' };
     addTimelineSnap(snapshot);
     await saveMetricLog({ date: snapshot.date.slice(0, 10), metric: 'physique_snapshot', source: 'physique', metrics: snapshot.metrics, label: snapshot.label });
   }, [addTimelineSnap, currentMetrics, saveMetricLog]);
@@ -470,8 +550,25 @@ export default function HumanoidViewer() {
   const hairB = { style: goalMetrics.hairStyle || 'short', color: goalMetrics.hairColor || '#2c1a0a' };
 
   const toggleSensitiveAnatomy = useCallback(() => {
+    if (!sensitiveUnlocked && !anatomy.allowed) return;
     setWardrobe(sensitiveUnlocked ? 'UNDERWEAR' : 'ANATOMICAL');
-  }, [sensitiveUnlocked, setWardrobe]);
+  }, [anatomy.allowed, sensitiveUnlocked, setWardrobe]);
+
+  // A loaded model that may not show anatomy never stays in Anatomical mode.
+  useEffect(() => {
+    if (modelDiagnostics && sensitiveUnlocked && !anatomy.allowed) setWardrobe('UNDERWEAR');
+  }, [anatomy.allowed, modelDiagnostics, sensitiveUnlocked, setWardrobe]);
+
+  const updateUser = useStore((s: any) => s.updateUser);
+  const [dobDraft, setDobDraft] = useState('');
+  const [savingDob, setSavingDob] = useState(false);
+  const saveDateOfBirth = useCallback(async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dobDraft)) { toast.error('Enter your date of birth.'); return; }
+    setSavingDob(true);
+    try { await updateUser({ dob: dobDraft }); toast.success('Date of birth saved.'); }
+    catch (error: any) { toast.error(error?.message || 'Date of birth could not be saved.'); }
+    finally { setSavingDob(false); }
+  }, [dobDraft, toast, updateUser]);
 
   // Timeline playback
   const [timelinePlaying, setTimelinePlaying] = useState(false);
@@ -521,31 +618,52 @@ export default function HumanoidViewer() {
     return () => window.removeEventListener('keydown', handler);
   }, [canUseViewMode, setViewMode]);
 
+  const persistedModelRecords = useMemo(() => ({
+    privateMetrics: persistedPhysique.privateMetrics, appearanceMetrics: persistedPhysique.appearanceMetrics,
+    goalMetrics: persistedPhysique.goalMetrics, anatomyV2: persistedPhysique.anatomyV2,
+    milestones: persistedPhysique.milestones, morphOverrides: persistedPhysique.morphOverrides,
+  }), [persistedPhysique.privateMetrics,persistedPhysique.appearanceMetrics,persistedPhysique.goalMetrics,persistedPhysique.anatomyV2,persistedPhysique.milestones,persistedPhysique.morphOverrides]);
+  useEffect(() => {
+    if (persistedPhysique.renderSettings) setCinematicState(persistedPhysique.renderSettings);
+  }, [persistedPhysique.renderSettings,setCinematicState]);
+
   // ── Hydrate the renderer cache from persisted physique records.
   useEffect(() => {
     const persistedCurrent = {
-      ...(persistedPhysique?.privateMetrics || {}),
-      ...(persistedPhysique?.appearanceMetrics || {}),
+      ...(persistedModelRecords?.privateMetrics || {}),
+      ...(persistedModelRecords?.appearanceMetrics || {}),
       ...bodyProfileToMetrics(normalizedBodyProfile),
     };
-    const persistedGoal = bodyProfileToGoals(normalizedBodyProfile, persistedPhysique);
+    const persistedGoal = bodyProfileToGoals(normalizedBodyProfile, persistedModelRecords);
+    const migratedAnatomy = createAnatomyCustomization(anatomyPendingRef.current ? anatomyDraftRef.current : persistedModelRecords?.anatomyV2);
+    const currentRestMeasurements = migratedAnatomy.current.penis.resting.measurements ||= {};
+    const goalRestMeasurements = migratedAnatomy.goal.penis.resting.measurements ||= {};
+    const legacyCurrentAnatomy = resolveAnatomyCm(persistedCurrent);
+    const legacyGoalAnatomy = resolveAnatomyCm(persistedGoal);
+    if (!Object.hasOwn(currentRestMeasurements,'lengthCm') && Number.isFinite(legacyCurrentAnatomy.lengthCm)) currentRestMeasurements.lengthCm = legacyCurrentAnatomy.lengthCm;
+    if (!Object.hasOwn(currentRestMeasurements,'midCircumferenceCm') && Number.isFinite(legacyCurrentAnatomy.girthCm)) currentRestMeasurements.midCircumferenceCm = legacyCurrentAnatomy.girthCm;
+    if (!Object.hasOwn(goalRestMeasurements,'lengthCm') && Number.isFinite(legacyGoalAnatomy.lengthCm)) goalRestMeasurements.lengthCm = legacyGoalAnatomy.lengthCm;
+    if (!Object.hasOwn(goalRestMeasurements,'midCircumferenceCm') && Number.isFinite(legacyGoalAnatomy.girthCm)) goalRestMeasurements.midCircumferenceCm = legacyGoalAnatomy.girthCm;
+    const buttockMeasurements = migratedAnatomy.current.buttocks.measurements ||= {};
+    if (buttockMeasurements.hipCircumferenceCm == null && Number.isFinite(Number(persistedCurrent.glutes))) buttockMeasurements.hipCircumferenceCm = Number(persistedCurrent.glutes);
     const persistedSnapshots = metricLogsToSnapshots(globalMetricLogs);
-    const persistedMilestones = Array.isArray(persistedPhysique?.milestones) ? persistedPhysique.milestones : [];
-    const persistedMorphOverrides = persistedPhysique?.morphOverrides && typeof persistedPhysique.morphOverrides === 'object'
-      ? persistedPhysique.morphOverrides
+    const persistedMilestones = Array.isArray(persistedModelRecords?.milestones) ? persistedModelRecords.milestones : [];
+    const persistedMorphOverrides = persistedModelRecords?.morphOverrides && typeof persistedModelRecords.morphOverrides === 'object'
+      ? persistedModelRecords.morphOverrides
       : { current: {}, goal: {} };
-    if (persistedPhysique?.renderSettings && typeof persistedPhysique.renderSettings === 'object') {
-      setCinematicState(persistedPhysique.renderSettings);
-    }
     setMorphOverrides(persistedMorphOverrides);
+    setAnatomyDraft(migratedAnatomy);
+    if(!anatomyPendingRef.current) anatomyDraftRef.current=migratedAnatomy;
+    use3DStore.getState().setAnatomyCustomization(migratedAnatomy);
     setCurrentMetrics(persistedCurrent);
     setGoalMetrics(persistedGoal);
     setTimelineSnaps(persistedSnapshots);
     setMilestones(persistedMilestones);
-  }, [globalMetricLogs, normalizedBodyProfile, persistedPhysique, setCinematicState, setCurrentMetrics, setGoalMetrics, setMilestones, setMorphOverrides, setTimelineSnaps]);
+  }, [globalMetricLogs, normalizedBodyProfile, persistedModelRecords, setCurrentMetrics, setGoalMetrics, setMilestones, setMorphOverrides, setTimelineSnaps]);
 
   useEffect(() => () => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    pendingProfileSaveRef.current?.();
     if (renderPersistTimerRef.current) clearTimeout(renderPersistTimerRef.current);
     setCaptureRedacted(false);
   }, [setCaptureRedacted]);
@@ -631,7 +749,7 @@ export default function HumanoidViewer() {
   }, [milestones, persistedPhysique, setMilestones, toast, updatePhysiqueTargets]);
 
   // ── Body part info
-  const partInfo = selectedPart ? (BODY_PARTS as any)[selectedPart] : null;
+  const partInfo = selectedPart ? BODY_PART_MAP[selectedPart] : null;
 
   // ── Currently scrubbed snapshot date label
   const scrubDateLabel = useMemo(() => {
@@ -648,13 +766,9 @@ export default function HumanoidViewer() {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    setCameraZoom(isZoomed ? 1.65 : 1.0);
-  }, [isZoomed, setCameraZoom]);
-
   return (
     <>
-    <div className="chamber fade-in chamber-fullscreen-wrap">
+    <div className="chamber fade-in chamber-fullscreen-wrap" data-density={avatarWorkspace.density} data-interface-effects={avatarWorkspace.interfaceEffects ? 'on' : 'off'} style={{ '--avatar-inspector-width': `${avatarWorkspace.inspectorWidth}px` } as React.CSSProperties}>
       <header className="chamber-topbar">
         <div className="chamber-topbar__brand">
           <div className="chamber-topbar__title-row">
@@ -664,7 +778,7 @@ export default function HumanoidViewer() {
           <div className="chamber-topbar__chips">
             <span className={`workspace-status workspace-status--${avatarWorkspace.saveStatus}`}>{avatarWorkspace.saveStatus}</span>
             <button className="workspace-model-status" onClick={() => handleTabChange('view')}>
-              <AlertTriangle size={14} /> Legacy asset · Needs review
+              <Activity size={14} /> {modelEvidence.assetLabel}
             </button>
           </div>
         </div>
@@ -682,6 +796,9 @@ export default function HumanoidViewer() {
         </div>
       </header>
 
+      <AvatarEvidence metrics={currentMetrics} diagnostics={modelDiagnostics} qualityGate={qualityGate} />
+      <BodyPartNavigator privateAllowed={sensitiveUnlocked && anatomy.allowed && !captureRedacted} dropTargetRef={modelDropTarget}
+        disabled={renderMode === 'SPRITE' || rendererTelemetry.status === 'context-lost'} />
       {/* ═══ VIEWPORT + EDITOR LAYOUT ═══ */}
       <div className="chamber-layout">
         {/* ── VIEWPORT ── */}
@@ -709,19 +826,19 @@ export default function HumanoidViewer() {
               <div className="chamber-pill-group">
                 {CAMERA_PRESETS.map((p) => (
                   <button key={p.id} className={`chamber-pill${cameraPreset === p.id ? ' active' : ''}`}
-                    onClick={() => setCameraPreset(p.id)}>{p.label}</button>
+                    onClick={() => setCameraPreset(p.id, { preserveFocus: true })}>{p.label}</button>
                 ))}
               </div>
               <div className="chamber-pill-group">
-                <button className="chamber-pill" onClick={() => { fitCameraToBody(); setIsZoomed(false); }}>
+                <button className="chamber-pill" onClick={() => fitCameraToBody()}>
                   Full Body
                 </button>
-                <button className="chamber-pill" onClick={() => { resetCameraZoom(); setIsZoomed(false); }}>
+                <button className="chamber-pill" onClick={() => resetCameraZoom()}>
                   Reset
                 </button>
                 <button className="chamber-pill" onClick={() => { setViewMode('SOLO'); setSelectedPart('head'); }}>Face</button>
-                <button className="chamber-pill chamber-icon-button" aria-label="Zoom in" title="Zoom in" onClick={() => setCameraZoom(Math.min(2.2, cameraZoom + 0.15))}><ZoomIn size={16} /></button>
-                <button className="chamber-pill chamber-icon-button" aria-label="Zoom out" title="Zoom out" onClick={() => setCameraZoom(Math.max(0.7, cameraZoom - 0.15))}><ZoomOut size={16} /></button>
+                <button className="chamber-pill chamber-icon-button" aria-label="Zoom in" title="Zoom in" onClick={() => setCameraZoom(cameraZoom / 1.2)}><ZoomIn size={16} /></button>
+                <button className="chamber-pill chamber-icon-button" aria-label="Zoom out" title="Zoom out" onClick={() => setCameraZoom(cameraZoom * 1.2)}><ZoomOut size={16} /></button>
               </div>
             </div>
           </div>
@@ -730,7 +847,7 @@ export default function HumanoidViewer() {
             <div className="chamber-readout__label">LIVE READOUT</div>
             <div className="chamber-readout__focus">
               <span className="chamber-readout__pulse" />
-              <strong>{selectedPart?.label || 'Body overview'}</strong>
+              <strong>{BODY_PART_MAP[selectedPart]?.label || 'Body overview'}</strong>
               <span>{viewMode === 'DUAL' ? 'Now vs destination' : `${viewMode} inspection`}</span>
             </div>
             <div className="chamber-readout__metrics">
@@ -800,7 +917,16 @@ export default function HumanoidViewer() {
             }
           >
             <Suspense fallback={<ChamberSpinner />}>
-              <div className="chamber-canvas-wrap">
+              <div ref={modelDropTarget} className={`chamber-canvas-wrap${partDragOver ? ' is-part-drop-target' : ''}`}
+                onDragOver={event => { if ([...event.dataTransfer.types].includes(BODY_PART_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setPartDragOver(true); } }}
+                onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setPartDragOver(false); }}
+                onDrop={event => {
+                  setPartDragOver(false);
+                  const part = readDroppedBodyPart(event.dataTransfer, sensitiveUnlocked && anatomy.allowed && !captureRedacted);
+                  if (!part || renderMode === 'SPRITE') return;
+                  event.preventDefault();
+                  focusInspectionPart(part);
+                }}>
                 {renderMode === 'SPRITE'
                   ? <Sprite3DViewer />
                   : <ChamberCanvas />}
@@ -860,7 +986,16 @@ export default function HumanoidViewer() {
         {showEditor && (
           <div className="chamber-editor">
             {/* Editor tabs */}
-            <div className="chamber-editor__tabs">
+            <div className="chamber-editor__tabs" role="tablist" aria-label="Avatar editor" onKeyDown={event => {
+              const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+              const index = buttons.indexOf(event.target as HTMLButtonElement);
+              if (index < 0 || !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const rtl = getComputedStyle(event.currentTarget).direction === 'rtl';
+              const step = event.key === 'ArrowRight' ? (rtl ? -1 : 1) : (rtl ? 1 : -1);
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + step + buttons.length) % buttons.length;
+              buttons[next].focus(); buttons[next].click();
+            }}>
               {[
                 { id: 'measurements', label: 'Measure', icon: Ruler },
                 { id: 'face',     label: 'Face',     icon: Eye     },
@@ -871,6 +1006,8 @@ export default function HumanoidViewer() {
                 { id: 'view', label: 'View', icon: Sun },
               ].map((tab) => (
                 <button key={tab.id}
+                  type="button" role="tab" id={`avatar-editor-tab-${tab.id}`} aria-controls="avatar-editor-panel"
+                  aria-selected={editorTab === tab.id} tabIndex={editorTab === tab.id ? 0 : -1}
                   aria-label={tab.label}
                   className={`chamber-editor__tab${editorTab === tab.id ? ' active' : ''}`}
                   onClick={() => handleTabChange(tab.id)}>
@@ -880,7 +1017,7 @@ export default function HumanoidViewer() {
               ))}
             </div>
 
-            <div className="chamber-editor__body">
+            <div className="chamber-editor__body" id="avatar-editor-panel" role="tabpanel" aria-labelledby={`avatar-editor-tab-${editorTab}`} tabIndex={0}>
 
               {/* ── METRICS TAB ── */}
               {editorTab === 'measurements' && (
@@ -901,6 +1038,7 @@ export default function HumanoidViewer() {
                     <p>Entered measurements drive the shape; missing values use render-only estimates. Circumferences are not yet verified against the deformed mesh, so achieved measurements and fit errors are unavailable. Measurement completeness is not anatomical accuracy.</p>
                   </details>
                   <div className="chamber-metric-list">
+                    <MeasurementHelp key={guideMetric} definition={getBodyMeasurementDefinition(guideMetric)} label={METRIC_LABELS[guideMetric]?.label || guideMetric} onInspect={focusInspectionPart} />
                     {Object.entries(METRIC_LABELS).map(([key, meta]) => {
                       const currentIsMeasured = currentMetricResolution.suppliedKeys.includes(key);
                       const goalIsMeasured = goalMetricResolution.suppliedKeys.includes(key);
@@ -918,6 +1056,7 @@ export default function HumanoidViewer() {
                           <div className="chamber-metric-row__header">
                             <span className="chamber-metric-row__label">
                               {meta.label}
+                              <button type="button" className="chamber-pill" aria-label={`How to measure ${meta.label}`} onClick={() => { setGuideMetric(key); focusInspectionPart(getBodyMeasurementDefinition(key).region); }}>Show me</button>
                               <small className={`chamber-metric-source${currentIsMeasured ? ' is-measured' : ''}`}>
                                 {currentIsMeasured ? 'Entered' : 'Estimated'}
                               </small>
@@ -937,7 +1076,7 @@ export default function HumanoidViewer() {
                           </div>
                           {/* NOW slider */}
                           <div style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: 2 }}>NOW</div>
-                          <input type="range" aria-label={`Current ${meta.label}`}
+                          <input type="range" aria-label={`Current ${meta.label}`} onFocus={() => setGuideMetric(key)}
                             min={range.min}
                             max={range.max}
                             step={1} value={cur}
@@ -949,7 +1088,7 @@ export default function HumanoidViewer() {
                               ? formatMeasurement(goal, meta.unit, user)
                               : `${goal}${meta.unit}`}</span>
                           </div>
-                          <input type="range" aria-label={`Goal ${meta.label}`}
+                          <input type="range" aria-label={`Goal ${meta.label}`} onFocus={() => setGuideMetric(key)}
                             min={range.min}
                             max={range.max}
                             step={1} value={goal}
@@ -989,7 +1128,9 @@ export default function HumanoidViewer() {
                   <h4 className="chamber-editor__heading"><Palette size={14} /> Skin</h4>
                   <p className="chamber-note">Appearance controls are visual. They do not infer ethnicity or a medical condition.</p>
                   <div className="workspace-swatch-row">{FITZPATRICK_SWATCHES.map((s) => <button key={s.id} title={s.label} aria-label={s.label}
-                    className={skinTone === s.id ? 'active' : ''} style={{ background: s.hex }} onClick={() => updateCurrentAppearance('skinTone', s.id)} />)}</div>
+                    className={skinTone === s.id && (!currentMetrics.skinColor || String(currentMetrics.skinColor).toUpperCase() === s.hex.toUpperCase()) ? 'active' : ''} style={{ background: s.hex }} onClick={() => selectSkinTone(s.id)} />)}</div>
+                  <label className="workspace-field"><span>Base skin color</span><input type="color" value={/^#[0-9a-f]{6}$/i.test(String(currentMetrics.skinColor)) ? String(currentMetrics.skinColor) : FITZPATRICK_SWATCHES.find(s => s.id === skinTone)?.hex || '#bc8970'} onChange={event => updateCurrentAppearance('skinColor', event.target.value)} /></label>
+                  <p className="chamber-note">Choose a continuous base color under neutral lighting. These appearance presets are not measured sun-response phototypes. Regional pigmentation and tan are separate layers; local controls remain recorded-only until their masks are implemented.</p>
                   <button className="chamber-pill" onClick={() => handleCinematicPreset('ANALYTIC')}><Sun size={15} /> Lock neutral inspection lighting</button>
                   <div className="workspace-unavailable"><span>Undertone, pigmentation, freckles and scars</span><strong>Planned · texture masks required</strong></div>
                 </div>
@@ -1168,6 +1309,9 @@ export default function HumanoidViewer() {
                             { id: 'white', hex: '#d8d8d4' },
                           ].map((c) => (
                             <button key={c.id}
+                              aria-label={`${label === 'YOU NOW' ? 'Current' : 'Goal'} hair color ${c.id}`}
+                              aria-pressed={state.color === c.hex}
+                              className="workspace-hair-swatch"
                               onClick={() => update('hairColor', c.hex)}
                               title={c.id}
                               style={{
@@ -1193,12 +1337,16 @@ export default function HumanoidViewer() {
                     {WARDROBE_OPTIONS.map((w) => (
                       <button key={w.id}
                         className={`chamber-wardrobe-card${wardrobe === w.id ? ' active' : ''}`}
-                        onClick={() => setWardrobe(w.id)}>
+                        aria-pressed={wardrobe === w.id}
+                        disabled={w.id === 'ANATOMICAL' && !anatomy.allowed}
+                        title={w.id === 'ANATOMICAL' && !anatomy.allowed ? anatomy.message || undefined : undefined}
+                        onClick={() => w.id === 'ANATOMICAL' ? setWardrobe(w.id) : wardrobeControls.change({preset:w.id})}>
                         <span className="chamber-wardrobe-card__icon">{React.createElement(w.icon, { size: 20, 'aria-hidden': true })}</span>
                         <span className="chamber-wardrobe-card__label">{w.label}</span>
                       </button>
                     ))}
                   </div>
+                  <WardrobeOptions preset={wardrobe} preferences={wardrobePreferences} onChange={wardrobeControls.change} status={wardrobeControls.status}/>
                   <p className="chamber-note">
                     {wardrobe === 'ANATOMICAL'
                       ? 'Anatomical mode — full body visible for measurement comparison.'
@@ -1216,60 +1364,44 @@ export default function HumanoidViewer() {
                     <Layers size={14} /> Anatomy guide
                   </h4>
                   <p className="chamber-note">This diagram is illustrative. The GLB contains external surfaces only; these controls do not reveal internal organs or a medical skeleton.</p>
-                  <div className="workspace-anatomy-info"><UserRound size={22} /><div><strong>External anatomy only</strong><p>Anatomical clothing mode displays the complete authored adult surface. Internal anatomy is not included in this asset.</p></div></div>
+                  <div className="workspace-anatomy-info"><UserRound size={22} /><div><strong>Adult anatomy preview</strong><p>External surfaces respond to your dimensions. Optional internal ellipsoids are schematic measurement guides.</p></div></div>
 
                   <div className="chamber-sensitive-card">
                     <div className="chamber-sensitive-card__head">
                       <div>
                         <h4><Eye size={13} /> Private anatomy</h4>
-                        <p>Complete adult anatomy is visible in Anatomical mode. Screenshots and sharing hide the external genital mesh.</p>
+                        <p>Adults only. Off by default for every session; screenshots, sharing and exports keep it covered.</p>
                       </div>
                       <button
                         className={`chamber-pill${sensitiveUnlocked ? ' active' : ''}`}
                         aria-pressed={sensitiveUnlocked}
-                        disabled={!modelDiagnostics?.hasPrivateAnatomy}
+                        disabled={!sensitiveUnlocked && !anatomy.allowed}
                         onClick={toggleSensitiveAnatomy}
                       >
-                        {sensitiveUnlocked ? 'Wear underwear' : modelDiagnostics?.hasPrivateAnatomy ? 'Anatomical mode' : 'Asset unavailable'}
+                        {sensitiveUnlocked ? 'Wear underwear' : anatomy.allowed ? 'Anatomical mode' : 'Unavailable'}
                       </button>
                     </div>
 
-                    {sensitiveUnlocked && modelDiagnostics?.hasPrivateAnatomy && (
-                      <div className="chamber-sensitive-grid">
-                        {[
-                          { key: 'd_size', label: 'External anatomy length' },
-                          { key: 'd_girth', label: 'External anatomy girth' },
-                        ].map((metric) => (
-                          <div key={metric.key} className="chamber-sensitive-field">
-                            <strong>{metric.label}</strong>
-                            <label>
-                              <span>Current</span>
-                              <MeasurementInput
-                                key={`${metric.key}-private-current-${(currentMetrics as any)[metric.key] ?? ''}`}
-                                metricKey={metric.key}
-                                inputMode="decimal"
-                                value={(currentMetrics as any)[metric.key] ?? ''}
-                                placeholder="Not set"
-                                onCommit={(value) => handleCurrentValue(metric.key, value)}
-                              />
-                              <em>in</em>
-                            </label>
-                            <label>
-                              <span>Goal</span>
-                              <MeasurementInput
-                                key={`${metric.key}-private-goal-${(goalMetrics as any)[metric.key] ?? ''}`}
-                                metricKey={metric.key}
-                                inputMode="decimal"
-                                value={(goalMetrics as any)[metric.key] ?? ''}
-                                placeholder="Not set"
-                                onCommit={(value) => handleGoalValue(metric.key, value)}
-                              />
-                              <em>in</em>
-                            </label>
-                          </div>
-                        ))}
+                    {!anatomy.allowed && anatomy.message && <p className="chamber-note" role="status">{anatomy.message}</p>}
+                    {(anatomy.reason === 'missing-dob' || anatomy.reason === 'invalid-dob') && (
+                      <div className="chamber-sensitive-field">
+                        <label>
+                          <span>Date of birth</span>
+                          <input type="date" autoComplete="bday" value={dobDraft} max={new Date().toISOString().slice(0, 10)}
+                            onChange={(event) => setDobDraft(event.target.value)} />
+                        </label>
+                        <button className="chamber-pill" disabled={savingDob || !dobDraft} onClick={saveDateOfBirth}>
+                          {savingDob ? 'Saving…' : 'Save date of birth'}
+                        </button>
                       </div>
                     )}
+
+                    {sensitiveUnlocked && anatomy.allowed && <AnatomyCustomizationPanel value={anatomyDraft} onSave={saveAnatomyDraft} onInspect={(id: string)=>{focusInspectionPart(id);modelDropTarget.current?.scrollIntoView({block:'nearest'});}}
+                      targetContext={avatarWorkspace.avatarContext} previewSupported={Boolean(modelDiagnostics?.privatePreview?.available)} preview={anatomyPreview} evidence={anatomyEvidence} onPreviewChange={(patch: any)=> {
+                        const {target,...previewPatch}=patch;
+                        use3DStore.getState().setAnatomyPreview(previewPatch);
+                        if(target) setAvatarWorkspace({avatarContext:target,workspaceMode:target});
+                      }} />}
                   </div>
                 </div>
               )}
@@ -1277,6 +1409,9 @@ export default function HumanoidViewer() {
               {editorTab === 'view' && (
                 <div className="chamber-editor__section">
                   <h4 className="chamber-editor__heading"><Sun size={14} /> View</h4>
+                  <AvatarViewOptions preferences={avatarWorkspace} onChange={presentationPreferences.change} cinematic={cinematic}
+                    onEffectChange={handleCinematicSetting} gpuTier={quality} reducedMotion={Boolean(prefersReducedMotion)}
+                    onReset={() => presentationPreferences.change(DEFAULT_AVATAR_PRESENTATION)} saveStatus={presentationPreferences.saveStatus} />
                   <label className="workspace-field"><span>Quality</span><select value={avatarWorkspace.qualityPreference} onChange={(e) => {
                     const preference = e.target.value; setAvatarWorkspace({ qualityPreference: preference });
                     if (preference !== 'automatic') setQuality({ performance: 'LOW', balanced: 'MED', high: 'HIGH' }[preference]);
@@ -1285,7 +1420,7 @@ export default function HumanoidViewer() {
                   <label className="workspace-switch"><span>Presentation mode<small>Enables optional cinematic lighting.</small></span><input type="checkbox" checked={avatarWorkspace.presentationMode} onChange={(e) => { setAvatarWorkspace({ presentationMode: e.target.checked }); handleCinematicPreset(e.target.checked ? 'PORTRAIT' : 'ANALYTIC'); }} /></label>
                   <label className="workspace-switch"><span>Auto rotate</span><input type="checkbox" checked={autoRotate} onChange={(e) => setAutoRotate(e.target.checked)} /></label>
                   <label className="workspace-switch"><span>Protect screenshots and sharing</span><input type="checkbox" checked={captureRedacted} onChange={(e) => setCaptureRedacted(e.target.checked)} /></label>
-                  <details className="chamber-note"><summary>Model diagnostics</summary><p>Legacy asset · Needs review. Open gates: hair/scalp fit, shoulder contours, eye seating, hands and feet, external-anatomy seams, pelvis silhouette, calibrated circumferences, true geometry LODs, accessory licenses, and performance certification.</p><p>Runtime: {modelDiagnostics?.health || 'Loading'} · {rendererTelemetry?.fps || 0} FPS · {quality} tier.</p></details>
+                  <details className="chamber-note"><summary>Model diagnostics</summary><p>{modelEvidence.assetLabel}. {modelEvidence.missingParts.length ? `Features absent from the v2 inventory: ${modelEvidence.missingParts.join(', ')}.` : 'Visual realism requires a separate assessment of the rendered result.'}</p><p>Runtime: {modelDiagnostics?.health || 'Loading'} · {rendererTelemetry?.fps == null ? 'Collecting frame sample' : `${rendererTelemetry.fps} FPS`} · {quality} tier.</p></details>
                 </div>
               )}
             </div>
@@ -1296,7 +1431,7 @@ export default function HumanoidViewer() {
       {/* ═══ SETTINGS DRAWER ═══ */}
       {showSettings && (
         <div className="chamber-settings-overlay" onClick={() => setShowSettings(false)}>
-          <div className="chamber-settings-drawer soft-neumorphism glassmorphism" onClick={(e) => e.stopPropagation()}>
+          <div className="chamber-settings-drawer" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '1rem' }}>
                 <Settings size={16} color="var(--chamber-glow)" /> Chamber Settings
@@ -1309,13 +1444,14 @@ export default function HumanoidViewer() {
             {/* Appearance */}
             <div className="chamber-settings-section">
               <h4 className="chamber-editor__heading"><Palette size={13} /> Appearance</h4>
-              <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginBottom: 8 }}>Skin Tone (Fitzpatrick)</p>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-3)', marginBottom: 8 }}>Skin appearance preset</p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
                 {FITZPATRICK_SWATCHES.map((s) => (
-                  <button key={s.id} title={s.label}
-                    onClick={() => updateCurrentAppearance('skinTone', s.id)}
+                  <button key={s.id} title={s.label} aria-label={`Skin appearance: ${s.label}`} aria-pressed={skinTone === s.id}
+                    className="avatar-color-swatch"
+                    onClick={() => selectSkinTone(s.id)}
                     style={{
-                      width: 28, height: 28, borderRadius: '50%', background: s.hex,
+                      borderRadius: '50%', background: s.hex,
                       border: skinTone === s.id ? '2px solid var(--chamber-glow)' : '2px solid var(--border)',
                       cursor: 'pointer', transition: 'transform 0.15s',
                     }} />
@@ -1324,9 +1460,9 @@ export default function HumanoidViewer() {
               <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginBottom: 6 }}>Eye Colour</p>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
                 {EYE_COLOR_PRESETS.map((c) => (
-                  <button key={c} onClick={() => updateCurrentAppearance('eyeColor', c)}
+                  <button key={c} aria-label={`Eye color ${c}`} aria-pressed={eyeColor === c} className="avatar-color-swatch" onClick={() => updateCurrentAppearance('eyeColor', c)}
                     style={{
-                      width: 22, height: 22, borderRadius: '50%', background: c,
+                      borderRadius: '50%', background: c,
                       border: eyeColor === c ? '2px solid var(--chamber-glow)' : '2px solid transparent',
                       cursor: 'pointer',
                     }} />
@@ -1395,7 +1531,7 @@ export default function HumanoidViewer() {
               </div>
               <label className="chamber-exposure-control">
                 <span>Exposure <strong>{cinematic.exposure.toFixed(2)}</strong></span>
-                <input type="range" aria-label="Exposure" min="0.72" max="1.35" step="0.01" value={cinematic.exposure}
+                <input type="range" aria-label="Exposure" min={AVATAR_EXPOSURE.min} max={AVATAR_EXPOSURE.max} step={AVATAR_EXPOSURE.step} value={cinematic.exposure}
                   onChange={(e) => handleCinematicSetting('exposure', parseFloat(e.target.value))}
                   className="chamber-slider" />
               </label>
@@ -1460,43 +1596,16 @@ export default function HumanoidViewer() {
         </div>
       )}
 
-      {/* ═══ SELECTED BODY PART DETAIL ═══ */}
-      {partInfo && (
-        <div className="chamber-part-detail glass-card"
-          style={{ borderColor: (STATUS as any)[partInfo.status]?.color || 'var(--border)' }}>
-          <div className="chamber-part-detail__header">
-            <div className="chamber-part-detail__title-row">
-              <span className="chamber-part-detail__icon">{partInfo.icon}</span>
-              <div>
-                <h3>{partInfo.name}</h3>
-                <span className="label-caps" style={{ color: (STATUS as any)[partInfo.status]?.color }}>
-                  {(STATUS as any)[partInfo.status]?.label} STATUS
-                </span>
-              </div>
-            </div>
-            <button className="chamber-pill" onClick={() => setSelectedPart(null)}>
-              <X size={14} /> Close
-            </button>
-          </div>
-          <div className="chamber-part-detail__grid">
-            <div>
-              <p className="label-caps chamber-part-detail__label">
-                <AlertTriangle size={12} /> Identified Issues
-              </p>
-              <ul className="chamber-part-detail__list chamber-part-detail__list--issues">
-                {partInfo.issues?.map((iss: string, i: number) => <li key={i}>{iss}</li>)}
-              </ul>
-            </div>
-            <div>
-              <p className="label-caps chamber-part-detail__label">
-                <CheckCircle size={12} /> Restoration Plan
-              </p>
-              <ul className="chamber-part-detail__list chamber-part-detail__list--fixes">
-                {partInfo.fixes?.map((fix: string, i: number) => <li key={i}>{fix}</li>)}
-              </ul>
-            </div>
-          </div>
-        </div>
+      {partInfo && (!partInfo.private || sensitiveUnlocked && anatomy.allowed && !captureRedacted) && (
+        <section className="avatar-part-summary" aria-label="Selected part measurements">
+          <div><h3>{partInfo.label}</h3><p>Your recorded values. The model's inspection bounds do not validate these measurements.</p></div>
+          <dl>{partInfo.metrics.map((key: string) => {
+            const validation = validateBodyMetric(key, currentMetrics[key], { allowEmpty: false });
+            const unit = BODY_METRIC_RANGES[key]?.unit || 'cm';
+            return <div key={key}><dt>{PRIVATE_METRIC_LABELS[key] || key}</dt><dd>{validation.valid ? formatMeasurement(validation.value, unit, user) : 'Not recorded'}</dd></div>;
+          })}</dl>
+          <button type="button" className="chamber-pill" onClick={() => setSelectedPart(null)}>Close part details</button>
+        </section>
       )}
 
       {showWizard || !currentMetrics.height ? (

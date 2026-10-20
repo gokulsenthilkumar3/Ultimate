@@ -15,6 +15,7 @@ export function fileToClient(row) {
     type: 'Private', visibility: 'private', sizeBytes: bytes,
     size: available ? (bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`) : legacy.size || 'Unknown',
     available, metadataOnly: !available, mimeType: available ? metadata.mime : null,
+    encryptedAtRest: Boolean(available && metadata.encryption),
     previewKind: available ? metadata.previewKind : null,
     downloadUrl: available ? `/api/files/${encodeURIComponent(row.id)}/download` : null,
     previewUrl: available && metadata.previewKind ? `/api/files/${encodeURIComponent(row.id)}/preview` : null,

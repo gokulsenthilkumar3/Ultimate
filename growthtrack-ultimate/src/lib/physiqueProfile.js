@@ -145,7 +145,14 @@ export function mergeBodyProfileSources(bodyProfile = {}, legacyUser = {}) {
     ankleCm: legacyUser.ankle,
     headCircCm: legacyUser.headCirc,
   };
-  return { ...legacy, ...(bodyProfile || {}) };
+  const merged = { ...legacy, ...(bodyProfile || {}) };
+  // Without a body-profile sex the model loaded as "neutral" and Anatomical
+  // mode stayed unavailable even for a male account. The account's own sex or
+  // gender is the default body base; the body profile's value always wins.
+  const accountSex = String(legacyUser.biologicalSex || legacyUser.gender || '').trim().toLowerCase();
+  const accountBase = ['male', 'man', 'm'].includes(accountSex) ? 'male' : ['female', 'woman', 'f'].includes(accountSex) ? 'female' : null;
+  if (!merged.biologicalSex && accountBase) merged.biologicalSex = accountBase;
+  return merged;
 }
 
 const finite = (value) => {
@@ -216,6 +223,14 @@ export function metricsToBodyProfile(current = {}, goal = {}, { includeEmpty = f
     }
   });
   return payload;
+}
+
+/** General check-ins contain the public numeric measurement contract only. */
+export function publicBodyMetrics(metrics = {}) {
+  return Object.fromEntries(BODY_METRICS.flatMap(({key})=> {
+    const result=validateBodyMetric(key,metrics[key],{allowEmpty:false});
+    return result.valid ? [[key,result.value]] : [];
+  }));
 }
 
 export function metricLogsToSnapshots(logs = []) {

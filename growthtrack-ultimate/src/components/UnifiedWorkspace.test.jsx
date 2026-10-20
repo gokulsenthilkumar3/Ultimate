@@ -10,21 +10,26 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('companion integration view', () => {
-  it('shows Ultimate-owned destinations without embedding a standalone app', async () => {
+  it('opens FinSync inside Ultimate on the shared UI origin', async () => {
     render(<MemoryRouter><UnifiedWorkspace defaultApp="finsync" /></MemoryRouter>);
-    expect(screen.getByRole('heading', { name: 'FinSync' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /FinSync/ })).toBeVisible();
     expect(screen.getByRole('link', { name: /Transactions/ })).toHaveAttribute('href', '/finance/transactions');
-    expect(screen.getByText(/previewable import and ledger reconciliation/)).toBeVisible();
-    expect(document.querySelector('iframe')).toBeNull();
+    expect(screen.getByTitle('FinSync app')).toHaveAttribute('src', '/Ultimate/products/finsync/');
     expect(fetch).toHaveBeenCalledWith('/api/gateway/health', { credentials: 'include' });
   });
 
-  it('keeps the five original apps visible during migration', () => {
+  it('opens all five products without leaving Ultimate', () => {
     render(<MemoryRouter><UnifiedWorkspace defaultApp="matrix" /></MemoryRouter>);
-    expect(screen.getAllByRole('link', { name: /Open original app during migration/ })).toHaveLength(5);
-    expect(screen.getAllByText('Ultimate integration in progress')).toHaveLength(5);
-    fireEvent.click(screen.getByRole('button', { name: /Family Connect/ }));
+    expect(screen.getAllByRole('button', { name: /^Open / })).toHaveLength(5);
+    expect(document.querySelector('a[target="_blank"]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Open Family Connect/ }));
     expect(screen.getByRole('link', { name: /Calendar/ })).toHaveAttribute('href', '/workspace/calendar');
+    expect(screen.getByTitle('Family Connect app')).toHaveAttribute('src', '/Ultimate/products/family/');
+  });
+  it('shows an offline product without loading an unavailable frame', async () => {
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ services: [{ id: 'forex', online: false }] }) });
+    render(<MemoryRouter><UnifiedWorkspace defaultApp="forex" /></MemoryRouter>);
+    expect(await screen.findByText('Forex is starting or unavailable')).toBeVisible();
     expect(document.querySelector('iframe')).toBeNull();
   });
 });

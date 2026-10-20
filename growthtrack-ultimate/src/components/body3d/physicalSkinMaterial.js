@@ -9,9 +9,37 @@ export const FITZPATRICK_TABLE = Object.freeze([
   { base: [0.30, 0.18, 0.08], sss: [0.50, 0.18, 0.08], spec: [0.40, 0.28, 0.18] },
 ]);
 
+// Median linear colour of the body albedo (MakeHuman young_lightskinned_male,
+// measured from the CC0 source). The texture already carries a tan skin tone,
+// so multiplying it by a full Fitzpatrick colour applied the tone twice and
+// rendered saturated orange. Textured skin is tinted relative to this instead.
+export const BODY_ALBEDO_REFERENCE = Object.freeze([0.776, 0.429, 0.27]);
+// Wide enough to reach type VI (≈0.03× the texture's blue) and type I.
+const TINT_RANGE = Object.freeze([0.02, 2.5]);
+
+/** Material colour for a target tone: the tone itself without a texture, or
+    the per-channel ratio to the texture's own tone (clamped) with one. */
+export function skinAlbedoTint(base, textured) {
+  if (!textured) return base;
+  return base.map((value, channel) => Math.min(TINT_RANGE[1], Math.max(TINT_RANGE[0], value / BODY_ALBEDO_REFERENCE[channel])));
+}
+
+// The table is written in display (sRGB) values; materials, the texture
+// reference and hex colours are all linear. Comparing the two directly kept
+// the texture's own light tone for every type and shifted it towards green.
+const toLinear = rgb => {
+  const color = new THREE.Color().setRGB(...rgb, THREE.SRGBColorSpace);
+  return [color.r, color.g, color.b];
+};
+const FITZPATRICK_LINEAR = Object.freeze(FITZPATRICK_TABLE.map(tone => Object.freeze({
+  base: toLinear(tone.base),
+  sss: toLinear(tone.sss),
+  spec: toLinear(tone.spec),
+})));
+
 function toneFrom(toneOrColor) {
   if (typeof toneOrColor === 'number') {
-    return FITZPATRICK_TABLE[Math.max(0, Math.min(5, Math.round(toneOrColor)))];
+    return FITZPATRICK_LINEAR[Math.max(0, Math.min(5, Math.round(toneOrColor)))];
   }
 
   const baseColor = new THREE.Color(toneOrColor || '#C68642');
@@ -24,11 +52,21 @@ function toneFrom(toneOrColor) {
   };
 }
 
+// Pubic hair density for the profile's body-hair pattern; unset reads as natural.
+const PUBIC_HAIR_BY_PATTERN = Object.freeze({ none: 0, light: 0.5, natural: 0.9, defined: 1 });
+export function pubicHairDensity(pattern) {
+  return PUBIC_HAIR_BY_PATTERN[String(pattern || 'natural').toLowerCase()] ?? PUBIC_HAIR_BY_PATTERN.natural;
+}
+
 function installSurfaceDetailShader(material) {
-  material.customProgramCacheKey = () => 'growthtrack-physical-skin-v2';
+  material.customProgramCacheKey = () => 'growthtrack-physical-skin-v5';
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uVascularityIntensity = material.uniforms.uVascularityIntensity;
     shader.uniforms.uBodyHairIntensity = material.uniforms.uBodyHairIntensity;
+    shader.uniforms.uPubicHair = material.uniforms.uPubicHair;
+    shader.uniforms.uPubicHairColor = material.uniforms.uPubicHairColor;
+    shader.uniforms.uPubicOrigin = material.uniforms.uPubicOrigin;
+    shader.uniforms.uUnitsPerCm = material.uniforms.uUnitsPerCm;
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
@@ -48,6 +86,10 @@ function installSurfaceDetailShader(material) {
         `#include <common>
          uniform float uVascularityIntensity;
          uniform float uBodyHairIntensity;
+         uniform float uPubicHair;
+         uniform vec3 uPubicHairColor;
+         uniform vec3 uPubicOrigin;
+         uniform float uUnitsPerCm;
          varying vec3 vGrowthTrackBasePosition;
          varying vec2 vGrowthTrackSkinUv;
 
@@ -55,28 +97,85 @@ function installSurfaceDetailShader(material) {
            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
          }
 
+         // Smoothly interpolated value noise: continuous, so it never renders
+         // as per-texel dots the way thresholded hash cells did.
+         float growthTrackValueNoise(vec2 p) {
+           vec2 i = floor(p);
+           vec2 f = fract(p);
+           f = f * f * (3.0 - 2.0 * f);
+           float a = growthTrackHash(i);
+           float b = growthTrackHash(i + vec2(1.0, 0.0));
+           float c = growthTrackHash(i + vec2(0.0, 1.0));
+           float d = growthTrackHash(i + vec2(1.0, 1.0));
+           return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+         }
+
+         // Fine hair is below screen resolution at viewing distance; render
+         // its density as soft shading in hair-bearing regions, not as dots.
          float growthTrackBodyHair(vec3 p, vec2 uv) {
            float torso = smoothstep(0.10, 0.22, p.y) * (1.0 - smoothstep(0.53, 0.66, p.y))
              * (1.0 - smoothstep(0.16, 0.31, abs(p.x)));
            float limbs = smoothstep(0.16, 0.30, abs(p.x)) * (1.0 - smoothstep(0.53, 0.72, abs(p.x)));
            float legs = (1.0 - smoothstep(-0.20, 0.02, p.y)) * smoothstep(0.07, 0.16, abs(p.x));
            float region = clamp(torso * 0.72 + limbs * 0.30 + legs * 0.38, 0.0, 1.0);
-           vec2 strandUv = uv * vec2(420.0, 250.0);
-           float cell = growthTrackHash(floor(strandUv));
-           float strand = smoothstep(0.965, 0.995, cell)
-             * smoothstep(0.12, 0.48, fract(strandUv.y));
-           return strand * region;
+           float density = 0.65 + 0.35 * growthTrackValueNoise(uv * 38.0);
+           return region * density;
+         }
+
+         // Pubic hair over the mons pubis and into the groin folds, in cm
+         // from the skin junction at the shaft root (x lateral, y up, z
+         // forward), with a ragged border and uneven density.
+         float growthTrackPubicHair(vec3 p, vec2 uv) {
+           float jitter = growthTrackValueNoise(uv * 140.0) - 0.5;
+           float top = 8.5 + 1.4 * (growthTrackValueNoise(vec2(p.x * 0.35, 3.0)) - 0.5);
+           float halfWidth = mix(3.0, 8.0, smoothstep(-1.5, 7.0, p.y));
+           float lateral = 1.0 - smoothstep(halfWidth - 1.6, halfWidth + 1.0, abs(p.x) + jitter * 1.5);
+           float vertical = smoothstep(-4.0, -1.0, p.y + jitter) * (1.0 - smoothstep(top - 1.8, top + 0.6, p.y + jitter * 1.2));
+           float crease = (1.0 - smoothstep(0.0, 2.2, abs(abs(p.x) - 4.5 + p.y * 0.3)))
+             * smoothstep(-6.0, -1.0, p.y) * (1.0 - smoothstep(-1.0, 1.0, p.y)) * 0.6;
+           // A sparse midline trail fading out towards the navel.
+           float trail = (1.0 - smoothstep(0.6, 1.6, abs(p.x) + jitter)) * smoothstep(6.0, 8.5, p.y)
+             * (1.0 - smoothstep(11.0, 15.0, p.y + jitter * 2.0)) * 0.45;
+           float front = smoothstep(-7.0, -3.5, p.z);
+           float density = 0.72 + 0.28 * growthTrackValueNoise(uv * 60.0);
+           return clamp(max(max(lateral * vertical, crease), trail) * front * density, 0.0, 1.0);
+         }
+
+         // Sub-millimetre curled strands where the camera can resolve them;
+         // fade to their average coverage at a distance instead of aliasing
+         // into dots or painting the entire region with the hair colour.
+         float growthTrackPubicStrands(vec2 p) {
+           vec2 cell = p * vec2(10.0, 6.0);
+           float bend = 0.35 * sin(cell.y * 1.4 + growthTrackValueNoise(vec2(floor(cell.x), 3.0)) * 6.28318);
+           float lineDistance = abs(fract(cell.x + bend) - 0.5);
+           float footprint = max(fwidth(cell.x + bend), 0.001);
+           float strands = 1.0 - smoothstep(0.055, 0.055 + footprint * 0.75, lineDistance);
+           float breakup = smoothstep(0.2, 0.6, growthTrackValueNoise(cell * vec2(0.8, 0.3)));
+           float resolved = 1.0 - smoothstep(0.35, 1.2, footprint);
+           return mix(0.14, strands * breakup * 0.68, resolved);
+         }
+
+         // Thin continuous ridges of smooth noise read as superficial veins.
+         float growthTrackVeins(vec2 uv) {
+           float n = growthTrackValueNoise(uv * 22.0) * 0.65 + growthTrackValueNoise(uv * 47.0) * 0.35;
+           float ridge = 1.0 - abs(2.0 * n - 1.0);
+           return smoothstep(0.86, 0.97, ridge);
          }`,
       )
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
-         float veinNoise = growthTrackHash(floor(vGrowthTrackSkinUv * 110.0));
-         float vein = smoothstep(0.82, 0.98, veinNoise) * clamp(uVascularityIntensity, 0.0, 1.0);
-         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.72, 0.79, 0.88), vein * 0.22);
+         float vein = growthTrackVeins(vGrowthTrackSkinUv) * clamp(uVascularityIntensity, 0.0, 1.0);
+         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.80, 0.85, 0.95), vein * 0.32);
          float bodyHair = growthTrackBodyHair(vGrowthTrackBasePosition, vGrowthTrackSkinUv)
            * clamp(uBodyHairIntensity, 0.0, 1.0);
-         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.28, bodyHair * 0.58);`,
+         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.78, 0.74, 0.72), bodyHair * 0.35);
+         if (uPubicHair > 0.0 && uUnitsPerCm > 0.0) {
+           vec3 regionPosition = (vGrowthTrackBasePosition - uPubicOrigin) / uUnitsPerCm;
+           float pubic = growthTrackPubicHair(regionPosition, vGrowthTrackSkinUv);
+           float coverage = growthTrackPubicStrands(regionPosition.xy);
+           diffuseColor.rgb = mix(diffuseColor.rgb, uPubicHairColor, pubic * coverage * clamp(uPubicHair, 0.0, 1.0));
+         }`,
       );
   };
 }
@@ -87,7 +186,7 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
   const map = sourceMaterial?.map || (mapOrMaterial?.isTexture ? mapOrMaterial : null);
   const surfaceDetail = Boolean(sourceMaterial && options.surfaceDetail !== false);
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(...tone.base),
+    color: new THREE.Color(...skinAlbedoTint(tone.base, Boolean(map))),
     roughness: THREE.MathUtils.clamp(sourceMaterial?.roughness ?? 0.56, 0.44, 0.72),
     metalness: 0,
     map,
@@ -128,6 +227,8 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     ...(material.userData ?? {}),
     growthTrackSkinMaterial: true,
     aoStrategy: 'baked-base-color',
+    // Shown only while the anatomy is revealed (HumanoidClone sets uPubicHair).
+    pubicHairDensity: options.pubicRegion ? pubicHairDensity(options.pubicRegion.pattern) : 0,
   };
   material.uniforms = {
     uBaseColor: { value: new THREE.Color(...tone.base) },
@@ -136,6 +237,11 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     uAnatomyDepth: { value: 100 },
     uVascularityIntensity: { value: Number(options.vascularityIntensity) || 0 },
     uBodyHairIntensity: { value: Number(options.bodyHairIntensity) || 0 },
+    // Off until the anatomy is revealed; the density is kept in userData.
+    uPubicHair: { value: 0 },
+    uPubicHairColor: { value: new THREE.Color(options.pubicRegion?.color || '#2c1a0a') },
+    uPubicOrigin: { value: new THREE.Vector3(...(options.pubicRegion?.origin || [0, 0, 0])) },
+    uUnitsPerCm: { value: Number(options.pubicRegion?.unitsPerCm) || 0 },
     uTime: { value: 0 },
   };
   if (surfaceDetail) installSurfaceDetailShader(material);
@@ -157,7 +263,7 @@ export function updatePhysicalSkinMaterial(material, {
   const tone = /^#[0-9a-f]{6}$/i.test(String(skinColorHex || ''))
     ? toneFrom(String(skinColorHex))
     : toneFrom(fitzpatrickIndex);
-  material.color?.setRGB(...tone.base);
+  material.color?.setRGB(...skinAlbedoTint(tone.base, Boolean(material.map)));
   material.emissive?.setRGB(...tone.sss);
   material.attenuationColor?.setRGB(...tone.sss);
   material.sheenColor?.setRGB(...tone.sss);

@@ -76,6 +76,12 @@
 .unified-remaining svg { flex-shrink: 0; margin-top: .15rem; }
 .unified-legacy-link { color: var(--gt-muted, #a8b1c4); }
 .unified-workspace :where(button, a):focus-visible { outline: 2px solid #cbb8ff; outline-offset: 3px; }
+.unified-product-view { min-width: 0; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--bg-elevated); }
+.unified-product-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; flex-wrap: wrap; }
+.unified-product-toolbar h2 { font-size: 1rem; margin: 0; }
+.unified-product-frame { display: block; width: 100%; height: max(700px, 78vh); border: 0; background: var(--bg-primary, #101018); }
+.unified-open-product { margin-top: 1.2rem; }
+.unified-app-offline { padding: 3rem 1.5rem; text-align: center; }
 @media (max-width: 680px) {
   .unified-header { align-items: flex-start; flex-direction: column; padding: 1rem; }
   .unified-action-btn { width: 100%; }

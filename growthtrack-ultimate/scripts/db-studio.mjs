@@ -1,29 +1,15 @@
 import http from 'node:http';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { DatabaseSync } from 'node:sqlite';
+import { pathToFileURL } from 'node:url';
+import { createDatabaseSources } from './database-sources.mjs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const root = path.resolve(__dirname, '..');
-const dbPath = path.join(root, 'dev.db');
 const PORT = Number(process.env.DB_STUDIO_PORT || 5556);
-
-let db;
-try {
-  db = new DatabaseSync(dbPath, { readOnly: true });
-  console.log(`[db-studio] Connected to SQLite database: ${dbPath}`);
-} catch (err) {
-  console.error(`[db-studio] Failed to open SQLite database at ${dbPath}:`, err.message);
-  process.exit(1);
-}
 
 const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GrowthTrack DB Studio — Visual SQLite Workbench</title>
+  <title>Ultimate — Workspace Database Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -492,24 +478,26 @@ const html = `<!DOCTYPE html>
     <div class="brand">
       <div class="brand-icon">🗄️</div>
       <span>GrowthTrack DB Studio</span>
-      <span class="badge">SQLite dev.db</span>
+      <span class="badge">All local databases · Read only</span>
     </div>
     <div class="header-stats">
-      <div class="stat-chip"><span class="live-dot"></span> SQLite 3 Engine</div>
+      <div class="stat-chip"><span class="live-dot"></span> <span id="source-status">Read-only database console</span></div>
       <div class="stat-chip">Tables: <span id="stat-tables-count" style="color:#fff; font-weight:600">0</span></div>
       <div class="stat-chip">Records: <span id="stat-records-count" style="color:#fff; font-weight:600">0</span></div>
     </div>
     <div class="header-links">
       <a href="http://localhost:5000/Ultimate/" target="_blank" class="header-btn" style="color:#c084fc; border-color:rgba(139,92,246,0.3)">🚀 Ultimate UI (:5000)</a>
-      <a href="http://localhost:3001/api/docs" target="_blank" class="header-btn">📖 API Explorer (:3001)</a>
-      <a href="http://localhost:3000/health" target="_blank" class="header-btn">🌐 Gateway (:3000)</a>
+      <a href="http://127.0.0.1:5300/api/docs" target="_blank" class="header-btn">📖 API Explorer (:5300)</a>
+      <a href="http://127.0.0.1:5300/health" target="_blank" class="header-btn">🌐 Gateway (:5300)</a>
     </div>
   </header>
 
   <div class="layout">
     <aside class="sidebar">
       <div class="sidebar-search">
-        <input type="text" id="table-search" class="search-input" placeholder="Search 40 tables..." oninput="filterTables()">
+        <label for="database-source">Database</label>
+        <select id="database-source" class="search-input" onchange="changeSource()" style="margin:8px 0 12px"><option value="ultimate">Ultimate</option></select>
+        <input type="text" id="table-search" class="search-input" placeholder="Search tables..." oninput="filterTables()">
       </div>
       <ul id="table-list" class="table-list"></ul>
     </aside>
@@ -634,9 +622,44 @@ const html = `<!DOCTYPE html>
     let currentRows = [];
     let currentColumns = [];
 
+    const apiBase = location.pathname.startsWith('/db') ? '/db/api' : '/api';
+    const sourceId = () => document.getElementById('database-source').value;
+    async function dbFetch(path, options) {
+      const response = await fetch(apiBase + path + (path.includes('?') ? '&' : '?') + 'source=' + encodeURIComponent(sourceId()), options);
+      if (!response.ok) throw new Error('Database is unavailable or the query could not be completed.');
+      return response;
+    }
     async function init() {
-      const res = await fetch('/api/tables');
-      tables = await res.json();
+      try {
+        const sources = await (await fetch(apiBase + '/sources')).json();
+        const select = document.getElementById('database-source');
+        select.replaceChildren(...sources.map(source => {
+          const option = document.createElement('option'); option.value = source.id;
+          option.textContent = source.name + ' · ' + source.provider + (source.online ? '' : ' (offline)');
+          return option;
+        }));
+        await changeSource();
+      } catch { document.getElementById('source-status').textContent = 'Database console unavailable'; }
+    }
+    async function changeSource() {
+      currentTable = ''; currentRows = []; currentColumns = [];
+      tables = []; renderTableList(tables);
+      document.getElementById('source-status').textContent = 'Connecting…';
+      closeDrawer();
+      renderGrid(document.getElementById('data-thead'), document.getElementById('data-tbody'), [], []);
+      renderGrid(document.getElementById('sql-thead'), document.getElementById('sql-tbody'), [], []);
+      document.getElementById('schema-tbody').replaceChildren();
+      document.getElementById('stat-tables-count').textContent = '0';
+      document.getElementById('stat-records-count').textContent = '0';
+      try { await loadTables(); document.getElementById('source-status').textContent = 'Read-only · ' + document.getElementById('database-source').selectedOptions[0].textContent; }
+      catch { tables = []; renderTableList([]); document.getElementById('source-status').textContent = 'Selected database is unavailable'; }
+    }
+    async function loadTables() {
+      const requestedSource = sourceId();
+      const res = await dbFetch('/tables');
+      const result = await res.json();
+      if (requestedSource !== sourceId()) return;
+      tables = result;
       document.getElementById('stat-tables-count').innerText = tables.length;
       const totalRecs = tables.reduce((acc, t) => acc + (t.count || 0), 0);
       document.getElementById('stat-records-count').innerText = totalRecs.toLocaleString();
@@ -732,8 +755,11 @@ const html = `<!DOCTYPE html>
 
     async function loadTableData() {
       if (!currentTable) return;
-      const res = await fetch(\`/api/table/\${encodeURIComponent(currentTable)}?page=\${currentPage}&limit=\${limit}\`);
+      const requestedSource = sourceId();
+      const requestedTable = currentTable;
+      const res = await dbFetch(\`/table/\${encodeURIComponent(currentTable)}?page=\${currentPage}&limit=\${limit}\`);
       const data = await res.json();
+      if (requestedSource !== sourceId() || requestedTable !== currentTable) return;
       currentRows = data.rows || [];
       currentColumns = data.columns || [];
 
@@ -784,12 +810,15 @@ const html = `<!DOCTYPE html>
 
     async function loadSchema() {
       if (!currentTable) return;
-      const res = await fetch(\`/api/schema/\${encodeURIComponent(currentTable)}\`);
+      const requestedSource = sourceId();
+      const requestedTable = currentTable;
+      const res = await dbFetch(\`/schema/\${encodeURIComponent(currentTable)}\`);
       const schema = await res.json();
+      if (requestedSource !== sourceId() || requestedTable !== currentTable) return;
       const tbody = document.getElementById('schema-tbody');
       tbody.replaceChildren(...schema.map(c => {
         const tr = document.createElement('tr');
-        for (const value of [c.cid, c.name, c.type || 'TEXT', c.notnull ? 'NOT NULL' : 'NULLABLE', c.dfl_value ?? '—', c.pk ? 'PRIMARY KEY' : '—']) {
+        for (const value of [c.cid, c.name, c.type || 'TEXT', c.notnull ? 'NOT NULL' : 'NULLABLE', c.dflt_value ?? '—', c.pk ? 'PRIMARY KEY' : '—']) {
           const td = document.createElement('td');
           td.textContent = String(value);
           tr.append(td);
@@ -817,7 +846,7 @@ const html = `<!DOCTYPE html>
       status.innerText = '⚡ Executing query...';
       const t0 = performance.now();
       try {
-        const res = await fetch('/api/query', {
+        const res = await dbFetch('/query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: q })
@@ -876,12 +905,12 @@ const html = `<!DOCTYPE html>
 function json(res, status, data) {
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
   });
   res.end(JSON.stringify(data));
 }
 
-const server = http.createServer((req, res) => {
+export function createDatabaseStudio({ sources = createDatabaseSources() } = {}) {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/db')) {
@@ -889,61 +918,66 @@ const server = http.createServer((req, res) => {
     return res.end(html);
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/sources') {
+    const status = await Promise.all([...sources].map(async ([id, source]) => {
+      try { await source.adapter.ping(); return { id, name: source.name, provider: source.provider, online: true }; }
+      catch { return { id, name: source.name, provider: source.provider, online: false }; }
+    }));
+    return json(res, 200, status);
+  }
+  const source = sources.get(url.searchParams.get('source') || 'ultimate');
+  if (!source) return json(res, 400, { error: 'Unknown database source' });
+
   if (req.method === 'GET' && url.pathname === '/api/tables') {
     try {
-      const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_prisma_%' ORDER BY name`).all();
-      const result = tables.map(t => {
-        const countRow = db.prepare(`SELECT COUNT(*) as count FROM "${t.name}"`).get();
-        return { name: t.name, count: countRow ? countRow.count : 0 };
-      });
-      return json(res, 200, result);
+      return json(res, 200, await source.adapter.tables());
     } catch (e) {
-      return json(res, 500, { error: e.message });
+      return json(res, 503, { error: 'Database unavailable' });
     }
   }
 
   if (req.method === 'GET' && url.pathname.startsWith('/api/table/')) {
-    const tableName = decodeURIComponent(url.pathname.slice('/api/table/'.length));
-    const page = Math.max(1, Number(url.searchParams.get('page') || 1));
-    const limit = Math.min(250, Math.max(1, Number(url.searchParams.get('limit') || 50)));
-    const offset = (page - 1) * limit;
+    let tableName;
+    try { tableName = decodeURIComponent(url.pathname.slice('/api/table/'.length)); }
+    catch { return json(res, 400, { error: 'Invalid table name' }); }
+    const page = Number(url.searchParams.get('page') || 1);
+    const limit = Number(url.searchParams.get('limit') || 50);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1_000_000 || !Number.isSafeInteger(limit) || limit < 1 || limit > 250) return json(res, 400, { error: 'Invalid pagination' });
 
     try {
-      const cols = db.prepare(`PRAGMA table_info("${tableName}")`).all().map(c => c.name);
-      const totalRow = db.prepare(`SELECT COUNT(*) as total FROM "${tableName}"`).get();
-      const rows = db.prepare(`SELECT * FROM "${tableName}" LIMIT ${limit} OFFSET ${offset}`).all();
-      return json(res, 200, { columns: cols, rows, total: totalRow ? totalRow.total : 0, page, limit });
+      return json(res, 200, await source.adapter.rows(tableName, page, limit));
     } catch (e) {
-      return json(res, 500, { error: e.message });
+      return json(res, 400, { error: 'Table unavailable' });
     }
   }
 
   if (req.method === 'GET' && url.pathname.startsWith('/api/schema/')) {
-    const tableName = decodeURIComponent(url.pathname.slice('/api/schema/'.length));
+    let tableName;
+    try { tableName = decodeURIComponent(url.pathname.slice('/api/schema/'.length)); }
+    catch { return json(res, 400, { error: 'Invalid table name' }); }
     try {
-      const schema = db.prepare(`PRAGMA table_info("${tableName}")`).all();
-      return json(res, 200, schema);
+      return json(res, 200, await source.adapter.schema(tableName));
     } catch (e) {
-      return json(res, 500, { error: e.message });
+      return json(res, 400, { error: 'Table unavailable' });
     }
   }
 
   if (req.method === 'POST' && url.pathname === '/api/query') {
     let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
+    let oversized = false;
+    req.on('data', chunk => { if (body.length + chunk.length > 64 * 1024) oversized = true; else body += chunk; });
+    req.on('end', async () => {
+      if (oversized) return json(res, 413, { error: 'Query is too large' });
       try {
         const { query } = JSON.parse(body || '{}');
         if (!query || typeof query !== 'string') return json(res, 400, { error: 'Query string required' });
         const trimmed = query.trim().toUpperCase();
-        if (!trimmed.startsWith('SELECT') && !trimmed.startsWith('PRAGMA') && !trimmed.startsWith('EXPLAIN')) {
-          return json(res, 403, { error: 'Only read-only queries (SELECT, PRAGMA, EXPLAIN) are permitted in Studio.' });
+        if (!/^(SELECT|WITH|PRAGMA|EXPLAIN)\b/.test(trimmed)) {
+          return json(res, 403, { error: 'Only read-only queries are permitted in Studio.' });
         }
-        const rows = db.prepare(query).all();
-        const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-        return json(res, 200, { columns, rows });
+        return json(res, 200, await source.adapter.query(query));
       } catch (e) {
-        return json(res, 400, { error: e.message });
+        return json(res, 400, { error: 'Read-only query could not be completed' });
       }
     });
     return;
@@ -952,7 +986,10 @@ const server = http.createServer((req, res) => {
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not found' }));
 });
+server.on('close', () => { for (const source of sources.values()) source.adapter.close?.(); });
+return server;
+}
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[db-studio] Running at http://localhost:${PORT}`);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  createDatabaseStudio().listen(PORT, '127.0.0.1', () => console.log(`[db-studio] All local databases at http://localhost:${PORT}`));
+}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import NotesView from './Notes';
 
 const fixture = vi.hoisted(() => ({
@@ -31,6 +31,90 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Notes persistence feedback', () => {
+  it('does not resubmit text already acknowledged by the pending autosave', async () => {
+    let acknowledge;
+    fixture.state.notes[0].revision = 1;
+    fixture.state.updateNote.mockReturnValue(new Promise(resolve => { acknowledge = resolve; }));
+    render(<Notes view="editor" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note content' }), { target: { value: 'One edit' } });
+    await waitFor(() => expect(fixture.state.updateNote).toHaveBeenCalledTimes(1), { timeout: 2500 });
+    await act(async () => { acknowledge({ id: 'note-1', revision: 2, updatedAt: '2026-10-06T00:00:00.000Z' }); });
+    fireEvent.click(screen.getByRole('button', { name: 'Save', exact: true }));
+    await screen.findByRole('button', { name: 'Edit', exact: true });
+    expect(fixture.state.updateNote).toHaveBeenCalledTimes(1);
+  });
+
+  it('follows stable links after a rename and shows owned backlinks', async () => {
+    fixture.state.notes[0].content = '# Overview\n\n[[note-2|Original name]]';
+    fixture.state.notes.push({ id: 'note-2', title: 'Renamed target', content: 'Target body', tags: [] });
+    render(<Notes />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    expect(screen.getByRole('navigation', { name: 'Note outline' })).toHaveTextContent('Overview');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Original name', exact: true })); });
+    expect(screen.getByRole('navigation', { name: 'Note backlinks' })).toHaveTextContent('Workspace note');
+    expect(screen.getAllByText('Target body').at(-1)).toBeVisible();
+    fireEvent.click(screen.getByRole('navigation', { name: 'Note backlinks' }).querySelector('button'));
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  });
+
+  it('requires a choice for ambiguous titles and retries linked creation with the same ID', async () => {
+    fixture.state.notes[0].content = '[[Duplicate]] [[Missing]]';
+    fixture.state.notes.push({ id: 'a', title: 'Duplicate', content: 'A body', tags: [] }, { id: 'b', title: 'Duplicate', content: 'B body', tags: [] });
+    fixture.state.addNote.mockRejectedValueOnce(new Error('Response lost')).mockImplementation(note => Promise.resolve(note));
+    render(<Notes />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Duplicate', exact: true })); });
+    expect(screen.getByRole('dialog', { name: 'Resolve note link' })).toHaveTextContent('Choose the intended note.');
+    fireEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Missing', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create linked note' }));
+    await waitFor(() => expect(fixture.toast.error).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Create linked note' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(fixture.state.addNote.mock.calls[0][0].id).toBe(fixture.state.addNote.mock.calls[1][0].id);
+  });
+
+  it('keeps an imported record ID after an ambiguous create failure', async () => {
+    fixture.state.addNote.mockRejectedValueOnce(new Error('Response lost')).mockImplementation(note => Promise.resolve(note));
+    const { container } = render(<Notes />);
+    fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [new File(['# Retry'], 'retry.md')] } });
+    await screen.findByRole('dialog', { name: 'Preview Markdown import' });
+    fireEvent.click(screen.getByRole('button', { name: 'Create new note' }));
+    await waitFor(() => expect(fixture.toast.error).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Create new note' }));
+    await waitFor(() => expect(fixture.state.addNote).toHaveBeenCalledTimes(2));
+    expect(fixture.state.addNote.mock.calls[0][0].id).toBe(fixture.state.addNote.mock.calls[1][0].id);
+  });
+
+  it('shows revision evidence and restores through the versioned port', async () => {
+    const records = { add: fixture.state.addNote, update: fixture.state.updateNote, remove: fixture.state.deleteNote,
+      revisions: vi.fn().mockResolvedValue({ items: [{ revision: 1, title: 'Earlier', content: 'Before', createdAt: '2026-10-01T00:00:00.000Z' }], nextCursor: null }),
+      restore: vi.fn().mockResolvedValue({ id: 'note-1', title: 'Earlier', content: 'Before', tags: [], revision: 3 }) };
+    render(<Notes records={records} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    fireEvent.click(screen.getByRole('button', { name: 'History', exact: true }));
+    await screen.findByRole('button', { name: 'Restore revision 1' });
+    fireEvent.click(screen.getByRole('button', { name: 'Restore revision 1' }));
+    await waitFor(() => expect(records.restore).toHaveBeenCalledWith('note-1', 1));
+    expect(fixture.toast.success).toHaveBeenCalledWith('Restored as a new revision. Earlier history is preserved.');
+  });
+
+  it('advances an acknowledged autosave base without replacing text typed during the request', async () => {
+    let acknowledge;
+    const pending = new Promise(resolve => { acknowledge = resolve; });
+    fixture.state.notes[0].revision = 1;
+    fixture.state.updateNote.mockReturnValueOnce(pending).mockResolvedValue({ id: 'note-1', updatedAt: '2026-10-03T00:00:00.000Z', revision: 3 });
+    render(<Notes />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Workspace note' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note content' }), { target: { value: 'First change' } });
+    await waitFor(() => expect(fixture.state.updateNote).toHaveBeenCalledTimes(1), { timeout: 2500 });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note content' }), { target: { value: 'Newer change' } });
+    acknowledge({ id: 'note-1', updatedAt: '2026-10-02T00:00:00.000Z', revision: 2 });
+    await waitFor(() => expect(fixture.state.updateNote).toHaveBeenCalledTimes(2), { timeout: 2500 });
+    expect(fixture.state.updateNote.mock.calls[1][2]).toEqual({ expectedUpdatedAt: '2026-10-02T00:00:00.000Z', expectedRevision: 2 });
+    expect(screen.getByRole('textbox', { name: 'Note content' })).toHaveValue('Newer change');
+  });
   it('keeps Mind journal records out of Workspace search and tag facets', () => {
     render(<Notes />);
     expect(screen.getByRole('button', { name: 'Open note: Workspace note' })).toBeVisible();

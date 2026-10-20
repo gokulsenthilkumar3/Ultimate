@@ -456,6 +456,7 @@ export default function Documents() {
                           {file.type === 'Private' ? <Lock size={8} /> : <Globe size={8} />}
                           {file.type.toUpperCase()}
                         </span>
+                        {file.available && <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>{file.encryptedAtRest ? 'Encrypted file bytes' : 'Storage encryption not enabled'}</small>}
                       </td>
                       <td style={{ padding: '0.85rem 1.5rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>

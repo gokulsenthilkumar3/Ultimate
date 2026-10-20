@@ -6,6 +6,7 @@ import Modal from './ui/Modal';
 import Button from './ui/Button';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { noteStructure, noteBacklinks, resolveNoteReference, stableNoteLink, remarkNoteKnowledge } from '../domains/workspace/domain/noteKnowledge';
 import '../styles/notes.css';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280'];
@@ -50,12 +51,15 @@ function NoteCard({ note, onEdit, onDelete, onToggleStar, onTogglePin, onCopy, i
   );
 }
 
-export default function Notes({ view, onViewChange, draftStore, fileTransfer }) {
+export default function Notes({ view, onViewChange, draftStore, fileTransfer, records }) {
   const toast = useToast();
   const notes      = useStore(s => s.notes ?? EMPTY_NOTES);
-  const addNote    = useStore(s => s.addNote);
-  const updateNote = useStore(s => s.updateNote);
-  const deleteNote = useStore(s => s.deleteNote);
+  const legacyAdd = useStore(s => s.addNote);
+  const legacyUpdate = useStore(s => s.updateNote);
+  const legacyDelete = useStore(s => s.deleteNote);
+  const addNote = records?.add || legacyAdd;
+  const updateNote = records?.update || legacyUpdate;
+  const deleteNote = records?.remove || legacyDelete;
   const ownerId = useStore(s => s.user?.id);
 
   const [activeId,  setActiveId]  = useState(null);
@@ -82,15 +86,40 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
   const saveAttempt = useRef(0);
   const savedDraft = useRef(null);
   const baseVersion = useRef(null);
+  const baseRevision = useRef(null);
+  const editingIdentity = useRef(null);
+  editingIdentity.current = activeId;
+  const pendingSave = useRef(null);
+  const pendingCreate = useRef(null);
+  const recoveredCopies = useRef(new Map());
+  const [baseEpoch, setBaseEpoch] = useState(0);
+  const [history, setHistory] = useState(null);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [linkTarget, setLinkTarget] = useState(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const linkedCreates = useRef(new Map());
   const textRef = useRef(null);
+  const headingRef = useRef(null);
+  const navigationFocus = useRef(false);
+
+  useEffect(() => {
+    if (!navigationFocus.current) return;
+    navigationFocus.current = false;
+    (editMode ? textRef.current : headingRef.current)?.focus();
+  }, [activeId, editMode]);
 
   // Mind journal entries share the legacy Note table, but never belong in the
   // Workspace knowledge list or its search and tag facets.
-  const workspaceNotes = useMemo(() => notes.filter(n => n.source !== 'mind-journal'), [notes]);
+  const workspaceNotes = useMemo(() => notes.filter(n => n.source !== 'mind-journal' && n.kind !== 'mind-journal' && !n.deletedAt), [notes]);
   const activeNote = useMemo(() => workspaceNotes.find(n => n.id === activeId), [workspaceNotes, activeId]);
+  const structure = useMemo(() => noteStructure(editMode ? draft.content : activeNote?.content || ''), [editMode, draft.content, activeNote?.content]);
+  const backlinks = useMemo(() => activeNote ? noteBacklinks(workspaceNotes, activeNote) : [], [workspaceNotes, activeNote]);
+  const linkMatches = useMemo(() => linkTarget ? resolveNoteReference(workspaceNotes, linkTarget) : [], [workspaceNotes, linkTarget]);
   const visibleRecoveries = recoveries.filter(record => !(record.data.noteId === activeId && editMode) && !notes.some(note => note.id === record.data.noteId && note.source === 'mind-journal'));
   const recoveryServerNote = recoveryReview && workspaceNotes.find(note => note.id === recoveryReview.data.noteId);
-  const canRecoverExisting = recoveryServerNote?.updatedAt && recoveryServerNote.updatedAt === recoveryReview?.data.baseUpdatedAt;
+  const canRecoverExisting = recoveryServerNote?.updatedAt && recoveryServerNote.updatedAt === recoveryReview?.data.baseUpdatedAt
+    && (!recoveryReview.data.baseRevision || recoveryServerNote.revision === recoveryReview.data.baseRevision);
 
   useEffect(() => {
     let alive = true;
@@ -110,7 +139,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
   useEffect(() => {
     if (!ownerId || !localDraftReady || !activeId || !editMode || savedDraft.current?.key === JSON.stringify(draft)) return undefined;
     let alive = true;
-    const data = { ...draft, noteId: activeId, baseUpdatedAt: baseVersion.current };
+    const data = { ...draft, noteId: activeId, baseUpdatedAt: baseVersion.current, ...(baseRevision.current ? { baseRevision: baseRevision.current } : {}) };
     draftStore.save(ownerId, data)
       .then(() => {
         if (!alive) return;
@@ -119,7 +148,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
       })
       .catch(() => { if (alive) setLocalDraftStatus('The local draft could not be saved. Export your text before leaving this page.'); });
     return () => { alive = false; };
-  }, [ownerId, localDraftReady, activeId, draft, editMode, draftStore]);
+  }, [ownerId, localDraftReady, activeId, draft, editMode, draftStore, baseEpoch]);
 
   useEffect(() => {
     if (!editMode || saveStatus === 'saved') return undefined;
@@ -150,8 +179,15 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
     autoSaveTimer.current = setTimeout(() => {
       if (typeof updateNote === 'function') {
         setSaveStatus('saving');
-        Promise.resolve(updateNote(activeId, { ...draft, title: draft.title.trim() || 'Untitled Note' }, baseVersion.current ? { expectedUpdatedAt: baseVersion.current } : undefined))
+        const readVersion = baseVersion.current;
+        const readRevision = baseRevision.current;
+        pendingSave.current = Promise.resolve(updateNote(activeId, { ...draft, title: draft.title.trim() || 'Untitled Note' }, { ...(readVersion ? { expectedUpdatedAt: readVersion } : {}), ...(readRevision ? { expectedRevision: readRevision } : {}) }))
           .then(saved => {
+            if (editingIdentity.current === activeId && baseVersion.current === readVersion) {
+              baseVersion.current = saved?.updatedAt || baseVersion.current;
+              baseRevision.current = saved?.revision || baseRevision.current;
+              setBaseEpoch(value => value + 1);
+            }
             if (saveAttempt.current === attempt) {
               baseVersion.current = saved?.updatedAt || baseVersion.current;
               savedDraft.current = { id: activeId, key: draftKey };
@@ -202,7 +238,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
     if (creating) return;
     if (editMode && activeId && saveStatus !== 'saved' && !await saveNote()) return;
     setCreating(true);
-    const note = {
+    const note = pendingCreate.current || {
       id: crypto.randomUUID(),
       title: 'Untitled Note',
       content: '',
@@ -213,14 +249,17 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    pendingCreate.current = note;
     try {
       if (typeof addNote !== 'function') throw new Error('Notes are unavailable.');
       const saved = await addNote(note);
+      pendingCreate.current = null;
       const initialDraft = { title: saved.title || note.title, content: saved.content || '', tags: saved.tags || [], color: saved.color || COLORS[0] };
       saveAttempt.current++;
       setActiveId(saved.id);
       savedDraft.current = { id: saved.id, key: JSON.stringify(initialDraft) };
       baseVersion.current = saved.updatedAt || null;
+      baseRevision.current = saved.revision || null;
       setRecoveryPaused(false);
       setDraft(initialDraft);
       setSaveStatus('saved');
@@ -240,6 +279,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
     setActiveId(note.id);
     savedDraft.current = { id: note.id, key: JSON.stringify(initialDraft) };
     baseVersion.current = note.updatedAt || null;
+    baseRevision.current = note.revision || null;
     setRecoveryPaused(false);
     setDraft(initialDraft);
     setEditMode(edit);
@@ -247,14 +287,16 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
     setSaveStatus('saved');
   };
 
-  const openNote = async (note, edit = selectedView === 'editor') => {
+  const openNote = async (note, edit = selectedView === 'editor', focus = false) => {
     if (activeId === note.id) {
       if (edit) { setEditMode(true); setViewMode('edit'); }
+      if (focus) (editMode ? textRef.current : headingRef.current)?.focus();
       return true;
     }
     if (editMode && activeId && activeId !== note.id && saveStatus !== 'saved') {
       if (!await saveNote()) return false;
     }
+    navigationFocus.current = focus;
     selectNote(note, edit);
     return true;
   };
@@ -267,11 +309,21 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
     const updatedDraft = { ...draft, title };
     setSaveStatus('saving');
     try {
+      await pendingSave.current;
+      if (saveAttempt.current !== attempt) return false;
       if (typeof updateNote !== 'function') throw new Error('Notes are unavailable.');
-      const saved = await updateNote(activeId, updatedDraft, baseVersion.current ? { expectedUpdatedAt: baseVersion.current } : undefined);
+      const readVersion = baseVersion.current;
+      const alreadySaved = savedDraft.current?.id === activeId && savedDraft.current.key === JSON.stringify(updatedDraft);
+      const saved = alreadySaved ? null : await updateNote(activeId, updatedDraft, { ...(readVersion ? { expectedUpdatedAt: readVersion } : {}), ...(baseRevision.current ? { expectedRevision: baseRevision.current } : {}) });
+      if (editingIdentity.current === activeId && baseVersion.current === readVersion) {
+        baseVersion.current = saved?.updatedAt || baseVersion.current;
+        baseRevision.current = saved?.revision || baseRevision.current;
+        setBaseEpoch(value => value + 1);
+      }
       if (saveAttempt.current !== attempt) return false;
       savedDraft.current = { id: activeId, key: JSON.stringify(updatedDraft) };
       baseVersion.current = saved?.updatedAt || baseVersion.current;
+      baseRevision.current = saved?.revision || baseRevision.current;
       setRecoveryPaused(false);
       setDraft(updatedDraft);
       setSaveStatus('saved');
@@ -294,7 +346,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
       if (typeof deleteNote !== 'function') throw new Error('Notes are unavailable.');
       await deleteNote(id);
       if (activeId === id) { clearTimeout(autoSaveTimer.current); saveAttempt.current++; setActiveId(null); setEditMode(false); }
-      toast.info('Note deleted', 5000, { action: { label: 'Undo', onClick: () => { if (n && typeof addNote === 'function') addNote(n).catch(() => toast.error('Note could not be restored.')); } } });
+      toast.info('Note deleted', 5000, { action: { label: 'Undo', onClick: () => { if (!n) return; const restore = records?.restore ? records.restore(id, n.revision) : addNote(n); restore.catch(() => toast.error('Note could not be restored.')); } } });
     } catch { toast.error('Note could not be deleted. Try again.'); }
   };
 
@@ -324,7 +376,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    try { setImportPreview({ ...await fileTransfer.read({ name: file.name, size: file.size, readText: () => file.text() }), filename: file.name }); }
+    try { setImportPreview({ ...await fileTransfer.read({ name: file.name, size: file.size, readText: () => file.text() }), filename: file.name, id: crypto.randomUUID() }); }
     catch (error) { toast.error(error.message || 'Markdown file could not be read.'); }
   };
 
@@ -334,7 +386,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
     setImporting(true);
     try {
       if (typeof addNote !== 'function') throw new Error('Notes are unavailable.');
-      const saved = await addNote({ id: crypto.randomUUID(), title: importPreview.title, content: importPreview.content,
+      const saved = await addNote({ id: importPreview.id, title: importPreview.title, content: importPreview.content,
         tags: [], color: COLORS[0], pinned: false, starred: false });
       if (!saved?.id) throw new Error('The server did not acknowledge the imported note.');
       selectNote(saved, true);
@@ -349,6 +401,40 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
       fileTransfer.download(editMode ? draft : activeNote);
       toast.success('Downloaded the current note text.');
     } catch { toast.error('The note could not be downloaded. Try again.'); }
+  };
+
+  const followReference = async target => {
+    const matches = resolveNoteReference(workspaceNotes, target);
+    if (matches.length === 1) await openNote(matches[0], undefined, true);
+    else setLinkTarget(target);
+  };
+  const createLinkedNote = async () => {
+    if (!linkTarget || linkBusy) return;
+    if (editMode && activeId && savedDraft.current?.key !== JSON.stringify(draft) && !await saveNote()) return;
+    setLinkBusy(true);
+    try {
+      const id = linkedCreates.current.get(linkTarget) || crypto.randomUUID();
+      linkedCreates.current.set(linkTarget, id);
+      const saved = await addNote({ id, title: linkTarget, content: '', tags: [], color: COLORS[0], pinned: false, starred: false });
+      if (!saved?.id) throw new Error('The server did not acknowledge the linked note.');
+      selectNote(saved, true); setLinkTarget(null);
+      toast.success('Linked note created.');
+    } catch { toast.error('The linked note could not be created. Try again.'); }
+    finally { setLinkBusy(false); }
+  };
+  const jumpHeading = heading => {
+    if (editMode && viewMode === 'edit') {
+      textRef.current?.focus(); textRef.current?.setSelectionRange(heading.offset, heading.offset);
+    } else {
+      const element = document.getElementById(heading.id);
+      if (element) { element.tabIndex = -1; element.focus(); element.scrollIntoView({ block: 'start' }); }
+    }
+  };
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(stableNoteLink(activeNote));
+      toast.success('Copied a stable note link. It keeps working after a rename.');
+    } catch { toast.error('The note link could not be copied.'); }
   };
 
   const restoreExistingDraft = () => {
@@ -369,7 +455,10 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
     setRecoveryBusy(true);
     try {
       if (typeof addNote !== 'function') throw new Error('Notes are unavailable.');
-      const saved = await addNote({ id: crypto.randomUUID(), title: `${recovered.title || 'Untitled Note'} (recovered)`,
+      const key = JSON.stringify(recovered);
+      const id = recoveredCopies.current.get(key) || crypto.randomUUID();
+      recoveredCopies.current.set(key, id);
+      const saved = await addNote({ id, title: `${recovered.title || 'Untitled Note'} (recovered)`,
         content: recovered.content, tags: recovered.tags, color: recovered.color, pinned: false, starred: false });
       if (!saved?.id) throw new Error('The server did not acknowledge the recovered note.');
       selectNote(saved, true);
@@ -404,8 +493,53 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
 
   const wordCount = (draft.content || '').split(/\s+/).filter(Boolean).length;
 
+  const loadHistory = async (cursor = 0) => {
+    if (!records?.revisions || !activeId || historyBusy) return;
+    const id = activeId;
+    setHistory(current => cursor ? current : { id, items: [], nextCursor: null });
+    setHistoryBusy(true); setHistoryError('');
+    try {
+      const page = await records.revisions(id, cursor);
+      setHistory(current => ({ id, items: cursor ? [...(current?.items || []), ...page.items] : page.items, nextCursor: page.nextCursor }));
+    } catch { setHistoryError('Version history could not be loaded. Retry when the server is available.'); }
+    finally { setHistoryBusy(false); }
+  };
+  const restoreRevision = async revision => {
+    if (!history || historyBusy) return;
+    if (editMode && savedDraft.current?.key !== JSON.stringify(draft)) { toast.warning('Save or export the current editor text before restoring a version.'); return; }
+    setHistoryBusy(true); setHistoryError('');
+    try {
+      const saved = await records.restore(history.id, revision);
+      selectNote(saved, false); setHistory(null);
+      toast.success('Restored as a new revision. Earlier history is preserved.');
+    } catch { setHistoryError('The version could not be restored. Review the current note and retry.'); }
+    finally { setHistoryBusy(false); }
+  };
+
   return (
     <div className="notes-container">
+      <Modal open={Boolean(linkTarget)} title="Resolve note link" onClose={() => { if (!linkBusy) setLinkTarget(null); }}>
+        <p>{linkMatches.length ? `More than one note is titled “${linkTarget}”. Choose the intended note.` : `No Workspace note matches “${linkTarget}”.`}</p>
+        <ul className="notes-link-options">
+          {linkMatches.map(note => <li key={note.id}><Button variant="secondary" onClick={async () => { if (await openNote(note)) setLinkTarget(null); }}>{note.title} · {note.id}</Button></li>)}
+        </ul>
+        {!linkMatches.length && <Button loading={linkBusy} loadingLabel="Creating…" onClick={createLinkedNote}>Create linked note</Button>}
+      </Modal>
+      <Modal open={Boolean(history)} title="Note history" onClose={() => { if (!historyBusy) setHistory(null); }}>
+        <p>Restore creates a new revision and keeps the earlier versions.</p>
+        {historyBusy && <p role="status">Loading version history…</p>}
+        {historyError && <p role="alert">{historyError}</p>}
+        {historyError && <Button variant="secondary" disabled={historyBusy} onClick={() => loadHistory()}>Retry history</Button>}
+        <ul className="notes-history-list" aria-label="Note revisions">
+          {history?.items.map(item => <li key={item.revision}>
+            <h3>Revision {item.revision}: {item.title || 'Untitled Note'}</h3>
+            <p>{new Date(item.createdAt).toLocaleString()} {item.deletedAt ? '· Deleted' : ''}</p>
+            <pre className="notes-import-preview">{item.content}</pre>
+            <Button variant="secondary" disabled={historyBusy} onClick={() => restoreRevision(item.revision)}>Restore revision {item.revision}</Button>
+          </li>)}
+        </ul>
+        {history?.nextCursor && <Button variant="secondary" disabled={historyBusy} onClick={() => loadHistory(history.nextCursor)}>More revisions</Button>}
+      </Modal>
       <Modal open={Boolean(recoveryReview)} title="Review unfinished note" onClose={() => { if (!recoveryBusy) setRecoveryReview(null); }} actions={<>
         <Button variant="secondary" disabled={recoveryBusy} onClick={() => setRecoveryReview(null)}>Keep for later</Button>
         <Button variant="secondary" disabled={recoveryBusy} onClick={() => {
@@ -542,6 +676,8 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
                 )}
               </div>
               <div className="notes-toolbar-right">
+                <Button variant="secondary" onClick={copyLink}>Copy link</Button>
+                {records?.revisions && <Button variant="secondary" onClick={() => loadHistory()}>History</Button>}
                 <Button variant="secondary" onClick={exportNote} icon={<Download size={16} />}>Export Markdown</Button>
                 {viewMode === 'edit' && (
                   <div className="notes-autosave-indicator">
@@ -565,7 +701,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
                   placeholder="Note title…"
                   className="notes-title-input" />
               ) : (
-                <h2 className="notes-title-display">{activeNote?.title || draft.title || 'Untitled'}</h2>
+                <h2 ref={headingRef} tabIndex={-1} className="notes-title-display">{activeNote?.title || draft.title || 'Untitled'}</h2>
               )}
             </div>
 
@@ -596,6 +732,10 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
             )}
 
             {/* Content */}
+            {(structure.headings.length > 0 || backlinks.length > 0) && <div className="notes-knowledge-panel">
+              {structure.headings.length > 0 && <nav aria-label="Note outline"><h3>Outline</h3><ul>{structure.headings.map(heading => <li key={heading.id}><button type="button" onClick={() => jumpHeading(heading)} style={{ paddingInlineStart: `${8 + (heading.depth - 1) * 12}px` }}>{heading.text}</button></li>)}</ul></nav>}
+              {backlinks.length > 0 && <nav aria-label="Note backlinks"><h3>Linked from</h3><ul>{backlinks.map(note => <li key={note.id}><button type="button" onClick={() => openNote(note, undefined, true)}>{note.title || 'Untitled Note'}</button></li>)}</ul></nav>}
+            </div>}
             <div className="notes-content-body">
               {editMode && viewMode === 'edit' ? (
                 <textarea
@@ -609,9 +749,15 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer }) 
               ) : (
                 <div className="notes-markdown-preview">
                   <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
+                    remarkPlugins={[remarkGfm, remarkNoteKnowledge]}
                     components={{
-                      a: props => <a href={props.href} title={props.title} target="_blank" rel="noreferrer">{props.children}</a>,
+                      a: props => {
+                        if (props.href?.startsWith('#ultimate-note=')) {
+                          let target; try { target = decodeURIComponent(props.href.slice('#ultimate-note='.length)); } catch { return <span>{props.children}</span>; }
+                          return <button type="button" className="notes-wiki-link" onClick={() => followReference(target)}>{props.children}</button>;
+                        }
+                        return <a href={props.href} title={props.title} target="_blank" rel="noreferrer">{props.children}</a>;
+                      },
                       blockquote: props => <blockquote>{props.children}</blockquote>,
                     }}
                   >

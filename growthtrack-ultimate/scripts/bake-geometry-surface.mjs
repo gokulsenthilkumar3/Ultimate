@@ -31,7 +31,20 @@ const NORMAL_NAME = 'SkinNormal_GeometryBaked';
 const PACKED_NAME = 'SkinAO_Roughness_GeometryBaked';
 const ALBEDO_NAMES = ['SkinAlbedo_YoungMale', 'SkinAlbedo_Light', 'SkinAlbedo_Deep'];
 const AO_STRENGTH = 0.62;
-const DEFAULT_RAY_COUNT = 12;
+// Eye-socket and mouth-cavity vertices sit behind the eyes and teeth and are
+// almost fully occluded. Interpolated across the triangles that reach the
+// visible eye and mouth corners, their darkness painted grey bands into the
+// skin albedo. Only occlusion above this floor is burned into the colour; at
+// 0.62 the ear canals, nostrils and mouth corners still left grey blobs that
+// read as bruises, so colour now takes at most ~9% (lighting does the rest).
+const ALBEDO_AO_FLOOR = 0.86;
+// 12 rays left per-vertex noise that interpolated into blotches ("bruises")
+// on the cheeks, neck and torso; 64 plus two smoothing passes keeps it even.
+const DEFAULT_RAY_COUNT = 64;
+const AO_SMOOTHING_PASSES = 2;
+// Contact occlusion only: rays reach 4.5% of the figure's height (~8 cm). The
+// earlier 22% (~38 cm) let shoulders darken cheeks and thighs darken each
+// other, which is shadowing, not ambient occlusion, and belongs to lighting.
 const EPSILON = 0.0018;
 const LEGACY_NORMAL_NAME = 'SkinNormal_ProceduralMicrodetail';
 const LEGACY_PACKED_NAME = 'SkinAO_Roughness';
@@ -314,7 +327,7 @@ function bakeVertexAo(body, bvh, rayCount) {
   const bounds = new THREE.Box3();
   for (let index = 0; index < body.vertexCount; index += 1) bounds.expandByPoint(new THREE.Vector3(...getVec(body.positions, index, 3)));
   const size = bounds.getSize(new THREE.Vector3());
-  const rayLength = Math.max(0.12, Math.max(size.x, size.y, size.z) * 0.22);
+  const rayLength = Math.max(0.04, Math.max(size.x, size.y, size.z) * 0.045);
   const origin = new THREE.Vector3();
   const direction = new THREE.Vector3();
   const ray = new THREE.Ray();
@@ -344,7 +357,28 @@ function bakeVertexAo(body, bvh, rayCount) {
     ao[vertex] = clamp01(1 - (hits / rayCount) * 0.92);
     if ((vertex + 1) % 2000 === 0) console.log(`  AO rays: ${vertex + 1}/${body.vertexCount}`);
   }
-  return ao;
+  return smoothVertexAo(body, ao, AO_SMOOTHING_PASSES);
+}
+
+/** Average each vertex with its mesh neighbours (half weight each) to remove
+    sampling noise without moving occlusion away from where it belongs. */
+function smoothVertexAo(body, ao, passes) {
+  const neighbours = Array.from({ length: body.vertexCount }, () => new Set());
+  for (let index = 0; index < body.indices.length; index += 3) {
+    const triangle = [body.indices[index], body.indices[index + 1], body.indices[index + 2]];
+    for (const a of triangle) for (const b of triangle) if (a !== b) neighbours[a].add(b);
+  }
+  let current = ao;
+  for (let pass = 0; pass < passes; pass += 1) {
+    const next = new Float32Array(current.length);
+    for (let vertex = 0; vertex < current.length; vertex += 1) {
+      let sum = 0;
+      for (const other of neighbours[vertex]) sum += current[other];
+      next[vertex] = neighbours[vertex].size ? 0.5 * current[vertex] + 0.5 * (sum / neighbours[vertex].size) : current[vertex];
+    }
+    current = next;
+  }
+  return current;
 }
 
 function rasterizeSurface(body, vertexAo, resolution) {
@@ -495,7 +529,7 @@ function bakeAlbedo(sourcePayload, oldPackedImage, bakedAoImage) {
       const oldAo = sampleChannel(oldPackedImage, (x + 0.5) / source.width, 1 - (y + 0.5) / source.height, 0);
       const newAo = sampleChannel(bakedAoImage, (x + 0.5) / source.width, 1 - (y + 0.5) / source.height, 0);
       const oldOcclusion = Math.max(0.22, 1 - 0.65 * (1 - oldAo));
-      const newOcclusion = 1 - AO_STRENGTH * (1 - newAo);
+      const newOcclusion = 1 - AO_STRENGTH * (1 - Math.max(newAo, ALBEDO_AO_FLOOR));
       for (let channel = 0; channel < 3; channel += 1) {
         const raw = source.pixels[sourceIndex + Math.min(channel, source.channels - 1)] / 255;
         const srgb = clamp01(raw);

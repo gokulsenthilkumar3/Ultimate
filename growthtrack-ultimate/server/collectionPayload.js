@@ -25,7 +25,7 @@ const FIELDS = {
   goal_progress_logs: ['goalId', 'value', 'note', 'date'],
 };
 const WITHOUT_DATA = new Set(['finance', 'budgets', 'workout_sessions', 'progress_photos', 'goal_progress_logs']);
-const PROTECTED = new Set(['id', 'userId', 'user', 'createdBy', 'updatedBy', 'createdAt', 'updatedAt', 'expectedUpdatedAt', 'created_at', '__proto__', 'prototype', 'constructor', 'logs', 'exercises', 'progressLogs']);
+const PROTECTED = new Set(['id', 'userId', 'user', 'createdBy', 'updatedBy', 'createdAt', 'updatedAt', 'expectedUpdatedAt', 'expectedRevision', 'mutationId', 'revision', 'kind', 'deletedAt', 'created_at', '__proto__', 'prototype', 'constructor', 'logs', 'exercises', 'progressLogs']);
 const NUMBERS = new Set(['amount', 'limit_amount', 'duration_minutes', 'volume', 'duration', 'hours', 'streak', 'cost', 'active', 'value']);
 
 function invalid(message) {

@@ -1,5 +1,6 @@
 import { resolveBodyMetrics } from '../../lib/bodyMetricFallbacks';
 import { constrainMorphWeights } from './morphMath';
+import { anatomyMorphWeights } from './anatomyCalibration';
 
 /**
  * Pure metric-to-render mapping used by both the store and the 3D layer.
@@ -57,8 +58,6 @@ export const MORPH_RANGES = Object.freeze({
   chin_projection: { min: 0, max: 1 },
   lip_fullness: { min: 0, max: 1 },
   eye_size: { min: 0, max: 1 },
-  d_size: { min: 3, max: 9 },
-  d_girth: { min: 3, max: 7 },
   ankle: { min: 18, max: 28 },
 });
 
@@ -102,11 +101,16 @@ const firstMetric = (...values) => values.find((value) => (
  * measurements remain absolute while height changes the complete stature.
  */
 export function computeHeightScale(metrics = {}, inheritedMetrics = {}) {
-  const resolved = resolveBodyMetrics(metrics, inheritedMetrics).metrics;
-  const height = Number(resolved.height);
+  return heightScaleFor(resolveBodyMetrics(metrics, inheritedMetrics).metrics.height);
+}
+
+function heightScaleFor(heightCm) {
+  const height = Number(heightCm);
   const safeHeight = Number.isFinite(height) ? height : REFERENCE_HEIGHT_CM;
   return Math.max(0.8, Math.min(1.2, safeHeight / REFERENCE_HEIGHT_CM));
 }
+
+const pickAnatomyWeights = ({ d_length, d_girth }) => ({ d_length, d_girth });
 
 export function computeMorphWeights(metrics = {}, inheritedMetrics = {}) {
   const { metrics: renderMetrics } = resolveBodyMetrics(metrics, inheritedMetrics);
@@ -194,10 +198,8 @@ export function computeMorphWeights(metrics = {}, inheritedMetrics = {}) {
     ankle_taper: 1 - normalise(renderMetrics.ankle, 'ankle') * 0.3,
     hand_splay: renderMetrics.handSplay == null ? 0.02 : normalise(renderMetrics.handSplay, 'handSplay'),
     foot_arch: normalise(renderMetrics.footLength ?? 27, 'footLength') * 0.2,
-    d_length: renderMetrics.d_length != null
-      ? normalise(renderMetrics.d_length, 'd_size')
-      : normalise(renderMetrics.d_size, 'd_size'),
-    d_girth: normalise(renderMetrics.d_girth, 'd_girth'),
+    // Centimetre inputs mapped through the asset's measured geometry.
+    ...pickAnatomyWeights(anatomyMorphWeights(renderMetrics, { heightScale: heightScaleFor(renderMetrics.height) })),
     vascularity_intensity: renderMetrics.bodyFat < 15 ? Math.max(0, (15 - renderMetrics.bodyFat) / 10) : 0,
     fitzpatrick_index: SKIN_TONES.indexOf(resolveSkinTone(renderMetrics)),
   });

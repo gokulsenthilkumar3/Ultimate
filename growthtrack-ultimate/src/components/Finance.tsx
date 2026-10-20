@@ -103,6 +103,7 @@ export default function Finance({ initialTab }: FinanceProps) {
   return <div className="module-page finance-container finance-workspace" data-finance-module={activeTab}>
     <header className="finance-page-header">
       <p className="finance-page-kicker">Finance</p>
+      <h1>{activeTab === 'Overview' ? 'Your money, in focus' : activeTab === 'Analytics' ? 'Finance analytics' : activeTab === 'Trends' ? 'Finance trends' : activeTab === 'Sync' ? 'Finance sync' : activeTab}</h1>
       <p className="finance-page-subtitle">{FINANCE_COPY[activeTab]}</p>
     </header>
     {invalidRecords > 0 && <p role="alert" className="finance-error">{invalidRecords} finance records have invalid fields and are excluded from calculations. Review the source records before relying on totals.</p>}

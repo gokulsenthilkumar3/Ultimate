@@ -71,7 +71,7 @@ export default function AuthPage() {
     }
 
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
@@ -105,7 +105,7 @@ export default function AuthPage() {
   };
 
   const handleOAuth = (provider: string) => {
-    signIn(provider, { callbackUrl: '/dashboard' });
+    signIn(provider, { callbackUrl: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/dashboard` });
   };
 
   return (

@@ -43,7 +43,7 @@ export function createFileHandlers({ prisma, storage, limits = FILE_LIMITS, audi
     const row = await findOwned(req);
     const metadata = fileMetadata(row);
     if (!fileToClient(row).available) throw domainError(410, 'FILE_UNAVAILABLE', 'This legacy record has no stored file bytes. Upload the original file.');
-    const bytes = await storage.read(metadata.key, limits.maxFileBytes);
+    const bytes = await storage.read(metadata.key, limits.maxFileBytes, metadata.encryption);
     if (bytes.length !== metadata.bytes || crypto.createHash('sha256').update(bytes).digest('hex') !== metadata.sha256) throw domainError(410, 'FILE_UNAVAILABLE', 'Stored file bytes could not be verified.');
     return { row, bytes };
   };
@@ -68,7 +68,8 @@ export function createFileHandlers({ prisma, storage, limits = FILE_LIMITS, audi
       const name = safeFilename(req.file.originalname);
       const key = crypto.randomBytes(32).toString('hex');
       const metadata = { key, bytes: req.file.buffer.length, ...detectPreview(req.file.buffer, name), sha256: crypto.createHash('sha256').update(req.file.buffer).digest('hex') };
-      await storage.put(key, req.file.buffer);
+      const encryption = await storage.put(key, req.file.buffer);
+      if (encryption) metadata.encryption = encryption;
       let row;
       try {
         row = await transactionWithRetry(prisma, async tx => {

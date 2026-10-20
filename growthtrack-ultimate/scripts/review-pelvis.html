@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><title>Adult model · neutral pelvis study</title>
+<style>body{margin:0;background:#e8e7e3}canvas{display:block;width:800px;height:900px}</style></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { createPhysicalSkinMaterial } from '../src/components/body3d/physicalSkinMaterial.js';
+import { applyAnatomySurface } from '../src/components/morphEngine/anatomySurface.js';
+import { anatomyMorphWeights } from '../src/components/morphEngine/anatomyCalibration.js';
+import { createMorphNormalUpdater } from '../src/components/morphEngine/deformedGeometryNormals.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(800, 900); renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15; document.body.append(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#e8e7e3');
+scene.add(new THREE.HemisphereLight('#ffffff', '#877f77', 1.3));
+for (const [position, intensity] of [[[1.3, 1.7, 2.3], 3.1], [[-1.8, .8, 1], 1.8], [[0, 1, -2], 2.1]]) {
+  const light = new THREE.DirectionalLight('#fff8f2', intensity); light.position.fromArray(position); scene.add(light);
+}
+const camera = new THREE.PerspectiveCamera(28, 800 / 900, .01, 30);
+const query = new URLSearchParams(location.search);
+const asset = query.get('asset') || '/assets/models/humanoid-base.glb';
+const gltf = await new GLTFLoader().loadAsync(asset);
+scene.add(gltf.scene); gltf.scene.updateMatrixWorld(true);
+let body, anatomy;
+const fit = anatomyMorphWeights({ anatomyLengthCm: 9.16, anatomyGirthCm: 9.31 });
+gltf.scene.traverse(mesh => {
+  if (!mesh.isMesh) return;
+  if (/privateanatomy/i.test(mesh.name)) {
+    anatomy = mesh; mesh.visible = true;
+    mesh.material = applyAnatomySurface(createPhysicalSkinMaterial(2));
+    for (const [name, weight] of Object.entries(fit)) {
+      const index = mesh.morphTargetDictionary?.[name]; if (index != null) mesh.morphTargetInfluences[index] = weight;
+    }
+  } else if (mesh.name === 'Body' || /growthtrackbody/i.test(mesh.name)) {
+    body = mesh; mesh.material = createPhysicalSkinMaterial(2, mesh.material);
+  }
+});
+if (!body || !anatomy) throw new Error('Pelvis review requires the body and external anatomy meshes.');
+const updateNormals = createMorphNormalUpdater(anatomy);
+const box = new THREE.Box3().setFromBufferAttribute(body.geometry.attributes.position);
+const center = box.getCenter(new THREE.Vector3()).applyMatrix4(body.matrixWorld);
+const height = box.max.y - box.min.y;
+const focus = new THREE.Vector3(center.x, box.min.y + height * .435, center.z);
+const directions = { front: [0, 0, 1], side: [1, 0, .08], back: [0, 0, -1], oblique: [.65, .05, 1] };
+const render = () => { updateNormals?.(); gltf.scene.updateMatrixWorld(true); renderer.render(scene, camera); };
+window.pelvisReview = {
+  ready: true,
+  setView(view) {
+    camera.position.copy(focus).add(new THREE.Vector3(...directions[view]).normalize().multiplyScalar(height * .81));
+    camera.lookAt(focus); camera.updateProjectionMatrix(); render();
+  },
+  setMorph(name, weight) {
+    gltf.scene.traverse(mesh => { const index = mesh.morphTargetDictionary?.[name]; if (index != null) mesh.morphTargetInfluences[index] = weight; }); render();
+  },
+  inspect() { return { bodyVertices: body.geometry.attributes.position.count, anatomyVertices: anatomy.geometry.attributes.position.count, bumpScale: anatomy.material.bumpScale }; },
+};
+window.pelvisReview.setView('front');
+</script></body></html>

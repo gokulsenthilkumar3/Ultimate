@@ -14,6 +14,9 @@ import { create } from "zustand";
 import { subscribeWithSelector, devtools } from "zustand/middleware";
 import { buildMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
 import { DEFAULT_AVATAR_WORKSPACE, sanitizeAvatarWorkspace, workspaceToRendererMode } from "../lib/avatarWorkspace";
+import { AVATAR_EXPOSURE } from '../lib/avatarPresentation';
+import { createAnatomyCustomization } from '../lib/anatomyCustomization';
+import { sanitizeWardrobePreferences } from '../lib/wardrobePreferences';
 
 export { computeMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
 
@@ -127,7 +130,7 @@ const sanitizeCinematicState = (value = {}) => {
   const sceneEnvironment = ["studio", "outdoor", "night"].includes(merged.sceneEnvironment)
     ? merged.sceneEnvironment
     : CINEMATIC_DEFAULTS.sceneEnvironment;
-  const exposure = Math.max(0.72, Math.min(1.35, Number(merged.exposure) || CINEMATIC_DEFAULTS.exposure));
+  const exposure = Math.max(AVATAR_EXPOSURE.min, Math.min(AVATAR_EXPOSURE.max, Number(merged.exposure) || CINEMATIC_DEFAULTS.exposure));
   return {
     preset,
     sceneEnvironment,
@@ -174,8 +177,8 @@ const sanitizeCinematicState = (value = {}) => {
  * @property {number} chin_projection - facial feature morph (0–1)
  * @property {number} lip_fullness   - facial feature morph (0–1)
  * @property {number} eye_size       - facial feature morph (0–1)
-  * @property {number} d_size       - inches (3–9)
-  * @property {number} d_girth      - inches
+ * @property {number} anatomyLengthCm - resting length, cm (private; adults only)
+ * @property {number} anatomyGirthCm  - mid-shaft circumference, cm (private)
  * @property {number} ankle        - cm
  * @property {string} skinTone     - Fitzpatrick scale: "I"|"II"|"III"|"IV"|"V"|"VI"
  * @property {string} eyeColor     - CSS color for the authored iris material
@@ -304,6 +307,14 @@ const use3DStore = create(
       // Boxer briefs keep the default modest while leaving body composition,
       // posture and proportional changes visible without opening the editor.
       wardrobeState: WARDROBE_PRESETS.UNDERWEAR,
+      wardrobePreferences:sanitizeWardrobePreferences(),
+      setWardrobePreferences: value=>set({wardrobePreferences:sanitizeWardrobePreferences(value)}),
+      anatomyCustomization: createAnatomyCustomization(),
+      anatomyPreview: { state:'resting',guides:false,section:'penis' },
+      anatomyEvidence: { A:null,B:null },
+      setAnatomyEvidence: (key,value) => set(state=>({ anatomyEvidence:{...state.anatomyEvidence,[key]:value} })),
+      setAnatomyCustomization: value => set({ anatomyCustomization:createAnatomyCustomization(value) }),
+      setAnatomyPreview: patch => set(state => ({ anatomyPreview:{ ...state.anatomyPreview,...patch } })),
 
       /** Camera preset name key */
       cameraPreset: "FRONT",
@@ -367,6 +378,7 @@ const use3DStore = create(
 
       /** Currently clicked / focused body part (null = none) */
       focusedBodyPart: null,
+      modelRegionFrames: { A: {}, B: {} },
 
       /** Auto-rotate the scene (pauses on hover) */
       autoRotate: false,
@@ -629,12 +641,12 @@ const use3DStore = create(
        * Snap camera to a named preset.
        * @param {keyof typeof CAMERA_PRESETS} preset
        */
-      setCameraPreset: (preset) => {
+      setCameraPreset: (preset, { preserveFocus = false } = {}) => {
         if (!Object.prototype.hasOwnProperty.call(CAMERA_PRESETS, preset)) {
           console.warn(`[use3DStore] Unknown camera preset: ${preset}`);
           return;
         }
-        set((state) => ({ cameraPreset: preset, focusedBodyPart: null, cameraRevision: state.cameraRevision + 1 }), false, `setCameraPreset:${preset}`);
+        set((state) => ({ cameraPreset: preset, focusedBodyPart: preserveFocus ? state.focusedBodyPart : null, cameraRevision: state.cameraRevision + 1 }), false, `setCameraPreset:${preset}`);
       },
 
       setTimelineSnaps: (snaps) => {
@@ -802,8 +814,10 @@ const use3DStore = create(
        * @param {string|null} partName — e.g. "chest", "biceps", null to clear
        */
       setFocusedBodyPart: (partName) => {
-        set({ focusedBodyPart: partName }, false, `setFocusedBodyPart:${partName}`);
+        set((state) => ({ focusedBodyPart: partName, cameraPreset: partName ? 'CUSTOM' : state.cameraPreset, cameraZoom: 1, autoRotate: false,
+          cameraRevision: state.cameraRevision + 1 }), false, 'setFocusedBodyPart');
       },
+      setModelRegionFrames: (cloneKey, regions) => set(state => ({ modelRegionFrames: { ...state.modelRegionFrames, [cloneKey]: regions } }), false, 'setModelRegionFrames'),
 
       // ───────────────────────────────────────────────────────────────────────
       // ACTIONS — AUTO-ROTATE

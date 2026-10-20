@@ -78,7 +78,7 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (!session) return;
-        fetch('/api/user/security-status')
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/security-status`)
             .then(r => r.json())
             .then(d => setTwoFactorEnabled(d.twoFactorEnabled))
             .catch(() => { })

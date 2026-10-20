@@ -159,7 +159,7 @@ export function applyMutation(previous, operation) {
   if (!current || eventFingerprint(current) !== eventFingerprint(operation.original)) throw new Error('This event changed while you were editing. Close the form and reopen the latest event.');
   return operation.kind === 'delete' ? events.filter(event => event.id !== current.id) : events.map(event => event.id === current.id ? { ...current, ...operation.event } : event);
 }
-function sessionKey(state) { return JSON.stringify([state.user?.id ?? state.user?.email, state._sessionVersion, state._dataRevision]); }
+export function sessionKey(state) { return JSON.stringify([state.user?.id ?? state.user?.email, state._sessionVersion, state._dataRevision]); }
 /** Delayed store writes need no UI optimism. On a malformed acknowledgement,
     conditionally undo only our exact calendar snapshot, never newer/account data. */
 export async function persistMutation(operation, { update, getState, setState }) {

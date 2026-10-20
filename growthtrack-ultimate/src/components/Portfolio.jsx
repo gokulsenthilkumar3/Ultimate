@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { Plus, Trash2, Edit3, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Edit3, DollarSign, RefreshCw } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
@@ -9,6 +9,8 @@ import { formatCurrency } from '../utils/userFormatters';
 import { localDateKey } from '../lib/metricSeries';
 import { finiteObservation, observationDate } from '../utils/projectGoal';
 import storage from '../utils/safeLocalStorage';
+import SyncCenter from './sync/SyncCenter';
+import { publishSyncData, runSyncTarget } from '../api/sync';
 import { portfolioSnapshotKey, readPortfolioSnapshots, holdingSnapshot, summarizePortfolio } from './PortfolioData';
 
 const ASSET_TYPES = ['Stock', 'ETF', 'Mutual Fund', 'Crypto', 'Gold', 'Real Estate', 'Bond', 'FD', 'Cash', 'Other'];
@@ -39,6 +41,7 @@ export default function Portfolio() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const savingRef = useRef(false);
   const addIdRef = useRef(null);
   const addNameRef = useRef(null);
@@ -56,6 +59,24 @@ export default function Portfolio() {
     const timer = globalThis.setTimeout(() => addNameRef.current?.focus(), 0);
     return () => globalThis.clearTimeout(timer);
   }, [showAdd]);
+
+  async function refreshPrices() {
+    const ownerId = user?.id ?? null;
+    setRefreshing(true);
+    try {
+      const { results = [] } = await runSyncTarget('portfolio');
+      if (!results.length) { toast.info('Connect a price source below to refresh prices automatically.'); return; }
+      let priced = 0; let failed = 0;
+      for (const result of results) {
+        publishSyncData(result.data, ownerId);
+        priced += result.summary?.updated || 0;
+        if (result.status === 'failed') failed += 1;
+      }
+      if (failed === results.length) toast.error(results[0].message || 'Prices could not be refreshed.');
+      else toast.success(priced ? `${priced} price${priced === 1 ? '' : 's'} updated from connected sources.` : 'Prices are already current.');
+    } catch (error) { toast.error(error?.payload?.error || error?.message || 'Prices could not be refreshed.'); }
+    finally { setRefreshing(false); }
+  }
 
   function normalizeForm(input, previous) {
     const name = String(input.name || '').trim();
@@ -188,15 +209,15 @@ export default function Portfolio() {
   return <div className="module-page" style={{ padding: '0.5rem 0' }}>
     <div className="section-head">
       <div><p className="label-caps">Investments</p><h2 className="text-display">Portfolio</h2>
-        <p className="text-secondary">Prices are manual dated snapshots. Totals combine those snapshots; they are not live market valuations.</p>
-        <p className="text-secondary">Snapshot dates are retained on this device only. Undated prices cannot establish gains or returns.</p>
+        <p className="text-secondary">Prices come from connected sources (dated and attributed) or your own dated snapshots. Undated prices cannot establish gains or returns.</p>
       </div>
+      <button className="btn-secondary" onClick={refreshPrices} disabled={refreshing || saving} aria-busy={refreshing}><RefreshCw size={14} /> {refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
       <button className="btn-primary" onClick={() => setShowAdd(open => !open)} aria-expanded={showAdd} aria-controls="portfolio-add-form" disabled={saving}><Plus size={14} /> Add Holding</button>
     </div>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', margin: '1rem 0' }}>
-      {[['Recorded cost', totalCost], ['Manual snapshot value', totalValue], ['Unrealized difference', totalDifference]].map(([label, value]) => <div key={label} className="glass-card"><p>{label}</p><strong>{money(value)}</strong></div>)}
+      {[['Recorded cost', totalCost], ['Dated value', totalValue], ['Unrealized difference', totalDifference]].map(([label, value]) => <div key={label} className="glass-card"><p>{label}</p><strong>{money(value)}</strong></div>)}
     </div>
-    {totalValue === null && <p className="text-secondary">Snapshot totals are unavailable until every holding has a valid dated manual price.</p>}
+    {totalValue === null && <p className="text-secondary">Totals appear once every holding has a dated price — connect a source below or enter a dated price.</p>}
     <div role="tablist" aria-label="Portfolio views" onKeyDown={event => handleTabKeyDown(event, { tabs: PORTFOLIO_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'portfolio-tab' })} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
       {PORTFOLIO_TABS.map(({ id }) => <button key={id} id={'portfolio-tab-' + id} role="tab" type="button" aria-selected={tab === id} aria-controls={'portfolio-' + id + '-panel'} tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)} className="btn-secondary">{id[0].toUpperCase() + id.slice(1)}</button>)}
     </div>
@@ -208,7 +229,7 @@ export default function Portfolio() {
     </form>}
     {tab === 'holdings' && <div id="portfolio-holdings-panel" role="tabpanel" aria-labelledby="portfolio-tab-holdings" className="glass-card" style={{ overflowX: 'auto' }}>
       {!holdings.length ? <EmptyState icon={DollarSign} title="No Holdings" description="Add your first investment to start tracking your portfolio." ctaLabel="Add Holding" onAction={() => setShowAdd(true)} /> : <table aria-label="Investment holdings" style={{ width: '100%' }}>
-        <thead><tr>{['Asset', 'Type', 'Units', 'Buy price', 'Manual price snapshot', 'Recorded cost', 'Snapshot value', 'Unrealized difference', 'Actions'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+        <thead><tr>{['Asset', 'Type', 'Units', 'Buy price', 'Latest price', 'Recorded cost', 'Snapshot value', 'Unrealized difference', 'Actions'].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
         <tbody>{holdings.map(holding => <tr key={holding.id}>
           {String(editId) === String(holding.id) ? <td colSpan={9}>
             <form onSubmit={event => { event.preventDefault(); saveEdit(); }}>{fields(editForm, setEditForm, true)}
@@ -217,7 +238,7 @@ export default function Portfolio() {
             </form>
           </td> : <>
             <td>{holding.name}<small style={{ display: 'block' }}>{holding.symbol}</small></td><td>{holding.type}</td><td>{holding.units}</td><td>{money(finiteObservation(holding.buyPrice))}</td>
-            <td>{money(holding.snapshot.price)}<small style={{ display: 'block' }}>{holding.snapshot.date ? 'As of ' + holding.snapshot.date : 'Undated; verify manually'}</small></td>
+            <td>{money(holding.snapshot.price)}<small style={{ display: 'block' }}>{holding.snapshot.date ? 'As of ' + holding.snapshot.date + (holding.snapshot.source && holding.snapshot.source !== 'manual' ? ' · ' + holding.snapshot.source : '') : 'Undated; verify manually'}</small></td>
             <td>{money(holding.cost)}</td><td>{money(holding.value)}</td><td>{money(holding.difference)}</td>
             <td><button disabled={saving} onClick={() => { setEditId(holding.id); setEditForm({ ...EMPTY_FORM, ...portfolio.find(entry => String(entry.id) === String(holding.id)), priceDate: holding.snapshot.date || '' }); }} aria-label={'Edit ' + holding.name}><Edit3 size={14} /></button>
               <button disabled={saving} onClick={() => handleDelete(holding)} aria-label={'Delete ' + holding.name}><Trash2 size={14} /></button></td>
@@ -226,8 +247,8 @@ export default function Portfolio() {
       </table>}
     </div>}
     {tab === 'allocation' && <div id="portfolio-allocation-panel" role="tabpanel" aria-labelledby="portfolio-tab-allocation" className="glass-card">
-      <h3>Allocation by manual snapshot value</h3>
-      {totalValue === null || !allocation.length ? <p>Enter dated manual prices for every holding to see allocation.</p> : <ResponsiveContainer width="100%" height={260}>
+      <h3>Allocation by dated value</h3>
+      {totalValue === null || !allocation.length ? <p>Every holding needs a dated price to show allocation.</p> : <ResponsiveContainer width="100%" height={260}>
         <PieChart><Pie data={allocation} dataKey="value" nameKey="name" outerRadius={90} label={({ name, percent }) => name + ' ' + (percent * 100).toFixed(0) + '%'}>
           {allocation.map(entry => <Cell key={entry.name} fill={ASSET_COLORS[entry.name] || '#6366f1'} />)}
         </Pie><Tooltip formatter={money} /></PieChart>
@@ -235,8 +256,11 @@ export default function Portfolio() {
     </div>}
     {tab === 'performance' && <div id="portfolio-performance-panel" role="tabpanel" aria-labelledby="portfolio-tab-performance" className="glass-card">
       <h3>Performance history unavailable</h3>
-      <p>Only the latest manual price snapshot is recorded for each holding. There is no dated valuation and cash-flow history from which to calculate historical returns.</p>
+      <p>Connected sources now keep a dated price history for each holding; cash-flow records are still needed before historical returns can be calculated honestly.</p>
     </div>}
+    <div className="glass-card" style={{ marginTop: '1rem' }}>
+      <SyncCenter target="portfolio" title="Live prices" description="Connect once and holdings re-price themselves: mutual funds from AMFI NAVs, crypto from CoinGecko, stocks and ETFs from Alpha Vantage. Each price keeps its date and source." />
+    </div>
   </div>;
 }
 

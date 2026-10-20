@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import serviceWorkerPlugin from './build/serviceWorkerPlugin.js';
+import { createUiProxies } from '../scripts/workspace-proxy.mjs';
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -22,10 +23,10 @@ export default defineConfig(({ mode }) => {
   ].filter(Boolean),
   server: {
     port: Number(env.VITE_PORT || 5000),
-    strictPort: false,
+    strictPort: true,
     host: env.VITE_HOST || '127.0.0.1',
     allowedHosts,
-    proxy: {
+    proxy: env.GROWTHTRACK_WORKSPACE === '1' ? createUiProxies(env) : {
       '/api': {
         // Standalone `npm run dev` starts server.js on 3001. A workspace that
         // also starts the multi-product gateway can opt in with GATEWAY_URL.

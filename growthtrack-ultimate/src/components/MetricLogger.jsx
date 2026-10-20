@@ -16,7 +16,7 @@ export default function MetricLogger({ onClose, onSave }) {
     date: new Date().toISOString().split('T')[0],
     weight: '', chest: '', shoulders: '', waist: '',
     arms: '', neck: '', biceps: '', hips: '',
-    thighs: '', calves: '', headCirc: '', d_size: '', d_girth: '',
+    thighs: '', calves: '', headCirc: '',
     sleep: '', water: '', caffeine: '', stress: '', hr: '',
     eyePower: '', memoryPower: '', stamina: '', flexibility: '',
     hairHealth: '', skinGlow: '', sight: '', hearing: '',

@@ -5,6 +5,7 @@ export interface NoteEditorDraft extends NoteDocument {
   tags: string[];
   color: string;
   baseUpdatedAt: string | null;
+  baseRevision?: number;
 }
 export const MAX_MARKDOWN_BYTES = 1024 * 1024;
 
@@ -43,5 +44,6 @@ export function parseNoteDraft(value: unknown): NoteEditorDraft | null {
     || !Array.isArray(draft.tags) || draft.tags.some(tag => typeof tag !== 'string')
     || typeof draft.color !== 'string'
     || !(draft.baseUpdatedAt === null || typeof draft.baseUpdatedAt === 'string' && Number.isFinite(Date.parse(draft.baseUpdatedAt)))) return null;
-  return { noteId: draft.noteId, title: draft.title, content: draft.content, tags: [...draft.tags], color: draft.color, baseUpdatedAt: draft.baseUpdatedAt };
+  if (draft.baseRevision !== undefined && (!Number.isSafeInteger(draft.baseRevision) || draft.baseRevision < 1)) return null;
+  return { noteId: draft.noteId, title: draft.title, content: draft.content, tags: [...draft.tags], color: draft.color, baseUpdatedAt: draft.baseUpdatedAt, ...(draft.baseRevision !== undefined ? { baseRevision: draft.baseRevision } : {}) };
 }

@@ -10,6 +10,7 @@ import { createRecordActions } from './recordActions';
 import { createJournalActions } from './journalActions';
 import { createLibraryActions, createShoppingConversion, validateMedia, validateShopping } from './libraryActions';
 import { createWorkoutCompletion } from './workoutActions';
+import { conflictRecord, holdingRecords, recordWriteMessage } from '../api/records';
 
 export async function apiSync(endpoint: string, method: string = 'POST', data: any = null): Promise<any> {
   const apiPath = endpoint.startsWith('/api/') ? endpoint : `/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -171,6 +172,8 @@ const useStore = create<any>()(
       user: null,
       skills: [],
       calendar_events: [],
+      // Set from /api/state once calendar events and holdings are stored as rows.
+      recordRows: false,
       databases: [],
       appConfig: {},
       healthProfile: {},
@@ -277,19 +280,53 @@ const useStore = create<any>()(
         });
       },
 
+      // With row storage each holding is written on its own with the revision
+      // it was read at; a sync or another device that changed it first wins a
+      // conflict, and the latest version replaces the stale one locally.
+      writeHoldingRow: (id: string, operation: () => Promise<any>, apply: (rows: any[], saved: any) => any[]) => {
+        const current = captureSession(get);
+        return portfolioQueue(`${get()._sessionVersion}:${get().user?.id}:portfolio`, async () => {
+          if (!current()) throw new Error('The session changed. Refresh and try again.');
+          const publish = (next: any[]) => set((state: any) => ({ portfolio: next, user: state.user ? { ...state.user, portfolio: next } : state.user }));
+          try {
+            const saved = await operation();
+            if (current()) publish(apply(get().portfolio || [], saved));
+            return saved;
+          } catch (error: any) {
+            const latest = conflictRecord(error);
+            if (latest && current()) publish((get().portfolio || []).map((row: any) => String(row.id) === String(id) ? latest : row));
+            throw new Error(recordWriteMessage(error, 'holding'));
+          }
+        });
+      },
+
       addHolding: (holding: any) => {
         const normalized = normalizePortfolioHolding(holding);
         if (!normalized) return Promise.resolve(null);
+        if (get().recordRows) return get().writeHoldingRow(normalized.id, () => holdingRecords.create(normalized.id, normalized),
+          (rows: any[], saved: any) => [...rows.filter((row: any) => String(row.id) !== String(saved.id)), saved]);
         return get().setPortfolio((current: any[]) => [...current, normalized]);
       },
 
       updateHolding: (id: string | number, updates: any) => {
+        if (get().recordRows) {
+          const previous = (get().portfolio || []).find((row: any) => String(row.id) === String(id));
+          if (!previous?.revision) return Promise.reject(new Error('This holding is out of date. Refresh before editing.'));
+          return get().writeHoldingRow(String(id), () => holdingRecords.update(id, previous.revision, updates),
+            (rows: any[], saved: any) => rows.map((row: any) => String(row.id) === String(id) ? saved : row));
+        }
         return get().setPortfolio((current: any[]) => current.map((holding: any) => (
           String(holding.id) === String(id) ? { ...holding, ...updates } : holding
         )));
       },
 
       deleteHolding: (id: string | number) => {
+        if (get().recordRows) {
+          const previous = (get().portfolio || []).find((row: any) => String(row.id) === String(id));
+          if (!previous?.revision) return Promise.reject(new Error('This holding is out of date. Refresh before deleting.'));
+          return get().writeHoldingRow(String(id), () => holdingRecords.remove(id, previous.revision),
+            (rows: any[]) => rows.filter((row: any) => String(row.id) !== String(id)));
+        }
         return get().setPortfolio((current: any[]) => current.filter((holding: any) => String(holding.id) !== String(id)));
       },
 
@@ -336,7 +373,7 @@ const useStore = create<any>()(
             shopping: { items: stored.shopping || [] }, entertainment: { media: stored.entertainment || [] },
             timesheetEntries: stored.timesheet || [], sleep_logs: stored.sleep_logs || [], nutrition_logs: stored.nutrition_logs || [],
             notes: stored.notes || [], goals: stored.goals || [], documents: stored.documents || [], habits: stored.habits || [], subscriptions: stored.subscriptions || [],
-            portfolio: normalizePortfolio(stored.user?.portfolio),
+            portfolio: normalizePortfolio(stored.user?.portfolio), recordRows: stored.recordRows === true,
             metric_logs: stored.metric_logs || [], moodLogs: stored.moodLogs || [], vitalsLogs: stored.vitalsLogs || [], medications: stored.medications || [],
             workouts: { sessions: stored.workout_sessions || [], exercisesBySession: {} },
             trainingPlan: stored.user?.trainingPlan || null, nutritionStrategy: stored.user?.nutritionStrategy || null, lifestyleTips: stored.user?.lifestyleTips || [], medicalData: stored.user?.medicalData || null, physiqueTargets: stored.user?.physiqueTargets || null, assessmentQA: stored.user?.assessmentQA || [], skills: stored.user?.skills || [], calendar_events: stored.user?.calendar_events || [], wellnessData: stored.user?.wellnessData || null,
@@ -359,7 +396,7 @@ const useStore = create<any>()(
           habits: [], habitLogsByHabit: {}, subscriptions: [], documents: [], portfolio: [],
           shopping: { items: [] }, entertainment: { media: [] }, timesheetEntries: [], timesheet: { sessions: [] },
           finance: { transactions: {}, budgets: {} }, workouts: { sessions: [], exercisesBySession: {} },
-          skills: [], calendar_events: [], trainingPlan: null, nutritionStrategy: null, lifestyleTips: [], medicalData: null,
+          skills: [], calendar_events: [], recordRows: false, trainingPlan: null, nutritionStrategy: null, lifestyleTips: [], medicalData: null,
           physiqueTargets: null, assessmentQA: [], wellnessData: null, bodyProfile: null, healthProfile: {},
           socialProfiles: [], databases: [], appConfig: {}, lastCheckIn: null, checkInAlertDismissedDate: null,
         }));

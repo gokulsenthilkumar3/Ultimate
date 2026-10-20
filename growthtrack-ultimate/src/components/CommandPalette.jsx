@@ -2,12 +2,15 @@ import { Z_INDEX } from '../constants';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Search, ArrowRight, Target, CheckSquare, FileText, Flame, Star,
-  Layout, Zap, X,
+  Layout, Zap, X, Sparkles,
 } from 'lucide-react';
 import useStore, { selectSetActiveTab } from '../store/useStore';
 import { TABS } from '../config/navigation';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { queuePendingUiAction } from '../lib/pendingUiAction';
+import { parseQuickCapture, QUICK_CAPTURE_EXAMPLES } from '../lib/quickCapture';
+import { apiRequest } from '../lib/apiClient';
+import { useToast } from '../hooks/useToast';
 
 // ── Module icon map ───────────────────────────────────────────────────────────
 const MODULE_ICONS = {
@@ -68,7 +71,10 @@ const GROUP_LABELS = {
   habit:   { label: 'Habits',   icon: <Flame     size={11} /> },
   skill:   { label: 'Skills',   icon: <Star      size={11} /> },
   action:  { label: 'Actions',  icon: <Zap       size={11} /> },
+  capture: { label: 'Quick capture', icon: <Sparkles size={11} /> },
 };
+
+const CAPTURE_ICONS = { expense: '💸', income: '💰', hydration: '💧', sleep: '😴', weight: '⚖️', mood: '🧠', task: '✅' };
 
 const EMPTY_ARRAY = Object.freeze([]);
 const EMPTY_TASKS = Object.freeze({});
@@ -93,6 +99,10 @@ export default function CommandPalette() {
 
   const setActiveTab = useStore(selectSetActiveTab);
   const activeTab = useStore(s => s.activeTab);
+  const toast = useToast();
+  const [capturing, setCapturing] = useState(false);
+  const sleepLogs = useStore(s => s.sleep_logs ?? EMPTY_ARRAY);
+  const moodLogs = useStore(s => s.moodLogs ?? EMPTY_ARRAY);
 
   // Data sources for cross-entity search
   const tasks  = useStore(s => s.user?.tasks ?? EMPTY_TASKS);
@@ -132,6 +142,15 @@ export default function CommandPalette() {
   const results = useMemo(() => {
     const q = query.trim();
     const candidates = [];
+
+    // A sentence such as "spent 450 on lunch" becomes one reviewed record.
+    const capture = parseQuickCapture(q);
+    if (capture) {
+      const existing = capture.target === 'sleep' ? sleepLogs : capture.target === 'mood' ? moodLogs : null;
+      const replaces = existing?.some(row => row?.date === capture.payload.date);
+      candidates.push({ type: 'capture', id: 'quick-capture', label: capture.title, icon: CAPTURE_ICONS[capture.kind] || '✨', score: 2,
+        detail: `${capture.detail}${replaces ? ' · replaces the entry for that day' : ''} · Enter to save`, capture });
+    }
 
     // Modules
     Object.entries(TABS).forEach(([id, meta]) => {
@@ -187,7 +206,7 @@ export default function CommandPalette() {
     });
 
     // Sort: by score desc, then by type priority
-    const typePriority = { module: 0, action: 1, task: 2, goal: 3, note: 4, habit: 5, skill: 6 };
+    const typePriority = { capture: -1, module: 0, action: 1, task: 2, goal: 3, note: 4, habit: 5, skill: 6 };
     return candidates
       .filter(c => !q || c.score > 0)
       .sort((a, b) => {
@@ -195,7 +214,7 @@ export default function CommandPalette() {
         return (typePriority[a.type] ?? 9) - (typePriority[b.type] ?? 9);
       })
       .slice(0, 40);
-  }, [query, tasks, goals, notes, habits, skills]);
+  }, [query, tasks, goals, notes, habits, skills, sleepLogs, moodLogs]);
 
   // Group consecutive items of the same type
   const grouped = useMemo(() => {
@@ -216,7 +235,33 @@ export default function CommandPalette() {
     if (isOpen) document.getElementById(`command-result-${selectedIdx}`)?.scrollIntoView?.({ block: 'nearest' });
   }, [selectedIdx, isOpen]);
 
+  const saveCapture = useCallback(async (capture) => {
+    if (capturing) return;
+    const state = useStore.getState();
+    const writers = {
+      transaction: payload => state.addTransaction(payload),
+      task: payload => state.addTask(payload),
+      metric: payload => state.addMetricLog(payload),
+      mood: payload => state.addMoodLog(payload),
+      sleep: payload => state.saveSleepLog(payload),
+      hydration: payload => apiRequest('/api/hydration/log', { method: 'POST', body: JSON.stringify(payload) }),
+    };
+    setCapturing(true);
+    try {
+      await writers[capture.target](capture.payload);
+      toast.success(`Saved · ${capture.title.replace(/^[^·]*·\s*/, '')}`);
+      setQuery('');
+      setIsOpen(false);
+    } catch (error) {
+      toast.error(error?.message || 'This entry could not be saved. Nothing was changed.');
+    } finally { setCapturing(false); }
+  }, [capturing, toast]);
+
   const handleSelect = useCallback((item) => {
+    if (item.type === 'capture') {
+      if (item.capture) saveCapture(item.capture);
+      return;
+    }
     if (item.type === 'action' && item.openForm) {
       if (activeTab === item.tab) {
         window.requestAnimationFrame(() => {
@@ -228,7 +273,7 @@ export default function CommandPalette() {
     }
     setActiveTab(item.tab || item.id);
     setIsOpen(false);
-  }, [activeTab, setActiveTab]);
+  }, [activeTab, setActiveTab, saveCapture]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.max(0, Math.min(i + 1, results.length - 1))); }
@@ -264,14 +309,15 @@ export default function CommandPalette() {
           <input
             ref={inputRef}
             data-dialog-autofocus
-            aria-label="Search modules, tasks, goals, notes, habits"
+            aria-label="Search your workspace or capture an entry"
+            aria-busy={capturing}
             role="combobox"
             aria-expanded="true"
             aria-autocomplete="list"
             aria-controls="command-results"
             aria-activedescendant={results[selectedIdx] ? `command-result-${selectedIdx}` : undefined}
             type="text"
-            placeholder="Search modules, tasks, goals, notes, habits…"
+            placeholder="Search, or capture: “spent 450 on lunch”, “drank 500ml”…"
             value={query}
             onChange={e => {
               setQuery(e.target.value);
@@ -337,7 +383,8 @@ export default function CommandPalette() {
         {/* Footer hint */}
         <div style={{ display: 'flex', gap: '1rem', padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: '0.62rem', color: 'var(--text-3)' }}>
           <span>↑↓ navigate</span>
-          <span>↵ open</span>
+          <span>↵ {results[selectedIdx]?.type === 'capture' ? (capturing ? 'saving…' : 'save') : 'open'}</span>
+          {!query.trim() && <span title={QUICK_CAPTURE_EXAMPLES.join(' · ')}>✨ Try “{QUICK_CAPTURE_EXAMPLES[selectedIdx % QUICK_CAPTURE_EXAMPLES.length]}”</span>}
           <span style={{ marginLeft: 'auto' }}>{results.length} result{results.length !== 1 ? 's' : ''}</span>
         </div>
       </div>

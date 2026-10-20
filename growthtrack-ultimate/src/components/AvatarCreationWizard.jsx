@@ -241,7 +241,7 @@ export default function AvatarCreationWizard({ onComplete }) {
             <label>
               <span className="card-title">Wardrobe</span>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {['GYM', 'CASUAL', 'UNDERWEAR', 'ANATOMICAL'].map(w => (
+                {['GYM', 'CASUAL', 'UNDERWEAR'].map(w => (
                   <button key={w} 
                     className={`btn-${wardrobe === w ? 'primary' : 'ghost'}`}
                     onClick={() => setWardrobe(w)}

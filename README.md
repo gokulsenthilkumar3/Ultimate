@@ -27,13 +27,18 @@ The experience is designed around four principles:
 | Product | Purpose | Runtime | Local UI |
 | :-- | :-- | :-- | :-- |
 | **Ultimate** | Personal command center, Apps Hub, logs, AI, wellness, work, finance, and digital physique | React + Vite | `http://127.0.0.1:5000/Ultimate/` |
-| **FinSync** | Budgeting, transactions, banking workflows, and financial planning | Next.js | `http://localhost:5101` |
-| **OxFin** | Wallets, cards, bills, investments, and financial intelligence | Next.js | `http://localhost:5102` |
-| **Forex** | Exchange-rate forecasting, model analytics, and prediction tools | Streamlit + Python | `http://localhost:8501` |
-| **Family Connect** | Family spaces, shared memories, events, and private documents | React + Vite | `http://localhost:5104` |
-| **Equity / NiftyLens** | Indian-market charts, indicators, option chains, and alerts | Next.js | `http://localhost:5105` |
+| **FinSync** | Budgeting, transactions, banking workflows, and financial planning | Next.js | `http://localhost:5000/Ultimate/products/finsync/` |
+| **OxFin** | Wallets, cards, bills, investments, and financial intelligence | Next.js | `http://localhost:5000/Ultimate/products/oxfin/` |
+| **Forex** | Exchange-rate forecasting, model analytics, and prediction tools | Streamlit + Python | `http://localhost:5000/Ultimate/products/forex/` |
+| **Family Connect** | Family spaces, shared memories, events, and private documents | React + Vite | `http://localhost:5000/Ultimate/products/family/` |
+| **Equity / NiftyLens** | Indian-market charts, indicators, option chains, and alerts | Next.js | `http://localhost:5000/Ultimate/products/equity/` |
 
-All API traffic enters through the local gateway at `http://localhost:3000`. Product routes use stable namespaces such as `/api/ultimate`, `/api/finsync`, and `/api/equity`.
+All API traffic enters through the local gateway at `http://127.0.0.1:5300`. Product routes use stable namespaces such as `/api/ultimate`, `/api/finsync`, and `/api/equity`.
+
+All products open inside Ultimate's Apps Suite on UI port **5000**. The read-only
+database console at `http://localhost:5556` includes Ultimate SQLite, OxFin PostgreSQL
+and Family Connect PostgreSQL and is also available inside **Databases → All databases**.
+Existing data stores are preserved. See [unified local setup](docs/UNIFIED_LOCAL_WORKSPACE.md).
 
 ## Experience highlights
 
@@ -84,7 +89,7 @@ Read [DESIGN_SYSTEM.md](growthtrack-ultimate/docs/DESIGN_SYSTEM.md) before intro
 ```mermaid
 flowchart LR
     User[Owner] --> Ultimate[Ultimate UI · :5000]
-    Ultimate --> Gateway[Local API Gateway · :3000]
+    Ultimate --> Gateway[Local API Gateway · :5300]
     Gateway --> Core[Ultimate API · :3001]
     Gateway --> AI[Optional local AI]
     Gateway --> FinSync[FinSync]
@@ -127,7 +132,9 @@ Open `growthtrack-ultimate/.env` locally and provide your own owner credentials 
 npm run dev
 ```
 
-Open `http://127.0.0.1:5000/Ultimate/`. The launcher reuses services only when their health checks pass and keeps the standard ports fixed.
+Open `http://localhost:5000/Ultimate/`. This starts all companion UIs and APIs too.
+Use `npm run dev:core` for only Ultimate, gateway and the database console.
+The launcher reuses services only when their health checks pass and keeps the standard ports fixed.
 
 ### 3. Start the complete workspace
 

@@ -45,11 +45,26 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Install browser test engines
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Asset provenance (hashes and licence status)
+        run: npm run check:assets
+
       - name: Typecheck
         run: npm run typecheck
 
       - name: Unit and component tests with coverage
         run: npm run test:run
+
+      - name: Isolated API, migration and backup/restore tests
+        run: node tests/unit/server-backend/run.mjs
+
+      - name: Authenticated browser fixture workflows
+        run: npm run test:e2e
 
       - name: Lint
         run: npm run lint

@@ -13,12 +13,12 @@ export default function ScrollShowcase() {
     <section className="physique-lab physique-lab--cinematic" aria-labelledby="physique-lab-title">
       <header className="physique-lab__intro">
         <div>
-          <span className="physique-lab__eyebrow"><Sparkles size={13} /> Digital twin / physique lab</span>
+          <span className="physique-lab__eyebrow"><Sparkles size={13} /> Explore & compare</span>
           <h2 id="physique-lab-title">Your 3D mirror</h2>
           <p>Explore your measurements from every angle. Compare your current body with your goal.</p>
         </div>
-        <div className="physique-lab__status" aria-label="3D renderer status">
-          <span className="physique-lab__live-dot" aria-hidden="true" /> Live / realtime CG
+        <div className="physique-lab__status">
+          Interactive preview
         </div>
       </header>
       <div className="physique-lab__stage">

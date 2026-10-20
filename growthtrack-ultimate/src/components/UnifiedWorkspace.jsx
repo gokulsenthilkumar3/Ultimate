@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Database, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import { PRODUCTS, productById } from '../config/products';
 import '../styles/unified-workspace.css';
 
@@ -20,18 +20,11 @@ const ULTIMATE_DESTINATIONS = {
   family: [['Calendar', '/workspace/calendar'], ['My Files', '/workspace/files'], ['Places', '/life/places']],
 };
 
-const REMAINING = {
-  finsync: 'Bank consent and planning data still need previewable import and ledger reconciliation.',
-  oxfin: 'Wallets, cards, bills and investments still need native records and workflows.',
-  forex: 'Currency watchlists and model results still need a sourced Ultimate contract and worker.',
-  equity: 'Market charts, indicators, options and alerts still need native routes and data provenance.',
-  family: 'Family spaces, invitations and record-level sharing still need a permissioned data model.',
-};
-
 export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) {
   const [activeTab, setActiveTab] = useState(defaultApp);
   const [services, setServices] = useState({});
   const [healthError, setHealthError] = useState(false);
+  const [frameVersion, setFrameVersion] = useState(0);
 
   useEffect(() => setActiveTab(defaultApp), [defaultApp]);
 
@@ -64,9 +57,9 @@ export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) 
     <header className="unified-header">
       <div>
         <h1 className="unified-title">One Ultimate workspace</h1>
-        <p className="unified-intro">Companion workflows are being moved into Ultimate-owned records and routes. Originals remain available while migration is verified.</p>
+        <p className="unified-intro">Finance, family, markets and forecasting, together inside Ultimate.</p>
       </div>
-      <button type="button" className="unified-action-btn" onClick={refreshHealth}><RefreshCw size={14} /> Refresh status</button>
+      <button type="button" className="unified-action-btn" onClick={() => { refreshHealth(); setFrameVersion(value => value + 1); }}><RefreshCw size={14} /> Refresh{selected ? ' app' : ' status'}</button>
     </header>
 
     <nav className="unified-tabs" aria-label="Companion products">
@@ -78,25 +71,26 @@ export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) 
     </nav>
 
     {healthError && <p className="unified-health-error" role="status">Service status is unavailable. Ultimate routes remain usable.</p>}
-    <div className="unified-matrix-grid">
+    {selected ? <section className="unified-product-view" aria-label={`${selected.name} workspace`}>
+      <div className="unified-product-toolbar">
+        <h2>{selected.icon} {selected.name}</h2>
+        <div className="unified-native-links">{ULTIMATE_DESTINATIONS[selected.id].map(([label, href]) => <Link key={href} to={href}>{label}</Link>)}</div>
+      </div>
+      {services[selected.id] && !services[selected.id].online ? <div className="unified-app-offline" role="status"><h3>{selected.name} is starting or unavailable</h3><p>Start the workspace with <code>npm run dev:all</code>, then refresh this app.</p></div> :
+        <iframe key={`${selected.id}-${frameVersion}`} className="unified-product-frame" src={selected.uiUrl} title={`${selected.name} app`} allow="clipboard-read; clipboard-write" />}
+    </section> : <div className="unified-matrix-grid">
       {visible.map(product => {
         const service = services[product.id];
         return <article key={product.id} className="unified-matrix-card" style={{ '--card-color': product.color }}>
           <div className="unified-matrix-card-top">
             <span className="unified-matrix-card-icon" aria-hidden="true">{product.icon}</span>
-            <span className={`unified-source-status ${service?.online ? 'is-online' : ''}`}>{service ? service.online ? 'Source running' : 'Source offline' : 'Source status unknown'}</span>
+            <span className={`unified-source-status ${service?.online ? 'is-online' : ''}`}>{service ? service.online ? 'Online' : 'Offline' : 'Checking'}</span>
           </div>
           <h2>{product.name}</h2>
           <p>{product.description}</p>
-          <div className="unified-integration-state"><ShieldCheck size={15} /> Ultimate integration in progress</div>
-          <h3>Use in Ultimate</h3>
-          <div className="unified-native-links">
-            {ULTIMATE_DESTINATIONS[product.id].map(([label, href]) => <Link key={href} to={href}>{label} <ArrowUpRight size={13} /></Link>)}
-          </div>
-          <p className="unified-remaining"><Database size={15} aria-hidden="true" /> {REMAINING[product.id]}</p>
-          <a className="unified-legacy-link" href={product.uiUrl} target="_blank" rel="noopener noreferrer">Open original app during migration <ArrowUpRight size={13} /></a>
+          <button type="button" className="unified-action-btn unified-open-product" onClick={() => select(product.id)}>Open {product.name} <ArrowUpRight size={13} /></button>
         </article>;
       })}
-    </div>
+    </div>}
   </section>;
 }

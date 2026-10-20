@@ -1,3 +1,5 @@
+import { AVATAR_EXPOSURE } from './avatarPresentation';
+
 export const QUALITY_GATE_STATUS = Object.freeze({
   PASS: 'pass',
   WARN: 'warn',
@@ -67,7 +69,7 @@ function performanceCheck(telemetry, gpuTier) {
 function cinematicCheck(cinematicState) {
   const exposure = Number(cinematicState?.exposure);
   const valid = VALID_ENVIRONMENTS.has(cinematicState?.sceneEnvironment)
-    && exposure >= 0.72 && exposure <= 1.35;
+    && exposure >= AVATAR_EXPOSURE.min && exposure <= AVATAR_EXPOSURE.max;
   return valid
     ? check('cinematic', 'Cinematic pipeline', QUALITY_GATE_STATUS.PASS, 'Environment, exposure, tone mapping and effects are within safe bounds.')
     : check('cinematic', 'Cinematic pipeline', QUALITY_GATE_STATUS.FAIL, 'Renderer settings are outside supported bounds.');

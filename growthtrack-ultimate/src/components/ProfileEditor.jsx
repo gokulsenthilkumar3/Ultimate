@@ -21,6 +21,9 @@ import { metricsToBodyProfile } from '../lib/physiqueProfile';
 import { getCurrencySymbol } from '../utils/userFormatters';
 import { listDrafts, removeOwnerDrafts } from '../lib/drafts';
 import ConfirmDialog from './ui/ConfirmDialog';
+import SyncCenter from './sync/SyncCenter';
+import { ADULT_AGE_YEARS, ageFromDateOfBirth } from './morphEngine/anatomyPolicy';
+import { resolveAnatomyCm, typicalRange } from './morphEngine/anatomyCalibration';
 
 const TABS = [
   { id: 'personal', label: 'Account', description: 'Identity, contact, and personal details', icon: User },
@@ -388,8 +391,8 @@ export default function ProfileEditor() {
         legLength: user?.legLength || '',
         footLength: user?.footLength || '',
         headCirc: user?.headCirc || '',
-        d_size: user?.d_size || '',
-        d_girth: user?.d_girth || '',
+        anatomyLengthCm: resolveAnatomyCm(user || {}).lengthCm ?? '',
+        anatomyGirthCm: resolveAnatomyCm(user || {}).girthCm ?? '',
         
         baseCurrency: user?.baseCurrency || '',
         isdCode: user?.isdCode || '',
@@ -498,8 +501,8 @@ export default function ProfileEditor() {
       legLength: user?.legLength || '',
       footLength: user?.footLength || '',
       headCirc: user?.headCirc || '',
-      d_size: user?.d_size || '',
-      d_girth: user?.d_girth || '',
+      anatomyLengthCm: resolveAnatomyCm(user || {}).lengthCm ?? '',
+      anatomyGirthCm: resolveAnatomyCm(user || {}).girthCm ?? '',
       
       skinTone: user?.skinTone || 'III',
       headTiltAngle: user?.headTiltAngle || 0,
@@ -1050,8 +1053,15 @@ export default function ProfileEditor() {
             )}
 
             {activeTab === 'integrations' && (
+              <section className="gt-editorial-settings__section" aria-label="Live data sources">
+                <p className="gt-editorial-settings__index">01 / LIVE DATA SOURCES</p>
+                <SyncCenter />
+              </section>
+            )}
+
+            {activeTab === 'integrations' && (
               <section className="gt-editorial-settings__section" aria-labelledby="gt-connections-title">
-                <p className="gt-editorial-settings__index">01 / SERVICE CONNECTIONS</p>
+                <p className="gt-editorial-settings__index">02 / ACCOUNT PROVIDERS</p>
                 <h3 id="gt-connections-title">Connect only when a provider is ready.</h3>
                 <p>Service access requires a provider connection and your consent in its own flow. Saving a social profile link below does not grant access.</p>
                 {connectionState.status === 'loading' && <p role="status">Checking connection availability…</p>}
@@ -1060,7 +1070,7 @@ export default function ProfileEditor() {
                   <span><strong>{connection.provider.replace(/_/g, ' ')}</strong><small>{connection.reason || 'Provider status is unavailable.'}</small></span>
                   <span className="gt-editorial-settings__badge">{connection.status === 'setup-required' ? 'Setup required' : connection.status || 'Unavailable'}</span>
                 </li>)}</ul>}
-                <p className="gt-editorial-settings__fine-print">Automatic cloud backup is not available. This page does not authorize any provider or start synchronization.</p>
+                <p className="gt-editorial-settings__fine-print">Automatic cloud backup is not available. The providers in this list still need OAuth adapters; the live sources above sync on their own.</p>
               </section>
             )}
 
@@ -1069,7 +1079,7 @@ export default function ProfileEditor() {
                 
                 {/* Current Links */}
                 <section className="gt-editorial-settings__section" aria-labelledby="gt-social-links-title">
-                  <p className="gt-editorial-settings__index">02 / MANUAL PROFILES</p>
+                  <p className="gt-editorial-settings__index">03 / MANUAL PROFILES</p>
                   <h3 id="gt-social-links-title">Your social links</h3>
                   <p>These are profile addresses you add manually. They are not connected accounts and do not give GrowthTrack access to those services.</p>
                   
@@ -1184,8 +1194,11 @@ export default function ProfileEditor() {
                     <Field label="Hips (cm)" type="number" unit="cm" field="hips" placeholder="90" formData={formData} handleChange={handleChange} />
                     <Field label="Glutes (cm)" type="number" unit="cm" field="glutes" placeholder="95" formData={formData} handleChange={handleChange} />
                     <Field label="Ankles (cm)" type="number" unit="cm" field="ankle" placeholder="22" formData={formData} handleChange={handleChange} />
-                    <Field label="D-Size (in)" type="number" field="d_size" placeholder="-" formData={formData} handleChange={handleChange} />
-                    <Field label="D-Girth (in)" type="number" field="d_girth" placeholder="-" formData={formData} handleChange={handleChange} />
+                    {/* Private measurements are offered only once the saved date of birth confirms an adult. */}
+                    {(ageFromDateOfBirth(formData.dob) ?? 0) >= ADULT_AGE_YEARS && <>
+                      <Field label="Resting length (cm)" type="number" unit="cm" field="anatomyLengthCm" placeholder={`${typicalRange('anatomyLengthCm').min}–${typicalRange('anatomyLengthCm').max}`} formData={formData} handleChange={handleChange} />
+                      <Field label="Mid-shaft circumference (cm)" type="number" unit="cm" field="anatomyGirthCm" placeholder={`${typicalRange('anatomyGirthCm').min}–${typicalRange('anatomyGirthCm').max}`} formData={formData} handleChange={handleChange} />
+                    </>}
                   </div>
                 </div>
 

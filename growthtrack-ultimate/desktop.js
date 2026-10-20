@@ -1,11 +1,23 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, safeStorage } from 'electron';
 import { dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { spawnSync } from 'child_process';
+import crypto from 'node:crypto';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { sharedServerUrl } from './desktop-config.js';
+import { inspectDesktopDatabase } from './server/domains/desktopDatabase.js';
+import { initializeDatabase } from './server/domains/databaseInitialization.js';
+import { rehearseNoteMigration } from './server/domains/noteMigration.js';
+import { provisionLocalOwner } from './server/domains/ownerProvisioning.js';
 let mainWindow;
+if (process.env.GROWTHTRACK_USER_DATA) {
+  const customData = path.resolve(process.env.GROWTHTRACK_USER_DATA);
+  fs.mkdirSync(customData, { recursive: true });
+  app.setPath('userData', customData);
+}
+const singleInstance = app.requestSingleInstanceLock();
+if (!singleInstance) app.quit();
+app.on('second-instance', () => { if (mainWindow) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
 
 // GPU fallback is opt-in so the default desktop path can use WebGL. Machines
 // with unstable drivers can set GROWTH_TRACK_DISABLE_GPU=true.
@@ -30,35 +42,57 @@ function showStartupFailure(error) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 }
 
-function prepareUserDatabase(userDatabase) {
+async function prepareUserDatabase(userDatabase) {
   const appRoot = path.dirname(fileURLToPath(import.meta.url));
   fs.mkdirSync(path.dirname(userDatabase), { recursive: true });
-  // Never silently copy an owner's development database into a new installation.
-  const existingDatabase = fs.existsSync(userDatabase);
+  const status = await inspectDesktopDatabase(userDatabase);
+  if (status.phase === 'new') {
+    const answer = dialog.showMessageBoxSync(mainWindow, { type: 'question', title: 'Set up GrowthTrack', message: 'Initialize a new private database?', detail: 'Create your account next. Existing accounts or development data are not copied.', buttons: ['Initialize', 'Cancel'], cancelId: 1 });
+    if (answer !== 0) throw new Error('Database initialization was canceled.');
+    const schema = await fs.promises.readFile(path.join(appRoot, 'prisma', 'fresh-schema.sql'), 'utf8');
+    await initializeDatabase({ filename: userDatabase, schema });
+    process.env.GROWTHTRACK_NOTES_V1 = '1';
+  } else if (status.phase === 'notes-upgrade') {
+    const directory = path.join(path.dirname(userDatabase), 'backups');
+    const rehearsal = await rehearseNoteMigration({ source: userDatabase, directory });
+    const answer = dialog.showMessageBoxSync(mainWindow, { type: 'question', title: 'Notes upgrade ready', message: 'Enable Notes revision history and synchronization?', detail: `A backup, fresh restore and original-data parity check passed. Close other processes writing this database. Private plaintext recovery copies are retained in ${directory}.`, buttons: ['Apply verified upgrade', 'Keep legacy Notes'], defaultId: 1, cancelId: 1 });
+    if (answer === 0) {
+      if (!rehearsal.reportPath) throw new Error('The migration rehearsal was not acknowledged.');
+      await rehearseNoteMigration({ source: userDatabase, directory, apply: true });
+      process.env.GROWTHTRACK_NOTES_V1 = '1';
+    } else process.env.GROWTHTRACK_NOTES_V1 = '0';
+  } else process.env.GROWTHTRACK_NOTES_V1 = '1';
+  return status;
+}
 
-  const prismaCli = path.join(appRoot, 'node_modules', 'prisma', 'build', 'index.js');
-  const schema = path.join(appRoot, 'prisma', 'schema.prisma');
-  if (!fs.existsSync(prismaCli) || !fs.existsSync(schema)) {
-    if (!existingDatabase) throw new Error('Local database initialization is unavailable. Configure GROWTHTRACK_SERVER_URL for your private HTTPS deployment.');
-    return;
+function prepareVaultKey(userDataDir) {
+  if (process.env.APP_ENCRYPTION_KEY) return;
+  if (!safeStorage.isEncryptionAvailable() || safeStorage.getSelectedStorageBackend?.() === 'basic_text') throw new Error('Secure operating-system key storage is unavailable. Configure a private HTTPS server or restore protected desktop key storage.');
+  const filename = path.join(userDataDir, 'vault-key.bin');
+  if (fs.existsSync(filename)) process.env.APP_ENCRYPTION_KEY = safeStorage.decryptString(fs.readFileSync(filename));
+  else {
+    const key = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(filename, safeStorage.encryptString(key), { flag: 'wx', mode: 0o600 });
+    process.env.APP_ENCRYPTION_KEY = key;
   }
-  const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', DATABASE_URL: `file:${userDatabase.replaceAll('\\', '/')}` };
-  const status = spawnSync(process.execPath, [prismaCli, 'migrate', 'status', '--schema', schema], { cwd: appRoot, env, encoding: 'utf8', windowsHide: true });
-  const statusText = `${status.stdout || ''}\n${status.stderr || ''}`;
-  const needsUpdate = !existingDatabase || /not yet applied|have not been applied|database schema is not up to date/i.test(statusText);
-  if (!needsUpdate) return;
+}
 
-  const answer = dialog.showMessageBoxSync({
-    parent: mainWindow,
-    type: 'question', title: 'GrowthTrack database update',
-    message: existingDatabase ? 'A database update is available.' : 'Initialize a new, empty private database?',
-    detail: existingDatabase ? 'Close other processes using this database. A backup will be retained before migration.' : 'No existing account or development database will be copied. Owner setup is required after initialization.',
-    buttons: ['Update safely', 'Skip for now'], defaultId: 0, cancelId: 1,
-  });
-  if (answer !== 0) { if (!existingDatabase) throw new Error('Database initialization was canceled.'); return; }
-  if (existingDatabase) fs.copyFileSync(userDatabase, `${userDatabase}.backup-${Date.now()}`);
-  const migration = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--schema', schema], { cwd: appRoot, env, encoding: 'utf8', windowsHide: true });
-  if (migration.status !== 0) throw new Error(`Database update failed. Your backup is safe.\n${migration.stderr || migration.stdout || 'Unknown migration error.'}`);
+async function setupOwner(userDatabase) {
+  const setupFile = path.join(path.dirname(fileURLToPath(import.meta.url)), 'desktop-setup.html');
+  const allowedUrl = pathToFileURL(setupFile).href;
+  let busy = false;
+  await new Promise((resolve, reject) => {
+    ipcMain.handle('growthtrack:provision-owner', async (event, input) => {
+      if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame || event.senderFrame.url !== allowedUrl) return { success: false, error: 'Account setup is unavailable from this page.' };
+      if (busy) return { success: false, error: 'Account setup is already running.' };
+      busy = true;
+      try { await provisionLocalOwner(userDatabase, input); resolve(); return { success: true }; }
+      catch (error) { return { success: false, error: error.message || 'Account setup failed.' }; }
+      finally { busy = false; }
+    });
+    mainWindow.once('closed', () => reject(new Error('Account setup was canceled.')));
+    void mainWindow.loadFile(setupFile).catch(reject);
+  }).finally(() => ipcMain.removeHandler('growthtrack:provision-owner'));
 }
 
 async function createWindow() {
@@ -93,12 +127,29 @@ async function createWindow() {
     mainWindow.on('closed', () => { mainWindow = null; });
     return;
   }
-  prepareUserDatabase(userDatabase);
+  const databaseStatus = await prepareUserDatabase(userDatabase);
+  // The repository .env may enable record rows for the web database; the
+  // desktop database decides for itself, from the tables it actually has.
+  process.env.GROWTHTRACK_RECORD_ROWS = (await inspectDesktopDatabase(userDatabase)).recordRows ? '1' : '0';
+  prepareVaultKey(userDataDir);
+  if (databaseStatus.ownerRequired) await setupOwner(userDatabase);
   process.env.DATABASE_URL = `file:${userDatabase.replaceAll('\\', '/')}`;
+  process.env.FILE_STORAGE_ROOT = path.join(userDataDir, 'private-files');
+  process.env.LOG_DIR = path.join(userDataDir, 'logs');
+  process.env.BACKUP_DIR = path.join(userDataDir, 'backups');
+  process.env.LISTEN_HOST = '127.0.0.1';
+  process.env.NODE_ENV = 'desktop';
+  process.env.APP_URL = `http://localhost:${process.env.PORT || 3001}/Ultimate/`;
+  process.env.APP_ORIGINS = `http://localhost:${process.env.PORT || 3001}`;
 
   // Tell the Express server to serve the frontend dist folder in desktop mode
   process.env.SERVE_FRONTEND = 'true';
-  try { await import('./server.js'); } catch (error) { showStartupFailure(error); return; }
+  try {
+    const { server } = await import('./server.js');
+    if (!server.listening) await new Promise((resolve, reject) => {
+      server.once('listening', resolve); server.once('error', reject);
+    });
+  } catch (error) { showStartupFailure(error); return; }
 
   // Load the web app running on the express server
   const PORT = process.env.PORT || 3001;
@@ -116,7 +167,7 @@ async function createWindow() {
 process.on('uncaughtException', (error) => showStartupFailure(error));
 process.on('unhandledRejection', (error) => showStartupFailure(error));
 
-app.on('ready', () => { void createWindow(); });
+if (singleInstance) app.on('ready', () => { void createWindow(); });
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') {

@@ -117,6 +117,7 @@ export default function AppLauncher({ setActiveTab }) {
     setActiveTab?.(id);
   };
   const launchProduct = product => {
+    if (setActiveTab) { setActiveTab(product.id); return; }
     setSelectedProduct(product);
   };
 
@@ -154,8 +155,8 @@ export default function AppLauncher({ setActiveTab }) {
       </div>}
       <section className="app-hub-panel product-launcher" aria-labelledby="connected-products-title">
         <div className="product-launcher__heading">
-          <div><p className="app-hub-label"><Server size={15} /> Connected products</p><h2 id="connected-products-title">Your workspace, one launchpad.</h2><p>Open each product independently while Ultimate keeps its availability visible.</p></div>
-          <span className="product-launcher__gateway" aria-busy={serviceState.loading}><Circle size={9} fill={serviceState.loading ? 'currentColor' : '#30d158'} /> Gateway :3000</span>
+          <div><p className="app-hub-label"><Server size={15} /> Connected products</p><h2 id="connected-products-title">Everything inside Ultimate.</h2><p>Open finance, family, markets and forecasting in your workspace.</p></div>
+          <span className="product-launcher__gateway" aria-busy={serviceState.loading}><Circle size={9} fill={serviceState.loading ? 'currentColor' : '#30d158'} /> Workspace connected</span>
         </div>
         <div className="product-launcher__grid">
           {PRODUCTS.map((product, idx) => {
@@ -168,8 +169,8 @@ export default function AppLauncher({ setActiveTab }) {
                 <button type="button" onClick={() => launchProduct(product)}
                   data-tip={isOffline ? product.command : undefined}
                   aria-label={`Open ${product.name}${isOffline ? ' (run ' + product.command + ' to start locally)' : ''}`}
-                >View integration <ArrowUpRight size={14} /></button>
-                <a href={`http://localhost:3000${product.healthUrl}`} target="_blank" rel="noopener noreferrer">API</a>
+                >Open app <ArrowUpRight size={14} /></button>
+                <a href={`http://127.0.0.1:5300${product.healthUrl}`} target="_blank" rel="noopener noreferrer">API</a>
               </div>
               <button className="product-card__command" type="button" title="Copy local start command" onClick={() => navigator.clipboard?.writeText(product.command)}><Copy size={12} /> {product.command}</button>
             </article>;

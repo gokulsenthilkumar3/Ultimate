@@ -1,0 +1,22 @@
+import React from 'react';
+import { AVATAR_DENSITY_OPTIONS, AVATAR_GUIDE_OPTIONS, AVATAR_PANEL_WIDTH, AVATAR_EXPOSURE, AVATAR_EFFECT_OPTIONS, resolveAvatarEffects } from '../../lib/avatarPresentation';
+
+export default function AvatarViewOptions({ preferences, onChange, cinematic, onEffectChange, gpuTier, reducedMotion, onReset, saveStatus }) {
+  const active = resolveAvatarEffects({ cinematic, gpuTier, reducedMotion, mode:gpuTier === 'HIGH' ? 'FULL' : 'PARTIAL' });
+  return <div className="avatar-view-options">
+    <fieldset><legend>Make this workspace yours</legend><p>Uses your app theme and palette. Layout choices are saved separately from body measurements.</p>
+      <label className="workspace-field"><span>Spacing</span><select aria-label="Avatar spacing" value={preferences.density} onChange={e => onChange({ density:e.target.value })}>{AVATAR_DENSITY_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
+      <label className="workspace-field"><span>Measurement help</span><select aria-label="Measurement help detail" value={preferences.guideDetail} onChange={e => onChange({ guideDetail:e.target.value })}>{AVATAR_GUIDE_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
+      <label className="avatar-range-field"><span>Inspector width <output>{preferences.inspectorWidth} px</output></span><input aria-label="Inspector width" type="range" min={AVATAR_PANEL_WIDTH.min} max={AVATAR_PANEL_WIDTH.max} step={AVATAR_PANEL_WIDTH.step} value={preferences.inspectorWidth} onChange={e => onChange({ inspectorWidth:Number(e.target.value) })}/><small>Applies when the model and inspector fit side by side.</small></label>
+      <label className="workspace-switch"><span>Interface effects<small>Subtle selection feedback and panel transitions.</small></span><input aria-label="Interface effects" type="checkbox" checked={preferences.interfaceEffects} onChange={e => onChange({ interfaceEffects:e.target.checked })}/></label>
+      <div className="avatar-options-footer"><button type="button" className="chamber-pill" onClick={onReset}>Reset workspace layout</button><span role="status">{saveStatus === 'saving' ? 'Saving layout…' : saveStatus === 'error' ? 'Layout save failed. Change an option to retry.' : saveStatus === 'saved' ? 'Layout saved' : 'Default layout'}</span></div>
+    </fieldset>
+    <fieldset><legend>Light and finishing effects</legend><p>Effects keep your measurements unchanged. Availability follows the quality tier and reduced-motion preference.</p>
+      <label className="avatar-range-field"><span>Exposure <output>{Number(cinematic.exposure).toFixed(2)}</output></span><input type="range" aria-label="Scene exposure" min={AVATAR_EXPOSURE.min} max={AVATAR_EXPOSURE.max} step={AVATAR_EXPOSURE.step} value={cinematic.exposure} onChange={e => onEffectChange('exposure',Number(e.target.value))}/></label>
+      {AVATAR_EFFECT_OPTIONS.map(effect => {
+        const limited = gpuTier === 'LOW' || effect.minimumTier === 'HIGH' && gpuTier !== 'HIGH' || effect.motionSensitive && reducedMotion;
+        return <label className="workspace-switch" key={effect.key}><span>{effect.label}<small>{limited ? effect.motionSensitive && reducedMotion ? 'Paused by reduced-motion preference' : `Requires ${effect.minimumTier === 'HIGH' ? 'high' : 'balanced or high'} quality` : active[effect.key] ? 'Active in preview' : 'Off'}</small></span><input aria-label={effect.label} type="checkbox" checked={Boolean(cinematic[effect.key])} disabled={limited} onChange={e => onEffectChange(effect.key,e.target.checked)}/></label>;
+      })}
+    </fieldset>
+  </div>;
+}

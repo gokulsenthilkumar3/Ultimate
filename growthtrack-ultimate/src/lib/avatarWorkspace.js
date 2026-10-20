@@ -1,3 +1,5 @@
+import { DEFAULT_AVATAR_PRESENTATION, sanitizeAvatarPresentation } from './avatarPresentation';
+
 export const INSPECTOR_SECTIONS = ['measurements', 'face', 'hair', 'skin', 'anatomy', 'clothing', 'view'];
 export const WORKSPACE_MODES = ['current', 'goal', 'compare', 'timeline'];
 export const COMPARE_STYLES = ['side-by-side', 'overlay', 'split', 'difference'];
@@ -5,7 +7,7 @@ export const COMPARE_STYLES = ['side-by-side', 'overlay', 'split', 'difference']
 export const DEFAULT_AVATAR_WORKSPACE = Object.freeze({
   inspectorSection: 'measurements',
   inspectorOpen: true,
-  inspectorWidth: 400,
+  ...DEFAULT_AVATAR_PRESENTATION,
   avatarContext: 'current',
   workspaceMode: 'current',
   compareStyle: 'side-by-side',
@@ -19,7 +21,7 @@ export function sanitizeAvatarWorkspace(input = {}) {
   return {
     inspectorSection: INSPECTOR_SECTIONS.includes(next.inspectorSection) ? next.inspectorSection : 'measurements',
     inspectorOpen: next.inspectorOpen !== false,
-    inspectorWidth: Math.max(320, Math.min(520, Number(next.inspectorWidth) || 400)),
+    ...sanitizeAvatarPresentation(next),
     avatarContext: next.avatarContext === 'goal' ? 'goal' : 'current',
     workspaceMode: WORKSPACE_MODES.includes(next.workspaceMode) ? next.workspaceMode : 'current',
     compareStyle: COMPARE_STYLES.includes(next.compareStyle) ? next.compareStyle : 'side-by-side',

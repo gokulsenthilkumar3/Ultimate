@@ -173,7 +173,7 @@ function AiDashboardChat({ state }) {
     <header className="gt-ai__masthead">
       <div className="gt-ai__heading">
         <p className="gt-ai__eyebrow"><span>01</span> / THE INTELLIGENCE DESK</p>
-        <h2>GrowthTrack <em>AI</em></h2>
+        <h1>GrowthTrack <em>AI</em></h1>
         <p>Make sense of what matters, one question at a time.</p>
       </div>
       <div className="gt-ai__readiness" role="status">

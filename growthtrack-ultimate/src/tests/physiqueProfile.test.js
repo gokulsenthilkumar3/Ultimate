@@ -7,9 +7,13 @@ import {
   metricLogsToSnapshots,
   mergeBodyProfileSources,
   metricsToBodyProfile,
+  publicBodyMetrics,
 } from '../lib/physiqueProfile';
 
 describe('physique profile mapping', () => {
+  it('keeps private anatomy and appearance out of general check-in snapshots',()=> {
+    expect(publicBodyMetrics({height:175,waist:82,anatomyLengthCm:22,anatomyGirthCm:15,d_size:5,skinColor:'#995544',anatomyV2:{current:{}},unknown:123})).toEqual({height:175,waist:82});
+  });
   it('maps database fields without inventing missing measurements', () => {
     expect(bodyProfileToMetrics({ heightCm: 178, weightKg: 70, chestCm: null })).toEqual({ height: 178, weight: 70 });
     expect(bodyProfileToGoals({ targetWeightKg: 80 }, { goalMetrics: { calves: 41 } })).toEqual({ weight: 80, calves: 41 });
@@ -29,6 +33,14 @@ describe('physique profile mapping', () => {
       { chestCm: 104 },
       { weight: 72, chest: 101, forearm: 29, calves: 38 },
     )).toMatchObject({ weightKg: 72, chestCm: 104, forearmsCm: 29, calvesCm: 38 });
+  });
+
+  it('uses the account gender as the body base only when the body profile has none', () => {
+    expect(mergeBodyProfileSources({ biologicalSex: null }, { gender: 'Male' }).biologicalSex).toBe('male');
+    expect(mergeBodyProfileSources({}, { gender: 'female' }).biologicalSex).toBe('female');
+    expect(mergeBodyProfileSources({ biologicalSex: 'female' }, { gender: 'male' }).biologicalSex).toBe('female');
+    expect(mergeBodyProfileSources({}, { gender: 'nonbinary' }).biologicalSex).toBeUndefined();
+    expect(bodyProfileToMetrics(mergeBodyProfileSources({}, { gender: 'male' })).biologicalSex).toBe('male');
   });
 
   it('persists supported current and target fields', () => {

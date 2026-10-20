@@ -15,7 +15,7 @@ export function bakeAvatarSurface(source) {
   const origin = source.getWorldPosition(new Vector3());
   source.traverseVisible((node) => {
     if (!node.isMesh || !node.geometry?.attributes.position) return;
-    if (/Aura|Cloth|ScalpCap/i.test(node.name)) return;
+    if (/Aura|Cloth|ScalpCap|Schematic|PrivateMeasurementGuides/i.test(node.name)) return;
     node.skeleton?.update();
     const geometry = node.geometry.clone();
     const points = new Float32Array(geometry.attributes.position.count * 3);

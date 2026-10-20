@@ -2,13 +2,22 @@
 
 A monorepo of personal-growth and finance products, with **Ultimate** as the local control center.
 
+The current default launcher provides **one UI port (5000), one API gateway
+(5300), and one database console (5556)**. All five products open inside Ultimate;
+their framework ports are internal. Existing SQLite and PostgreSQL stores are
+preserved. See [the current local workspace guide](docs/UNIFIED_LOCAL_WORKSPACE.md)
+for shared URLs, API namespaces, database sources and internal port details.
+
 ---
 
 ## Quick start
 
 ```bash
-# Start gateway + Ultimate only (normal daily use)
+# Start Ultimate and all companion UIs/APIs, gateway and database console
 npm run dev
+
+# Start just Ultimate, gateway and database console
+npm run dev:core
 
 # Start gateway + Ultimate + FinSync
 npm run dev:all  # or: node scripts/workspace.mjs gateway ultimate finsync
@@ -25,7 +34,7 @@ npm run dev:forex     # Forex (Streamlit) :8501  — requires Python venv
 
 ---
 
-## Port map
+## Internal runtime port map
 
 | Service | UI port | API / notes |
 | --- | --- | --- |

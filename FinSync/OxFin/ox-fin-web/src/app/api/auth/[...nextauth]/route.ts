@@ -92,8 +92,8 @@ export const authOptions: NextAuthOptions = {
         }),
     ],
     pages: {
-        signIn: "/",
-        error: "/",
+        signIn: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/`,
+        error: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/`,
     },
     session: {
         strategy: "jwt",

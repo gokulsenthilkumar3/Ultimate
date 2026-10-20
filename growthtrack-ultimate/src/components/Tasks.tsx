@@ -624,7 +624,7 @@ export default function Tasks() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
                     gap: '1rem', marginBottom: '1.75rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>Tasks Command</h2>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>Tasks Command</h1>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>
             {pending.length} pending
             {overdueCt > 0 && <span style={{ color: '#ef4444', marginLeft: '8px' }}>· {overdueCt} overdue</span>}

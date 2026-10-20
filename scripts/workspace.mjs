@@ -10,8 +10,16 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
+import { createRequire } from 'node:module';
+import { PRODUCT_UI_ROOT } from '../growthtrack-ultimate/src/config/products.js';
 
 const root = path.resolve(import.meta.dirname, '..');
+const require = createRequire(path.join(root, 'growthtrack-ultimate/package.json'));
+const readEnv = file => fs.existsSync(file) ? require('dotenv').parse(fs.readFileSync(file)) : {};
+const oxfinEnvironment = readEnv(path.join(root, 'FinSync/OxFin/ox-fin-web/.env.local'));
+const oxfinDatabaseUrl = oxfinEnvironment.DATABASE_URL ? new URL(oxfinEnvironment.DATABASE_URL) : null;
+if (oxfinDatabaseUrl) oxfinDatabaseUrl.port = process.env.OXFIN_DB_PORT || '5434';
+const nextEnvironment = id => ({ PORT: { finsync: '5101', oxfin: '5102', equity: '5105' }[id], NEXT_PUBLIC_BASE_PATH: `${PRODUCT_UI_ROOT}/${id}`, NEXT_PUBLIC_API_BASE: `/api/${id}` });
 
 // ── Per-product ANSI colours ──────────────────────────────────────────────────
 const COLORS = {
@@ -37,15 +45,15 @@ const COMMANDS = {
     command: 'node',
     args: ['scripts/gateway.mjs'],
     env: {},
-    uiUrl: 'http://localhost:3000',
-    ports: [3000],
-    healthUrls: ['http://127.0.0.1:3000/health'],
+    uiUrl: 'http://127.0.0.1:5300',
+    ports: [5300],
+    healthUrls: ['http://127.0.0.1:5300/health'],
   },
   ultimate: {
     cwd: path.join(root, 'growthtrack-ultimate'),
     command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
     args: ['run', 'dev'],
-    env: {},
+    env: { GROWTHTRACK_WORKSPACE: '1', GATEWAY_URL: 'http://127.0.0.1:5300', LISTEN_HOST: '127.0.0.1' },
     uiUrl:  'http://127.0.0.1:5000/Ultimate/',
     apiUrl: 'http://127.0.0.1:3001',
     ports: [3001, 5000],
@@ -55,39 +63,63 @@ const COMMANDS = {
     // FinSync workspace uses `web:dev` script to start apps/web
     cwd: path.join(root, 'FinSync'),
     command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
-    args: ['run', 'web:dev'],
-    env: { PORT: '5101' },
-    uiUrl: 'http://localhost:5101',
+    args: ['run', 'dev', '--workspace=apps/web', '--', '--hostname', '127.0.0.1'],
+    env: nextEnvironment('finsync'),
+    uiUrl: `http://localhost:5000${PRODUCT_UI_ROOT}/finsync/`,
+    ports: [5101],
+    healthUrls: [`http://127.0.0.1:5101${PRODUCT_UI_ROOT}/finsync/`],
   },
   oxfin: {
     cwd: path.join(root, 'FinSync', 'OxFin', 'ox-fin-web'),
     command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
-    args: ['run', 'dev', '--', '-p', '5102'],
-    env: { PORT: '5102' },
-    uiUrl: 'http://localhost:5102',
+    args: ['run', 'dev', '--', '-p', '5102', '--hostname', '127.0.0.1'],
+    env: { ...nextEnvironment('oxfin'), ...(oxfinDatabaseUrl ? { DATABASE_URL: oxfinDatabaseUrl.href } : {}), REDIS_URL: 'redis://127.0.0.1:6381', NEXTAUTH_URL: 'http://localhost:5000/api/oxfin/auth' },
+    uiUrl: `http://localhost:5000${PRODUCT_UI_ROOT}/oxfin/`,
+    ports: [5102],
+    healthUrls: [`http://127.0.0.1:5102${PRODUCT_UI_ROOT}/oxfin/`],
   },
   family: {
     cwd: path.join(root, 'Family Connect', 'familyconnect', 'frontend'),
     command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
-    args: ['run', 'dev', '--', '--port', '5104'],
-    env: { PORT: '5104' },
-    uiUrl: 'http://localhost:5104',
+    args: ['run', 'dev', '--', '--port', '5104', '--host', '127.0.0.1', '--strictPort'],
+    env: { VITE_BASE_PATH: `${PRODUCT_UI_ROOT}/family/`, VITE_API_BASE: '/api/family' },
+    uiUrl: `http://localhost:5000${PRODUCT_UI_ROOT}/family/`,
+    ports: [5104],
+    healthUrls: [`http://127.0.0.1:5104${PRODUCT_UI_ROOT}/family/`],
+  },
+  'family-api': {
+    cwd: path.join(root, 'Family Connect/familyconnect/backend'),
+    command: process.execPath,
+    args: ['node_modules/ts-node/dist/bin.js', 'src/index.ts'],
+    env: { PORT: '3104', REDIS_URL: 'redis://127.0.0.1:6381' },
+    apiUrl: 'http://127.0.0.1:5300/api/family/health',
+    ports: [3104], healthUrls: ['http://127.0.0.1:3104/health'],
   },
   equity: {
     cwd: path.join(root, 'Equity', 'NiftyLens'),
     command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
-    args: ['run', 'dev', '--', '-p', '5105'],
-    env: { PORT: '5105' },
-    uiUrl: 'http://localhost:5105',
+    args: ['run', 'dev', '--', '-p', '5105', '--hostname', '127.0.0.1'],
+    env: nextEnvironment('equity'),
+    uiUrl: `http://localhost:5000${PRODUCT_UI_ROOT}/equity/`,
+    ports: [5105],
+    healthUrls: [`http://127.0.0.1:5105${PRODUCT_UI_ROOT}/equity/`],
   },
   forex: {
     cwd: path.join(root, 'Forex'),
     command: process.platform === 'win32' ? path.join(root, 'Forex', '.venv', 'Scripts', 'python.exe') : path.join(root, 'Forex', '.venv', 'bin', 'python'),
-    args: ['-m', 'streamlit', 'run', 'app/dashboard.py', '--server.port', '8501', '--server.headless', 'true'],
-    env: {},
-    uiUrl: 'http://localhost:8501',
+    args: ['-m', 'streamlit', 'run', 'app/dashboard.py', '--server.port', '8501', '--server.address', '127.0.0.1', '--server.baseUrlPath', `${PRODUCT_UI_ROOT}/forex`, '--server.headless', 'true'],
+    env: { PYTHONPATH: path.join(root, 'Forex'), DATA_PATH: 'Dataset/Forex_Data.csv', MODEL_DIR: 'outputs' },
+    uiUrl: `http://localhost:5000${PRODUCT_UI_ROOT}/forex/`,
     ports: [8501],
-    healthUrls: ['http://127.0.0.1:8501'],
+    healthUrls: [`http://127.0.0.1:8501${PRODUCT_UI_ROOT}/forex/_stcore/health`],
+  },
+  'forex-api': {
+    cwd: path.join(root, 'Forex'),
+    command: process.platform === 'win32' ? path.join(root, 'Forex/.venv/Scripts/python.exe') : path.join(root, 'Forex/.venv/bin/python'),
+    args: ['-m', 'uvicorn', 'src.api.app:app', '--host', '127.0.0.1', '--port', '8000', '--root-path', '/api/forex'],
+    env: { PYTHONPATH: path.join(root, 'Forex'), MODEL_DIR: 'outputs' },
+    apiUrl: 'http://127.0.0.1:5300/api/forex/docs',
+    ports: [8000], healthUrls: ['http://127.0.0.1:8000/health'],
   },
   studio: {
     cwd: path.join(root, 'growthtrack-ultimate'),
@@ -122,12 +154,12 @@ function portInUse(port) {
   });
 }
 async function serviceHealthy(url) {
-  try { const response = await fetch(url, { signal: AbortSignal.timeout(900) }); return response.ok; } catch { return false; }
+  try { const response = await fetch(url, { signal: AbortSignal.timeout(5000) }); return response.ok; } catch { return false; }
 }
 
 // ── Parse targets ─────────────────────────────────────────────────────────────
 const names = process.argv.slice(2).map(n => n.toLowerCase());
-const selected = names.length ? names : ['gateway', 'ultimate', 'studio'];
+const selected = [...new Set((names.length ? names : ['gateway', 'ultimate', 'studio']).flatMap(name => name === 'family' ? ['family-api', name] : name === 'forex' ? ['forex-api', name] : [name]))];
 
 const unknown = selected.filter(n => !COMMANDS[n]);
 if (unknown.length) {
@@ -179,8 +211,8 @@ for (const name of selected) {
   for (const port of spec.ports || []) if (await portInUse(port)) occupied.push(port);
   if (occupied.length) {
     const healthy = await Promise.all((spec.healthUrls || []).map(serviceHealthy));
-    if (healthy.every(Boolean)) console.warn(`${COLORS[name] || ''}[${name}]${COLORS.reset} ${COLORS.dim}already running and healthy on port${occupied.length > 1 ? 's' : ''} ${occupied.join(', ')} — reusing the existing service.${COLORS.reset}`);
-    else console.error(`${COLORS[name] || ''}[${name}]${COLORS.reset} \x1b[31mport conflict on ${occupied.join(', ')} but the existing service is unhealthy. Stop the stale process, then rerun this command.${COLORS.reset}`);
+    if (occupied.length === spec.ports.length && healthy.length && healthy.every(Boolean)) console.warn(`${COLORS[name] || ''}[${name}]${COLORS.reset} ${COLORS.dim}already running and healthy on port${occupied.length > 1 ? 's' : ''} ${occupied.join(', ')} — reusing the existing service.${COLORS.reset}`);
+    else { console.error(`${COLORS[name] || ''}[${name}]${COLORS.reset} \x1b[31mport conflict on ${occupied.join(', ')} but the existing service is unhealthy or has old routing. Restart it before relaunching.${COLORS.reset}`); process.exitCode = 1; }
     continue;
   }
 

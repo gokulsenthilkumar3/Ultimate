@@ -5,6 +5,11 @@ const DEFAULT_ASSETS = Object.freeze({
   lite: `${base}assets/models/humanoid-base-lite.glb`,
 });
 
+// External anatomy carried by the shipped assets. Both contain the male
+// placeholder (see docs/ANATOMY_ASSET_PLAN.md). Any other asset must declare
+// `anatomySex` in its PrivateAnatomy node extras or it stays covered.
+const DEFAULT_ANATOMY_SEX = 'male';
+
 // v2 assets are opt-in until the authored topology and calibration gates pass.
 // Keeping them in the same registry lets the viewer promote an asset without
 // changing camera, morph, comparison, or persistence code.
@@ -54,8 +59,10 @@ export function resolveModelAsset(preference = {}, gpuTier = 'MED') {
   const preferV2 = preference.modelVersion === 'v2' || preference.preferV2 === true;
   const selectedV2 = preferV2 && (gpuTier === 'HIGH' ? configuredV2 : configuredV2Mobile || configuredV2);
   const useLiteDefault = gpuTier !== 'HIGH' && !customAsset && configuredAsset === DEFAULT_ASSETS.production;
+  const path = customAsset || selectedV2 || (useLiteDefault ? DEFAULT_ASSETS.lite : configuredAsset);
   return {
-    path: customAsset || selectedV2 || (useLiteDefault ? DEFAULT_ASSETS.lite : configuredAsset),
+    path,
+    anatomySex: [DEFAULT_ASSETS.production, DEFAULT_ASSETS.lite].includes(path) ? DEFAULT_ANATOMY_SEX : null,
     preset,
     version: customAsset ? 'profile' : selectedV2 ? 'v2' : 'legacy',
     source: customAsset ? 'profile' : selectedV2 ? 'environment-v2' : configuredAsset !== DEFAULT_ASSETS.production ? 'environment' : 'default',

@@ -9,10 +9,11 @@ const outputDir = `../growthtrack-release-${timestamp}`;
 const run = (file, args) => execFileSync(file, args, { cwd: projectRoot, stdio: 'inherit', windowsHide: true });
 
 run(process.execPath, ['node_modules/prisma/build/index.js', 'generate']);
-fs.rmSync(path.join(projectRoot, 'prisma-generated'), { recursive: true, force: true });
+run(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'diff', '--from-empty', '--to-schema', 'prisma/schema.prisma', '--script', '--output', 'prisma/fresh-schema.sql']);
 fs.mkdirSync(path.join(projectRoot, 'prisma-generated'), { recursive: true });
 fs.cpSync(path.join(projectRoot, 'node_modules', '.prisma', 'client'), path.join(projectRoot, 'prisma-generated', 'client'), { recursive: true });
-run(process.execPath, ['node_modules/prisma/build/index.js', 'db', 'push']);
+// Building an installer must not change the developer's or owner's database.
+// Apply reviewed migrations through the deployment workflow separately.
 run(process.execPath, ['node_modules/vite/bin/vite.js', 'build']);
 run(process.execPath, ['node_modules/electron-builder/out/cli/cli.js', '--win', `--config.directories.output=${outputDir}`]);
 

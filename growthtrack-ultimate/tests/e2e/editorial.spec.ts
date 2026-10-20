@@ -10,7 +10,10 @@ for (const width of [320, 390, 640, 1024, 1440, 1920]) {
     await expect(page.getByRole('button', { name: 'Search all modules and records' })).toBeVisible();
     const headerTop = await page.locator('.app-header').evaluate(element => element.getBoundingClientRect().top);
     expect(headerTop).toBeGreaterThanOrEqual(0);
-    expect(headerTop).toBeLessThanOrEqual(1);
+    expect(headerTop, await page.evaluate(() => JSON.stringify([...document.querySelectorAll('body, #root, .app-shell, .main-area, .app-header')].map(element => {
+      const style = getComputedStyle(element);
+      return { element: element.id || element.className || element.tagName, top: element.getBoundingClientRect().top, margin: style.margin, padding: style.padding, position: style.position };
+    })))).toBeLessThanOrEqual(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     if (width < 640) {
       const dock = page.getByRole('navigation', { name: 'Quick navigation' });

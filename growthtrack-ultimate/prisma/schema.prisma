@@ -51,6 +51,8 @@ model User {
   timesheetSessions      TimesheetSession[]
   entertainmentMedia     EntertainmentMedia[]
   notes                  Note[]
+  noteMutations          NoteMutation[]
+  noteChanges            NoteChange[]
   goals                  Goal[]
   sleepLogs              SleepLog[]
   documents              Document[]
@@ -68,6 +70,10 @@ model User {
   locationPoints         LocationPoint[]
   customTables           CustomTable[]
   integrationCredentials IntegrationCredential[]
+  calendarEventRows      CalendarEvent[]
+  portfolioHoldings      PortfolioHolding[]
+  recordMutations        RecordMutation[]
+  recordChanges          RecordChange[]
   progressPhotos         ProgressPhoto[]
   goalProgressLogs       GoalProgressLog[]
   createdBy              String?
@@ -678,6 +684,121 @@ model Note {
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  kind      String   @default("workspace")
+  pinned    Boolean  @default(false)
+  starred   Boolean  @default(false)
+  revision  Int      @default(1)
+  deletedAt DateTime?
+  revisions NoteRevision[]
+
+  @@index([userId, kind, deletedAt, id])
+}
+
+// Row-per-record storage for calendar events and holdings (migration
+// 20261018120000_record_rows). Enabled with GROWTHTRACK_RECORD_ROWS=1; the
+// legacy User.calendarEvents/User.portfolio JSON is retained as a rollback copy.
+model CalendarEvent {
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String
+  revision     Int       @default(1)
+  data         String
+  syncProvider String?
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now())
+  createdBy    String?
+  updatedBy    String?
+
+  @@id([userId, id])
+  @@index([userId, deletedAt])
+  @@index([userId, syncProvider])
+  @@map("calendar_events")
+}
+
+model PortfolioHolding {
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String
+  revision  Int       @default(1)
+  position  Int       @default(0)
+  data      String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+  createdBy String?
+  updatedBy String?
+
+  @@id([userId, id])
+  @@index([userId, deletedAt, position])
+  @@map("portfolio_holdings")
+}
+
+model RecordMutation {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collection  String
+  mutationId  String
+  fingerprint String
+  response    String
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, collection, mutationId])
+  @@map("record_mutations")
+}
+
+model RecordChange {
+  sequence   Int      @id @default(autoincrement())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collection String
+  recordId   String
+  revision   Int
+  operation  String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, collection, sequence])
+  @@map("record_changes")
+}
+
+model NoteRevision {
+  id        String   @id @default(uuid())
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  revision  Int
+  title     String?
+  content   String?
+  data      String?
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  actorId   String
+
+  @@unique([noteId, revision])
+}
+
+model NoteMutation {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mutationId  String
+  fingerprint String
+  response    String
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, mutationId])
+}
+
+model NoteChange {
+  sequence  Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noteId    String
+  revision  Int
+  operation String
+  createdAt DateTime @default(now())
+
+  @@index([userId, sequence])
 }
 
 model Goal {

@@ -77,7 +77,7 @@ true`, no download URL, and a 410 response if a byte download is requested.
 Storage root defaults to `server/private-files`; set `FILE_STORAGE_ROOT` to a
 persistent writable directory such as desktop `userData/private-files`.
 It must be outside public/dist. Exclude `server/private-files/**` from packaging.
-Files are private local bytes; this implementation does not claim encryption.
+With `APP_ENCRYPTION_KEY` (64 hex characters), new uploads use authenticated AES-256-GCM storage. `_vault.encryption` remains private; public records expose only `encryptedAtRest`. Missing keys return `FILE_KEY_REQUIRED`; tampered bytes fail verification. Existing plaintext files retain their explicit compatibility path. SQLite records, logs and backup files remain plaintext and require separate host-storage protection.
 
 ## Portfolio persistence
 

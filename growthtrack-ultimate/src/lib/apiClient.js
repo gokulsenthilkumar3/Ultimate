@@ -33,6 +33,7 @@ export class ApiClient {
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const headers = new Headers(requestOptions.headers || {});
+      if (!headers.has('Accept')) headers.set('Accept', 'application/json');
       if (!headers.has('Content-Type') && requestOptions.body !== undefined && !(requestOptions.body instanceof FormData)) headers.set('Content-Type', 'application/json');
       if (!SAFE_METHODS.has(method)) {
         const csrfToken = getCsrfToken();

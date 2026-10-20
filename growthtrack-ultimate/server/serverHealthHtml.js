@@ -1,4 +1,9 @@
-export function renderServerHealthHtml(payload) {
+import { DEFAULT_CONFIG } from './config.js';
+
+const escapeAttribute = value => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
+
+/** Links come from server configuration (APP_URL, DB_STUDIO_URL, GATEWAY_URL). */
+export function renderServerHealthHtml(payload, links = { app: DEFAULT_CONFIG.server.appUrl, dbStudio: DEFAULT_CONFIG.gateway.dbStudioUrl, gateway: `${DEFAULT_CONFIG.gateway.url}/health` }) {
   const isHealthy = payload.status === 'online';
   return `<!DOCTYPE html>
 <html lang="en">
@@ -318,10 +323,10 @@ export function renderServerHealthHtml(payload) {
       <span class="port-pill">Direct API :${payload.port}</span>
     </div>
     <nav class="nav-links">
-      <a href="http://127.0.0.1:5000/Ultimate/" target="_blank" rel="noopener noreferrer" class="nav-link cta">🚀 Open Ultimate</a>
+      <a href="${escapeAttribute(links.app)}" target="_blank" rel="noopener noreferrer" class="nav-link cta">🚀 Open Ultimate</a>
       <a href="/api/docs" target="_blank" rel="noopener noreferrer" class="nav-link">📖 API Explorer</a>
-      <a href="http://localhost:5556" target="_blank" rel="noopener noreferrer" class="nav-link">🗄️ DB Studio</a>
-      <a href="http://localhost:3000/health" target="_blank" rel="noopener noreferrer" class="nav-link">🌐 Gateway Hub</a>
+      <a href="${escapeAttribute(links.dbStudio)}" target="_blank" rel="noopener noreferrer" class="nav-link">🗄️ DB Studio</a>
+      <a href="${escapeAttribute(links.gateway)}" target="_blank" rel="noopener noreferrer" class="nav-link">🌐 Gateway Hub</a>
       <a href="/api/health?format=json" class="nav-link">Raw JSON</a>
     </nav>
   </header>

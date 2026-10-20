@@ -21,7 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure logs directory exists
-const LOGS_DIR = path.join(__dirname, 'logs');
+const LOGS_DIR = path.resolve(process.env.LOG_DIR || path.join(__dirname, 'logs'));
 if (!fs.existsSync(LOGS_DIR)) {
   fs.mkdirSync(LOGS_DIR, { recursive: true });
 }

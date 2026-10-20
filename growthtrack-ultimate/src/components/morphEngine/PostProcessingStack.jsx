@@ -25,6 +25,7 @@ import {
 } from "postprocessing";
 
 import use3DStore from "../../store/use3DStore";
+import { resolveAvatarEffects } from '../../lib/avatarPresentation';
 
 function addEffectPass(composer, camera, effect, passes) {
   const pass = new EffectPass(camera, effect);
@@ -52,8 +53,9 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
   const cinematic = use3DStore((state) => state.cinematicState);
   const gpuTier = use3DStore((state) => state.gpuTier);
   const highTier = gpuTier === "HIGH";
-  const polishTier = gpuTier !== "LOW";
   const fullEffects = mode === "FULL" && highTier && !reducedMotion;
+  const active = resolveAvatarEffects({ cinematic, gpuTier, reducedMotion, mode });
+  const activeEffectNames = Object.entries(active).filter(([,enabled]) => enabled).map(([name]) => name).join(',');
 
   const pipeline = useMemo(() => {
     const composer = new EffectComposer(gl, {
@@ -69,7 +71,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     composer.addPass(renderPass);
     passes.push(renderPass);
 
-    if (fullEffects && cinematic.depthOfField) {
+    if (active.depthOfField) {
       const depthOfField = new DepthOfFieldEffect(camera, {
         focusDistance: 3.25,
         focusRange: 2.2,
@@ -80,7 +82,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       addEffectPass(composer, camera, depthOfField, passes);
     }
 
-    if (polishTier && cinematic.bloom) {
+    if (active.bloom) {
       const bloom = new BloomEffect({
         blendFunction: BlendFunction.SCREEN,
         luminanceThreshold: fullEffects ? 0.92 : 0.96,
@@ -94,7 +96,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       addEffectPass(composer, camera, bloom, passes);
     }
 
-    if (fullEffects && cinematic.ssao) {
+    if (active.ssao) {
       const ssao = new SSAOEffect(camera, new THREE.Texture(), {
         blendFunction: BlendFunction.MULTIPLY,
         samples: 16,
@@ -113,7 +115,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     }
 
     const finishingEffects = [];
-    if (fullEffects && cinematic.chromaticAberration) {
+    if (active.chromaticAberration) {
       const chromatic = new ChromaticAberrationEffect({
         blendFunction: BlendFunction.NORMAL,
         offset: new THREE.Vector2(0.00012, 0.00008),
@@ -124,9 +126,11 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       effects.push(chromatic);
     }
 
+    // Khronos PBR Neutral keeps base colours true; AgX desaturated the skin
+    // albedo towards grey, which read as lifeless on the digital human.
     const toneMapping = new ToneMappingEffect({
       blendFunction: BlendFunction.SRC,
-      mode: ToneMappingMode.AGX,
+      mode: ToneMappingMode.NEUTRAL,
       resolution: 256,
       whitePoint: 1.0,
       middleGrey: 0.18,
@@ -135,7 +139,7 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     finishingEffects.push(toneMapping);
     effects.push(toneMapping);
 
-    if (fullEffects && cinematic.filmGrain) {
+    if (active.filmGrain && fullEffects) {
       const grain = new NoiseEffect({
         blendFunction: BlendFunction.SOFT_LIGHT,
         premultiply: true,
@@ -145,25 +149,28 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
       effects.push(grain);
     }
 
-    if (polishTier && cinematic.filmGrain) {
+    if (active.filmGrain) {
       const noise = new NoiseEffect({
         blendFunction: BlendFunction.COLOR_DODGE,
         premultiply: true,
-        opacity: fullEffects ? 0.08 : 0.04,
       });
+      // NoiseEffect has no opacity option; without this the dodge grain runs at
+      // full strength and reads as speckled skin.
+      noise.blendMode.opacity.value = fullEffects ? 0.08 : 0.04;
       finishingEffects.push(noise);
       effects.push(noise);
     }
 
-    // Always apply a cinematic vignette to pull focus to the model
-    const vignette = new VignetteEffect({
-      eskil: false,
-      offset: 0.28,
-      darkness: 0.62,
-      blendFunction: BlendFunction.NORMAL,
-    });
-    finishingEffects.push(vignette);
-    effects.push(vignette);
+    if (active.vignette) {
+      const vignette = new VignetteEffect({
+        eskil: false,
+        offset: 0.28,
+        darkness: 0.62,
+        blendFunction: BlendFunction.NORMAL,
+      });
+      finishingEffects.push(vignette);
+      effects.push(vignette);
+    }
 
     if (finishingEffects.length > 0) {
       const finishingPass = new EffectPass(camera, ...finishingEffects);
@@ -174,21 +181,25 @@ export default function PostProcessingStack({ mode, reducedMotion = false }) {
     return { composer, effects, passes };
   }, [
     camera,
-    cinematic.bloom,
-    cinematic.chromaticAberration,
-    cinematic.depthOfField,
-    cinematic.filmGrain,
-    cinematic.ssao,
-    cinematic.vignette,
+    active.bloom,
+    active.chromaticAberration,
+    active.depthOfField,
+    active.filmGrain,
+    active.ssao,
+    active.vignette,
     gl,
     fullEffects,
-    polishTier,
     scene,
   ]);
 
   useEffect(() => {
     pipeline.composer.setSize(size.width, size.height);
   }, [pipeline, size.height, size.width]);
+
+  useEffect(() => {
+    gl.domElement.setAttribute('data-active-effects', activeEffectNames);
+    return () => gl.domElement.removeAttribute('data-active-effects');
+  }, [gl, activeEffectNames]);
 
   useEffect(() => {
     const previous = applyToneMapping(gl, cinematic.exposure);

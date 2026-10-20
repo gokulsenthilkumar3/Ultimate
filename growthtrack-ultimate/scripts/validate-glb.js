@@ -55,6 +55,11 @@ function main() {
   const targetNames = mesh?.extras?.targetNames ?? [];
   const skin = json.skins?.[0];
   const materials = json.materials ?? [];
+  // Eyebrow and eyelash cards are colour plus coverage masks; MakeHuman authors
+  // no normal map for them, so they are exempt from the normal-texture rule.
+  const strandMaterials = new Set((json.meshes ?? [])
+    .filter((item) => /^GrowthTrack(Eyebrows|Eyelashes)$/.test(item?.name ?? ''))
+    .flatMap((item) => (item.primitives ?? []).map((primitive) => primitive.material)));
   const images = json.images ?? [];
   const privateMeshIndex = (json.meshes ?? []).findIndex((item) => String(item?.name || '').toLowerCase().includes('privateanatomy'));
   const privateMesh = privateMeshIndex >= 0 ? json.meshes[privateMeshIndex] : null;
@@ -141,7 +146,7 @@ function main() {
   check(wronglyBakedShaderMorphs.length === 0, 'Shader-only targets', wronglyBakedShaderMorphs.join(', '), failures);
   check(dominantAxis === 'Y', 'Up axis', `dominant axis is ${dominantAxis}`, failures);
   check(orphanedBufferViews.length === 0, 'Orphaned bufferViews', `${orphanedBufferViews.length} unused`, failures);
-  check(materials.length > 0 && materials.every((m) => m.pbrMetallicRoughness?.baseColorTexture && m.normalTexture), 'PBR textures', 'missing baseColorTexture or normalTexture', failures);
+  check(materials.length > 0 && materials.every((m, idx) => m.pbrMetallicRoughness?.baseColorTexture && (m.normalTexture || strandMaterials.has(idx))), 'PBR textures', 'missing baseColorTexture or normalTexture', failures);
   check(materials[0]?.pbrMetallicRoughness?.metallicRoughnessTexture, 'Packed roughness/AO map', 'skin material has no metallicRoughnessTexture', failures);
   check(imageHasProductionResolution('SkinNormal_GeometryBaked'), 'Skin normal resolution', 'geometry-baked normal image is missing or still a placeholder', failures);
   check(imageHasProductionResolution('SkinAO_Roughness_GeometryBaked'), 'Skin roughness/AO resolution', 'geometry-baked roughness/AO image is missing or still a placeholder', failures);

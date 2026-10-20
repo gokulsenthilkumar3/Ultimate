@@ -1,4 +1,4 @@
-import { addDays, instantParts, normalizeEvent, parseDateKey, resolveTimeZone, toInstant, validateEvent } from './calendarModel';
+import { addDays, instantParts, normalizeEvent, parseDateKey, resolveTimeZone, toInstant, validateEvent } from './calendarModel.js';
 
 export const MAX_ICS_BYTES = 1024 * 1024;
 export const MAX_IMPORT_EVENTS = 500;

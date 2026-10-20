@@ -42,8 +42,8 @@ export default function WalletsPage() {
         setLoading(true);
         try {
             const [balanceRes, txRes, limit] = await Promise.all([
-                fetch('/api/user/balance'),
-                fetch('/api/user/transactions'),
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/balance`),
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/transactions`),
                 calculateWalletLiteLimit(),
             ]);
             if (balanceRes.ok && txRes.ok) {

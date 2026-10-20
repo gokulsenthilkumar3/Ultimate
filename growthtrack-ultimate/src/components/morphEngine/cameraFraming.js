@@ -27,3 +27,14 @@ export function fitHumanFrame({ frame, width = 1000, height = 700, fov = 30, vie
 export function nearestOrbitAngle(current, target) {
   return current + Math.atan2(Math.sin(target - current), Math.cos(target - current));
 }
+
+/** Region-aware framing uses both viewport axes so narrow screens keep the part in view. */
+export function fitRegionFrame({ region, frame, evaluated, width = 1000, height = 700, fov = 30 }) {
+  const scaleY = positive(frame?.height, 1.92) / 1.92;
+  const center = evaluated?.center || [region.position[0], region.position[1] * scaleY, region.position[2]];
+  const dimensions = evaluated?.size || (Array.isArray(region.size) ? region.size : [region.size * 2, region.size * 2, region.size * 2]);
+  const tangent = Math.tan(positive(fov, 30) * Math.PI / 360);
+  const aspect = positive(width, 1000) / positive(height, 700);
+  const radius = Math.max(dimensions[0] / aspect, dimensions[1] * (evaluated ? 1 : scaleY), dimensions[2]) * 0.85;
+  return { center, distance: Math.max(0.45, radius / tangent + dimensions[2] / 2) };
+}

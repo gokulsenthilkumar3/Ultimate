@@ -45,8 +45,15 @@ def texture_bytes(path: Path, max_size: int | None = None) -> bytes:
 # extreme.  Earlier releases baked the max-muscle target into every profile and
 # then widened the shoulders a second time.  That made even average measurements
 # render as a caricature and left too little useful range for the metric morphs.
+# MakeHuman's own default adult man (Gender 1, Age 25, average muscle/weight)
+# combines the universal macro with the ethnic gender/age targets in equal
+# parts.  Without the ethnic targets the neutral HM08 base keeps an
+# androgynous, adolescent build (narrow shoulders, breast-like chest).
 BASE_SCULPT_SOURCES = [
     ("targets/macrodetails/universal-male-young-averagemuscle-averageweight", 1.0),
+    ("targets/macrodetails/african-male-young", 1.0 / 3.0),
+    ("targets/macrodetails/asian-male-young", 1.0 / 3.0),
+    ("targets/macrodetails/caucasian-male-young", 1.0 / 3.0),
 ]
 
 
@@ -289,128 +296,255 @@ def generated_morph_delta(name: str, coords: np.ndarray) -> np.ndarray:
     return delta
 
 
-def make_private_anatomy_mesh() -> dict:
-    """Build a smooth, independently controllable male external-anatomy mesh.
+# External male anatomy, modelled in centimetres around the skin junction at
+# the shaft root (local origin; +Y up, +Z forward) and converted to model units.
+# The morph range equals the accepted input range in anatomyCalibration.js, so
+# every value an owner may enter is drawn as entered: the rest pose is the
+# minimum and d_length / d_girth at weight 1 reach the maximum. Length is the
+# centreline from the skin junction to the tip; girth is the mid-shaft
+# circumference. Both are re-measured from the GLB by anatomyCalibration.test.js.
+ANATOMY_LENGTH_RANGE_CM = (3.0, 16.0)
+ANATOMY_GIRTH_RANGE_CM = (5.0, 14.0)
+ANATOMY_SEGMENTS = 64
+ANATOMY_DEPTH_RATIO = 0.86  # dorsoventral / lateral diameter of the shaft
+ANATOMY_MID_T = 0.45
 
-    The source HM08 helper has useful placement data but is intentionally very
-    sparse. A compact parametric surface gives the privacy-controlled region
-    enough radial resolution for clean silhouettes and lets d_length/d_girth
-    deform the actual surface rather than only changing UI labels.
-    """
-    positions = []
-    uv_values = []
-    length_deltas = []
-    girth_deltas = []
-    triangles = []
 
-    center_z = 0.122
-    base_y = -0.006
-    shaft_length = 0.104
-    segments = 32
+def _smoothstep(edge0: float, edge1: float, value: float) -> float:
+    t = min(1.0, max(0.0, (value - edge0) / (edge1 - edge0)))
+    return t * t * (3.0 - 2.0 * t)
 
-    def add_vertex(position, uv, length_delta=(0.0, 0.0, 0.0), girth_delta=(0.0, 0.0, 0.0)):
-        positions.append(position)
-        uv_values.append(uv)
-        length_deltas.append(length_delta)
-        girth_deltas.append(girth_delta)
+
+def _shaft_profile(t: float) -> float:
+    """Cross-section scale along the visible shaft (0 at the skin, 1 at the tip):
+    a slight flare at the root, the coronal sulcus and ridge, then the glans."""
+    def body(x: float) -> float:
+        flare = 0.055 * np.exp(-((x / 0.09) ** 2))
+        sulcus = 0.035 * np.exp(-(((x - 0.705) / 0.025) ** 2))
+        corona = 0.075 * np.exp(-(((x - 0.753) / 0.025) ** 2))
+        glans = 0.045 * _smoothstep(0.72, 0.77, x)
+        return float(1.0 + flare - sulcus + corona + glans)
+    if t <= 0.76:
+        return body(t)
+    u = (t - 0.76) / 0.24
+    return body(0.76) * float(np.sqrt(max(0.0, 1.0 - u ** 2.2)))
+
+
+def _shaft_centreline(samples: np.ndarray):
+    """Unit-length centreline and frames: leaves the body downward and
+    forward, then hangs almost vertically against the scrotum. Shape is
+    independent of length, so scaling it keeps every morph linear."""
+    fine = np.linspace(0.0, 1.0, 4001)
+    angle = np.radians(50.0 + (88.0 - 50.0) * np.asarray([_smoothstep(0.0, 0.30, x) for x in fine]))
+    direction = np.stack([np.zeros_like(angle), -np.sin(angle), np.cos(angle)], axis=1)
+    step = np.diff(fine)[:, None]
+    points = np.vstack([np.zeros((1, 3)), np.cumsum((direction[:-1] + direction[1:]) * 0.5 * step, axis=0)])
+    centre = np.stack([np.interp(samples, fine, points[:, k]) for k in range(3)], axis=1)
+    theta = np.radians(50.0 + (88.0 - 50.0) * np.asarray([_smoothstep(0.0, 0.30, x) for x in samples]))
+    tangent = np.stack([np.zeros_like(theta), -np.sin(theta), np.cos(theta)], axis=1)
+    dorsal = np.stack([np.zeros_like(theta), np.cos(theta), np.sin(theta)], axis=1)
+    return centre, tangent, dorsal
+
+
+def make_private_anatomy_mesh(units_per_cm: float) -> dict:
+    """Build the male external-anatomy surface: a curved, slightly flattened
+    shaft with flare, coronal ridge and closed glans, rooted inside the body so
+    no open edge shows, and a two-lobed scrotum hanging between the thighs.
+    Vertex colours carry gentle pigment differences (multiplied by skin tone)."""
+    segments = ANATOMY_SEGMENTS
+    lateral = np.asarray([1.0, 0.0, 0.0])
+    visible_t = np.concatenate([
+        np.linspace(0.0, 0.18, 7), np.linspace(0.22, 0.64, 8), np.linspace(0.67, 0.76, 8),
+        np.asarray([0.79, 0.82, 0.85, 0.88, 0.91, 0.935, 0.955, 0.972, 0.986, 0.995]),
+    ])
+    centre, tangent, dorsal = _shaft_centreline(np.append(visible_t, 1.0))
+    alphas = np.arange(segments) / segments * 2.0 * np.pi
+    unit_ring = lambda index, scale: [
+        scale * (np.cos(a) * lateral + ANATOMY_DEPTH_RATIO * np.sin(a) * dorsal[index]) for a in alphas
+    ]
+
+    # Calibrate unit length and radius against what the test measures: the
+    # polyline through ring centres to the tip, and the mid-ring perimeter.
+    lam = float(np.sum(np.linalg.norm(np.diff(centre, axis=0), axis=1)))
+    mid_index = int(np.argmin(np.abs(visible_t - ANATOMY_MID_T)))
+    mid = np.asarray(unit_ring(mid_index, _shaft_profile(visible_t[mid_index])))
+    unit_perimeter = float(np.sum(np.linalg.norm(mid - np.roll(mid, -1, axis=0), axis=1)))
+    length = [value * units_per_cm / lam for value in ANATOMY_LENGTH_RANGE_CM]
+    radius = [value * units_per_cm / unit_perimeter for value in ANATOMY_GIRTH_RANGE_CM]
+
+    positions, colors, uvs, d_length, d_girth = [], [], [], [], []
+
+    def add(rest, length_delta, girth_delta, color, uv):
+        positions.append(rest); d_length.append(length_delta); d_girth.append(girth_delta)
+        colors.append(color); uvs.append(uv)
         return len(positions) - 1
 
-    # Shaft and glans profile, oriented along the humanoid's vertical Y axis.
-    profile = [
-        (base_y, 0.015),
-        (-0.016, 0.019),
-        (-0.046, 0.021),
-        (-0.078, 0.020),
-        (-0.096, 0.024),
-        (-0.108, 0.022),
-        (-0.116, 0.012),
-    ]
+    shaft_color = np.asarray([0.94, 0.87, 0.84])
+    glans_color = np.asarray([0.92, 0.76, 0.75])
     rings = []
-    for ring_index, (y, radius) in enumerate(profile):
+    # Seat the shaft so the upper (dorsal) edge of its junction ring lies on
+    # the skin at the origin: the shaft flows out of the pubic skin instead of
+    # starting as a knob a full radius above it. Resting length is measured
+    # dorsally from the skin, which this centreline length then matches.
+    seat = -_shaft_profile(0.0) * ANATOMY_DEPTH_RATIO * dorsal[0]
+    # Root rings continue the shaft into the pelvis (deepest first). Their depth
+    # grows with girth so a wide root never shows its edge above the skin.
+    for depth in (1.0, 0.66, 0.33):
+        scale = 1.16 + 0.10 * depth
         ring = []
-        fraction = np.clip((base_y - y) / shaft_length, 0.0, 1.0)
-        for segment in range(segments):
-            theta = (segment / segments) * np.pi * 2.0
-            radial = np.asarray([np.cos(theta) * radius, 0.0, np.sin(theta) * radius], dtype=np.float32)
-            ring.append(add_vertex(
-                (float(radial[0]), float(y), float(center_z + radial[2])),
-                (segment / segments, ring_index / max(len(profile) - 1, 1)),
-                (0.0, float(-0.105 * fraction), 0.0),
-                tuple((radial * 0.44).tolist()),
-            ))
+        for k, offset in enumerate(unit_ring(0, scale)):
+            sink = -depth * tangent[0]
+            rest = sink * (0.25 * units_per_cm + 0.65 * radius[0] * scale) + radius[0] * (offset + seat)
+            girth = sink * 0.65 * (radius[1] - radius[0]) * scale + (radius[1] - radius[0]) * (offset + seat)
+            ring.append(add(rest, np.zeros(3), girth, np.ones(3), (k / segments, 0.0)))
         rings.append(ring)
-    for ring_a, ring_b in zip(rings[:-1], rings[1:]):
-        for segment in range(segments):
-            a = ring_a[segment]
-            b = ring_a[(segment + 1) % segments]
-            c = ring_b[(segment + 1) % segments]
-            d = ring_b[segment]
-            triangles.extend((a, b, c, a, c, d))
+    base_ring = len(rings)
+    for index, t in enumerate(visible_t):
+        profile = _shaft_profile(float(t))
+        color = 1.0 + (shaft_color - 1.0) * _smoothstep(0.0, 0.10, float(t))
+        color = color + (glans_color - color) * _smoothstep(0.70, 0.78, float(t))
+        ring = []
+        for k, offset in enumerate(unit_ring(index, profile)):
+            rest = length[0] * centre[index] + radius[0] * (offset + seat)
+            ring.append(add(rest, (length[1] - length[0]) * centre[index], (radius[1] - radius[0]) * (offset + seat),
+                            color, (k / segments, 0.02 + 0.46 * float(t))))
+        rings.append(ring)
+    tip = add(length[0] * centre[-1] + radius[0] * seat, (length[1] - length[0]) * centre[-1],
+              (radius[1] - radius[0]) * seat, glans_color, (0.5, 0.49))
 
-    # One continuous pear-shaped scrotal envelope replaces the old pair of
-    # disconnected spheres. The higher-density surface gives a cleaner,
-    # recognisably anatomical silhouette while remaining intentionally neutral
-    # and suitable for measurement visualisation rather than clinical use.
-    sack_segments = 32
-    sack_rings = 20
-    sack_center = np.asarray([0.0, -0.048, 0.114], dtype=np.float32)
-    sack_rows = []
-    for row in range(sack_rings + 1):
-        phi = (row / sack_rings) * np.pi
-        row_ids = []
-        vertical = np.cos(phi)
-        pear = 1.0 + 0.16 * max(0.0, -vertical)
-        for segment in range(sack_segments):
-            theta = (segment / sack_segments) * np.pi * 2.0
-            radial = np.sin(phi)
-            # A shallow median cleft and controlled left/right fullness avoid
-            # the toy-like two-ball shape without introducing separate shells.
-            side = np.cos(theta)
-            cleft = 1.0 - 0.08 * np.exp(-((side / 0.20) ** 2)) * radial
-            local = np.asarray([
-                radial * side * 0.038 * pear,
-                vertical * 0.033,
-                radial * np.sin(theta) * 0.026 * cleft,
-            ], dtype=np.float32)
-            row_ids.append(add_vertex(
-                tuple((sack_center + local).tolist()),
-                (segment / sack_segments, row / sack_rings),
-                (0.0, float(-0.010 * max(0.0, -vertical)), 0.0),
-                tuple((local * np.asarray([0.26, 0.18, 0.26], dtype=np.float32)).tolist()),
-            ))
-        sack_rows.append(row_ids)
-    for row in range(sack_rings):
-        for segment in range(sack_segments):
-            a = sack_rows[row][segment]
-            b = sack_rows[row][(segment + 1) % sack_segments]
-            c = sack_rows[row + 1][(segment + 1) % sack_segments]
-            d = sack_rows[row + 1][segment]
+    triangles = []
+    for ring_a, ring_b in zip(rings[:-1], rings[1:]):
+        for k in range(segments):
+            a, b = ring_a[k], ring_a[(k + 1) % segments]
+            c, d = ring_b[(k + 1) % segments], ring_b[k]
             triangles.extend((a, b, c, a, c, d))
+    for k in range(segments):
+        triangles.extend((rings[-1][k], rings[-1][(k + 1) % segments], tip))
+    shaft_triangle_count = len(triangles)
+
+    # Scrotum: centre 5.9 cm below and 2.6 cm behind the skin junction, its top
+    # embedded in the perineum. Lobes are separated by a median groove (raphe)
+    # and the left side hangs slightly lower, as is typical.
+    cm = units_per_cm
+    sack_centre = np.asarray([0.0, -5.9, -2.6]) * cm
+    sack_top = sack_centre + np.asarray([0.0, 3.3, 0.0]) * cm
+    scrotum_color = np.asarray([0.86, 0.74, 0.69])
+    rows = 40
+
+    def sack_point(phi: float, theta: float) -> np.ndarray:
+        s, c = np.sin(phi), np.cos(phi)
+        ux, uy, uz = s * np.cos(theta), c, s * np.sin(theta)
+        pear = 1.0 + 0.09 * max(0.0, -c)
+        neck = 0.66 + 0.34 * _smoothstep(0.25, 1.15, phi)
+        local = np.asarray([ux * 2.75 * pear * neck, uy * 3.30, uz * 2.25 * pear * neck])
+        # A continuous envelope with a shallow midline, rather than pinching
+        # every axis into two separate spheres. The lower poles differ softly.
+        midline = np.exp(-((ux / 0.19) ** 2)) * _smoothstep(0.7, 1.6, phi)
+        local[2] *= 1.0 - 0.065 * midline
+        local[1] += 0.24 * midline * _smoothstep(1.7, 2.8, phi)
+        local[1] -= 0.45 * _smoothstep(-0.4, 0.7, ux) * s * _smoothstep(0.9, 2.2, phi)
+        return sack_centre + local * cm
+
+    def sack_vertex(phi: float, theta: float, u: float) -> int:
+        rest = sack_point(phi, theta)
+        color = 1.0 + (scrotum_color - 1.0) * _smoothstep(0.55, 1.1, phi)
+        return add(rest, np.zeros(3), 0.12 * (rest - sack_top), color, (u, 0.5 + 0.5 * phi / np.pi))
+
+    top_pole = sack_vertex(0.0, 0.0, 0.5)
+    sack_rows = []
+    for row in range(1, rows):
+        phi = row / rows * np.pi
+        sack_rows.append([sack_vertex(phi, k / segments * 2.0 * np.pi, k / segments) for k in range(segments)])
+    bottom_pole = sack_vertex(np.pi, 0.0, 0.5)
+    for k in range(segments):
+        triangles.extend((top_pole, sack_rows[0][(k + 1) % segments], sack_rows[0][k]))
+    for row_a, row_b in zip(sack_rows[:-1], sack_rows[1:]):
+        for k in range(segments):
+            a, b = row_a[k], row_a[(k + 1) % segments]
+            c, d = row_b[(k + 1) % segments], row_b[k]
+            triangles.extend((a, c, b, a, d, c))
+    for k in range(segments):
+        triangles.extend((sack_rows[-1][k], sack_rows[-1][(k + 1) % segments], bottom_pole))
 
     positions = np.asarray(positions, dtype=np.float32)
-    uv_values = np.asarray(uv_values, dtype=np.float32)
-    indices = np.asarray(triangles, dtype=np.uint32)
+    indices = np.asarray(triangles, dtype=np.uint32).reshape(-1, 3)
+
+    # Orient each part outward (winding conventions differ between the tube
+    # and the sphere grid), then compute smooth vertex normals.
+    def orient(part: np.ndarray, inside: np.ndarray) -> np.ndarray:
+        tri = positions[part]
+        normal = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+        outward = np.sum(normal * (tri.mean(axis=1) - inside), axis=1)
+        flip = outward < 0
+        part = part.copy()
+        part[flip] = part[flip][:, [0, 2, 1]]
+        return part
+
+    shaft_tris = indices[: shaft_triangle_count // 3]
+    centres = np.asarray([positions[ring].mean(axis=0) for ring in rings] + [positions[tip]])
+    nearest_centre = centres[np.argmin(np.linalg.norm(positions[shaft_tris].mean(axis=1)[:, None, :] - centres[None, :, :], axis=2), axis=1)]
+    shaft_tris = orient(shaft_tris, nearest_centre)
+    sack_tris = orient(indices[shaft_triangle_count // 3:], sack_centre.astype(np.float32))
+    indices = np.vstack([shaft_tris, sack_tris]).reshape(-1).astype(np.uint32)
+
     normals = np.zeros_like(positions)
     tri = positions[indices].reshape(-1, 3, 3)
     cross = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
     for offset in range(3):
         np.add.at(normals, indices[offset::3], cross)
-    lengths = np.linalg.norm(normals, axis=1, keepdims=True)
-    normals /= np.maximum(lengths, 1e-8)
+    normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-8)
 
     return {
         "positions": positions,
         "normals": normals,
-        "colors": np.ones_like(positions, dtype=np.float32),
-        "uv_values": uv_values,
+        "colors": np.asarray(colors, dtype=np.float32),
+        "uv_values": np.asarray(uvs, dtype=np.float32),
         "indices": indices,
         "morphs": {
-            "d_length": np.asarray(length_deltas, dtype=np.float32),
-            "d_girth": np.asarray(girth_deltas, dtype=np.float32),
+            "d_length": np.asarray(d_length, dtype=np.float32),
+            "d_girth": np.asarray(d_girth, dtype=np.float32),
         },
         "original_index": np.arange(len(positions), dtype=np.int64),
         "missing": [],
+        "rigid_joint": 0,
+        "layout": {
+            "segments": segments,
+            "shaftRings": len(rings),
+            "baseRing": base_ring,
+            "midRing": base_ring + mid_index,
+            "tipVertex": int(tip),
+            "lengthRangeCm": list(ANATOMY_LENGTH_RANGE_CM),
+            "girthRangeCm": list(ANATOMY_GIRTH_RANGE_CM),
+            "lengthMeasure": "polyline through ring centres from baseRing to tipVertex",
+            "girthMeasure": "perimeter of midRing",
+        },
     }
+
+
+# HM08 body vertices on the pubic surface around the shaft root (three
+# symmetric pairs), measured from the 2026-10-19 release geometry, and the skin
+# junction's offset from their mean (on the body surface, 4.5 mm behind the
+# earlier placeholder's ring centre). Placing the anatomy relative to them keeps
+# it attached whatever the base sculpt, and copying their morph movement makes
+# it follow every body morph instead of separating from it.
+ANATOMY_ANCHOR_VERTICES = (4341, 4335, 10985, 4361, 10984, 4360)
+ANATOMY_ANCHOR_OFFSET = np.asarray((0.0, -0.00389, 0.00122), dtype=np.float32)
+ANATOMY_FOLLOW_EPSILON = 1e-5
+
+
+def attach_private_anatomy(anatomy: dict, body: dict) -> dict:
+    anchors = list(ANATOMY_ANCHOR_VERTICES)
+    anchor = body["source_coords"][anchors].mean(axis=0)
+    # The generator's local origin is the skin junction at the shaft root.
+    anatomy["positions"] = (anatomy["positions"] + (anchor + ANATOMY_ANCHOR_OFFSET)).astype(np.float32)
+    for name, delta in body["source_morphs"].items():
+        follow = delta[anchors].mean(axis=0)
+        if np.max(np.abs(follow)) < ANATOMY_FOLLOW_EPSILON:
+            continue
+        own = anatomy["morphs"].get(name)
+        base = own if own is not None else np.zeros_like(anatomy["positions"])
+        anatomy["morphs"][name] = (base + follow).astype(np.float32)
+    return anatomy
 
 
 def athletic_male_base_delta(coords: np.ndarray) -> np.ndarray:
@@ -757,7 +891,10 @@ def build_glb(
     hair_normal: Path | None = None,
     skin_variants: dict[str, Path] | None = None,
     texture_size: int | None = None,
+    extra_features: list[dict] | None = None,
 ):
+    """extra_features: [{"name", "feature", "geometry", "texture", "label", "source"}],
+    written after eyes and hair as alpha-masked, morph-following static meshes."""
     writer = GlbWriter()
     bone_specs = [
         ("Hips", None, (0.00, -0.10, 0.00)), ("Spine", "Hips", (0.00, 0.08, 0.00)),
@@ -806,6 +943,13 @@ def build_glb(
         nearest = np.argsort(distances, axis=1)[:, :4]
         raw_weights = 1.0 / np.maximum(distances[np.arange(len(positions))[:, None], nearest], 0.035)
         raw_weights /= raw_weights.sum(axis=1, keepdims=True)
+        if mesh_data.get("rigid_joint") is not None:
+            # Rigid parts (the anatomy) follow one bone; nearest-bone weights
+            # would let the thighs pull the scrotum apart when a leg moves.
+            nearest = np.zeros((len(positions), 4), dtype=np.int64)
+            nearest[:, 0] = mesh_data["rigid_joint"]
+            raw_weights = np.zeros((len(positions), 4), dtype=np.float32)
+            raw_weights[:, 0] = 1.0
         joints_view = writer.blob(nearest.astype(np.uint16).tobytes(), 34962)
         weights_view = writer.blob(raw_weights.astype(np.float32).tobytes(), 34962)
         accessors = {
@@ -962,7 +1106,29 @@ def build_glb(
     if hair_mesh_index is not None:
         hair_primitive = build_static_primitive(hair_geometry, hair_material_index)
         feature_meshes.append({"name": "GrowthTrackHair", "mesh": hair_mesh_index, "primitives": [hair_primitive], "extras": {"feature": "hair", "source": "MakeHuman short02 hair cards"}})
-    for item, geometry in [(item, eye_geometry if item['name'] == 'GrowthTrackEyes' else hair_geometry) for item in feature_meshes]:
+    feature_geometry = {"GrowthTrackEyes": eye_geometry, "GrowthTrackHair": hair_geometry}
+    for extra in extra_features or []:
+        if extra.get("geometry") is None or not (extra.get("texture") and Path(extra["texture"]).exists()):
+            continue
+        texture_index = add_image(texture_bytes(Path(extra["texture"]), texture_size), extra["label"])
+        material_index = len(materials)
+        materials.append({
+            "name": extra["label"],
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+                "roughnessFactor": 0.78,
+                "metallicFactor": 0.0,
+                "baseColorTexture": {"index": texture_index},
+            },
+            "doubleSided": True,
+            "alphaMode": "MASK",
+            "alphaCutoff": 0.28,
+        })
+        primitive = build_static_primitive(extra["geometry"], material_index)
+        feature_meshes.append({"name": extra["name"], "mesh": 2 + len(feature_meshes), "primitives": [primitive],
+                               "extras": {"feature": extra["feature"], "source": extra["source"]}})
+        feature_geometry[extra["name"]] = extra["geometry"]
+    for item, geometry in [(item, feature_geometry[item['name']]) for item in feature_meshes]:
         names = list(geometry.get('morphs', {}))
         item['extras']['targetNames'] = names
         item['weights'] = [0.0] * len(names)
@@ -977,11 +1143,11 @@ def build_glb(
         "scenes": [{"nodes": [0, 1] + [item["mesh"] for item in feature_meshes]}],
         "nodes": [
             {"name": "Body", "mesh": 0, "skin": 0},
-            {"name": "PrivateAnatomy", "mesh": 1, "skin": 0, "extras": {"sensitive": True, "defaultVisible": False}},
+            {"name": "PrivateAnatomy", "mesh": 1, "skin": 0, "extras": {"sensitive": True, "defaultVisible": False, "anatomySex": "male"}},
         ],
         "meshes": [
             {"name": "GrowthTrackBody", "primitives": [body_primitive], "weights": [0.0] * len(body_target_names), "extras": {"targetNames": body_target_names}},
-            {"name": "GrowthTrackPrivateAnatomy", "primitives": [private_primitive], "weights": [0.0] * len(private_target_names), "extras": {"targetNames": private_target_names, "sensitive": True}},
+            {"name": "GrowthTrackPrivateAnatomy", "primitives": [private_primitive], "weights": [0.0] * len(private_target_names), "extras": {"targetNames": private_target_names, "sensitive": True, "layout": private_anatomy["layout"]}},
         ],
         "materials": materials,
         "buffers": [{"byteLength": len(writer.binary)}],
@@ -989,8 +1155,8 @@ def build_glb(
         "accessors": writer.accessors,
         "extras": {
             "license": "CC0 1.0",
-            "source": "MakeHuman 1.1.1 bundled HM08 base mesh and targets",
-            "basePreset": "young-male-average-muscle-average-weight",
+            "source": "MakeHuman v1.3.0 HM08 base mesh and targets (commit 1f508f60); MakeHuman system assets (CC0)",
+            "basePreset": "young-adult-male (MakeHuman default: universal average muscle/weight + equal african/asian/caucasian male-young)",
             "baseSculpt": "neutral-anthropometric; no application-specific shoulder or muscle exaggeration",
             "vertexCount": len(body["positions"]),
             "privateVertexCount": len(private_anatomy["positions"]),
@@ -1013,7 +1179,7 @@ def build_glb(
             "privacy": "PrivateAnatomy is hidden by the application until an explicit per-session reveal.",
             "metricContract": {
                 "version": 2,
-                "units": {"length": "cm", "mass": "kg", "percentage": "%", "privateLength": "in"},
+                "units": {"length": "cm", "mass": "kg", "percentage": "%", "privateLength": "cm"},
                 "referenceHeightCm": 175,
                 "sourceOfTruth": "src/components/morphEngine/metricsToBlendshapes.js",
                 "directMetrics": [
@@ -1022,9 +1188,9 @@ def build_glb(
                     "thighs", "calves", "ankle", "neck", "torsoLength", "upperArm",
                     "lowerArm", "handLength", "legLength", "inseam", "footLength",
                     "headCirc", "faceWidth", "faceHeight", "noseLength", "noseWidth",
-                    "d_size", "d_length", "d_girth"
+                    "anatomyLengthCm", "anatomyGirthCm"
                 ],
-                "privateMorphs": {"d_size": "d_length", "d_length": "d_length", "d_girth": "d_girth"},
+                "privateMorphs": {"anatomyLengthCm": "d_length", "anatomyGirthCm": "d_girth"},
                 "confidence": "measured values override render-only estimates; invalid values are rejected before morphing",
             },
         },
@@ -1065,25 +1231,44 @@ def build_glb(
     return document
 
 
+def write_anatomy_geometry(output: Path, anatomy: dict):
+    output.parent.mkdir(parents=True, exist_ok=True)
+    payload = {key: anatomy[key].tolist() for key in ("positions", "normals", "colors", "uv_values", "indices")}
+    payload["morphs"] = {key: value.tolist() for key, value in anatomy["morphs"].items()}
+    payload["layout"] = anatomy["layout"]
+    output.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data"))
+    # Defaults are the compiled CC0 sources (npm run humanoid:fetch, then humanoid:compile).
+    # Pass --data and the texture paths explicitly to build from another source tree.
+    parser.add_argument("--data", type=Path, default=Path(".tmp/makehuman-cc0-compiled"))
     parser.add_argument("--output", type=Path, default=Path("public/assets/models/humanoid-base.glb"))
-    parser.add_argument("--skin-texture", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/skins/textures/young_lightskinned_male_diffuse.png"))
-    parser.add_argument("--eye-texture", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/eyes/materials/brown_eye.png"))
-    parser.add_argument("--hair-diffuse", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/hair/short02/short02_diffuse.png"))
-    parser.add_argument("--hair-normal", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/hair/short02/short02_normal.png"))
-    parser.add_argument("--skin-light-variant", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/skins/textures/young_lightskinned_male_diffuse2.png"))
-    parser.add_argument("--skin-deep-variant", type=Path, default=Path(".tmp/makehuman/extracted/usr/share/makehuman/data/skins/textures/young_darkskinned_male_diffuse.png"))
+    parser.add_argument("--skin-texture", type=Path, default=Path(".tmp/makehuman-cc0-compiled/skins/textures/young_lightskinned_male_diffuse.png"))
+    parser.add_argument("--eye-texture", type=Path, default=Path(".tmp/makehuman-cc0-compiled/eyes/materials/brown_eye.png"))
+    parser.add_argument("--hair-diffuse", type=Path, default=Path(".tmp/makehuman-cc0-compiled/hair/short02/short02_diffuse.png"))
+    parser.add_argument("--hair-normal", type=Path, default=Path(".tmp/makehuman-cc0-compiled/hair/short02/short02_normal.png"))
+    parser.add_argument("--skin-light-variant", type=Path, default=Path(".tmp/makehuman-cc0-compiled/skins/textures/young_lightskinned_male_diffuse2.png"))
+    parser.add_argument("--skin-deep-variant", type=Path, default=Path(".tmp/makehuman-cc0-compiled/skins/textures/young_darkskinned_male_diffuse.png"))
+    parser.add_argument("--eyebrow-texture", type=Path, default=Path(".tmp/makehuman-cc0-compiled/eyebrows/eyebrow001/eyebrow001.png"))
+    parser.add_argument("--eyelash-texture", type=Path, default=Path(".tmp/makehuman-cc0-compiled/eyelashes/eyelashes01/eyelashes01.png"))
     parser.add_argument("--texture-size", type=int, default=2048, help="Maximum embedded texture edge; use 512 for the mobile tier.")
     parser.add_argument("--skip-surface-bake", action="store_true", help="Leave neutral hand-off maps for debugging; never use for a release asset.")
+    parser.add_argument("--pelvis-geometry-output", type=Path, help="Write anatomy geometry only, preserving existing body textures and accessory bindings in the refinement step.")
     args = parser.parse_args()
     base_path = args.data / "3dobjs" / "base.npz"
     target_path = args.data / "targets.npz"
     base = np.load(base_path)
     targets = np.load(target_path, allow_pickle=True)
     body = make_mesh(base, targets, group_index=0, add_anatomy_detail=True)
-    private_anatomy = make_private_anatomy_mesh()
+    # Model units per centimetre: the body is drawn at the 175 cm reference stature.
+    body_height_units = float(body["positions"][:, 1].max() - body["positions"][:, 1].min())
+    private_anatomy = attach_private_anatomy(make_private_anatomy_mesh(body_height_units / 175.0), body)
+    if args.pelvis_geometry_output:
+        write_anatomy_geometry(args.pelvis_geometry_output, private_anatomy)
+        print(f"Wrote {len(private_anatomy['positions'])} anatomy vertices to {args.pelvis_geometry_output}")
+        return
     body_min = body["positions"].min(axis=0)
     body_max = body["positions"].max(axis=0)
     body_center = (body_min + body_max) * 0.5
@@ -1111,6 +1296,16 @@ def main():
         eye_geometry = fit_proxy(eyes, args.data / 'eyes/high-poly/high-poly.mhclo', body)
     if hair is not None:
         hair_geometry = fit_proxy(hair, args.data / 'hair/short02/short02.mhclo', body)
+    extra_features = []
+    for name, feature, folder, stem, texture in (
+        ("GrowthTrackEyebrows", "eyebrows", "eyebrows/eyebrow001", "eyebrow001", args.eyebrow_texture),
+        ("GrowthTrackEyelashes", "eyelashes", "eyelashes/eyelashes01", "eyelashes01", args.eyelash_texture),
+    ):
+        mesh_path = args.data / folder / f"{stem}.npz"
+        if texture.exists() and mesh_path.exists():
+            extra_features.append({"name": name, "feature": feature, "texture": texture,
+                                   "label": f"{feature.capitalize()}_{stem}", "source": f"MakeHuman system assets {stem} (CC0)",
+                                   "geometry": fit_proxy(np.load(mesh_path), args.data / folder / f"{stem}.mhclo", body)})
     build_glb(
         body,
         private_anatomy,
@@ -1123,11 +1318,15 @@ def main():
         args.hair_normal,
         {"Light": args.skin_light_variant, "Deep": args.skin_deep_variant},
         max(256, args.texture_size),
+        extra_features,
     )
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("Node.js is required for pelvis refinement and surface baking")
+    anatomy_geometry_file = Path(".tmp/pelvis-build") / f"{args.output.stem}-anatomy.json"
+    write_anatomy_geometry(anatomy_geometry_file, private_anatomy)
+    subprocess.run([node, str(Path(__file__).with_name("refine-pelvis-assets.mjs")), str(args.output), str(args.output), str(anatomy_geometry_file)], check=True)
     if not args.skip_surface_bake:
-        node = shutil.which("node")
-        if not node:
-            raise RuntimeError("Node.js is required to run scripts/bake-geometry-surface.mjs")
         bake_script = Path(__file__).with_name("bake-geometry-surface.mjs")
         subprocess.run([node, str(bake_script), str(args.output)], check=True)
     print(json.dumps({
@@ -1138,7 +1337,7 @@ def main():
         "privateVertices": len(private_anatomy["positions"]),
         "privateTriangles": len(private_anatomy["indices"]) // 3,
         "privateMorphs": len(private_anatomy["morphs"]),
-        "features": {"eyes": eye_geometry is not None, "hair": hair_geometry is not None},
+        "features": {"eyes": eye_geometry is not None, "hair": hair_geometry is not None, **{item["feature"]: True for item in extra_features}},
         "missingSources": body["missing"],
     }, indent=2))
 

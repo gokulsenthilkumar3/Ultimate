@@ -95,11 +95,13 @@ function repairFile(filePath) {
   const parents = buildParentMap(nodes);
   const worldCache = new Map();
   const headWorld = nodeWorldMatrix(nodes, parents, headIndex, worldCache);
-  const featureNames = ['GrowthTrackEyes', 'GrowthTrackHair'];
-  const featureIndices = featureNames.map((name) => {
+  // Eyes and hair are required; eyebrows and eyelashes are bound when present.
+  const requiredFeatures = ['GrowthTrackEyes', 'GrowthTrackHair'];
+  const optionalFeatures = ['GrowthTrackEyebrows', 'GrowthTrackEyelashes'];
+  const featureIndices = [...requiredFeatures, ...optionalFeatures].flatMap((name) => {
     const index = nodes.findIndex((node) => node.name === name);
-    if (index < 0) throw new Error(`${path.basename(filePath)} has no ${name} node`);
-    return index;
+    if (index < 0 && requiredFeatures.includes(name)) throw new Error(`${path.basename(filePath)} has no ${name} node`);
+    return index < 0 ? [] : [index];
   });
   const featureWorldMatrices = new Map(
     featureIndices.map((index) => [index, nodeWorldMatrix(nodes, parents, index, worldCache)]),
@@ -138,10 +140,10 @@ function repairFile(filePath) {
   json.asset = json.asset ?? { version: '2.0' };
   json.asset.extras = {
     ...(json.asset.extras ?? {}),
-    featureRig: 'eyes-hair-parented-to-head',
+    featureRig: featureIndices.length > 2 ? 'face-features-parented-to-head' : 'eyes-hair-parented-to-head',
   };
   writeGlb(filePath, parsed);
-  console.log(`✓ ${path.basename(filePath)}: Eyes and Hair parented to Head with rest pose preserved`);
+  console.log(`✓ ${path.basename(filePath)}: ${featureIndices.map((index) => nodes[index].name.replace('GrowthTrack', '')).join(', ')} parented to Head with rest pose preserved`);
 }
 
 const inputs = process.argv.slice(2);

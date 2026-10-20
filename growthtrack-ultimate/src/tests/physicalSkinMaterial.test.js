@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
+  BODY_ALBEDO_REFERENCE,
   createPhysicalSkinMaterial,
+  pubicHairDensity,
   updatePhysicalSkinMaterial,
 } from '../components/body3d/physicalSkinMaterial';
 
@@ -46,9 +48,35 @@ describe('physical skin material', () => {
     expect(material.uniforms.uVascularityIntensity.value).toBe(0.72);
     expect(material.uniforms.uBodyHairIntensity.value).toBe(0.46);
     expect(material.uniforms.uTime.value).toBe(4.5);
-    expect(material.color.r).toBeCloseTo(0.3, 4);
-    expect(material.attenuationColor.r).toBeCloseTo(0.5, 4);
+    // Type VI is #4D2E14 / #803014 in display values; materials hold linear values.
+    expect(material.color.r).toBeCloseTo(new THREE.Color().setRGB(0.3, 0.18, 0.08, THREE.SRGBColorSpace).r, 4);
+    expect(material.attenuationColor.r).toBeCloseTo(new THREE.Color().setRGB(0.5, 0.18, 0.08, THREE.SRGBColorSpace).r, 4);
 
+    material.dispose();
+  });
+
+  it('renders a textured body at the chosen tone on average', () => {
+    const map = new THREE.Texture();
+    const material = createPhysicalSkinMaterial(3, new THREE.MeshStandardMaterial({ map }));
+    const target = new THREE.Color().setRGB(0.78, 0.52, 0.26, THREE.SRGBColorSpace);
+    // texture median × tint = the type IV colour (within the clamp range).
+    expect(material.color.r * BODY_ALBEDO_REFERENCE[0]).toBeCloseTo(target.r, 3);
+    expect(material.color.g * BODY_ALBEDO_REFERENCE[1]).toBeCloseTo(target.g, 3);
+    expect(material.color.b * BODY_ALBEDO_REFERENCE[2]).toBeCloseTo(target.b, 3);
+    material.dispose();
+  });
+
+  it('places pubic hair from the anatomy anchor and the profile body-hair pattern', () => {
+    expect([undefined, '', 'natural', 'light', 'none', 'defined'].map(pubicHairDensity)).toEqual([0.9, 0.9, 0.9, 0.5, 0, 1]);
+    const source = new THREE.MeshStandardMaterial({ map: new THREE.Texture() });
+    const material = createPhysicalSkinMaterial(3, source, { pubicRegion: { origin: [0, 0.05, 0.12], unitsPerCm: 0.0099, pattern: 'light', color: '#3a2a1a' } });
+    // Stored for the reveal; the uniform stays off until the anatomy is shown.
+    expect(material.userData.pubicHairDensity).toBe(0.5);
+    expect(material.uniforms.uPubicHair.value).toBe(0);
+    expect(material.uniforms.uPubicOrigin.value.toArray()).toEqual([0, 0.05, 0.12]);
+    expect(material.uniforms.uUnitsPerCm.value).toBe(0.0099);
+    // Without an anchor (no anatomy in the asset) the region stays off.
+    expect(createPhysicalSkinMaterial(3, source).userData.pubicHairDensity).toBe(0);
     material.dispose();
   });
 

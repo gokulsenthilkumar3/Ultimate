@@ -31,6 +31,26 @@ async function notesFixture(page: Page, rejectUpdates = false) {
   return notes;
 }
 
+test('Notes knowledge navigation works by keyboard with outline focus and backlinks', async ({ page }) => {
+  const notes = await notesFixture(page);
+  notes[0].content = '# Research outline\n\n[[note-2|Plan next steps]]';
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/workspace/notes');
+  await page.getByRole('button', { name: 'Open note: Research' }).click();
+  const headingButton = page.getByRole('navigation', { name: 'Note outline' }).getByRole('button', { name: 'Research outline' });
+  await headingButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Research outline' })).toBeFocused();
+  await page.getByRole('button', { name: 'Plan next steps', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.notes-markdown-preview')).toContainText('Second note');
+  const backlink = page.getByRole('navigation', { name: 'Note backlinks' }).getByRole('button', { name: 'Research', exact: true });
+  await backlink.focus();
+  await page.keyboard.press('Enter');
+  await expect(headingButton).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
 test('narrow Notes imports with keyboard review, persists, and exports the current draft', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -139,4 +159,65 @@ test('public skip links bypass navigation with the keyboard', async ({ page }) =
     await page.keyboard.press('Enter');
     await expect(page.locator('#public-content')).toBeFocused();
   }
+});
+
+test('versioned Notes retries an ambiguous import once and restores a historical revision', async ({ page }) => {
+  const notes = await notesFixture(page);
+  for (const note of notes) Object.assign(note, { revision: 1, kind: 'workspace', deletedAt: null, color: '#f59e0b', starred: false });
+  await page.route('**/api/capabilities', route => route.fulfill({ json: { workspace: { notes: { apiVersion: 1 } }, connections: [] } }));
+  const receipts = new Map<string, unknown>();
+  const histories = new Map<string, any[]>();
+  const imports: any[] = [];
+  let ambiguous = true;
+  await page.route(url => url.pathname.startsWith('/api/v1/workspace/notes'), async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    const id = path.split('/')[5];
+    if (request.method() === 'GET' && path.endsWith('/sync')) {
+      await route.fulfill({ json: { changes: [], cursor: 0, hasMore: false } }); return;
+    }
+    if (request.method() === 'GET' && path.endsWith('/revisions')) {
+      await route.fulfill({ json: { items: histories.get(id) || [], nextCursor: null } }); return;
+    }
+    const payload = request.postDataJSON();
+    if (request.method() === 'POST' && path.endsWith('/notes')) imports.push(payload);
+    if (receipts.has(payload.mutationId)) { await route.fulfill({ json: receipts.get(payload.mutationId) }); return; }
+    let saved: any;
+    if (request.method() === 'POST' && path.endsWith('/notes')) {
+      saved = { ...payload, userId: OWNER.id, revision: 1, kind: 'workspace', deletedAt: null, updatedAt: new Date().toISOString() };
+      notes.push(saved); histories.set(saved.id, [{ ...saved, createdAt: saved.updatedAt }]);
+    } else {
+      saved = notes.find(note => note.id === id);
+      if (!saved || saved.revision !== payload.expectedRevision) { await route.fulfill({ status: 409, json: { code: 'VERSION_CONFLICT', error: 'Conflict fixture', current: saved } }); return; }
+      const history = histories.get(id) || [];
+      const change = path.endsWith('/restore') ? history.find(row => row.revision === payload.revision) : payload;
+      Object.assign(saved, { title: change.title || saved.title, content: change.content, revision: saved.revision + 1, updatedAt: new Date().toISOString() });
+      history.push({ ...saved, createdAt: saved.updatedAt }); histories.set(id, history);
+    }
+    const receipt = { ...saved };
+    receipts.set(payload.mutationId, receipt);
+    if (ambiguous && path.endsWith('/notes')) { ambiguous = false; await route.fulfill({ status: 503, json: { error: 'Response lost after commit' } }); return; }
+    await route.fulfill({ json: receipt });
+  });
+  await page.goto('/workspace/notes');
+  await page.getByLabel('Choose Markdown file').setInputFiles({ name: 'History.md', mimeType: 'text/markdown', buffer: Buffer.from('# History\n\nOriginal version') });
+  const dialog = page.getByRole('dialog', { name: 'Preview Markdown import' });
+  await dialog.getByRole('button', { name: 'Create new note' }).click();
+  await expect(page.getByText('The note could not be imported. Your preview is still available to retry.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Create new note' }).click();
+  await expect(dialog).toBeHidden();
+  expect(imports).toHaveLength(2);
+  expect(imports[0].id).toBe(imports[1].id);
+  expect(imports[0].mutationId).toBe(imports[1].mutationId);
+  expect(notes.filter(note => note.title === 'History')).toHaveLength(1);
+  await page.getByRole('textbox', { name: 'Note content' }).fill('Changed version');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  const history = page.getByRole('dialog', { name: 'Note history' });
+  await expect(history.getByText('Changed version', { exact: true })).toBeVisible();
+  await history.getByRole('button', { name: 'Restore revision 1' }).click();
+  await expect(history).toBeHidden();
+  expect(notes.find(note => note.id === imports[0].id)?.content).toBe('Original version');
+  expect(notes.find(note => note.id === imports[0].id)?.revision).toBe(3);
 });

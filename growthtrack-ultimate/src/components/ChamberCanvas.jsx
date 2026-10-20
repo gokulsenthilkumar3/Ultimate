@@ -19,6 +19,9 @@ import use3DStore, { GPU_TIERS }            from "../store/use3DStore";
 import useStore                             from "../store/useStore";
 import { detectAndSetGpuTier }              from "../store/use3DStore.usage";
 import TabErrorBoundary                     from "./TabErrorBoundary";
+import { BODY_PART_MAP } from './morphEngine/bodyRegions';
+import { BODY_METRICS } from '../lib/physiqueProfile';
+import { validateBodyMetric } from '../lib/bodyMetricContract';
 import { formatMeasurement }                 from "../utils/userFormatters";
 
 const LOD_CONFIG = {
@@ -166,55 +169,26 @@ function SpatialGuide({ reducedMotion }) {
   );
 }
 
-const LANDMARKS = [
-  { key: 'neck', label: 'Neck', position: [-0.72, 1.75, 0.08] },
-  { key: 'chest', label: 'Chest', position: [-0.8, 1.38, 0.08] },
-  { key: 'waist', label: 'Waist', position: [-0.82, 1.02, 0.08] },
-  { key: 'arms', label: 'Arms', position: [-1.02, 1.22, 0.08] },
-  { key: 'thighs', label: 'Thighs', position: [-0.78, 0.56, 0.08] },
-  { key: 'calves', label: 'Calves', position: [-0.72, 0.16, 0.08] },
-];
-
 function MeasurementLandmarks() {
-  const user = useStore((state) => state.user);
-  const viewMode = use3DStore((state) => state.viewMode);
-  const focusedBodyPart = use3DStore((state) => state.focusedBodyPart);
-  const canvasWidth = useThree((state) => state.size.width);
-  const currentMetrics = use3DStore((state) => state.cloneA?.metrics || {});
-  const measured = LANDMARKS.filter(({ key }) => Number.isFinite(Number(currentMetrics[key]))).length;
-  const confidence = Math.round((measured / LANDMARKS.length) * 100);
-  const focusedMetric = focusedBodyPart?.toLowerCase().includes('arm')
-    ? 'arms'
-    : focusedBodyPart?.toLowerCase().includes('thigh')
-      ? 'thighs'
-      : focusedBodyPart;
-  const visibleLandmarks = LANDMARKS.filter(({ key }) => key === focusedMetric);
-
-  if (viewMode !== 'SOLO' || canvasWidth < 920 || !visibleLandmarks.length) return null;
-
-  return (
-    <>
-      <Html position={[0, 2.18, 0.08]} center style={{ pointerEvents: 'none' }}>
-        <div className="chamber-scan-confidence">
-          <span className="chamber-scan-confidence__dot" />
-          LANDMARK SCAN <strong>{confidence}%</strong>
-        </div>
-      </Html>
-      {visibleLandmarks.map(({ key, label, position }) => {
-        const value = Number(currentMetrics[key]);
-        const ready = Number.isFinite(value);
-        return (
-          <Html key={key} position={position} center style={{ pointerEvents: 'none' }}>
-            <div className={`chamber-landmark${ready ? '' : ' chamber-landmark--pending'}`}>
-              <span className="chamber-landmark__line" />
-              <span>{label}</span>
-              <strong>{ready ? formatMeasurement(value, 'cm', user, { maximumFractionDigits: 1 }) : 'Add measure'}</strong>
-            </div>
-          </Html>
-        );
-      })}
-    </>
-  );
+  const user = useStore(state => state.user);
+  const viewMode = use3DStore(state => state.viewMode);
+  const focus = use3DStore(state => state.focusedBodyPart);
+  const context = use3DStore(state => state.avatarWorkspace.avatarContext);
+  const frames = use3DStore(state => state.modelRegionFrames[context === 'goal' ? 'B' : 'A']);
+  const metrics = use3DStore(state => context === 'goal' ? state.cloneB.metrics : state.cloneA.metrics);
+  const width = useThree(state => state.size.width);
+  const region = BODY_PART_MAP[focus];
+  const frame = frames[focus];
+  if (viewMode !== 'SOLO' || width < 920 || !frame || !region || region.private) return null;
+  const visible = region.metrics.filter(key => BODY_METRICS.some(m => m.key === key));
+  return <>{visible.map((key,index) => {
+    const metric = BODY_METRICS.find(m => m.key === key);
+    const record = validateBodyMetric(key,metrics[key],{ allowEmpty:false });
+    const position = [frame.center[0] + frame.size[0] / 2, frame.center[1] + frame.size[1] / 2 - index * frame.size[1] / Math.max(1,visible.length), frame.center[2]];
+    return <Html key={key} position={position} center style={{ pointerEvents:'none' }}>
+      <div className="chamber-landmark"><span>{metric.label}</span><strong>{record.valid ? formatMeasurement(record.value,metric.unit,user,{ maximumFractionDigits:1 }) : 'Not recorded'}</strong></div>
+    </Html>;
+  })}</>;
 }
 
 function CanvasScene({ lodConfig, reducedMotion }) {
@@ -343,7 +317,10 @@ export default function ChamberCanvas({ className = "", style = {} }) {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  const shouldRender = isIntersecting && documentVisible;
+  const captureRedacted=use3DStore(s=>s.captureRedacted);
+  // Render a protected frame even when offscreen; a preserved canvas must not
+  // retain an earlier revealed image during a capture.
+  const shouldRender = (isIntersecting || captureRedacted) && documentVisible;
 
   return (
     <div ref={wrapperRef} className={className} style={{ width: '100%', height: '100%', ...style }} data-rendering={shouldRender ? 'active' : 'paused'} data-quality-status={qualityStatus} role="img" aria-label="Interactive three-dimensional physique model. Drag to rotate and use the mouse wheel or pinch gesture to zoom.">
@@ -357,7 +334,7 @@ export default function ChamberCanvas({ className = "", style = {} }) {
           preserveDrawingBuffer: true,
         }}
         dpr={lodConfig.dpr}
-        camera={{ fov: 30, near: 0.1, far: 100 }}
+        camera={{ fov: 30, near: 0.01, far: 100 }}
         shadows={lodConfig.shadowType ? { type: lodConfig.shadowType } : false}
         frameloop={shouldRender ? "always" : "never"}
         onCreated={onCreated}

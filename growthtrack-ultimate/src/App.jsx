@@ -180,7 +180,9 @@ export default function App() {
     if (!session || publicPage || !route.feature || route.redirect) return;
     const routeKey = `${route.feature.id}:${route.view || ''}`;
     if (previousFocusedRoute.current && previousFocusedRoute.current !== routeKey) {
-      document.getElementById('main-content')?.focus();
+      const sameModule = previousFocusedRoute.current.split(':')[0] === route.feature.id;
+      const tabOwnsFocus = document.activeElement?.getAttribute('role') === 'tab';
+      if (!sameModule || !tabOwnsFocus) document.getElementById('main-content')?.focus({ preventScroll: true });
     }
     previousFocusedRoute.current = routeKey;
   }, [session, publicPage, route.feature, route.view, route.redirect]);

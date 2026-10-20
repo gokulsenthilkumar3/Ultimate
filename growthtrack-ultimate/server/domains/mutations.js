@@ -1,6 +1,6 @@
 import { domainError } from './errors.js';
 
-const PROTECTED = new Set(['id', 'userId', 'user_id', 'user', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'expectedUpdatedAt', '__proto__', 'prototype', 'constructor']);
+const PROTECTED = new Set(['id', 'userId', 'user_id', 'user', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'expectedUpdatedAt', 'expectedRevision', 'mutationId', 'revision', 'kind', 'deletedAt', '__proto__', 'prototype', 'constructor']);
 const AUDIT_FIELDS = new Set('title status due_date priority done completedAt project section tags amount type category method date note limit_amount month logged_at notes duration_minutes volume name purchased duration progress content targetDate url hours quality streak cost active mood vital value dosage goalId metric unit side phase confidence measuredAt source stringValue'.split(' '));
 
 export function mutationInput(input) {

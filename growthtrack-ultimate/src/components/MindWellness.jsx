@@ -595,9 +595,9 @@ export default function MindWellness() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <p className="label-caps" style={{ marginBottom: '0.35rem', color: '#a78bfa' }}>Mind & Wellness</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.3rem' }}>
+          <h1 className="text-display" style={{ fontSize: '2rem', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.3rem' }}>
             <Brain size={24} color="#a78bfa" /> Mental Health
-          </h2>
+          </h1>
           <p className="text-secondary">Daily mood · energy · breathwork · journaling</p>
         </div>
         <div style={{ textAlign: 'right' }}>

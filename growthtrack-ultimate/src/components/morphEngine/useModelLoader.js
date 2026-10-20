@@ -34,7 +34,7 @@ import { DEFAULT_ASSETS, resolveModelAsset } from './modelAssetRegistry';
 // CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ASSET_REVISION = 'proxy-fit-20260919';
+const ASSET_REVISION = 'clean-skin-20261019';
 export const MODEL_PATH = `${DEFAULT_ASSETS.production}?v=${ASSET_REVISION}`;
 export const MODEL_PATH_LITE = `${DEFAULT_ASSETS.lite}?v=${ASSET_REVISION}`;
 
@@ -215,6 +215,7 @@ export function useModelLoader(modelPreference = {}) {
       let morphIndexMap = {};
       const morphMeshes = [];
       let privateAnatomyMesh = null;
+      let declaredAnatomySex = null;
       const featureMeshes = [];
       let skeleton     = null;
       let bounds = null;
@@ -224,12 +225,12 @@ export function useModelLoader(modelPreference = {}) {
 
         const lowerName = String(node.name || '').toLowerCase();
         const isSensitive = lowerName.includes('privateanatomy') || node.userData?.sensitive === true;
-        if (lowerName.includes('growthtrackeyes') || lowerName.includes('growthtrackhair')) {
-          featureMeshes.push({
-            mesh: node,
-            feature: lowerName.includes('eyes') ? 'eyes' : 'hair',
-          });
-        }
+        // Face features keep their own alpha-masked materials instead of the skin.
+        const feature = lowerName.includes('growthtrackeyebrows') ? 'eyebrows'
+          : lowerName.includes('growthtrackeyelashes') ? 'eyelashes'
+            : lowerName.includes('growthtrackeyes') ? 'eyes'
+              : lowerName.includes('growthtrackhair') ? 'hair' : null;
+        if (feature) featureMeshes.push({ mesh: node, feature });
         const nodeMorphIndexMap = buildMorphIndexMap(node);
         if (Object.keys(nodeMorphIndexMap).length > 0) {
           morphMeshes.push({ mesh: node, morphIndexMap: nodeMorphIndexMap, sensitive: isSensitive });
@@ -242,7 +243,11 @@ export function useModelLoader(modelPreference = {}) {
         }
 
         if (isSensitive) {
+          // Pose-dependent normals must not mutate the other comparison clone
+          // or the GLTF loader's shared geometry cache.
+          node.geometry = node.geometry.clone();
           privateAnatomyMesh = node;
+          if (typeof node.userData?.anatomySex === 'string') declaredAnatomySex = node.userData.anatomySex;
           node.visible = false;
           return;
         }
@@ -284,6 +289,8 @@ export function useModelLoader(modelPreference = {}) {
       }
 
       if (bodyMesh) {
+        // Local posterior shaping must not mutate the GLTF cache or goal clone.
+        bodyMesh.geometry = bodyMesh.geometry.clone();
         fitModelFeatures(bodyMesh, featureMeshes);
         // Normalize the model so the humanoid reads like a full body figure.
         // Many GLBs arrive with an offset origin or inconsistent scale, which
@@ -316,7 +323,9 @@ export function useModelLoader(modelPreference = {}) {
           skeleton,
           scene: clonedScene,
           bounds,
-          diagnostics: { ...buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh), modelAsset, boneCount: skeleton?.bones?.length ?? 0 },
+          diagnostics: { ...buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh), modelAsset, boneCount: skeleton?.bones?.length ?? 0,
+            // The asset's own declaration wins; the registry covers the shipped placeholder.
+            privateAnatomySex: privateAnatomyMesh ? declaredAnatomySex ?? modelAsset.anatomySex ?? null : null },
           isDev: false,
         };
       }

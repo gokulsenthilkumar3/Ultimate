@@ -21,10 +21,10 @@
 
 ## Windows desktop build
 
-The desktop target is self-contained: packaging synchronises the Prisma schema,
-builds the web UI, and creates a Windows installer. On first launch Electron
-copies the packaged seed database into its writable per-user data directory, so
-the installed app never tries to write inside `Program Files`.
+Packaging generates the Prisma client, builds the web UI, and creates a Windows
+installer without pushing schemas into owner storage. Desktop startup uses a
+writable per-user data directory. Existing-data import and first-run provisioning
+still require verification before a self-contained desktop release.
 
 ```powershell
 npm run build:desktop
@@ -54,7 +54,9 @@ authorization and provider validation are complete.
 Current handoff: [implementation status](./docs/IMPLEMENTATION_STATUS.md),
 [routes](./docs/ROUTES.md), [components](./docs/COMPONENTS.md),
 [backend contracts](./server/backend-contracts.md), and
-[safe migration](./docs/MIGRATION.md).
+[safe migration](./docs/MIGRATION.md). Versioned Notes contracts and rollout are
+in [Notes API v1](./docs/NOTES_API_V1.md); container deployment and recovery are
+in [deployment](./docs/DEPLOYMENT.md).
 
 <br/>
 

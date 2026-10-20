@@ -76,8 +76,8 @@ export default function Dashboard() {
         setLoading(true);
         try {
             const [balanceRes, txRes] = await Promise.all([
-                fetch('/api/user/balance'),
-                fetch('/api/user/transactions'),
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/balance`),
+                fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/transactions`),
             ]);
             if (balanceRes.ok && txRes.ok) {
                 setBalanceData(await balanceRes.json());

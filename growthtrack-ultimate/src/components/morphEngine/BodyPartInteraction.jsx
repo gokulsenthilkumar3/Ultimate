@@ -25,14 +25,13 @@
  *   the same group as the body mesh, positioned at anatomical landmarks.
  */
 
-/* eslint-disable react-refresh/only-export-components */
-
 import React, { useRef, useCallback } from "react";
 import { useThree }                             from "@react-three/fiber";
 import * as THREE                               from "three";
 
 import use3DStore from "../../store/use3DStore";
 import { computeHeightScale } from "./metricsToBlendshapes";
+import { useAnatomyEligibility } from './useAnatomyEligibility';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BODY PART REGION DEFINITIONS
@@ -46,103 +45,8 @@ import { computeHeightScale } from "./metricsToBlendshapes";
 //   metrics    → which store measurements to show in info panel
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const BODY_PART_REGIONS = [
-  {
-    name:       "head",
-    hitShape:   "sphere",
-    position:   [0, 1.78, 0],
-    size:       0.12,
-    cameraHint: { azimuth: 0, elevation: 5, distance: 1.2 },
-    label:      "Head & Neck",
-    metrics:    ["neck"],
-  },
-  {
-    name:       "chest",
-    hitShape:   "box",
-    position:   [0, 1.42, 0.06],
-    size:       [0.36, 0.2, 0.18],
-    cameraHint: { azimuth: 0, elevation: 5, distance: 1.5 },
-    label:      "Chest",
-    metrics:    ["chest"],
-  },
-  {
-    name:       "shoulders",
-    hitShape:   "box",
-    position:   [0, 1.5, 0],
-    size:       [0.56, 0.12, 0.18],
-    cameraHint: { azimuth: 0, elevation: 10, distance: 1.8 },
-    label:      "Shoulders",
-    metrics:    ["shoulders"],
-  },
-  {
-    name:       "leftArm",
-    hitShape:   "box",
-    position:   [-0.38, 1.28, 0],
-    size:       [0.1, 0.32, 0.12],
-    cameraHint: { azimuth: 60, elevation: 5, distance: 1.6 },
-    label:      "Left Arm",
-    metrics:    ["arms", "forearm"],
-  },
-  {
-    name:       "rightArm",
-    hitShape:   "box",
-    position:   [0.38, 1.28, 0],
-    size:       [0.1, 0.32, 0.12],
-    cameraHint: { azimuth: -60, elevation: 5, distance: 1.6 },
-    label:      "Right Arm",
-    metrics:    ["arms", "forearm"],
-  },
-  {
-    name:       "waist",
-    hitShape:   "box",
-    position:   [0, 1.08, 0.04],
-    size:       [0.28, 0.18, 0.16],
-    cameraHint: { azimuth: 0, elevation: -5, distance: 1.6 },
-    label:      "Core & Waist",
-    metrics:    ["waist", "bodyFat"],
-  },
-  {
-    name:       "glutes",
-    hitShape:   "box",
-    position:   [0, 0.96, -0.1],
-    size:       [0.3, 0.18, 0.14],
-    cameraHint: { azimuth: 180, elevation: -5, distance: 1.6 },
-    label:      "Glutes & Hips",
-    metrics:    ["glutes", "hips"],
-  },
-  {
-    name:       "leftThigh",
-    hitShape:   "box",
-    position:   [-0.14, 0.68, 0],
-    size:       [0.13, 0.32, 0.14],
-    cameraHint: { azimuth: 20, elevation: -20, distance: 1.5 },
-    label:      "Left Thigh",
-    metrics:    ["thighs"],
-  },
-  {
-    name:       "rightThigh",
-    hitShape:   "box",
-    position:   [0.14, 0.68, 0],
-    size:       [0.13, 0.32, 0.14],
-    cameraHint: { azimuth: -20, elevation: -20, distance: 1.5 },
-    label:      "Right Thigh",
-    metrics:    ["thighs"],
-  },
-  {
-    name:       "calves",
-    hitShape:   "box",
-    position:   [0, 0.25, 0],
-    size:       [0.26, 0.28, 0.12],
-    cameraHint: { azimuth: 0, elevation: -35, distance: 1.4 },
-    label:      "Calves",
-    metrics:    ["calves", "ankle"],
-  },
-];
-
-/** Export a map for quick lookup by name */
-export const BODY_PART_MAP = Object.fromEntries(
-  BODY_PART_REGIONS.map((r) => [r.name, r])
-);
+import { BODY_PART_REGIONS } from './bodyRegions';
+export { BODY_PART_REGIONS, BODY_PART_MAP } from './bodyRegions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HIT ZONE GEOMETRY FACTORY
@@ -164,7 +68,8 @@ function HitZoneMesh({ region, onHit, onUnhover }) {
 
   const handleClick = useCallback(
     (e) => {
-      e.stopPropagation(); // prevent firing on parent group
+      if (e.delta > 5) return; // Orbit/pan gestures must not become part clicks.
+      e.stopPropagation();
       onHit(region.name);
     },
     [region.name, onHit]
@@ -222,6 +127,11 @@ import { useShallow } from 'zustand/react/shallow';
 export default function BodyPartInteraction({ clonePosition = [0, 0, 0], cloneKey = 'A' }) {
   const prevFocused   = useRef(null);
   const lastClickTime = useRef(0);
+  const diagnostics = use3DStore(s => s.modelDiagnostics);
+  const wardrobe = use3DStore(s => s.wardrobeState);
+  const redacted = use3DStore(s => s.captureRedacted);
+  const eligibility = useAnatomyEligibility(diagnostics);
+  const regionFrames = use3DStore(s => s.modelRegionFrames[cloneKey]);
 
   const { setFocusedBodyPart, focusedBodyPart, setCameraPreset, heightScale } = use3DStore(
     useShallow((s) => ({
@@ -238,7 +148,7 @@ export default function BodyPartInteraction({ clonePosition = [0, 0, 0], cloneKe
   const handleHit = useCallback(
     (partName) => {
       const now = Date.now();
-      const isDouble = now - lastClickTime.current < 280;
+      const isDouble = partName === focusedBodyPart && now - lastClickTime.current < 280;
       lastClickTime.current = now;
 
       if (isDouble || partName === focusedBodyPart) {
@@ -253,11 +163,7 @@ export default function BodyPartInteraction({ clonePosition = [0, 0, 0], cloneKe
       prevFocused.current = focusedBodyPart;
       setFocusedBodyPart(partName);
 
-      // CameraRig will read focusedBodyPart and lerp to cameraHint.
-      // We store the hint in a custom camera preset slot named after the part.
-      // CameraRig needs to be extended to read BODY_PART_MAP[partName].cameraHint.
-      // For now we trigger a CUSTOM preset to release the preset lock.
-      setCameraPreset("CUSTOM");
+      // CameraRig frames the evaluated region; preserve this selection during orbit.
     },
     [focusedBodyPart, setFocusedBodyPart, setCameraPreset]
   );
@@ -267,11 +173,14 @@ export default function BodyPartInteraction({ clonePosition = [0, 0, 0], cloneKe
   }, []);
 
   return (
-    <group position={clonePosition} scale={[1, heightScale, 1]} name="hit-zones">
-      {BODY_PART_REGIONS.map((region) => (
+    <group position={clonePosition} name="hit-zones">
+      {BODY_PART_REGIONS.filter(region => !region.private || (eligibility.allowed && wardrobe === 'ANATOMICAL' && !redacted)).map((region) => (
         <HitZoneMesh
           key={region.name}
-          region={region}
+          region={regionFrames[region.name] ? { ...region, hitShape: 'box', position: regionFrames[region.name].center, size: regionFrames[region.name].size.map(n => Math.max(n,.035)) } : {
+            ...region, position: [region.position[0], region.position[1] * heightScale, region.position[2]],
+            size: Array.isArray(region.size) ? [region.size[0],region.size[1] * heightScale,region.size[2]] : region.size,
+          }}
           onHit={handleHit}
           onUnhover={handleUnhover}
         />

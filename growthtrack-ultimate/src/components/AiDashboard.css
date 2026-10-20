@@ -15,8 +15,8 @@
 .gt-ai__heading { min-width: 0; }
 .gt-ai__eyebrow { margin: 0; color: var(--gt-muted); font-size: .68rem; font-weight: 750; letter-spacing: .15em; line-height: 1.4; text-transform: uppercase; }
 .gt-ai__eyebrow span { color: var(--gt-action); }
-.gt-ai__heading h2 { margin: var(--gt-space-2) 0 var(--gt-space-1); color: var(--gt-text); font-size: clamp(1.55rem, 3vw, 2.25rem); font-weight: 720; letter-spacing: -.055em; line-height: 1.06; }
-.gt-ai__heading h2 em, .gt-ai__welcome h3 em { color: var(--gt-action); font-family: Georgia, "Times New Roman", serif; font-weight: 400; letter-spacing: -.05em; }
+.gt-ai__heading h1 { margin: var(--gt-space-2) 0 var(--gt-space-1); color: var(--gt-text); font-size: clamp(1.55rem, 3vw, 2.25rem); font-weight: 720; letter-spacing: -.055em; line-height: 1.06; }
+.gt-ai__heading h1 em, .gt-ai__welcome h3 em { color: var(--gt-action); font-family: Georgia, "Times New Roman", serif; font-weight: 400; letter-spacing: -.05em; }
 .gt-ai__heading > p:last-child { margin: 0; color: var(--gt-muted); font-size: .81rem; line-height: 1.45; }
 .gt-ai__readiness { display: inline-flex; align-items: center; gap: var(--gt-space-2); max-width: min(34ch, 42%); padding-bottom: var(--gt-space-1); color: var(--gt-muted); font-size: .75rem; line-height: 1.35; text-align: end; }
 .gt-ai__signal { flex: none; width: 7px; height: 7px; border-radius: var(--gt-radius-pill); background: var(--gt-warning); }
@@ -103,7 +103,7 @@
 @media (max-width: 760px) {
   .gt-ai { height: clamp(340px, calc(100dvh - 12.75rem - env(safe-area-inset-bottom, 0px)), 760px); border-radius: var(--gt-radius-lg); }
   .gt-ai__masthead { align-items: start; padding: var(--gt-space-4) var(--gt-space-4) var(--gt-space-3); }
-  .gt-ai__heading h2 { font-size: 1.6rem; }
+  .gt-ai__heading h1 { font-size: 1.6rem; }
   .gt-ai__heading > p:last-child { display: none; }
   .gt-ai__readiness { max-width: 38%; padding-top: var(--gt-space-2); font-size: .68rem; }
   .gt-ai__toolbar { flex-wrap: wrap; gap: var(--gt-space-1); padding: var(--gt-space-1) var(--gt-space-2); }

@@ -1,12 +1,10 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
+import { DEFAULT_CONFIG } from './config.js';
 
 const COOKIE_NAME = 'growthtrack_session';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const SESSION_HOURS = Number(process.env.SESSION_HOURS || 12);
-const LOGIN_WINDOW_MS = Number(process.env.LOGIN_WINDOW_MS || 15 * 60 * 1000);
-const LOGIN_MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS || 5);
-const SESSION_TOUCH_MS = Number(process.env.SESSION_TOUCH_MS || 5 * 60 * 1000);
+const RATE_WINDOW_MS = 60_000;
 
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 const randomToken = () => crypto.randomBytes(48).toString('base64url');
@@ -27,13 +25,25 @@ function publicUser(user) {
   };
 }
 
-export function createSecurity({ prisma, logToFile, writeEvent }) {
+export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT_CONFIG }) {
   const attempts = new Map();
   const apiBuckets = new Map();
-  const isProduction = process.env.NODE_ENV === 'production';
-  const configuredOrigins = (process.env.APP_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean);
-  const localOrigins = ['http://localhost:3001', 'http://127.0.0.1:3001', 'http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:5001', 'http://127.0.0.1:5001', 'http://localhost:5173', 'http://127.0.0.1:5173'];
-  const allowedOrigins = new Set(configuredOrigins.length ? configuredOrigins : (isProduction ? [] : localOrigins));
+  const isProduction = config.production;
+  const { sessionHours: SESSION_HOURS, sessionTouchMs: SESSION_TOUCH_MS, loginWindowMs: LOGIN_WINDOW_MS,
+    loginMaxAttempts: LOGIN_MAX_ATTEMPTS, apiRateLimitPerMinute, frameAncestors } = config.security;
+  const allowedOrigins = new Set(config.security.origins);
+  // Throttle buckets are keyed by client and path; expired entries are dropped
+  // so the maps cannot grow without bound on a long-running server.
+  const sweep = setInterval(() => {
+    const now = Date.now();
+    for (const [map, windowMs] of [[apiBuckets, RATE_WINDOW_MS], [attempts, LOGIN_WINDOW_MS]]) {
+      for (const [key, times] of map) {
+        const recent = times.filter(time => now - time < windowMs);
+        if (recent.length) map.set(key, recent); else map.delete(key);
+      }
+    }
+  }, RATE_WINDOW_MS);
+  sweep.unref?.();
 
   const corsOptions = {
     credentials: true,
@@ -52,7 +62,7 @@ export function createSecurity({ prisma, logToFile, writeEvent }) {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
     if (isProduction) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self' http://localhost:* http://127.0.0.1:*; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:");
+    res.setHeader('Content-Security-Policy', `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors ${frameAncestors}; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:`);
     res.setHeader('Cache-Control', req.path.startsWith('/api/auth') ? 'no-store' : 'private, no-cache');
     next();
   };
@@ -61,8 +71,8 @@ export function createSecurity({ prisma, logToFile, writeEvent }) {
     if (SAFE_METHODS.has(req.method)) return next();
     const now = Date.now();
     const key = `${req.ip || 'unknown'}:${req.path}`;
-    const bucket = (apiBuckets.get(key) || []).filter(time => now - time < 60_000);
-    if (bucket.length >= 120) return res.status(429).json({ error: 'Too many requests. Try again shortly.' });
+    const bucket = (apiBuckets.get(key) || []).filter(time => now - time < RATE_WINDOW_MS);
+    if (bucket.length >= apiRateLimitPerMinute) return res.status(429).json({ error: 'Too many requests. Try again shortly.' });
     bucket.push(now); apiBuckets.set(key, bucket); return next();
   };
 

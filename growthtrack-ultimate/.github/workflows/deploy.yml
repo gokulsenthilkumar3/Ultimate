@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: growthtrack-ultimate/package-lock.json
 
@@ -34,11 +34,23 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Install browser test engines
+        run: npx playwright install --with-deps chromium firefox webkit
+
       - name: Typecheck
         run: npm run typecheck
 
       - name: Run Unit/Component Tests (gate — must pass before deploy)
         run: npm run test:run
+
+      - name: Isolated backend and migration tests
+        run: node tests/unit/server-backend/run.mjs
+
+      - name: Browser workflows
+        run: npm run test:e2e
 
       - name: Lint
         run: npm run lint

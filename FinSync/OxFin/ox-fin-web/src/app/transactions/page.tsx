@@ -20,7 +20,7 @@ export default function TransactionsPage() {
             const saved = localStorage.getItem('oxfin-regional-preferences');
             if (saved) setPreferences({ ...regionalDefaults, ...JSON.parse(saved) });
         } catch { }
-        fetch('/api/user/transactions')
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/transactions`)
             .then(r => r.json())
             .then(d => setTransactions(d.transactions || []))
             .finally(() => setLoading(false));

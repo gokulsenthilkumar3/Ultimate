@@ -13,7 +13,7 @@ describe('shipped human assets', () => {
       const glb = load(file);
       const head = glb.nodes.findIndex((node) => node.name === 'Head');
       const body = glb.meshes.find((mesh) => mesh.name === 'GrowthTrackBody');
-      for (const name of ['GrowthTrackEyes', 'GrowthTrackHair']) {
+      for (const name of ['GrowthTrackEyes', 'GrowthTrackHair', 'GrowthTrackEyebrows', 'GrowthTrackEyelashes']) {
         const index = glb.nodes.findIndex((node) => node.name === name);
         const node = glb.nodes[index];
         const mesh = glb.meshes[node.mesh];
@@ -30,7 +30,9 @@ describe('shipped human assets', () => {
       expect(glb.extras.metricContract).toMatchObject({
         version: 2,
         referenceHeightCm: 175,
-        privateMorphs: { d_size: 'd_length', d_length: 'd_length', d_girth: 'd_girth' },
+        units: { privateLength: 'cm' },
+        // Retired inch fields are converted on read (anatomyCalibration.resolveAnatomyCm).
+        privateMorphs: { anatomyLengthCm: 'd_length', anatomyGirthCm: 'd_girth' },
       });
       const privateMesh = glb.meshes.find((mesh) => mesh.name === 'GrowthTrackPrivateAnatomy');
       expect(glb.accessors[privateMesh.primitives[0].attributes.POSITION].count).toBeGreaterThanOrEqual(896);

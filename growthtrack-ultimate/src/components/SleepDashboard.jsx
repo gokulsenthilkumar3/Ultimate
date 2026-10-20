@@ -160,9 +160,9 @@ export default function SleepDashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.75rem' }}>
         <div>
           <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Sleep</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Moon size={24} color="var(--accent)" /> Sleep Analytics
-          </h2>
+          </h1>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{(logs || []).length} sessions logged</p>
             {chartData.length > 0 && (

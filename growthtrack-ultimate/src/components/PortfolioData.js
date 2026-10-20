@@ -15,9 +15,13 @@ export function holdingSnapshot(holding, snapshots) {
   const price = finiteObservation(holding?.currentPrice);
   const entry = snapshots?.[String(holding?.id)];
   // Dates are valid only for the exact price and asset entered by the user.
-  const date = entry?.price === price && entry?.name === holding?.name && entry?.symbol === (holding?.symbol || '')
+  const manualDate = entry?.price === price && entry?.name === holding?.name && entry?.symbol === (holding?.symbol || '')
     ? observationDate(entry.date) : null;
-  return { price: price !== null && price > 0 ? price : null, date };
+  // A connected source records its own dated quote; it applies only while the
+  // stored price is still that exact quote (a later manual edit overrides it).
+  const quote = holding?.quote;
+  const quoteDate = !manualDate && quote && finiteObservation(quote.price) === price ? observationDate(quote.date) : null;
+  return { price: price !== null && price > 0 ? price : null, date: manualDate || quoteDate, source: quoteDate ? String(quote.source || 'Connected source') : manualDate ? 'manual' : null };
 }
 
 export function summarizePortfolio(portfolio, snapshots) {

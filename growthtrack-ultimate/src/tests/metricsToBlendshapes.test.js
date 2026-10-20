@@ -1,3 +1,4 @@
+import { ANATOMY_REFERENCE, displayLimits } from '../components/morphEngine/anatomyCalibration';
 import { describe, expect, it } from 'vitest';
 import {
   buildMorphWeights,
@@ -108,12 +109,26 @@ describe('pure metric-to-blendshape engine', () => {
     expect(computeMorphWeights({ bodyFat: 8 }).nose_length).toBe(computeMorphWeights({ bodyFat: 38 }).nose_length);
   });
 
-  it('maps both legacy and canonical private length keys to the protected morph only', () => {
-    const legacy = computeMorphWeights({ d_size: 6, d_girth: 5 });
-    const canonical = computeMorphWeights({ d_length: 6, d_girth: 5 });
-    expect(canonical.d_length).toBeCloseTo(legacy.d_length);
-    expect(canonical.d_girth).toBeCloseTo(legacy.d_girth);
-    expect(canonical.d_length).toBeCloseTo(0.5);
-    expect(canonical.d_girth).toBeCloseTo(0.5);
+  it('maps centimetre anatomy inputs through the asset limits and converts retired inch keys', () => {
+    const height = { height: 175 };
+    const limits = displayLimits(1);
+    const span = limits.anatomyLengthCm.max - limits.anatomyLengthCm.min;
+    expect(computeMorphWeights({ ...height, anatomyLengthCm: limits.anatomyLengthCm.min }).d_length).toBe(0);
+    expect(computeMorphWeights({ ...height, anatomyLengthCm: 16 }).d_length).toBeCloseTo((16 - limits.anatomyLengthCm.min) / span, 5);
+    // A typical resting value is drawn as entered: the asset covers the whole input range.
+    expect(computeMorphWeights({ ...height, anatomyLengthCm: 9.2 }).d_length).toBeCloseTo((9.2 - limits.anatomyLengthCm.min) / span, 5);
+    // Source values outside the advisory range are retained. The legacy channel
+    // reaches its bound; the section surface renderer draws the full dimension.
+    const unset = computeMorphWeights(height);
+    expect(computeMorphWeights({ ...height, anatomyGirthCm: 19.9 }).d_girth).toBe(1);
+    expect(unset.d_girth).toBeCloseTo((ANATOMY_REFERENCE.anatomyGirthCm.meanCm - limits.anatomyGirthCm.min) / (limits.anatomyGirthCm.max - limits.anatomyGirthCm.min), 3);
+    // 6 in = 15.2 cm and 5 in = 12.7 cm, whichever retired key carried them.
+    const legacy = computeMorphWeights({ ...height, d_size: 6, d_girth: 5 });
+    const canonical = computeMorphWeights({ ...height, anatomyLengthCm: 15.2, anatomyGirthCm: 12.7 });
+    expect(computeMorphWeights({ ...height, d_length: 6, d_girth: 5 }).d_length).toBeCloseTo(legacy.d_length);
+    expect(canonical.d_length).toBeCloseTo(legacy.d_length, 5);
+    expect(canonical.d_girth).toBeCloseTo(legacy.d_girth, 5);
+    const without = computeMorphWeights(height);
+    for (const key of Object.keys(without).filter(name => !['d_length', 'd_girth'].includes(name))) expect(canonical[key]).toBeCloseTo(without[key], 6);
   });
 });

@@ -11,7 +11,7 @@ export default function BillsPage() {
 
     useEffect(() => {
         try { const saved = localStorage.getItem('oxfin-regional-preferences'); if (saved) setPreferences({ ...regionalDefaults, ...JSON.parse(saved) }); } catch { /* use defaults */ }
-        fetch('/api/user/transactions').then((res) => res.json()).then((data) => setTransactions(data.transactions || [])).finally(() => setLoading(false));
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/transactions`).then((res) => res.json()).then((data) => setTransactions(data.transactions || [])).finally(() => setLoading(false));
     }, []);
 
     const billActivity = useMemo(() => transactions.filter((txn) => /bill|rent|utility|electric|internet|insurance|subscription|phone/i.test(txn.description || '')), [transactions]);

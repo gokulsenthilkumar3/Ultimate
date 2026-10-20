@@ -18,7 +18,7 @@ export default function CardsPage() {
     useEffect(() => {
         try { const saved = localStorage.getItem('oxfin-regional-preferences'); if (saved) setPreferences({ ...regionalDefaults, ...JSON.parse(saved) }); } catch { /* use defaults */ }
         if (!session) return;
-        Promise.all([fetch('/api/user/balance'), fetch('/api/user/transactions')]).then(async ([balance, activity]) => { setWallets((await balance.json()).wallets || []); setTransactions((await activity.json()).transactions || []); }).finally(() => setLoading(false));
+        Promise.all([fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/balance`), fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/transactions`)]).then(async ([balance, activity]) => { setWallets((await balance.json()).wallets || []); setTransactions((await activity.json()).transactions || []); }).finally(() => setLoading(false));
     }, [session]);
 
     const wallet = wallets[selected];

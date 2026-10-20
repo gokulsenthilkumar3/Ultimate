@@ -10,6 +10,8 @@ import { fileURLToPath } from 'url';
 import { logToFile } from './logger.js';
 import { createSecurity } from './server/security.js';
 import BaseController from './server/controllers/BaseController.js';
+import { legacyNotesModel } from './server/domains/legacyNotes.js';
+import { registerNotesRoutes } from './server/domains/notes.js';
 import { collectionToClient } from './server/collectionPayload.js';
 import MetricLogController from './server/controllers/MetricLogController.js';
 import { enabledIdentityProviders } from './server/identityProviders.js';
@@ -23,19 +25,28 @@ import { saveSocialProfiles } from './server/domains/socialProfiles.js';
 import { publicSettingsWhere } from './server/domains/settingsVisibility.js';
 import { isCompletedWorkout } from './server/domains/workoutMetadata.js';
 import { createPrivateStorage } from './server/domains/privateStorage.js';
+import { createEncryptedPrivateStorage } from './server/domains/encryptedPrivateStorage.js';
 import { createCapabilitiesHandler } from './server/domains/capabilities.js';
 import { registerLocationRoutes } from './server/domains/locations.js';
 import { registerFrontend } from './server/frontend.js';
 import createAgentsRouter from './server/agents/router.js';
 import createNotificationsRouter from './server/notifications/router.js';
-import { normalizePortfolioPayload } from './server/domains/portfolio.js';
+import { normalizePortfolioPayload, PORTFOLIO_MAX_BYTES } from './server/domains/portfolio.js';
 import { renderServerHealthHtml } from './server/serverHealthHtml.js';
+import { loadServerConfig } from './server/config.js';
+import { createJsonErrorHandler } from './server/domains/errors.js';
+import { createSyncEngine, registerSyncRoutes, startSyncScheduler } from './server/domains/sync/engine.js';
+import { createSealer } from './server/domains/sync/sealer.js';
+import { createConnectors } from './server/domains/sync/connectors.js';
+import { createRecordServices, legacyWriteRetired, registerRecordRoutes } from './server/domains/records.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const require = createRequire(import.meta.url);
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+// Every tunable setting is validated once here; see server/config.js.
+const config = loadServerConfig(process.env);
 const bundledPrisma = path.join(__dirname, 'prisma-generated', 'client', 'default.js');
 // Prefer the workspace client when available so a schema update is used
 // immediately during development. Desktop bundles still have a generated
@@ -56,15 +67,34 @@ const adapter = new PrismaLibSql({
   url: databaseUrl,
 });
 const prisma = new PrismaClient({ adapter });
+const notesV1Enabled = config.features.notesV1;
+if (notesV1Enabled) {
+  try {
+    await prisma.$queryRawUnsafe('SELECT "revision", "kind", "pinned", "starred", "deletedAt" FROM "Note" LIMIT 0');
+    await prisma.$queryRawUnsafe('SELECT "noteId" FROM "NoteRevision" LIMIT 0');
+    await prisma.$queryRawUnsafe('SELECT "mutationId" FROM "NoteMutation" LIMIT 0');
+    await prisma.$queryRawUnsafe('SELECT "sequence" FROM "NoteChange" LIMIT 0');
+  } catch { throw new Error('GROWTHTRACK_NOTES_V1 requires the reviewed Notes migration. Run npm run migrate:notes to rehearse it first.'); }
+}
+const notesModel = notesV1Enabled ? prisma.note : legacyNotesModel(prisma);
+// Calendar events and holdings move from User JSON documents to revisioned rows
+// only after `npm run migrate:records -- --apply` and GROWTHTRACK_RECORD_ROWS=1.
+const recordRowsEnabled = config.features.recordRows;
+if (recordRowsEnabled) {
+  try {
+    for (const table of ['calendar_events', 'portfolio_holdings', 'record_mutations', 'record_changes']) await prisma.$queryRawUnsafe(`SELECT 1 FROM "${table}" LIMIT 0`);
+  } catch { throw new Error('GROWTHTRACK_RECORD_ROWS requires the reviewed record migration. Run npm run migrate:records to rehearse it first.'); }
+}
+const recordServices = createRecordServices(prisma, config.records);
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const app = express();
-const PORT = Number(process.env.PORT || 3001);
-const APP_URL = process.env.APP_URL || 'http://localhost:5000/Ultimate';
+const PORT = config.server.port;
+const APP_URL = config.server.appUrl;
 const eventLogger = createEventLogger({ prisma, logToFile });
-const security = createSecurity({ prisma, logToFile, writeEvent: eventLogger.write });
+const security = createSecurity({ prisma, logToFile, writeEvent: eventLogger.write, config });
 async function cleanupExpiredLogs() {
-  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - config.logs.retentionDays * 24 * 60 * 60 * 1000);
   try {
     await Promise.all([
       prisma.auditLog.deleteMany({ where: { timestamp: { lt: cutoff } } }),
@@ -74,14 +104,15 @@ async function cleanupExpiredLogs() {
   } catch (error) { logToFile('warning', 'log_retention_cleanup_failed', { error: String(error?.message || error) }); }
 }
 void cleanupExpiredLogs();
-setInterval(cleanupExpiredLogs, 6 * 60 * 60 * 1000).unref?.();
+const logCleanupTimer = setInterval(cleanupExpiredLogs, config.logs.cleanupIntervalMs);
+logCleanupTimer.unref?.();
 const authMiddleware = security.authenticate;
-const handoffSecret = process.env.HANDOFF_SECRET || crypto.randomBytes(32).toString('hex');
+// Production requires HANDOFF_SECRET (enforced in config). Locally an ephemeral
+// secret works for one process; say so instead of failing silently later.
+const handoffSecret = config.security.handoffSecret || crypto.randomBytes(32).toString('hex');
+if (!config.security.handoffSecret) logToFile('warning', 'handoff_secret_ephemeral', { detail: 'Set HANDOFF_SECRET so companion handoffs survive restarts.' });
 const handoffNonces = new Map();
-const productCallbacks = Object.freeze({
-  finsync: 'http://localhost:5101/auth/ultimate/callback', oxfin: 'http://localhost:5102/auth/ultimate/callback',
-  forex: 'http://localhost:8501', family: 'http://localhost:5104/auth/ultimate/callback', equity: 'http://localhost:5105/auth/ultimate/callback',
-});
+const productCallbacks = Object.freeze(Object.fromEntries(config.gateway.companions.map(product => [product.id, product.callbackUrl])));
 const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
 const signHandoff = payload => { const body = encode(payload); return `${body}.${crypto.createHmac('sha256', handoffSecret).update(body).digest('base64url')}`; };
 const verifyHandoff = token => {
@@ -92,7 +123,7 @@ const verifyHandoff = token => {
 };
 
 app.disable('x-powered-by');
-app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
+app.set('trust proxy', config.server.trustProxy ? 1 : false);
 app.use(security.headers);
 app.use((req, res, next) => {
   req.requestId = String(req.headers['x-request-id'] || crypto.randomUUID());
@@ -102,7 +133,7 @@ app.use((req, res, next) => {
 app.use(cors(security.corsOptions));
 app.use('/api', security.apiRateLimit);
 app.use('/api/webhook/stripe', express.raw({ type: 'application/json' }));
-app.use(express.json({ limit: '8mb' }));
+app.use(express.json({ limit: config.server.jsonBodyLimit }));
 app.use('/api', (req, res, next) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) || /^\/(logs|session-logs|auth)(\/|$)/.test(req.path)) return next();
   res.on('finish', () => {
@@ -144,7 +175,7 @@ app.get(['/api/health', '/health'], async (req, res) => {
     service: 'GrowthTrack Ultimate Core API',
     version: require('./package.json').version,
     port: PORT,
-    environment: process.env.NODE_ENV || 'development',
+    environment: config.env,
     nodeVersion: process.version,
     platform: `${process.platform}-${process.arch}`,
     uptimeSeconds,
@@ -152,7 +183,7 @@ app.get(['/api/health', '/health'], async (req, res) => {
     memory: { heapUsedMB, heapTotalMB, rssMB, heapPercent },
     database: {
       provider: 'SQLite (Prisma + LibSQL adapter)',
-      file: 'dev.db',
+      file: path.basename(databaseUrl.replace(/^file:/, '')),
       status: dbStatus,
       latencyMs: dbLatency,
     },
@@ -168,16 +199,17 @@ app.get(['/api/health', '/health'], async (req, res) => {
     }
   };
 
-  if (req.accepts('html') && req.query.format !== 'json') {
+  // Only a client that prefers HTML (a browser tab) gets the page; fetch()'s */* gets JSON.
+  if (req.accepts(['json', 'html']) === 'html' && req.query.format !== 'json') {
     res.setHeader('content-type', 'text/html; charset=utf-8');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https:; frame-ancestors 'self' http://localhost:* http://127.0.0.1:*");
+    res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https:; frame-ancestors ${config.security.frameAncestors}`);
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    return res.end(renderServerHealthHtml(payload));
+    return res.end(renderServerHealthHtml(payload, { app: APP_URL, dbStudio: config.gateway.dbStudioUrl, gateway: `${config.gateway.url}/health` }));
   }
   res.json(payload);
 });
 app.get(['/api/docs', '/docs', '/api-explorer.html'], (req, res) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:; frame-ancestors 'self' http://localhost:* http://127.0.0.1:*");
+  res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:; frame-ancestors ${config.security.frameAncestors}`);
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.sendFile(path.join(__dirname, 'api-explorer.html'));
 });
@@ -185,6 +217,8 @@ app.get('/api/auth/providers', (req, res) => res.json({ providers: enabledIdenti
 app.get('/api/capabilities', authMiddleware, createCapabilitiesHandler({
   prisma, version: require('./package.json').version,
   checkoutAvailable: () => Boolean(stripe && process.env.STRIPE_PRICE_ID),
+  notesV1Enabled,
+  recordRowsEnabled,
 }));
 app.use('/api/agents', authMiddleware, createAgentsRouter());
 app.use('/api/notifications', authMiddleware, createNotificationsRouter({ prisma }));
@@ -192,16 +226,12 @@ app.use('/api/notifications', authMiddleware, createNotificationsRouter({ prisma
 // Gateway health — probes each product and returns live readiness.
 // AppLauncher polls this every 15 s to show online/offline state in the App Hub.
 const GATEWAY_PRODUCT_REGISTRY = Object.freeze([
-  { id: 'ultimate', name: 'Ultimate',          healthUrl: `http://127.0.0.1:${PORT}/api/health` },
-  { id: 'finsync',  name: 'FinSync',           healthUrl: 'http://localhost:5101/api/health' },
-  { id: 'oxfin',    name: 'OxFin',             healthUrl: 'http://localhost:5102/api/health' },
-  { id: 'forex',    name: 'Forex',             healthUrl: 'http://localhost:8501/api/health' },
-  { id: 'family',   name: 'Family Connect',    healthUrl: 'http://localhost:5104/api/health' },
-  { id: 'equity',   name: 'Equity/NiftyLens',  healthUrl: 'http://localhost:5105/api/health' },
+  { id: 'ultimate', name: 'Ultimate', healthUrl: `http://127.0.0.1:${PORT}/api/health` },
+  ...config.gateway.companions.map(({ id, name, healthUrl }) => ({ id, name, healthUrl })),
 ]);
 async function probeProduct({ id, name, healthUrl }) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 1800);
+  const timer = setTimeout(() => controller.abort(), config.gateway.probeTimeoutMs);
   try {
     const res = await fetch(healthUrl, { signal: controller.signal });
     return { id, name, online: res.ok };
@@ -221,6 +251,7 @@ app.post('/api/integrations/handoff', authMiddleware, (req, res) => {
   if (!callback) return res.status(400).json({ error: 'Unknown product.' });
   const now = Math.floor(Date.now() / 1000); const jti = crypto.randomUUID();
   const payload = { iss: 'ultimate-local', aud: productId, sub: req.user.id, email: req.user.email, name: req.user.fullName, iat: now, exp: now + 60, jti };
+  for (const [nonce, expires] of handoffNonces) if (expires <= now) handoffNonces.delete(nonce);
   handoffNonces.set(jti, payload.exp); const token = signHandoff(payload); const separator = callback.includes('?') ? '&' : '?';
   return res.json({ token, expiresAt: payload.exp, launchUrl: `${callback}${separator}ultimate_handoff=${encodeURIComponent(token)}` });
 });
@@ -741,11 +772,15 @@ app.get('/api/state', authMiddleware, async (req, res) => {
     prisma.bodyProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.socialProfile.findMany({ where: { userId: req.user.id }, orderBy: { sortOrder: 'asc' } }),
-    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id }, include: { exercises: true } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), prisma.note.findMany({ where: { userId: req.user.id } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany({ where: publicSettingsWhere() }),
+    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id }, include: { exercises: true } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), notesModel.findMany({ where: { userId: req.user.id, ...(notesV1Enabled ? { deletedAt: null } : {}) } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany({ where: publicSettingsWhere() }),
   ]);
+  const [rowEvents, rowHoldings] = recordRowsEnabled
+    ? await Promise.all([recordServices.calendar.listAll(req.user.id), recordServices.holdings.listAll(req.user.id)]) : [null, null];
   const profileBaseline = metric_logs.find(row => row.source === 'profile' && row.metric === 'profile_baseline');
   const githubProfile = socialProfiles.find(profile => String(profile.provider || '').toLowerCase() === 'github');
   res.json({
+    // Tells clients to write calendar events and holdings through /api/v1.
+    recordRows: recordRowsEnabled,
     user: {
       id: user.id, email: user.email, name: user.fullName, fullName: user.fullName,
       ...mapDatabaseFields(ownerProfile, ownerFieldMap),
@@ -761,7 +796,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
       repoNotes: parseStoredJson(user.repoNotes, {}),
       trainingPlan: parseStoredJson(user.trainingPlan), nutritionStrategy: parseStoredJson(user.nutritionStrategy), lifestyleTips: parseStoredJson(user.lifestyleTips, []),
       medicalData: parseStoredJson(user.medicalData), physiqueTargets: parseStoredJson(user.physiqueTargets), assessmentQA: parseStoredJson(user.assessmentQA, []),
-      skills: parseStoredJson(user.skills, []), calendar_events: parseStoredJson(user.calendarEvents, []), wellnessData: parseStoredJson(user.wellnessData), healthExtras: parseStoredJson(user.healthExtras), portfolio: parseStoredJson(user.portfolio, []),
+      skills: parseStoredJson(user.skills, []), calendar_events: rowEvents ?? parseStoredJson(user.calendarEvents, []), wellnessData: parseStoredJson(user.wellnessData), healthExtras: parseStoredJson(user.healthExtras), portfolio: rowHoldings ?? parseStoredJson(user.portfolio, []),
     },
     preference: preference ? { ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) } : null,
     bodyProfile, healthProfile: parseStoredJson(healthProfile?.data, {}), socialProfiles, finance, budgets, metric_logs: metric_logs.map(metricToClient), workout_sessions: workout_sessions.map(row => collectionToClient('workout_sessions', row)),
@@ -778,7 +813,10 @@ app.get('/api/state', authMiddleware, async (req, res) => {
 // Update user singletons
 app.post('/api/user', authMiddleware, async (req, res) => {
   try {
-    const data = req.body;
+    const data = { ...req.body };
+    // Profile saves send the whole cached user; after migration its copies of
+    // these documents are stale and must never overwrite the rows.
+    if (recordRowsEnabled) { delete data.portfolio; delete data.calendarEvents; delete data.calendar_events; }
     const invalidMeasurements = invalidBodyMeasurements(data);
     if (invalidMeasurements.length) {
       return res.status(400).json({ error: 'One or more body measurements are outside the supported range.', fields: invalidMeasurements });
@@ -788,9 +826,9 @@ app.post('/api/user', authMiddleware, async (req, res) => {
 
     if (data.portfolio !== undefined) {
       if (!Array.isArray(data.portfolio)) return res.status(400).json({ error: 'Portfolio must be an array.' });
-      if (jsonSize(data.portfolio) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      if (jsonSize(data.portfolio) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
       const portfolio = normalizePortfolioPayload(data.portfolio);
-      if (jsonSize(portfolio) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      if (jsonSize(portfolio) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
       updateData.portfolio = JSON.stringify(portfolio);
     }
 
@@ -853,13 +891,15 @@ const singletons = [
 ];
 
 singletons.forEach(route => {
+  const retired = recordRowsEnabled && ['calendar_events', 'portfolio'].includes(route);
   app.post(`/api/${route}`, authMiddleware, async (req, res) => {
+    if (retired) return legacyWriteRetired(res);
     try {
       const camelCaseField = route.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
       if (route === 'portfolio' && !Array.isArray(req.body)) return res.status(400).json({ error: 'Portfolio must be an array.' });
-      if (route === 'portfolio' && jsonSize(req.body) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      if (route === 'portfolio' && jsonSize(req.body) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
       const value = route === 'portfolio' ? normalizePortfolioPayload(req.body) : req.body;
-      if (route === 'portfolio' && jsonSize(value) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      if (route === 'portfolio' && jsonSize(value) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
       const user = await prisma.user.update({
         where: { id: req.user.id },
         data: { [camelCaseField]: typeof value === 'object' ? JSON.stringify(value) : value }
@@ -869,12 +909,13 @@ singletons.forEach(route => {
   });
   
   app.put(`/api/${route}`, authMiddleware, async (req, res) => {
+    if (retired) return legacyWriteRetired(res);
     try {
       const camelCaseField = route.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
       if (route === 'portfolio' && !Array.isArray(req.body)) return res.status(400).json({ error: 'Portfolio must be an array.' });
-      if (route === 'portfolio' && jsonSize(req.body) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      if (route === 'portfolio' && jsonSize(req.body) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
       const value = route === 'portfolio' ? normalizePortfolioPayload(req.body) : req.body;
-      if (route === 'portfolio' && jsonSize(value) > 512 * 1024) return res.status(413).json({ error: 'Portfolio is too large.' });
+      if (route === 'portfolio' && jsonSize(value) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
       const user = await prisma.user.update({
         where: { id: req.user.id },
         data: { [camelCaseField]: typeof value === 'object' ? JSON.stringify(value) : value }
@@ -905,13 +946,16 @@ app.post('/api/hydration/log', authMiddleware, async (req, res) => {
 app.post('/api/health/sync/apple', authMiddleware, appleHealthSetupRequired);
 
 registerFinanceRoutes(app, authMiddleware, { prisma, auditCrud });
+registerRecordRoutes(app, { authMiddleware, services: recordServices, enabled: recordRowsEnabled });
+const syncEngine = createSyncEngine({ prisma, records: recordRowsEnabled ? recordServices : null, fetchDefaults: config.sync.fetch, connectors: createConnectors(config.sync), sealer: createSealer(config.security.encryptionKey), logEvent: event => eventLogger.write({ source: 'sync-engine', ...event }) });
+registerSyncRoutes(app, authMiddleware, syncEngine);
 registerWorkoutRoutes(app, authMiddleware, { prisma, auditCrud });
 const privateFileRoot = path.resolve(process.env.FILE_STORAGE_ROOT || path.join(__dirname, 'server', 'private-files'));
 for (const publicDirectory of ['public', 'dist']) {
   const relative = path.relative(path.join(__dirname, publicDirectory), privateFileRoot);
   if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))) throw new Error('FILE_STORAGE_ROOT must be outside public and dist.');
 }
-registerFileRoutes(app, authMiddleware, { prisma, auditCrud, storage: createPrivateStorage(privateFileRoot) });
+registerFileRoutes(app, authMiddleware, { prisma, auditCrud, storage: createEncryptedPrivateStorage(createPrivateStorage(privateFileRoot), config.security.encryptionKey) });
 
 // Dynamic CRUD endpoints for collections
 const collections = [
@@ -924,7 +968,7 @@ const collections = [
   { name: 'shopping', model: prisma.shoppingItem },
   { name: 'timesheet', model: prisma.timesheetSession },
   { name: 'entertainment', model: prisma.entertainmentMedia },
-  { name: 'notes', model: prisma.note },
+  { name: 'notes', model: notesModel },
   { name: 'goals', model: prisma.goal },
   { name: 'sleep_logs', model: prisma.sleepLog },
   { name: 'documents', model: prisma.document },
@@ -937,7 +981,9 @@ const collections = [
   { name: 'goal_progress_logs', model: prisma.goalProgressLog },
 ];
 
+registerNotesRoutes(app, { prisma, authMiddleware, enabled: notesV1Enabled });
 collections.forEach(({ name, model }) => {
+  if (name === 'notes' && notesV1Enabled) return;
   if (name === 'documents') return; // The file domain owns byte transfers and protected metadata.
   if (name === 'metric_logs') {
     const controller = new MetricLogController(model, name, metricPayload, stripProtectedFields, auditCrud, metricToClient, parseStoredJson);
@@ -1031,8 +1077,8 @@ app.get('/api/habit_logs/:habitId', authMiddleware, async (req, res) => {
   } catch(e) { sendInternalError(res, e, 'Habit log list'); }
 });
 
-if (process.env.SERVE_FRONTEND === 'true' || process.env.NODE_ENV === 'production') {
-  registerFrontend(app, { distDirectory: path.join(__dirname, 'dist'), frontendBasePath: process.env.FRONTEND_BASE_PATH, appUrl: APP_URL });
+if (config.server.serveFrontend) {
+  registerFrontend(app, { distDirectory: path.join(__dirname, 'dist'), frontendBasePath: config.server.frontendBasePath, appUrl: APP_URL });
 } else {
   app.use((req, res, next) => {
     if (!req.path.startsWith('/api/') && !req.path.startsWith('/auth/') && req.path !== '/') {
@@ -1042,7 +1088,34 @@ if (process.env.SERVE_FRONTEND === 'true' || process.env.NODE_ENV === 'productio
   });
 }
 
-app.listen(PORT, () => {
-  logToFile('info', `GrowthTrack server started`, { port: PORT, env: process.env.NODE_ENV || 'development' });
+// Last resort: malformed JSON, oversized bodies and unexpected failures always
+// answer with the standard JSON error shape and never expose a stack trace.
+app.use(createJsonErrorHandler({ logToFile }));
+
+export const server = app.listen(PORT, config.server.listenHost, () => {
+  logToFile('info', `GrowthTrack server started`, { port: PORT, env: config.env });
   console.log(`Local Auth Server running on http://localhost:${PORT}`);
 });
+
+// Connected sources refresh on their own interval; GROWTHTRACK_SYNC_SCHEDULER=off disables background sync.
+const stopSyncScheduler = config.sync.scheduler.enabled
+  ? startSyncScheduler(syncEngine, { ...config.sync.scheduler, onError: error => logToFile('error', 'sync_scheduler_failure', { error: String(error?.message || error) }) })
+  : () => {};
+
+// Graceful shutdown: stop timers, let in-flight requests (including sync
+// transactions) finish, then close the database. A deadline prevents hangs.
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logToFile('info', 'server_shutdown', { signal });
+  stopSyncScheduler();
+  clearInterval(logCleanupTimer);
+  const deadline = setTimeout(() => process.exit(1), 10_000);
+  deadline.unref?.();
+  await new Promise(resolve => server.close(resolve));
+  await prisma.$disconnect().catch(() => undefined);
+  process.exit(0);
+}
+// Electron owns its own lifecycle; standalone and container runs handle signals.
+if (config.env !== 'desktop') for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => void shutdown(signal));

@@ -24,7 +24,7 @@ export default function MFASetupModal({ isOpen, onClose, onSuccess }: MFASetupMo
         setLoading(true);
         setError('');
         try {
-            const res = await fetch('/api/user/mfa/setup', { method: 'POST' });
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/mfa/setup`, { method: 'POST' });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to start setup');
             setSetupData(data);
@@ -41,7 +41,7 @@ export default function MFASetupModal({ isOpen, onClose, onSuccess }: MFASetupMo
         setLoading(true);
         setError('');
         try {
-            const res = await fetch('/api/user/mfa/verify', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/mfa/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ secret: setupData?.secret, code })

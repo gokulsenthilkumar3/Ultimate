@@ -13,7 +13,8 @@ import PageState from './ui/PageState';
 import PageTemplate from './ui/PageTemplate';
 import FormError from './ui/FormError';
 import FileUploader from './ui/FileUploader';
-import ConnectionCard from './ui/ConnectionCard';
+import SyncCenter from './sync/SyncCenter';
+import { persistCalendarRows } from './calendar/calendarRecords';
 import useCalendarWidth from './calendar/useCalendarWidth';
 import { addDays, addMonths, CALENDAR_VIEWS, calendarRange, calendarView, dateLabel, normalizeEvent, occurrencesInRange, occurrencesOnDay, parseDateKey, persistMutation, RECURRENCES, resolveTimeZone, todayKey, validateEvent } from './calendar/calendarModel';
 import { buildICS, downloadICS, MAX_ICS_BYTES, parseICS, readICSFile } from './calendar/calendarICS';
@@ -53,7 +54,7 @@ const style = `
 .gt-calendar-form fieldset{min-width:0;padding:0;border:0}
 .gt-calendar-form .gt-calendar-check{display:flex;align-items:center;gap:.5rem;min-height:44px}
 .gt-calendar-check input{min-width:44px;accent-color:var(--gt-action)}
-.gt-calendar-connections{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(17rem,100%),1fr));gap:1rem}
+.gt-calendar-synced{margin:0;color:var(--gt-muted);font-size:.85rem}
 @container gt-calendar (max-width:850px){.gt-calendar-month-layout{grid-template-columns:minmax(0,1fr)}}
 @media(forced-colors:active){.gt-calendar-event{border-color:CanvasText}.gt-calendar-day[aria-pressed=true]{outline-color:Highlight}.gt-calendar-views a[aria-current=page]{outline:2px solid Highlight}}
 `;
@@ -95,10 +96,10 @@ function EventList({ items, day, locale, zone, onEdit, onDelete, busy }) {
       <p>{event.allDay ? 'All day' : `${event.startTime}${event.endTime ? ' – ' + event.endTime : ''} · ${zone}`}{event.date < day ? ' · Continues' : ''}</p>
       {event.recurrence !== 'none' && <p>Repeats {event.recurrence}</p>}
       {event.location && <p>Location: {event.location}</p>}{event.description && <p>{event.description}</p>}
-      <div className="gt-calendar-actions">
+      {event.source?.readOnly ? <p className="gt-calendar-synced">Synced from {event.source.syncLabel || 'a subscribed calendar'} · edit it there</p> : <div className="gt-calendar-actions">
         <Button variant="secondary" disabled={busy} aria-label={`Edit ${event.title}, ${event.date}`} onClick={() => onEdit(event.source)}>Edit{event.recurrence !== 'none' ? ' series' : ''}</Button>
         <Button variant="danger" disabled={busy} aria-label={`Delete ${event.title}, ${event.date}`} onClick={() => onDelete(event.source)}>Delete{event.recurrence !== 'none' ? ' series' : ''}</Button>
-      </div>
+      </div>}
     </article>
   </li>)}</ul>;
 }
@@ -145,7 +146,10 @@ export default function Calendar() {
   const startEdit = original => { if (!operationBusy.current) setEditor({ original: { ...original }, form: { ...blankEvent(original.date || today, zone), ...original, allDay: original.allDay !== false, timeZone: original.timeZone || zone }, error: '' }); };
   const closeEditor = () => { if (!operationBusy.current) setEditor(null); };
   const closeTransfer = () => { if (!operationBusy.current) setTransfer(null); };
-  const persist = operation => persistMutation(operation, { update: updateCalendarEvents, getState: useStore.getState, setState: useStore.setState });
+  // Row storage writes one event at a time; the legacy path saves the whole list.
+  const persist = operation => useStore.getState().recordRows
+    ? persistCalendarRows(operation, { getState: useStore.getState, setState: useStore.setState })
+    : persistMutation(operation, { update: updateCalendarEvents, getState: useStore.getState, setState: useStore.setState });
   const submitEvent = async event => {
     event.preventDefault();
     if (operationBusy.current) return;
@@ -235,9 +239,10 @@ export default function Calendar() {
       {view === 'agenda' && <section aria-label="Agenda schedule">
         {!occurrences.length ? <PageState state="empty" title="No events in this date range" description="Add an event or choose another date range." /> : range.days.filter(day => occurrencesOnDay(occurrences, day).length).map(day => <section key={day} className="gt-calendar-day-section" aria-labelledby={`${id}-agenda-${day}`}><h2 id={`${id}-agenda-${day}`}><time dateTime={day}>{dayHeading(day)}</time></h2>{eventList(day)}</section>)}
       </section>}
-      {view === 'connections' && <section aria-label="Calendar connections"><p>Provider setup is required. No calendar provider is connected by this screen. ICS import and export work with local files.</p><div className="gt-calendar-connections">
-        {['Google Calendar', 'Outlook Calendar', 'CalDAV'].map(title => <ConnectionCard key={title} title={title} status="unavailable" description="No verified calendar connection or sync adapter is configured." />)}
-      </div><Link to={featurePath('profile', 'integrations')}>Open integration settings</Link></section>}
+      {view === 'connections' && <section aria-label="Calendar connections">
+        <SyncCenter target="calendar" title="Subscribed calendars" description="Paste a calendar’s private iCal address once. Events mirror here automatically every hour and stay read-only; change them in the original calendar." />
+        <Link to={featurePath('profile', 'integrations')}>All live data sources</Link>
+      </section>}
     </PageTemplate>
     {editor && <Modal open title={editor.original ? 'Edit event' : 'New event'} onClose={closeEditor}><EventForm editor={editor} id={id} busy={busy} onChange={form => setEditor(previous => ({ ...previous, form, error: '' }))} onSubmit={submitEvent} onCancel={closeEditor} /></Modal>}
     {transfer?.kind === 'select' && <Modal open title="Import calendar file" onClose={closeTransfer}><p>Select a file to validate and review. No events are added until you confirm.</p><FileUploader label="ICS file" accept=".ics" maxSizeBytes={MAX_ICS_BYTES} onFilesSelected={prepareImport} /></Modal>}

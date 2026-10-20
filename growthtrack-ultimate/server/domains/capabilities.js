@@ -2,7 +2,7 @@ import { sendDomainError } from './errors.js';
 
 const CONNECTIONS = ['apple_health', 'google_fit', 'fitbit', 'garmin', 'bank', 'google_drive', 'onedrive', 'dropbox'];
 
-export function createCapabilitiesHandler({ prisma, version, checkoutAvailable }) {
+export function createCapabilitiesHandler({ prisma, version, checkoutAvailable, notesV1Enabled = false, recordRowsEnabled = false }) {
   return async (req, res) => {
     try {
       const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { subscriptionTier: true } });
@@ -10,6 +10,8 @@ export function createCapabilitiesHandler({ prisma, version, checkoutAvailable }
       res.setHeader('Cache-Control', 'private, no-store');
       res.json({
         version,
+        workspace: { notes: { apiVersion: notesV1Enabled ? 1 : 0 }, calendar: { apiVersion: recordRowsEnabled ? 1 : 0 } },
+        finance: { holdings: { apiVersion: recordRowsEnabled ? 1 : 0 } },
         billing: { checkoutAvailable: Boolean(checkoutAvailable()), tier: user.subscriptionTier || null },
         connections: CONNECTIONS.map(provider => ({ provider, status: 'setup-required',
           reason: provider === 'apple_health' ? 'A verified native health connection is required.'

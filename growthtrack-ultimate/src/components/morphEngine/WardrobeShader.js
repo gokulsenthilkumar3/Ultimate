@@ -3,7 +3,7 @@
  * WardrobeShader.js
  *
  * PBR cloth material system for all 7 wardrobe presets.
- * Replaces the body mesh material when wardrobeState !== ANATOMICAL.
+ * Used by an owned geometry shell; uncovered regions retain the skin surface.
  *
  * WARDROBE_PRESETS (from Layer 1):
  *   GYM        — compression shorts + tank top (dark navy/charcoal)
@@ -68,7 +68,7 @@ export const WARDROBE_CONFIGS = {
     weaveType:     1,                    // 1 = knit/fleece
     coverage: {
       torso:  [0.90, 1.72],   // hoodie (covers neck)
-      lower:  [0.05, 0.95],   // joggers (near-full leg)
+      lower:  [0.14, 0.95],   // joggers, ankle cuff
     },
     exposedRegions: ["hands", "head"],
   },
@@ -84,7 +84,7 @@ export const WARDROBE_CONFIGS = {
     weaveType:     2,                    // 2 = woven/poplin
     coverage: {
       torso:  [0.98, 1.70],
-      lower:  [0.05, 0.98],
+      lower:  [0.12, 0.98],
     },
     exposedRegions: ["hands", "head", "neck"],
   },
@@ -139,43 +139,65 @@ export const WARDROBE_CONFIGS = {
  * @param {string} preset - key from WARDROBE_PRESETS
  * @returns {THREE.ShaderMaterial | null}
  */
-export function createClothMaterial(preset = 'GYM', geometry = null) {
+export function createClothMaterial(preset = 'GYM', geometry = null, options = {}) {
   const config = WARDROBE_CONFIGS[preset];
   if (!config) return null;
-  geometry?.computeBoundingBox();
-  const box = geometry?.boundingBox;
+  // BufferGeometry.computeBoundingBox includes every morph extreme. Garment
+  // bands use the neutral surface, otherwise trousers include the feet and the
+  // waistband/neckline drift with the asset's unused morph envelope.
+  const box = geometry?.attributes.position ? new THREE.Box3().setFromBufferAttribute(geometry.attributes.position) : null;
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(...config.primaryColor), roughness: Math.max(.8, config.roughness),
-    metalness: 0, sheen: .06, sheenRoughness: .85, clearcoat: 0, envMapIntensity: .3,
+    color: options.topColor ? new THREE.Color(options.topColor) : new THREE.Color(...config.primaryColor), roughness: config.roughness,
+    metalness: 0, sheen: config.sheen, sheenRoughness: .85, clearcoat: 0, envMapIntensity: .4,
     side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
+  const lowerBand = preset === 'UNDERWEAR' ? ({briefs:[.83,.97],trunks:[.76,.97],boxerBriefs:[.70,.97]}[options.variant] || config.coverage.lower)
+    : preset === 'GYM' ? options.variant === 'compression' ? [.57,.99] : [.62,.99] : config.coverage.lower;
+  const tank = preset === 'GYM' && options.variant !== 'training';
+  const sleeves = preset === 'CASUAL' ? options.variant === 'tee' ? 1 : 2 : preset === 'FORMAL' ? 2 : preset === 'GYM' && !tank ? 1 : 0;
   const uniforms = {
     uClothMin: { value: box?.min.y ?? -.81676 },
     uClothScale: { value: 1.92 / Math.max(.1, box ? box.max.y-box.min.y : 1.66589) },
     uTorsoBand: { value: new THREE.Vector2(...(config.coverage.torso || [-1,-1])) },
-    uLowerBand: { value: new THREE.Vector2(...(config.coverage.lower || [-1,-1])) },
+    uLowerBand: { value: new THREE.Vector2(...(lowerBand || [-1,-1])) },
     uTorsoWidth: { value: preset === 'GYM' ? .245 : .53 },
-    uTankStyle: { value: preset === 'GYM' ? 1 : 0 },
-    uLowerColor: { value: new THREE.Color(...(preset === 'FORMAL' ? config.secondaryColor : config.primaryColor)) },
+    uTankStyle: { value: tank ? 1 : 0 },
+    uSleeves:{value:sleeves},
+    uBriefStyle:{value:preset==='UNDERWEAR' && options.variant==='briefs'?1:0},
+    uTrimColor:{value:options.trimColor?new THREE.Color(options.trimColor):new THREE.Color(...config.secondaryColor)},
+    uLowerColor: { value: options.bottomColor ? new THREE.Color(options.bottomColor) : new THREE.Color(...(preset === 'FORMAL' ? config.secondaryColor : config.primaryColor)) },
   };
-  material.customProgramCacheKey = () => 'cloth-pbr-' + preset;
+  material.userData={wardrobePreset:preset,options,uniforms};
+  material.customProgramCacheKey = () => 'cloth-shell-v3-' + preset;
   material.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nuniform float uClothMin;\nuniform float uClothScale;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += objectNormal * 0.0018;\nvClothPosition = vec3(position.x * uClothScale, (position.y-uClothMin) * uClothScale, position.z * uClothScale);');
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nuniform vec2 uTorsoBand;\nuniform vec2 uLowerBand;\nuniform float uTorsoWidth;\nuniform float uTankStyle;\nuniform vec3 uLowerColor;')
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nattribute vec4 garmentCoverage;\nvarying vec4 vGarmentCoverage;\nuniform float uClothMin;\nuniform float uClothScale;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGarmentCoverage=garmentCoverage;\nvClothPosition = vec3(position.x * uClothScale, (position.y-uClothMin) * uClothScale, position.z * uClothScale);');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vClothPosition;\nvarying vec4 vGarmentCoverage;\nuniform vec2 uTorsoBand;\nuniform vec2 uLowerBand;\nuniform float uTorsoWidth;\nuniform float uTankStyle;\nuniform float uSleeves;\nuniform float uBriefStyle;\nuniform vec3 uTrimColor;\nuniform vec3 uLowerColor;')
       .replace('#include <color_fragment>', `#include <color_fragment>
-        bool lowerCloth = vClothPosition.y >= uLowerBand.x && vClothPosition.y <= uLowerBand.y;
+        bool lowerRegion = vGarmentCoverage.x > .2;
+        bool torsoRegion = vGarmentCoverage.y > .2;
+        bool lowerCloth = lowerRegion && vClothPosition.y >= uLowerBand.x && vClothPosition.y <= uLowerBand.y;
+        if(uBriefStyle > .5 && vClothPosition.y < .80 + abs(vClothPosition.x)*.38) lowerCloth=false;
         bool torsoBand = vClothPosition.y >= uTorsoBand.x && vClothPosition.y <= uTorsoBand.y;
-        bool torsoCloth = torsoBand && abs(vClothPosition.x) < uTorsoWidth;
+        bool torsoCloth = torsoBand && torsoRegion;
         if (uTankStyle > 0.5) {
           bool tankBody = vClothPosition.y <= 1.43 && abs(vClothPosition.x) < uTorsoWidth;
           bool tankStraps = vClothPosition.y > 1.43 && abs(vClothPosition.x) > 0.155 && abs(vClothPosition.x) < 0.230;
-          torsoCloth = torsoBand && (tankBody || tankStraps);
+          torsoCloth = torsoBand && torsoRegion && (tankBody || tankStraps);
         }
+        bool sleeve = (uSleeves > .5 && vGarmentCoverage.z > .2) || (uSleeves > 1.5 && vGarmentCoverage.w > .2);
+        torsoCloth = torsoCloth || sleeve;
         if (!lowerCloth && !torsoCloth) discard;
-        if (lowerCloth) diffuseColor.rgb = uLowerColor;
-        diffuseColor.rgb *= .97 + .03 * abs(sin(vClothPosition.y * 700.0));`);
+        bool visibleLower = lowerCloth && !torsoCloth;
+        if (visibleLower) diffuseColor.rgb = uLowerColor;
+        float waistband = visibleLower ? 1.0-smoothstep(.018,.030,abs(vClothPosition.y-uLowerBand.y+.022)) : 0.0;
+        float hem = visibleLower ? 1.0-smoothstep(.008,.016,abs(vClothPosition.y-uLowerBand.x-.012)) : 0.0;
+        float sideSeam = visibleLower ? smoothstep(.16,.21,abs(vClothPosition.x))*(1.0-smoothstep(.21,.23,abs(vClothPosition.x))) : 0.0;
+        float topHem = torsoCloth && !sleeve ? 1.0-smoothstep(.006,.014,abs(vClothPosition.y-uTorsoBand.x-.014)) : 0.0;
+        diffuseColor.rgb = mix(diffuseColor.rgb,uTrimColor,max(max(waistband,hem),max(topHem,sideSeam*.45)));
+        float weave=sin(vClothPosition.y*1250.0)*sin(vClothPosition.x*1400.0);
+        diffuseColor.rgb *= .98 + .02*weave;`);
   };
   return material;
 }

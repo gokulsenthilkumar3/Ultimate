@@ -5,7 +5,7 @@ import SessionTimeoutHandler from "@/components/auth/SessionTimeoutHandler";
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
-        <SessionProvider>
+        <SessionProvider basePath={`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/auth`}>
             <SessionTimeoutHandler />
             {children}
         </SessionProvider>

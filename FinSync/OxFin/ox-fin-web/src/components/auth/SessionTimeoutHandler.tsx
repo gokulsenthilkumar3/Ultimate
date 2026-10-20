@@ -13,7 +13,7 @@ export default function SessionTimeoutHandler() {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         if (session) {
             timeoutRef.current = setTimeout(() => {
-                signOut({ callbackUrl: '/', redirect: true });
+                signOut({ callbackUrl: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/`, redirect: true });
             }, IDLE_TIMEOUT);
         }
     };

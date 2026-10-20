@@ -52,9 +52,14 @@ export const BODY_METRIC_RANGES = Object.freeze({
   earWidth: { min: 1, max: 10, unit: 'cm' },
   noseLength: { min: 1, max: 12, unit: 'cm' },
   noseWidth: { min: 1, max: 10, unit: 'cm' },
-  // Optional private external-anatomy measurements. These are kept separate
-  // from ordinary physique analytics and are only rendered after a per-session
-  // reveal. `d_size` remains as a compatibility alias for older profiles.
+  // Optional private external-anatomy measurements: resting length and
+  // mid-shaft circumference in cm (ranges and source in
+  // src/components/morphEngine/anatomyCalibration.js). Kept apart from
+  // ordinary physique analytics and only rendered for an eligible adult owner.
+  anatomyLengthCm: { min: 3, max: 16, unit: 'cm', advisory: true },
+  anatomyGirthCm: { min: 5, max: 14, unit: 'cm', advisory: true },
+  // Retired inch fields, still accepted so older profiles load; the app reads
+  // them through resolveAnatomyCm and no longer writes them.
   d_size: { min: 3, max: 9, unit: 'in' },
   d_length: { min: 3, max: 9, unit: 'in' },
   d_girth: { min: 3, max: 7, unit: 'in' },
@@ -101,6 +106,8 @@ export function validateBodyMetric(key, input, { allowEmpty = true } = {}) {
   const range = BODY_METRIC_RANGES[key];
   if (!Number.isFinite(value)) return { valid: false, empty: false, value: null, range: range ?? null, reason: 'Enter a number.' };
   if (!range) return { valid: true, empty: false, value, range: null };
+  if (range.advisory) return value < 0 ? {valid:false,empty:false,value,range,reason:'Enter a non-negative measurement.'} : { valid:true,empty:false,value,range,
+    warning:value < range.min || value > range.max ? `Outside suggested preview range ${range.min}–${range.max} ${range.unit}. Value retained.` : null };
   if (value < range.min || value > range.max) {
     return {
       valid: false,

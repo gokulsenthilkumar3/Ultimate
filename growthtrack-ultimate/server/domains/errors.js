@@ -34,3 +34,25 @@ export async function transactionWithRetry(prisma, work) {
     }
   }
 }
+
+const BODY_PARSER_ERRORS = Object.freeze({
+  'entity.parse.failed': ['INVALID_JSON', 'The request body is not valid JSON.'],
+  'entity.too.large': ['PAYLOAD_TOO_LARGE', 'The request body is too large.'],
+  'encoding.unsupported': ['UNSUPPORTED_ENCODING', 'The request body encoding is not supported.'],
+});
+
+/** Final Express error middleware: every failure answers with the standard
+    { code, error, requestId } JSON and never exposes a stack trace. */
+export function createJsonErrorHandler({ logToFile = () => {} } = {}) {
+  return (error, req, res, next) => {
+    if (res.headersSent) return next(error);
+    const status = Number.isInteger(error?.status) && error.status >= 400 && error.status < 600 ? error.status : 500;
+    const known = BODY_PARSER_ERRORS[error?.type];
+    if (status >= 500) logToFile('error', 'unhandled_request_error', { requestId: req.requestId, path: req.path, error: String(error?.message || error) });
+    return res.status(status).json({
+      code: known?.[0] || (status >= 500 ? 'INTERNAL_ERROR' : error?.code || 'REQUEST_FAILED'),
+      error: known?.[1] || (status >= 500 ? 'Unable to complete this request.' : error?.message || 'Request failed.'),
+      requestId: req.requestId,
+    });
+  };
+}

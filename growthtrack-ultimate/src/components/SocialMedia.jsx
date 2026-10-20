@@ -239,7 +239,7 @@ export default function SocialMedia() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Digital Identity</p>
-          <h2 className="text-display" style={{ fontSize: '2.2rem', marginBottom: '0.35rem' }}>Social profiles</h2>
+          <h1 className="text-display" style={{ fontSize: '2.2rem', marginBottom: '0.35rem' }}>Social profiles</h1>
           <p className="text-secondary">Saved links and manually entered figures. Automatic provider analytics are not connected.</p>
         </div>
         <button onClick={handleSave} disabled={isSaving} className="btn-primary">
