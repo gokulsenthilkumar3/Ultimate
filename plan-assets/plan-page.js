@@ -79,7 +79,6 @@
   const PART_NAME = Object.fromEntries(PARTS);
   const ZONE_ROWS = [['Shoulders & chest', ['shoulders', 'chest']], ['Arms', ['arms']], ['Core', ['core']], ['Hips & glutes', ['hips']], ['Legs', ['thighs', 'calves', 'feet']]];
   const PHASES = ['Cutting', 'Maintenance', 'Hypertrophy', 'Power', 'Recomp'];
-  const SWATCHES = [['Very light', '#efd0bd'], ['Light', '#e2b698'], ['Light-medium', '#d29f7d'], ['Medium', '#bc8970'], ['Olive', '#a98462'], ['Tan brown', '#8b5d41'], ['Deep brown', '#5f3d2b'], ['Very deep', '#3d2619']];
   const GOAL_KEYS = ['weight', 'bodyFat', 'waist', 'hips', 'chest', 'shoulders', 'arms', 'thighs', 'calves', 'neck'];
   const HISTORY_KEYS = ['weight', 'bodyFat', 'waist', 'chest', 'hips', 'arms', 'thighs'];
 
@@ -107,11 +106,11 @@
   const statusChip = (cls, text) => node('span', { class: `status ${cls}`, text });
   let toastTimer = 0;
   function toast(text) { const hint = $('#stage-hint'); hint.textContent = text; clearTimeout(toastTimer); toastTimer = setTimeout(() => { hint.textContent = HINTS[state.tab]; }, 4200); }
-  const HINTS = { blueprint: 'Drag to turn · scroll to zoom', measurements: 'Solid = tape in front · dashed = behind', mirror: 'Drag to turn · tap a body part', targets: 'Teal outline = your goal', history: 'Drag the slider to travel in time' };
+  const HINTS = { blueprint: 'Drag to turn · scroll to zoom', measurements: 'Solid = tape in front · dashed = behind', mirror: 'Drag to turn · tap a part · Face close-up', targets: 'Teal outline = your goal', history: 'Drag the slider to travel in time' };
   const CAPTIONS = {
     blueprint: 'Tape loops and the height line are cut from the model’s own surface, using your numbers.',
     measurements: 'The teal path is exactly where the tape goes. Landmarks are placed by proportion on this generic body — find yours by touch.',
-    mirror: 'A generic adult body from the app’s open (CC0) MakeHuman asset, fitted to your numbers. It is not a scan of anyone.',
+    mirror: 'A generic adult from the app’s open (CC0) MakeHuman asset, fitted to your numbers, with eyes, brows, lashes and hair drawn on top. It is not a scan of anyone.',
     targets: 'Both bodies use the same measuring check. If a goal is beyond what the model can show, the Targets list says so.',
     history: 'Each check-in has its own fitted shape; the slider blends between them. Sample data only.',
   };
@@ -131,7 +130,7 @@
       if (/[?&]debug\b/.test(location.search)) window.__planStage = s;
       stage.on('pick', onPick);
       stage.controls.addEventListener('start', () => $$('[data-view]').forEach(b => b.setAttribute('aria-pressed', 'false')));
-      applyLook(); enterTab(state.tab, { first: true });
+      applyLook(); if (window.PlanFace) window.PlanFace.attach(stage); enterTab(state.tab, { first: true });
       document.documentElement.dataset.stage = 'ready';
     }).catch(error => failStage(error && error.message ? error.message : 'unknown error'));
   }
@@ -187,6 +186,15 @@
     state.view = name;
     $$('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
     if (stage) stage.setView(name, { zone: zone || null });
+  }
+  /** Frame the head for the face and hair studio (whole body for the sun and light controls). */
+  function focusFace(group) {
+    if (!stage) return;
+    if (group === 'sun') { setView(state.view); return; }
+    const hairy = group === 'hair';
+    state.view = hairy ? 'three' : 'front';
+    $$('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
+    stage.setView(state.view, { zone: ['head'], margin: hairy ? 1.9 : 1.5, ms: 500 });
   }
   function onPick(zone) {
     const name = PART_NAME[zone] || zone;
@@ -407,22 +415,21 @@
   }
   function renderMirror() {
     const parts = $('#mr-parts'); if (!parts.childElementCount) for (const [key, name] of PARTS) parts.append(node('button', { type: 'button', class: 'pick', 'data-part': key, 'aria-pressed': 'false', onclick: () => choosePart(key) }, name));
-    const sw = $('#mr-swatches'); if (!sw.childElementCount) for (const [name, hex] of SWATCHES) sw.append(node('button', { type: 'button', class: 'pick', 'data-hex': hex, 'aria-pressed': String(hex === state.look.skin), onclick: () => { state.look.skin = hex; $('#mr-skin').value = hex; renderSwatchState(); applyLook(); } }, node('span', { class: 'dot', style: `background:${hex};width:14px;height:14px;border:1px solid var(--line)`, 'aria-hidden': 'true' }), name));
     const rows = [
       ['Overall height and proportions', 'Scales the whole body to your height entry.', ['ok', 'Fitted']],
       ['Eight tape measurements (neck, shoulders, chest, waist, hips, upper arm, thigh, calf)', 'The model is adjusted until each loop measures what you typed — within 0.5 cm, inside its shape range.', ['ok', 'Fitted']],
       ['Weight and body fat', 'A broad hint to overall fullness and face roundness. Your tape numbers override it.', ['warn', 'Roughly shown']],
       ['Width, depth and bone landmarks', 'Shoulder width, chest depth, seat projection and lower-leg length are measured on the model for reference. Your entries are saved but don’t change the shape yet.', ['off', 'Saved only']],
-      ['Skin tone, pigment and tan', 'Photo-based colour with one global colour, one regional override and one tan layer. No pores or light scattering under the skin yet.', ['warn', 'Roughly shown']],
-      ['Face, hair, hands and feet', 'One generic design for everyone.', ['off', 'Generic']],
+      ['Skin: tone, undertone, freckles, shine, pigment and tan', 'A photo-based colour map under the tone you choose, with pores, flush and light that wraps past the shadow edge. Pigment and tan are separate layers.', ['warn', 'Roughly shown']],
+      ['Face sizes: eyes, nose, mouth, jaw, cheeks, ears', 'Fourteen sizes (millimetres, plus eye tilt in degrees) are read off the drawn face. Type one and the face is adjusted to it, within the range this model can show.', ['ok', 'Fitted']],
+      ['Eyes, brows, lashes and hair', 'Iris, pupil, eyebrows, lashes and scalp hair are drawn from your choices (style, colour, length, density). They are a look, not a likeness of anyone.', ['warn', 'Roughly shown']],
+      ['Hands and feet', 'One generic design for everyone.', ['off', 'Generic']],
       ['Pose', 'A fixed A-pose, on purpose, so measurements stay comparable.', ['off', 'Fixed']],
       ['Adult private anatomy', 'Not shown on this page. It lives behind the app’s own adult and privacy controls.', ['off', 'Not shown here']],
     ];
     const body = $('#mr-table'); body.innerHTML = ''; for (const [a, b, [cls, text]] of rows) body.append(node('tr', {}, node('td', {}, node('strong', { text: a })), node('td', { text: b }), node('td', {}, statusChip(cls, text))));
-    renderSwatchState();
     $('#mr-tape').setAttribute('aria-pressed', String(state.tape));
   }
-  function renderSwatchState() { $$('#mr-swatches .pick').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.hex === state.look.skin))); }
 
   /* ---------------------------------------------------------------- Targets */
   const GOAL_PHRASE = {
@@ -565,7 +572,7 @@
   }
   function setUnits(imperial) {
     units.imperial = imperial; $('#units-metric').setAttribute('aria-pressed', String(!imperial)); $('#units-imperial').setAttribute('aria-pressed', String(imperial));
-    renderTab(state.tab); if (state.tab === 'history') renderHistory(); renderBlueprint(); refresh();
+    renderTab(state.tab); if (state.tab === 'history') renderHistory(); renderBlueprint(); refresh(); if (window.PlanFace) window.PlanFace.unitsChanged();
   }
 
   /* ------------------------------------------------------------------ wiring */
@@ -587,13 +594,13 @@
     $('#ov-ratio').addEventListener('input', renderOval);
     $('#mr-whole').addEventListener('click', () => { state.part = null; $$('#mr-parts .pick').forEach(b => b.setAttribute('aria-pressed', 'false')); $('#mr-picked').textContent = ''; if (stage) stage.setHighlight(null); setView(state.view); });
     $('#mr-tape').addEventListener('click', e => { state.tape = !state.tape; e.currentTarget.setAttribute('aria-pressed', String(state.tape)); refreshNow(); });
-    $('#mr-skin').addEventListener('input', e => { state.look.skin = e.target.value; renderSwatchState(); applyLook(); });
+    $('#mr-face').addEventListener('click', () => focusFace('eyes'));
     $('#mr-pig-on').addEventListener('change', e => { state.look.pigOn = e.target.checked; $('#mr-pig').disabled = !e.target.checked; applyLook(); });
     $('#mr-pig').addEventListener('input', e => { state.look.pig = e.target.value; applyLook(); });
     $('#mr-tan').addEventListener('input', e => { state.look.tan = Number(e.target.value); $('#mr-tan-v').textContent = `${state.look.tan}%`; applyLook(); });
     $('#mr-tan-pat').addEventListener('change', e => { state.look.tanPat = e.target.value; applyLook(); });
     $$('#mr-light button').forEach(b => b.addEventListener('click', () => { state.look.light = b.dataset.light; $$('#mr-light button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); applyLook(); }));
-    $('#mr-reset').addEventListener('click', () => { Object.assign(state.look, { skin: '#bc8970', pigOn: false, pig: '#996951', tan: 0, tanPat: 'tee', light: 'studio' }); $('#mr-skin').value = '#bc8970'; $('#mr-pig-on').checked = false; $('#mr-pig').disabled = true; $('#mr-pig').value = '#996951'; $('#mr-tan').value = 0; $('#mr-tan-v').textContent = '0%'; $('#mr-tan-pat').value = 'tee'; $$('#mr-light button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.light === 'studio'))); renderSwatchState(); applyLook(); });
+    $('#mr-reset').addEventListener('click', () => { Object.assign(state.look, { pigOn: false, pig: '#996951', tan: 0, tanPat: 'tee', light: 'studio' }); $('#mr-pig-on').checked = false; $('#mr-pig').disabled = true; $('#mr-pig').value = '#996951'; $('#mr-tan').value = 0; $('#mr-tan-v').textContent = '0%'; $('#mr-tan-pat').value = 'tee'; $$('#mr-light button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.light === 'studio'))); applyLook(); });
     $$('#tg-mode button').forEach(b => b.addEventListener('click', () => { state.mode = b.dataset.mode; applyCompare(); }));
     $('#tg-add').addEventListener('click', () => {
       const key = $('#tg-metric').value; const m = M_BY_ID[key]; const v = parseNum($('#tg-value').value); const hint = $('#tg-hint');
@@ -627,6 +634,7 @@
   function boot() {
     window.addEventListener('scroll', queueSize, { passive: true }); window.addEventListener('resize', queueSize); sizeStage();
     wire(); renderOval(); renderTab('blueprint'); updateSubject();
+    if (window.PlanFace) window.PlanFace.init({ imperial: () => units.imperial, focusFace: g => { if (state.tab === 'mirror') focusFace(g); }, setSkinHex: hex => { state.look.skin = hex; } });
     const initial = location.hash.slice(1); if (TABS.includes(initial) && initial !== 'blueprint') { selectTab(initial); } else { selectTab('blueprint'); }
     bootStage();
     window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (TABS.includes(h) && h !== state.tab) selectTab(h); });

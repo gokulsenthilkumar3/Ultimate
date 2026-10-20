@@ -4,14 +4,24 @@
 import {
   NeutralToneMapping, BufferAttribute, BufferGeometry, CanvasTexture, CatmullRomCurve3, Color, ConeGeometry, CylinderGeometry,
   DirectionalLight, DoubleSide, DynamicDrawUsage, Group, HemisphereLight, LineDashedMaterial, LineLoop, LinearMipmapLinearFilter,
-  Mesh, MeshBasicMaterial, MeshPhysicalMaterial, MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, PMREMGenerator, ShaderMaterial,
-  Raycaster, SphereGeometry, Spherical, SRGBColorSpace, Scene, Texture, TubeGeometry, Vector2, Vector3, WebGLRenderer, Line,
+  Mesh, MeshBasicMaterial, PerspectiveCamera, PlaneGeometry, PMREMGenerator, ShaderMaterial,
+  Raycaster, SphereGeometry, Spherical, SRGBColorSpace, Scene, Texture, TubeGeometry, Vector2, Vector3, WebGLRenderer, Line, PCFShadowMap,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { decodePreview } from './decode.mjs';
 import { buildModel, fitEntries, measureAll, measureSite, SITES } from './fit.mjs';
 import { applyMorphs, loopCentroid, loopLength, vertexNormals } from './geometry.mjs';
+import { createSkinMaterial } from './skin.mjs';
+import { faceMasks, LM } from './face.mjs';
+import { createSkinIndex } from './skinindex.mjs';
+import { createHairMaterial, growBrows, growLashes, growScalpHair, lidMargin, makeStrandMesh, scalpMask, updateStrandMesh } from './hair.mjs';
+import { bindLid, bindMeasurements, buildFaceChannels, FACE_DEFAULTS, FACE_PARAMS, FACE_PARAM_BY_KEY, faceWeights, measureFace, solveFaceParam } from './faceparams.mjs';
+import { eyeCentres } from './eyelayout.mjs';
+import { DEFAULT_HAIR, HAIR_SHADES, HAIR_STYLES, HAIR_TEXTURES, resolveHair } from './hairstyles.mjs';
+import { LIP_COLORS, SCLERA, SKIN_TONES, UNDERTONES, lipFromSkin } from './palettes.mjs';
+import { IRIS_COLORS, IRIS_MM, PUPIL_MM } from './eyes.mjs';
+import { aimEyes, buildEyes, createCorneaMaterial, createEyeMaterial, makeEyeMeshes, updateEyes } from './eyes.mjs';
 
 /** Body regions, as joint groups of the preview mesh (see joint order in the asset). */
 const ZONES = {
@@ -34,6 +44,7 @@ const ZONES = {
   upperBody: { groups: [3, 4, 6, 7, 10, 11] },
 };
 export const ZONE_KEYS = Object.keys(ZONES);
+export { FACE_PARAMS, HAIR_SHADES, HAIR_STYLES, HAIR_TEXTURES, IRIS_COLORS, LIP_COLORS, SCLERA, SKIN_TONES, UNDERTONES };
 const inZone = (zone, group, y) => zone.groups.includes(group) && (zone.minY === undefined || group === 0 || y >= zone.minY) && (zone.maxY === undefined || y <= zone.maxY);
 
 const LIGHTING = {
@@ -86,6 +97,7 @@ export async function createStage(container, options = {}) {
   renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = NeutralToneMapping; renderer.toneMappingExposure = 1.0;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = PCFShadowMap;
   const labelLayer = document.createElement('div'); labelLayer.className = 'stage-labels'; container.append(labelLayer);
 
   const D = await decodePreview(preview);
@@ -99,6 +111,9 @@ export async function createStage(container, options = {}) {
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const hemi = new HemisphereLight(); scene.add(hemi);
   const key = new DirectionalLight(); key.position.set(2.2, 3.4, 3.2); scene.add(key);
+  key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0003; key.shadow.normalBias = 0.004; key.shadow.radius = 3;
+  Object.assign(key.shadow.camera, { left: -1.3, right: 1.3, top: 1.5, bottom: -1.3, near: 1, far: 9 }); key.shadow.camera.updateProjectionMatrix();
+  key.target.position.set(0, 0.9, 0); scene.add(key.target);
   const fill = new DirectionalLight(); fill.position.set(-3, 1.6, 2); scene.add(fill);
   const rim = new DirectionalLight(); rim.position.set(-1.2, 2.6, -3.4); scene.add(rim);
   function setLighting(name) {
@@ -111,7 +126,7 @@ export async function createStage(container, options = {}) {
   const camera = new PerspectiveCamera(27, 1, 0.1, 40);
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true; controls.dampingFactor = 0.09; controls.rotateSpeed = 0.8; controls.zoomSpeed = 0.8;
-  controls.minDistance = 0.45; controls.maxDistance = 6.5; controls.minPolarAngle = 0.25; controls.maxPolarAngle = Math.PI * 0.58;
+  controls.minDistance = 0.2; controls.maxDistance = 6.5; controls.minPolarAngle = 0.25; controls.maxPolarAngle = Math.PI * 0.58;
   controls.screenSpacePanning = true; controls.zoomToCursor = false;
   controls.addEventListener('change', () => invalidate());
 
@@ -127,34 +142,8 @@ export async function createStage(container, options = {}) {
 
   // ---- materials ------------------------------------------------------------------------
   const skinMap = await loadTexture(D.skin.bytes, D.skin.mime);
-  const uniforms = {
-    uSkin: { value: new Color('#c58c6c') }, uMean: { value: new Vector3(...D.meanAlbedo.map(toLinear)) }, uPig: { value: new Color('#996951') },
-    uBrief: { value: new Color('#2f3b4a') }, uTan: { value: 0 }, uTanMul: { value: new Vector3(0.78, 0.6, 0.46) }, uHiCol: { value: new Color(ACCENT) }, uHi: { value: 0 }, uHairCol: { value: new Color('#2b2018') },
-  };
-  const skinMaterial = new MeshStandardMaterial({ map: skinMap, roughness: 0.6, metalness: 0, envMapIntensity: 0.7 });
-  skinMaterial.customProgramCacheKey = () => 'plan-skin-v1';
-  skinMaterial.onBeforeCompile = shader => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float aBrief;\nattribute float aTan;\nattribute float aPig;\nattribute float aHi;\nattribute float aHair;\nvarying float vHair;\nvarying float vBrief;\nvarying float vTan;\nvarying float vPig;\nvarying float vHi;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBrief = aBrief; vTan = aTan; vPig = aPig; vHi = aHi; vHair = aHair;');
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uSkin;\nuniform vec3 uMean;\nuniform vec3 uPig;\nuniform vec3 uBrief;\nuniform float uTan;\nuniform vec3 uTanMul;\nuniform vec3 uHiCol;\nuniform float uHi;\nuniform vec3 uHairCol;\nvarying float vHair;\nvarying float vBrief;\nvarying float vTan;\nvarying float vPig;\nvarying float vHi;')
-      .replace('#include <map_fragment>', `
-        vec3 texel = texture2D( map, vMapUv ).rgb;
-        vec3 rel = clamp( texel / uMean, 0.0, 3.0 );
-        float relLuma = dot( rel, vec3( 0.2126, 0.7152, 0.0722 ) );
-        rel = mix( vec3( relLuma ), rel, 0.55 );
-        vec3 skinCol = mix( uSkin, uPig, smoothstep( 0.3, 0.7, vPig ) ) * rel;
-        skinCol = mix( skinCol, skinCol * uTanMul, clamp( vTan * uTan, 0.0, 1.0 ) );
-        float brief = smoothstep( 0.46, 0.54, vBrief );
-        skinCol = mix( skinCol, uBrief * ( 0.82 + 0.18 * relLuma ), brief );
-        skinCol = mix( skinCol, uHairCol * ( 0.65 + 0.35 * relLuma ), smoothstep( 0.46, 0.54, vHair ) );
-        skinCol *= mix( 1.0, 0.62, uHi * ( 1.0 - vHi ) );
-        skinCol = mix( skinCol, uHiCol, vHi * uHi * 0.22 );
-        diffuseColor.rgb = skinCol;`)
-      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix( roughness, 0.9, smoothstep( 0.46, 0.54, vBrief ) );');
-  };
+  const skin = createSkinMaterial({ map: skinMap, mean: D.meanAlbedo.map(toLinear) });
+  const skinMaterial = skin.material; const uniforms = skin.uniforms;
   // The "other" body in compare views: a soft teal rim light, drawn over everything, so the
   // goal's contour is visible both outside and inside the solid body.
   const ghostMaterial = new ShaderMaterial({
@@ -170,19 +159,28 @@ void main() {
 }`,
   });
 
-  const partMaterials = {};
-  for (const [name, part] of Object.entries(D.parts)) {
-    const map = await loadTexture(part.textureBytes, part.textureMime);
-    if (name === 'eyes') partMaterials[name] = new MeshPhysicalMaterial({ map, roughness: 0.18, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.08, transparent: true, alphaTest: 0.05, side: DoubleSide });
-    else if (name === 'hair') partMaterials[name] = new MeshStandardMaterial({ map, roughness: 0.55, alphaTest: part.alphaCutoff, side: DoubleSide, color: new Color('#a8896f') });
-    else partMaterials[name] = new MeshStandardMaterial({ map, roughness: 0.8, alphaTest: part.alphaCutoff, side: DoubleSide, color: new Color(name === 'brows' ? '#4a3829' : '#2a2018') });
-  }
+  const eye = createEyeMaterial(); const corneaMaterial = createCorneaMaterial();
+  const eyeLayout = buildEyes(D.parts.eyes);
+  // Hair: strand sets are grown on the base head and follow the skin through morphs.
+  const baseNormals = vertexNormals(D.body.pos, D.body.idx, model.weld, new Float32Array(count * 3));
+  const skinIndex = createSkinIndex(D.body.pos, D.body.idx, t => D.body.pos[D.body.idx[t * 3] * 3 + 1] > 0.55 && D.body.pos[D.body.idx[t * 3 + 1] * 3 + 1] > 0.55);
+  const hairCtx = { pos: D.body.pos, idx: D.body.idx, normals: baseNormals, skin: skinIndex, LM, browGuide: D.parts.brows.pos, eyes: eyeLayout };
+  // Face shape channels (generated bumps) join the asset's own morphs; measurements read the drawn shape back.
+  const faceCh = buildFaceChannels(D, skinIndex, eyeLayout);
+  Object.assign(D.body.morphs, faceCh.body); Object.assign(D.parts.eyes.morphs, faceCh.eyes);
+  const faceBind = bindMeasurements(skinIndex, faceCh.points);
+  bindLid(faceBind, lidMargin(hairCtx, eyeLayout[0], 180));
+  const faceValues = { ...FACE_DEFAULTS }; let faceW = faceWeights(faceValues);
+  const hairMat = createHairMaterial(); const browMat = createHairMaterial({ width: 0.00013, shine: 0.35, ao: 0.15 }); const lashMat = createHairMaterial({ width: 0.00011, shine: 0.5, ao: 0.1 });
+  const hairMats = [hairMat, browMat, lashMat];
 
   // ---- shared per-vertex masks -----------------------------------------------------------------
   const smooth = makeSmoother(D.body.idx, model.weld);
   const bodyY = i => D.body.pos[i * 3 + 1];
   const attr = () => { const a = new BufferAttribute(new Float32Array(count), 1); a.setUsage(DynamicDrawUsage); return a; };
   const masks = { aBrief: attr(), aTan: attr(), aPig: attr(), aHi: attr(), aHair: attr() };
+  const faceM = faceMasks(D.body.pos, D.body.group);
+  const staticAttrs = { aFaceA: new BufferAttribute(faceM.A, 4), aFaceB: new BufferAttribute(faceM.B, 4), aBase: new BufferAttribute(D.body.pos.slice(), 3) };
   // A linear ramp in height (not a thresholded bone group) keeps the hems straight:
   // the shader cuts at 0.5, and interpolation of a linear ramp is exact on every triangle.
   const brief = new Float32Array(count);
@@ -191,17 +189,9 @@ void main() {
     brief[v] = arm ? 0 : Math.min(1, Math.max(0, Math.min(0.5 + (0.17 - y) / 0.06, 0.5 + (y + 0.05) / 0.06)));
   }
   masks.aBrief.array.set(brief);
-  // Dark scalp under the hair cards so gaps in the cards never show bare skin.
-  for (let v = 0; v < count; v += 1) {
-    if (D.body.group[v] !== 5) continue;
-    const y = bodyY(v); const z = D.body.pos[v * 3 + 2];
-    const top = 0.5 + (y - 0.855) / 0.03; const back = Math.min(0.5 + (0.02 - z) / 0.03, 0.5 + (y - 0.75) / 0.03);
-    masks.aHair.array[v] = Math.min(1, Math.max(0, Math.max(top, back)));
-  }
-  masks.aHair.needsUpdate = true;
   const briefMask = masks.aBrief.array;
 
-  const look = { skin: '#bc8970', pigment: { on: false, color: '#996951' }, tan: { amount: 0, pattern: 'tee' }, briefs: '#2f3b4a' };
+  const look = { skin: '#bc8970', pigment: { on: false, color: '#996951' }, tan: { amount: 0, pattern: 'tee' }, briefs: '#2f3b4a', under: 'Neutral', freckles: 0, blush: 0.7, shine: 0.5, pores: 1, lip: null, lipGloss: 0.6 };
   function tanExposure(pattern) {
     const out = new Float32Array(count);
     const J = D.joints; const sh = J.LeftUpperArm; const el = J.LeftForeArm;
@@ -236,7 +226,12 @@ void main() {
     if (next.pigment) look.pigment = { ...look.pigment, ...next.pigment };
     if (next.tan) look.tan = { ...look.tan, ...next.tan };
     if (next.briefs) look.briefs = next.briefs;
+    for (const k of ['under', 'freckles', 'blush', 'shine', 'pores', 'lipGloss']) if (next[k] !== undefined) look[k] = next[k];
+    if (next.lip !== undefined) look.lip = next.lip;
     uniforms.uSkin.value.set(look.skin); uniforms.uPig.value.set(look.pigment.color); uniforms.uBrief.value.set(look.briefs);
+    uniforms.uUnder.value.set(...(UNDERTONES[look.under] || UNDERTONES.Neutral)); uniforms.uFreckle.value = look.freckles; uniforms.uBlush.value = look.blush;
+    uniforms.uOily.value = look.shine; skinMaterial.roughness = 0.62 - 0.14 * look.shine; uniforms.uPore.value = look.pores; uniforms.uLipGloss.value = look.lipGloss;
+    uniforms.uLip.value.copy(look.lip ? new Color(look.lip) : lipFromSkin(new Color(look.skin)));
     uniforms.uTan.value = look.tan.amount;
     if (next.tan?.pattern || next.pigment) refreshMasks();
     invalidate();
@@ -251,17 +246,14 @@ void main() {
     const pos = new BufferAttribute(D.body.pos.slice(), 3); pos.setUsage(DynamicDrawUsage);
     const nrm = new BufferAttribute(new Float32Array(count * 3), 3); nrm.setUsage(DynamicDrawUsage);
     geometry.setAttribute('position', pos); geometry.setAttribute('normal', nrm); geometry.setAttribute('uv', sharedUv); geometry.setIndex(sharedIndex);
-    for (const [name, a] of Object.entries(masks)) geometry.setAttribute(name, a);
-    const body = new Mesh(geometry, skinMaterial); body.frustumCulled = false; group.add(body);
-    const parts = {};
-    for (const [name, part] of Object.entries(D.parts)) {
-      const g = new BufferGeometry();
-      const p = new BufferAttribute(part.pos.slice(), 3); p.setUsage(DynamicDrawUsage);
-      g.setAttribute('position', p); g.setAttribute('normal', new BufferAttribute(part.nrm, 3)); g.setAttribute('uv', new BufferAttribute(part.uv, 2)); g.setIndex(new BufferAttribute(part.idx, 1));
-      const mesh = new Mesh(g, partMaterials[name]); mesh.frustumCulled = false; group.add(mesh); parts[name] = { mesh, pos: p, base: part };
-    }
+    for (const [name, a] of Object.entries({ ...masks, ...staticAttrs })) geometry.setAttribute(name, a);
+    const body = new Mesh(geometry, skinMaterial); body.frustumCulled = false; body.castShadow = true; body.receiveShadow = true; group.add(body);
+    // Eyes: two meshes with their own pivots; the other part meshes (brows, lashes) are only guides.
+    const eyeData = eyeLayout; const eyeMeshes = makeEyeMeshes(eyeData, eye.material, corneaMaterial);
+    eyeMeshes.forEach(m => group.add(m));
+    const partPos = { eyes: D.parts.eyes.pos.slice() };
     const overlay = new Group(); group.add(overlay);
-    return { slot, group, body, geometry, pos, nrm, parts, overlay, fit: null, mode: 'solid' };
+    return { slot, group, body, geometry, pos, nrm, eyeData, eyeMeshes, partPos, overlay, hair: {}, fit: null, mode: 'solid' };
   }
   figures.primary = makeFigure('primary');
   figures.secondary = makeFigure('secondary'); figures.secondary.group.visible = false;
@@ -278,10 +270,13 @@ void main() {
   }
   function apply(result, slot = 'primary') {
     const fig = figures[slot];
-    applyMorphs(D.body.pos, D.body.morphs, result.weights, fig.pos.array);
+    const weights = { ...result.weights, ...faceW };
+    applyMorphs(D.body.pos, D.body.morphs, weights, fig.pos.array);
     vertexNormals(fig.pos.array, D.body.idx, model.weld, fig.nrm.array);
     fig.pos.needsUpdate = true; fig.nrm.needsUpdate = true; fig.geometry.computeBoundingSphere();
-    for (const part of Object.values(fig.parts)) { applyMorphs(part.base.pos, part.base.morphs, result.weights, part.pos.array); part.pos.needsUpdate = true; }
+    applyMorphs(D.parts.eyes.pos, D.parts.eyes.morphs, weights, fig.partPos.eyes);
+    updateEyes(fig.eyeData, fig.eyeMeshes, fig.partPos.eyes, D.parts.eyes.pos);
+    for (const mesh of Object.values(fig.hair)) updateStrandMesh(mesh, D.body.idx, fig.pos.array);
     fig.fit = result; placeFigure(fig, result.scale);
     if (slot === 'primary') rebuildOverlay();
     invalidate();
@@ -293,6 +288,111 @@ void main() {
   }
   const measure = result => measureAll(model, result);
 
+  // ---- hair, brows, lashes ---------------------------------------------------------------------------------
+  const hairLook = { ...DEFAULT_HAIR, hairline: { ...DEFAULT_HAIR.hairline } };
+  const browLook = { density: 1, length: 1, lift: 0, thick: 0, tail: 1, shade: null };
+  const lashLook = { density: 1, length: 1, curl: 1 };
+  const strands = { scalp: null, brows: null, lashes: null };
+  const lowPower = (typeof navigator !== 'undefined' && (navigator.hardwareConcurrency || 8) <= 4) || window.innerWidth < 700;
+  function attachStrands(kind, set, material) {
+    for (const fig of Object.values(figures)) {
+      if (fig.hair[kind]) { fig.group.remove(fig.hair[kind]); fig.hair[kind].geometry.dispose(); delete fig.hair[kind]; }
+      if (!set) continue;
+      const mesh = makeStrandMesh(set, material); fig.group.add(mesh); fig.hair[kind] = mesh;
+      if (fig.fit) updateStrandMesh(mesh, D.body.idx, fig.pos.array);
+    }
+  }
+  function refreshHairColours(r) {
+    const base = new Color(r.color);
+    hairMat.uniforms.uColor.value.copy(base); hairMat.uniforms.uTip.value.copy(base).multiplyScalar(1.12);
+    hairMat.uniforms.uGrey.value = r.grey; hairMat.uniforms.uShine.value = r.shine; hairMat.uniforms.uWidth.value = r.width * 2.6 * (1 + Math.min(0.15, r.maxLen) * 6);
+    const brow = browLook.shade ? new Color(browLook.shade) : base.clone().multiplyScalar(0.9);
+    browMat.uniforms.uColor.value.copy(brow); browMat.uniforms.uTip.value.copy(brow); browMat.uniforms.uGrey.value = r.grey * 0.6;
+    const lash = base.clone().lerp(new Color('#0b0806'), 0.55);
+    lashMat.uniforms.uColor.value.copy(lash); lashMat.uniforms.uTip.value.copy(lash); lashMat.uniforms.uGrey.value = 0;
+    uniforms.uHairCol.value.copy(base).multiplyScalar(0.5);
+    uniforms.uScalp.value = r.bald ? r.stubble : Math.max(0.35, 0.9 - 0.25 * (1 - Math.min(1, r.density)));
+  }
+  function rebuildHair({ scalp = true, brows = false, lashes = false } = {}) {
+    const r = resolveHair(hairLook);
+    if (scalp) {
+      strands.scalp = growScalpHair(hairCtx, r, { budget: lowPower ? 420000 : 900000 });
+      attachStrands('scalp', strands.scalp, hairMat.material);
+      masks.aHair.array.set(scalpMask(D.body.pos, D.body.group, r.hairline, LM)); masks.aHair.needsUpdate = true;
+    }
+    if (brows) { strands.brows = growBrows(hairCtx, browLook); attachStrands('brows', strands.brows, browMat.material); }
+    if (lashes) { strands.lashes = growLashes(hairCtx, lashLook); attachStrands('lashes', strands.lashes, lashMat.material); }
+    refreshHairColours(r); invalidate();
+    return r;
+  }
+  function setHair(next = {}) {
+    const geometryChange = ['style', 'texture', 'length', 'density', 'part', 'volume', 'hairline'].some(k => next[k] !== undefined);
+    for (const [k, v] of Object.entries(next)) hairLook[k] = k === 'hairline' ? { ...hairLook.hairline, ...v } : v;
+    if (next.shade && !next.color) hairLook.color = null;
+    return rebuildHair({ scalp: geometryChange || !strands.scalp });
+  }
+  function setBrows(next = {}) { Object.assign(browLook, next); return rebuildHair({ scalp: false, brows: true }); }
+  function setLashes(next = {}) { Object.assign(lashLook, next); return rebuildHair({ scalp: false, lashes: true }); }
+  const lightRig = { key, fill, rim, hemi };
+  function updateHairUniforms() {
+    const v = new Vector3(); const lights = [key, fill, rim]; const px = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, canvas.height);
+    for (const m of hairMats) {
+      const u = m.uniforms; u.uPx.value = px;
+      lights.forEach((l, i) => {
+        v.copy(l.position).sub(l.target.position).normalize().transformDirection(camera.matrixWorldInverse); u.uLd.value[i].copy(v);
+        u.uLc.value[i].copy(l.color).multiplyScalar(l.intensity * 0.5);
+      });
+      u.uSky.value.copy(lightRig.hemi.color).multiplyScalar(lightRig.hemi.intensity * 1.1 + scene.environmentIntensity * 0.35);
+      u.uGround.value.copy(lightRig.hemi.groundColor).multiplyScalar(lightRig.hemi.intensity * 0.7 + scene.environmentIntensity * 0.2);
+    }
+  }
+
+  // ---- eyes ------------------------------------------------------------------------------------------------------
+  const eyeLook = { iris: 'Brown', irisMm: IRIS_MM, pupilMm: PUPIL_MM, sclera: 'Natural', redness: 0.18 };
+  function setEyes(next = {}) {
+    Object.assign(eyeLook, next);
+    const preset = IRIS_COLORS[eyeLook.iris];
+    const outer = preset ? preset[0] : eyeLook.iris; const inner = preset ? preset[1] : new Color(eyeLook.iris).offsetHSL(0.02, 0.05, 0.1).getStyle();
+    eye.uniforms.uIris.value.set(outer); eye.uniforms.uIrisInner.value.set(inner);
+    eye.uniforms.uIrisR.value = Math.asin(Math.min(0.9, eyeLook.irisMm / 2 / 12.7)); eye.uniforms.uPupil.value = Math.min(0.8, eyeLook.pupilMm / eyeLook.irisMm);
+    eye.uniforms.uSclera.value.set(SCLERA[eyeLook.sclera] || eyeLook.sclera); eye.uniforms.uVein.value = eyeLook.redness;
+    invalidate(); return { ...eyeLook };
+  }
+
+  // ---- face parameters (mm) ---------------------------------------------------------------------------------
+  const faceScratch = new Float32Array(D.body.pos.length); const eyeScratch = new Float32Array(D.parts.eyes.pos.length);
+  /** Measurements (mm, deg) of the drawn face for a set of parameter values, at the primary figure's current body shape. */
+  function faceMeasureWith(values) {
+    const w = { ...(figures.primary.fit?.weights || {}), ...faceWeights(values) };
+    applyMorphs(D.body.pos, D.body.morphs, w, faceScratch); applyMorphs(D.parts.eyes.pos, D.parts.eyes.morphs, w, eyeScratch);
+    const centres = eyeCentres(eyeLayout, D.parts.eyes.pos, eyeScratch);
+    const m = measureFace(faceBind, D.body.idx, faceScratch, centres);
+    const k = figures.primary.fit?.scale ?? 1;
+    for (const key of Object.keys(m)) if (key !== 'eyeTilt') m[key] *= k;
+    return m;
+  }
+  const zeroFace = Object.fromEntries(FACE_PARAMS.map(p => [p.key, 0]));
+  /** Current value of a parameter as the person reads it: the measurement in mm, or the change for ones with no landmark pair. */
+  function readParam(p, m) { return p.measure ? m[p.measure] ?? null : null; }
+  function reapplyFigures() { for (const slot of ['primary', 'secondary']) if (figures[slot].fit) apply(figures[slot].fit, slot); }
+  function setFace(next = {}) {
+    for (const [k, v] of Object.entries(next)) if (FACE_PARAM_BY_KEY[k] && Number.isFinite(v)) { const p = FACE_PARAM_BY_KEY[k]; faceValues[k] = Math.min(p.range[1], Math.max(p.range[0], v)); }
+    faceW = faceWeights(faceValues); reapplyFigures(); return faceState();
+  }
+  function faceState() {
+    const m = faceMeasureWith(faceValues); const b = faceMeasureWith(zeroFace);
+    return FACE_PARAMS.map(p => ({ ...p, value: faceValues[p.key], measured: readParam(p, m), base: readParam(p, b) }));
+  }
+  /** Set a parameter so the drawn shape measures `target` (mm); returns the state and whether the target was reachable. */
+  function solveFace(key, target) {
+    const p = FACE_PARAM_BY_KEY[key]; if (!p || !Number.isFinite(target)) return { ok: false, state: faceState() };
+    if (!p.measure) return { ok: false, state: setFace({ [key]: target }) };
+    const res = solveFaceParam(p, target, faceValues, vals => readParam(p, faceMeasureWith(vals)));
+    setFace({ [key]: res.value });
+    return { ok: res.ok, reached: res.reached, state: faceState() };
+  }
+  function resetFace() { Object.assign(faceValues, FACE_DEFAULTS); faceW = faceWeights(faceValues); reapplyFigures(); return faceState(); }
+
   // ---- compare modes -------------------------------------------------------------------------------
   const compare = { mode: 'off', split: 0.5 };
   function setCompare(next = {}) {
@@ -301,7 +401,8 @@ void main() {
     f.group.visible = compare.mode !== 'off';
     const ghost = compare.mode === 'ghost';
     f.body.material = ghost ? ghostMaterial : skinMaterial;
-    for (const p of Object.values(f.parts)) p.mesh.visible = !ghost;
+    f.eyeMeshes.forEach(m => { m.visible = !ghost; });
+    Object.values(f.hair).forEach(m => { m.visible = !ghost; });
     invalidate();
   }
 
@@ -445,11 +546,11 @@ void main() {
     }
     return { min, max };
   }
-  function setView(name = 'front', { zone = null, ms = 600 } = {}) {
+  function setView(name = 'front', { zone = null, ms = 600, margin = null } = {}) {
     const theta = VIEWS[name] ?? 0; const phi = Math.PI / 2 - 0.2;
     if (zone) {
       const keys = Array.isArray(zone) ? zone : [zone]; const { min, max } = bodyBounds(keys);
-      const f = frameBox(min, max, keys.includes('hands') || keys.includes('feet') || keys.includes('head') ? 2.3 : 2.1);
+      const f = frameBox(min, max, margin ?? (keys.includes('hands') || keys.includes('feet') || keys.includes('head') ? 2.3 : 2.1));
       flyTo({ target: f.target, theta, phi, distance: Math.max(0.9, f.distance) }, ms);
     } else {
       const s = figures.primary.fit?.scale ?? 1; const { min, max } = (() => { const lo = new Vector3(-0.62, 0, -0.1); const hi = new Vector3(0.62, heightM * s, 0.1); return { min: lo, max: hi }; })();
@@ -458,11 +559,19 @@ void main() {
     }
   }
 
+  /** Close camera on a point of the primary figure (model-space metres), e.g. the face. */
+  function focusOn(point, { distance = 0.6, theta = 0, phi = Math.PI / 2 - 0.05, ms = 600 } = {}) {
+    const v = new Vector3(...point); figures.primary.group.localToWorld(v);
+    flyTo({ target: v, theta, phi, distance }, ms);
+  }
+
   // ---- render loop ----------------------------------------------------------------------------------------
   let dirty = true; let raf = 0; let autoRotate = false;
   function invalidate() { dirty = true; if (!raf) raf = requestAnimationFrame(frame); }
   function renderScene() {
     const w = canvas.width; const h = canvas.height;
+    camera.updateMatrixWorld(); updateHairUniforms();
+    for (const fig of Object.values(figures)) aimEyes(fig.eyeMeshes, fig.group, camera.position);
     if (compare.mode === 'split') {
       const cut = Math.round(w * compare.split);
       renderer.setScissorTest(true);
@@ -516,11 +625,13 @@ void main() {
   refreshMasks(); setLook({}); setLighting('studio');
   const initial = fit({});
   apply(initial, 'primary'); apply(initial, 'secondary');
+  rebuildHair({ scalp: true, brows: true, lashes: true });
   resize(); setView('front', { ms: 0 });
 
   return {
     zones: ZONE_KEYS, sites: Object.keys(SITES), baseHeightCm: heightM * 100,
-    fit, apply, blend, measure, setView, setLook, setLighting, setOverlay, setCompare,
+    fit, apply, blend, measure, setView, focusOn, setLook, setHair, setBrows, setLashes, hairLook: () => JSON.parse(JSON.stringify(hairLook)),
+    setFace, solveFace, resetFace, faceState, setEyes, eyeLook: () => ({ ...eyeLook }), skinLook: () => JSON.parse(JSON.stringify(look)), setLighting, setOverlay, setCompare,
     setHighlight(keys, amount = 1) { masks.aHi.array.set(highlightMask(keys)); masks.aHi.needsUpdate = true; uniforms.uHi.value = keys && keys.length ? amount : 0; invalidate(); },
     setAutoRotate(on) { autoRotate = !!on; invalidate(); },
     landmarkCm(id) { const lm = landmarks(figures.primary, id); if (!lm) return null; const s = figures.primary.fit.scale * 100; return Math.hypot(lm.a[0] - lm.b[0], lm.a[1] - lm.b[1], lm.a[2] - lm.b[2]) * s; },
@@ -544,6 +655,9 @@ void main() {
     },
     pickAt, on(name, cb) { (listeners[name] = listeners[name] || []).push(cb); },
     resize, invalidate,
+    /** Resolves once nothing is waiting to be drawn (camera moves, queued frames). Useful for tests and screenshots. */
+    idle() { return new Promise(resolve => { const check = () => (dirty || raf || tween ? setTimeout(check, 30) : resolve()); check(); }); },
+    ...(options.debug ? { internals: { D, faceCh, faceBind, hairCtx, eyeLayout, strands } } : {}),
     snapshot() { renderScene(); return canvas.toDataURL('image/png'); },
     dispose() { observer.disconnect(); renderer.dispose(); canvas.remove(); labelLayer.remove(); },
     get camera() { return camera; }, get controls() { return controls; },

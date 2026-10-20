@@ -2,12 +2,14 @@
 // Builds ../../plan-assets/human-preview.js (repo root) from the app's bundled
 // humanoid GLB so the v4 plan page can show a real 3D human without a server.
 //
-//   node scripts/plan-preview/build-model.mjs [path/to/humanoid-base-lite.glb]
+//   node scripts/plan-preview/build-model.mjs [path/to/humanoid-base.glb]
 //
-// The preview keeps only what the plan needs: the body surface, eyes, hair,
-// brows and lashes; a short list of sparse shape morphs; a per-vertex body
-// region id; and small textures. The external-anatomy mesh in the source file
-// is intentionally NOT copied. Skeleton data is reduced to joint positions.
+// The preview keeps only what the plan needs: the body surface and a 2048px skin
+// colour map; the eyeballs with their iris/sclera map; the brow and lash meshes
+// (positions only, used as guides to grow real hair strands); a list of sparse
+// shape morphs; a per-vertex body region id. Hair is generated in the browser, so
+// the source's hair cards are not copied, and neither is the external-anatomy
+// mesh. Skeleton data is reduced to joint positions.
 //
 // Image resizing needs `sharp`. It is deliberately not an app dependency:
 // run `npm install --no-save sharp` in the directory you run this from.
@@ -22,7 +24,7 @@ import { readGlb, readAccessor, readImage, meshByName } from './glb.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(here, '../..');
 const repoRoot = path.resolve(appRoot, '..');
-const source = path.resolve(process.argv[2] || path.join(appRoot, 'public/assets/models/humanoid-base-lite.glb'));
+const source = path.resolve(process.argv[2] || path.join(appRoot, 'public/assets/models/humanoid-base.glb'));
 const output = path.join(repoRoot, 'plan-assets/human-preview.js');
 
 // Shape morphs the plan's measurement fitting can drive (see plan-assets/src/fit.mjs).
@@ -30,12 +32,16 @@ const MORPHS = [
   'overall_mass', 'gut_volume', 'face_roundness', 'chest_depth', 'pec_thickness', 'ribcage_depth',
   'waist_narrow', 'bicep_peak', 'tricep_horse', 'forearm_girth', 'glute_volume', 'hip_width',
   'quad_sweep', 'ham_thickness', 'calf_diamond', 'neck_thickness', 'clavicle_width',
+  // Face: the few the plan's face controls drive (the rest of the face shape is generated, see faceparams.mjs)
+  'brow_depth', 'nose_bridge_width', 'nose_tip_size', 'ear_prominence', 'jaw_angle',
 ];
+// [key, mesh, image used to tell eyeball from glass (or null), texture size to store (0 = none)].
+// The eyes' own photo texture is not stored: the iris is drawn procedurally. Brows and lashes
+// are only guides for the strand generator.
 const ACCESSORIES = [
-  ['eyes', 'GrowthTrackEyes', 'EyeBrown_IrisSclera', 256],
-  ['hair', 'GrowthTrackHair', 'HairShort02_Albedo', 512],
-  ['brows', 'GrowthTrackEyebrows', 'Eyebrows_eyebrow001', 256],
-  ['lashes', 'GrowthTrackEyelashes', 'Eyelashes_eyelashes01', 256],
+  ['eyes', 'GrowthTrackEyes', 'EyeBrown_IrisSclera', 0],
+  ['brows', 'GrowthTrackEyebrows', null, 0],
+  ['lashes', 'GrowthTrackEyelashes', null, 0],
 ];
 const SKIN_IMAGE = 'SkinAlbedo_YoungMale';
 
@@ -107,10 +113,10 @@ const body = {
 async function texture(name, size, mode) {
   const png = readImage(glb, imageIndex(name));
   let image = sharp(png).resize(size, size, { fit: 'fill' });
-  const bytes = mode === 'jpeg' ? await image.jpeg({ quality: 86, mozjpeg: true }).toBuffer() : await image.webp({ quality: 82, alphaQuality: 90 }).toBuffer();
+  const bytes = mode === 'jpeg' ? await image.jpeg({ quality: 82, mozjpeg: true }).toBuffer() : await image.webp({ quality: 82, alphaQuality: 90 }).toBuffer();
   return { ...put(new Uint8Array(bytes), 'bytes'), mime: mode === 'jpeg' ? 'image/jpeg' : 'image/webp' };
 }
-const textures = { skin: await texture(SKIN_IMAGE, 512, 'jpeg') };
+const textures = { skin: await texture(SKIN_IMAGE, 2048, 'jpeg') };
 
 // Average albedo under the body's UV layout: the shader divides by this so a
 // chosen skin colour lands on the colour the person picked.
@@ -130,11 +136,20 @@ for (const [key, meshName, imageName, textureSize] of ACCESSORIES) {
   const t = readAccessor(glb, prim.attributes.TEXCOORD_0).data; const ix = readAccessor(glb, prim.indices).data;
   const n8 = new Int8Array(n.length); for (let i = 0; i < n.length; i += 1) n8[i] = Math.round(Math.max(-1, Math.min(1, n[i])) * 127);
   const t16 = new Uint16Array(t.length); for (let i = 0; i < t.length; i += 1) t16[i] = Math.round(Math.min(1, Math.max(0, t[i])) * 65535);
-  const material = json.materials[prim.material];
+  // The eye mesh holds an opaque eyeball and a transparent glass shell; the texture's alpha tells them apart.
+  let layer = null;
+  if (key === 'eyes') {
+    const rgba = await sharp(readImage(glb, imageIndex(imageName))).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    layer = new Uint8Array(p.length / 3);
+    for (let v = 0; v < layer.length; v += 1) {
+      const x = Math.min(rgba.info.width - 1, Math.round(t[v * 2] * rgba.info.width)); const y = Math.min(rgba.info.height - 1, Math.round(t[v * 2 + 1] * rgba.info.height));
+      layer[v] = rgba.data[(y * rgba.info.width + x) * 4 + 3] > 128 ? 0 : 1;
+    }
+  }
   parts[key] = {
     count: p.length / 3, pos: put(p, 'f32'), nrm: put(n8, 'i8'), uv: put(t16, 'u16'), idx: put(Uint16Array.from(ix), 'u16'),
-    morphs: sparseMorphs(mesh, p.length / 3), texture: await texture(imageName, textureSize, 'webp'),
-    alphaMode: material.alphaMode || 'OPAQUE', alphaCutoff: material.alphaCutoff ?? 0.5, roughness: material.pbrMetallicRoughness.roughnessFactor,
+    ...(layer ? { layer: put(layer, 'u8') } : {}),
+    morphs: sparseMorphs(mesh, p.length / 3), ...(textureSize ? { texture: await texture(imageName, textureSize, 'webp') } : {}),
   };
 }
 
@@ -142,7 +157,7 @@ const binary = Buffer.concat(chunks);
 const gz = zlib.gzipSync(binary, { level: 9 });
 const meta = {
   version: 1,
-  source: { file: 'public/assets/models/humanoid-base-lite.glb', sha256: sourceHash, licence: 'CC0 1.0 Universal (MakeHuman community assets); see growthtrack-ultimate/public/assets/models/MAKEHUMAN-ASSET-NOTICE.txt' },
+  source: { file: 'public/assets/models/humanoid-base.glb', sha256: sourceHash, licence: 'CC0 1.0 Universal (MakeHuman community assets); see growthtrack-ultimate/public/assets/models/MAKEHUMAN-ASSET-NOTICE.txt' },
   units: 'metres', floorY: minY, topY: maxY, height: maxY - minY, meanAlbedo, jointOrder, joints,
   morphNames: MORPHS, body, parts, textures, bytes: binary.length,
 };

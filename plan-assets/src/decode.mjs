@@ -23,7 +23,7 @@ export async function decodePreview(preview) {
   for (const [key, p] of Object.entries(preview.parts)) {
     const nrm8 = view(p.nrm); const nrm = new Float32Array(nrm8.length);
     for (let i = 0; i < nrm8.length; i += 1) nrm[i] = nrm8[i] / 127;
-    parts[key] = { ...p, pos: view(p.pos).slice(), nrm, uv: uvs(p.uv), idx: view(p.idx), morphs: morphs(p.morphs), textureBytes: view(p.texture), textureMime: p.texture.mime };
+    parts[key] = { ...p, pos: view(p.pos).slice(), nrm, uv: uvs(p.uv), idx: view(p.idx), morphs: morphs(p.morphs), ...(p.texture ? { textureBytes: view(p.texture), textureMime: p.texture.mime } : {}), ...(p.layer ? { layer: view(p.layer) } : {}) };
   }
   return { body, parts, joints: preview.joints, jointOrder: preview.jointOrder, floorY: preview.floorY, topY: preview.topY, height: preview.height, meanAlbedo: preview.meanAlbedo, skin: { bytes: view(preview.textures.skin), mime: preview.textures.skin.mime }, source: preview.source };
 }
