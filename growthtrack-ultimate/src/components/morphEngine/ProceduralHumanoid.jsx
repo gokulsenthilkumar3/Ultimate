@@ -10,6 +10,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import use3DStore from "../../store/use3DStore";
+import { sampleAnimation, ANIMATION_PRESET_MAP } from './animationPresets';
 
 // == Constants =================================================================
 // Segment counts per quality tier — passed as `quality` prop
@@ -542,6 +543,9 @@ export default function ProceduralHumanoid({
     const clone = cloneKey === "B" ? s.cloneB : s.cloneA;
     return { weights: clone.weights, posture: clone.posture };
   }));
+  const animationState = use3DStore((s) => s.animationState);
+  const animTimeRef = useRef(0);
+  const lerpFactors = useRef({});  // per-ref lerp state
   // Fixed: skinTone and opacity in deps so material recomputes when they change
   const mat    =useMemo(()=>makeMat(renderMode,opacity,skinTone,quality,skinColorHex),[renderMode,opacity,skinColorHex,skinTone,quality]);
   const lipMat =useMemo(()=>makeLipMat(skinTone,lipColorHex),[lipColorHex,skinTone]);
@@ -556,6 +560,7 @@ export default function ProceduralHumanoid({
   const groupRef=useRef(), torsoRef=useRef(), headRef=useRef(), neckRef=useRef();
   const uArmRefs=[useRef(),useRef()], fArmRefs=[useRef(),useRef()];
   const thighRefs=[useRef(),useRef()], calfRefs=[useRef(),useRef()], shoulderRefs=[useRef(),useRef()];
+  const handRefs=[useRef(),useRef()], footRefs=[useRef(),useRef()];
   // Geometry is memoized from the live morph state so edits update once per
   // input change, never from inside the animation loop.
   const d=useMemo(()=>computeDimensions(weights),[weights]);
@@ -577,9 +582,22 @@ export default function ProceduralHumanoid({
   useFrame((_,dt)=>{
     if(!groupRef.current)return;
     throttleRef.current += dt;
-    if (throttleRef.current < 1/30) return; // Throttle to 30fps max
+    if (throttleRef.current < 1/60) return; // ~60fps cap
     const dtThrottled = throttleRef.current;
     throttleRef.current = 0;
+
+    // ── Advance animation time ─────────────────────────────────────────────
+    const preset = ANIMATION_PRESET_MAP[animationState?.animationId || 'idle'];
+    const animPlaying = animationState?.playing !== false;
+    const animSpeed = animationState?.speed || 1;
+    if (preset && animPlaying && preset.loop && preset.duration > 0) {
+      animTimeRef.current = (animTimeRef.current + dtThrottled * animSpeed) % preset.duration;
+    } else if (preset && animPlaying && !preset.loop) {
+      animTimeRef.current = Math.min(animTimeRef.current + dtThrottled * animSpeed, preset.duration || 0.001);
+    }
+
+    // ── Sample animation keyframes ─────────────────────────────────────────
+    const animBones = preset ? sampleAnimation(preset, animTimeRef.current) : {};
 
     // ── Breathing idle animation ────────────────────────────────────────────
     breathT.current += dtThrottled;
@@ -589,25 +607,108 @@ export default function ProceduralHumanoid({
     const breath = Math.sin(breathT.current * 0.78);
     const breathScale = 1 + breath * 0.008 * motion;
     const baseScale = d.bodyScale * (0.965 + intro * 0.035);
+
+    // Determine if a walking/running animation is active (affects body Y offset)
+    const isLocomotion = ['walking', 'running'].includes(animationState?.animationId || '');
+    const locomotionBob = isLocomotion ? Math.abs(Math.sin(animTimeRef.current * (animationState?.animationId === 'running' ? 10.5 : 6.3))) * 0.018 : 0;
+
     groupRef.current.scale.set(baseScale, baseScale * heightScale, baseScale);
-    groupRef.current.position.y = position[1] - (1 - intro) * 0.045;
+    groupRef.current.position.y = position[1] - (1 - intro) * 0.045 + locomotionBob;
     groupRef.current.rotation.y = Math.sin(breathT.current * 0.22) * 0.018 * motion;
     groupRef.current.rotation.x = THREE.MathUtils.degToRad((posture.pelvicTilt ?? 0) * -0.08);
     groupRef.current.rotation.z = THREE.MathUtils.degToRad((posture.shoulderRounding ?? 0) * 0.035) + Math.sin(breathT.current * 0.31) * 0.006 * motion;
+
     if(torsoRef.current) {
       torsoRef.current.scale.y = breathScale;
       torsoRef.current.scale.x = 1 + breath * 0.0035 * motion;
       torsoRef.current.scale.z = d.torsoDepthScale * (1 + breath * 0.006 * motion);
+      // Apply hips/spine rotation from animation
+      if (animBones.hips) {
+        torsoRef.current.rotation.x = animBones.hips[0] * 0.25;
+        torsoRef.current.rotation.z = animBones.hips[2] * 0.4;
+      }
     }
+
+    // ── Head ────────────────────────────────────────────────────────────────
     if(headRef.current) {
-      headRef.current.rotation.x = THREE.MathUtils.degToRad((posture.headTiltAngle ?? 0) * 0.7) + Math.sin(breathT.current * 0.17) * 0.004 * motion;
-      headRef.current.rotation.y = Math.sin(breathT.current * 0.28) * 0.025 * motion;
-      headRef.current.rotation.z = Math.sin(breathT.current * 0.19) * 0.008 * motion;
+      if (animBones.head) {
+        headRef.current.rotation.x = animBones.head[0] + THREE.MathUtils.degToRad((posture.headTiltAngle ?? 0) * 0.7);
+        headRef.current.rotation.y = animBones.head[1] + Math.sin(breathT.current * 0.28) * 0.012 * motion;
+        headRef.current.rotation.z = animBones.head[2] + Math.sin(breathT.current * 0.19) * 0.006 * motion;
+      } else {
+        headRef.current.rotation.x = THREE.MathUtils.degToRad((posture.headTiltAngle ?? 0) * 0.7) + Math.sin(breathT.current * 0.17) * 0.004 * motion;
+        headRef.current.rotation.y = Math.sin(breathT.current * 0.28) * 0.025 * motion;
+        headRef.current.rotation.z = Math.sin(breathT.current * 0.19) * 0.008 * motion;
+      }
     }
-    uArmRefs.forEach((arm, index) => {
-      if (arm.current) arm.current.rotation.z = (index ? -1 : 1) * Math.sin(breathT.current * 0.52) * 0.012 * motion;
+
+    // ── Upper Arms ─────────────────────────────────────────────────────────
+    uArmRefs.forEach((arm, si) => {
+      if (!arm.current) return;
+      const boneKey = si === 0 ? 'leftUpperArm' : 'rightUpperArm';
+      if (animBones[boneKey]) {
+        arm.current.rotation.x = animBones[boneKey][0];
+        arm.current.rotation.y = animBones[boneKey][1];
+        arm.current.rotation.z = animBones[boneKey][2];
+      } else {
+        arm.current.rotation.z = (si ? -1 : 1) * Math.sin(breathT.current * 0.52) * 0.012 * motion;
+      }
     });
 
+    // ── Forearms ───────────────────────────────────────────────────────────
+    fArmRefs.forEach((arm, si) => {
+      if (!arm.current) return;
+      const boneKey = si === 0 ? 'leftForeArm' : 'rightForeArm';
+      if (animBones[boneKey]) {
+        arm.current.rotation.x = animBones[boneKey][0];
+        arm.current.rotation.y = animBones[boneKey][1];
+        arm.current.rotation.z = animBones[boneKey][2];
+      }
+    });
+
+    // ── Hands ──────────────────────────────────────────────────────────────
+    handRefs.forEach((hand, si) => {
+      if (!hand.current) return;
+      const boneKey = si === 0 ? 'leftHand' : 'rightHand';
+      if (animBones[boneKey]) {
+        hand.current.rotation.x = animBones[boneKey][0];
+        hand.current.rotation.y = animBones[boneKey][1];
+        hand.current.rotation.z = animBones[boneKey][2];
+      }
+    });
+
+    // ── Thighs ─────────────────────────────────────────────────────────────
+    thighRefs.forEach((thigh, si) => {
+      if (!thigh.current) return;
+      const boneKey = si === 0 ? 'leftThigh' : 'rightThigh';
+      if (animBones[boneKey]) {
+        thigh.current.rotation.x = animBones[boneKey][0];
+        thigh.current.rotation.y = animBones[boneKey][1];
+        thigh.current.rotation.z = animBones[boneKey][2];
+      }
+    });
+
+    // ── Calves ─────────────────────────────────────────────────────────────
+    calfRefs.forEach((calf, si) => {
+      if (!calf.current) return;
+      const boneKey = si === 0 ? 'leftShin' : 'rightShin';
+      if (animBones[boneKey]) {
+        calf.current.rotation.x = animBones[boneKey][0];
+        calf.current.rotation.y = animBones[boneKey][1];
+        calf.current.rotation.z = animBones[boneKey][2];
+      }
+    });
+
+    // ── Feet ───────────────────────────────────────────────────────────────
+    footRefs.forEach((foot, si) => {
+      if (!foot.current) return;
+      const boneKey = si === 0 ? 'leftFoot' : 'rightFoot';
+      if (animBones[boneKey]) {
+        foot.current.rotation.x = animBones[boneKey][0];
+        foot.current.rotation.y = animBones[boneKey][1];
+        foot.current.rotation.z = animBones[boneKey][2];
+      }
+    });
   });
 
   const torsoGeo=useMemo(()=>bldBodyCore({shoulderW:d.shoulderW,chestW:d.chestW,waistW:d.waistW,bellyW:d.bellyW,hipW:d.hipW,neckR:d.neckR,hipH:d.hipH,torsoH:d.torsoH,segs:segs.lathe}),[d.bellyW,d.chestW,d.hipH,d.hipW,d.neckR,d.shoulderW,d.torsoH,d.waistW,segs.lathe]);
@@ -663,29 +764,44 @@ export default function ProceduralHumanoid({
       {/* Pelvis and torso share one continuous surface; private anatomy is not exposed in comparison mode. */}
       {/* SHOULDER CAPS */}
       {[-1,1].map((s,si)=><mesh key={s} ref={shoulderRefs[si]} position={[s*(d.shoulderX-d.uArmR*.22),d.shoulderY-.008,0]} scale={[1.18,1.08,.98]} material={mat}><sphereGeometry args={[d.uArmR*1.18,hs.detail,Math.max(10,Math.round(hs.detail*.6))]}/></mesh>)}
-      {/* UPPER ARMS */}
-      {[-1,1].map((s,si)=><mesh key={s} ref={uArmRefs[si]} position={[s*d.shoulderX,d.uArmY-d.uArmH/2,0]} geometry={uArmGeo} material={mat}/>)}
-      {/* ELBOWS */}
-      {[-1,1].map(s=><mesh key={s} position={[s*d.shoulderX,d.uArmY-d.uArmH/2,0]} scale={[1.04,1.25,.96]} material={mat}><sphereGeometry args={[d.fArmR*1.06,hs.detail,Math.max(9,Math.round(hs.detail*.55))]}/></mesh>)}
-      {/* FOREARMS */}
-      {[-1,1].map((s,si)=><mesh key={s} ref={fArmRefs[si]} position={[s*d.shoulderX,d.fArmY-d.fArmH/2,0]} geometry={fArmGeo} material={mat}/>)}
-      {/* WRISTS */}
-      {[-1,1].map(s=><mesh key={s} position={[s*d.shoulderX,d.handY+.018,0]} material={mat}><sphereGeometry args={[d.fArmR*.76,10,8]}/></mesh>)}
-      {/* HANDS */}
-      {[-1,1].map(s=><HandGroup key={s} d={d} side={s===-1?"L":"R"} mat={mat} nailMat={nailMat}/>)}
+      {/* UPPER ARMS + FOREARMS + HANDS — as a proper hierarchical chain */}
+      {[-1,1].map((s,si)=>(
+        <group key={`arm-chain-${si}`}>
+          {/* Upper arm */}
+          <mesh ref={uArmRefs[si]} position={[s*d.shoulderX,d.uArmY-d.uArmH/2,0]} geometry={uArmGeo} material={mat}/>
+          {/* Elbow cap */}
+          <mesh position={[s*d.shoulderX,d.uArmY-d.uArmH/2,0]} scale={[1.04,1.25,.96]} material={mat}><sphereGeometry args={[d.fArmR*1.06,hs.detail,Math.max(9,Math.round(hs.detail*.55))]}/></mesh>
+          {/* Forearm */}
+          <mesh ref={fArmRefs[si]} position={[s*d.shoulderX,d.fArmY-d.fArmH/2,0]} geometry={fArmGeo} material={mat}/>
+          {/* Wrist cap */}
+          <mesh position={[s*d.shoulderX,d.handY+.018,0]} material={mat}><sphereGeometry args={[d.fArmR*.76,10,8]}/></mesh>
+          {/* Hand — ref'd group for rotation */}
+          <group ref={handRefs[si]}>
+            <HandGroup d={d} side={s===-1?"L":"R"} mat={mat} nailMat={nailMat}/>
+          </group>
+        </group>
+      ))}
       {/* HIP JOINTS */}
       {[-1,1].map(s=><mesh key={s} position={[s*d.thighX,d.crotchY+.006,0]} scale={[1.08,1.22,1]} material={mat}><sphereGeometry args={[d.thighR*1.03,hs.detail,Math.max(10,Math.round(hs.detail*.55))]}/></mesh>)}
-      {/* THIGHS */}
-      {[-1,1].map((s,si)=><mesh key={s} ref={thighRefs[si]} position={[s*d.thighX,d.thighY-d.thighH/2,0]} geometry={thighGeo} material={mat}/>)}
-      {/* KNEES */}
-      {[-1,1].map(s=><mesh key={s} position={[s*d.thighX*.92,d.calfY+d.calfH/2,.016]} scale={[1.08,1.18,.92]} material={mat}><sphereGeometry args={[d.calfR*.92,hs.detail,Math.max(9,Math.round(hs.detail*.55))]}/></mesh>)}
-      {[-1,1].map((s,si)=><mesh key={s} ref={calfRefs[si]} position={[s*d.thighX*.88,d.calfY-d.calfH/2,.01]} geometry={calfGeo} material={mat}/>)}
-      {/* ANKLES */}
-      {[-1,1].map(s=><mesh key={s} position={[s*d.footX,d.footH,.008]} material={mat}><sphereGeometry args={[d.calfR*.62,9,7]}/></mesh>)}
-      {/* FEET */}
-      {[-1,1].map(s=><FootGroup key={s} d={d} side={s===-1?"L":"R"} mat={mat} nailMat={nailMat}/>)}
+      {/* THIGHS + CALVES + FEET — hierarchical chain */}
+      {[-1,1].map((s,si)=>(
+        <group key={`leg-chain-${si}`}>
+          {/* Thigh */}
+          <mesh ref={thighRefs[si]} position={[s*d.thighX,d.thighY-d.thighH/2,0]} geometry={thighGeo} material={mat}/>
+          {/* Knee */}
+          <mesh position={[s*d.thighX*.92,d.calfY+d.calfH/2,.016]} scale={[1.08,1.18,.92]} material={mat}><sphereGeometry args={[d.calfR*.92,hs.detail,Math.max(9,Math.round(hs.detail*.55))]}/></mesh>
+          {/* Calf */}
+          <mesh ref={calfRefs[si]} position={[s*d.thighX*.88,d.calfY-d.calfH/2,.01]} geometry={calfGeo} material={mat}/>
+          {/* Ankle */}
+          <mesh position={[s*d.footX,d.footH,.008]} material={mat}><sphereGeometry args={[d.calfR*.62,9,7]}/></mesh>
+          {/* Foot — ref'd group for rotation */}
+          <group ref={footRefs[si]}>
+            <FootGroup d={d} side={s===-1?"L":"R"} mat={mat} nailMat={nailMat}/>
+          </group>
+        </group>
+      ))}
       {/* AURA */}
-      {showAura && <AuraRing radius={d.hipW*1.45} y={0.028}/>} 
+      {showAura && <AuraRing radius={d.hipW*1.45} y={0.028}/>}
     </group>
   );
 }

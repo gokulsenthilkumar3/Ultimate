@@ -389,6 +389,20 @@ const use3DStore = create(
       /** Stress/cortisol level 0–100 — drives face-flush bio-feedback on model */
       stressLevel: 0,
 
+      /**
+       * Animation state — drives PostureRig keyframe playback.
+       * animationId: preset ID from animationPresets.js
+       * playing: whether the animation advances time
+       * speed: playback speed multiplier (1 = normal)
+       * manualBone: optional { boneName, rx, ry, rz } for interactive drag
+       */
+      animationState: {
+        animationId: 'idle',
+        playing: true,
+        speed: 1.0,
+        manualBones: {},
+      },
+
       // ───────────────────────────────────────────────────────────────────────
       // ACTIONS — VIEW MODE
       // ───────────────────────────────────────────────────────────────────────
@@ -825,6 +839,65 @@ const use3DStore = create(
 
       setAutoRotate: (val) =>
         set({ autoRotate: Boolean(val) }, false, "setAutoRotate"),
+
+      // ───────────────────────────────────────────────────────────────────────
+      // ACTIONS — ANIMATION
+      // ───────────────────────────────────────────────────────────────────────
+
+      /**
+       * Set the active animation preset by id.
+       * @param {string} animationId - e.g. 'walking', 'running', 'sitting', 'idle'
+       * @param {{ playing?: boolean, speed?: number }} opts
+       */
+      setAnimation: (animationId, opts = {}) => {
+        set((state) => ({
+          animationState: {
+            ...state.animationState,
+            animationId: animationId || 'idle',
+            playing: opts.playing !== undefined ? Boolean(opts.playing) : true,
+            speed: opts.speed !== undefined ? Math.max(0.1, Math.min(4, Number(opts.speed) || 1)) : state.animationState.speed,
+          },
+        }), false, `setAnimation:${animationId}`);
+      },
+
+      /** Toggle animation playback on/off. */
+      toggleAnimation: () => {
+        set((state) => ({
+          animationState: {
+            ...state.animationState,
+            playing: !state.animationState.playing,
+          },
+        }), false, 'toggleAnimation');
+      },
+
+      /** Set animation playback speed (0.1–4). */
+      setAnimationSpeed: (speed) => {
+        const s = Math.max(0.1, Math.min(4, Number(speed) || 1));
+        set((state) => ({
+          animationState: { ...state.animationState, speed: s },
+        }), false, 'setAnimationSpeed');
+      },
+
+      /**
+       * Set a manual bone override for interactive drag.
+       * @param {string} boneName
+       * @param {[number,number,number]} angles - [rx, ry, rz] in radians
+       */
+      setManualBone: (boneName, angles) => {
+        set((state) => ({
+          animationState: {
+            ...state.animationState,
+            manualBones: { ...state.animationState.manualBones, [boneName]: angles },
+          },
+        }), false, `setManualBone:${boneName}`);
+      },
+
+      /** Clear all manual bone overrides. */
+      clearManualBones: () => {
+        set((state) => ({
+          animationState: { ...state.animationState, manualBones: {} },
+        }), false, 'clearManualBones');
+      },
 
       /** Toggle between 3D WebGL canvas and 2D sprite viewer */
       setRenderMode: (mode) => {

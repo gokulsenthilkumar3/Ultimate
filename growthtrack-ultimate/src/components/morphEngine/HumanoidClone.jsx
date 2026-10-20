@@ -120,6 +120,7 @@ export default function HumanoidClone({
   const captureRedacted = use3DStore((s) => s.captureRedacted);
   const wardrobe = use3DStore((s) => s.wardrobeState);
   const wardrobeOptions=use3DStore(s=>s.wardrobePreferences.outfits[s.wardrobeState] || null);
+  const animationState = use3DStore((s) => s.animationState);
   const anatomyProfile = use3DStore(s => s.anatomyCustomization[cloneKey === 'B' ? 'goal' : 'current']);
   const anatomyPreview = use3DStore(s => s.anatomyPreview);
   const privateDeformer=useMemo(()=>createPrivateAnatomyDeformer(privateAnatomyMesh,bodyMesh),[privateAnatomyMesh,bodyMesh]);
@@ -651,8 +652,14 @@ export default function HumanoidClone({
         headBone,
       )}
 
-      {/* Posture bone rig */}
-      <PostureRig skeleton={skeleton} posture={posture} />
+      {/* Posture bone rig — drives skeleton from measurements + animation presets */}
+      <PostureRig
+        skeleton={skeleton}
+        posture={posture}
+        animationId={animationState?.animationId || 'idle'}
+        playing={animationState?.playing !== false}
+        speed={animationState?.speed || 1}
+      />
     </group>
   );
 }
