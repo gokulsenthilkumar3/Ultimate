@@ -1,30 +1,26 @@
 {
-  "name": "finsync-growthtrack",
+  "name": "growthtrack-workspace",
   "private": true,
-  "version": "1.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
-    "build": "tsc && vite build",
-    "lint": "tsc --noEmit",
-    "preview": "vite preview --host 0.0.0.0 --port 3000"
-  },
-  "dependencies": {
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.475.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.6.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.13.4",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.5.2",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.3",
-    "vite": "^6.1.0"
+    "design:sync": "node scripts/sync-design-system.mjs",
+    "design:check": "node scripts/sync-design-system.mjs --check",
+    "dev": "node scripts/workspace.mjs gateway ultimate studio finsync oxfin family equity forex",
+    "dev:core": "node scripts/workspace.mjs gateway ultimate studio",
+    "dev:all": "node scripts/workspace.mjs gateway ultimate studio finsync oxfin family equity forex",
+    "dev:gateway": "node scripts/workspace.mjs gateway",
+    "dev:ultimate": "node scripts/workspace.mjs ultimate",
+    "dev:finsync": "node scripts/workspace.mjs finsync",
+    "dev:oxfin": "node scripts/workspace.mjs oxfin",
+    "dev:family": "node scripts/workspace.mjs family",
+    "dev:equity": "node scripts/workspace.mjs equity",
+    "dev:forex": "node scripts/workspace.mjs forex",
+    "dev:studio": "node scripts/workspace.mjs studio",
+    "db:studio": "node scripts/workspace.mjs studio",
+    "test:gateway": "node --test tests/gateway.test.mjs tests/workspace-proxy.test.mjs",
+    "test:plan": "node --test tests/plan-preview.test.mjs",
+    "build:desktop": "npm --prefix growthtrack-ultimate run build:desktop",
+    "build": "npm --prefix growthtrack-ultimate run build",
+    "test": "npm --prefix growthtrack-ultimate run test",
+    "db:sync": "npm --prefix growthtrack-ultimate run db:sync"
   }
 }

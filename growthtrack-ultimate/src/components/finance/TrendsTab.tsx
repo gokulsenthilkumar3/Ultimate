@@ -1,0 +1,29 @@
+import { useState } from 'react';
+import { AreaChart, Area, BarChart, Bar, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import type { Transaction } from '../../schemas';
+import type { MoneyFormatter } from '../../utils/financeModel';
+import { financeMinor, financeMonths, financeTrends } from '../../utils/financeModel';
+import EmptyState from '../ui/EmptyState';
+
+interface Props { transactions: Transaction[]; today: string; formatMoney: MoneyFormatter }
+export default function TrendsTab({ transactions, today, formatMoney }: Props) {
+  const [window, setWindow] = useState(6);
+  const points = financeTrends(transactions, financeMonths(window, today), today);
+  let cumulativeMinor = 0;
+  const contributions = points.map(point => {
+    if (point.investments !== null) cumulativeMinor += financeMinor(point.investments);
+    return { month: point.month, cumulative: point.count ? cumulativeMinor / 100 : null };
+  });
+  return <>
+    <div className="finance-controls"><label className="finance-field">Trend window<select className="form-input" value={window} onChange={event => setWindow(Number(event.target.value))}>{[3, 6, 12].map(months => <option key={months} value={months}>{months} months</option>)}</select></label></div>
+    <section className="glass-card"><div className="finance-card-heading"><h2>Income, expenses, and net savings</h2></div>
+      <p className="finance-note">The current month is partial through {today}. Gaps mean no records; they are not assumed to be zero. Net savings subtract both expenses and investments from income.</p>
+      {points.some(point => point.count > 0) ? <div className="finance-chart"><ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 500, height: 300 }}><AreaChart data={points}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="month" /><YAxis tickFormatter={value => formatMoney(Number(value))} /><Tooltip formatter={value => formatMoney(Number(value))} contentStyle={{ background: 'var(--gt-surface)', border: '1px solid var(--gt-border)' }} /><Legend /><Area dataKey="income" name="Income" stroke="var(--success)" fill="var(--success)" fillOpacity={0.1} isAnimationActive={false} connectNulls={false} /><Area dataKey="expenses" name="Expenses" stroke="var(--danger)" fill="var(--danger)" fillOpacity={0.1} isAnimationActive={false} connectNulls={false} /><Area dataKey="savings" name="Net savings" stroke="var(--gt-action)" fill="var(--gt-action)" fillOpacity={0.1} isAnimationActive={false} connectNulls={false} /></AreaChart></ResponsiveContainer></div> : <EmptyState icon="DollarSign" title="No recorded history" description="Record dated transactions to build a real trend." />}
+      <div className="finance-table-scroll" tabIndex={0} role="region" aria-label="Monthly trend data"><table className="finance-record-table"><caption>Recorded monthly data · savings rate is income after expenses / income</caption><thead><tr><th>Month</th><th>Records</th><th>Income</th><th>Expenses</th><th>Investments</th><th>Net savings</th><th>Savings rate</th></tr></thead><tbody>{points.map(point => <tr key={point.month}><th scope="row">{point.month}{point.partial ? ' · partial' : ''}</th><td>{point.count || 'No records'}</td><td>{point.income === null ? '—' : formatMoney(point.income)}</td><td>{point.expenses === null ? '—' : formatMoney(point.expenses)}</td><td>{point.investments === null ? '—' : formatMoney(point.investments)}</td><td>{point.savings === null ? '—' : formatMoney(point.savings)}</td><td>{point.rate === null ? '—' : point.rate.toFixed(1) + '%'}</td></tr>)}</tbody></table></div>
+    </section>
+    {points.some(point => point.count > 0) && <div className="finance-card-grid">
+      <section className="glass-card"><div className="finance-card-heading"><h2>Monthly savings rate</h2></div><p className="finance-note">Recorded income after expenses divided by income. Months without recorded income have no rate.</p><div className="finance-chart"><ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 300, height: 300 }}><BarChart data={points}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="month" /><YAxis unit="%" /><Tooltip formatter={value => [String(value) + '%', 'Savings rate']} /><Bar dataKey="rate" isAnimationActive={false}>{points.map(point => <Cell key={point.month} fill={point.rate !== null && point.rate >= 20 ? 'var(--success)' : point.rate !== null && point.rate < 0 ? 'var(--danger)' : 'var(--warning)'} />)}</Bar></BarChart></ResponsiveContainer></div></section>
+      <section className="glass-card"><div className="finance-card-heading"><h2>Recorded investment contributions</h2></div><p className="finance-note">Cumulative recorded contributions within this {window}-month window, rather than an account valuation. Missing periods remain gaps.</p><div className="finance-chart"><ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 300, height: 300 }}><AreaChart data={contributions}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="month" /><YAxis tickFormatter={value => formatMoney(Number(value))} /><Tooltip formatter={value => [formatMoney(Number(value)), 'Recorded contributions']} /><Area dataKey="cumulative" stroke="var(--gt-action)" fill="var(--gt-action)" fillOpacity={0.1} isAnimationActive={false} connectNulls={false} /></AreaChart></ResponsiveContainer></div><details className="finance-chart-table"><summary>View investment contribution data</summary><table className="finance-record-table"><thead><tr><th>Month</th><th>Recorded cumulative contributions</th></tr></thead><tbody>{contributions.map(point => <tr key={point.month}><td>{point.month}</td><td>{point.cumulative === null ? 'No records' : formatMoney(point.cumulative)}</td></tr>)}</tbody></table></details></section>
+    </div>}
+  </>;
+}

@@ -1,0 +1,134 @@
+import { ANATOMY_REFERENCE, displayLimits } from '../components/morphEngine/anatomyCalibration';
+import { describe, expect, it } from 'vitest';
+import {
+  buildMorphWeights,
+  computeHeightScale,
+  computeMorphWeights,
+  normaliseMetric,
+  resolveSkinTone,
+} from '../components/morphEngine/metricsToBlendshapes';
+
+const changedChannels = (before, after, epsilon = 1e-8) => Object.keys(after)
+  .filter((key) => Math.abs((after[key] ?? 0) - (before[key] ?? 0)) > epsilon)
+  .sort();
+
+describe('pure metric-to-blendshape engine', () => {
+  it('normalises and clamps physical measurements deterministically', () => {
+    expect(normaliseMetric(45, 'weight')).toBe(0);
+    expect(normaliseMetric(87.5, 'weight')).toBe(0.5);
+    expect(normaliseMetric(200, 'weight')).toBe(1);
+    expect(normaliseMetric('invalid', 'weight')).toBe(0);
+  });
+
+  it('keeps a waist-only edit isolated to core geometry channels', () => {
+    const baseline = {
+      biologicalSex: 'male', height: 175, weight: 75, bodyFat: 18,
+      chest: 100, shoulders: 112, waist: 80, arms: 34, forearm: 28,
+      hips: 94, glutes: 96, thighs: 55, calves: 37, neck: 38, ankle: 22,
+    };
+    const before = computeMorphWeights(baseline);
+    const after = computeMorphWeights({ ...baseline, waist: 95 });
+
+    expect(changedChannels(before, after)).toEqual(['oblique_def', 'waist_narrow']);
+    expect(after.waist_narrow).toBeLessThan(before.waist_narrow);
+  });
+
+  it('keeps an arm-only edit isolated to biceps and triceps', () => {
+    const baseline = {
+      biologicalSex: 'male', height: 175, weight: 75, bodyFat: 18,
+      chest: 100, shoulders: 112, waist: 80, arms: 32, forearm: 28,
+      hips: 94, glutes: 96, thighs: 55, calves: 37, neck: 38, ankle: 22,
+    };
+    const before = computeMorphWeights(baseline);
+    const after = computeMorphWeights({ ...baseline, arms: 44 });
+
+    expect(changedChannels(before, after)).toEqual(['bicep_peak', 'tricep_horse']);
+  });
+
+  it('does not infer shoulder slope or drop from shoulder width', () => {
+    const narrow = computeMorphWeights({ shoulders: 96 });
+    const broad = computeMorphWeights({ shoulders: 136 });
+
+    expect(broad.shoulder_slope).toBe(narrow.shoulder_slope);
+    expect(broad.shoulder_drop).toBe(narrow.shoulder_drop);
+    expect(computeMorphWeights({ shoulderSlope: 0.7 }).shoulder_slope).toBeCloseTo(0.7);
+    expect(computeMorphWeights({ shoulderDrop: 0.4 }).shoulder_drop).toBeCloseTo(0.4);
+  });
+
+  it('keeps finger spread independent from hand length', () => {
+    expect(computeMorphWeights({ handLength: 17 }).hand_splay).toBe(
+      computeMorphWeights({ handLength: 22 }).hand_splay,
+    );
+    expect(computeMorphWeights({ handSplay: 0.65 }).hand_splay).toBeCloseTo(0.65);
+  });
+
+  it('inherits unspecified goal values before calculating goal morphs', () => {
+    const current = { biologicalSex: 'female', height: 168, weight: 64, chest: 94, waist: 78 };
+    const goal = { weight: 58 };
+    const currentWeights = buildMorphWeights(current);
+    const goalWeights = buildMorphWeights(goal, {}, current);
+
+    expect(goalWeights.chest_depth).toBeCloseTo(currentWeights.chest_depth, 6);
+    expect(goalWeights.waist_narrow).toBeCloseTo(currentWeights.waist_narrow, 6);
+    expect(goalWeights.overall_mass).toBeLessThan(currentWeights.overall_mass);
+  });
+
+  it('changes complete stature independently of circumference morphs', () => {
+    expect(computeHeightScale({ height: 160 })).toBeCloseTo(160 / 175, 6);
+    expect(computeHeightScale({ height: 190 })).toBeCloseTo(190 / 175, 6);
+    expect(computeHeightScale({ height: 190 })).toBeGreaterThan(computeHeightScale({ height: 160 }));
+
+    const inherited = computeHeightScale({}, { height: 182 });
+    expect(inherited).toBeCloseTo(182 / 175, 6);
+  });
+
+  it('produces finite constrained output even when metrics are missing', () => {
+    const weights = computeMorphWeights({});
+    Object.entries(weights).filter(([key]) => key !== 'fitzpatrick_index').forEach(([, value]) => {
+      expect(Number.isFinite(value)).toBe(true);
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    });
+    expect(resolveSkinTone({})).toBe('IV');
+    expect(weights.fitzpatrick_index).toBe(3);
+  });
+
+  it('keeps appearance channels consistent for named and legacy tone values', () => {
+    expect(resolveSkinTone({ skinTone: 'VI' })).toBe('VI');
+    expect(computeMorphWeights({ skinTone: 'VI' }).fitzpatrick_index).toBe(5);
+    expect(resolveSkinTone({ skinFitzpatrickIndex: 4 })).toBe('V');
+    expect(computeMorphWeights({ skinFitzpatrickIndex: 4 }).fitzpatrick_index).toBe(4);
+  });
+
+  it('maps measured nose dimensions directly instead of deriving nose length from body fat', () => {
+    const shortNarrow = computeMorphWeights({ noseLength: 3, noseWidth: 2 });
+    const longWide = computeMorphWeights({ noseLength: 7, noseWidth: 5 });
+    expect(longWide.nose_length).toBeGreaterThan(shortNarrow.nose_length);
+    expect(longWide.nose_bridge_width).toBeGreaterThan(shortNarrow.nose_bridge_width);
+    expect(longWide.nose_tip_size).toBeGreaterThan(shortNarrow.nose_tip_size);
+    expect(computeMorphWeights({ bodyFat: 8 }).nose_length).toBe(computeMorphWeights({ bodyFat: 38 }).nose_length);
+  });
+
+  it('maps centimetre anatomy inputs through the asset limits and converts retired inch keys', () => {
+    const height = { height: 175 };
+    const limits = displayLimits(1);
+    const span = limits.anatomyLengthCm.max - limits.anatomyLengthCm.min;
+    expect(computeMorphWeights({ ...height, anatomyLengthCm: limits.anatomyLengthCm.min }).d_length).toBe(0);
+    expect(computeMorphWeights({ ...height, anatomyLengthCm: 16 }).d_length).toBeCloseTo((16 - limits.anatomyLengthCm.min) / span, 5);
+    // A typical resting value is drawn as entered: the asset covers the whole input range.
+    expect(computeMorphWeights({ ...height, anatomyLengthCm: 9.2 }).d_length).toBeCloseTo((9.2 - limits.anatomyLengthCm.min) / span, 5);
+    // Source values outside the advisory range are retained. The legacy channel
+    // reaches its bound; the section surface renderer draws the full dimension.
+    const unset = computeMorphWeights(height);
+    expect(computeMorphWeights({ ...height, anatomyGirthCm: 19.9 }).d_girth).toBe(1);
+    expect(unset.d_girth).toBeCloseTo((ANATOMY_REFERENCE.anatomyGirthCm.meanCm - limits.anatomyGirthCm.min) / (limits.anatomyGirthCm.max - limits.anatomyGirthCm.min), 3);
+    // 6 in = 15.2 cm and 5 in = 12.7 cm, whichever retired key carried them.
+    const legacy = computeMorphWeights({ ...height, d_size: 6, d_girth: 5 });
+    const canonical = computeMorphWeights({ ...height, anatomyLengthCm: 15.2, anatomyGirthCm: 12.7 });
+    expect(computeMorphWeights({ ...height, d_length: 6, d_girth: 5 }).d_length).toBeCloseTo(legacy.d_length);
+    expect(canonical.d_length).toBeCloseTo(legacy.d_length, 5);
+    expect(canonical.d_girth).toBeCloseTo(legacy.d_girth, 5);
+    const without = computeMorphWeights(height);
+    for (const key of Object.keys(without).filter(name => !['d_length', 'd_girth'].includes(name))) expect(canonical[key]).toBeCloseTo(without[key], 6);
+  });
+});

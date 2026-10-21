@@ -1,0 +1,72 @@
+
+ RUN  v4.1.5 D:/Projects/Tracker/growthtrack-ultimate
+
+stderr | src/tests/storePatches.test.js > makeFetchInitialData > still completes when one endpoint fails (allSettled behaviour)
+[apiRetry] Attempt 1 failed for http://api/finance?userId=42. Retrying in 441ms...
+
+stderr | src/tests/storePatches.test.js > makeFetchInitialData > still completes when one endpoint fails (allSettled behaviour)
+[apiRetry] Attempt 2 failed for http://api/finance?userId=42. Retrying in 890ms...
+
+stderr | src/tests/use3DStoreGuards.test.js > 3D store safety guards > ignores invalid enum and numeric inputs
+[use3DStore] Unknown camera preset: NOT_A_PRESET
+[use3DStore] Unknown renderMode: VR
+[use3DStore] Unknown gpuTier: UNKNOWN
+
+stderr | src/tests/storePatches.test.js > makeFetchInitialData > still completes when one endpoint fails (allSettled behaviour)
+[apiRetry] All 3 attempts failed for http://api/finance?userId=42: Network error
+
+stderr | src/tests/storePatches.test.js > makeFetchInitialData > still completes when one endpoint fails (allSettled behaviour)
+[fetchInitialData] Partial failure for "finance": Network error
+
+stderr | src/tests/storePatches.test.js > makeUpdateNote > returns null and does NOT update state when noteId is missing
+[updateNote] noteId is required
+
+stderr | src/tests/storePatches.test.js > makeTogglePinnedTab > reverts optimistic update if API call fails
+[apiRetry] Attempt 1 failed for http://api/users/5/pinned-tabs. Retrying in 408ms...
+
+stderr | src/__tests__/store.test.js > useStore API Integration > addTask sends POST request and updates store
+[Logger] Failed to log action: ApiError: We could not connect. Check your connection and try again.
+    at ApiClient.request (D:/Projects/Tracker/growthtrack-ultimate/src/lib/apiClient.js:58:49)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at logAction (D:/Projects/Tracker/growthtrack-ultimate/src/lib/logger.ts:95:5)
+    at logCRUD (D:/Projects/Tracker/growthtrack-ultimate/src/lib/logger.ts:140:3)
+    at Object.addTask (D:/Projects/Tracker/growthtrack-ultimate/src/store/slices/taskSlice.ts:18:7)
+    at D:/Projects/Tracker/growthtrack-ultimate/src/__tests__/store.test.js:61:5
+    at file:///D:/Projects/Tracker/growthtrack-ultimate/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20 {
+  status: 0,
+  payload: {},
+  path: '/api/logs'
+}
+
+stderr | src/tests/storePatches.test.js > makeTogglePinnedTab > reverts optimistic update if API call fails
+[apiRetry] Attempt 2 failed for http://api/users/5/pinned-tabs. Retrying in 850ms...
+
+stderr | src/tests/storePatches.test.js > makeTogglePinnedTab > reverts optimistic update if API call fails
+[apiRetry] All 3 attempts failed for http://api/users/5/pinned-tabs: Network
+
+stderr | src/tests/storePatches.test.js > makeTogglePinnedTab > reverts optimistic update if API call fails
+[togglePinnedTab] Persist failed, reverting: Network
+
+····································································································································································································x·····
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/tests/sectionNavigation.test.jsx > Section discovery > keeps sidebar tools discoverable through expansion and keyword search
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/tests/sectionNavigation.test.jsx:31:3
+     29|     expect(tools.getByRole('button', { name: 'Workspace' })).toHaveAtt…
+     30|   });
+     31|   it('keeps sidebar tools discoverable through expansion and keyword s…
+       |   ^
+     32|     const navigate = vi.fn();
+     33|     render(<PremiumSidebar activeTab="overview" setActiveTab={navigate…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 27 passed (28)
+      Tests  1 failed | 201 passed (202)
+   Start at  14:11:47
+   Duration  22.12s (transform 14.64s, setup 33.16s, import 30.54s, tests 31.74s, environment 145.05s)
+

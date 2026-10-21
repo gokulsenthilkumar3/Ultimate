@@ -1,0 +1,57 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.api
+# Multi-stage build for the FastAPI inference server.
+# Separate from Dockerfile (training) to keep the inference image lean.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Builder ──────────────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/bash appuser
+WORKDIR /app
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY --chown=appuser:appuser . .
+
+USER appuser
+
+# Runtime environment
+ENV MODEL_DIR="outputs/latest" \
+    FEAT_CONFIG="config/features.yaml" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# API server port
+EXPOSE 8000
+
+# Liveness probe — hits the /health endpoint every 30 s.
+# curl must be available (installed above); the API returns 200 when artifacts
+# are loaded and 200 with status="degraded" when they are not — both are
+# acceptable from a container-liveness perspective (the process is up).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Start the FastAPI server with Uvicorn
+# --workers=1 is intentional (model artifacts are process-local singletons)
+# Scale by running multiple containers behind a load balancer instead.
+CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

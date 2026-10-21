@@ -1,0 +1,46 @@
+name: growthtrack-ultimate
+services:
+  ultimate:
+    build: .
+    image: growthtrack-ultimate:${RELEASE_TAG:-local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    tmpfs: [/tmp:size=64m,mode=1777]
+    environment:
+      APP_URL: https://${APP_DOMAIN:-localhost}/Ultimate
+      APP_ORIGINS: https://${APP_DOMAIN:-localhost}
+      TRUST_PROXY: 'true'
+      APP_ENCRYPTION_KEY_FILE: /run/secrets/app_encryption_key
+      HANDOFF_SECRET_FILE: /run/secrets/handoff_secret
+      FRONTEND_BASE_PATH: /Ultimate/
+    secrets: [app_encryption_key, handoff_secret]
+    volumes: [ultimate_data:/data]
+    networks: [backend]
+  https:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [backend]
+    depends_on:
+      ultimate:
+        condition: service_healthy
+secrets:
+  app_encryption_key:
+    file: ./deploy/secrets/app-encryption-key
+  handoff_secret:
+    file: ./deploy/secrets/handoff-secret
+volumes:
+  ultimate_data:
+  caddy_data:
+  caddy_config:
+networks:
+  backend:

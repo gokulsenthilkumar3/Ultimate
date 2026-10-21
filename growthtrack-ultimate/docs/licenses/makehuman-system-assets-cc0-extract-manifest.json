@@ -1,0 +1,111 @@
+{
+  "source": "makehuman_system_assets_cc0.zip",
+  "zipSha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+  "members": [
+    {
+      "member": "eyes/high-poly/high-poly.obj",
+      "sha256": "da2493215b708a344c33dc72f2a9a5b8fa985dcc5a70ad3b208995cf871da8e1",
+      "bytes": 100882
+    },
+    {
+      "member": "eyes/high-poly/high-poly.mhclo",
+      "sha256": "b183cfe37120ab726f9b3f2ea6cd3a64c44ce7b4bd91a77c841cf70c04f83a0d",
+      "bytes": 72490
+    },
+    {
+      "member": "eyes/materials/brown.mhmat",
+      "sha256": "4abad93ce50541c08127721e77bce035640c9f16bed16cd0f5524b1cd5908465",
+      "bytes": 1247
+    },
+    {
+      "member": "eyes/materials/brown_eye.png",
+      "sha256": "4659691c7295ad6206c78b003e5fd0e5f91dcd53032fa914a229bb48cabe424b",
+      "bytes": 610817
+    },
+    {
+      "member": "hair/short02/short02.obj",
+      "sha256": "48f979114adfa712165a69cc55c45a70831af1fb3cba8e2a89120f0c87407b64",
+      "bytes": 139742
+    },
+    {
+      "member": "hair/short02/short02.mhclo",
+      "sha256": "625736cdb73e6d094df6e5a2df18f371781f1d2cd37b0ae15795c5d7051c3ec2",
+      "bytes": 119240
+    },
+    {
+      "member": "hair/short02/short02.mhmat",
+      "sha256": "2ed04c8aad9c1a35d858ca72091525d32b1da3b61b5a031634dd528fd8530f6d",
+      "bytes": 1323
+    },
+    {
+      "member": "hair/short02/short02_diffuse.png",
+      "sha256": "47fe33831a3929567c733356dd66243116e05df2ace1f884ddca0080b728229f",
+      "bytes": 3553543
+    },
+    {
+      "member": "hair/short02/short02_normal.png",
+      "sha256": "2cfac7619f8eec77dd90df979d912415058f4f0fc16940cba40a8eb1ae6d74b5",
+      "bytes": 1626745
+    },
+    {
+      "member": "skins/young_caucasian_male/young_lightskinned_male_diffuse.png",
+      "sha256": "862a26e335e958b70534cb5f0d7c47ef30ab148a56c42b3e9da969cf76f12963",
+      "bytes": 3693828
+    },
+    {
+      "member": "skins/young_caucasian_male/young_caucasian_male.mhmat",
+      "sha256": "6eda60b07ff2afbde078a2535ef3913593d84e9de92b2eb76c30f396a181fe2e",
+      "bytes": 1462
+    },
+    {
+      "member": "skins/young_caucasian_male2/young_lightskinned_male_diffuse2.png",
+      "sha256": "03efe1f6b0ae52429649dcefc9dcaef6058032f874a251169cc3e2ed473c3874",
+      "bytes": 3595270
+    },
+    {
+      "member": "skins/young_african_male/young_darkskinned_male_diffuse.png",
+      "sha256": "e3f0dbb634e4c68561338f0087f7a122444e84ec56df102212f1222aa12e4d50",
+      "bytes": 2976491
+    },
+    {
+      "member": "eyebrows/eyebrow001/eyebrow001.obj",
+      "sha256": "88b13146395133f3901715e11706cdfd293e5d6087ad7c5e01efe1485a26b513",
+      "bytes": 8227
+    },
+    {
+      "member": "eyebrows/eyebrow001/eyebrow001.mhclo",
+      "sha256": "54c8892c2ba577f4152d779ce1f20f7cd323beb8cbd9cb701796165c221b4f5b",
+      "bytes": 9141
+    },
+    {
+      "member": "eyebrows/eyebrow001/eyebrow001.mhmat",
+      "sha256": "976e5f4f1d3922d7a11c6e2db233f8b4584b068d00619d5749687e81c92d61fc",
+      "bytes": 1098
+    },
+    {
+      "member": "eyebrows/eyebrow001/eyebrow001.png",
+      "sha256": "9940f7d0b1b223709a19b05156ba6f6e9e4dbdbced02d7574f4d51d72c58967b",
+      "bytes": 89619
+    },
+    {
+      "member": "eyelashes/eyelashes01/eyelashes01.obj",
+      "sha256": "f78f5b93fea1946fcae103d32c4f082dd9612a1ec2e7e2f90b03ebe59b0baf20",
+      "bytes": 18832
+    },
+    {
+      "member": "eyelashes/eyelashes01/eyelashes01.mhclo",
+      "sha256": "5a86b29c15649273d723084954b7fa7bf199112571d4f58539b46734d397ee6b",
+      "bytes": 2265
+    },
+    {
+      "member": "eyelashes/eyelashes01/eyelashes01.mhmat",
+      "sha256": "8029c99d94f3d87a1e81825fad6b90eec773ae6955a5b2592222ef237377e190",
+      "bytes": 1074
+    },
+    {
+      "member": "eyelashes/eyelashes01/eyelashes01.png",
+      "sha256": "4b69c0fff2648874460e9caf80c31413c444218a5c50afebc425aeaa65484a35",
+      "bytes": 91600
+    }
+  ]
+}

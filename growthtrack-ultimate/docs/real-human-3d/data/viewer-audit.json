@@ -1,0 +1,49 @@
+{
+  "url": "http://127.0.0.1:5176/Ultimate/wellness/physique?view=3d",
+  "date": "2026-10-20",
+  "software": true,
+  "results": [
+    {
+      "id": "G1-floor",
+      "title": "camera stays above the floor after dragging up",
+      "pass": false,
+      "measured": "camera height -1.52 m"
+    },
+    {
+      "id": "G3-pixels",
+      "title": "head texture is stretched no more than 1.25 px per texel at the closest zoom",
+      "pass": false,
+      "measured": "1.42 px per texel at 0.33 m"
+    },
+    {
+      "id": "G2-autorotate",
+      "title": "auto-rotate turns the view at least 20 degrees in 8 seconds",
+      "pass": false,
+      "measured": "0.0 degrees"
+    },
+    {
+      "id": "G6-presentation",
+      "title": "presentation mode enters fullscreen and hides the editor",
+      "pass": false,
+      "measured": "fullscreen false, editor visible true"
+    },
+    {
+      "id": "G2-quality",
+      "title": "Performance, Balanced and High differ in canvas size or antialiasing",
+      "pass": false,
+      "measured": "1 distinct setting(s): {\"performance\":{\"width\":559,\"height\":580,\"antialias\":false},\"balanced\":{\"width\":559,\"height\":580,\"antialias\":false},\"high\":{\"width\":559,\"height\":580,\"antialias\":false}}"
+    },
+    {
+      "id": "G5-export",
+      "title": "the exported picture is at least twice the on-screen width",
+      "pass": false,
+      "measured": "559 px for a 559 px canvas, 387657 bytes"
+    },
+    {
+      "id": "G5-share",
+      "title": "sharing passes the picture as a file to the browser share sheet",
+      "pass": false,
+      "measured": "shared {\"keys\":[\"title\",\"text\",\"url\"],\"files\":0}"
+    }
+  ]
+}

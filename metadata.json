@@ -1,7 +1,0 @@
-{
-  "name": "FinSync & GrowthTrack Ultimate",
-  "description": "Unified financial intelligence, budgeting, wallet management, investments, and personal command center.",
-  "capabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

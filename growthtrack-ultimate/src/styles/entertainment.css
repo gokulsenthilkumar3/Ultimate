@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENTERTAINMENT MODULE
+   Premium layout and media cards
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Layout Grids */
+.dual-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: var(--gt-space-5);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .dual-grid { grid-template-columns: 1fr; }
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gt-space-3);
+}
+
+/* Typography Overrides for the page */
+.card-title {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 720;
+  letter-spacing: -.02em;
+  color: var(--gt-text);
+  margin-bottom: var(--gt-space-1);
+}
+
+/* Media Cards */
+.media-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* keep colored progress track constrained */
+  min-height: 380px;
+}
+
+.media-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gt-space-3);
+  padding: var(--gt-space-4);
+  flex-grow: 1;
+}
+
+.media-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--gt-space-3);
+  margin-bottom: var(--gt-space-1);
+}
+
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--gt-radius-pill);
+  font-size: .65rem;
+  font-weight: 780;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: var(--gt-space-2);
+}
+
+.media-card__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+  color: var(--gt-text);
+}
+
+.media-card__footer {
+  margin-top: auto;
+  padding-top: var(--gt-space-2);
+}
+
+/* Custom mini inputs within cards */
+.media-card fieldset .form-input {
+  min-height: 34px;
+  padding: 4px 8px;
+  font-size: .8125rem;
+}
+
+.media-card__progress-track {
+  height: 4px;
+  background: color-mix(in srgb, var(--gt-border) 40%, transparent);
+  width: 100%;
+}
+.media-card__progress-fill {
+  height: 100%;
+  transition: width var(--gt-motion-standard) var(--gt-motion-ease);
+}
+
+/* Custom progress for episode tracking inside card */
+.progress-track {
+  height: 6px;
+  background: color-mix(in srgb, var(--gt-border) 40%, transparent);
+  border-radius: var(--gt-radius-pill);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: var(--gt-radius-pill);
+  transition: width var(--gt-motion-standard) var(--gt-motion-ease);
+}

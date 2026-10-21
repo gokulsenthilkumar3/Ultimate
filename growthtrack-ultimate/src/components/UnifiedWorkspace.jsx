@@ -1,0 +1,96 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowUpRight, RefreshCw } from 'lucide-react';
+import { PRODUCTS, productById } from '../config/products';
+import '../styles/unified-workspace.css';
+
+// These destinations use Ultimate-owned records. They are related workflows,
+// not a claim that companion features or data have already been migrated.
+const ULTIMATE_DESTINATIONS = {
+  finsync: [
+    ['Transactions', '/finance/transactions'], ['Budgeting', '/finance/budgeting'],
+    ['Finance imports', '/finance/sync'], ['Portfolio', '/finance/portfolio'],
+  ],
+  oxfin: [
+    ['Transactions', '/finance/transactions'], ['Subscriptions', '/finance/subscriptions'],
+    ['Portfolio', '/finance/portfolio'], ['Shopping', '/finance/shopping'],
+  ],
+  forex: [['Forecast', '/insights/forecast'], ['Portfolio', '/finance/portfolio']],
+  equity: [['Portfolio', '/finance/portfolio'], ['Finance analytics', '/finance/analytics']],
+  family: [['Calendar', '/workspace/calendar'], ['My Files', '/workspace/files'], ['Places', '/life/places']],
+};
+
+export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) {
+  const [activeTab, setActiveTab] = useState(defaultApp);
+  const [services, setServices] = useState({});
+  const [healthError, setHealthError] = useState(false);
+  const [frameVersion, setFrameVersion] = useState(0);
+
+  useEffect(() => setActiveTab(defaultApp), [defaultApp]);
+
+  const refreshHealth = async () => {
+    try {
+      const response = await fetch('/api/gateway/health', { credentials: 'include' });
+      if (!response.ok) throw new Error('Gateway unavailable');
+      const data = await response.json();
+      setServices(Object.fromEntries((data.services || []).map(service => [service.id, service])));
+      setHealthError(false);
+    } catch {
+      setHealthError(true);
+    }
+  };
+
+  useEffect(() => {
+    refreshHealth();
+    const timer = setInterval(refreshHealth, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const select = id => {
+    setActiveTab(id);
+    onNavigate?.(id);
+  };
+  const selected = productById(activeTab);
+  const visible = selected ? [selected] : PRODUCTS;
+
+  return <section className="unified-workspace" aria-label="Ultimate companion integration">
+    <header className="unified-header">
+      <div>
+        <h1 className="unified-title">One Ultimate workspace</h1>
+        <p className="unified-intro">Finance, family, markets and forecasting, together inside Ultimate.</p>
+      </div>
+      <button type="button" className="unified-action-btn" onClick={() => { refreshHealth(); setFrameVersion(value => value + 1); }}><RefreshCw size={14} /> Refresh{selected ? ' app' : ' status'}</button>
+    </header>
+
+    <nav className="unified-tabs" aria-label="Companion products">
+      <button type="button" className={`unified-tab-btn ${!selected ? 'is-active' : ''}`} aria-current={!selected ? 'page' : undefined} onClick={() => select('matrix')}>All five</button>
+      {PRODUCTS.map(product => <button type="button" key={product.id}
+        className={`unified-tab-btn ${activeTab === product.id ? 'is-active' : ''}`}
+        aria-current={activeTab === product.id ? 'page' : undefined}
+        onClick={() => select(product.id)}>{product.icon} {product.name}</button>)}
+    </nav>
+
+    {healthError && <p className="unified-health-error" role="status">Service status is unavailable. Ultimate routes remain usable.</p>}
+    {selected ? <section className="unified-product-view" aria-label={`${selected.name} workspace`}>
+      <div className="unified-product-toolbar">
+        <h2>{selected.icon} {selected.name}</h2>
+        <div className="unified-native-links">{ULTIMATE_DESTINATIONS[selected.id].map(([label, href]) => <Link key={href} to={href}>{label}</Link>)}</div>
+      </div>
+      {services[selected.id] && !services[selected.id].online ? <div className="unified-app-offline" role="status"><h3>{selected.name} is starting or unavailable</h3><p>Start the workspace with <code>npm run dev:all</code>, then refresh this app.</p></div> :
+        <iframe key={`${selected.id}-${frameVersion}`} className="unified-product-frame" src={selected.uiUrl} title={`${selected.name} app`} allow="clipboard-read; clipboard-write" />}
+    </section> : <div className="unified-matrix-grid">
+      {visible.map(product => {
+        const service = services[product.id];
+        return <article key={product.id} className="unified-matrix-card" style={{ '--card-color': product.color }}>
+          <div className="unified-matrix-card-top">
+            <span className="unified-matrix-card-icon" aria-hidden="true">{product.icon}</span>
+            <span className={`unified-source-status ${service?.online ? 'is-online' : ''}`}>{service ? service.online ? 'Online' : 'Offline' : 'Checking'}</span>
+          </div>
+          <h2>{product.name}</h2>
+          <p>{product.description}</p>
+          <button type="button" className="unified-action-btn unified-open-product" onClick={() => select(product.id)}>Open {product.name} <ArrowUpRight size={13} /></button>
+        </article>;
+      })}
+    </div>}
+  </section>;
+}

@@ -1,0 +1,123 @@
+# Feature Engineering Configuration
+# Toggle individual feature groups on/off
+
+moving_averages:
+  enabled: true
+  sma_windows: [5, 10, 20, 50]
+  ema_windows: [5, 12, 26]
+
+macd:
+  enabled: true
+  fast: 12
+  slow: 26
+  signal: 9
+
+rsi:
+  enabled: true
+  period: 14
+
+stoch_rsi:
+  enabled: true
+  period: 14
+
+williams_r:
+  enabled: true
+  period: 14
+
+bollinger_bands:
+  enabled: true
+  window: 20
+  std_dev: 2
+
+# Only computed when high/low/close columns exist in the dataset
+atr:
+  enabled: false
+
+# Only computed when volume column exists in the dataset
+obv:
+  enabled: false
+
+returns_volatility:
+  enabled: true
+  vol_windows: [5, 20]
+
+lags:
+  enabled: true
+  periods: [1, 2, 3, 5, 10]
+  fill_method: ffill   # ffill prevents future data leakage (not bfill)
+
+calendar:
+  enabled: true
+  features: [day_of_week, month, quarter, is_month_end]
+
+momentum_slopes:
+  enabled: true
+  rsi_period: 3
+  bb_period: 3
+  macd_period: 3
+
+crossovers_ratios:
+  enabled: true
+  sma_fast: 5
+  sma_slow: 20
+
+cross_currency:
+  enabled: true
+  base_currency: "USD"        # reference pair for correlation
+  corr_window: 30             # rolling correlation window (days)
+  index_currencies: []        # empty = auto-detect top-6 by count
+  # v2: dynamic graph features
+  hub_correlations: true      # compute corr vs each major hub (USD/EUR/GBP/JPY/CNY)
+  avg_peer_corr: true         # average pairwise correlation across all peers
+  vol_spread: true            # realised vol minus cross-pair mean vol
+  fx_graph_degree: true       # count of significantly correlated peers (|r|>0.3)
+
+target:
+  mode: raw_rate              # options: raw_rate | log_return | pct_change | n_step_ahead
+  n_steps_ahead: 1            # used only when mode = n_step_ahead
+
+# ── Environmental Inputs (v2) ──────────────────────────────────────────────────
+# Controls integration of news, speeches, and LLM-generated features.
+environmental_inputs:
+  enabled: true
+
+  # Sentiment analysis from multi-source news & RSS feeds
+  sentiment:
+    enabled: true
+    llm_provider: "openai"          # openai | anthropic | mock
+    cache_ttl_hours: 4              # result cache duration; 0 = no cache
+    sources:
+      alphavantage: true            # requires ALPHAVANTAGE_KEY env var
+      newsapi: true                 # requires NEWS_API_KEY env var
+      rss_central_banks: true       # free, no key required
+      rss_general_finance: true     # free, no key required
+    features_to_inject:
+      - env_sentiment_score         # -1.0 (bearish) to +1.0 (bullish)
+      - env_sentiment_confidence
+      - env_cb_bias                 # -1=dovish, 0=neutral, +1=hawkish
+      - env_cb_bias_strength
+      - env_propaganda_score        # 0=genuine, 1=heavy narrative manipulation
+      - env_scenario_bull
+      - env_scenario_bear
+      - env_n_articles
+
+  # Central bank speech monitoring (hawk/dove classification)
+  speeches:
+    enabled: true
+    detect_hawkish_dovish: true
+    keywords:
+      hawkish: ["rate hike", "tighten", "restrictive", "above target", "rate increase"]
+      dovish: ["rate cut", "easing", "accommodative", "below target", "stimulus"]
+
+  # Propaganda / narrative manipulation detection
+  propaganda:
+    enabled: true
+    score_threshold: 0.6            # flag articles with propaganda_score > threshold
+    log_flagged_narratives: true
+
+  # LLM Scenario generation (for prediction adjustment)
+  scenarios:
+    enabled: true
+    blend_weight: 0.25              # how much LLM scenarios adjust ML prediction (0=off, 1=full)
+    n_scenarios: 5                  # always: bear, mild_bear, neutral, mild_bull, bull
+    time_horizon_days: 14           # default time horizon for scenario projection
