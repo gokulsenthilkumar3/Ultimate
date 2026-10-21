@@ -1,7 +1,6 @@
 # Real human 3D: research, specification and implementation plan
 
-Status: **plan and research, no application code changed.** Branch `claude/real-human-3d-plan`, from `main`
-(the repository has no `master` or `masters` branch; `main` is the default branch).
+Status: **partially implemented in the live application.** This folder originated as research on `claude/real-human-3d-plan`. Camera, quality and capture reference modules now re-export runtime policies; measurement entry is integrated into the live Measure tab and check-in form. See [implementation progress](IMPLEMENTATION_PROGRESS.md) for the current milestone, evidence and limitations. The historical audits below are baselines, not current completion percentages.
 
 **The goal:** make the Physique 3D person read as a real human, not a model, and make the viewer behave the way its controls
 promise (a fixed floor, a true 360° turntable, free orbit from above, a model that never rotates, zoom without broken pixels,

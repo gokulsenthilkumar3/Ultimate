@@ -4,9 +4,9 @@ import Button from '../ui/Button';
 import TextField from '../ui/TextField';
 import SelectField from '../ui/SelectField';
 import { BODY_METRIC_GROUPS, BODY_METRICS, metricsToBodyProfile } from '../../lib/physiqueProfile';
-import { validateBodyMetric } from '../../lib/bodyMetricContract';
+import { parseMetricEntry, stepMetricEntry } from '../../lib/measurementEntry';
 import { finiteMetric, localDateKey } from '../../lib/metricSeries';
-import { convertMeasurementToMetric, getMeasurementUnit } from '../../utils/userFormatters';
+import { getMeasurementUnit } from '../../utils/userFormatters';
 import { formatBodyValue, inputBodyValue, navyBodyFat } from './physiqueWorkspace';
 import MeasurementHelp from './MeasurementHelp';
 import { getBodyMeasurementDefinition } from '../../lib/bodyMeasurementDefinitions';
@@ -31,7 +31,8 @@ export default function MeasurementWorkbench({ current, user, onSaveProfile, onS
   const metricFor = key => {
     const metric = BODY_METRICS.find(item => item.key === key);
     const value = valueFor(metric);
-    return value === '' ? null : convertMeasurementToMetric(value, metric.unit, user);
+    const parsed = parseMetricEntry(key, value, getMeasurementUnit(metric.unit, user));
+    return parsed.valid ? parsed.value : null;
   };
   const calculation = navyBodyFat({ sex: formula, height: metricFor('height'), neck: metricFor('neck'), waist: metricFor('waist'), hips: metricFor('hips') });
   const required = formula === 'F' ? ['height', 'neck', 'waist', 'hips'] : ['height', 'neck', 'waist'];
@@ -48,10 +49,9 @@ export default function MeasurementWorkbench({ current, user, onSaveProfile, onS
     const invalid = {};
     for (const [key, value] of Object.entries(draft)) {
       const metric = BODY_METRICS.find(item => item.key === key);
-      const number = value.trim() === '' ? null : convertMeasurementToMetric(value, metric.unit, user);
-      const result = validateBodyMetric(key, number, { allowEmpty: false });
-      if (!result.valid) invalid[key] = `Enter a valid ${metric.label.toLowerCase()} in ${getMeasurementUnit(metric.unit, user)}.`;
-      else patch[key] = number;
+      const result = parseMetricEntry(key, value, getMeasurementUnit(metric.unit, user));
+      if (!result.valid) invalid[key] = result.reason;
+      else patch[key] = result.value;
     }
     if (Object.keys(invalid).length) {
       setErrors(invalid);
@@ -85,7 +85,11 @@ export default function MeasurementWorkbench({ current, user, onSaveProfile, onS
       <div className="px-measurement-groups">
         {filteredGroups.map(group => {
           const fields = <div className="px-field-grid">{group.metrics.map(metric => <div className="measurement-field-help" key={metric.key}>
-            <TextField id={`physique-input-${metric.key}`} label={`${metric.label} (${getMeasurementUnit(metric.unit, user)})`} type="number" inputMode="decimal" step="any" placeholder="Not recorded" value={valueFor(metric)} onFocus={() => setActiveMeasurement(metric.key)} onChange={event => change(metric.key, event.target.value)} error={errors[metric.key]} disabled={saving} />
+            <TextField id={`physique-input-${metric.key}`} label={`${metric.label} (${getMeasurementUnit(metric.unit, user)})`} type="text" inputMode="text" placeholder="Not recorded" value={valueFor(metric)} onFocus={() => setActiveMeasurement(metric.key)} onChange={event => change(metric.key, event.target.value)} error={errors[metric.key]} disabled={saving}
+              onKeyDown={event => {
+                const next = stepMetricEntry(metric.key, valueFor(metric), getMeasurementUnit(metric.unit, user), event);
+                if (next !== null) { event.preventDefault(); change(metric.key, next); }
+              }} />
             <button type="button" aria-label={`How to measure ${metric.label}`} aria-pressed={activeMeasurement === metric.key} onClick={() => { setActiveMeasurement(metric.key); requestAnimationFrame(() => helpRef.current?.scrollIntoView({ block: 'nearest' })); }}><CircleHelp size={15}/></button>
           </div>)}</div>;
           return group.id === 'essentials' ? <fieldset key={group.id}><legend>{group.label}</legend>{fields}</fieldset> : <details className="px-measurement-group" key={group.id} open={query ? true : undefined}><summary><span>{group.label}</span><small>{group.metrics.filter(metric => finiteMetric(current[metric.key]) !== null).length} recorded</small></summary>{fields}</details>;

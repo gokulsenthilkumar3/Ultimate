@@ -3,7 +3,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Redis from 'ioredis';
 
-const redis = new Redis(process.env.OXFIN_REDIS_URL);
+const redisUrl = process.env.OXFIN_REDIS_URL;
+const redis = redisUrl ? new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 }) : null;
+const memory = new Map<string, { count: number; reset: number }>();
 
 // Token bucket: 60 requests per minute per IP
 const LIMIT = 60;
@@ -13,8 +15,18 @@ export async function rateLimiter(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for') || request.ip || 'unknown';
     const key = `rl:${ip}`;
     const now = Date.now();
-    const ttl = await redis.pttl(key);
-    let count = await redis.get(key);
+    let ttl = 0;
+    let count: string | null = null;
+    if (redis) {
+        try { ttl = await redis.pttl(key); count = await redis.get(key); }
+        catch { /* use the bounded in-process fallback */ }
+    }
+    if (!count) {
+        const entry = memory.get(key);
+        if (!entry || entry.reset <= now) { memory.set(key, { count: 1, reset: now + WINDOW_MS }); return NextResponse.next(); }
+        count = String(entry.count);
+        ttl = entry.reset - now;
+    }
     if (count === null) {
         await redis.set(key, '1', 'PX', WINDOW_MS);
         return NextResponse.next();
@@ -26,6 +38,8 @@ export async function rateLimiter(request: NextRequest) {
         resp.headers.set('Retry-After', retryAfter.toString());
         return resp;
     }
-    await redis.incr(key);
+    if (redis) { try { await redis.incr(key); } catch { /* fallback below */ } }
+    const entry = memory.get(key);
+    if (entry && entry.reset > now) entry.count += 1;
     return NextResponse.next();
 }

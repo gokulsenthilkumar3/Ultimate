@@ -20,6 +20,8 @@ import React, {
 } from 'react';
 import TabErrorBoundary from './TabErrorBoundary';
 import MeasurementInput from './ui/MeasurementInput';
+import { progressToward } from '../lib/metricEntry';
+import { displayMetricValue } from '../lib/measurementEntry';
 import AvatarCreationWizard from './AvatarCreationWizard';
 import {
   Rotate3D, Eye, Layers, Zap, Shirt, Ruler, Camera, Download,
@@ -62,7 +64,7 @@ import AnimationPanel from './morphEngine/AnimationPanel';
 import { AVATAR_EXPOSURE, DEFAULT_AVATAR_PRESENTATION } from '../lib/avatarPresentation';
 import { buildAvatarEvidence } from '../lib/avatarEvidence';
 import '../styles/avatar-workspace.css';
-import { formatDate, formatMeasurement, formatNumber } from '../utils/userFormatters';
+import { formatDate, formatMeasurement, formatNumber, getMeasurementUnit } from '../utils/userFormatters';
 
 // Lazy load the heavy 3D canvas
 const ChamberCanvas = lazy(() => import('./PhysiqueRenderer'));
@@ -83,6 +85,7 @@ const VIEW_MODES = [
 
 // ── Metric labels
 const METRIC_LABELS: Record<string, { label: string; unit: string; icon: React.ElementType; direction: 'increase' | 'decrease' }> = {
+  height:    { label: 'Height',    unit: 'cm', icon: Ruler,    direction: 'increase' },
   weight:    { label: 'Weight',    unit: 'kg', icon: Activity, direction: 'increase' },
   bodyFat:   { label: 'Body Fat',  unit: '%',  icon: Zap,      direction: 'decrease' },
   chest:     { label: 'Chest',     unit: 'cm', icon: Dumbbell, direction: 'increase' },
@@ -1064,18 +1067,26 @@ export default function HumanoidViewer() {
                     <p>Entered measurements drive the shape; missing values use render-only estimates. Circumferences are not yet verified against the deformed mesh, so achieved measurements and fit errors are unavailable. Measurement completeness is not anatomical accuracy.</p>
                   </details>
                   <div className="chamber-metric-list">
+                    <p id="avatar-measurement-hint" className="chamber-note">Type a value or include units, such as 98,5 cm, 5 ft 10 in, or 180 lb. Enter or leave the field to apply. Arrow keys adjust; Shift makes a larger step; Escape cancels.</p>
                     <MeasurementHelp key={guideMetric} definition={getBodyMeasurementDefinition(guideMetric)} label={METRIC_LABELS[guideMetric]?.label || guideMetric} onInspect={focusInspectionPart} />
                     {Object.entries(METRIC_LABELS).map(([key, meta]) => {
                       const currentIsMeasured = currentMetricResolution.suppliedKeys.includes(key);
                       const goalIsMeasured = goalMetricResolution.suppliedKeys.includes(key);
-                      const range = (BODY_METRIC_RANGES as any)[key];
                       const cur = Number((currentMetricResolution.metrics as any)[key]) || 0;
                       const goal = Number((goalMetricResolution.metrics as any)[key]) || cur;
                       const goalSource = (goalMetricResolution.sourceByKey as any)[key] === 'inherited'
                         ? 'Current'
                         : goalIsMeasured ? 'Goal' : 'Estimated';
-                      const pctRaw = Number((progressSummary as any).byMetric?.[key]) || 0;
-                      const pct = Math.round(pctRaw);
+                      const unit = getMeasurementUnit(meta.unit, user);
+                      const progress = progressToward({
+                        baseline: snapshots.length ? (baselineMetrics as any)[key] : undefined,
+                        current: currentIsMeasured ? (currentMetrics as any)[key] : undefined,
+                        goal: goalIsMeasured ? (goalMetrics as any)[key] : undefined,
+                        unit: meta.unit,
+                      });
+                      const pct = progress.percent ?? 0;
+                      const progressLabel = progress.percent === null || progress.done ? progress.label
+                        : `${pct}% there · ${displayMetricValue(Math.abs(progress.remaining), unit)} ${unit} to go${progress.wrongWay ? ' (moving away from the goal)' : ''}`;
                       const progressColor = pct >= 75 ? 'var(--chamber-success)' : pct >= 40 ? 'var(--chamber-gold)' : 'var(--chamber-glow)';
                       return (
                         <div key={key} className="chamber-metric-row">
@@ -1097,34 +1108,29 @@ export default function HumanoidViewer() {
                                 fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px',
                                 borderRadius: 4, background: progressColor + '22',
                                 color: progressColor,
-                              }}>{pct}%</span>
+                              }}>{progress.percent === null ? 'No goal progress' : `${pct}%`}</span>
                             </span>
                           </div>
-                          {/* NOW slider */}
-                          <div style={{ fontSize: '0.6rem', color: 'var(--text-3)', marginBottom: 2 }}>NOW</div>
-                          <input type="range" aria-label={`Current ${meta.label}`} onFocus={() => setGuideMetric(key)}
-                            min={range.min}
-                            max={range.max}
-                            step={1} value={cur}
-                            onChange={(e) => handleCurrentValue(key, e.target.value)}
-                            className="chamber-slider" />
+                          <label className="workspace-field"><span>Current {meta.label} ({unit})</span>
+                            <MeasurementInput metricKey={key} unit={unit} value={currentIsMeasured ? cur : null} aria-label={`Current ${meta.label} (${unit})`}
+                              placeholder="Not recorded" aria-describedby="avatar-measurement-hint"
+                              onFocus={() => { setGuideMetric(key); focusInspectionPart(getBodyMeasurementDefinition(key).region); }}
+                              onCommit={value => handleCurrentValue(key, value)} />
+                          </label>
                           {/* GOAL slider */}
                           <div style={{ fontSize: '0.6rem', color: 'var(--chamber-glow)', marginBottom: 2, marginTop: 4 }}>
                             GOAL · {goalSource.toUpperCase()} <span style={{ float: 'right' }}>{meta.unit === 'kg' || meta.unit === 'cm'
                               ? formatMeasurement(goal, meta.unit, user)
                               : `${goal}${meta.unit}`}</span>
                           </div>
-                          <input type="range" aria-label={`Goal ${meta.label}`} onFocus={() => setGuideMetric(key)}
-                            min={range.min}
-                            max={range.max}
-                            step={1} value={goal}
-                            onChange={(e) => handleGoalValue(key, e.target.value)}
-                            className="chamber-slider"
-                            style={{ accentColor: 'var(--chamber-glow)', opacity: 0.75 }} />
+                          <label className="workspace-field"><span>Goal {meta.label} ({unit})</span>
+                            <MeasurementInput metricKey={key} unit={unit} value={goalIsMeasured ? goal : null} aria-label={`Goal ${meta.label} (${unit})`}
+                              placeholder="No goal set" aria-describedby="avatar-measurement-hint"
+                              onFocus={() => setGuideMetric(key)} onCommit={value => handleGoalValue(key, value)} />
+                          </label>
                           {/* Progress bar */}
-                          <div style={{ height: 3, background: 'var(--surface-3)', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: progressColor, borderRadius: 2, transition: 'width 0.3s ease' }} />
-                          </div>
+                          <p className="chamber-note">{progressLabel}</p>
+                          {progress.percent !== null && <progress max={100} value={pct} aria-label={`${meta.label} goal progress`} aria-valuetext={progressLabel} style={{ width: '100%', accentColor: progressColor }}>{pct}%</progress>}
                         </div>
                       );
                     })}
