@@ -1,10 +1,19 @@
-# GrowthTrack implementation status (baseline 2026-09-29; updated 2026-10-06)
+# GrowthTrack implementation status (baseline 2026-09-29; updated 2026-10-22)
 
 This is an implementation snapshot, not a claim that the whole approved plan is
 production-ready. Scope is Ultimate and its repository build workflows. The
 additive local Notes migration was applied after a verified backup/restore and
 parity rehearsal; its snapshot contained zero Notes. Owner storage was not
 reset or used by automated tests. Companion product data was not merged.
+
+## Model measurements, independent figures and Notes duplication (2026-10-22)
+
+- **Physique → 3D → Measure → Model fit** reports estimated neutral chest/waist/hip contours, entered targets and differences in the selected units. Triangle intersection and closed-contour traversal handle seam duplicates and reject open/ambiguous sections. Reports remain separate for Current/Goal and clear after meaningful input changes. Fixed preview landmarks are not calibrated anatomy; automatic fitting remains open.
+- **Cloned rig isolation:** morph-dependent pivot updates previously changed inverse-bind matrices shared with the cached GLB and other figures. This caused misplaced hair/eyes on later loads. Each figure now owns those matrices while its bound surfaces share a consistent inverse pose. Full/lite regressions reproduce the old corruption and verify the repair.
+- **Workspace Notes → Duplicate note** copies editable content into an independent record. Failed creation retains the same ID/payload for retry through the versioned API's receipt mechanism. Failed source saves, newer drafts and account switches are preserved. Private journal/ownership/revision metadata is excluded. Notes remains in progress; full offline/outbox and native gates are unchanged.
+- **Evidence:** 46 focused tests in six files passed; a further 29 model/rig tests in four files passed (11 overlap). Ten Chromium continuation flows passed together; the model measurement flow passed again after the rig repair. See [the continuation record](real-human-3d/15-model-measurements-and-clone-isolation.md) for methods and reproducible commands.
+
+This continuation changed no GLB assets, database schema or owner records and performed no deployment. Existing local work was retained.
 
 ## Anatomy access, anatomy shape and skin colour (2026-10-19, second pass)
 

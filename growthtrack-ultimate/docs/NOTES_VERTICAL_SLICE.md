@@ -10,6 +10,16 @@ Current increment (2026-10-06): see [versioned Notes contract](NOTES_API_V1.md).
 
 The baseline component displayed an autosave claim before acknowledgement and called update actions without handling rejection. The first hardening change now reports unsaved/saving/saved/failed states, keeps failed edits open, surfaces failed mutations, waits for create acknowledgement, uses UUIDs for new notes, and excludes `mind-journal` entries from Workspace Notes search and facets. This is local reliability work, not a revision-based sync or offline conflict solution.
 
+## Duplication increment (2026-10-22)
+
+Open a note and choose **Duplicate note**. The new independent record copies title/body/tags/colour, appends `(copy)` within the title limit, and starts unpinned and unstarred. Stable links retain their targets. Ownership, revision history, timestamps, deletion state and journal metadata are not copied. Unsaved source text must save successfully before duplication proceeds; a failed save leaves the draft open.
+
+Failed or ambiguous creation retains the exact copy ID and payload for **Retry duplicate** during the active session. The versioned API replays its existing create receipt, so a lost acknowledgement does not produce a second record. A delayed response never replaces a newer editor draft. Retry also saves any different open editor first, and account changes clear the pending operation. Legacy servers retain their existing create semantics; durable mutation receipts require Notes API v1.
+
+Focused component/domain/API tests cover metadata isolation, exact retry payloads, failed source writes, newer drafts and account changes. The Chromium fixture verifies a lost acknowledgement, one saved copy, reload, keyboard activation and a 390-pixel layout. The encrypted draft-recovery test now also works against production builds by inspecting the isolated browser's IndexedDB instead of development source imports. Owner storage is not used.
+
+This adds duplication to the existing reference slice. Pagination, folders/templates, attachments, full offline startup/outbox, server link indexing/graph and native clients remain open. Notes remains **in progress**.
+
 ## View specifications
 
 | View | Primary task | Required behavior | Acceptance evidence |

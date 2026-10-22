@@ -1,4 +1,5 @@
 import { test, expect, OWNER, emptyState } from './foundation-fixture';
+import { surfaces } from './helpers/human-viewer';
 
 test('typed 3D measurements validate, reshape the avatar, and persist canonical values', async ({ page }) => {
   let body: any = { heightCm: 175, weightKg: 74, bodyFatPct: 19, waistCm: 88, chestCm: 99, hipsCm: 96, shouldersCm: 112, armsCm: 33, neckCm: 37, targetWaistCm: 82, modelPreset: 'male', biologicalSex: 'male' };
@@ -21,6 +22,8 @@ test('typed 3D measurements validate, reshape the avatar, and persist canonical 
   const canvas = page.locator('.chamber-canvas-wrap canvas');
   await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-camera-position', /.+/, { timeout: 45000 });
+  // Camera state precedes GLTF parsing and physical-material compilation.
+  await expect.poll(async () => (await surfaces(canvas,45000)).length, { timeout: 45000 }).toBe(5);
   await page.getByRole('tab', { name: 'Measure', exact: true }).click();
   const height = page.getByRole('textbox', { name: 'Current Height (cm)', exact: true });
   await height.fill('400 cm');

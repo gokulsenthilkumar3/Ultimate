@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { resolveModelAsset } from '../components/morphEngine/modelAssetRegistry';
 
 describe('model asset registry', () => {
-  it('promotes the assessed male attachment upgrade at both quality levels',()=> {
-    expect(resolveModelAsset({modelPreset:'male'},'HIGH')).toMatchObject({path:expect.stringMatching(/humanoid-adult-v2\.glb$/),version:'v2',anatomySex:'male',source:'default',v2Ready:true});
-    expect(resolveModelAsset({modelPreset:'male'},'LOW').path).toMatch(/humanoid-adult-v2-lite\.glb$/);
+  it.each(['humanoid-base.glb','humanoid-base-lite.glb','humanoid-adult-v2.glb','humanoid-adult-v2-lite.glb','humanoid-preview-75.glb','humanoid-preview-75-lite.glb'])('recognizes an explicitly saved bundled asset %s independently of selection source',avatarAsset=>{
+    expect(resolveModelAsset({avatarAsset})).toMatchObject({source:'profile',isBundled:true,anatomySex:'male'});
+  });
+  it('does not grant bundled-only corrective processing to arbitrary saved uploads',()=>{
+    expect(resolveModelAsset({avatarAsset:'owner-upload.glb'}).isBundled).toBe(false);
+  });
+  it('promotes the articulated male preview at both quality levels while retaining covered and legacy choices',()=> {
+    expect(resolveModelAsset({modelPreset:'male'},'HIGH')).toMatchObject({path:expect.stringMatching(/humanoid-preview-75\.glb$/),version:'v2',anatomySex:'male',source:'default',v2Ready:true});
+    expect(resolveModelAsset({modelPreset:'male'},'LOW').path).toMatch(/humanoid-preview-75-lite\.glb$/);
     expect(resolveModelAsset({modelPreset:'female'}).v2Ready).toBe(false);
     expect(resolveModelAsset({modelPreset:'male',modelVersion:'legacy'}).path).toMatch(/humanoid-base-lite\.glb$/);
     expect(resolveModelAsset({avatarAsset:'humanoid-base.glb',modelPreset:'male'}).source).toBe('profile');
@@ -19,6 +25,7 @@ describe('model asset registry', () => {
     const result = resolveModelAsset({ avatarAsset: 'female-athletic.glb' }, 'HIGH');
     expect(result.path).toMatch(/assets\/models\/female-athletic\.glb$/);
     expect(result.source).toBe('profile');
+    expect(result.isBundled).toBe(false);
   });
 
   it('rejects remote and traversal paths', () => {

@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {captureAvatarImage,registerCaptureScene,registerCaptureComposer} from './captureRuntime';
+import {captureAvatarImage,registerCaptureScene,registerCaptureComposer,registerCaptureGuard} from './captureRuntime';
 import {pngFileFromDataUrl,exportSize} from '../../lib/avatarCapturePolicy';
 
 function fixture() {
@@ -27,6 +27,32 @@ describe('rendered still capture',()=>{
     const {canvas,gl,camera}=fixture();canvas.toDataURL.mockImplementation(()=>{throw new Error('encoding failed');});
     expect(()=>captureAvatarImage(canvas,{scale:4})).toThrow('encoding failed');
     expect(gl.getPixelRatio()).toBe(1.5);expect(canvas.width).toBe(960);expect(camera.aspect).toBe(4/3);
+  });
+  it('restores every guard and viewport when one guard fails during restoration',()=>{
+    const {canvas,gl,camera,composer}=fixture(),restorePrivacy=vi.fn(),restorePose=vi.fn(()=>{throw new Error('pose restore failed');});
+    camera.aspect=1.25;
+    registerCaptureGuard(canvas,()=>restorePrivacy);registerCaptureGuard(canvas,()=>restorePose);
+    expect(()=>captureAvatarImage(canvas)).toThrow('pose restore failed');
+    expect(restorePose).toHaveBeenCalledOnce();expect(restorePrivacy).toHaveBeenCalledOnce();
+    expect(gl.getPixelRatio()).toBe(1.5);expect(canvas.width).toBe(960);expect(canvas.height).toBe(720);expect(camera.aspect).toBe(1.25);
+    expect(composer.setSize).toHaveBeenLastCalledWith(640,480);expect(composer.render).toHaveBeenCalledTimes(2);
+  });
+  it('preserves the original capture failure after exhausting failed restore operations',()=>{
+    const {canvas,gl,camera,composer}=fixture(),restorePrivacy=vi.fn();
+    canvas.toDataURL.mockImplementation(()=>{throw new Error('encoding failed');});
+    registerCaptureGuard(canvas,()=>restorePrivacy);
+    registerCaptureGuard(canvas,()=>()=>{throw new Error('guard restore failed');});
+    composer.setSize.mockImplementationOnce(()=>{}).mockImplementationOnce(()=>{throw new Error('composer restore failed');});
+    expect(()=>captureAvatarImage(canvas)).toThrow('encoding failed');
+    expect(restorePrivacy).toHaveBeenCalledOnce();expect(gl.getPixelRatio()).toBe(1.5);expect(canvas.width).toBe(960);
+    expect(camera.aspect).toBe(4/3);expect(composer.render).toHaveBeenCalledTimes(2);
+  });
+  it('unwinds already acquired guards when a later guard fails to prepare',()=>{
+    const {canvas,gl}=fixture(),restorePrivacy=vi.fn();
+    registerCaptureGuard(canvas,()=>restorePrivacy);
+    registerCaptureGuard(canvas,()=>{throw new Error('guard preparation failed');});
+    expect(()=>captureAvatarImage(canvas)).toThrow('guard preparation failed');
+    expect(restorePrivacy).toHaveBeenCalledOnce();expect(gl.getPixelRatio()).toBe(1.5);expect(canvas.toDataURL).not.toHaveBeenCalled();
   });
   it('keeps large images inside device and pixel limits, preserving aspect',()=>{
     const size=exportSize(3000,2000,{scale:4,maxPixels:16777216,maxTexture:4096});

@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "reviewedOn": "2026-10-22",
+  "assets": [
+    {
+      "file": "humanoid-base.glb",
+      "before": {
+        "sha256": "ce85dd2f5b613d4278788d99be0d4ac247b206daac8c671175cd09153c9f6b6d",
+        "bytes": 23954588,
+        "integrity": {
+          "bodyAndRigSha256": "14b63a7bccca9c2d96db7e8867051ef1c868bef69458965efa98e4f7f426d28d",
+          "imagesSha256": "15b6d46fb409895b704315fab059cd0aea2ed4450a2aa9f4ca87d6fb4fa9fe8b"
+        }
+      },
+      "after": {
+        "sha256": "23a38d4f539f0e2a28feb5976bf22f8c966742b6e027e379b146cf899bc81ecd",
+        "bytes": 24345560,
+        "integrity": {
+          "bodyAndRigSha256": "5eed1c9c5dd01e9045627c9d92eff5cba027957173d2ee0e4deef0713ccf443b",
+          "imagesSha256": "15b6d46fb409895b704315fab059cd0aea2ed4450a2aa9f4ca87d6fb4fa9fe8b"
+        }
+      },
+      "changes": {
+        "positionBounds": 66,
+        "tangents": 4,
+        "alignedAttributes": 0,
+        "emptyChildren": 0,
+        "legacyMeshProperties": 4,
+        "unusedJointSlots": 0
+      },
+      "latestRun": {
+        "unchanged": true,
+        "changes": {
+          "positionBounds": 0,
+          "tangents": 0,
+          "alignedAttributes": 0,
+          "emptyChildren": 0,
+          "legacyMeshProperties": 0,
+          "unusedJointSlots": 0
+        }
+      },
+      "preserved": "All original positions, normals, UVs, indices, morphs, images, active weights/joints; custom scalar values unchanged"
+    },
+    {
+      "file": "humanoid-base-lite.glb",
+      "before": {
+        "sha256": "17aec581c082a3db6a678dacb019051f8a976e0eb0cc3c1ae902cdb9b319aa95",
+        "bytes": 7040072,
+        "integrity": {
+          "bodyAndRigSha256": "faf772ab82e87dbe53107c6d0081f4f7d082cc26264bc6d96ec374de19f1ca91",
+          "imagesSha256": "ac65bcd1666c0b1b9bab060165529a009b90ff1f9ee84c9e8d22a455da58889b"
+        }
+      },
+      "after": {
+        "sha256": "deb7b29e3ea7e7070eb5411ba26ee65f4e2f3a894dbd527039c6bc0ec589ed35",
+        "bytes": 7431040,
+        "integrity": {
+          "bodyAndRigSha256": "abd4ab4b57362e43975fed4bbbb4970ff0d0c7cbb65fd8ef95a5b144b1bf76fa",
+          "imagesSha256": "ac65bcd1666c0b1b9bab060165529a009b90ff1f9ee84c9e8d22a455da58889b"
+        }
+      },
+      "changes": {
+        "positionBounds": 66,
+        "tangents": 4,
+        "alignedAttributes": 0,
+        "emptyChildren": 0,
+        "legacyMeshProperties": 4,
+        "unusedJointSlots": 0
+      },
+      "latestRun": {
+        "unchanged": true,
+        "changes": {
+          "positionBounds": 0,
+          "tangents": 0,
+          "alignedAttributes": 0,
+          "emptyChildren": 0,
+          "legacyMeshProperties": 0,
+          "unusedJointSlots": 0
+        }
+      },
+      "preserved": "All original positions, normals, UVs, indices, morphs, images, active weights/joints; custom scalar values unchanged"
+    },
+    {
+      "file": "humanoid-adult-v2.glb",
+      "before": {
+        "sha256": "fbb17a5d09ec3f3da20a7f21f7283b44cd5cff64481ce707dcf175edc09b7f16",
+        "bytes": 23986212,
+        "integrity": {
+          "bodyAndRigSha256": "701a1217935c22e69eda074b923cdfa71c9decd673a193a4385d983fa9cddc52",
+          "imagesSha256": "15b6d46fb409895b704315fab059cd0aea2ed4450a2aa9f4ca87d6fb4fa9fe8b"
+        }
+      },
+      "after": {
+        "sha256": "983e1b1b3b9827d153d2d4a22675c3397599ee237a9d9becf8909c3e64582b2f",
+        "bytes": 24376652,
+        "integrity": {
+          "bodyAndRigSha256": "8def0e09a5c70430d95a423dd5aeaa016f422c7fc56e84efae3e507083d0fc9e",
+          "imagesSha256": "15b6d46fb409895b704315fab059cd0aea2ed4450a2aa9f4ca87d6fb4fa9fe8b"
+        }
+      },
+      "changes": {
+        "positionBounds": 60,
+        "tangents": 4,
+        "alignedAttributes": 0,
+        "emptyChildren": 0,
+        "legacyMeshProperties": 4,
+        "unusedJointSlots": 0
+      },
+      "latestRun": {
+        "unchanged": true,
+        "changes": {
+          "positionBounds": 0,
+          "tangents": 0,
+          "alignedAttributes": 0,
+          "emptyChildren": 0,
+          "legacyMeshProperties": 0,
+          "unusedJointSlots": 0
+        }
+      },
+      "preserved": "All original positions, normals, UVs, indices, morphs, images, active weights/joints; custom scalar values unchanged"
+    },
+    {
+      "file": "humanoid-adult-v2-lite.glb",
+      "before": {
+        "sha256": "4cf4625c96db4304f12fca8c552e4fb1daa94e15d6f498199181701b7320812d",
+        "bytes": 7071692,
+        "integrity": {
+          "bodyAndRigSha256": "4bc3713ff3edd51b38567cbc94bfc2c34e35fe22b9b70f45b5ee9400409fe662",
+          "imagesSha256": "ac65bcd1666c0b1b9bab060165529a009b90ff1f9ee84c9e8d22a455da58889b"
+        }
+      },
+      "after": {
+        "sha256": "37f332e8322a9c728b460f4c8f26604f154cf24abecf32d3da80aad60eb41171",
+        "bytes": 7462132,
+        "integrity": {
+          "bodyAndRigSha256": "94412d5d9cfa89e0d4e67c80a708d103aed40ab5f29874a35376c61fc75909b9",
+          "imagesSha256": "ac65bcd1666c0b1b9bab060165529a009b90ff1f9ee84c9e8d22a455da58889b"
+        }
+      },
+      "changes": {
+        "positionBounds": 60,
+        "tangents": 4,
+        "alignedAttributes": 0,
+        "emptyChildren": 0,
+        "legacyMeshProperties": 4,
+        "unusedJointSlots": 0
+      },
+      "latestRun": {
+        "unchanged": true,
+        "changes": {
+          "positionBounds": 0,
+          "tangents": 0,
+          "alignedAttributes": 0,
+          "emptyChildren": 0,
+          "legacyMeshProperties": 0,
+          "unusedJointSlots": 0
+        }
+      },
+      "preserved": "All original positions, normals, UVs, indices, morphs, images, active weights/joints; custom scalar values unchanged"
+    },
+    {
+      "file": "humanoid-preview-75.glb",
+      "before": {
+        "sha256": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
+        "bytes": 25047568,
+        "integrity": {
+          "bodyAndRigSha256": "cdc3d2dabbe6de5220fd4da489795aa0e4eec0267b29951a4f93e943f72d7d2c",
+          "imagesSha256": "c024f157ef1fddd39ce48fd2db65aa8beb5c1fd06e0a845bd1ad19300c887262"
+        }
+      },
+      "after": {
+        "sha256": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
+        "bytes": 25047568,
+        "integrity": {
+          "bodyAndRigSha256": "cdc3d2dabbe6de5220fd4da489795aa0e4eec0267b29951a4f93e943f72d7d2c",
+          "imagesSha256": "c024f157ef1fddd39ce48fd2db65aa8beb5c1fd06e0a845bd1ad19300c887262"
+        }
+      },
+      "changes": {
+        "positionBounds": 0,
+        "tangents": 0,
+        "alignedAttributes": 0,
+        "emptyChildren": 0,
+        "legacyMeshProperties": 0,
+        "unusedJointSlots": 0
+      },
+      "latestRun": {
+        "unchanged": true,
+        "changes": {
+          "positionBounds": 0,
+          "tangents": 0,
+          "alignedAttributes": 0,
+          "emptyChildren": 0,
+          "legacyMeshProperties": 0,
+          "unusedJointSlots": 0
+        }
+      },
+      "preserved": "All original positions, normals, UVs, indices, morphs, images, active weights/joints; custom scalar values unchanged"
+    },
+    {
+      "file": "humanoid-preview-75-lite.glb",
+      "before": {
+        "sha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab",
+        "bytes": 8133056,
+        "integrity": {
+          "bodyAndRigSha256": "26f64e5da8706dfd58852760842d72885360038dcde16f04d086cd0a0db665e0",
+          "imagesSha256": "55e65bd81f6396fd521517aaaa26763376dcfa156474579de985ddc4c767d4f4"
+        }
+      },
+      "after": {
+        "sha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab",
+        "bytes": 8133056,
+        "integrity": {
+          "bodyAndRigSha256": "26f64e5da8706dfd58852760842d72885360038dcde16f04d086cd0a0db665e0",
+          "imagesSha256": "55e65bd81f6396fd521517aaaa26763376dcfa156474579de985ddc4c767d4f4"
+        }
+      },
+      "changes": {
+        "positionBounds": 0,
+        "tangents": 0,
+        "alignedAttributes": 0,
+        "emptyChildren": 0,
+        "legacyMeshProperties": 0,
+        "unusedJointSlots": 0
+      },
+      "latestRun": {
+        "unchanged": true,
+        "changes": {
+          "positionBounds": 0,
+          "tangents": 0,
+          "alignedAttributes": 0,
+          "emptyChildren": 0,
+          "legacyMeshProperties": 0,
+          "unusedJointSlots": 0
+        }
+      },
+      "preserved": "All original positions, normals, UVs, indices, morphs, images, active weights/joints; custom scalar values unchanged"
+    }
+  ]
+}

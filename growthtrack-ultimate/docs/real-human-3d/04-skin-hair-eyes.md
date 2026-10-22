@@ -7,6 +7,10 @@ region sharp as the camera approaches. All numbers marked *tested* come from the
 asset code must match. All constants marked *starting value* are calibrated in step S3 of the
 [roadmap](08-roadmap.md) against reference photographs.
 
+**2026-10-21 runtime checkpoint:** shared artistic skin swatches, regional roughness, retained authored maps, local bundled eyelid correction and deterministic blink/breath/gaze motion now run in the application. The idle reference tests import the runtime sampler. This is the partial appearance milestone recorded in [implementation progress](IMPLEMENTATION_PROGRESS.md), not completion of the texture, cornea, pupil, strand-hair or anatomical authoring specifications below.
+
+**20-point checkpoint:** the live Skin tab now saves an independent clothing exposure history. Swim shorts, tank/shorts, tee/shorts and long sleeves/trousers protect skin using the wardrobe's neutral bands and blended rest-surface regions; no pattern remains the default. Only the tan term is masked, preserving base colour, undertone and flush. Current/Goal layers, reset, full/lite transitions, mobile controls and protected PNGs are covered by runtime tests. These are approximate neutral styles, not authored seam masks or calibrated sun-response predictions. The absolute optical model and asset-authoring requirements below remain targets.
+
 ## 1 · Why skin tone, tan and "melanin" must be separate data
 
 Today the skin is **one photographic albedo that already contains a tan**, tinted per Fitzpatrick type
@@ -152,6 +156,8 @@ a golden-value test compares the two for every type and region before the shader
 
 ## 4 · Eyes
 
+**35-point runtime checkpoint:** the normal Face tab now edits seven named/custom iris colours, radial/collarette detail, a limbal-ring toggle, a saved seed and fixed or exposure-responsive cosmetic pupils. Iris frames derive from the loaded paired eye geometry and remain attached through morphs and gaze. Current/Goal values use the existing database JSON/profile paths. Reduced motion and captures settle immediately; capture guards restore the live transition on success or error. Existing eye maps and wet material are retained. The response follows the artistic renderer exposure, not a measured illuminance/medical model. Separate cornea/wetline geometry and the remaining authored specification below stay open; see [implementation progress](IMPLEMENTATION_PROGRESS.md) and [architecture](09-appearance-architecture.md#eye-rendering-and-capture).
+
 The shipped eye is a textured sphere with a dark grey photo map. The plan page already replaced it with a procedural eye
 (`plan-assets/src/eyes.mjs`); the plan ports that and adds what an eye needs to look alive.
 
@@ -232,6 +238,8 @@ none. Body hair colour is the hair colour lightened by 10 to 30% by default.
 | **Wet film** | A mask on the eyes, inner lip, nostrils and mouth interior lowers roughness and adds a thin specular layer; a global `sweat` parameter (0 to 1) lowers roughness elsewhere, slightly darkens albedo, and adds a bump of droplets |
 
 ## 7 · Skin features, seeded
+
+**30-point runtime checkpoint:** editable freckles now ship as integer-seeded, jittered rest-space projections blended with skin normals/exposure. Density, radius, contrast and seed are saved for Current/Goal and included in quality changes and protected exports. Named/custom hair shades, seeded greying and thinning also operate on the existing hair cards with matching shadows and scalp coverage. These are partial A2/A6 runtime slices; the authored Poisson-disc/mask design below, new strand geometry, other marks and calibrated optical layers remain open. See [implementation progress](IMPLEMENTATION_PROGRESS.md) and [architecture](09-appearance-architecture.md).
 
 Moles, freckles, scars and stretch marks are generated deterministically from a per-person seed so they never change
 between sessions or devices.

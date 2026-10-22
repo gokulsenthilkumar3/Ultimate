@@ -27,7 +27,7 @@ function speedLabel(speed) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ANIMATION PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-export default function AnimationPanel({inline=false}) {
+export default function AnimationPanel({inline=false,onSelect}) {
   const [open, setOpen] = useState(false);
 
   const animationId  = use3DStore((s) => s.animationState.animationId);
@@ -40,6 +40,7 @@ export default function AnimationPanel({inline=false}) {
   const activePreset = ANIMATION_PRESETS.find((p) => p.id === animationId);
 
   const handleSelect = (id) => {
+    onSelect?.(id);
     setAnimation(id, { playing: true, speed });
   };
 

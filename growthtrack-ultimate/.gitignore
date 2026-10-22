@@ -32,6 +32,20 @@ dist-ssr
 # Playwright generated output
 playwright-report/
 test-results/
+/test-results-*/
+
+# Keep compact review records and selected views in Git; retain raw artifacts locally.
+/docs/real-human-3d/data/review-75/format-before/
+/docs/real-human-3d/data/review-75/format-after/
+/docs/real-human-3d/evidence/review-75/*
+!/docs/real-human-3d/evidence/review-75/humanoid-preview-75-front.png
+!/docs/real-human-3d/evidence/review-75/humanoid-preview-75-back.png
+!/docs/real-human-3d/evidence/review-75/humanoid-preview-75-side.png
+!/docs/real-human-3d/evidence/review-75/humanoid-preview-75-oblique.png
+!/docs/real-human-3d/evidence/review-75/humanoid-preview-75-face-front.png
+!/docs/real-human-3d/evidence/review-75/humanoid-preview-75-face-oblique.png
+!/docs/real-human-3d/evidence/review-75/humanoid-preview-75-head-turn.png
+!/docs/real-human-3d/evidence/review-75/humanoid-preview-75-blink-oblique.png
 
 # Environment files (except examples)
 .env
@@ -75,6 +89,7 @@ screenshots/
 crash-dumps/
 
 # Local AI weights and 3D working sources
+/local-private/
 *.gguf
 *.safetensors
 *.ckpt

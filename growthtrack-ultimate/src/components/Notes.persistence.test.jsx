@@ -16,6 +16,7 @@ function Notes(props) { return <NotesView {...props} fileTransfer={files} draftS
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fixture.state.user = { id: 'owner' };
   fixture.state.addNote.mockReset().mockImplementation(note => Promise.resolve(note));
   fixture.state.updateNote.mockReset().mockResolvedValue({ success: true });
   fixture.state.deleteNote.mockReset().mockResolvedValue({ success: true });
@@ -31,6 +32,77 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Notes persistence feedback', () => {
+  it('duplicates through the selected record port and retries an ambiguous write with exactly the same ID and content', async () => {
+    const add = vi.fn().mockRejectedValueOnce(new Error('Lost response')).mockImplementation(async note => {
+      const saved = { ...note, revision: 1 }; fixture.state.notes.push(saved); return saved;
+    });
+    render(<Notes records={{ add }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate note' }));
+    await screen.findByRole('button', { name: 'Retry duplicate' });
+    const first = add.mock.calls[0][0];
+    expect(first).toMatchObject({ title: 'Workspace note (copy)', content: 'Original', pinned: false, starred: false });
+    expect(first.id).not.toBe('note-1');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry duplicate' }));
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Note content' }).value).toBe('Original'));
+    expect(add.mock.calls[1][0]).toEqual(first);
+    expect(fixture.state.addNote).not.toHaveBeenCalled();
+    expect(fixture.state.notes[0]).toMatchObject({ id: 'note-1', content: 'Original' });
+    expect(fixture.toast.success).toHaveBeenCalledWith('Note duplicated.');
+  });
+
+  it('keeps an unsaved source open and does not create a copy if saving it fails', async () => {
+    fixture.state.updateNote.mockRejectedValue(new Error('Offline'));
+    render(<Notes view="editor" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note content' }), { target: { value: 'Keep this draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate note' }));
+    await screen.findByText(/Save failed/);
+    expect(fixture.state.addNote).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: 'Note content' }).value).toBe('Keep this draft');
+  });
+
+  it('does not let a delayed copy acknowledgement replace a newer draft', async () => {
+    let acknowledge;
+    fixture.state.addNote.mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
+    render(<Notes view="editor" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate note' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note content' }), { target: { value: 'Newer draft' } });
+    await act(async () => acknowledge(fixture.state.addNote.mock.calls[0][0]));
+    expect(screen.getByRole('textbox', { name: 'Note content' }).value).toBe('Newer draft');
+  });
+
+  it('ignores a copy acknowledgement after the account changes', async () => {
+    let acknowledge;
+    fixture.state.addNote.mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
+    const { rerender } = render(<Notes />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate note' }));
+    fixture.state.user = { id: 'other-owner' }; fixture.state.notes = [];
+    rerender(<Notes />);
+    await act(async () => acknowledge(fixture.state.addNote.mock.calls[0][0]));
+    expect(fixture.toast.success).not.toHaveBeenCalledWith('Note duplicated.');
+    expect(screen.queryByRole('textbox', { name: 'Note content' })).toBeNull();
+  });
+
+  it('preserves a different unsaved editor when retrying an earlier copy', async () => {
+    fixture.state.notes.push({ id: 'note-2', title: 'Second', content: 'Second original', tags: [] });
+    fixture.state.addNote.mockRejectedValue(new Error('Lost response'));
+    fixture.state.updateNote.mockRejectedValue(new Error('Offline'));
+    render(<Notes view="editor" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Workspace note' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate note' }));
+    await screen.findByRole('button', { name: 'Retry duplicate' });
+    fireEvent.click(screen.getByRole('button', { name: 'Open note: Second' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note content' }), { target: { value: 'Second unfinished draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry duplicate' }));
+    await screen.findByText(/Save failed/);
+    expect(fixture.state.addNote).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('textbox', { name: 'Note content' }).value).toBe('Second unfinished draft');
+    expect(screen.getByRole('button', { name: 'Retry duplicate' })).toBeTruthy();
+  });
+
   it('does not resubmit text already acknowledged by the pending autosave', async () => {
     let acknowledge;
     fixture.state.notes[0].revision = 1;

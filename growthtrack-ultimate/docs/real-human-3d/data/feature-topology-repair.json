@@ -1,0 +1,162 @@
+{
+  "date": "2026-10-21",
+  "method": "source-quad-corners",
+  "assets": [
+    {
+      "asset": "humanoid-base.glb",
+      "sourceSha256": "b0b74745dd472d83fd70a77c10158bded631a72a6588508d3fd184b5fed5f088",
+      "sha256": "ce85dd2f5b613d4278788d99be0d4ac247b206daac8c671175cd09153c9f6b6d",
+      "unchanged": {
+        "bodyAndRigSha256": "14b63a7bccca9c2d96db7e8867051ef1c868bef69458965efa98e4f7f426d28d",
+        "imagesSha256": "15b6d46fb409895b704315fab059cd0aea2ed4450a2aa9f4ca87d6fb4fa9fe8b"
+      },
+      "features": [
+        {
+          "name": "GrowthTrackEyes",
+          "oldVertices": 1075,
+          "vertices": 1076,
+          "oldTriangles": 1944,
+          "triangles": 2040
+        },
+        {
+          "name": "GrowthTrackHair",
+          "oldVertices": 2061,
+          "vertices": 2061,
+          "oldTriangles": 3185,
+          "triangles": 3344
+        },
+        {
+          "name": "GrowthTrackEyebrows",
+          "oldVertices": 126,
+          "vertices": 126,
+          "oldTriangles": 138,
+          "triangles": 192
+        },
+        {
+          "name": "GrowthTrackEyelashes",
+          "oldVertices": 249,
+          "vertices": 250,
+          "oldTriangles": 275,
+          "triangles": 368
+        }
+      ]
+    },
+    {
+      "asset": "humanoid-base-lite.glb",
+      "sourceSha256": "96f83fb7be080d1c2c88de530f8b25ec0794dd927189e00a2df0c786dbc984df",
+      "sha256": "17aec581c082a3db6a678dacb019051f8a976e0eb0cc3c1ae902cdb9b319aa95",
+      "unchanged": {
+        "bodyAndRigSha256": "faf772ab82e87dbe53107c6d0081f4f7d082cc26264bc6d96ec374de19f1ca91",
+        "imagesSha256": "ac65bcd1666c0b1b9bab060165529a009b90ff1f9ee84c9e8d22a455da58889b"
+      },
+      "features": [
+        {
+          "name": "GrowthTrackEyes",
+          "oldVertices": 1075,
+          "vertices": 1076,
+          "oldTriangles": 1944,
+          "triangles": 2040
+        },
+        {
+          "name": "GrowthTrackHair",
+          "oldVertices": 2061,
+          "vertices": 2061,
+          "oldTriangles": 3185,
+          "triangles": 3344
+        },
+        {
+          "name": "GrowthTrackEyebrows",
+          "oldVertices": 126,
+          "vertices": 126,
+          "oldTriangles": 138,
+          "triangles": 192
+        },
+        {
+          "name": "GrowthTrackEyelashes",
+          "oldVertices": 249,
+          "vertices": 250,
+          "oldTriangles": 275,
+          "triangles": 368
+        }
+      ]
+    },
+    {
+      "asset": "humanoid-adult-v2.glb",
+      "sourceSha256": "e021fde1c75646914cf3b8e3739bafe83a2f22d81146b70366477288b80ffe58",
+      "sha256": "fbb17a5d09ec3f3da20a7f21f7283b44cd5cff64481ce707dcf175edc09b7f16",
+      "unchanged": {
+        "bodyAndRigSha256": "701a1217935c22e69eda074b923cdfa71c9decd673a193a4385d983fa9cddc52",
+        "imagesSha256": "15b6d46fb409895b704315fab059cd0aea2ed4450a2aa9f4ca87d6fb4fa9fe8b"
+      },
+      "features": [
+        {
+          "name": "GrowthTrackEyes",
+          "oldVertices": 1075,
+          "vertices": 1076,
+          "oldTriangles": 1944,
+          "triangles": 2040
+        },
+        {
+          "name": "GrowthTrackHair",
+          "oldVertices": 2061,
+          "vertices": 2061,
+          "oldTriangles": 3185,
+          "triangles": 3344
+        },
+        {
+          "name": "GrowthTrackEyebrows",
+          "oldVertices": 126,
+          "vertices": 126,
+          "oldTriangles": 138,
+          "triangles": 192
+        },
+        {
+          "name": "GrowthTrackEyelashes",
+          "oldVertices": 249,
+          "vertices": 250,
+          "oldTriangles": 275,
+          "triangles": 368
+        }
+      ]
+    },
+    {
+      "asset": "humanoid-adult-v2-lite.glb",
+      "sourceSha256": "7f2dc076c8db4bc149c61a23db21ff9f9bc012ea51c3064e826ea485baa5e070",
+      "sha256": "4cf4625c96db4304f12fca8c552e4fb1daa94e15d6f498199181701b7320812d",
+      "unchanged": {
+        "bodyAndRigSha256": "4bc3713ff3edd51b38567cbc94bfc2c34e35fe22b9b70f45b5ee9400409fe662",
+        "imagesSha256": "ac65bcd1666c0b1b9bab060165529a009b90ff1f9ee84c9e8d22a455da58889b"
+      },
+      "features": [
+        {
+          "name": "GrowthTrackEyes",
+          "oldVertices": 1075,
+          "vertices": 1076,
+          "oldTriangles": 1944,
+          "triangles": 2040
+        },
+        {
+          "name": "GrowthTrackHair",
+          "oldVertices": 2061,
+          "vertices": 2061,
+          "oldTriangles": 3185,
+          "triangles": 3344
+        },
+        {
+          "name": "GrowthTrackEyebrows",
+          "oldVertices": 126,
+          "vertices": 126,
+          "oldTriangles": 138,
+          "triangles": 192
+        },
+        {
+          "name": "GrowthTrackEyelashes",
+          "oldVertices": 249,
+          "vertices": 250,
+          "oldTriangles": 275,
+          "triangles": 368
+        }
+      ]
+    }
+  ]
+}

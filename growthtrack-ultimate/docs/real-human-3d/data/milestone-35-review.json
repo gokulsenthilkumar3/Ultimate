@@ -1,0 +1,30 @@
+{
+  "reviewedOn": "2026-10-21",
+  "scope": "GrowthTrack 3D only; next five-point checkpoint and verification of the existing implementation",
+  "planningPoints": { "before": 30, "after": 35, "basis": "Seven delivered five-point runtime checkpoints; not a mesh or photorealism percentage" },
+  "newCheckpoint": {
+    "area": "A3 partial",
+    "features": ["visible eye editor", "seven named and custom iris colours", "seeded iris detail", "optional limbal ring", "fixed cosmetic pupil diameter", "bounded scene-exposure response", "synchronous capture settlement and restoration"],
+    "database": "Existing eye-colour/rim columns and Current/Goal physiqueTargets JSON",
+    "definitions": "src/config/appearanceDetail.json",
+    "newGlbGeometry": false,
+    "newTextureDownloads": false
+  },
+  "checks": {
+    "focusedTests": { "passed": 262, "files": 47, "measurementIntegrationRunSeparately": true },
+    "humanSpecTests": { "passed": 84, "includesDocumentationLinksAndEvidence": true },
+    "combinedChromiumSmoke": { "passed": 12, "durationMinutes": 4.7, "configuration": "playwright.milestone-review.config.ts", "server": "isolated production build and preview", "automaticShutdown": true, "existingFlows": 10, "newEyeFlows": 2 },
+    "databasePersistence": { "passed": true, "database": "new temporary SQLite file through Prisma", "covers": ["Current/Goal eye values", "false rim boolean", "earlier hair/freckle fields", "queued updates", "viewer preference retention", "owner separation", "database reconnect"], "httpBoundary": "test adapter; browser smoke separately checks live UI endpoint/payload flow" },
+    "typecheck": "passed",
+    "targetedEslint": "passed",
+    "productionBuild": "passed with existing large Three.js chunk warning",
+    "bundledGlbValidation": { "passed": 4 },
+    "assetProvenance": "passed",
+    "trackedFileDeletions": 0,
+    "financeApplicationEdits": 0
+  },
+  "testReadinessCorrection": "Give rendered surfaces the same existing 45-second asset-readiness budget as the canvas; the earlier five-second assertion default expired during first eye shader compilation. Product and measurement-test timeouts and correctness assertions remain unchanged.",
+  "visualEvidence": ["../evidence/milestone-07-small-pupil.png", "../evidence/milestone-07-large-pupil.png", "../evidence/milestone-07-current-goal.png", "../evidence/milestone-07-dim-exposure.png", "../evidence/milestone-07-bright-exposure.png", "../evidence/milestone-07-protected-export.png", "../evidence/milestone-07-controls-mobile.png"],
+  "remainingGates": ["separate cornea and wetline geometry", "calibrated anatomy and optics", "advanced gaze/lid correctives", "new source mesh/rig/texture authoring", "native-device and Safari performance", "complete v3 asset conformance"],
+  "repositoryWideSuite": "Not claimed; earlier unrelated failures remain documented"
+}

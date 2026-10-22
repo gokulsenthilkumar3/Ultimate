@@ -1,0 +1,100 @@
+import { test, expect, OWNER, emptyState } from './foundation-fixture';
+import { surfaces, paintedCanvas, bodySurface } from './helpers/human-viewer';
+
+test('people keep measurements, appearance and goals separate through switches and reload', async ({page}) => {
+  test.setTimeout(180000);
+  let body: any = { heightCm:175, weightKg:74, waistCm:82, modelPreset:'male', biologicalSex:'male' };
+  let targets: any = { goalMetrics:{waist:76}, viewerPreferences:{showStage:false,backgroundMode:'color',backgroundColor:'#20242b'} };
+  const bodyWrites: any[] = [], errors: string[] = [];
+  let failPersonSave = false;
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route(url => ['/api/state','/api/body-profile','/api/physique_targets'].includes(url.pathname), async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (route.request().method() !== 'GET') {
+      const payload = route.request().postDataJSON();
+      if (path === '/api/body-profile') { bodyWrites.push(payload); body = {...body,...payload}; return route.fulfill({json:body}); }
+      if (failPersonSave) { failPersonSave=false; return route.fulfill({status:503,json:{error:'Test save failure'}}); }
+      targets=payload; return route.fulfill({json:targets});
+    }
+    return route.fulfill({json:path==='/api/body-profile'?body:{...emptyState(),user:{...OWNER,dob:'1990-01-01',physiqueTargets:targets},bodyProfile:body}});
+  });
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.setViewportSize({width:1440,height:1050});
+  await page.goto('/wellness/physique?view=3d');
+  const canvas=page.locator('.chamber-canvas-wrap canvas');
+  await canvas.scrollIntoViewIfNeeded();
+  await expect.poll(async()=>(await surfaces(canvas,45000)).length,{timeout:45000}).toBe(5);
+  await page.getByRole('button',{name:'Create a person',exact:true}).click();
+  await page.getByRole('textbox',{name:'Person’s name'}).fill('Buddy');
+  await page.getByRole('button',{name:'Create person',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Buddy',exact:true})).toBeVisible();
+  const person=()=>targets.avatarPeople.people[0];
+  expect(person().bodyProfile).not.toHaveProperty('heightCm');
+  expect(person()).not.toHaveProperty('dateOfBirth');
+  await page.getByRole('tab',{name:'Measure',exact:true}).click();
+  const currentHeight=page.getByRole('textbox',{name:'Current Height (cm)',exact:true});
+  await currentHeight.fill('6 ft'); await currentHeight.press('Enter');
+  // Immediate person switch must flush the 650 ms draft.
+  await page.getByRole('combobox',{name:'Person',exact:true}).selectOption('self');
+  await expect(page.getByRole('heading',{name:'My avatar',exact:true})).toBeVisible();
+  expect(person().bodyProfile.heightCm).toBe(182.88);
+  expect(body.heightCm).toBe(175); expect(bodyWrites).toEqual([]);
+  await page.getByRole('combobox',{name:'Person',exact:true}).selectOption(person().id);
+  await expect(currentHeight).toHaveValue('182.88');
+  await page.getByRole('searchbox',{name:'Find a measurement',exact:true}).fill('hand length');
+  const hand=page.getByRole('textbox',{name:'Current Hand length (cm)',exact:true});
+  await hand.fill('21'); await hand.press('Enter');
+  await expect.poll(()=>person().bodyProfile.handLengthCm).toBe(21);
+  await canvas.scrollIntoViewIfNeeded();
+  await expect.poll(async()=>(await bodySurface(canvas))?.shapeWeights.hand_length).toBeCloseTo(.8,3);
+  const goal=page.getByRole('textbox',{name:'Goal Hand length (cm)',exact:true});
+  await goal.fill('22'); await goal.press('Enter');
+  await expect.poll(()=>person().physiqueTargets.goalMetrics.handLength).toBe(22);
+  await page.getByRole('tab',{name:'Face',exact:true}).click();
+  await page.getByRole('slider',{name:'Jaw Width',exact:true}).fill('0.72');
+  await expect.poll(()=>person().physiqueTargets.morphOverrides?.goal?.jaw_width).toBe(.72);
+  expect(targets.morphOverrides).toBeUndefined();
+  expect(targets.goalMetrics).toEqual({waist:76});
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'Buddy',exact:true})).toBeVisible();
+  await page.getByRole('tab',{name:'Measure',exact:true}).click();
+  await expect(currentHeight).toHaveValue('182.88');
+  await page.getByRole('searchbox',{name:'Find a measurement',exact:true}).fill('hand length');
+  await expect(hand).toHaveValue('21'); await expect(goal).toHaveValue('22');
+  await page.getByRole('button',{name:'Full Body',exact:true}).click();
+  await paintedCanvas(canvas,test.info().outputPath('buddy-human.png'));
+  // A failed write keeps the person and draft in place, with an explicit retry.
+  failPersonSave=true;
+  await hand.fill('20'); await hand.press('Enter');
+  await expect(page.getByRole('button',{name:'Retry physique save'})).toBeVisible();
+  await page.getByRole('combobox',{name:'Person',exact:true}).selectOption('self');
+  await expect(page.getByRole('heading',{name:'Buddy',exact:true})).toBeVisible();
+  await expect(page.getByRole('alert').filter({hasText:'Measurements could not be saved'})).toBeVisible();
+  await page.getByRole('button',{name:'Retry physique save'}).click();
+  await expect.poll(()=>person().bodyProfile.handLengthCm).toBe(20);
+  await page.getByRole('combobox',{name:'Person',exact:true}).selectOption('self');
+  await expect(page.getByRole('heading',{name:'My avatar',exact:true})).toBeVisible();
+  await expect(currentHeight).toHaveValue('175');
+  await page.getByRole('button',{name:'Guided setup',exact:true}).click();
+  const setup=page.getByRole('dialog',{name:'Guided avatar setup'});
+  await expect(setup).toBeVisible();
+  for(let step=0;step<4;step++)await setup.getByRole('button',{name:'Next step',exact:true}).click();
+  const torso=setup.getByRole('textbox',{name:'Setup Torso length',exact:true});
+  await torso.fill('54 cm');await torso.press('Enter');
+  await expect.poll(()=>body.torsoLengthCm).toBe(54);
+  await setup.getByRole('button',{name:'Close setup',exact:true}).click();
+  await page.getByRole('searchbox',{name:'Find a measurement',exact:true}).fill('head tilt');
+  const currentTilt=page.getByRole('textbox',{name:'Current Head tilt (deg)',exact:true});
+  const goalTilt=page.getByRole('textbox',{name:'Goal Head tilt (deg)',exact:true});
+  await currentTilt.fill('20');await currentTilt.press('Enter');
+  await goalTilt.fill('0');await goalTilt.press('Enter');
+  await expect(goalTilt).toHaveValue('0');
+  await expect.poll(()=>targets.goalMetrics.headTiltAngle).toBe(0);
+  await page.getByRole('searchbox',{name:'Find a measurement',exact:true}).fill('');
+  for(const dismiss of await page.getByRole('button',{name:'Dismiss',exact:true}).all())await dismiss.click();
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole('combobox',{name:'Person',exact:true}).scrollIntoViewIfNeeded();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.getByRole('region',{name:'Saved people',exact:true}).screenshot({path:test.info().outputPath('people-mobile.png')});
+  expect(errors).toEqual([]);
+});

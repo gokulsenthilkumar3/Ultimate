@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "reviewedOn": "2026-10-22",
+  "scope": "Review of 1–75 implementation slices, live face/speech/pose fixes, and acceptance scope through 200",
+  "completion": {
+    "requestedCheckpoint": 200,
+    "complete": false,
+    "photorealisticHuman": false,
+    "accuratePersonalLikeness": false,
+    "fullV3RequiredChecks": "17/23 for preview pair; unchanged by runtime corrective geometry",
+    "planningCountIsRealismPercentage": false
+  },
+  "runtimeChanges": [
+    "Bundled legacy model upgrade clears the stored asset override",
+    "Calibrated jaw and smile move actual mouth vertices on clone-owned geometry",
+    "Lip-anchored oral assembly replaces fixed-position mouth primitives",
+    "Eye overlay no longer obscures iris and pupil",
+    "Current and Goal face edits save and hydrate independently",
+    "Generic presets and local personal-reference editing",
+    "Browser speech, optional dictation and transient approximate mouth timing",
+    "Fourteen selected-joint rotation handles complement four endpoint handles",
+    "Actions release enabled saved poses while preserving their joint values",
+    "Escape cancels a drag without closing the editor"
+  ],
+  "architecture": {
+    "newRuntimeModules": ["faceGeometry.js", "avatarSpeech.js", "LikenessControls.jsx", "SpeechControls.jsx"],
+    "persistence": "Existing owner-scoped body-profile and physiqueTargets save queues",
+    "skeletonOwner": "PostureRig",
+    "newDatabaseSchemas": 0,
+    "sourceFilesDeleted": 0,
+    "assetFilesModifiedInThisReview": 0,
+    "historicalEvidence": "Earlier milestone reports retained; current limitations in 13-face-studio-review.md"
+  },
+  "verification": {
+    "focusedUnitRun": {"passed": 298, "files": 46},
+    "speechLifecycleFollowup": {"passed": 10, "files": 3, "newDistinctTests": 1},
+    "typescript": "passed",
+    "targetedEslint": "passed",
+    "projectGlbValidation": {"passed": 6},
+    "officialGlbValidation": {"assets": 6, "errors": 0, "warnings": 0},
+    "assetProvenance": "passed",
+    "humanSpecification": {"passed": 84, "anatomyDocument": "up to date"},
+    "browser": {
+      "combinedInitial": {"passed": 20, "failed": 2, "total": 22},
+      "correctedFollowup": {"passed": 5, "failed": 0},
+      "allModelsAndFaceStudio": {"passed": 11, "failed": 0},
+      "distinctFlowsValidated": 30,
+      "testCorrections": [
+        "Closed-blink check now expects lash cards hidden and verifies they restore when eyes open, matching the prior 75-point repair",
+        "Measurement fixture waits for the five actual rendered surfaces before interacting, using the existing 45-second asset-readiness budget"
+      ],
+      "personalReferenceGuide": {"passed": 1, "viewportWidth": 390, "checks": "Reference picker, expand/collapse photo instructions, no horizontal overflow and reference removal"},
+      "coverage": "six model variants, all-angle views, capture, all 1–75 feature slices, face editing, independent saves, speech lifecycle, model upgrade, selected-joint drag and mobile controls"
+    },
+    "productionBuild": "passed with exit 0; existing Three.js chunk-size warning remains"
+  },
+  "reproduce": [
+    "npm exec -- vitest run src/components/morphEngine src/components/physique src/tests/modelAssetRegistry.test.js src/tests/human75Validation.test.js src/tests/physicalSkinMaterial.test.js src/lib/avatarPresentation.test.js src/lib/avatarEvidence.test.js src/lib/poseStudio.test.js --maxWorkers=2",
+    "npm exec -- playwright test --config playwright.milestone-review.config.ts",
+    "npm exec -- playwright test --config playwright.model-review.config.ts",
+    "npm run typecheck",
+    "npm run test:human-spec",
+    "npm run validate:glb",
+    "npm run check:assets",
+    "npm run build"
+  ],
+  "limitations": [
+    "New authored high-detail source, facial shapes, textures, calibrated weights and optics are still required",
+    "Personal reference mode is manual editing, not photograph-to-3D reconstruction",
+    "Speech integration uses stubbed browser APIs in tests; audible native voice and microphone not verified",
+    "Mouth timing is text-based approximation, not audio-aligned visemes",
+    "Direct manipulation does not cover every face vertex, garment or individual digit",
+    "Native GPU, Safari, contact/collision, geometric LOD and streaming gates remain open",
+    "No repository-wide green test claim, remote deployment or installed desktop update"
+  ],
+  "evidence": [
+    "../evidence/face-studio/face-neutral.png",
+    "../evidence/face-studio/face-open-mouth.png",
+    "../evidence/face-studio/head-and-torso-drag.png",
+    "../evidence/face-studio/face-editor-mobile.png"
+  ]
+}

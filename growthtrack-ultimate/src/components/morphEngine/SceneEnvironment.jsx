@@ -6,11 +6,19 @@ import * as THREE from "three";
 import ErrorBoundary from "../ErrorBoundary";
 import use3DStore from "../../store/use3DStore";
 import { getCinematicSceneProfile } from "./cinematicProfiles";
+import SpaceSky from './SpaceSky';
+import { bakeSpaceSky } from './spaceSkyMaterial';
+import { spaceSkyResolution } from '../../lib/spaceSky';
 
-function applyAtmosphere(scene, profile, preferences) {
+function applyAtmosphere(scene, profile, preferences, renderer, tier) {
   const previous = { background: scene.background, fog: scene.fog };
   const custom=preferences.backgroundMode !== 'scene';
   let texture;
+  let skyTarget;
+  if (preferences.backgroundMode === 'space') {
+    skyTarget = bakeSpaceSky(renderer, preferences.spaceSky, tier);
+    texture = skyTarget.texture;
+  }
   if(preferences.backgroundMode === 'gradient') {
     // Small local texture, independent of viewport size. No remote assets.
     const canvas=document.createElement('canvas');canvas.width=1;canvas.height=256;
@@ -25,35 +33,57 @@ function applyAtmosphere(scene, profile, preferences) {
   scene.background = texture || new THREE.Color(custom ? preferences.backgroundColor : profile.background);
   scene.fog = custom || preferences.lightingMode === 'neutral' ? null : new THREE.FogExp2(profile.fog, profile.fogDensity);
   previous.texture=texture;
+  previous.skyTarget=skyTarget;
   return previous;
 }
 
 function restoreAtmosphere(scene, previous) {
   scene.background = previous.background;
   scene.fog = previous.fog;
-  previous.texture?.dispose();
+  if (previous.skyTarget) previous.skyTarget.dispose();
+  else previous.texture?.dispose();
 }
 
-function Atmosphere({ profile }) {
+function publishSky(renderer, preset, resolution) {
+  renderer.domElement.dataset.spaceSky = preset;
+  renderer.domElement.dataset.spaceSkyResolution = String(resolution);
+  return () => {
+    delete renderer.domElement.dataset.spaceSky;
+    delete renderer.domElement.dataset.spaceSkyResolution;
+  };
+}
+
+function Atmosphere({ profile, disableSky = false }) {
   const scene = useThree((state) => state.scene);
-  const {backgroundMode,backgroundColor,backgroundBottomColor,lightingMode}=use3DStore(state=>state.avatarWorkspace);
+  const renderer = useThree((state) => state.gl);
+  const tier = use3DStore(state=>state.gpuTier);
+  const {backgroundMode,spaceSky,backgroundColor,backgroundBottomColor,lightingMode}=use3DStore(state=>state.avatarWorkspace);
 
   useEffect(() => {
-    const previous = applyAtmosphere(scene, profile, {backgroundMode,backgroundColor,backgroundBottomColor,lightingMode});
-    return () => restoreAtmosphere(scene, previous);
-  }, [profile,scene,backgroundMode,backgroundColor,backgroundBottomColor,lightingMode]);
+    const previous = applyAtmosphere(scene, profile, {backgroundMode:disableSky && backgroundMode === 'space' ? 'scene' : backgroundMode,spaceSky,backgroundColor,backgroundBottomColor,lightingMode}, renderer, tier);
+    // Expose the applied resource, rather than just the requested preference,
+    // for browser checks of loading, quality changes and exported images.
+    const clearEvidence = publishSky(renderer, previous.skyTarget ? spaceSky : 'off', previous.skyTarget ? spaceSkyResolution(tier) : 0);
+    return () => {
+      restoreAtmosphere(scene, previous);
+      clearEvidence();
+    };
+  }, [profile,scene,renderer,tier,backgroundMode,spaceSky,backgroundColor,backgroundBottomColor,lightingMode,disableSky]);
 
   return null;
 }
 
 function EnvironmentRig({ profile, lodConfig }) {
   const resolution = lodConfig?.environmentResolution ?? 256;
+  const {backgroundMode,spaceSky}=use3DStore(state=>state.avatarWorkspace);
+  const sky = backgroundMode === 'space' ? spaceSky : null;
 
   return (
     <>
       <Atmosphere profile={profile} />
       {/* One local studio capture owns scene.environment; no network HDR dependency. */}
-      <Environment key={`${profile.id}-${profile.key}`} background={false} resolution={resolution} frames={1} environmentIntensity={profile.environmentIntensity ?? 0.42}>
+      <Environment key={`${profile.id}-${profile.key}-${sky}-${resolution}`} background={false} resolution={resolution} frames={1} environmentIntensity={profile.environmentIntensity ?? 0.42}>
+        {sky && <SpaceSky preset={sky} />}
         {/* Key: primary studio spot — left-high, large area for soft wraparound */}
         <Lightformer intensity={4.0} color={profile.key} position={[-1.5, 4.2, 2.2]} rotation={[0.25, 0.15, 0]} scale={[5.0, 1.6, 1]} />
         {/* Fill: right-side large soft box — reduces harsh shadow areas */}
@@ -74,10 +104,12 @@ function EnvironmentRig({ profile, lodConfig }) {
 export default function SceneEnvironment({ lodConfig }) {
   const environment = use3DStore((state) => state.cinematicState.sceneEnvironment);
   const lightingMode=use3DStore(state=>state.avatarWorkspace.lightingMode);
+  const backgroundMode=use3DStore(state=>state.avatarWorkspace.backgroundMode);
+  const spaceSky=use3DStore(state=>state.avatarWorkspace.spaceSky);
   const profile = useMemo(()=>getCinematicSceneProfile(environment,lightingMode),[environment,lightingMode]);
 
   return (
-    <ErrorBoundary fallback={<Atmosphere profile={profile} />}>
+    <ErrorBoundary resetKey={`${environment}-${lightingMode}-${backgroundMode}-${spaceSky}`} fallback={<Atmosphere profile={profile} disableSky />}>
       <EnvironmentRig profile={profile} lodConfig={lodConfig} />
     </ErrorBoundary>
   );

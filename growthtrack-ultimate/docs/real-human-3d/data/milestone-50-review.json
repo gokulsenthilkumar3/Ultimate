@@ -1,0 +1,206 @@
+{
+  "reviewedOn": "2026-10-22",
+  "scope": "GrowthTrack 3D only; preserve current files and finance applications; extend the existing 35-point checkpoint through 50",
+  "planningPoints": {
+    "before": 35,
+    "after": 50,
+    "basis": "Three new five-point runtime slices from the existing viewer reserve; not a mesh, photorealism or source-authoring percentage",
+    "remainingViewerReserve": 5,
+    "sourceAssetReserve": 30
+  },
+  "newCheckpoints": [
+    {
+      "milestone": 8,
+      "points": 5,
+      "area": "saved local joint poses, V6a partial",
+      "features": [
+        "visible Pose inspector",
+        "14 configurable joints",
+        "four starting poses",
+        "independent Current and Goal records",
+        "neutral measurement/anatomy/comparison/timeline behavior",
+        "save retry",
+        "owner isolation",
+        "layout reset preservation"
+      ]
+    },
+    {
+      "milestone": 9,
+      "points": 5,
+      "area": "wrist/ankle two-bone reach, V6a partial",
+      "features": [
+        "four actual rig chains",
+        "rig-frame normalized targets",
+        "measured bone lengths",
+        "pole fallback",
+        "reach and bend clamping without bone stretch",
+        "keyboard sliders",
+        "read-only reached/limited markers",
+        "synchronous protected capture and restoration",
+        "quality/reload retention",
+        "paused-preview feedback"
+      ]
+    },
+    {
+      "milestone": 10,
+      "points": 5,
+      "area": "named actual-camera views, V1 extension",
+      "features": [
+        "capture actual orbit/pan/zoom",
+        "normalize to evaluated model height",
+        "save/open/rename/remove",
+        "current floor/camera/detail constraints",
+        "reset and owner safety"
+      ]
+    }
+  ],
+  "database": "Existing owner-scoped User.physiqueTargets JSON via viewerPreferences and the serialized updatePhysiqueTargets queue; no migration or owner-database rewrite",
+  "definitions": [
+    "src/config/poseStudio.json",
+    "src/config/cameraBookmarks.json"
+  ],
+  "architecture": "../10-pose-camera-architecture.md",
+  "repairs": [
+    {
+      "issue": "facial skin blended with shoulders while accessories were rigidly Head-bound",
+      "fix": "copy and repair only the default clone's dominant head/neck skin weights, with a measured neck blend; preserve other weights, source files, rest positions and custom assets",
+      "verifiedAssets": 4
+    },
+    {
+      "issue": "bone alias order selected Spine before Spine1",
+      "fix": "resolve aliases by declared priority"
+    },
+    {
+      "issue": "native slider displayed a step-rounded value while the target retained an off-step coordinate",
+      "fix": "quantize the actual endpoint to the JSON-defined target step when enabling reach"
+    },
+    {
+      "issue": "an offscreen preview could report an older target",
+      "fix": "check the applied target before reporting reach status"
+    },
+    {
+      "issue": "a manual pan in CUSTOM could leave a gesture suppression flag that skipped the next bookmark",
+      "fix": "set gesture suppression only for a changed preset/bookmark dependency and consume it without skipping explicit bookmark or named-preset requests"
+    },
+    {
+      "issue": "validation clones nested preferences even for unrelated view edits",
+      "fix": "invalidate pose surface regions by actual pose values instead of object identity, preserving manual camera framing during layout/background edits"
+    }
+  ],
+  "checks": {
+    "focusedTests": {
+      "passed": 294,
+      "files": 51,
+      "measurementIntegrationRunSeparately": true,
+      "textureTestRerunSeparately": true
+    },
+    "humanSpecTests": {
+      "passed": 84,
+      "includesDocumentationLinksAndEvidence": true
+    },
+    "combinedChromiumSmoke": {
+      "passed": 15,
+      "durationMinutes": 6,
+      "configuration": "playwright.milestone-review.config.ts",
+      "server": "isolated production build and preview",
+      "automaticShutdown": true,
+      "existingFlows": 12,
+      "newFlows": 3,
+      "includesPaintAndActualEndpointAssertions": true,
+      "includesSettledManualPanRecallRegression": true
+    },
+    "databasePersistence": {
+      "passed": true,
+      "database": "new temporary SQLite file through Prisma",
+      "covers": [
+        "independent Current/Goal joint and target records",
+        "named camera view",
+        "queued appearance and preference writes",
+        "other fields retained",
+        "owner separation",
+        "database reconnect"
+      ],
+      "httpBoundary": "test adapter; browser fixtures separately exercise UI endpoint/payload flow"
+    },
+    "typecheck": "passed",
+    "targetedEslint": "passed",
+    "productionBuild": "passed with existing large Three.js chunk warning",
+    "bundledGlbValidation": {
+      "passed": 4
+    },
+    "assetProvenance": "passed",
+    "trackedFileDeletions": 0,
+    "financeApplicationEdits": 0,
+    "newGlbFilesOrTextureBakes": 0,
+    "finalPoseRegionRefinementSmoke": {
+      "passed": 3,
+      "durationMinutes": 1.2,
+      "includesVerifiedDrawingBufferEvidence": true,
+      "automaticShutdown": true
+    },
+    "retainedPngIntegrity": {
+      "method": "independent PNG IDAT inflate and row-filter decode",
+      "images": [
+        {
+          "name": "milestone-08-head-turn.png",
+          "width": 559,
+          "height": 609,
+          "foregroundPixels": 25419,
+          "lowerBodyPixels": 6796,
+          "foregroundY": [
+            113,
+            494
+          ]
+        },
+        {
+          "name": "milestone-09-wrist-reach.png",
+          "width": 559,
+          "height": 609,
+          "foregroundPixels": 24610,
+          "lowerBodyPixels": 6796,
+          "foregroundY": [
+            113,
+            494
+          ]
+        },
+        {
+          "name": "milestone-10-camera-oblique.png",
+          "width": 559,
+          "height": 609,
+          "foregroundPixels": 23351,
+          "lowerBodyPixels": 7077,
+          "foregroundY": [
+            118,
+            488
+          ]
+        }
+      ]
+    }
+  },
+  "testCorrections": [
+    "Wait for the saved payload rather than dereferencing a not-yet-present optional pose record.",
+    "Use valid HTML range values and existing accessible labels.",
+    "Verify quality replacement by geometry instance: the shipped full/lite body vertex counts are both 16001.",
+    "Require actual requested normalized endpoints and lower-body painted pixels after resuming the offscreen canvas; earlier screenshots could catch a blank or partially painted frame.",
+    "An existing anatomy surface texture test exceeded its unchanged five-second timeout alongside browser rendering; it passed alone without modifying the test or product timeout.",
+    "Retain the verified drawing-buffer PNG after test-only GPU completion and independently decode the retained files. Some image previews displayed incompletely; full-body pixel extents are confirmed in the actual PNGs. No image editing or product render-loop synchronization."
+  ],
+  "visualEvidence": [
+    "../evidence/milestone-08-head-turn.png",
+    "../evidence/milestone-09-wrist-reach.png",
+    "../evidence/milestone-09-protected-export.png",
+    "../evidence/milestone-09-mobile-controls.png",
+    "../evidence/milestone-10-camera-oblique.png"
+  ],
+  "remainingGates": [
+    "pointer dragging and pose blending",
+    "FABRIK head/hips",
+    "walking foot lock",
+    "collision and anatomical joint calibration",
+    "authored hand/finger/toe rig",
+    "separate cornea/wetline and advanced face correctives",
+    "source mesh/rig/texture authoring and complete v3 conformance",
+    "native-device/Safari performance"
+  ],
+  "repositoryWideSuite": "Not claimed; previously documented unrelated failures remain outside this focused verification"
+}

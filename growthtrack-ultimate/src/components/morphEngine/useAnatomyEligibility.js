@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import useStore from '../../store/useStore';
+import useAvatarRecord from '../../hooks/useAvatarRecord';
 import { anatomyEligibility } from './anatomyPolicy';
 
 /** One eligibility decision for the renderer and the editor, from the owner's
     saved date of birth and the loaded asset's declared anatomy. */
 export function useAnatomyEligibility(diagnostics) {
-  const dateOfBirth = useStore(state => state.user?.dob ?? state.user?.dateOfBirth ?? null);
+  const { dateOfBirth } = useAvatarRecord();
   const bodyBase = diagnostics?.modelAsset?.preset ?? null;
   const assetAnatomySex = diagnostics?.privateAnatomySex ?? null;
   const hasPrivateAnatomy = Boolean(diagnostics?.hasPrivateAnatomy);

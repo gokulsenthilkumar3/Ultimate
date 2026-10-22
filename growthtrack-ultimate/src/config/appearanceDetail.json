@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "eyes": {
+    "defaults": { "color": "#6b3b20", "scleraColor": "#ffffff", "pupilMode": "fixed", "pupilSizeMm": 3.8, "detail": 0.6, "limbalRing": true, "seed": 1 },
+    "shades": [
+      { "id": "dark-brown", "label": "Dark brown", "hex": "#39251c" },
+      { "id": "brown", "label": "Brown", "hex": "#6b3b20" },
+      { "id": "hazel", "label": "Hazel", "hex": "#7c7444" },
+      { "id": "amber", "label": "Amber", "hex": "#aa782f" },
+      { "id": "green", "label": "Green", "hex": "#507453" },
+      { "id": "blue", "label": "Blue", "hex": "#4e7897" },
+      { "id": "grey", "label": "Grey", "hex": "#7c858b" }
+    ],
+    "pupilModes": [
+      { "id": "fixed", "label": "Fixed size" },
+      { "id": "exposure", "label": "Follow scene exposure" }
+    ],
+    "controls": [
+      { "key": "eyePupilSizeMm", "property": "pupilSizeMm", "label": "Pupil diameter", "min": 2, "max": 7, "step": 0.1, "unit": "mm" },
+      { "key": "eyeIrisDetail", "property": "detail", "label": "Iris detail", "min": 0, "max": 1, "step": 0.01, "unit": "%" }
+    ],
+    "response": { "seconds": 0.35, "maxDeltaSeconds": 0.1, "referenceExposure": 1 },
+    "shader": {
+      "irisDiameterMm": 11.7,
+      "irisRadiusRatio": 0.39,
+      "frontCapFraction": 0.04,
+      "pupilColor": "#070909",
+      "fibreFrequency": 128,
+      "secondaryFrequency": 47,
+      "collaretteRadius": 0.43,
+      "limbalStart": 0.82,
+      "limbalStrength": 0.65
+    }
+  },
+  "hair": {
+    "defaults": { "density": 1, "grey": 0, "seed": 1, "color": "#21140f" },
+    "greyColor": "#c9c5be",
+    "strandColumns": 192,
+    "controls": [
+      { "key": "hairDensity", "property": "density", "label": "Hair density", "min": 0, "max": 1, "step": 0.01 },
+      { "key": "hairGrey", "property": "grey", "label": "Grey hair", "min": 0, "max": 1, "step": 0.01 }
+    ],
+    "styles": [
+      { "id": "bald", "available": true },
+      { "id": "buzz", "available": false },
+      { "id": "short", "available": true },
+      { "id": "medium", "available": false },
+      { "id": "long", "available": false }
+    ],
+    "shades": [
+      { "id": "black", "label": "Black", "hex": "#171310" },
+      { "id": "dark-brown", "label": "Dark brown", "hex": "#302015" },
+      { "id": "brown", "label": "Brown", "hex": "#62412b" },
+      { "id": "chestnut", "label": "Chestnut", "hex": "#83502d" },
+      { "id": "auburn", "label": "Auburn", "hex": "#87442a" },
+      { "id": "blonde", "label": "Blonde", "hex": "#b89558" },
+      { "id": "light-blonde", "label": "Light blonde", "hex": "#d8c28e" },
+      { "id": "silver", "label": "Silver", "hex": "#c9c5be" }
+    ]
+  },
+  "freckles": {
+    "defaults": { "density": 0, "sizeMm": 0.65, "contrast": 0.45, "seed": 1 },
+    "cellMm": 5,
+    "maxCellCoverage": 0.4,
+    "radiusVariation": [0.45, 1.0],
+    "aspectVariation": [0.8, 1.25],
+    "controls": [
+      { "key": "skinFreckleDensity", "property": "density", "label": "Freckle density", "min": 0, "max": 1, "step": 0.01, "unit": "%" },
+      { "key": "skinFreckleSizeMm", "property": "sizeMm", "label": "Freckle radius", "min": 0.25, "max": 1.2, "step": 0.05, "unit": "mm" },
+      { "key": "skinFreckleContrast", "property": "contrast", "label": "Freckle contrast", "min": 0, "max": 1, "step": 0.01, "unit": "%" }
+    ]
+  },
+  "seed": { "min": 1, "max": 65535, "step": 1 }
+}

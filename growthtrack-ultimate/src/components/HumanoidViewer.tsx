@@ -35,7 +35,8 @@ import SocialShareModal from './SocialShareModal';
 import PhysiqueDataPanel from './PhysiqueDataPanel';
 import use3DStore, { CINEMATIC_PRESETS } from '../store/use3DStore';
 import useStore from '../store/useStore';
-import { BODY_APPEARANCE_FIELDS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, getInvalidBodyProfileMeasurements, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile, publicBodyMetrics } from '../lib/physiqueProfile';
+import { BODY_APPEARANCE_FIELDS, BODY_METRIC_GROUPS, BODY_METRIC_MAP, BODY_METRICS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, getInvalidBodyProfileMeasurements, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile, publicBodyMetrics } from '../lib/physiqueProfile';
+import { avatarMetricSupport } from '../lib/avatarMetricSupport';
 import { BODY_METRIC_RANGES, validateBodyMetric } from '../lib/bodyMetricContract';
 import { buildRendererQualityGate } from '../lib/rendererQualityGate';
 import { getMetricCompleteness, resolveBodyMetrics } from '../lib/bodyMetricFallbacks';
@@ -47,21 +48,40 @@ import BodyPartNavigator from './physique/BodyPartNavigator';
 import { BODY_PART_DRAG_TYPE, readDroppedBodyPart, focusInspectionPart } from './physique/bodyPartDrag';
 import { BODY_PART_MAP } from './morphEngine/bodyRegions';
 import MeasurementHelp from './physique/MeasurementHelp';
+import ModelMeasurementCheck from './physique/ModelMeasurementCheck';
 import { getBodyMeasurementDefinition } from '../lib/bodyMeasurementDefinitions';
 import { createAnatomyCustomization } from '../lib/anatomyCustomization';
-import { computeHeightScale } from './morphEngine/metricsToBlendshapes';
+import { AvatarParameterMatrix, FACE_SHAPE_CONTROLS, computeHeightScale } from './morphEngine/metricsToBlendshapes';
 import { trackEvent } from '../lib/analytics';
 import AvatarEvidence from './physique/AvatarEvidence';
 import AvatarViewOptions from './physique/AvatarViewOptions';
 import WardrobeOptions from './physique/WardrobeOptions';
+import SkinLayerControls from './physique/SkinLayerControls';
+import SurfaceDetailControls from './physique/SurfaceDetailControls';
+import FreckleControls from './physique/FreckleControls';
+import HairDetailControls from './physique/HairDetailControls';
+import EyeAppearanceControls from './physique/EyeAppearanceControls';
+import SpeechControls from './physique/SpeechControls';
+import LikenessControls from './physique/LikenessControls';
+import AvatarPeopleWorkspace from './physique/AvatarPeopleWorkspace';
+import useAvatarRecord from '../hooks/useAvatarRecord';
+import PoseStudioControls from './physique/PoseStudioControls';
+import CameraBookmarkControls from './physique/CameraBookmarkControls';
+import { patchPose,POSE_STUDIO } from '../lib/poseStudio';
+import {HUMAN_SURFACE,microStrength} from '../lib/humanSurface';
+import { inspectAvatarSurfaces } from './morphEngine/captureRuntime';
+import { readBookmarkCamera } from './morphEngine/cameraBookmarkRuntime';
+import { APPEARANCE_DETAIL } from '../lib/appearanceDetail';
+import { RESET_SKIN_LAYERS } from './body3d/skinTanLines';
 import {preloadWardrobeAsset} from './morphEngine/useWardrobeAsset';
 import useWardrobePreferences from '../hooks/useWardrobePreferences';
 import useAvatarPresentation from '../hooks/useAvatarPresentation';
+import { SKIN_APPEARANCE_PRESETS } from '../lib/skinAppearancePresets';
 import useAvatarPresentationMode from '../hooks/useAvatarPresentationMode';
 import {captureAvatarImage} from './morphEngine/captureRuntime';
 import {safeFilename} from '../lib/avatarCapturePolicy';
 import AnimationPanel from './morphEngine/AnimationPanel';
-import { AVATAR_EXPOSURE, DEFAULT_AVATAR_PRESENTATION } from '../lib/avatarPresentation';
+import { AVATAR_EXPOSURE } from '../lib/avatarPresentation';
 import { buildAvatarEvidence } from '../lib/avatarEvidence';
 import '../styles/avatar-workspace.css';
 import { formatDate, formatMeasurement, formatNumber, getMeasurementUnit } from '../utils/userFormatters';
@@ -153,14 +173,7 @@ const WARDROBE_OPTIONS = [
 
 const QUALITY_OPTIONS = ['LOW', 'MED', 'HIGH'];
 
-const FITZPATRICK_SWATCHES = [
-  { id: 'I',   hex: '#FFF0E0', label: 'Very Light' },
-  { id: 'II',  hex: '#F5D5B0', label: 'Light'      },
-  { id: 'III', hex: '#E8B88A', label: 'Medium'     },
-  { id: 'IV',  hex: '#C68642', label: 'Olive'      },
-  { id: 'V',   hex: '#8D5524', label: 'Brown'      },
-  { id: 'VI',  hex: '#4A2912', label: 'Dark'       },
-];
+const FITZPATRICK_SWATCHES = SKIN_APPEARANCE_PRESETS;
 
 const POSTURE_PRESETS = [
   { id: 'relaxed',     label: 'Relaxed',     posture: { headTiltAngle: 8,  pelvicTilt: 12, shoulderRounding: 15 } },
@@ -250,9 +263,14 @@ function AnatomySVG({ depth }: { depth: number }) {
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HumanoidViewer() {
+  return <AvatarPeopleWorkspace><PersonViewer /></AvatarPeopleWorkspace>;
+}
+
+function PersonViewer() {
+  const avatarRecord = useAvatarRecord();
   const user = useStore((state: any) => state.user);
   const toast: any = useToast();
-  const legacyUser = useStore((s: any) => s.user || EMPTY_OBJECT);
+  const legacyUser = avatarRecord.legacyUser;
 
   // ── Store
   const viewMode          = use3DStore((s) => s.viewMode);
@@ -265,6 +283,12 @@ export default function HumanoidViewer() {
   const captureBusy = useRef(false);
   const [partDragOver, setPartDragOver] = useState(false);
   const [guideMetric, setGuideMetric] = useState('chest');
+  const [metricGroup, setMetricGroup] = useState('essentials');
+  const [metricSearch, setMetricSearch] = useState('');
+  const shownMetrics = (metricSearch.trim() || metricGroup === 'all' ? BODY_METRICS
+    : metricGroup === 'essentials' ? Object.keys(METRIC_LABELS).map(key => BODY_METRIC_MAP[key])
+      : BODY_METRIC_GROUPS.find(group => group.id === metricGroup)?.metrics || [])
+    .filter(metric => `${metric.label} ${metric.key}`.toLowerCase().includes(metricSearch.trim().toLowerCase()));
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareImageSrc, setShareImageSrc] = useState(null);
   
@@ -286,6 +310,8 @@ export default function HumanoidViewer() {
   const rendererTelemetry = use3DStore((s) => s.rendererQualityTelemetry);
   const morphOverrides    = use3DStore((s) => s.cloneA?.weights || EMPTY_OBJECT);
   const manualMorphOverrides = use3DStore((s) => s.morphOverrides?.current || EMPTY_OBJECT);
+  const faceOverrides = use3DStore((s) => s.morphOverrides?.[s.avatarWorkspace.avatarContext] || EMPTY_OBJECT);
+  const faceWeights = use3DStore((s) => (s.avatarWorkspace.avatarContext==='goal'?s.cloneB:s.cloneA)?.weights || EMPTY_OBJECT);
   const quality           = use3DStore((s) => s.gpuTier);
   const cinematic         = use3DStore((s) => s.cinematicState);
   const anatomyPreview = use3DStore(s=>s.anatomyPreview);
@@ -352,9 +378,9 @@ export default function HumanoidViewer() {
   const setMilestones     = use3DStore((s) => s.setMilestones);
   const [cameraZoom, setCameraZoomState] = useState(() => use3DStore.getState().cameraZoom ?? 1);
 
-  const bodyProfileState = useStore((s: any) => s.bodyProfile);
-  const metricLogsState = useStore((s: any) => s.metric_logs);
-  const persistedPhysiqueState = useStore((s: any) => s.physiqueTargets);
+  const bodyProfileState = avatarRecord.bodyProfile;
+  const metricLogsState = avatarRecord.metricLogs;
+  const persistedPhysiqueState = avatarRecord.physiqueTargets;
   const bodyProfile = bodyProfileState || EMPTY_OBJECT;
   const globalMetricLogs = metricLogsState || EMPTY_ARRAY;
   const persistedPhysique = persistedPhysiqueState || EMPTY_OBJECT;
@@ -362,6 +388,7 @@ export default function HumanoidViewer() {
   const anatomyDraftRef=useRef(anatomyDraft);
   const anatomyPendingRef=useRef(false);
   const profileSaveRevisionRef=useRef(0);
+  const profileDraftRef=useRef<null|{ownerId:string|undefined,current:any,goal:any,morphOverrides:any,goalMorphOverrides:any}>(null);
   const normalizedBodyProfile = useMemo(() => mergeBodyProfileSources(bodyProfile, legacyUser), [bodyProfile, legacyUser]);
   const invalidProfileMeasurements = useMemo(
     () => getInvalidBodyProfileMeasurements(normalizedBodyProfile, persistedPhysique),
@@ -377,30 +404,64 @@ export default function HumanoidViewer() {
   }), [cinematic, modelDiagnostics, persistedPhysique?.renderSettings, quality, renderMode, rendererTelemetry]);
   const modelEvidence = useMemo(() => buildAvatarEvidence({ diagnostics:modelDiagnostics, metrics:currentMetrics, qualityGate }), [modelDiagnostics,currentMetrics,qualityGate]);
   const presentationPreferences = useAvatarPresentation();
+  const selectPoseJoint=useCallback((jointId: string)=>{use3DStore.setState({poseDragJoint:jointId});},[]);
+  useEffect(()=>{
+    const changeTarget=(event: Event)=>{
+      const detail=(event as CustomEvent).detail,state=use3DStore.getState();
+      if(!(event.target instanceof HTMLCanvasElement) || !modelDropTarget.current?.contains(event.target) || detail?.ownerId!==useStore.getState().user?.id)return;
+      const jointDrag=POSE_STUDIO.joints.some((joint: any)=>joint.id===detail?.jointId);
+      if(!['current','goal'].includes(detail?.context) || !jointDrag && !POSE_STUDIO.limbs.some((limb: any)=>limb.id===detail?.limbId))return;
+      if(detail.phase!=='cancel' && (state.viewMode!=='SOLO' || state.avatarWorkspace.avatarContext!==detail.context || !state.avatarWorkspace.poseStudio[detail.context].enabled))return;
+      if(detail.target!==null && (!Array.isArray(detail.target) || detail.target.length!==3 || !detail.target.every((value: any)=>typeof value==='number' && Number.isFinite(value))))return;
+      const current=state.avatarWorkspace.poseStudio[detail.context],key=jointDrag?'joints':'targets',id=jointDrag?detail.jointId:detail.limbId,values={...current[key]};
+      if(detail.target===null){if(detail.phase!=='cancel')return;delete values[id];}else values[id]=detail.target;
+      presentationPreferences.change({poseStudio:patchPose(state.avatarWorkspace.poseStudio,detail.context,{...current,[key]:values})});
+    };
+    window.addEventListener(HUMAN_SURFACE.drag.event,changeTarget);return()=>window.removeEventListener(HUMAN_SURFACE.drag.event,changeTarget);
+  },[presentationPreferences.change]);
   const prefersReducedMotion = useStore((s: any) => s.reducedMotion) || rendererTelemetry.reducedMotion;
   const presentation = useAvatarPresentationMode(viewportRef, Boolean(prefersReducedMotion));
-  const updateBodyProfile = useStore((s: any) => s.updateBodyProfile);
-  const updatePhysiqueTargets = useStore((s: any) => s.updatePhysiqueTargets);
-  const saveMetricLog = useStore((s: any) => s.saveMetricLog);
+  const updateBodyProfile = avatarRecord.updateBodyProfile;
+  const updatePhysiqueTargets = avatarRecord.updatePhysiqueTargets;
+  const saveMetricLog = avatarRecord.saveMetricLog;
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingProfileSaveRef=useRef<null|(()=>Promise<void>)>(null);
+  const profileSaveChainRef=useRef<Promise<void>>(Promise.resolve());
   const renderPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRenderSaveRef = useRef<null|(() => Promise<void>)>(null);
+  const renderSaveChainRef = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => avatarRecord.registerFlush(async () => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    await pendingProfileSaveRef.current?.();
+    await profileSaveChainRef.current;
+    if (profileDraftRef.current) throw new Error('Measurements could not be saved. Use Retry physique save before switching people.');
+    if (renderPersistTimerRef.current) clearTimeout(renderPersistTimerRef.current);
+    await pendingRenderSaveRef.current?.();
+    await renderSaveChainRef.current;
+    if (pendingRenderSaveRef.current) throw new Error('Lighting settings could not be saved. Try switching again.');
+  }), [avatarRecord.registerFlush]);
 
   const queueProfileSave = useCallback((nextCurrent: any, nextGoal: any, nextMorphOverrides: any = manualMorphOverrides, nextAnatomy: any = anatomyDraft) => {
     const sequence=++profileSaveRevisionRef.current;
     const saveOwnerId=useStore.getState().user?.id;
+    const nextGoalMorphOverrides=use3DStore.getState().morphOverrides.goal;
+    profileDraftRef.current={ownerId:saveOwnerId,current:nextCurrent,goal:nextGoal,morphOverrides:nextMorphOverrides,goalMorphOverrides:nextGoalMorphOverrides};
     setAvatarWorkspace({ saveStatus: 'saving' });
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-    const saveDraft=async () => {
-      if(pendingProfileSaveRef.current===saveDraft) pendingProfileSaveRef.current=null;
-      if(useStore.getState().user?.id!==saveOwnerId) return;
+    const persistDraft=async () => {
+      if(sequence!==profileSaveRevisionRef.current || useStore.getState().user?.id!==saveOwnerId) return;
       try {
         const appearanceMetrics = Object.fromEntries(BODY_APPEARANCE_FIELDS.flatMap(([key]) => (
           nextCurrent?.[key] === undefined || nextCurrent?.[key] === null || nextCurrent?.[key] === ''
             ? []
             : [[key, nextCurrent[key]]]
         )));
-        await updateBodyProfile(metricsToBodyProfile(nextCurrent, nextGoal));
+        const profilePayload=metricsToBodyProfile(nextCurrent,nextGoal);
+        if(nextCurrent.avatarAsset===''){profilePayload.avatarAsset=null;appearanceMetrics.avatarAsset=null;}
+        await updateBodyProfile(profilePayload);
+        // A later edit owns the draft. An older body-profile response must not
+        // continue publishing an obsolete appearance/goal snapshot.
+        if(sequence!==profileSaveRevisionRef.current || useStore.getState().user?.id!==saveOwnerId)return;
         await updatePhysiqueTargets((latest: any) => ({
           ...(latest || {}),
           goalMetrics: nextGoal,
@@ -417,13 +478,22 @@ export default function HumanoidViewer() {
           morphOverrides: {
             ...(latest?.morphOverrides || {}),
             current: nextMorphOverrides,
+            goal: nextGoalMorphOverrides,
           },
           anatomyV2: createAnatomyCustomization(nextAnatomy),
         }));
-        if(sequence===profileSaveRevisionRef.current) { anatomyPendingRef.current=false;setAvatarWorkspace({ saveStatus: 'saved' }); }
+        if(sequence===profileSaveRevisionRef.current && useStore.getState().user?.id===saveOwnerId) { profileDraftRef.current=null;anatomyPendingRef.current=false;setAvatarWorkspace({ saveStatus: 'saved' }); }
       } catch {
-        if(sequence===profileSaveRevisionRef.current) { setAvatarWorkspace({ saveStatus: 'error' });toast.error('Could not save physique measurements.'); }
+        if(sequence===profileSaveRevisionRef.current && useStore.getState().user?.id===saveOwnerId) { setAvatarWorkspace({ saveStatus: 'error' });toast.error('Could not save physique changes.'); }
       }
+    };
+    const saveDraft=() => {
+      if(pendingProfileSaveRef.current===saveDraft) pendingProfileSaveRef.current=null;
+      // Keep network writes ordered as well as render-cache hydration. A slow
+      // older response must never arrive after a newer profile was saved.
+      const queued=profileSaveChainRef.current.then(persistDraft,persistDraft);
+      profileSaveChainRef.current=queued;
+      return queued;
     };
     pendingProfileSaveRef.current=saveDraft;
     persistTimerRef.current = setTimeout(saveDraft,650);
@@ -440,15 +510,37 @@ export default function HumanoidViewer() {
     queueProfileSave(currentMetrics, goalMetrics, {});
   }, [clearMorphOverrides, currentMetrics, goalMetrics, queueProfileSave]);
 
+  const applyFaceChanges = (patch: Record<string,number>) => {
+    const state=use3DStore.getState(),context=state.avatarWorkspace.avatarContext;
+    const next={...state.morphOverrides,[context]:{...state.morphOverrides[context],...patch}};
+    if(state.viewMode==='TIMELINE')setViewMode('SOLO');
+    setMorphOverrides(next);queueProfileSave(currentMetrics,goalMetrics,next.current);
+  };
+  const resetFaceToMeasurements=()=>{
+    const state=use3DStore.getState(),context=state.avatarWorkspace.avatarContext;
+    const matrix=new AvatarParameterMatrix(context==='goal'?state.cloneB.metrics:state.cloneA.metrics,state.morphOverrides[context],context==='goal'?state.cloneA.metrics:{}).withoutFaceOverrides();
+    const next={...state.morphOverrides,[context]:matrix.overrides};
+    setMorphOverrides(next);queueProfileSave(currentMetrics,goalMetrics,next.current);
+  };
+  const beginMotion = () => {
+    const state=use3DStore.getState(),context=state.avatarWorkspace.avatarContext;
+    setViewMode('SOLO');
+    presentationPreferences.change({poseStudio:patchPose(state.avatarWorkspace.poseStudio,context,{...state.avatarWorkspace.poseStudio[context],enabled:false})});
+  };
+
   const queueRenderSettingsSave = useCallback((nextSettings: any) => {
     if (renderPersistTimerRef.current) clearTimeout(renderPersistTimerRef.current);
-    renderPersistTimerRef.current = setTimeout(async () => {
+    const save = async () => {
       try {
         await updatePhysiqueTargets((latest: any) => ({ ...(latest || {}), renderSettings: nextSettings }));
+        if (pendingRenderSaveRef.current === flush) pendingRenderSaveRef.current = null;
       } catch {
         toast.error('Could not save cinematic settings.');
       }
-    }, 450);
+    };
+    const flush = () => { renderSaveChainRef.current = renderSaveChainRef.current.then(save, save); return renderSaveChainRef.current; };
+    pendingRenderSaveRef.current = flush;
+    renderPersistTimerRef.current = setTimeout(flush, 450);
   }, [toast, updatePhysiqueTargets]);
 
   const handleCinematicSetting = useCallback((key: string, value: any) => {
@@ -478,7 +570,7 @@ export default function HumanoidViewer() {
     if (viewMode === 'TIMELINE') setViewMode('SOLO');
     setAvatarWorkspace({ avatarContext: 'current', workspaceMode: 'current' });
     updateCurrentMetric(key, value);
-    queueProfileSave(next, goalMetrics, manualMorphOverrides);
+    queueProfileSave(next, goalMetrics, use3DStore.getState().morphOverrides.current);
   }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, setAvatarWorkspace, setViewMode, toast, updateCurrentMetric, viewMode]);
 
   const handleGoalValue = useCallback((key: string, rawValue: string) => {
@@ -493,13 +585,13 @@ export default function HumanoidViewer() {
     if (viewMode === 'TIMELINE') setViewMode('SOLO');
     setAvatarWorkspace({ avatarContext: 'goal', workspaceMode: 'goal' });
     updateGoalMetric(key, value);
-    queueProfileSave(currentMetrics, next, manualMorphOverrides);
+    queueProfileSave(currentMetrics, next, use3DStore.getState().morphOverrides.current);
   }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, setAvatarWorkspace, setViewMode, toast, updateGoalMetric, viewMode]);
 
-  const updateCurrentAppearance = useCallback((key: string, value: string | number) => {
+  const updateCurrentAppearance = useCallback((key: string, value: string | number | boolean) => {
     const next = { ...currentMetrics, [key]: value };
     updateCurrentMetric(key as any, value as any);
-    queueProfileSave(next, goalMetrics, manualMorphOverrides);
+    queueProfileSave(next, goalMetrics, use3DStore.getState().morphOverrides.current);
   }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateCurrentMetric]);
 
   const selectSkinTone = (tone: string, context = 'current') => {
@@ -508,10 +600,10 @@ export default function HumanoidViewer() {
     else {setCurrentMetrics(next); queueProfileSave(next, goalMetrics, manualMorphOverrides);}
   };
 
-  const updateGoalAppearance = useCallback((key: string, value: string | number) => {
+  const updateGoalAppearance = useCallback((key: string, value: string | number | boolean) => {
     const next = { ...goalMetrics, [key]: value };
     updateGoalMetric(key as any, value as any);
-    queueProfileSave(currentMetrics, next, manualMorphOverrides);
+    queueProfileSave(currentMetrics, next, use3DStore.getState().morphOverrides.current);
   }, [currentMetrics, goalMetrics, manualMorphOverrides, queueProfileSave, updateGoalMetric]);
 
   const saveAnatomyDraft = useCallback((nextAnatomy: any) => {
@@ -559,7 +651,20 @@ export default function HumanoidViewer() {
   const skinTone = currentMetrics.skinTone || 'IV';
   const skinEditorMetrics = avatarWorkspace.avatarContext === 'goal' ? {...currentMetrics,...goalMetrics} : currentMetrics;
   const skinEditorTone = skinEditorMetrics.skinTone || 'IV';
+  const surfaceDetailStatus = renderMode === 'SPRITE' ? 'Pore detail needs interactive 3D.'
+    : !modelDiagnostics || modelDiagnostics.health !== 'healthy' ? 'Checking skin detail availability…'
+      : quality === 'LOW' ? 'Pore detail paused by Performance quality.'
+        : microStrength(skinEditorMetrics.skinMicroDetail) > 0 ? 'Pore detail on · inspect skin close up.' : 'Pore detail off · adjust it in Skin detail.';
   const updateSkinAppearance = avatarWorkspace.avatarContext === 'goal' ? updateGoalAppearance : updateCurrentAppearance;
+  const resetSkinLayers = () => {
+    if (avatarWorkspace.avatarContext === 'goal') {
+      const next = { ...goalMetrics, ...RESET_SKIN_LAYERS };
+      setGoalMetrics(next); queueProfileSave(currentMetrics, next, manualMorphOverrides);
+    } else {
+      const next = { ...currentMetrics, ...RESET_SKIN_LAYERS };
+      setCurrentMetrics(next); queueProfileSave(next, goalMetrics, manualMorphOverrides);
+    }
+  };
   const eyeColor = currentMetrics.eyeColor || '#6b3b20';
   const hairA = { style: currentMetrics.hairStyle || 'short', color: currentMetrics.hairColor || '#2c1a0a' };
   const hairB = { style: goalMetrics.hairStyle || 'short', color: goalMetrics.hairColor || '#2c1a0a' };
@@ -574,16 +679,16 @@ export default function HumanoidViewer() {
     if (modelDiagnostics && sensitiveUnlocked && !anatomy.allowed) setWardrobe('UNDERWEAR');
   }, [anatomy.allowed, modelDiagnostics, sensitiveUnlocked, setWardrobe]);
 
-  const updateUser = useStore((s: any) => s.updateUser);
+  const updateDateOfBirth = avatarRecord.updateDateOfBirth;
   const [dobDraft, setDobDraft] = useState('');
   const [savingDob, setSavingDob] = useState(false);
   const saveDateOfBirth = useCallback(async () => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dobDraft)) { toast.error('Enter your date of birth.'); return; }
     setSavingDob(true);
-    try { await updateUser({ dob: dobDraft }); toast.success('Date of birth saved.'); }
+    try { await updateDateOfBirth(dobDraft); toast.success('Date of birth saved.'); }
     catch (error: any) { toast.error(error?.message || 'Date of birth could not be saved.'); }
     finally { setSavingDob(false); }
-  }, [dobDraft, toast, updateUser]);
+  }, [dobDraft, toast, updateDateOfBirth]);
 
   // Timeline playback
   const [timelinePlaying, setTimelinePlaying] = useState(false);
@@ -596,9 +701,18 @@ export default function HumanoidViewer() {
 
   // ── Persist tab selection
   const handleTabChange = useCallback((id: string) => {
-    setAvatarWorkspace({ inspectorSection: id });
+    setAvatarWorkspace({ inspectorOpen: true, inspectorSection: id });
     sessionStorage.setItem('chamber_tab', id);
   }, [setAvatarWorkspace]);
+
+  const openModelControls = useCallback((id: string) => {
+    handleTabChange(id);
+    requestAnimationFrame(() => {
+      const panel = document.getElementById('avatar-editor-panel');
+      panel?.focus({ preventScroll: true });
+      panel?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+    });
+  }, [handleTabChange]);
 
   const openAnatomyEditor = useCallback(() => {
     setShowEditor(true);
@@ -639,17 +753,21 @@ export default function HumanoidViewer() {
     milestones: persistedPhysique.milestones, morphOverrides: persistedPhysique.morphOverrides,
   }), [persistedPhysique.privateMetrics,persistedPhysique.appearanceMetrics,persistedPhysique.goalMetrics,persistedPhysique.anatomyV2,persistedPhysique.milestones,persistedPhysique.morphOverrides]);
   useEffect(() => {
-    if (persistedPhysique.renderSettings) setCinematicState(persistedPhysique.renderSettings);
+    setCinematicState(persistedPhysique.renderSettings || {});
   }, [persistedPhysique.renderSettings,setCinematicState]);
 
   // ── Hydrate the renderer cache from persisted physique records.
   useEffect(() => {
+    // Saving the body and appearance records is a two-request operation. Keep
+    // the latest local edit while either response rehydrates the render cache.
+    const draft=profileDraftRef.current?.ownerId===useStore.getState().user?.id?profileDraftRef.current:null;
     const persistedCurrent = {
       ...(persistedModelRecords?.privateMetrics || {}),
       ...(persistedModelRecords?.appearanceMetrics || {}),
       ...bodyProfileToMetrics(normalizedBodyProfile),
+      ...(draft?.current || {}),
     };
-    const persistedGoal = bodyProfileToGoals(normalizedBodyProfile, persistedModelRecords);
+    const persistedGoal = draft?.goal || bodyProfileToGoals(normalizedBodyProfile, persistedModelRecords);
     const migratedAnatomy = createAnatomyCustomization(anatomyPendingRef.current ? anatomyDraftRef.current : persistedModelRecords?.anatomyV2);
     const currentRestMeasurements = migratedAnatomy.current.penis.resting.measurements ||= {};
     const goalRestMeasurements = migratedAnatomy.goal.penis.resting.measurements ||= {};
@@ -666,7 +784,7 @@ export default function HumanoidViewer() {
     const persistedMorphOverrides = persistedModelRecords?.morphOverrides && typeof persistedModelRecords.morphOverrides === 'object'
       ? persistedModelRecords.morphOverrides
       : { current: {}, goal: {} };
-    setMorphOverrides(persistedMorphOverrides);
+    setMorphOverrides(draft?{...persistedMorphOverrides,current:draft.morphOverrides,goal:draft.goalMorphOverrides}:persistedMorphOverrides);
     setAnatomyDraft(migratedAnatomy);
     if(!anatomyPendingRef.current) anatomyDraftRef.current=migratedAnatomy;
     use3DStore.getState().setAnatomyCustomization(migratedAnatomy);
@@ -791,27 +909,31 @@ export default function HumanoidViewer() {
 
   return (
     <>
-    <div className="chamber fade-in chamber-fullscreen-wrap" data-presentation={presentation.active ? 'on' : 'off'} data-density={avatarWorkspace.density} data-interface-effects={avatarWorkspace.interfaceEffects ? 'on' : 'off'} style={{ '--avatar-inspector-width': `${avatarWorkspace.inspectorWidth}px` } as React.CSSProperties}>
+    <div className="chamber fade-in chamber-fullscreen-wrap" data-presentation={presentation.active ? 'on' : 'off'} data-inspector={showEditor ? 'open' : 'closed'} data-density={avatarWorkspace.density} data-interface-effects={avatarWorkspace.interfaceEffects ? 'on' : 'off'} style={{ '--avatar-inspector-width': `${avatarWorkspace.inspectorWidth}px` } as React.CSSProperties}>
       <header className="chamber-topbar">
         <div className="chamber-topbar__brand">
           <div className="chamber-topbar__title-row">
-            <h2 className="chamber-topbar__title">My avatar</h2>
+            <h2 className="chamber-topbar__title">{avatarRecord.name}</h2>
             <span className="chamber-context-label">{avatarWorkspace.avatarContext === 'goal' ? 'Goal' : 'Current'}</span>
           </div>
           <div className="chamber-topbar__chips">
             <span className={`workspace-status workspace-status--${avatarWorkspace.saveStatus}`}>{avatarWorkspace.saveStatus}</span>
+            {avatarWorkspace.saveStatus === 'error' && <button className="chamber-pill" onClick={() => queueProfileSave(currentMetrics, goalMetrics, manualMorphOverrides)}>Retry physique save</button>}
             <button className="workspace-model-status" onClick={() => handleTabChange('view')}>
               <Activity size={14} /> {modelEvidence.assetLabel}
             </button>
           </div>
         </div>
         <div className="chamber-render-controls chamber-topbar__controls">
-          <button className="chamber-pill chamber-pill--primary" onClick={saveSnapshot}>
+          <button className="chamber-pill" aria-expanded={showEditor} aria-controls="avatar-model-inspector" onClick={() => setShowEditor(!showEditor)}>
+            <SlidersHorizontal size={16} /> {showEditor ? 'Close editor' : 'Edit avatar'}
+          </button>
+          <button className="chamber-pill chamber-pill--primary" onClick={handleSaveSnapshot}>
             <Save size={16} /> Save check-in
           </button>
           <button className="chamber-pill" onClick={captureScreenshot}><Download size={16} /> Export</button>
           <details className="workspace-overflow"><summary aria-label="More avatar actions"><MoreHorizontal size={18} /></summary><div>
-            <button onClick={() => setShowWizard(true)}>Create or replace avatar</button>
+            <button onClick={() => { setAvatarWorkspace({ avatarContext: 'current', workspaceMode: 'current' }); setShowWizard(true); }}>Guided avatar setup</button>
             <button onClick={handleShareAvatar}>Share protected view</button>
             <button onClick={() => handleTabChange('view')}>Model diagnostics</button>
             <button onClick={resetAdvancedMorphs}>Reset body adjustments</button>
@@ -819,7 +941,24 @@ export default function HumanoidViewer() {
         </div>
       </header>
 
-      <AvatarEvidence metrics={currentMetrics} diagnostics={modelDiagnostics} qualityGate={qualityGate} />
+      <section className="avatar-model-tools" aria-label="Model tools">
+        <div className="avatar-model-tools__heading"><strong>Model tools</strong><span>{modelEvidence.assetLabel}</span></div>
+        <div className="avatar-model-tools__actions" role="group" aria-label="Open model controls">
+          <button type="button" className="chamber-pill" onClick={() => { setAvatarWorkspace({ avatarContext: 'current', workspaceMode: 'current' }); setShowWizard(true); }}><Ruler size={16} /> Guided setup</button>
+          <button type="button" className="chamber-pill" onClick={() => openModelControls('pose')}><UserRound size={16} /> Pose controls</button>
+          <button type="button" className="chamber-pill" onClick={() => openModelControls('skin')}><Palette size={16} /> Skin detail</button>
+          <button type="button" className="chamber-pill" onClick={() => openModelControls('face')}><Eye size={16} /> Face controls</button>
+          <button type="button" className="chamber-pill" onClick={() => openModelControls('view')}><Activity size={16} /> View model details</button>
+        </div>
+        <p>{!modelDiagnostics ? 'Checking model controls…' : renderMode === 'SPRITE' ? 'Interactive 3D is required for pose and surface previews.'
+          : modelEvidence.capabilities.handsAndToes ? `Hands and toes available${modelEvidence.capabilities.eyeLayers ? ' · Separate eye layers' : ''}${modelEvidence.capabilities.nails ? ' · Attached nails' : ''}. Open Pose controls and enable Use saved pose to edit articulation.`
+            : 'This model has no articulated hand and toe controls. Review your model choice in Profile → Body & measurements → 3D appearance & anatomy: Model asset preset, 3D model version and Avatar asset key.'}</p>
+        <p className="avatar-model-tools__surface-status">{surfaceDetailStatus}</p>
+        {modelDiagnostics?.modelAsset?.isBundled && modelDiagnostics.modelAsset.preset==='male' && !modelEvidence.capabilities.handsAndToes &&
+          <button type="button" className="chamber-pill" onClick={()=>{
+            const next={...currentMetrics,modelVersion:'v2',avatarAsset:''};setCurrentMetrics(next);queueProfileSave(next,goalMetrics,manualMorphOverrides);
+          }}>Use articulated model</button>}
+      </section>
       <BodyPartNavigator privateAllowed={sensitiveUnlocked && anatomy.allowed && !captureRedacted} dropTargetRef={modelDropTarget}
         disabled={renderMode === 'SPRITE' || rendererTelemetry.status === 'context-lost'} />
       {/* ═══ VIEWPORT + EDITOR LAYOUT ═══ */}
@@ -1013,7 +1152,7 @@ export default function HumanoidViewer() {
 
         {/* ── EDITOR SIDEBAR ── */}
         {showEditor && (
-          <div className="chamber-editor">
+          <div className="chamber-editor" id="avatar-model-inspector">
             {/* Editor tabs */}
             <div className="chamber-editor__tabs" role="tablist" aria-label="Avatar editor" onKeyDown={event => {
               const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
@@ -1032,6 +1171,7 @@ export default function HumanoidViewer() {
                 { id: 'skin', label: 'Skin', icon: Palette },
                 { id: 'anatomy',  label: 'Anatomy',  icon: Layers  },
                 { id: 'clothing', label: 'Clothing', icon: Shirt },
+                { id: 'pose', label: 'Pose', icon: UserRound },
                 { id: 'view', label: 'View', icon: Sun },
               ].map((tab) => (
                 <button key={tab.id}
@@ -1062,21 +1202,25 @@ export default function HumanoidViewer() {
                       {context === 'current' ? 'Current measurements' : 'Goal measurements'}
                     </button>)}
                   </div>
-                  <details className="chamber-note">
-                    <summary>Model fit</summary>
-                    <p>Entered measurements drive the shape; missing values use render-only estimates. Circumferences are not yet verified against the deformed mesh, so achieved measurements and fit errors are unavailable. Measurement completeness is not anatomical accuracy.</p>
-                  </details>
+                  <ModelMeasurementCheck context={avatarWorkspace.avatarContext === 'goal' ? 'B' : 'A'} readCanvas={() => modelDropTarget.current?.querySelector('canvas')} user={user} />
+                  <label className="workspace-field"><span>Measurement group</span><select aria-label="Measurement group" value={metricGroup} onChange={event => setMetricGroup(event.target.value)}>
+                    <option value="essentials">Essentials</option><option value="all">All measurements ({BODY_METRICS.length})</option>
+                    {BODY_METRIC_GROUPS.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}
+                  </select></label>
+                  <label className="workspace-field"><span>Find a measurement</span><input type="search" aria-label="Find a measurement" placeholder="Face, hand, waist…" value={metricSearch} onChange={event => setMetricSearch(event.target.value)} /></label>
                   <div className="chamber-metric-list">
                     <p id="avatar-measurement-hint" className="chamber-note">Type a value or include units, such as 98,5 cm, 5 ft 10 in, or 180 lb. Enter or leave the field to apply. Arrow keys adjust; Shift makes a larger step; Escape cancels.</p>
-                    <MeasurementHelp key={guideMetric} definition={getBodyMeasurementDefinition(guideMetric)} label={METRIC_LABELS[guideMetric]?.label || guideMetric} onInspect={focusInspectionPart} />
-                    {Object.entries(METRIC_LABELS).map(([key, meta]) => {
+                    <MeasurementHelp key={guideMetric} definition={getBodyMeasurementDefinition(guideMetric)} label={BODY_METRIC_MAP[guideMetric]?.label || guideMetric} onInspect={focusInspectionPart} />
+                    {!shownMetrics.length && <p>No matching measurements. Try another name.</p>}
+                    {shownMetrics.map(meta => {
+                      const key = meta.key;
                       const currentIsMeasured = currentMetricResolution.suppliedKeys.includes(key);
                       const goalIsMeasured = goalMetricResolution.suppliedKeys.includes(key);
-                      const cur = Number((currentMetricResolution.metrics as any)[key]) || 0;
-                      const goal = Number((goalMetricResolution.metrics as any)[key]) || cur;
+                      const cur = (currentMetricResolution.metrics as any)[key] ?? null;
+                      const goal = (goalMetricResolution.metrics as any)[key] ?? cur;
                       const goalSource = (goalMetricResolution.sourceByKey as any)[key] === 'inherited'
                         ? 'Current'
-                        : goalIsMeasured ? 'Goal' : 'Estimated';
+                        : goalIsMeasured ? 'Goal' : goal === null ? 'Not recorded' : 'Estimated';
                       const unit = getMeasurementUnit(meta.unit, user);
                       const progress = progressToward({
                         baseline: snapshots.length ? (baselineMetrics as any)[key] : undefined,
@@ -1090,17 +1234,18 @@ export default function HumanoidViewer() {
                       const progressColor = pct >= 75 ? 'var(--chamber-success)' : pct >= 40 ? 'var(--chamber-gold)' : 'var(--chamber-glow)';
                       return (
                         <div key={key} className="chamber-metric-row">
+                          <p className="chamber-note">{avatarMetricSupport(key)}</p>
                           <div className="chamber-metric-row__header">
                             <span className="chamber-metric-row__label">
                               {meta.label}
                               <button type="button" className="chamber-pill" aria-label={`How to measure ${meta.label}`} onClick={() => { setGuideMetric(key); focusInspectionPart(getBodyMeasurementDefinition(key).region); }}>Show me</button>
                               <small className={`chamber-metric-source${currentIsMeasured ? ' is-measured' : ''}`}>
-                                {currentIsMeasured ? 'Entered' : 'Estimated'}
+                                {currentIsMeasured ? 'Entered' : cur === null ? 'Not recorded' : 'Estimated'}
                               </small>
                             </span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span className="chamber-metric-row__value">
-                                {meta.unit === 'kg' || meta.unit === 'cm'
+                                {cur === null ? 'Not recorded' : meta.unit === 'kg' || meta.unit === 'cm'
                                   ? formatMeasurement(cur, meta.unit, user)
                                   : `${cur}${meta.unit}`}
                               </span>
@@ -1119,7 +1264,7 @@ export default function HumanoidViewer() {
                           </label>
                           {/* GOAL slider */}
                           <div style={{ fontSize: '0.6rem', color: 'var(--chamber-glow)', marginBottom: 2, marginTop: 4 }}>
-                            GOAL · {goalSource.toUpperCase()} <span style={{ float: 'right' }}>{meta.unit === 'kg' || meta.unit === 'cm'
+                            GOAL · {goalSource.toUpperCase()} <span style={{ float: 'right' }}>{goal === null ? 'Not recorded' : meta.unit === 'kg' || meta.unit === 'cm'
                               ? formatMeasurement(goal, meta.unit, user)
                               : `${goal}${meta.unit}`}</span>
                           </div>
@@ -1144,14 +1289,13 @@ export default function HumanoidViewer() {
                   <h4 className="chamber-editor__heading"><Scissors size={14} /> Hair</h4>
                   <p className="chamber-note">Only validated assets can be selected. Hair fit is checked with head and stature changes.</p>
                   <div className="chamber-wardrobe-grid">
-                    {['bald', 'buzz', 'short', 'medium', 'long'].map((style) => {
-                      const available = ['bald', 'short'].includes(style);
-                      return <button key={style} disabled={!available} className={`chamber-wardrobe-card${hairA.style === style ? ' active' : ''}`}
-                        onClick={() => updateCurrentAppearance('hairStyle', style)}><Scissors size={18} /><span>{style}</span><small>{available ? 'Ready' : 'Asset required'}</small></button>;
+                    {APPEARANCE_DETAIL.hair.styles.map(({ id: style, available }) => {
+                      return <button key={style} disabled={!available} aria-pressed={(skinEditorMetrics.hairStyle || 'short') === style} className={`chamber-wardrobe-card${(skinEditorMetrics.hairStyle || 'short') === style ? ' active' : ''}`}
+                        onClick={() => updateSkinAppearance('hairStyle', style)}><Scissors size={18} /><span>{style}</span><small>{available ? 'Ready' : 'Asset required'}</small></button>;
                     })}
                   </div>
-                  <label className="workspace-field"><span>Hair color</span><input type="color" value={hairA.color} onChange={(e) => updateCurrentAppearance('hairColor', e.target.value)} /></label>
-                  <div className="workspace-unavailable"><span>Density, greying and facial hair</span><strong>Planned · compatible assets required</strong></div>
+                  <HairDetailControls metrics={skinEditorMetrics} onChange={updateSkinAppearance} />
+                  <div className="workspace-unavailable"><span>Facial hair styles</span><strong>Planned · compatible assets required</strong></div>
                 </div>
               )}
 
@@ -1163,11 +1307,11 @@ export default function HumanoidViewer() {
                     className={skinEditorTone === s.id && (!skinEditorMetrics.skinColor || String(skinEditorMetrics.skinColor).toUpperCase() === s.hex.toUpperCase()) ? 'active' : ''} style={{ background: s.hex }} onClick={() => selectSkinTone(s.id,avatarWorkspace.avatarContext)} />)}</div>
                   <label className="workspace-field"><span>Base skin color</span><input aria-label="Base skin color" type="color" value={/^#[0-9a-f]{6}$/i.test(String(skinEditorMetrics.skinColor)) ? String(skinEditorMetrics.skinColor) : FITZPATRICK_SWATCHES.find(s => s.id === skinEditorTone)?.hex || '#bc8970'} onChange={event => updateSkinAppearance('skinColor', event.target.value)} /></label>
                   <p className="chamber-note">Choose the color of skin usually covered from the sun. Tan adds pigment separately, so it never replaces this base color. Appearance presets are not measured sun-response phototypes.</p>
-                  <label className="workspace-field"><span>Undertone</span><select aria-label="Skin undertone" value={['cool','neutral','warm'].includes(String(skinEditorMetrics.skinUndertone)) ? String(skinEditorMetrics.skinUndertone) : 'neutral'} onChange={event=>updateSkinAppearance('skinUndertone',event.target.value)}><option value="cool">Cool / pink</option><option value="neutral">Neutral</option><option value="warm">Warm / golden</option></select></label>
-                  {[{key:'skinTan',label:'Tan amount',help:'Adds pigment to sun-exposed regions. Palms, inner arms and covered regions receive less.'},{key:'skinFlush',label:'Skin flush',help:'Adds a subtle blood-color layer; it does not infer stress or health.'}].map(layer=><label className="avatar-range-field" key={layer.key}><span>{layer.label}<output>{Math.round(Number(skinEditorMetrics[layer.key] || 0)*100)}%</output></span><input type="range" aria-label={layer.label} min="0" max="1" step=".01" value={Number(skinEditorMetrics[layer.key] || 0)} onChange={event=>updateSkinAppearance(layer.key,Number(event.target.value))}/><small>{layer.help}</small></label>)}
-                  <p className="chamber-note">Regional exposure is an approximation from the mesh. Matching tan lines to specific garments still needs authored texture masks.</p>
+                  <SkinLayerControls metrics={skinEditorMetrics} onChange={updateSkinAppearance} onReset={resetSkinLayers} />
+                  <SurfaceDetailControls metrics={skinEditorMetrics} onChange={updateSkinAppearance}/>
+                  <FreckleControls metrics={skinEditorMetrics} onChange={updateSkinAppearance} />
                   <button className="chamber-pill" onClick={() => handleCinematicPreset('ANALYTIC')}><Sun size={15} /> Lock neutral inspection lighting</button>
-                  <div className="workspace-unavailable"><span>Freckles, scars and detailed pigment maps</span><strong>Planned · authored texture masks required</strong></div>
+                  <div className="workspace-unavailable"><span>Scars and authored pigment maps</span><strong>Planned · authored texture masks required</strong></div>
                 </div>
               )}
 
@@ -1262,17 +1406,14 @@ export default function HumanoidViewer() {
               {editorTab === 'face' && (
                 <div className="chamber-editor__section">
                   <h4 className="chamber-editor__heading"><Eye size={14} /> Facial Anatomy</h4>
-                  {[
-                    { key: 'eye_size',          label: 'Eye Size',        min: 0, max: 1, step: 0.01 },
-                    { key: 'brow_depth',        label: 'Brow Ridge',      min: 0, max: 1, step: 0.01 },
-                    { key: 'nose_bridge_width', label: 'Nose Bridge',     min: 0, max: 1, step: 0.01 },
-                    { key: 'nose_tip_size',     label: 'Nose Tip',        min: 0, max: 1, step: 0.01 },
-                    { key: 'lip_fullness',      label: 'Lip Fullness',    min: 0, max: 1, step: 0.01 },
-                    { key: 'ear_prominence',    label: 'Ear Prominence',  min: 0, max: 1, step: 0.01 },
-                    { key: 'jaw_width',         label: 'Jaw Width',       min: 0, max: 1, step: 0.01 },
-                    { key: 'chin_projection',   label: 'Chin Projection', min: 0, max: 1, step: 0.01 },
-                  ].map((s) => {
-                    const val = (manualMorphOverrides[s.key] as number) ?? (morphOverrides[s.key] as number) ?? 0.35;
+                  <p className="chamber-note">Build an approximate face from your measurements, then refine its features. A parameter model cannot determine your exact identity without reference data. Edits update the avatar and new image exports; previously downloaded images remain snapshots.</p>
+                  <details className="chamber-note"><summary>What controls this face?</summary><p>Face width, face height, nose length, nose width and head circumference influence the supported shapes. Missing values use estimates or defaults. Eye spacing, ear length and ear width are recorded measurements but do not yet deform this model independently.</p><p>Changing a measurement releases related manual shape overrides. Other custom features and expressions are retained. The sliders describe shape strength, not likeness accuracy.</p></details>
+                  <button type="button" className="chamber-pill" onClick={resetFaceToMeasurements}>Use face measurements</button>
+                  <LikenessControls key={`${user?.id}-${avatarWorkspace.avatarContext}`} context={avatarWorkspace.avatarContext} onPreset={applyFaceChanges}/>
+                  <SpeechControls key={`speech-${user?.id}-${avatarWorkspace.avatarContext}`} viewerRef={modelDropTarget} context={avatarWorkspace.avatarContext} ownerId={user?.id} available={viewMode==='SOLO' && renderMode!=='SPRITE' && modelDiagnostics?.health==='healthy'}/>
+                  <EyeAppearanceControls metrics={skinEditorMetrics} onChange={updateSkinAppearance} />
+                  {FACE_SHAPE_CONTROLS.map((s) => {
+                    const val = (faceOverrides[s.key] as number) ?? (faceWeights[s.key] as number) ?? 0.35;
                     return (
                       <div key={s.key} className="chamber-morph-row">
                         <div className="chamber-morph-row__header">
@@ -1280,8 +1421,9 @@ export default function HumanoidViewer() {
                           <span className="chamber-morph-row__value">{(val * 100).toFixed(0)}%</span>
                         </div>
                         <input type="range" aria-label={s.label} min={s.min} max={s.max} step={s.step}
+                          disabled={Boolean(modelDiagnostics?.missingMorphTargets?.includes(s.key))}
                           value={val}
-                          onChange={(e) => setAdvancedMorph(s.key, parseFloat(e.target.value))}
+                          onChange={(e) => applyFaceChanges({[s.key]:parseFloat(e.target.value)})}
                           className="chamber-slider" />
                       </div>
                       );
@@ -1290,14 +1432,14 @@ export default function HumanoidViewer() {
                   <div className="chamber-divider" />
                   <h4 className="chamber-editor__heading"><Zap size={14} /> Expressions</h4>
                   <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', lineHeight: 1.45, margin: '-2px 0 8px' }}>
-                    Preview the production expression channels. These controls are saved as shape overrides and never alter measurements.
+                    Edit the selected face. These expressions are saved separately from measurements. Speech temporarily animates the mouth and restores your expression when it stops.
                   </p>
                   {[
                     { key: 'blink', label: 'Blink' },
                     { key: 'smile', label: 'Smile' },
                     { key: 'jaw_open', label: 'Jaw open' },
                   ].map((s) => {
-                    const val = Number(manualMorphOverrides[s.key] ?? morphOverrides[s.key] ?? 0);
+                    const val = Number(faceOverrides[s.key] ?? faceWeights[s.key] ?? 0);
                     return (
                       <div key={s.key} className="chamber-morph-row">
                         <div className="chamber-morph-row__header">
@@ -1305,7 +1447,7 @@ export default function HumanoidViewer() {
                           <span className="chamber-morph-row__value">{Math.round(val * 100)}%</span>
                         </div>
                         <input type="range" aria-label={s.label} min={0} max={1} step={0.01} value={val}
-                          onChange={(e) => setAdvancedMorph(s.key, parseFloat(e.target.value))}
+                          onChange={(e) => applyFaceChanges({[s.key]:parseFloat(e.target.value)})}
                           className="chamber-slider" />
                       </div>
                     );
@@ -1441,18 +1583,37 @@ export default function HumanoidViewer() {
                 </div>
               )}
 
+              {editorTab === 'pose' && (
+                <div className="chamber-editor__section">
+                  <h4 className="chamber-editor__heading"><UserRound size={14}/> Pose · {avatarWorkspace.avatarContext === 'goal' ? 'Goal' : 'Current'}</h4>
+                  <AnimationPanel inline onSelect={beginMotion}/>
+                  <p className="chamber-note">Choose an action to start motion. Enable Use saved pose to drag the hand and foot handles or adjust individual joints.</p>
+                  <PoseStudioControls key={`${user?.id}-${avatarWorkspace.avatarContext}`} value={avatarWorkspace.poseStudio[avatarWorkspace.avatarContext]} saveStatus={presentationPreferences.saveStatus}
+                    onJointSelect={selectPoseJoint}
+                    available={viewMode === 'SOLO' && renderMode !== 'SPRITE'}
+                    readPose={() => inspectAvatarSurfaces(modelDropTarget.current?.querySelector('canvas'))?.surfaces.find((surface: any) => surface.eyelids)?.pose}
+                    onChange={(pose: any) => presentationPreferences.change({poseStudio:patchPose(use3DStore.getState().avatarWorkspace.poseStudio,avatarWorkspace.avatarContext,pose)})}/>
+                </div>
+              )}
+
               {editorTab === 'view' && (
                 <div className="chamber-editor__section">
                   <h4 className="chamber-editor__heading"><Sun size={14} /> View</h4>
                   <AvatarViewOptions preferences={avatarWorkspace} onChange={presentationPreferences.change} cinematic={cinematic}
                     onEffectChange={handleCinematicSetting} gpuTier={quality} reducedMotion={Boolean(prefersReducedMotion)}
-                    onReset={() => presentationPreferences.change(DEFAULT_AVATAR_PRESENTATION)} saveStatus={presentationPreferences.saveStatus} />
-                  <label className="workspace-field"><span>Quality</span><select value={avatarWorkspace.qualityPreference} onChange={(e) => {
+                    onReset={presentationPreferences.reset} saveStatus={presentationPreferences.saveStatus} />
+                  <CameraBookmarkControls key={user?.id} value={avatarWorkspace.cameraBookmarks} saveStatus={presentationPreferences.saveStatus}
+                    available={viewMode === 'SOLO' && renderMode !== 'SPRITE'}
+                    readView={() => readBookmarkCamera(modelDropTarget.current?.querySelector('canvas'))}
+                    onChange={(cameraBookmarks: any) => presentationPreferences.change({cameraBookmarks})}
+                    onApply={(view: any) => use3DStore.getState().openCameraBookmark(view)}/>
+                  <label className="workspace-field"><span>Quality</span><select aria-label="Model quality" value={avatarWorkspace.qualityPreference} onChange={(e) => {
                     const preference = e.target.value; presentationPreferences.change({ qualityPreference: preference });
                     if (preference !== 'automatic') setQuality({ performance: 'LOW', balanced: 'MED', high: 'HIGH' }[preference]);
                   }}><option value="automatic">Automatic ({quality})</option><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="high">High</option></select></label>
                   <label className="workspace-field"><span>Renderer</span><select value={renderMode} onChange={(e) => setRenderMode(e.target.value)}><option value="WEBGL">Interactive 3D</option><option value="SPRITE">2D fallback</option></select></label>
-                  <div className="avatar-motion-options"><p className="chamber-note">Preview poses and motion. Measurement and anatomy editors use a neutral pose. Selecting a motion starts playback.</p><AnimationPanel inline/></div>
+                  <div className="avatar-motion-options"><p className="chamber-note">Preview poses and motion. Measurement and anatomy editors use a neutral pose. Selecting a motion starts playback.</p>
+                    <AnimationPanel inline onSelect={beginMotion}/></div>
                   <div className="workspace-field"><span>Presentation<small>Full screen. Exit restores your view. Shortcut: P.</small></span><button className="chamber-pill" onClick={presentation.enter}><Maximize2 size={15}/> Enter presentation</button></div>
                   <label className="workspace-switch"><span>Auto rotate</span><input type="checkbox" checked={autoRotate} onChange={(e) => setAutoRotate(e.target.checked)} /></label>
                   <p className="chamber-note"><ShieldCheck size={14}/> Screenshots and shared images always cover private anatomy.</p>
@@ -1463,6 +1624,8 @@ export default function HumanoidViewer() {
           </div>
         )}
       </div>
+
+      <AvatarEvidence metrics={currentMetrics} diagnostics={modelDiagnostics} qualityGate={qualityGate} />
 
       {/* ═══ SETTINGS DRAWER ═══ */}
       {showSettings && (
@@ -1531,7 +1694,7 @@ export default function HumanoidViewer() {
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                 {POSTURE_PRESETS.map((p) => (
                   <button key={p.id} className="chamber-pill"
-                    onClick={() => setPosture('current', p.posture)}>
+                    onClick={() => { const next = { ...currentMetrics, ...p.posture }; setCurrentMetrics(next); queueProfileSave(next, goalMetrics, manualMorphOverrides); }}>
                     {p.label}
                   </button>
                 ))}
@@ -1644,8 +1807,9 @@ export default function HumanoidViewer() {
         </section>
       )}
 
-      {showWizard || !currentMetrics.height ? (
-        <AvatarCreationWizard onComplete={() => setShowWizard(false)} />
+      {showWizard ? (
+        <AvatarCreationWizard onComplete={() => setShowWizard(false)} onMetric={handleCurrentValue}
+          onAppearance={updateCurrentAppearance} onMorph={setAdvancedMorph} onWardrobe={wardrobeControls.change} />
       ) : null}
 
       <PhysiqueDataPanel

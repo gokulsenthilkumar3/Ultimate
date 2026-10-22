@@ -1,13 +1,14 @@
-import {Float32BufferAttribute} from 'three';
+import {Box3,Float32BufferAttribute} from 'three';
 
 // Optical-density deltas from docs/real-human-3d/code/skin-layers.mjs.
 // Apply relative to the existing authored albedo; the reference model's
 // absolute colours have not been calibrated against colorimeter readings.
 export const SKIN_OPTICS=Object.freeze({melanin:[1,(550/610)**-3.33,(465/610)**-3.33],blood:[.05,1,.5],carotene:[0,.1,1],melaninScale:1.3,bloodScale:.9,caroteneScale:.25,tanMax:.22});
 const TAN_CAPACITY=Object.freeze([.2,.5,.85,1,.75,.35]);
+const UNDERTONES=Object.freeze({cool:-1,pink:-1,neutral:0,warm:1,golden:1});
 const clamp=(value,min,max,fallback=0)=>value==null || value==='' || !Number.isFinite(Number(value))?fallback:Math.max(min,Math.min(max,Number(value)));
 export function resolveSkinAppearance(metrics={}) {
-  const undertone={cool:-1,pink:-1,neutral:0,warm:1,golden:1}[metrics.skinUndertone];
+  const undertone=Object.hasOwn(UNDERTONES,metrics.skinUndertone)?UNDERTONES[metrics.skinUndertone]:undefined;
   const type=['I','II','III','IV','V','VI'].indexOf(metrics.skinTone);
   return {tan:clamp(metrics.skinTan,0,1),undertone:undertone ?? clamp(metrics.skinUndertone,-1,1),flush:clamp(metrics.skinFlush,0,1),capacity:TAN_CAPACITY[type<0?3:type]};
 }
@@ -34,27 +35,42 @@ export function prepareSkinRegions(mesh){
   const geometry=mesh?.geometry,position=geometry?.attributes.position,normal=geometry?.attributes.normal;
   const joints=geometry?.attributes.skinIndex,weights=geometry?.attributes.skinWeight;
   if(!position || !normal || !joints || !weights || !mesh.skeleton)return;
-  const exposure=new Float32Array(position.count),blood=new Float32Array(position.count);
+  const exposure=new Float32Array(position.count),blood=new Float32Array(position.count),roughness=new Float32Array(position.count);
+  const tanRegions=new Float32Array(position.count*4),tanCoordinates=new Float32Array(position.count*2);
+  const bounds=new Box3().setFromBufferAttribute(position),scale=1.92/Math.max(.1,bounds.max.y-bounds.min.y);
   for(let i=0;i<position.count;i++) {
-    let sun=0,hb=0,total=0;
+    let sun=0,hb=0,total=0,surface=0;
     for(let slot=0;slot<joints.itemSize;slot++) {
       const weight=weights.getComponent(i,slot);if(weight<=0)continue;
       const name=mesh.skeleton.bones[joints.getComponent(i,slot)]?.name || '';
-      let e=.45,b=1;
-      if(/head/i.test(name)){e=1;b=1.35;}
+      // Blend anatomical ownership at joints. Coordinates remain attached to
+      // the rest surface, so a pose or measurement edit cannot slide a tan line.
+      const lower=/leg|hips|pelvis/i.test(name),torso=/spine|hips|pelvis|leg/i.test(name);
+      if(lower)tanRegions[i*4]+=weight;
+      if(torso)tanRegions[i*4+1]+=weight;
+      if(/upperarm|shoulder/i.test(name))tanRegions[i*4+2]+=weight;
+      if(/forearm/i.test(name))tanRegions[i*4+3]+=weight;
+      let e=.45,b=1,r=1;
+      if(/head/i.test(name)){e=1;b=1.35;r=.82;}
       else if(/neck/i.test(name)){e=.9;b=1.1;}
-      else if(/hand/i.test(name)){e=.04+.96*Math.max(0,-normal.getZ(i));b=1.3;}
+      else if(/hand/i.test(name)){e=.04+.96*Math.max(0,-normal.getZ(i));b=1.3;r=1.12;}
       else if(/forearm|upperarm/i.test(name)){
         const inner=Math.max(0,-normal.getX(i)*Math.sign(position.getX(i)));
         e=(/forearm/i.test(name)?.9:.7)*(1-inner)+.15*inner;
       }
-      else if(/foot/i.test(name))e=.04+.51*Math.max(0,normal.getY(i));
+      else if(/foot/i.test(name)){e=.04+.51*Math.max(0,normal.getY(i));r=1.15;}
       else if(/hips/i.test(name))e=.1;
       else if(/spine/i.test(name))e=.2+.3*Math.max(0,normal.getZ(i));
-      sun+=weight*e;hb+=weight*b;total+=weight;
+      sun+=weight*e;hb+=weight*b;surface+=weight*r;total+=weight;
     }
-    exposure[i]=total?sun/total:.45;blood[i]=total?hb/total:1;
+    exposure[i]=total?sun/total:.45;blood[i]=total?hb/total:1;roughness[i]=total?surface/total:1;
+    for(let channel=0;channel<4;channel++)tanRegions[i*4+channel]/=total || 1;
+    tanCoordinates[i*2]=position.getX(i)*scale;
+    tanCoordinates[i*2+1]=(position.getY(i)-bounds.min.y)*scale;
   }
   geometry.setAttribute('skinExposure',new Float32BufferAttribute(exposure,1));
   geometry.setAttribute('skinBlood',new Float32BufferAttribute(blood,1));
+  geometry.setAttribute('skinRoughness',new Float32BufferAttribute(roughness,1));
+  geometry.setAttribute('skinTanRegions',new Float32BufferAttribute(tanRegions,4));
+  geometry.setAttribute('skinTanCoordinates',new Float32BufferAttribute(tanCoordinates,2));
 }

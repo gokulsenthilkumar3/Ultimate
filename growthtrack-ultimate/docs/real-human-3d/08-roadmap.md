@@ -1,5 +1,7 @@
 # 08 · Roadmap: step by step, each step with a gate that can fail
 
+The requested continuation now runs through **200 acceptance checkpoints** in the [current face-studio review](13-face-studio-review.md). That ledger distinguishes implemented runtime subsets from remaining asset work. The original work tracks and estimates below remain useful technical context, not a claim that all steps are complete.
+
 The plan is built so that **every step ships on its own, changes something a person can see, and has a gate that can fail**.
 Work splits into three tracks that run in parallel because they depend on different things:
 
@@ -21,6 +23,12 @@ spike; they are not commitments.
 | S0.5 | Silence the three console warnings (`THREE.Clock`, `PCFSoftShadowMap`, accessor bounds) | Zero warnings in the probe's log |
 
 ## V · Viewer track
+
+2026-10-22 **75/100 continuation**: pointer wrist/ankle dragging now shares the existing rig-frame solver, save queue, capture protection and keyboard controls. The camera pauses during a captured drag and cancellation restores the previous target. Four partial asset slices add actual finger/toe bindings, measured morph pivots, micro resources/attributes and separate cornea/tearline/nail surfaces. Both new models pass 17/23 applicable required full-v3 checks; all 19 combined Chromium flows pass. See [milestones 11–15](IMPLEMENTATION_PROGRESS.md#milestones-1115-articulated-and-surface-preview--25-points) and [architecture](12-articulated-surface-architecture.md). General collision, head/hips FABRIK and walking foot lock remain open.
+
+2026-10-22 implementation note: saved Current/Goal joint poses, keyboard wrist/ankle two-bone reach and named camera bookmarks bring the tracker to **50/100 planning points**. [Pose/camera architecture](10-pose-camera-architecture.md) documents actual rig-frame solving, the bounded facial-weight repair, neutral measurement/comparison behavior, persistence and capture. V6a remains partial: pointer dragging, FABRIK head/hips, collision/hand controls and walking foot lock are not delivered. Camera bookmarks extend V1 rather than claiming a new asset gate. See [implementation progress](IMPLEMENTATION_PROGRESS.md#review-of-the-complete-50-point-checkpoint).
+
+2026-10-21 implementation note: the **static portion of V4** now ships (all five presets, saved selection, subdued sky lighting, tier-sized cube maps and capture integration). Animation/twinkle and the reference-GPU <1 ms gate remain open. See [implementation progress](IMPLEMENTATION_PROGRESS.md); this does not mark all of V4 complete.
 
 | Step | What | Detail | Gate | Effort |
 | --- | --- | --- | --- | --- |
@@ -44,6 +52,8 @@ spike; they are not commitments.
 
 ## A · Appearance track (today's mesh)
 
+2026-10-21 implementation note: the third **5-point appearance milestone** now brings the credited execution budget to **15/100**. It shares skin swatches between editor and renderer, retains authored maps through edits, adds regional roughness, corrects bundled lid closure and integrates the deterministic idle sampler with real eye/chest motion and saved accessibility controls. This is partial A1/A3/A4 delivery; authored skin layers, strand hair, wetline/pupil work and final visual/performance gates remain open. See [implementation progress](IMPLEMENTATION_PROGRESS.md) and its retained full-body, face, blink and mobile evidence.
+
 | Step | What | Detail | Gate | Effort |
 | --- | --- | --- | --- | --- |
 | **A1** | **Layered skin**: tone, tan, blood, undertone as separate inputs; neutral detail albedo; region masks from `REGIONS`; tan lines from wardrobe coverage | [04 §1–3](04-skin-hair-eyes.md); `skin-layers.mjs` | **G4** unit: tan leaves constitutive unchanged; e2e: tan 100% darkens a forearm and leaves the inner arm unchanged; golden colours match the JS model per type and region | 3 |
@@ -54,7 +64,17 @@ spike; they are not commitments.
 | **A6** | **Skin features**: freckles, moles, veins, scars from a seed | [04 §7](04-skin-hair-eyes.md) | Same seed gives the same marks on two devices (unit) | 1.5 |
 | **A7** | **Metric entry and the new tabs** | [06](06-ui-for-metrics.md); `metric-entry.mjs` | **G11** U1, U4, U5, U6 unit-pass; U2, U3 in a five-person session | 2.5 |
 
+**20/100 checkpoint:** partial A1 now includes saved clothing exposure history, smooth rest-surface tan lines from shared neutral wardrobe bands, independent Current/Goal editing and a reset that preserves base colour. The live-image checks compare protected/exposed skin and verify export, reload, delayed-save edits and quality transitions. Exact authored seam masks, neutral albedo and calibrated optical colours remain open; this does not close the full G4 gate. See [milestone 4](IMPLEMENTATION_PROGRESS.md#milestone-4-clothing-exposure-history-and-reliable-skin-editing-a1-partial--5-points).
+
 ## B · The v3 asset
+
+**Current partial delivery at 75 points:** the additive male preview has all 79 structural rig names, generated digit weights on 4,948 vertices, 41 physical morph offset sets, measured attributes and periodic micro PNGs, plus separate cornea/tearline/nails. Existing body positions, UVs, normals, topology, 58 morph deltas and image bytes are preserved. Original models and covered female/neutral fallbacks remain available. The build uses pinned CC0 helper landmarks, not the AGPL distribution weights. This advances portions of B1/B3/B4/B5/V6b; it does not close their complete authoring gates. Fresh reports and explicit limitations are in [milestone-75](data/milestone-75/review.json).
+
+Still open: artist weight/corrective/contact calibration, 52 face shapes and mouth/scalp parts, true regional density and geometric refinement, compression/streaming/LODs, and reference-device/user acceptance. Full/lite retain the same body geometry; the 7.5 MiB lite file does not meet the 3 MiB first-paint core target. The remaining 25 planning points are measurement/user validation 5, asset authoring 10, and cross-device/privacy/final conformance 10; they are budget weights rather than estimated person-weeks.
+
+**35/100 checkpoint:** partial A3 now includes a visible Face-tab eye editor, seven named/custom iris shades, seeded radial/collarette detail, optional limbal rim, fixed pupil sizes and an optional response to the actual scene exposure control. Saved Current/Goal records remain independent; capture settles the pupil synchronously and restores it after encoding. All twelve combined browser flows recheck the earlier 1–30 point implementation with this new layer active. This does not author a cornea, wet line or new eye geometry, and the artistic exposure response is not physiological calibration. See [milestone 7 and its review](IMPLEMENTATION_PROGRESS.md) and [eye architecture](09-appearance-architecture.md#eye-rendering-and-capture).
+
+**30/100 checkpoint:** partial A2 now includes saved named/custom hair shades, seeded greying and thinning on the existing cards, matching shadow cutouts and scalp coverage, and Current/Goal context editing. Partial A6 adds seeded rest-surface freckles with editable size/contrast, independent pigment, quality/capture/reload integration and a local hide action. These are two runtime checkpoints, not new strand geometry or source asset authoring. Moles, scars, authored region masks, beard assets, advanced eye layers and native-device performance remain open. See [milestones 5–6](IMPLEMENTATION_PROGRESS.md#milestone-5-saved-hair-shades-greying-and-thinning-a2-partial--5-points) and [data flow](09-appearance-architecture.md).
 
 | Step | What | Detail | Gate | Effort |
 | --- | --- | --- | --- | --- |

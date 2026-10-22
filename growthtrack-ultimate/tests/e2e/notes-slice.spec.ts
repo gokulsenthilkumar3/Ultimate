@@ -123,12 +123,21 @@ test('Notes encrypts unfinished text and recovers it after reload without submit
   await expect(page.locator('.notes-local-status')).toHaveText(/Encrypted draft saved on this device/);
   await expect(page.getByRole('status').filter({ hasText: 'Save failed' })).toBeVisible();
   const storage = await page.evaluate(async () => {
-    const draftsPath = '/src/lib/drafts.ts';
-    const keysPath = '/src/domains/workspace/adapters/noteDraftKeys.ts';
-    const { listDrafts } = await import(draftsPath);
-    const { getNoteDraftKey } = await import(keysPath);
-    const row = (await listDrafts('isolated-test-owner')).find((draft: { module: string }) => draft.module === 'workspace-note:note-1');
-    return { ciphertext: row.data.ciphertext instanceof ArrayBuffer, plaintext: JSON.stringify(row).includes('Private unfinished text for recovery'), extractable: (await getNoteDraftKey('isolated-test-owner')).extractable };
+    // Inspect the isolated browser's persisted records. Importing /src modules
+    // works only with Vite dev and cannot verify a production preview build.
+    const read = (name: string, store: string, key: IDBValidKey) => new Promise<any>((resolve, reject) => {
+      const open = indexedDB.open(name);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const database = open.result, transaction = database.transaction(store, 'readonly');
+        const request = transaction.objectStore(store).get(key);
+        transaction.oncomplete = () => { database.close(); resolve(request.result); };
+        transaction.onerror = transaction.onabort = () => { database.close(); reject(transaction.error); };
+      };
+    });
+    const row = await read('growthtrack-private-drafts-v1', 'drafts', JSON.stringify(['isolated-test-owner', 'workspace-note:note-1']));
+    const storedKey = await read('growthtrack-note-draft-keys-v1', 'keys', 'isolated-test-owner');
+    return { ciphertext: row.data.ciphertext instanceof ArrayBuffer, plaintext: JSON.stringify(row).includes('Private unfinished text for recovery'), extractable: storedKey.key.extractable };
   });
   expect(storage).toEqual({ ciphertext: true, plaintext: false, extractable: false });
   await page.reload();

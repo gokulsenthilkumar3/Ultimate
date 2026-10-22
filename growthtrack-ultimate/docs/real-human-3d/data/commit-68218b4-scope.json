@@ -1,0 +1,23 @@
+{
+  "commit": "68218b472f4ffc2e11c9c16f919b78b1d386dc5f",
+  "subject": "refactor: simplify project structure to Vite-based app",
+  "reviewedOn": "2026-10-21",
+  "comparison": "commit versus its first parent, rename detection disabled",
+  "changeCounts": { "added": 31, "modified": 2, "deleted": 1731 },
+  "authorizedScope": "Only 3D-related additions; leave finance apps unchanged",
+  "relevant3dAdditions": [],
+  "importedPaths": [],
+  "appliedDeletions": [],
+  "excluded": [
+    { "paths": ["src/**", "index.html", "metadata.json", "postcss.config.js", "tailwind.config.js", "tsconfig.json", "vite.config.ts", ".env.example"], "reason": "New OxFin finance application and its build configuration; no 3D renderer or model additions" },
+    { "paths": ["README.md", "package.json"], "reason": "Replaces the workspace entry points with the finance application" },
+    { "paths": ["all deletion entries"], "reason": "Current files and ongoing 3D work must be preserved" }
+  ],
+  "implementation": {
+    "application": "growthtrack-ultimate",
+    "startingPlanningPoints": 20,
+    "targetPlanningPoints": 30,
+    "newCheckpoints": ["saved hair shade, greying and thinning", "seeded freckle pigment with independent Current/Goal editing"],
+    "basis": "Existing 3D architecture and unfinished local appearance components; no finance UI is imported from the target commit"
+  }
+}

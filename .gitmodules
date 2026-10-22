@@ -1,0 +1,6 @@
+[submodule "Equity/NiftyLens"]
+	path = Equity/NiftyLens
+	url = https://github.com/gokulsenthilkumar3/NiftyLens.git
+[submodule "Family Connect/familyconnect"]
+	path = Family Connect/familyconnect
+	url = https://github.com/gokulsenthilkumar3/familyconnect.git

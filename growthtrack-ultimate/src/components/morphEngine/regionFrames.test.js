@@ -20,6 +20,7 @@ describe('evaluated body-region focus bounds', () => {
     const {root,body}=fixture();
     const sample=createRegionFrameSampler(body);
     const frames=sample(false,root);
+    expect(frames.leftHand.sourceGeometry).toBe(body.geometry.uuid);
     [1.5,5,0].forEach((value,index) => expect(frames.leftHand.center[index]).toBeCloseTo(value,5));
     [-1.5,3,0].forEach((value,index) => expect(frames.rightHand.center[index]).toBeCloseTo(value,5));
     [1,2,0].forEach((value,index) => expect(frames.leftHand.size[index]).toBeCloseTo(value,5));

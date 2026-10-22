@@ -1,0 +1,214 @@
+{
+  "profile": "full",
+  "results": [
+    {
+      "id": "rig-joints",
+      "level": "must",
+      "title": "Every v3 joint exists (core, face, arms and twist, fingers, legs and twist, toes)",
+      "pass": true,
+      "detail": "all present"
+    },
+    {
+      "id": "rig-budget",
+      "level": "must",
+      "title": "At most 100 joints",
+      "pass": true,
+      "detail": "79 joints"
+    },
+    {
+      "id": "rig-influences",
+      "level": "must",
+      "title": "At most 4 influences per vertex",
+      "pass": true,
+      "detail": "4"
+    },
+    {
+      "id": "face-shapes",
+      "level": "must",
+      "title": "The 52 ARKit face blendshapes exist on the body mesh",
+      "pass": false,
+      "detail": "52 of 52 missing"
+    },
+    {
+      "id": "face-scope",
+      "level": "must",
+      "title": "Every face shape moves face vertices only (at least 98% inside the head, neck, jaw, eyes, tongue)",
+      "pass": null,
+      "detail": "no face shapes to check"
+    },
+    {
+      "id": "morph-regions",
+      "level": "must",
+      "title": "Each body morph declares its region of influence (extras.growthtrack.morphRegions)",
+      "pass": true,
+      "detail": "declared"
+    },
+    {
+      "id": "joint-offsets",
+      "level": "must",
+      "title": "Morphs carry joint offsets so the skeleton follows the shape (extras.growthtrack.jointOffsets)",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "id": "morph-budget",
+      "level": "must",
+      "title": "At most 160 morph targets",
+      "pass": true,
+      "detail": "58"
+    },
+    {
+      "id": "empty-morphs",
+      "level": "should",
+      "title": "No morph target that moves nothing",
+      "pass": false,
+      "detail": "d_length, d_girth"
+    },
+    {
+      "id": "attributes",
+      "level": "must",
+      "title": "The body mesh has TANGENT, _TILE, _REGION and _MICROSCALE",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "id": "triangles",
+      "level": "must",
+      "title": "Body mesh within 120,000 triangles (full)",
+      "pass": true,
+      "detail": "29,682"
+    },
+    {
+      "id": "head-edge",
+      "level": "should",
+      "title": "Head mesh edges at most 3.5 mm",
+      "pass": false,
+      "detail": "6.4 mm"
+    },
+    {
+      "id": "hand-edge",
+      "level": "should",
+      "title": "Hand mesh edges at most 2 mm",
+      "pass": false,
+      "detail": "7.6 mm"
+    },
+    {
+      "id": "texel-density",
+      "level": "must",
+      "title": "Skin texture density meets the tile minimums (head 90, hands 45, feet 35, body 30 texels/cm)",
+      "pass": false,
+      "detail": "Head 5.6 < 90; Hand 3.5 < 45; Foot 3.8 < 35; Body 2.1 < 30"
+    },
+    {
+      "id": "micro-tile",
+      "level": "must",
+      "title": "A tiling micro-detail texture is present",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "id": "ktx2",
+      "level": "should",
+      "title": "Textures are KTX2 (GPU-compressed)",
+      "pass": false,
+      "detail": "12 of 12 are not"
+    },
+    {
+      "id": "meshopt",
+      "level": "should",
+      "title": "Geometry is meshopt-compressed",
+      "pass": false,
+      "detail": "KHR_materials_clearcoat, KHR_materials_ior"
+    },
+    {
+      "id": "file-size",
+      "level": "must",
+      "title": "File within 28 MiB (full)",
+      "pass": true,
+      "detail": "7.5 MiB"
+    },
+    {
+      "id": "part-eyes",
+      "level": "must",
+      "title": "A mesh for eyes",
+      "pass": true,
+      "detail": "GrowthTrackEyes"
+    },
+    {
+      "id": "part-cornea",
+      "level": "must",
+      "title": "A mesh for cornea",
+      "pass": true,
+      "detail": "GrowthTrackCornea"
+    },
+    {
+      "id": "part-tearline",
+      "level": "must",
+      "title": "A mesh for tearline",
+      "pass": true,
+      "detail": "GrowthTrackTearline"
+    },
+    {
+      "id": "part-teeth",
+      "level": "must",
+      "title": "A mesh for teeth",
+      "pass": false,
+      "detail": "absent"
+    },
+    {
+      "id": "part-gums",
+      "level": "must",
+      "title": "A mesh for gums",
+      "pass": false,
+      "detail": "absent"
+    },
+    {
+      "id": "part-tongue",
+      "level": "must",
+      "title": "A mesh for tongue",
+      "pass": false,
+      "detail": "absent"
+    },
+    {
+      "id": "part-scalp",
+      "level": "must",
+      "title": "A mesh for scalp",
+      "pass": false,
+      "detail": "absent"
+    },
+    {
+      "id": "part-nails",
+      "level": "must",
+      "title": "A mesh for nails",
+      "pass": true,
+      "detail": "GrowthTrackNails"
+    },
+    {
+      "id": "part-hair",
+      "level": "must",
+      "title": "A mesh for hair",
+      "pass": true,
+      "detail": "GrowthTrackHair"
+    },
+    {
+      "id": "part-eyebrows",
+      "level": "must",
+      "title": "A mesh for eyebrows",
+      "pass": true,
+      "detail": "GrowthTrackEyebrows"
+    },
+    {
+      "id": "part-eyelashes",
+      "level": "must",
+      "title": "A mesh for eyelashes",
+      "pass": true,
+      "detail": "GrowthTrackEyelashes"
+    }
+  ],
+  "summary": {
+    "mustPassed": 17,
+    "mustTotal": 23,
+    "shouldPassed": 0,
+    "shouldTotal": 5
+  }
+}

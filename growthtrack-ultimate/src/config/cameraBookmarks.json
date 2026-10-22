@@ -1,0 +1,8 @@
+{
+  "version":1,
+  "maximum":8,
+  "nameLength":48,
+  "distanceRatio":[0.05,30],
+  "targetLimit":5,
+  "polar":[0.02,3.121592653589793]
+}

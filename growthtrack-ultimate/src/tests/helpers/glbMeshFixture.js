@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Bone, BufferAttribute, BufferGeometry, Skeleton, SkinnedMesh } from 'three';
+import { Bone, BufferAttribute, BufferGeometry, Mesh, Skeleton, SkinnedMesh } from 'three';
 
-export function glbMeshFixture(file='humanoid-base-lite.glb') {
+export function glbMeshFixture(file='humanoid-base-lite.glb',includeFeatures=false) {
   const bytes=readFileSync(resolve('public/assets/models',file)),jsonLength=bytes.readUInt32LE(12);
   const gltf=JSON.parse(bytes.subarray(20,20+jsonLength)),bin=bytes.subarray(28+jsonLength);
   const types={5126:Float32Array,5125:Uint32Array,5123:Uint16Array,5121:Uint8Array};
@@ -27,15 +27,19 @@ export function glbMeshFixture(file='humanoid-base-lite.glb') {
     for(const [key,id] of Object.entries(p.attributes)) if(keys[key]) geometry.setAttribute(keys[key],accessor(id));
     geometry.setIndex(accessor(p.indices)); geometry.morphTargetsRelative=true;
     geometry.morphAttributes.position=p.targets.map(target=>accessor(target.POSITION));
-    const mesh=new SkinnedMesh(geometry); mesh.name=name;
+    const node=gltf.nodes.find(n=>n.mesh===gltf.meshes.indexOf(data));
+    const mesh=node.skin==null?new Mesh(geometry):new SkinnedMesh(geometry); mesh.name=name;
     mesh.morphTargetDictionary=Object.fromEntries(data.extras.targetNames.map((name,i)=>[name,i]));
     mesh.morphTargetInfluences=data.extras.targetNames.map(()=>0);
     mesh.userData={...data.extras};
-    const node=gltf.nodes.find(n=>n.mesh===gltf.meshes.indexOf(data));
     if(node?.extras) Object.assign(mesh.userData,node.extras);
-    const bones=gltf.skins[node.skin].joints.map(i=>{const bone=new Bone();bone.name=gltf.nodes[i].name;return bone;});
-    bones.forEach(bone=>mesh.add(bone));mesh.bind(new Skeleton(bones));mesh.updateMatrixWorld(true);
+    if(node.skin!=null){
+      const bones=gltf.skins[node.skin].joints.map(i=>{const bone=new Bone();bone.name=gltf.nodes[i].name;return bone;});
+      bones.forEach(bone=>mesh.add(bone));mesh.bind(new Skeleton(bones));
+    }
+    mesh.updateMatrixWorld(true);
     return mesh;
   };
-  return {body:build('GrowthTrackBody'),anatomy:build('GrowthTrackPrivateAnatomy')};
+  return {body:build('GrowthTrackBody'),anatomy:build('GrowthTrackPrivateAnatomy'),
+    ...(includeFeatures?{features:['Eyes','Hair','Eyebrows','Eyelashes'].map(name=>({mesh:build(`GrowthTrack${name}`),feature:name.toLowerCase()}))}:{})};
 }

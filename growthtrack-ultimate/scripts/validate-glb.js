@@ -146,7 +146,16 @@ function main() {
   check(wronglyBakedShaderMorphs.length === 0, 'Shader-only targets', wronglyBakedShaderMorphs.join(', '), failures);
   check(dominantAxis === 'Y', 'Up axis', `dominant axis is ${dominantAxis}`, failures);
   check(orphanedBufferViews.length === 0, 'Orphaned bufferViews', `${orphanedBufferViews.length} unused`, failures);
-  check(materials.length > 0 && materials.every((m, idx) => m.pbrMetallicRoughness?.baseColorTexture && (m.normalTexture || strandMaterials.has(idx))), 'PBR textures', 'missing baseColorTexture or normalTexture', failures);
+  // Smooth optical/nail surfaces use valid constant glTF PBR factors. Keep the
+  // texture requirement on skin and existing authored accessories; attaching
+  // fake one-pixel maps to a clear cornea would not improve its validation.
+  const constantSurfaceMaterials=new Set((json.meshes || []).filter(mesh=>mesh.extras?.surfacePart===true && /^GrowthTrack(?:Cornea|Tearline|Nails)$/.test(mesh.name)).flatMap(mesh=>mesh.primitives.map(p=>p.material)));
+  for(const mesh of json.meshes || [])if(!(mesh.extras?.surfacePart===true && /^GrowthTrack(?:Cornea|Tearline|Nails)$/.test(mesh.name)))for(const p of mesh.primitives)constantSurfaceMaterials.delete(p.material);
+  const constantPbr=m=>{
+    const p=m.pbrMetallicRoughness,color=p?.baseColorFactor;
+    return Array.isArray(color) && color.length===4 && color.every(v=>Number.isFinite(v) && v>=0 && v<=1) && Number.isFinite(p.roughnessFactor) && p.roughnessFactor>=0 && p.roughnessFactor<=1 && p.metallicFactor===0;
+  };
+  check(materials.length > 0 && materials.every((m, idx) => constantSurfaceMaterials.has(idx)?constantPbr(m):m.pbrMetallicRoughness?.baseColorTexture && (m.normalTexture || strandMaterials.has(idx))), 'PBR textures or declared optical factors', 'missing skin/accessory textures or invalid constant surface factors', failures);
   check(materials[0]?.pbrMetallicRoughness?.metallicRoughnessTexture, 'Packed roughness/AO map', 'skin material has no metallicRoughnessTexture', failures);
   check(imageHasProductionResolution('SkinNormal_GeometryBaked'), 'Skin normal resolution', 'geometry-baked normal image is missing or still a placeholder', failures);
   check(imageHasProductionResolution('SkinAO_Roughness_GeometryBaked'), 'Skin roughness/AO resolution', 'geometry-baked roughness/AO image is missing or still a placeholder', failures);

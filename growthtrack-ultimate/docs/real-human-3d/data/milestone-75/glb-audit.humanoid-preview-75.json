@@ -1,0 +1,3746 @@
+{
+  "file": "public\\assets\\models\\humanoid-preview-75.glb",
+  "bytes": 25047568,
+  "generator": "GrowthTrack additive preview 75 builder",
+  "extensionsUsed": [
+    "KHR_materials_clearcoat",
+    "KHR_materials_ior"
+  ],
+  "totals": {
+    "nodes": 88,
+    "meshes": 9,
+    "materials": 10,
+    "images": 12,
+    "textureBytes": 18916693,
+    "vertices": 26273,
+    "triangles": 47818,
+    "animations": 0
+  },
+  "meshes": [
+    {
+      "index": 0,
+      "name": "GrowthTrackBody",
+      "primitives": 1,
+      "vertices": 16001,
+      "triangles": 29682,
+      "morphTargets": 58,
+      "attributes": [
+        "POSITION",
+        "NORMAL",
+        "COLOR_0",
+        "TEXCOORD_0",
+        "JOINTS_0",
+        "WEIGHTS_0",
+        "TANGENT",
+        "_REGION",
+        "_TILE",
+        "_MICROSCALE"
+      ],
+      "material": "Skin",
+      "bounds_cm": {
+        "min": [
+          -56.6,
+          -81.9,
+          -10
+        ],
+        "max": [
+          56.6,
+          91.2,
+          37.7
+        ]
+      },
+      "extras": {
+        "keys": [
+          "pelvisRefinement",
+          "growthtrack",
+          "headPoseBinding",
+          "bodyPoseBinding"
+        ],
+        "sensitive": false,
+        "growthtrack": [
+          "previewVersion",
+          "bindingPrepared",
+          "rig",
+          "regions",
+          "morphRegions",
+          "jointOffsets",
+          "micro",
+          "articulation",
+          "source"
+        ]
+      }
+    },
+    {
+      "index": 1,
+      "name": "GrowthTrackPrivateAnatomy",
+      "primitives": 1,
+      "vertices": 4803,
+      "triangles": 9536,
+      "morphTargets": 58,
+      "attributes": [
+        "POSITION",
+        "NORMAL",
+        "COLOR_0",
+        "TEXCOORD_0",
+        "JOINTS_0",
+        "WEIGHTS_0",
+        "TANGENT"
+      ],
+      "material": "Skin",
+      "bounds_cm": {
+        "min": [
+          -2.7,
+          -3.1,
+          7.2
+        ],
+        "max": [
+          2.7,
+          6.7,
+          12.5
+        ]
+      },
+      "extras": {
+        "keys": [
+          "sensitive",
+          "layout",
+          "attachmentUpgrade"
+        ],
+        "sensitive": true,
+        "growthtrack": []
+      }
+    },
+    {
+      "index": 2,
+      "name": "GrowthTrackEyes",
+      "primitives": 1,
+      "vertices": 1076,
+      "triangles": 2040,
+      "morphTargets": 58,
+      "attributes": [
+        "POSITION",
+        "NORMAL",
+        "COLOR_0",
+        "TEXCOORD_0",
+        "TANGENT"
+      ],
+      "material": "Eyes_HighPoly_Brown",
+      "bounds_cm": {
+        "min": [
+          -4.5,
+          78.8,
+          11.9
+        ],
+        "max": [
+          4.5,
+          81.8,
+          14.3
+        ]
+      },
+      "extras": {
+        "keys": [
+          "feature",
+          "source",
+          "featureTopologyRepair",
+          "legacySourceProperties"
+        ],
+        "sensitive": false,
+        "growthtrack": []
+      }
+    },
+    {
+      "index": 3,
+      "name": "GrowthTrackHair",
+      "primitives": 1,
+      "vertices": 2061,
+      "triangles": 3344,
+      "morphTargets": 58,
+      "attributes": [
+        "POSITION",
+        "NORMAL",
+        "COLOR_0",
+        "TEXCOORD_0",
+        "TANGENT"
+      ],
+      "material": "Hair_Short02_Cards",
+      "bounds_cm": {
+        "min": [
+          -9,
+          72,
+          -5.4
+        ],
+        "max": [
+          8.4,
+          92.7,
+          16.5
+        ]
+      },
+      "extras": {
+        "keys": [
+          "feature",
+          "source",
+          "featureTopologyRepair",
+          "legacySourceProperties"
+        ],
+        "sensitive": false,
+        "growthtrack": []
+      }
+    },
+    {
+      "index": 4,
+      "name": "GrowthTrackEyebrows",
+      "primitives": 1,
+      "vertices": 126,
+      "triangles": 192,
+      "morphTargets": 58,
+      "attributes": [
+        "POSITION",
+        "NORMAL",
+        "COLOR_0",
+        "TEXCOORD_0"
+      ],
+      "material": "Eyebrows_eyebrow001",
+      "bounds_cm": {
+        "min": [
+          -5.9,
+          80.7,
+          12.1
+        ],
+        "max": [
+          5.9,
+          81.6,
+          15.1
+        ]
+      },
+      "extras": {
+        "keys": [
+          "feature",
+          "source",
+          "featureTopologyRepair",
+          "legacySourceProperties"
+        ],
+        "sensitive": false,
+        "growthtrack": []
+      }
+    },
+    {
+      "index": 5,
+      "name": "GrowthTrackEyelashes",
+      "primitives": 1,
+      "vertices": 250,
+      "triangles": 368,
+      "morphTargets": 58,
+      "attributes": [
+        "POSITION",
+        "NORMAL",
+        "COLOR_0",
+        "TEXCOORD_0"
+      ],
+      "material": "Eyelashes_eyelashes01",
+      "bounds_cm": {
+        "min": [
+          -4.8,
+          79.4,
+          13.3
+        ],
+        "max": [
+          4.8,
+          80.8,
+          14.8
+        ]
+      },
+      "extras": {
+        "keys": [
+          "feature",
+          "source",
+          "featureTopologyRepair",
+          "legacySourceProperties"
+        ],
+        "sensitive": false,
+        "growthtrack": []
+      }
+    },
+    {
+      "index": 6,
+      "name": "GrowthTrackNails",
+      "primitives": 1,
+      "vertices": 1280,
+      "triangles": 1600,
+      "morphTargets": 10,
+      "attributes": [
+        "POSITION",
+        "NORMAL",
+        "JOINTS_0",
+        "WEIGHTS_0"
+      ],
+      "material": "GrowthTrackNailsMaterial",
+      "bounds_cm": {
+        "min": [
+          -56.2,
+          -80.5,
+          16.7
+        ],
+        "max": [
+          56.2,
+          21.1,
+          37.5
+        ]
+      },
+      "extras": {
+        "keys": [
+          "surfacePart",
+          "nails"
+        ],
+        "sensitive": false,
+        "growthtrack": []
+      }
+    },
+    {
+      "index": 7,
+      "name": "GrowthTrackCornea",
+      "primitives": 1,
+      "vertices": 576,
+      "triangles": 960,
+      "morphTargets": 10,
+      "attributes": [
+        "POSITION",
+        "NORMAL"
+      ],
+      "material": "GrowthTrackCorneaMaterial",
+      "bounds_cm": {
+        "min": [
+          -3.7,
+          79.6,
+          14.1
+        ],
+        "max": [
+          3.7,
+          81.1,
+          14.5
+        ]
+      },
+      "extras": {
+        "keys": [
+          "surfacePart"
+        ],
+        "sensitive": false,
+        "growthtrack": []
+      }
+    },
+    {
+      "index": 8,
+      "name": "GrowthTrackTearline",
+      "primitives": 1,
+      "vertices": 100,
+      "triangles": 96,
+      "morphTargets": 7,
+      "attributes": [
+        "POSITION",
+        "NORMAL",
+        "JOINTS_0",
+        "WEIGHTS_0"
+      ],
+      "material": "GrowthTrackTearlineMaterial",
+      "bounds_cm": {
+        "min": [
+          -4.2,
+          79.7,
+          13.5
+        ],
+        "max": [
+          4.2,
+          80,
+          14.3
+        ]
+      },
+      "extras": {
+        "keys": [
+          "surfacePart"
+        ],
+        "sensitive": false,
+        "growthtrack": []
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "Skin",
+      "baseColorTexture": "SkinAlbedo_YoungMale",
+      "normalTexture": "SkinNormal_GeometryBaked",
+      "occlusionTexture": "SkinAO_Roughness_GeometryBaked",
+      "metallicRoughnessTexture": "SkinAO_Roughness_GeometryBaked",
+      "alphaMode": "OPAQUE",
+      "doubleSided": false,
+      "extensions": []
+    },
+    {
+      "name": "SkinVariant_Light",
+      "baseColorTexture": "SkinAlbedo_Light",
+      "normalTexture": "SkinNormal_GeometryBaked",
+      "occlusionTexture": "SkinAO_Roughness_GeometryBaked",
+      "metallicRoughnessTexture": "SkinAO_Roughness_GeometryBaked",
+      "alphaMode": "OPAQUE",
+      "doubleSided": false,
+      "extensions": []
+    },
+    {
+      "name": "SkinVariant_Deep",
+      "baseColorTexture": "SkinAlbedo_Deep",
+      "normalTexture": "SkinNormal_GeometryBaked",
+      "occlusionTexture": "SkinAO_Roughness_GeometryBaked",
+      "metallicRoughnessTexture": "SkinAO_Roughness_GeometryBaked",
+      "alphaMode": "OPAQUE",
+      "doubleSided": false,
+      "extensions": []
+    },
+    {
+      "name": "Eyes_HighPoly_Brown",
+      "baseColorTexture": "EyeBrown_IrisSclera",
+      "normalTexture": "SkinNormal_GeometryBaked",
+      "occlusionTexture": null,
+      "metallicRoughnessTexture": null,
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "extensions": [
+        "KHR_materials_clearcoat"
+      ]
+    },
+    {
+      "name": "Hair_Short02_Cards",
+      "baseColorTexture": "HairShort02_Albedo",
+      "normalTexture": "HairShort02_Normal",
+      "occlusionTexture": null,
+      "metallicRoughnessTexture": null,
+      "alphaMode": "MASK",
+      "doubleSided": true,
+      "extensions": [
+        "KHR_materials_clearcoat"
+      ]
+    },
+    {
+      "name": "Eyebrows_eyebrow001",
+      "baseColorTexture": "Eyebrows_eyebrow001",
+      "normalTexture": null,
+      "occlusionTexture": null,
+      "metallicRoughnessTexture": null,
+      "alphaMode": "MASK",
+      "doubleSided": true,
+      "extensions": []
+    },
+    {
+      "name": "Eyelashes_eyelashes01",
+      "baseColorTexture": "Eyelashes_eyelashes01",
+      "normalTexture": null,
+      "occlusionTexture": null,
+      "metallicRoughnessTexture": null,
+      "alphaMode": "MASK",
+      "doubleSided": true,
+      "extensions": []
+    },
+    {
+      "name": "GrowthTrackNailsMaterial",
+      "baseColorTexture": null,
+      "normalTexture": null,
+      "occlusionTexture": null,
+      "metallicRoughnessTexture": null,
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "extensions": []
+    },
+    {
+      "name": "GrowthTrackCorneaMaterial",
+      "baseColorTexture": null,
+      "normalTexture": null,
+      "occlusionTexture": null,
+      "metallicRoughnessTexture": null,
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "extensions": [
+        "KHR_materials_ior",
+        "KHR_materials_clearcoat"
+      ]
+    },
+    {
+      "name": "GrowthTrackTearlineMaterial",
+      "baseColorTexture": null,
+      "normalTexture": null,
+      "occlusionTexture": null,
+      "metallicRoughnessTexture": null,
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "extensions": []
+    }
+  ],
+  "images": [
+    {
+      "name": "SkinAlbedo_YoungMale",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 4403463,
+      "mime": "image/png"
+    },
+    {
+      "name": "SkinAlbedo_Light",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 4348063,
+      "mime": "image/png"
+    },
+    {
+      "name": "SkinAlbedo_Deep",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 3513031,
+      "mime": "image/png"
+    },
+    {
+      "name": "SkinNormal_GeometryBaked",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 495282,
+      "mime": "image/png"
+    },
+    {
+      "name": "SkinAO_Roughness_GeometryBaked",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 95935,
+      "mime": "image/png"
+    },
+    {
+      "name": "EyeBrown_IrisSclera",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 610817,
+      "mime": "image/png"
+    },
+    {
+      "name": "HairShort02_Albedo",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 3553543,
+      "mime": "image/png"
+    },
+    {
+      "name": "HairShort02_Normal",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 1626745,
+      "mime": "image/png"
+    },
+    {
+      "name": "Eyebrows_eyebrow001",
+      "width": 512,
+      "height": 512,
+      "bytes": 89619,
+      "mime": "image/png"
+    },
+    {
+      "name": "Eyelashes_eyelashes01",
+      "width": 512,
+      "height": 512,
+      "bytes": 91600,
+      "mime": "image/png"
+    },
+    {
+      "name": "MicroSkinHeight",
+      "width": 256,
+      "height": 256,
+      "bytes": 38197,
+      "mime": "image/png"
+    },
+    {
+      "name": "MicroSkinNormal",
+      "width": 256,
+      "height": 256,
+      "bytes": 50398,
+      "mime": "image/png"
+    }
+  ],
+  "rig": {
+    "joints": 79,
+    "families": {
+      "fingers": 30,
+      "toes": 14,
+      "jaw": 1,
+      "eyes": 2,
+      "twist": 8,
+      "clavicle": 2,
+      "spine": 3
+    },
+    "jointNodesWithRotationOrScale": 0,
+    "maxInfluencesPerVertex": 4,
+    "influenceHistogram": [
+      0,
+      8546,
+      4576,
+      410,
+      2469
+    ],
+    "list": [
+      {
+        "name": "Hips",
+        "parent": null,
+        "position_cm": [
+          0,
+          10.5,
+          0.3
+        ]
+      },
+      {
+        "name": "Spine",
+        "parent": "Hips",
+        "position_cm": [
+          0,
+          19.3,
+          -2.9
+        ]
+      },
+      {
+        "name": "Spine1",
+        "parent": "Spine",
+        "position_cm": [
+          0,
+          32.2,
+          -2.9
+        ]
+      },
+      {
+        "name": "Spine2",
+        "parent": "Spine1",
+        "position_cm": [
+          0,
+          45.8,
+          -5
+        ]
+      },
+      {
+        "name": "Neck",
+        "parent": "Spine2",
+        "position_cm": [
+          0,
+          66.5,
+          1.2
+        ]
+      },
+      {
+        "name": "Head",
+        "parent": "Neck1",
+        "position_cm": [
+          0,
+          76.2,
+          4.8
+        ]
+      },
+      {
+        "name": "LeftShoulder",
+        "parent": "Spine2",
+        "position_cm": [
+          2.3,
+          59.1,
+          2.2
+        ]
+      },
+      {
+        "name": "LeftUpperArm",
+        "parent": "LeftShoulder",
+        "position_cm": [
+          18.6,
+          56.1,
+          1.8
+        ]
+      },
+      {
+        "name": "LeftForeArm",
+        "parent": "LeftUpperArm",
+        "position_cm": [
+          35.2,
+          37.1,
+          1.6
+        ]
+      },
+      {
+        "name": "LeftHand",
+        "parent": "LeftForeArm",
+        "position_cm": [
+          48.7,
+          24.2,
+          20.8
+        ]
+      },
+      {
+        "name": "RightShoulder",
+        "parent": "Spine2",
+        "position_cm": [
+          -2.3,
+          59.1,
+          2.2
+        ]
+      },
+      {
+        "name": "RightUpperArm",
+        "parent": "RightShoulder",
+        "position_cm": [
+          -18.6,
+          56.1,
+          1.8
+        ]
+      },
+      {
+        "name": "RightForeArm",
+        "parent": "RightUpperArm",
+        "position_cm": [
+          -35.2,
+          37.1,
+          1.6
+        ]
+      },
+      {
+        "name": "RightHand",
+        "parent": "RightForeArm",
+        "position_cm": [
+          -48.7,
+          24.2,
+          20.8
+        ]
+      },
+      {
+        "name": "LeftUpLeg",
+        "parent": "Hips",
+        "position_cm": [
+          10.8,
+          10,
+          -0.8
+        ]
+      },
+      {
+        "name": "LeftLeg",
+        "parent": "LeftUpLeg",
+        "position_cm": [
+          15.1,
+          -31.4,
+          2.7
+        ]
+      },
+      {
+        "name": "LeftFoot",
+        "parent": "LeftLeg",
+        "position_cm": [
+          19.8,
+          -74.7,
+          1.5
+        ]
+      },
+      {
+        "name": "RightUpLeg",
+        "parent": "Hips",
+        "position_cm": [
+          -10.8,
+          10,
+          -0.8
+        ]
+      },
+      {
+        "name": "RightLeg",
+        "parent": "RightUpLeg",
+        "position_cm": [
+          -15.1,
+          -31.4,
+          2.7
+        ]
+      },
+      {
+        "name": "RightFoot",
+        "parent": "RightLeg",
+        "position_cm": [
+          -19.8,
+          -74.7,
+          1.5
+        ]
+      },
+      {
+        "name": "Neck1",
+        "parent": "Neck",
+        "position_cm": [
+          0,
+          71.4,
+          3
+        ]
+      },
+      {
+        "name": "Jaw",
+        "parent": "Head",
+        "position_cm": [
+          0,
+          70.4,
+          14
+        ]
+      },
+      {
+        "name": "Tongue0",
+        "parent": "Jaw",
+        "position_cm": [
+          0,
+          73.2,
+          7.5
+        ]
+      },
+      {
+        "name": "Tongue1",
+        "parent": "Tongue0",
+        "position_cm": [
+          0,
+          73.5,
+          10.4
+        ]
+      },
+      {
+        "name": "Tongue2",
+        "parent": "Tongue1",
+        "position_cm": [
+          0,
+          73.4,
+          12.5
+        ]
+      },
+      {
+        "name": "LeftEye",
+        "parent": "Head",
+        "position_cm": [
+          2.9,
+          80.3,
+          12.6
+        ]
+      },
+      {
+        "name": "LeftUpperArmTwist",
+        "parent": "LeftUpperArm",
+        "position_cm": [
+          26.9,
+          46.6,
+          1.7
+        ]
+      },
+      {
+        "name": "LeftForeArmTwist",
+        "parent": "LeftForeArm",
+        "position_cm": [
+          42,
+          30.7,
+          11.2
+        ]
+      },
+      {
+        "name": "LeftUpLegTwist",
+        "parent": "LeftUpLeg",
+        "position_cm": [
+          13,
+          -10.7,
+          1
+        ]
+      },
+      {
+        "name": "LeftLegTwist",
+        "parent": "LeftLeg",
+        "position_cm": [
+          17.5,
+          -53,
+          2.1
+        ]
+      },
+      {
+        "name": "LeftThumb1",
+        "parent": "LeftHand",
+        "position_cm": [
+          48.8,
+          23.6,
+          25.6
+        ]
+      },
+      {
+        "name": "LeftThumb2",
+        "parent": "LeftThumb1",
+        "position_cm": [
+          46.5,
+          22.7,
+          28
+        ]
+      },
+      {
+        "name": "LeftThumb3",
+        "parent": "LeftThumb2",
+        "position_cm": [
+          45.2,
+          21.3,
+          31.4
+        ]
+      },
+      {
+        "name": "LeftIndex1",
+        "parent": "LeftHand",
+        "position_cm": [
+          51.7,
+          20.2,
+          31.3
+        ]
+      },
+      {
+        "name": "LeftIndex2",
+        "parent": "LeftIndex1",
+        "position_cm": [
+          52.1,
+          18.6,
+          33.6
+        ]
+      },
+      {
+        "name": "LeftIndex3",
+        "parent": "LeftIndex2",
+        "position_cm": [
+          52,
+          16.9,
+          35.5
+        ]
+      },
+      {
+        "name": "LeftMiddle1",
+        "parent": "LeftHand",
+        "position_cm": [
+          53.5,
+          18.9,
+          29.4
+        ]
+      },
+      {
+        "name": "LeftMiddle2",
+        "parent": "LeftMiddle1",
+        "position_cm": [
+          54.3,
+          16.1,
+          31.8
+        ]
+      },
+      {
+        "name": "LeftMiddle3",
+        "parent": "LeftMiddle2",
+        "position_cm": [
+          54.6,
+          13.9,
+          33.7
+        ]
+      },
+      {
+        "name": "LeftRing1",
+        "parent": "LeftHand",
+        "position_cm": [
+          54.3,
+          18,
+          27.6
+        ]
+      },
+      {
+        "name": "LeftRing2",
+        "parent": "LeftRing1",
+        "position_cm": [
+          55.4,
+          15.4,
+          29.2
+        ]
+      },
+      {
+        "name": "LeftRing3",
+        "parent": "LeftRing2",
+        "position_cm": [
+          55.8,
+          13.1,
+          30.7
+        ]
+      },
+      {
+        "name": "LeftPinky1",
+        "parent": "LeftHand",
+        "position_cm": [
+          54.5,
+          16.9,
+          25.4
+        ]
+      },
+      {
+        "name": "LeftPinky2",
+        "parent": "LeftPinky1",
+        "position_cm": [
+          55.1,
+          14.9,
+          26.4
+        ]
+      },
+      {
+        "name": "LeftPinky3",
+        "parent": "LeftPinky2",
+        "position_cm": [
+          55.3,
+          13.3,
+          27
+        ]
+      },
+      {
+        "name": "LeftToeBase",
+        "parent": "LeftFoot",
+        "position_cm": [
+          21,
+          -79.1,
+          15.2
+        ]
+      },
+      {
+        "name": "LeftToeBig1",
+        "parent": "LeftToeBase",
+        "position_cm": [
+          17.1,
+          -78.6,
+          15.5
+        ]
+      },
+      {
+        "name": "LeftToeBig2",
+        "parent": "LeftToeBig1",
+        "position_cm": [
+          17.3,
+          -79.3,
+          18.2
+        ]
+      },
+      {
+        "name": "LeftToe2",
+        "parent": "LeftToeBase",
+        "position_cm": [
+          19.5,
+          -78.9,
+          15.8
+        ]
+      },
+      {
+        "name": "LeftToe3",
+        "parent": "LeftToeBase",
+        "position_cm": [
+          21.2,
+          -79.2,
+          15.5
+        ]
+      },
+      {
+        "name": "LeftToe4",
+        "parent": "LeftToeBase",
+        "position_cm": [
+          22.8,
+          -79.2,
+          14.7
+        ]
+      },
+      {
+        "name": "LeftToe5",
+        "parent": "LeftToeBase",
+        "position_cm": [
+          24.2,
+          -79.4,
+          14.4
+        ]
+      },
+      {
+        "name": "RightEye",
+        "parent": "Head",
+        "position_cm": [
+          -2.9,
+          80.3,
+          12.6
+        ]
+      },
+      {
+        "name": "RightUpperArmTwist",
+        "parent": "RightUpperArm",
+        "position_cm": [
+          -26.9,
+          46.6,
+          1.7
+        ]
+      },
+      {
+        "name": "RightForeArmTwist",
+        "parent": "RightForeArm",
+        "position_cm": [
+          -42,
+          30.7,
+          11.2
+        ]
+      },
+      {
+        "name": "RightUpLegTwist",
+        "parent": "RightUpLeg",
+        "position_cm": [
+          -13,
+          -10.7,
+          1
+        ]
+      },
+      {
+        "name": "RightLegTwist",
+        "parent": "RightLeg",
+        "position_cm": [
+          -17.5,
+          -53,
+          2.1
+        ]
+      },
+      {
+        "name": "RightThumb1",
+        "parent": "RightHand",
+        "position_cm": [
+          -48.8,
+          23.6,
+          25.6
+        ]
+      },
+      {
+        "name": "RightThumb2",
+        "parent": "RightThumb1",
+        "position_cm": [
+          -46.5,
+          22.7,
+          28
+        ]
+      },
+      {
+        "name": "RightThumb3",
+        "parent": "RightThumb2",
+        "position_cm": [
+          -45.2,
+          21.3,
+          31.4
+        ]
+      },
+      {
+        "name": "RightIndex1",
+        "parent": "RightHand",
+        "position_cm": [
+          -51.7,
+          20.2,
+          31.3
+        ]
+      },
+      {
+        "name": "RightIndex2",
+        "parent": "RightIndex1",
+        "position_cm": [
+          -52.1,
+          18.6,
+          33.6
+        ]
+      },
+      {
+        "name": "RightIndex3",
+        "parent": "RightIndex2",
+        "position_cm": [
+          -52,
+          16.9,
+          35.5
+        ]
+      },
+      {
+        "name": "RightMiddle1",
+        "parent": "RightHand",
+        "position_cm": [
+          -53.5,
+          18.9,
+          29.4
+        ]
+      },
+      {
+        "name": "RightMiddle2",
+        "parent": "RightMiddle1",
+        "position_cm": [
+          -54.3,
+          16.1,
+          31.8
+        ]
+      },
+      {
+        "name": "RightMiddle3",
+        "parent": "RightMiddle2",
+        "position_cm": [
+          -54.6,
+          13.9,
+          33.7
+        ]
+      },
+      {
+        "name": "RightRing1",
+        "parent": "RightHand",
+        "position_cm": [
+          -54.3,
+          18,
+          27.6
+        ]
+      },
+      {
+        "name": "RightRing2",
+        "parent": "RightRing1",
+        "position_cm": [
+          -55.4,
+          15.4,
+          29.2
+        ]
+      },
+      {
+        "name": "RightRing3",
+        "parent": "RightRing2",
+        "position_cm": [
+          -55.8,
+          13.1,
+          30.7
+        ]
+      },
+      {
+        "name": "RightPinky1",
+        "parent": "RightHand",
+        "position_cm": [
+          -54.5,
+          16.9,
+          25.4
+        ]
+      },
+      {
+        "name": "RightPinky2",
+        "parent": "RightPinky1",
+        "position_cm": [
+          -55.1,
+          14.9,
+          26.4
+        ]
+      },
+      {
+        "name": "RightPinky3",
+        "parent": "RightPinky2",
+        "position_cm": [
+          -55.3,
+          13.3,
+          27
+        ]
+      },
+      {
+        "name": "RightToeBase",
+        "parent": "RightFoot",
+        "position_cm": [
+          -21,
+          -79.1,
+          15.2
+        ]
+      },
+      {
+        "name": "RightToeBig1",
+        "parent": "RightToeBase",
+        "position_cm": [
+          -17.1,
+          -78.6,
+          15.5
+        ]
+      },
+      {
+        "name": "RightToeBig2",
+        "parent": "RightToeBig1",
+        "position_cm": [
+          -17.3,
+          -79.3,
+          18.2
+        ]
+      },
+      {
+        "name": "RightToe2",
+        "parent": "RightToeBase",
+        "position_cm": [
+          -19.5,
+          -78.9,
+          15.8
+        ]
+      },
+      {
+        "name": "RightToe3",
+        "parent": "RightToeBase",
+        "position_cm": [
+          -21.2,
+          -79.2,
+          15.5
+        ]
+      },
+      {
+        "name": "RightToe4",
+        "parent": "RightToeBase",
+        "position_cm": [
+          -22.8,
+          -79.2,
+          14.7
+        ]
+      },
+      {
+        "name": "RightToe5",
+        "parent": "RightToeBase",
+        "position_cm": [
+          -24.2,
+          -79.4,
+          14.4
+        ]
+      }
+    ]
+  },
+  "regions": [
+    {
+      "region": "Head",
+      "vertices": 4520,
+      "triangles": 8649,
+      "area_cm2": 1851,
+      "mean_edge_mm": 6.4,
+      "vertices_per_cm2": 2.44,
+      "skin_px_per_cm": 22.2,
+      "extent_cm": [
+        17.5,
+        28.9,
+        21.9
+      ]
+    },
+    {
+      "region": "RightUpLeg",
+      "vertices": 1066,
+      "triangles": 2088,
+      "area_cm2": 2256,
+      "mean_edge_mm": 16.5,
+      "vertices_per_cm2": 0.47,
+      "skin_px_per_cm": 9.8,
+      "extent_cm": [
+        19.1,
+        55.6,
+        22
+      ]
+    },
+    {
+      "region": "LeftUpLeg",
+      "vertices": 1066,
+      "triangles": 2088,
+      "area_cm2": 2257,
+      "mean_edge_mm": 16.6,
+      "vertices_per_cm2": 0.47,
+      "skin_px_per_cm": 9.8,
+      "extent_cm": [
+        19.1,
+        55.6,
+        22
+      ]
+    },
+    {
+      "region": "RightLeg",
+      "vertices": 587,
+      "triangles": 1078,
+      "area_cm2": 1749,
+      "mean_edge_mm": 22.3,
+      "vertices_per_cm2": 0.34,
+      "skin_px_per_cm": 8.5,
+      "extent_cm": [
+        15.3,
+        50.7,
+        22
+      ]
+    },
+    {
+      "region": "LeftLeg",
+      "vertices": 587,
+      "triangles": 1078,
+      "area_cm2": 1749,
+      "mean_edge_mm": 22.3,
+      "vertices_per_cm2": 0.34,
+      "skin_px_per_cm": 8.5,
+      "extent_cm": [
+        15.3,
+        50.7,
+        22
+      ]
+    },
+    {
+      "region": "RightForeArm",
+      "vertices": 484,
+      "triangles": 889,
+      "area_cm2": 727,
+      "mean_edge_mm": 15.2,
+      "vertices_per_cm2": 0.67,
+      "skin_px_per_cm": 9,
+      "extent_cm": [
+        22.7,
+        24.3,
+        31.3
+      ]
+    },
+    {
+      "region": "LeftForeArm",
+      "vertices": 484,
+      "triangles": 889,
+      "area_cm2": 727,
+      "mean_edge_mm": 15.2,
+      "vertices_per_cm2": 0.67,
+      "skin_px_per_cm": 9,
+      "extent_cm": [
+        22.7,
+        24.3,
+        31.3
+      ]
+    },
+    {
+      "region": "LeftShoulder",
+      "vertices": 364,
+      "triangles": 718,
+      "area_cm2": 855,
+      "mean_edge_mm": 16.9,
+      "vertices_per_cm2": 0.43,
+      "skin_px_per_cm": 13.8,
+      "extent_cm": [
+        21.6,
+        25.4,
+        23.3
+      ]
+    },
+    {
+      "region": "Hips",
+      "vertices": 361,
+      "triangles": 678,
+      "area_cm2": 596,
+      "mean_edge_mm": 14.7,
+      "vertices_per_cm2": 0.61,
+      "skin_px_per_cm": 11.3,
+      "extent_cm": [
+        16.6,
+        22,
+        23.4
+      ]
+    },
+    {
+      "region": "RightShoulder",
+      "vertices": 351,
+      "triangles": 691,
+      "area_cm2": 834,
+      "mean_edge_mm": 17,
+      "vertices_per_cm2": 0.42,
+      "skin_px_per_cm": 13.7,
+      "extent_cm": [
+        20.9,
+        25.4,
+        23.3
+      ]
+    },
+    {
+      "region": "Spine",
+      "vertices": 302,
+      "triangles": 590,
+      "area_cm2": 887,
+      "mean_edge_mm": 20,
+      "vertices_per_cm2": 0.34,
+      "skin_px_per_cm": 12.4,
+      "extent_cm": [
+        27.3,
+        15.2,
+        20.1
+      ]
+    },
+    {
+      "region": "RightUpperArm",
+      "vertices": 286,
+      "triangles": 548,
+      "area_cm2": 742,
+      "mean_edge_mm": 19.6,
+      "vertices_per_cm2": 0.39,
+      "skin_px_per_cm": 9.6,
+      "extent_cm": [
+        20.9,
+        24.5,
+        12.9
+      ]
+    },
+    {
+      "region": "LeftUpperArm",
+      "vertices": 286,
+      "triangles": 548,
+      "area_cm2": 742,
+      "mean_edge_mm": 19.6,
+      "vertices_per_cm2": 0.39,
+      "skin_px_per_cm": 9.6,
+      "extent_cm": [
+        20.9,
+        24.5,
+        12.9
+      ]
+    },
+    {
+      "region": "RightToe5",
+      "vertices": 206,
+      "triangles": 345,
+      "area_cm2": 18,
+      "mean_edge_mm": 3.9,
+      "vertices_per_cm2": 11.27,
+      "skin_px_per_cm": 10,
+      "extent_cm": [
+        1.8,
+        2.1,
+        3.6
+      ]
+    },
+    {
+      "region": "LeftToe5",
+      "vertices": 206,
+      "triangles": 345,
+      "area_cm2": 18,
+      "mean_edge_mm": 3.9,
+      "vertices_per_cm2": 11.27,
+      "skin_px_per_cm": 10,
+      "extent_cm": [
+        1.8,
+        2.1,
+        3.6
+      ]
+    },
+    {
+      "region": "RightToe2",
+      "vertices": 190,
+      "triangles": 320,
+      "area_cm2": 34,
+      "mean_edge_mm": 5.4,
+      "vertices_per_cm2": 5.67,
+      "skin_px_per_cm": 10.3,
+      "extent_cm": [
+        2.2,
+        2.7,
+        5.3
+      ]
+    },
+    {
+      "region": "LeftToe2",
+      "vertices": 190,
+      "triangles": 320,
+      "area_cm2": 34,
+      "mean_edge_mm": 5.4,
+      "vertices_per_cm2": 5.67,
+      "skin_px_per_cm": 10.3,
+      "extent_cm": [
+        2.2,
+        2.7,
+        5.3
+      ]
+    },
+    {
+      "region": "Spine1",
+      "vertices": 188,
+      "triangles": 364,
+      "area_cm2": 834,
+      "mean_edge_mm": 25.4,
+      "vertices_per_cm2": 0.23,
+      "skin_px_per_cm": 11.6,
+      "extent_cm": [
+        30.4,
+        14.5,
+        23
+      ]
+    },
+    {
+      "region": "RightToe4",
+      "vertices": 178,
+      "triangles": 301,
+      "area_cm2": 20,
+      "mean_edge_mm": 4.3,
+      "vertices_per_cm2": 8.74,
+      "skin_px_per_cm": 10.9,
+      "extent_cm": [
+        1.7,
+        2.3,
+        3.8
+      ]
+    },
+    {
+      "region": "LeftToe4",
+      "vertices": 178,
+      "triangles": 301,
+      "area_cm2": 20,
+      "mean_edge_mm": 4.3,
+      "vertices_per_cm2": 8.74,
+      "skin_px_per_cm": 10.9,
+      "extent_cm": [
+        1.7,
+        2.3,
+        3.8
+      ]
+    },
+    {
+      "region": "RightToe3",
+      "vertices": 158,
+      "triangles": 269,
+      "area_cm2": 20,
+      "mean_edge_mm": 4.6,
+      "vertices_per_cm2": 7.8,
+      "skin_px_per_cm": 10.3,
+      "extent_cm": [
+        1.8,
+        2.4,
+        4.5
+      ]
+    },
+    {
+      "region": "LeftToe3",
+      "vertices": 158,
+      "triangles": 269,
+      "area_cm2": 20,
+      "mean_edge_mm": 4.6,
+      "vertices_per_cm2": 7.8,
+      "skin_px_per_cm": 10.3,
+      "extent_cm": [
+        1.8,
+        2.4,
+        4.5
+      ]
+    },
+    {
+      "region": "RightIndex3",
+      "vertices": 145,
+      "triangles": 246,
+      "area_cm2": 15,
+      "mean_edge_mm": 4.2,
+      "vertices_per_cm2": 9.75,
+      "skin_px_per_cm": 9.4,
+      "extent_cm": [
+        1.8,
+        2.7,
+        3
+      ]
+    },
+    {
+      "region": "RightMiddle3",
+      "vertices": 145,
+      "triangles": 246,
+      "area_cm2": 14,
+      "mean_edge_mm": 3.9,
+      "vertices_per_cm2": 10.4,
+      "skin_px_per_cm": 9.5,
+      "extent_cm": [
+        1.8,
+        2.8,
+        2.9
+      ]
+    },
+    {
+      "region": "RightRing3",
+      "vertices": 145,
+      "triangles": 246,
+      "area_cm2": 14,
+      "mean_edge_mm": 4,
+      "vertices_per_cm2": 10.07,
+      "skin_px_per_cm": 9.9,
+      "extent_cm": [
+        1.9,
+        2.9,
+        2.7
+      ]
+    },
+    {
+      "region": "LeftIndex3",
+      "vertices": 145,
+      "triangles": 246,
+      "area_cm2": 15,
+      "mean_edge_mm": 4.2,
+      "vertices_per_cm2": 9.75,
+      "skin_px_per_cm": 9.4,
+      "extent_cm": [
+        1.8,
+        2.7,
+        3
+      ]
+    },
+    {
+      "region": "LeftMiddle3",
+      "vertices": 145,
+      "triangles": 246,
+      "area_cm2": 14,
+      "mean_edge_mm": 3.9,
+      "vertices_per_cm2": 10.4,
+      "skin_px_per_cm": 9.5,
+      "extent_cm": [
+        1.8,
+        2.8,
+        2.9
+      ]
+    },
+    {
+      "region": "LeftRing3",
+      "vertices": 145,
+      "triangles": 246,
+      "area_cm2": 14,
+      "mean_edge_mm": 4,
+      "vertices_per_cm2": 10.07,
+      "skin_px_per_cm": 9.9,
+      "extent_cm": [
+        1.9,
+        2.9,
+        2.7
+      ]
+    },
+    {
+      "region": "RightPinky3",
+      "vertices": 129,
+      "triangles": 234,
+      "area_cm2": 9,
+      "mean_edge_mm": 3.2,
+      "vertices_per_cm2": 14.53,
+      "skin_px_per_cm": 9.1,
+      "extent_cm": [
+        1.4,
+        2.3,
+        1.9
+      ]
+    },
+    {
+      "region": "LeftPinky3",
+      "vertices": 129,
+      "triangles": 234,
+      "area_cm2": 9,
+      "mean_edge_mm": 3.2,
+      "vertices_per_cm2": 14.53,
+      "skin_px_per_cm": 9.1,
+      "extent_cm": [
+        1.4,
+        2.3,
+        1.9
+      ]
+    },
+    {
+      "region": "RightThumb3",
+      "vertices": 124,
+      "triangles": 204,
+      "area_cm2": 18,
+      "mean_edge_mm": 5.3,
+      "vertices_per_cm2": 7.07,
+      "skin_px_per_cm": 9.8,
+      "extent_cm": [
+        2.7,
+        2.5,
+        3.1
+      ]
+    },
+    {
+      "region": "LeftThumb3",
+      "vertices": 124,
+      "triangles": 204,
+      "area_cm2": 18,
+      "mean_edge_mm": 5.3,
+      "vertices_per_cm2": 7.07,
+      "skin_px_per_cm": 9.8,
+      "extent_cm": [
+        2.7,
+        2.5,
+        3.1
+      ]
+    },
+    {
+      "region": "Spine2",
+      "vertices": 121,
+      "triangles": 200,
+      "area_cm2": 330,
+      "mean_edge_mm": 21.4,
+      "vertices_per_cm2": 0.37,
+      "skin_px_per_cm": 8.4,
+      "extent_cm": [
+        26.7,
+        17.6,
+        21.9
+      ]
+    },
+    {
+      "region": "RightThumb2",
+      "vertices": 104,
+      "triangles": 172,
+      "area_cm2": 32,
+      "mean_edge_mm": 7.1,
+      "vertices_per_cm2": 3.26,
+      "skin_px_per_cm": 11,
+      "extent_cm": [
+        4.4,
+        3.4,
+        4.6
+      ]
+    },
+    {
+      "region": "LeftThumb2",
+      "vertices": 104,
+      "triangles": 172,
+      "area_cm2": 32,
+      "mean_edge_mm": 7.1,
+      "vertices_per_cm2": 3.26,
+      "skin_px_per_cm": 11,
+      "extent_cm": [
+        4.4,
+        3.4,
+        4.6
+      ]
+    },
+    {
+      "region": "RightRing1",
+      "vertices": 102,
+      "triangles": 184,
+      "area_cm2": 18,
+      "mean_edge_mm": 5.1,
+      "vertices_per_cm2": 5.7,
+      "skin_px_per_cm": 12.3,
+      "extent_cm": [
+        3.5,
+        3,
+        2.8
+      ]
+    },
+    {
+      "region": "LeftRing1",
+      "vertices": 102,
+      "triangles": 184,
+      "area_cm2": 18,
+      "mean_edge_mm": 5.1,
+      "vertices_per_cm2": 5.7,
+      "skin_px_per_cm": 12.3,
+      "extent_cm": [
+        3.5,
+        3,
+        2.8
+      ]
+    },
+    {
+      "region": "RightPinky1",
+      "vertices": 101,
+      "triangles": 189,
+      "area_cm2": 13,
+      "mean_edge_mm": 4.3,
+      "vertices_per_cm2": 7.66,
+      "skin_px_per_cm": 13.5,
+      "extent_cm": [
+        2.6,
+        2.2,
+        2.7
+      ]
+    },
+    {
+      "region": "LeftPinky1",
+      "vertices": 101,
+      "triangles": 189,
+      "area_cm2": 13,
+      "mean_edge_mm": 4.3,
+      "vertices_per_cm2": 7.66,
+      "skin_px_per_cm": 13.5,
+      "extent_cm": [
+        2.6,
+        2.2,
+        2.7
+      ]
+    },
+    {
+      "region": "RightIndex1",
+      "vertices": 99,
+      "triangles": 175,
+      "area_cm2": 18,
+      "mean_edge_mm": 5.3,
+      "vertices_per_cm2": 5.58,
+      "skin_px_per_cm": 11.4,
+      "extent_cm": [
+        2.5,
+        2.9,
+        3.3
+      ]
+    },
+    {
+      "region": "LeftIndex1",
+      "vertices": 99,
+      "triangles": 175,
+      "area_cm2": 18,
+      "mean_edge_mm": 5.3,
+      "vertices_per_cm2": 5.58,
+      "skin_px_per_cm": 11.4,
+      "extent_cm": [
+        2.5,
+        2.9,
+        3.3
+      ]
+    },
+    {
+      "region": "RightMiddle2",
+      "vertices": 93,
+      "triangles": 164,
+      "area_cm2": 18,
+      "mean_edge_mm": 5.4,
+      "vertices_per_cm2": 5.29,
+      "skin_px_per_cm": 10.2,
+      "extent_cm": [
+        2.2,
+        3.1,
+        3.4
+      ]
+    },
+    {
+      "region": "LeftMiddle2",
+      "vertices": 93,
+      "triangles": 164,
+      "area_cm2": 18,
+      "mean_edge_mm": 5.4,
+      "vertices_per_cm2": 5.29,
+      "skin_px_per_cm": 10.2,
+      "extent_cm": [
+        2.2,
+        3.1,
+        3.4
+      ]
+    },
+    {
+      "region": "RightPinky2",
+      "vertices": 90,
+      "triangles": 168,
+      "area_cm2": 8,
+      "mean_edge_mm": 3.5,
+      "vertices_per_cm2": 11.69,
+      "skin_px_per_cm": 10.8,
+      "extent_cm": [
+        1.7,
+        2.1,
+        2
+      ]
+    },
+    {
+      "region": "LeftPinky2",
+      "vertices": 90,
+      "triangles": 168,
+      "area_cm2": 8,
+      "mean_edge_mm": 3.5,
+      "vertices_per_cm2": 11.69,
+      "skin_px_per_cm": 10.8,
+      "extent_cm": [
+        1.7,
+        2.1,
+        2
+      ]
+    },
+    {
+      "region": "RightMiddle1",
+      "vertices": 89,
+      "triangles": 162,
+      "area_cm2": 24,
+      "mean_edge_mm": 6.3,
+      "vertices_per_cm2": 3.72,
+      "skin_px_per_cm": 12.2,
+      "extent_cm": [
+        3.5,
+        3.3,
+        3.7
+      ]
+    },
+    {
+      "region": "RightToeBig2",
+      "vertices": 89,
+      "triangles": 166,
+      "area_cm2": 21,
+      "mean_edge_mm": 5.9,
+      "vertices_per_cm2": 4.26,
+      "skin_px_per_cm": 8.5,
+      "extent_cm": [
+        2.6,
+        2.8,
+        3.6
+      ]
+    },
+    {
+      "region": "LeftMiddle1",
+      "vertices": 89,
+      "triangles": 162,
+      "area_cm2": 24,
+      "mean_edge_mm": 6.3,
+      "vertices_per_cm2": 3.72,
+      "skin_px_per_cm": 12.2,
+      "extent_cm": [
+        3.5,
+        3.3,
+        3.7
+      ]
+    },
+    {
+      "region": "LeftToeBig2",
+      "vertices": 89,
+      "triangles": 166,
+      "area_cm2": 21,
+      "mean_edge_mm": 5.9,
+      "vertices_per_cm2": 4.26,
+      "skin_px_per_cm": 8.5,
+      "extent_cm": [
+        2.6,
+        2.8,
+        3.6
+      ]
+    },
+    {
+      "region": "RightIndex2",
+      "vertices": 87,
+      "triangles": 154,
+      "area_cm2": 15,
+      "mean_edge_mm": 5.2,
+      "vertices_per_cm2": 5.71,
+      "skin_px_per_cm": 9.9,
+      "extent_cm": [
+        2.1,
+        3,
+        3
+      ]
+    },
+    {
+      "region": "LeftIndex2",
+      "vertices": 87,
+      "triangles": 154,
+      "area_cm2": 15,
+      "mean_edge_mm": 5.2,
+      "vertices_per_cm2": 5.71,
+      "skin_px_per_cm": 9.9,
+      "extent_cm": [
+        2.1,
+        3,
+        3
+      ]
+    },
+    {
+      "region": "RightRing2",
+      "vertices": 73,
+      "triangles": 128,
+      "area_cm2": 14,
+      "mean_edge_mm": 5.6,
+      "vertices_per_cm2": 5.16,
+      "skin_px_per_cm": 10.5,
+      "extent_cm": [
+        2.1,
+        2.9,
+        2.9
+      ]
+    },
+    {
+      "region": "LeftRing2",
+      "vertices": 73,
+      "triangles": 128,
+      "area_cm2": 14,
+      "mean_edge_mm": 5.6,
+      "vertices_per_cm2": 5.16,
+      "skin_px_per_cm": 10.5,
+      "extent_cm": [
+        2.1,
+        2.9,
+        2.9
+      ]
+    },
+    {
+      "region": "RightToeBig1",
+      "vertices": 39,
+      "triangles": 78,
+      "area_cm2": 18,
+      "mean_edge_mm": 8,
+      "vertices_per_cm2": 2.22,
+      "skin_px_per_cm": 12.9,
+      "extent_cm": [
+        2.6,
+        3.2,
+        3
+      ]
+    },
+    {
+      "region": "LeftToeBig1",
+      "vertices": 39,
+      "triangles": 78,
+      "area_cm2": 18,
+      "mean_edge_mm": 8,
+      "vertices_per_cm2": 2.22,
+      "skin_px_per_cm": 12.9,
+      "extent_cm": [
+        2.6,
+        3.2,
+        3
+      ]
+    },
+    {
+      "region": "RightFoot",
+      "vertices": 32,
+      "triangles": 51,
+      "area_cm2": 11,
+      "mean_edge_mm": 8,
+      "vertices_per_cm2": 2.83,
+      "skin_px_per_cm": 15.1,
+      "extent_cm": [
+        9.1,
+        2.9,
+        2.7
+      ]
+    },
+    {
+      "region": "LeftFoot",
+      "vertices": 32,
+      "triangles": 51,
+      "area_cm2": 11,
+      "mean_edge_mm": 8,
+      "vertices_per_cm2": 2.83,
+      "skin_px_per_cm": 15.1,
+      "extent_cm": [
+        9.1,
+        2.9,
+        2.7
+      ]
+    },
+    {
+      "region": "RightHand",
+      "vertices": 28,
+      "triangles": 42,
+      "area_cm2": 10,
+      "mean_edge_mm": 7.6,
+      "vertices_per_cm2": 2.89,
+      "skin_px_per_cm": 13.8,
+      "extent_cm": [
+        6.3,
+        8.1,
+        7
+      ]
+    },
+    {
+      "region": "RightThumb1",
+      "vertices": 28,
+      "triangles": 49,
+      "area_cm2": 37,
+      "mean_edge_mm": 14.8,
+      "vertices_per_cm2": 0.75,
+      "skin_px_per_cm": 10.9,
+      "extent_cm": [
+        5,
+        5,
+        4.9
+      ]
+    },
+    {
+      "region": "LeftHand",
+      "vertices": 28,
+      "triangles": 42,
+      "area_cm2": 10,
+      "mean_edge_mm": 7.6,
+      "vertices_per_cm2": 2.89,
+      "skin_px_per_cm": 13.8,
+      "extent_cm": [
+        6.3,
+        8.1,
+        7
+      ]
+    },
+    {
+      "region": "LeftThumb1",
+      "vertices": 28,
+      "triangles": 49,
+      "area_cm2": 37,
+      "mean_edge_mm": 14.8,
+      "vertices_per_cm2": 0.75,
+      "skin_px_per_cm": 10.9,
+      "extent_cm": [
+        5,
+        5,
+        4.9
+      ]
+    }
+  ],
+  "morphs": [
+    {
+      "name": "overall_mass",
+      "vertices": 5425,
+      "max_mm": 28.7,
+      "centre_cm": [
+        0,
+        16.6,
+        4.2
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.2,
+      "region_shares": {
+        "RightUpLeg": 0.2,
+        "LeftUpLeg": 0.2,
+        "RightForeArm": 0.07,
+        "LeftForeArm": 0.07,
+        "Hips": 0.07,
+        "LeftShoulder": 0.06,
+        "RightShoulder": 0.06,
+        "Spine": 0.06,
+        "RightUpperArm": 0.05,
+        "LeftUpperArm": 0.05,
+        "Spine1": 0.03,
+        "Spine2": 0.02,
+        "RightLeg": 0.02,
+        "LeftLeg": 0.02,
+        "Head": 0.02,
+        "RightThumb1": 0.01,
+        "LeftThumb1": 0.01
+      }
+    },
+    {
+      "name": "gut_volume",
+      "vertices": 965,
+      "max_mm": 31.3,
+      "centre_cm": [
+        0,
+        27.9,
+        4.1
+      ],
+      "main_region": "Spine",
+      "main_region_share": 0.31,
+      "region_shares": {
+        "Spine": 0.31,
+        "Spine1": 0.19,
+        "Hips": 0.13,
+        "RightUpLeg": 0.1,
+        "LeftUpLeg": 0.1,
+        "RightShoulder": 0.09,
+        "LeftShoulder": 0.09
+      }
+    },
+    {
+      "name": "face_roundness",
+      "vertices": 3715,
+      "max_mm": 6.8,
+      "centre_cm": [
+        0,
+        77.6,
+        11.4
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "chest_depth",
+      "vertices": 1651,
+      "max_mm": 33.6,
+      "centre_cm": [
+        0,
+        46.5,
+        3.4
+      ],
+      "main_region": "LeftShoulder",
+      "main_region_share": 0.21,
+      "region_shares": {
+        "LeftShoulder": 0.21,
+        "RightShoulder": 0.2,
+        "Spine": 0.17,
+        "Spine1": 0.11,
+        "Head": 0.09,
+        "Spine2": 0.07,
+        "RightUpperArm": 0.05,
+        "LeftUpperArm": 0.05,
+        "RightUpLeg": 0.01,
+        "LeftUpLeg": 0.01,
+        "Hips": 0.01
+      }
+    },
+    {
+      "name": "pec_thickness",
+      "vertices": 472,
+      "max_mm": 35.9,
+      "centre_cm": [
+        0,
+        48,
+        11.9
+      ],
+      "main_region": "LeftShoulder",
+      "main_region_share": 0.47,
+      "region_shares": {
+        "LeftShoulder": 0.47,
+        "RightShoulder": 0.44,
+        "Spine1": 0.06,
+        "RightUpperArm": 0.01,
+        "LeftUpperArm": 0.01,
+        "Spine2": 0.01
+      }
+    },
+    {
+      "name": "deltoid_width",
+      "vertices": 330,
+      "max_mm": 8.1,
+      "centre_cm": [
+        0,
+        53.5,
+        2.1
+      ],
+      "main_region": "RightUpperArm",
+      "main_region_share": 0.32,
+      "region_shares": {
+        "RightUpperArm": 0.32,
+        "LeftUpperArm": 0.32,
+        "RightShoulder": 0.18,
+        "LeftShoulder": 0.18
+      }
+    },
+    {
+      "name": "trap_swell",
+      "vertices": 700,
+      "max_mm": 22.6,
+      "centre_cm": [
+        0,
+        50.4,
+        -2
+      ],
+      "main_region": "Head",
+      "main_region_share": 0.28,
+      "region_shares": {
+        "Head": 0.28,
+        "Spine1": 0.21,
+        "Spine": 0.14,
+        "Spine2": 0.12,
+        "RightShoulder": 0.09,
+        "LeftShoulder": 0.09,
+        "RightUpperArm": 0.04,
+        "LeftUpperArm": 0.04
+      }
+    },
+    {
+      "name": "waist_narrow",
+      "vertices": 918,
+      "max_mm": 28.1,
+      "centre_cm": [
+        0,
+        29.1,
+        3.8
+      ],
+      "main_region": "Spine",
+      "main_region_share": 0.33,
+      "region_shares": {
+        "Spine": 0.33,
+        "Spine1": 0.2,
+        "Hips": 0.09,
+        "RightUpLeg": 0.09,
+        "LeftUpLeg": 0.09,
+        "RightShoulder": 0.09,
+        "LeftShoulder": 0.09
+      }
+    },
+    {
+      "name": "oblique_def",
+      "vertices": 1623,
+      "max_mm": 14.7,
+      "centre_cm": [
+        0,
+        14,
+        1.3
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.25,
+      "region_shares": {
+        "RightUpLeg": 0.25,
+        "LeftUpLeg": 0.25,
+        "Hips": 0.19,
+        "Spine": 0.19,
+        "Spine1": 0.1,
+        "RightShoulder": 0.01,
+        "LeftShoulder": 0.01
+      }
+    },
+    {
+      "name": "bicep_peak",
+      "vertices": 2131,
+      "max_mm": 24.6,
+      "centre_cm": [
+        0,
+        42.9,
+        3.8
+      ],
+      "main_region": "LeftShoulder",
+      "main_region_share": 0.16,
+      "region_shares": {
+        "LeftShoulder": 0.16,
+        "RightShoulder": 0.16,
+        "RightUpperArm": 0.13,
+        "LeftUpperArm": 0.13,
+        "Spine": 0.11,
+        "Spine1": 0.09,
+        "RightForeArm": 0.06,
+        "LeftForeArm": 0.06,
+        "Spine2": 0.05,
+        "RightUpLeg": 0.01,
+        "LeftUpLeg": 0.01,
+        "Head": 0.01
+      }
+    },
+    {
+      "name": "tricep_horse",
+      "vertices": 1592,
+      "max_mm": 17.6,
+      "centre_cm": [
+        0,
+        43,
+        0.9
+      ],
+      "main_region": "RightUpperArm",
+      "main_region_share": 0.18,
+      "region_shares": {
+        "RightUpperArm": 0.18,
+        "LeftUpperArm": 0.18,
+        "RightShoulder": 0.1,
+        "LeftShoulder": 0.1,
+        "Spine1": 0.09,
+        "Spine": 0.09,
+        "RightForeArm": 0.08,
+        "LeftForeArm": 0.08,
+        "Spine2": 0.07,
+        "Head": 0.01,
+        "RightUpLeg": 0.01,
+        "LeftUpLeg": 0.01
+      }
+    },
+    {
+      "name": "forearm_girth",
+      "vertices": 322,
+      "max_mm": 6.3,
+      "centre_cm": [
+        0,
+        34.6,
+        6.4
+      ],
+      "main_region": "RightForeArm",
+      "main_region_share": 0.38,
+      "region_shares": {
+        "RightForeArm": 0.38,
+        "LeftForeArm": 0.38,
+        "RightUpperArm": 0.12,
+        "LeftUpperArm": 0.12
+      }
+    },
+    {
+      "name": "glute_volume",
+      "vertices": 2604,
+      "max_mm": 24.7,
+      "centre_cm": [
+        0,
+        -5.3,
+        -0.5
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.36,
+      "region_shares": {
+        "RightUpLeg": 0.36,
+        "LeftUpLeg": 0.36,
+        "Hips": 0.12,
+        "Spine": 0.07,
+        "RightLeg": 0.05,
+        "LeftLeg": 0.05
+      }
+    },
+    {
+      "name": "hip_width",
+      "vertices": 2294,
+      "max_mm": 37.3,
+      "centre_cm": [
+        0,
+        6.3,
+        1
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.34,
+      "region_shares": {
+        "RightUpLeg": 0.34,
+        "LeftUpLeg": 0.34,
+        "Hips": 0.14,
+        "Spine": 0.12,
+        "Spine1": 0.05
+      }
+    },
+    {
+      "name": "quad_sweep",
+      "vertices": 1620,
+      "max_mm": 7.9,
+      "centre_cm": [
+        0,
+        -9.2,
+        1.7
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.5,
+      "region_shares": {
+        "RightUpLeg": 0.5,
+        "LeftUpLeg": 0.5
+      }
+    },
+    {
+      "name": "ham_thickness",
+      "vertices": 1506,
+      "max_mm": 12.5,
+      "centre_cm": [
+        0,
+        -10.6,
+        1.6
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.5,
+      "region_shares": {
+        "RightUpLeg": 0.5,
+        "LeftUpLeg": 0.5
+      }
+    },
+    {
+      "name": "calf_diamond",
+      "vertices": 351,
+      "max_mm": 18.4,
+      "centre_cm": [
+        0,
+        -41.4,
+        0.6
+      ],
+      "main_region": "RightLeg",
+      "main_region_share": 0.45,
+      "region_shares": {
+        "RightLeg": 0.45,
+        "LeftLeg": 0.45,
+        "LeftUpLeg": 0.05,
+        "RightUpLeg": 0.05
+      }
+    },
+    {
+      "name": "ankle_width",
+      "vertices": 572,
+      "max_mm": 12.8,
+      "centre_cm": [
+        0,
+        -73.5,
+        2.3
+      ],
+      "main_region": "RightLeg",
+      "main_region_share": 0.5,
+      "region_shares": {
+        "RightLeg": 0.5,
+        "LeftLeg": 0.5
+      }
+    },
+    {
+      "name": "neck_thickness",
+      "vertices": 700,
+      "max_mm": 10.7,
+      "centre_cm": [
+        0,
+        69.3,
+        4
+      ],
+      "main_region": "Head",
+      "main_region_share": 0.85,
+      "region_shares": {
+        "Head": 0.85,
+        "LeftShoulder": 0.08,
+        "RightShoulder": 0.07,
+        "Spine2": 0.01
+      }
+    },
+    {
+      "name": "trap_rise",
+      "vertices": 10376,
+      "max_mm": 47,
+      "centre_cm": [
+        0,
+        48.6,
+        16.2
+      ],
+      "main_region": "Head",
+      "main_region_share": 0.44,
+      "region_shares": {
+        "Head": 0.44,
+        "RightForeArm": 0.05,
+        "LeftForeArm": 0.05,
+        "LeftShoulder": 0.04,
+        "RightShoulder": 0.03,
+        "RightUpperArm": 0.03,
+        "LeftUpperArm": 0.03,
+        "Spine1": 0.02,
+        "RightIndex3": 0.01,
+        "RightMiddle3": 0.01,
+        "RightRing3": 0.01,
+        "LeftIndex3": 0.01,
+        "LeftMiddle3": 0.01,
+        "LeftRing3": 0.01,
+        "RightPinky3": 0.01,
+        "LeftPinky3": 0.01,
+        "Spine": 0.01,
+        "RightThumb3": 0.01,
+        "LeftThumb3": 0.01,
+        "Spine2": 0.01,
+        "RightThumb2": 0.01,
+        "LeftThumb2": 0.01,
+        "RightRing1": 0.01,
+        "LeftRing1": 0.01,
+        "RightPinky1": 0.01,
+        "LeftPinky1": 0.01,
+        "RightIndex1": 0.01,
+        "LeftIndex1": 0.01,
+        "RightMiddle2": 0.01,
+        "LeftMiddle2": 0.01,
+        "RightPinky2": 0.01,
+        "LeftPinky2": 0.01,
+        "RightMiddle1": 0.01,
+        "LeftMiddle1": 0.01,
+        "RightIndex2": 0.01,
+        "LeftIndex2": 0.01,
+        "RightRing2": 0.01,
+        "LeftRing2": 0.01
+      }
+    },
+    {
+      "name": "torso_length",
+      "vertices": 10559,
+      "max_mm": 102.8,
+      "centre_cm": [
+        0,
+        48.2,
+        16
+      ],
+      "main_region": "Head",
+      "main_region_share": 0.43,
+      "region_shares": {
+        "Head": 0.43,
+        "RightForeArm": 0.05,
+        "LeftForeArm": 0.05,
+        "LeftShoulder": 0.03,
+        "RightShoulder": 0.03,
+        "Spine": 0.03,
+        "RightUpperArm": 0.03,
+        "LeftUpperArm": 0.03,
+        "Spine1": 0.02,
+        "RightIndex3": 0.01,
+        "RightMiddle3": 0.01,
+        "RightRing3": 0.01,
+        "LeftIndex3": 0.01,
+        "LeftMiddle3": 0.01,
+        "LeftRing3": 0.01,
+        "RightPinky3": 0.01,
+        "LeftPinky3": 0.01,
+        "RightThumb3": 0.01,
+        "LeftThumb3": 0.01,
+        "Spine2": 0.01,
+        "RightThumb2": 0.01,
+        "LeftThumb2": 0.01,
+        "RightRing1": 0.01,
+        "LeftRing1": 0.01,
+        "RightPinky1": 0.01,
+        "LeftPinky1": 0.01,
+        "RightIndex1": 0.01,
+        "LeftIndex1": 0.01,
+        "RightMiddle2": 0.01,
+        "LeftMiddle2": 0.01,
+        "RightPinky2": 0.01,
+        "LeftPinky2": 0.01,
+        "RightMiddle1": 0.01,
+        "LeftMiddle1": 0.01,
+        "RightIndex2": 0.01,
+        "LeftIndex2": 0.01,
+        "RightRing2": 0.01,
+        "LeftRing2": 0.01
+      }
+    },
+    {
+      "name": "shoulder_slope",
+      "vertices": 5030,
+      "max_mm": 14.1,
+      "centre_cm": [
+        0,
+        23.5,
+        23.3
+      ],
+      "main_region": "RightForeArm",
+      "main_region_share": 0.1,
+      "region_shares": {
+        "RightForeArm": 0.1,
+        "LeftForeArm": 0.1,
+        "RightUpperArm": 0.06,
+        "LeftUpperArm": 0.06,
+        "RightShoulder": 0.03,
+        "LeftShoulder": 0.03,
+        "RightIndex3": 0.03,
+        "RightMiddle3": 0.03,
+        "RightRing3": 0.03,
+        "LeftIndex3": 0.03,
+        "LeftMiddle3": 0.03,
+        "LeftRing3": 0.03,
+        "RightPinky3": 0.03,
+        "LeftPinky3": 0.03,
+        "RightThumb3": 0.02,
+        "LeftThumb3": 0.02,
+        "RightThumb2": 0.02,
+        "LeftThumb2": 0.02,
+        "RightRing1": 0.02,
+        "LeftRing1": 0.02,
+        "RightPinky1": 0.02,
+        "LeftPinky1": 0.02,
+        "RightIndex1": 0.02,
+        "LeftIndex1": 0.02,
+        "RightMiddle2": 0.02,
+        "LeftMiddle2": 0.02,
+        "RightPinky2": 0.02,
+        "LeftPinky2": 0.02,
+        "RightMiddle1": 0.02,
+        "LeftMiddle1": 0.02,
+        "RightIndex2": 0.02,
+        "LeftIndex2": 0.02,
+        "RightRing2": 0.01,
+        "LeftRing2": 0.01,
+        "RightHand": 0.01,
+        "RightThumb1": 0.01,
+        "LeftHand": 0.01,
+        "LeftThumb1": 0.01
+      }
+    },
+    {
+      "name": "clavicle_width",
+      "vertices": 5030,
+      "max_mm": 24.9,
+      "centre_cm": [
+        0,
+        23.5,
+        23.3
+      ],
+      "main_region": "RightForeArm",
+      "main_region_share": 0.1,
+      "region_shares": {
+        "RightForeArm": 0.1,
+        "LeftForeArm": 0.1,
+        "RightUpperArm": 0.06,
+        "LeftUpperArm": 0.06,
+        "RightShoulder": 0.03,
+        "LeftShoulder": 0.03,
+        "RightIndex3": 0.03,
+        "RightMiddle3": 0.03,
+        "RightRing3": 0.03,
+        "LeftIndex3": 0.03,
+        "LeftMiddle3": 0.03,
+        "LeftRing3": 0.03,
+        "RightPinky3": 0.03,
+        "LeftPinky3": 0.03,
+        "RightThumb3": 0.02,
+        "LeftThumb3": 0.02,
+        "RightThumb2": 0.02,
+        "LeftThumb2": 0.02,
+        "RightRing1": 0.02,
+        "LeftRing1": 0.02,
+        "RightPinky1": 0.02,
+        "LeftPinky1": 0.02,
+        "RightIndex1": 0.02,
+        "LeftIndex1": 0.02,
+        "RightMiddle2": 0.02,
+        "LeftMiddle2": 0.02,
+        "RightPinky2": 0.02,
+        "LeftPinky2": 0.02,
+        "RightMiddle1": 0.02,
+        "LeftMiddle1": 0.02,
+        "RightIndex2": 0.02,
+        "LeftIndex2": 0.02,
+        "RightRing2": 0.01,
+        "LeftRing2": 0.01,
+        "RightHand": 0.01,
+        "RightThumb1": 0.01,
+        "LeftHand": 0.01,
+        "LeftThumb1": 0.01
+      }
+    },
+    {
+      "name": "ribcage_depth",
+      "vertices": 1277,
+      "max_mm": 26.9,
+      "centre_cm": [
+        0,
+        41.6,
+        3.8
+      ],
+      "main_region": "Spine",
+      "main_region_share": 0.22,
+      "region_shares": {
+        "Spine": 0.22,
+        "LeftShoulder": 0.2,
+        "RightShoulder": 0.19,
+        "Spine1": 0.15,
+        "Spine2": 0.08,
+        "RightUpperArm": 0.07,
+        "LeftUpperArm": 0.07,
+        "RightUpLeg": 0.01,
+        "LeftUpLeg": 0.01,
+        "Hips": 0.01
+      }
+    },
+    {
+      "name": "pelvis_width",
+      "vertices": 2311,
+      "max_mm": 29.8,
+      "centre_cm": [
+        0,
+        6.3,
+        1
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.34,
+      "region_shares": {
+        "RightUpLeg": 0.34,
+        "LeftUpLeg": 0.34,
+        "Hips": 0.14,
+        "Spine": 0.12,
+        "Spine1": 0.05
+      }
+    },
+    {
+      "name": "neck_length",
+      "vertices": 4541,
+      "max_mm": 30,
+      "centre_cm": [
+        0,
+        77.2,
+        10.2
+      ],
+      "main_region": "Head",
+      "main_region_share": 0.99,
+      "region_shares": {
+        "Head": 0.99,
+        "LeftShoulder": 0.01,
+        "RightShoulder": 0.01
+      }
+    },
+    {
+      "name": "upper_arm_length",
+      "vertices": 422,
+      "max_mm": 6.9,
+      "centre_cm": [
+        0,
+        44.6,
+        1.2
+      ],
+      "main_region": "RightUpperArm",
+      "main_region_share": 0.47,
+      "region_shares": {
+        "RightUpperArm": 0.47,
+        "LeftUpperArm": 0.47,
+        "RightShoulder": 0.02,
+        "LeftShoulder": 0.02,
+        "RightForeArm": 0.01,
+        "LeftForeArm": 0.01
+      }
+    },
+    {
+      "name": "forearm_length",
+      "vertices": 668,
+      "max_mm": 7.6,
+      "centre_cm": [
+        0,
+        29.3,
+        13.9
+      ],
+      "main_region": "RightForeArm",
+      "main_region_share": 0.46,
+      "region_shares": {
+        "RightForeArm": 0.46,
+        "LeftForeArm": 0.46,
+        "RightUpperArm": 0.04,
+        "LeftUpperArm": 0.04
+      }
+    },
+    {
+      "name": "hand_length",
+      "vertices": 2892,
+      "max_mm": 21.2,
+      "centre_cm": [
+        0,
+        15.5,
+        31.2
+      ],
+      "main_region": "RightIndex3",
+      "main_region_share": 0.05,
+      "region_shares": {
+        "RightIndex3": 0.05,
+        "RightMiddle3": 0.05,
+        "RightRing3": 0.05,
+        "LeftIndex3": 0.05,
+        "LeftMiddle3": 0.05,
+        "LeftRing3": 0.05,
+        "RightPinky3": 0.04,
+        "LeftPinky3": 0.04,
+        "RightThumb3": 0.04,
+        "LeftThumb3": 0.04,
+        "RightPinky1": 0.03,
+        "LeftPinky1": 0.03,
+        "RightRing1": 0.03,
+        "LeftRing1": 0.03,
+        "RightMiddle2": 0.03,
+        "LeftMiddle2": 0.03,
+        "RightPinky2": 0.03,
+        "LeftPinky2": 0.03,
+        "RightIndex2": 0.03,
+        "LeftIndex2": 0.03,
+        "RightMiddle1": 0.03,
+        "LeftMiddle1": 0.03,
+        "RightThumb2": 0.03,
+        "LeftThumb2": 0.03,
+        "RightRing2": 0.03,
+        "LeftRing2": 0.03,
+        "RightIndex1": 0.02,
+        "LeftIndex1": 0.02
+      }
+    },
+    {
+      "name": "leg_length",
+      "vertices": 4540,
+      "max_mm": 93.6,
+      "centre_cm": [
+        0,
+        -52.6,
+        8.5
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.17,
+      "region_shares": {
+        "RightUpLeg": 0.17,
+        "LeftUpLeg": 0.17,
+        "RightLeg": 0.13,
+        "LeftLeg": 0.13,
+        "RightToe5": 0.05,
+        "LeftToe5": 0.05,
+        "RightToe2": 0.04,
+        "LeftToe2": 0.04,
+        "RightToe4": 0.04,
+        "LeftToe4": 0.04,
+        "RightToe3": 0.03,
+        "LeftToe3": 0.03,
+        "RightToeBig2": 0.02,
+        "LeftToeBig2": 0.02,
+        "RightToeBig1": 0.01,
+        "LeftToeBig1": 0.01,
+        "RightFoot": 0.01,
+        "LeftFoot": 0.01
+      }
+    },
+    {
+      "name": "foot_length",
+      "vertices": 2610,
+      "max_mm": 21.1,
+      "centre_cm": [
+        0,
+        -79.1,
+        13.7
+      ],
+      "main_region": "RightLeg",
+      "main_region_share": 0.16,
+      "region_shares": {
+        "RightLeg": 0.16,
+        "LeftLeg": 0.16,
+        "RightToe5": 0.08,
+        "LeftToe5": 0.08,
+        "RightToe2": 0.07,
+        "LeftToe2": 0.07,
+        "RightToe4": 0.07,
+        "LeftToe4": 0.07,
+        "RightToe3": 0.06,
+        "LeftToe3": 0.06,
+        "RightToeBig2": 0.03,
+        "LeftToeBig2": 0.03,
+        "RightToeBig1": 0.01,
+        "LeftToeBig1": 0.01,
+        "RightFoot": 0.01,
+        "LeftFoot": 0.01
+      }
+    },
+    {
+      "name": "head_circumference",
+      "vertices": 4449,
+      "max_mm": 8.8,
+      "centre_cm": [
+        0,
+        77.4,
+        10.4
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "brow_depth",
+      "vertices": 252,
+      "max_mm": 14.4,
+      "centre_cm": [
+        0,
+        84.9,
+        11.7
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "nose_bridge_width",
+      "vertices": 56,
+      "max_mm": 2.3,
+      "centre_cm": [
+        0,
+        80,
+        14.6
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "nose_tip_size",
+      "vertices": 42,
+      "max_mm": 1.5,
+      "centre_cm": [
+        0,
+        76.5,
+        16.4
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "ear_prominence",
+      "vertices": 662,
+      "max_mm": 6.6,
+      "centre_cm": [
+        0,
+        78.3,
+        4.7
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "jaw_width",
+      "vertices": 198,
+      "max_mm": 11.9,
+      "centre_cm": [
+        0,
+        70.9,
+        13.3
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "chin_projection",
+      "vertices": 351,
+      "max_mm": 7,
+      "centre_cm": [
+        0,
+        71.6,
+        14.1
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "lip_fullness",
+      "vertices": 280,
+      "max_mm": 2.4,
+      "centre_cm": [
+        0,
+        73.1,
+        15.2
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "eye_size",
+      "vertices": 986,
+      "max_mm": 1.2,
+      "centre_cm": [
+        0,
+        80.1,
+        13.7
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "cheekbone_width",
+      "vertices": 118,
+      "max_mm": 4.1,
+      "centre_cm": [
+        0,
+        77.5,
+        11.8
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "forehead_height",
+      "vertices": 146,
+      "max_mm": 37.9,
+      "centre_cm": [
+        0,
+        88,
+        6.7
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "temple_narrowing",
+      "vertices": 90,
+      "max_mm": 8.1,
+      "centre_cm": [
+        0,
+        82.3,
+        9.4
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "nose_length",
+      "vertices": 397,
+      "max_mm": 5.5,
+      "centre_cm": [
+        0,
+        76.6,
+        15.3
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "jaw_angle",
+      "vertices": 42,
+      "max_mm": 5.6,
+      "centre_cm": [
+        0,
+        69.9,
+        11.3
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "shoulder_drop",
+      "vertices": 2550,
+      "max_mm": 18,
+      "centre_cm": [
+        0,
+        49.3,
+        4
+      ],
+      "main_region": "Head",
+      "main_region_share": 0.2,
+      "region_shares": {
+        "Head": 0.2,
+        "LeftShoulder": 0.14,
+        "RightShoulder": 0.14,
+        "RightUpperArm": 0.11,
+        "LeftUpperArm": 0.11,
+        "Spine": 0.1,
+        "Spine1": 0.07,
+        "Spine2": 0.05,
+        "RightForeArm": 0.03,
+        "LeftForeArm": 0.03
+      }
+    },
+    {
+      "name": "d_length",
+      "vertices": 0,
+      "max_mm": 0,
+      "centre_cm": [
+        0,
+        0,
+        0
+      ],
+      "main_region": null,
+      "main_region_share": null,
+      "region_shares": {}
+    },
+    {
+      "name": "d_girth",
+      "vertices": 0,
+      "max_mm": 0,
+      "centre_cm": [
+        0,
+        0,
+        0
+      ],
+      "main_region": null,
+      "main_region_share": null,
+      "region_shares": {}
+    },
+    {
+      "name": "knee_spacing",
+      "vertices": 1054,
+      "max_mm": 3.1,
+      "centre_cm": [
+        0,
+        -22.5,
+        1.8
+      ],
+      "main_region": "RightUpLeg",
+      "main_region_share": 0.39,
+      "region_shares": {
+        "RightUpLeg": 0.39,
+        "LeftUpLeg": 0.39,
+        "RightLeg": 0.11,
+        "LeftLeg": 0.11
+      }
+    },
+    {
+      "name": "ankle_taper",
+      "vertices": 572,
+      "max_mm": 4.5,
+      "centre_cm": [
+        0,
+        -73.5,
+        2.3
+      ],
+      "main_region": "RightLeg",
+      "main_region_share": 0.5,
+      "region_shares": {
+        "RightLeg": 0.5,
+        "LeftLeg": 0.5
+      }
+    },
+    {
+      "name": "hand_splay",
+      "vertices": 2868,
+      "max_mm": 1.6,
+      "centre_cm": [
+        0,
+        16.8,
+        29.7
+      ],
+      "main_region": "RightForeArm",
+      "main_region_share": 0.07,
+      "region_shares": {
+        "RightForeArm": 0.07,
+        "LeftForeArm": 0.07,
+        "RightIndex3": 0.05,
+        "RightRing3": 0.05,
+        "LeftIndex3": 0.05,
+        "LeftRing3": 0.05,
+        "RightPinky3": 0.04,
+        "LeftPinky3": 0.04,
+        "RightThumb3": 0.04,
+        "LeftThumb3": 0.04,
+        "RightThumb2": 0.04,
+        "LeftThumb2": 0.04,
+        "RightRing1": 0.04,
+        "LeftRing1": 0.04,
+        "RightPinky1": 0.04,
+        "LeftPinky1": 0.04,
+        "RightIndex1": 0.03,
+        "LeftIndex1": 0.03,
+        "RightPinky2": 0.03,
+        "LeftPinky2": 0.03,
+        "RightIndex2": 0.03,
+        "LeftIndex2": 0.03,
+        "RightRing2": 0.03,
+        "LeftRing2": 0.03,
+        "RightHand": 0.01,
+        "LeftHand": 0.01,
+        "RightThumb1": 0.01,
+        "LeftThumb1": 0.01
+      }
+    },
+    {
+      "name": "foot_arch",
+      "vertices": 2610,
+      "max_mm": 6.3,
+      "centre_cm": [
+        0,
+        -79.1,
+        13.7
+      ],
+      "main_region": "RightLeg",
+      "main_region_share": 0.16,
+      "region_shares": {
+        "RightLeg": 0.16,
+        "LeftLeg": 0.16,
+        "RightToe5": 0.08,
+        "LeftToe5": 0.08,
+        "RightToe2": 0.07,
+        "LeftToe2": 0.07,
+        "RightToe4": 0.07,
+        "LeftToe4": 0.07,
+        "RightToe3": 0.06,
+        "LeftToe3": 0.06,
+        "RightToeBig2": 0.03,
+        "LeftToeBig2": 0.03,
+        "RightToeBig1": 0.01,
+        "LeftToeBig1": 0.01,
+        "RightFoot": 0.01,
+        "LeftFoot": 0.01
+      }
+    },
+    {
+      "name": "blink",
+      "vertices": 2940,
+      "max_mm": 8.8,
+      "centre_cm": [
+        0,
+        77,
+        13.4
+      ],
+      "main_region": "Head",
+      "main_region_share": 1,
+      "region_shares": {
+        "Head": 1
+      }
+    },
+    {
+      "name": "corrective_abdomen_waist",
+      "vertices": 4674,
+      "max_mm": 15.9,
+      "centre_cm": [
+        0,
+        15.7,
+        26.2
+      ],
+      "main_region": "RightForeArm",
+      "main_region_share": 0.09,
+      "region_shares": {
+        "RightForeArm": 0.09,
+        "LeftForeArm": 0.09,
+        "RightUpLeg": 0.05,
+        "LeftUpLeg": 0.05,
+        "RightIndex3": 0.03,
+        "RightMiddle3": 0.03,
+        "RightRing3": 0.03,
+        "LeftIndex3": 0.03,
+        "LeftMiddle3": 0.03,
+        "LeftRing3": 0.03,
+        "RightPinky3": 0.03,
+        "LeftPinky3": 0.03,
+        "RightThumb3": 0.03,
+        "LeftThumb3": 0.03,
+        "Spine": 0.02,
+        "RightThumb2": 0.02,
+        "LeftThumb2": 0.02,
+        "RightRing1": 0.02,
+        "LeftRing1": 0.02,
+        "RightPinky1": 0.02,
+        "LeftPinky1": 0.02,
+        "RightIndex1": 0.02,
+        "LeftIndex1": 0.02,
+        "RightMiddle2": 0.02,
+        "LeftMiddle2": 0.02,
+        "RightPinky2": 0.02,
+        "LeftPinky2": 0.02,
+        "RightMiddle1": 0.02,
+        "LeftMiddle1": 0.02,
+        "RightIndex2": 0.02,
+        "LeftIndex2": 0.02,
+        "RightRing2": 0.02,
+        "LeftRing2": 0.02,
+        "Hips": 0.02,
+        "RightHand": 0.01,
+        "RightThumb1": 0.01,
+        "LeftHand": 0.01,
+        "LeftThumb1": 0.01,
+        "Spine1": 0.01
+      }
+    },
+    {
+      "name": "corrective_pec_ribcage",
+      "vertices": 776,
+      "max_mm": 4.7,
+      "centre_cm": [
+        0,
+        31.8,
+        11.7
+      ],
+      "main_region": "LeftShoulder",
+      "main_region_share": 0.24,
+      "region_shares": {
+        "LeftShoulder": 0.24,
+        "RightShoulder": 0.23,
+        "Spine": 0.15,
+        "RightUpLeg": 0.11,
+        "LeftUpLeg": 0.11,
+        "Hips": 0.09,
+        "Spine1": 0.06,
+        "RightUpperArm": 0.01,
+        "LeftUpperArm": 0.01
+      }
+    },
+    {
+      "name": "corrective_shoulder_arm",
+      "vertices": 2264,
+      "max_mm": 3.8,
+      "centre_cm": [
+        0,
+        35.3,
+        2.9
+      ],
+      "main_region": "RightShoulder",
+      "main_region_share": 0.13,
+      "region_shares": {
+        "RightShoulder": 0.13,
+        "LeftShoulder": 0.13,
+        "RightUpperArm": 0.13,
+        "LeftUpperArm": 0.13,
+        "RightUpLeg": 0.12,
+        "LeftUpLeg": 0.12,
+        "Spine": 0.1,
+        "Spine1": 0.06,
+        "RightForeArm": 0.03,
+        "LeftForeArm": 0.03,
+        "Spine2": 0.02,
+        "Hips": 0.01
+      }
+    },
+    {
+      "name": "jaw_open",
+      "vertices": 576,
+      "max_mm": 11.7,
+      "centre_cm": [
+        0,
+        51.9,
+        12.1
+      ],
+      "main_region": "LeftShoulder",
+      "main_region_share": 0.35,
+      "region_shares": {
+        "LeftShoulder": 0.35,
+        "RightShoulder": 0.33,
+        "Head": 0.24,
+        "Spine1": 0.07,
+        "Spine2": 0.01
+      }
+    },
+    {
+      "name": "smile",
+      "vertices": 274,
+      "max_mm": 1.4,
+      "centre_cm": [
+        0,
+        63.1,
+        10.4
+      ],
+      "main_region": "Head",
+      "main_region_share": 0.59,
+      "region_shares": {
+        "Head": 0.59,
+        "LeftShoulder": 0.2,
+        "RightShoulder": 0.17,
+        "RightUpperArm": 0.02,
+        "LeftUpperArm": 0.02
+      }
+    }
+  ],
+  "measures": {
+    "height_cm": 173.1,
+    "bodyBounds_cm": {
+      "min": [
+        -56.6,
+        -81.9,
+        -10
+      ],
+      "max": [
+        56.6,
+        91.2,
+        37.7
+      ]
+    },
+    "armSpan_cm": 113.2,
+    "shoulderJointWidth_cm": 37.2,
+    "handRegionExtent_cm": {
+      "left": [
+        6.3,
+        8.1,
+        7
+      ],
+      "right": [
+        6.3,
+        8.1,
+        7
+      ]
+    },
+    "footRegionExtent_cm": {
+      "left": [
+        9.1,
+        2.9,
+        2.7
+      ],
+      "right": [
+        9.1,
+        2.9,
+        2.7
+      ]
+    },
+    "headRegionExtent_cm": [
+      17.5,
+      28.9,
+      21.9
+    ],
+    "fingerEstimate": {
+      "left": {
+        "handLength_cm": 12,
+        "fingerRegionVertices": 26,
+        "verticesPerFinger": 5
+      },
+      "right": {
+        "handLength_cm": 12,
+        "fingerRegionVertices": 26,
+        "verticesPerFinger": 5
+      }
+    }
+  },
+  "catalogue": [
+    {
+      "part": "Head",
+      "group": "Skull and face",
+      "existingTechnique": "Skin surface",
+      "status": "part of the skin surface",
+      "evidence": "Head region: 4520 vertices; no separate skull, jaw or neck-muscle geometry"
+    },
+    {
+      "part": "Hair (scalp)",
+      "group": "Hair",
+      "existingTechnique": "Strands in the browser (plan page); photo cards in the GLB",
+      "status": "separate mesh",
+      "evidence": "GrowthTrackHair (2061 verts)"
+    },
+    {
+      "part": "Eyebrows",
+      "group": "Hair",
+      "existingTechnique": "Strands in the browser; card mesh in the GLB",
+      "status": "separate mesh",
+      "evidence": "GrowthTrackEyebrows (126 verts)"
+    },
+    {
+      "part": "Eyelashes",
+      "group": "Hair",
+      "existingTechnique": "Strands in the browser; card mesh in the GLB",
+      "status": "separate mesh",
+      "evidence": "GrowthTrackEyelashes (250 verts)"
+    },
+    {
+      "part": "Eyes (eyeball, iris, cornea)",
+      "group": "Eyes",
+      "existingTechnique": "Eyeball + clear shell",
+      "status": "separate mesh",
+      "evidence": "GrowthTrackEyes (1076 verts)"
+    },
+    {
+      "part": "Eyelids",
+      "group": "Eyes",
+      "existingTechnique": "Skin surface",
+      "status": "part of the skin surface",
+      "evidence": "Part of the face skin; a \"blink\" morph exists but moves the whole face region, so lids cannot close independently"
+    },
+    {
+      "part": "Eye bones (gaze)",
+      "group": "Eyes",
+      "existingTechnique": "Rig",
+      "status": "present",
+      "evidence": "2 eye joints"
+    },
+    {
+      "part": "Tear line, caruncle, wet line",
+      "group": "Eyes",
+      "existingTechnique": "Surface",
+      "status": "absent",
+      "evidence": "no mesh or material"
+    },
+    {
+      "part": "Nose",
+      "group": "Face",
+      "existingTechnique": "Skin surface",
+      "status": "part of the skin surface",
+      "evidence": "Part of the head skin; nostril interiors are painted, not modelled"
+    },
+    {
+      "part": "Ears",
+      "group": "Face",
+      "existingTechnique": "Skin surface",
+      "status": "part of the skin surface",
+      "evidence": "Part of the head skin"
+    },
+    {
+      "part": "Lips",
+      "group": "Face",
+      "existingTechnique": "Skin surface",
+      "status": "part of the skin surface",
+      "evidence": "Part of the head skin; closed mouth, lip colour painted in the albedo"
+    },
+    {
+      "part": "Teeth, gums, tongue, mouth interior",
+      "group": "Face",
+      "existingTechnique": "Separate meshes",
+      "status": "present",
+      "evidence": "Tongue0, Tongue1, Tongue2"
+    },
+    {
+      "part": "Jaw (articulation)",
+      "group": "Face",
+      "existingTechnique": "Rig",
+      "status": "present",
+      "evidence": "1 jaw joint"
+    },
+    {
+      "part": "Neck",
+      "group": "Body",
+      "existingTechnique": "Skin surface",
+      "status": "part of the skin surface",
+      "evidence": "Neck region: 0 vertices"
+    },
+    {
+      "part": "Shoulders and clavicles",
+      "group": "Body",
+      "existingTechnique": "Skin surface + rig",
+      "status": "part of the skin surface",
+      "evidence": "2 shoulder/clavicle joints"
+    },
+    {
+      "part": "Chest, ribcage, spine",
+      "group": "Body",
+      "existingTechnique": "Skin surface + rig",
+      "status": "part of the skin surface",
+      "evidence": "3 spine joints"
+    },
+    {
+      "part": "Nipples, navel",
+      "group": "Body",
+      "existingTechnique": "Skin surface",
+      "status": "part of the skin surface",
+      "evidence": "Sculpted into the body mesh and painted; cannot be verified by name"
+    },
+    {
+      "part": "Arms (upper arm, forearm)",
+      "group": "Body",
+      "existingTechnique": "Skin surface + rig",
+      "status": "part of the skin surface",
+      "evidence": "8 twist joints"
+    },
+    {
+      "part": "Hands and fingers",
+      "group": "Body",
+      "existingTechnique": "Skin surface + rig",
+      "status": "present",
+      "evidence": "30 finger joints"
+    },
+    {
+      "part": "Fingernails and toenails",
+      "group": "Body",
+      "existingTechnique": "Separate meshes or decals",
+      "status": "present",
+      "evidence": "GrowthTrackNails, GrowthTrackNails, GrowthTrackNailsMaterial"
+    },
+    {
+      "part": "Hips, glutes, pelvis",
+      "group": "Body",
+      "existingTechnique": "Skin surface + rig",
+      "status": "part of the skin surface",
+      "evidence": "Rear pelvis subdivided locally (see pelvisRefinement in the asset extras)"
+    },
+    {
+      "part": "Thighs, knees, calves",
+      "group": "Body",
+      "existingTechnique": "Skin surface + rig",
+      "status": "part of the skin surface",
+      "evidence": "Knee: one joint, no patella or tendon relief"
+    },
+    {
+      "part": "Feet, ankles, toes",
+      "group": "Body",
+      "existingTechnique": "Skin surface + rig",
+      "status": "present",
+      "evidence": "14 toe joints"
+    },
+    {
+      "part": "Body hair (chest, arms, legs, underarm, pubic)",
+      "group": "Hair",
+      "existingTechnique": "Strands or fuzz",
+      "status": "absent",
+      "evidence": "none in the GLB (the anatomy mesh draws pubic hair procedurally at runtime)"
+    },
+    {
+      "part": "Facial hair (beard, moustache, stubble)",
+      "group": "Hair",
+      "existingTechnique": "Strands or fuzz",
+      "status": "absent",
+      "evidence": "none (stubble texture detail only, if painted in the albedo)"
+    },
+    {
+      "part": "Skin: base colour",
+      "group": "Skin",
+      "existingTechnique": "Textures",
+      "status": "partial",
+      "evidence": "3 albedo variants (SkinAlbedo_YoungMale, SkinAlbedo_Light, SkinAlbedo_Deep); tone is a tint of one photo-like map"
+    },
+    {
+      "part": "Skin: pores, wrinkles, scars, moles, veins",
+      "group": "Skin",
+      "existingTechnique": "Normal/detail maps",
+      "status": "partial",
+      "evidence": "one baked normal map (1024px), no micro-detail or masks for wrinkles, scars, moles or veins"
+    },
+    {
+      "part": "Skin: tan, regional pigment, hyper-pigmentation",
+      "group": "Skin",
+      "existingTechnique": "Masks",
+      "status": "absent",
+      "evidence": "done at runtime from vertex attributes (the plan page), not authored masks"
+    },
+    {
+      "part": "Clothing (briefs, shorts, shirt, shoes)",
+      "group": "Wear",
+      "existingTechnique": "Garment meshes",
+      "status": "absent",
+      "evidence": "no garment meshes: briefs are a runtime shader on a copy of the body"
+    },
+    {
+      "part": "Adult external anatomy",
+      "group": "Private",
+      "existingTechnique": "Gated mesh",
+      "status": "separate mesh",
+      "evidence": "GrowthTrackPrivateAnatomy (4803 verts)"
+    },
+    {
+      "part": "Skeleton, muscles, fat (underlay)",
+      "group": "Anatomy",
+      "existingTechnique": "Layers",
+      "status": "absent",
+      "evidence": "no underlying layers"
+    }
+  ]
+}

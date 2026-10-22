@@ -94,6 +94,7 @@ const useStore = create<any>()(
       const singletonQueue = createWriteQueue();
       const preferenceQueue = createWriteQueue();
       const portfolioQueue = createWriteQueue();
+      const bodyProfileQueue = createWriteQueue();
       let initialRequest = 0;
       const savePreferences = (updates: any) => {
         const current = captureSession(get);
@@ -330,18 +331,24 @@ const useStore = create<any>()(
         return get().setPortfolio((current: any[]) => current.filter((holding: any) => String(holding.id) !== String(id)));
       },
 
-      updateBodyProfile: async (data: any) => {
-        const previous = get().bodyProfile || {};
-        const optimistic = { ...previous, ...data };
-        set({ bodyProfile: optimistic });
-        try {
-          const saved = await apiSync('/body-profile', 'PUT', data);
-          set({ bodyProfile: saved });
-          return saved;
-        } catch (error) {
-          set({ bodyProfile: previous });
-          throw error;
-        }
+      updateBodyProfile: (data: any) => {
+        const current = captureSession(get);
+        return bodyProfileQueue(`${get()._sessionVersion}:${get().user?.id}:body-profile`, async () => {
+          if (!current()) throw new Error('The session changed. Refresh and try again.');
+          const previous = get().bodyProfile;
+          const optimistic = { ...(previous || {}), ...data };
+          set({ bodyProfile: optimistic });
+          try {
+            const saved = await apiSync('/body-profile', 'PUT', data);
+            // Both the account and the displayed snapshot may have changed
+            // while this request was in flight. Never overwrite either one.
+            if (current() && get().bodyProfile === optimistic) set({ bodyProfile: saved });
+            return saved;
+          } catch (error) {
+            if (current() && get().bodyProfile === optimistic) set({ bodyProfile: previous });
+            throw error;
+          }
+        });
       },
 
       fetchInitialData: async () => {

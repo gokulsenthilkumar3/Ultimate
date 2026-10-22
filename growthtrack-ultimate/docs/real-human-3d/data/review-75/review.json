@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "reviewedOn": "2026-10-22",
+  "scope": "All six retained GrowthTrack GLBs, runtime model selection and the 1–75 3D checkpoint",
+  "planningPoints": {
+    "before": 75,
+    "after": 75,
+    "reviewRepairPoints": 0
+  },
+  "models": {
+    "files": [
+      "humanoid-base.glb",
+      "humanoid-base-lite.glb",
+      "humanoid-adult-v2.glb",
+      "humanoid-adult-v2-lite.glb",
+      "humanoid-preview-75.glb",
+      "humanoid-preview-75-lite.glb"
+    ],
+    "retainedOriginalGeometry": "Positions, normals, UVs, indices, morph deltas, images and active skin influences were compared before/after normalization. Zero-weight joint slots were normalized to joint zero without changing weighted influences.",
+    "formatRepairs": [
+      "POSITION bounds, including sparse morph accessors",
+      "Tangent frames for normal-mapped legacy primitives",
+      "Aligned scalar region/tile attributes",
+      "Empty node children removed while retaining nodes and joints",
+      "Unsupported mesh properties moved under extras",
+      "Zero-weight joint slots normalized",
+      "Vertex/index buffer-view targets declared"
+    ],
+    "officialValidator": {
+      "tool": "gltf-validator 2.0.0-dev.3.10",
+      "errors": 0,
+      "warnings": 0,
+      "informationalUnusedResourcesRetained": true,
+      "summary": "format-summary.json"
+    },
+    "projectValidator": {
+      "passed": 6,
+      "failed": 0
+    },
+    "sourceChain": "Original four assets remain pinned by feature-topology-repair.json. format-repair.json pins the before/after hashes and current integrity; the tests compare the current original attribute, morph, rig and image payloads to those records without requiring local backup GLBs. Preview-75 files were rebuilt from normalized assessed sources. Pre-format backup bytes remain local."
+  },
+  "runtimeRepairs": [
+    {
+      "issue": "Explicitly selected bundled GLBs skipped eyelid, brow and pose-binding preparation.",
+      "fix": "Apply bundled corrections based on the reviewed asset registry, independent of selection source; keep unrecognized owner uploads outside the bundled correction path."
+    },
+    {
+      "issue": "Legacy eyelashes intersected the closed eyelid.",
+      "fix": "Hide bundled eyelash cards above the JSON-configured near-closed blink threshold and restore them as the eyes reopen."
+    }
+  ],
+  "browserReview": {
+    "configuration": "playwright.model-review.config.ts",
+    "assets": 6,
+    "passed": 6,
+    "checksPerAsset": [
+      "front",
+      "back",
+      "side",
+      "oblique",
+      "face front",
+      "30-degree head turn",
+      "turned face oblique",
+      "full blink",
+      "lash hide and restore",
+      "preview cornea closure",
+      "protected export",
+      "page and shader errors"
+    ],
+    "captures": "../../evidence/review-75/",
+    "generatedCaptureCount": 54,
+    "curatedCaptureCount": 8,
+    "curatedCaptures": [
+      "humanoid-preview-75-front.png",
+      "humanoid-preview-75-back.png",
+      "humanoid-preview-75-side.png",
+      "humanoid-preview-75-oblique.png",
+      "humanoid-preview-75-face-front.png",
+      "humanoid-preview-75-face-oblique.png",
+      "humanoid-preview-75-head-turn.png",
+      "humanoid-preview-75-blink-oblique.png"
+    ],
+    "captureRetention": "Eight representative full preview views are retained in Git. All 54 captures remain on disk; the remaining views and duplicate browser output are ignored."
+  },
+  "verification": {
+    "focusedModelTests": {
+      "passed": 68,
+      "files": 6
+    },
+    "humanPlanAndSpecification": {
+      "passed": 84
+    },
+    "assetProvenanceRelease": "passed",
+    "typescript": "passed",
+    "targetedEslint": "passed with the existing TypeScript E2E file ignored by ESLint configuration",
+    "productionBuild": "passed; existing Three.js chunk-size warning remains",
+    "assetSizesBytes": {
+      "humanoid-preview-75.glb": 25047568,
+      "humanoid-preview-75-lite.glb": 8133056
+    },
+    "trackedFilesDeleted": 0,
+    "financeApplicationsChanged": 0
+  },
+  "visualAssessment": {
+    "result": "Consistent human-shaped full-body and face silhouette across front, rear, side and turned views; full and lite render paths match.",
+    "limitation": "Close views remain stylized and mannequin-like. This is a reviewed partial asset, not a photorealistic or human-likeness certification.",
+    "remainingV3": "The preview pair remains 17/23 applicable required checks and 0/5 recommended checks. Face shapes, regional texture density, teeth/gums/tongue/scalp, authored skin weights/contact, anatomical and optical calibration, compression/LOD and cross-device gates remain open."
+  },
+  "evidence": {
+    "formatSummary": "format-summary.json",
+    "normalization": "format-repair.json",
+    "humanViewCaptures": "../../evidence/review-75/",
+    "curatedCaptureCount": 8,
+    "generatedCaptureCount": 54,
+    "rawFormatReports": {
+      "before": "format-before/",
+      "after": "format-after/",
+      "retention": "Ignored local artifacts; compact hashes and counts are committed in format-summary.json."
+    }
+  }
+}

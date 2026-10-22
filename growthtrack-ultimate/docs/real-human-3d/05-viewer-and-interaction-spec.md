@@ -194,6 +194,8 @@ on touch). In Pose mode a drag on a handle moves that effector; a drag anywhere 
 | Head | FABRIK along neck and spine | Root pinned at the hips |
 | Hips | Moves the body; planted feet stay put by leg IK | Past full leg extension, the foot steps |
 
+2026-10-22 runtime delivery: the Pose inspector saves independent Current/Goal local joint rotations and provides keyboard sliders for exact wrist/ankle two-bone reach. Targets normalize to the actual limb length in its rig frame, clamp to configured bend/reach bounds and report actual endpoint error. Read-only coloured markers disappear for protected export. Measurement/anatomy and comparison/timeline views suppress saved posing. Pointer dragging, the FABRIK head/hip path and walking foot lock in the specification below remain open. The View inspector also saves named actual camera orbit/pan/zoom records relative to model height. See [architecture, persistence and limitations](10-pose-camera-architecture.md).
+
 The effector target lives on a **camera-facing plane through the grab point**, so a drag follows the pointer exactly. IK weight
 blends in over 120 ms and out over 200 ms. On release: **Hold** (default; the pose stays) or **Spring back** (setting).
 `code/ik.mjs` (7 tests): exact two-bone solution, bone lengths preserved over 2,000 random targets, elbow bends toward the pole,
@@ -228,6 +230,8 @@ function onPointerMove(e) {
 IK works on the shipped 20-joint rig, so Pose mode can ship first.
 
 ## 7 · Space backgrounds (and why they are procedural)
+
+**Implemented static slice, 2026-10-21:** View → Model background → Space sky offers all five presets below. The runtime bakes a local sky shader into a cube map (LOW 128, MED 256, HIGH 512 pixels per face) and adds a subdued version to the studio environment capture. Selection is saved independently of body measurements, camera and floor. All tiers currently stay still; animated aurora, twinkle and reference-device timing remain planned. [Evidence and scope](IMPLEMENTATION_PROGRESS.md).
 
 A single sky-sphere shader, no image download (0 bytes), also rendered once into a small cube map for image-based lighting
 so reflections in eyes and skin match the scene. Presets:
