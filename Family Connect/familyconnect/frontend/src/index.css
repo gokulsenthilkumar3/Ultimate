@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@import './growthtrack-design.css';
+
+@theme {
+  --color-saffron: #FF6B35;
+  --color-navy: #0A1128;
+  --color-cream: #FFF8F3;
+  --color-emerald: #10B981;
+  --color-rose: #F87171;
+  --color-gold: #F59E0B;
+  
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Outfit', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-navy);
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+
+  /* Custom Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(15, 23, 42, 0.2);
+    border-radius: 20px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(15, 23, 42, 0.4);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    /* text-wrap: balance is Chrome 114+; use overflow-wrap as the safe fallback */
+    overflow-wrap: break-word;
+    text-wrap: balance;
+  }
+}
