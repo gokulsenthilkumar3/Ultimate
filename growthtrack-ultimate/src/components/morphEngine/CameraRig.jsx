@@ -9,6 +9,8 @@ import { fitHumanFrame, fitRegionFrame, nearestOrbitAngle } from './cameraFramin
 import { useAnatomyEligibility } from './useAnatomyEligibility';
 import {constrain,autoRotate as advanceRotation,DEFAULTS as CAMERA_LIMITS} from './viewerCamera';
 import {closestDetailedDistance} from './textureDensity';
+import { normalizeCameraView, restoreCameraView } from '../../lib/cameraBookmarks';
+import { registerBookmarkCamera } from './cameraBookmarkRuntime';
 
 function updateClipping(camera,distance){
   const near=Math.max(.005,Math.min(.1,distance*.025)),far=Math.max(20,distance*40);
@@ -22,8 +24,10 @@ export default function CameraRig() {
   const cameraPreset = use3DStore((s) => s.cameraPreset);
   const cameraZoom = use3DStore((s) => s.cameraZoom);
   const cameraRevision = use3DStore((s) => s.cameraRevision);
+  const bookmarkView=use3DStore(s=>s.cameraBookmarkView);
   const viewMode = use3DStore((s) => s.viewMode);
   const autoRotate = use3DStore((s) => s.autoRotate);
+  const poseDragging=use3DStore(s=>s.poseDragging);
   const cameraMode=use3DStore(s=>s.avatarWorkspace.cameraMode);
   const showStage=use3DStore(s=>s.avatarWorkspace.showStage);
   const rotationSpeed=use3DStore(s=>s.avatarWorkspace.autoRotateSpeed);
@@ -57,9 +61,13 @@ export default function CameraRig() {
       cameraMode:use3DStore.getState().avatarWorkspace.cameraMode,
       cameraMinDistance:controls.minDistance.toFixed(4),
       cameraAzimuth:controls.getAzimuthalAngle().toFixed(5),cameraPolar:controls.getPolarAngle().toFixed(5),
-      cameraRegionSource: use3DStore.getState().modelRegionFrames[use3DStore.getState().avatarWorkspace.avatarContext === 'goal' ? 'B' : 'A'][use3DStore.getState().focusedBodyPart]?.source || 'reference' };
+      cameraRegionSource: use3DStore.getState().modelRegionFrames[use3DStore.getState().avatarWorkspace.avatarContext === 'goal' ? 'B' : 'A'][use3DStore.getState().focusedBodyPart]?.source || 'reference',
+      cameraRegionGeometry: use3DStore.getState().modelRegionFrames[use3DStore.getState().avatarWorkspace.avatarContext === 'goal' ? 'B' : 'A'][use3DStore.getState().focusedBodyPart]?.sourceGeometry || '' };
     for (const [key, value] of Object.entries(fields)) if (gl.domElement.dataset[key] !== value) gl.domElement.setAttribute(`data-${key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)}`, value);
   }, [camera, gl]);
+
+  useEffect(()=>registerBookmarkCamera(gl.domElement,()=>orbitRef.current
+    ? normalizeCameraView({position:camera.position.toArray(),target:orbitRef.current.target.toArray(),frame:use3DStore.getState().modelFrame}) : null),[camera,gl]);
 
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -71,7 +79,30 @@ export default function CameraRig() {
   useEffect(() => {
     const controls = orbitRef.current;
     if (!controls) return;
-    if (manualStart.current && cameraPreset === 'CUSTOM') { manualStart.current = false; return; }
+    if (manualStart.current) {
+      manualStart.current = false;
+      // Skip only the state change caused by this gesture. A later named
+      // preset or bookmark must never inherit a stale gesture suppression.
+      if(cameraPreset==='CUSTOM' && !bookmarkView)return;
+    }
+    const saved=viewMode==='SOLO'?restoreCameraView(bookmarkView,modelFrame):null;
+    if(saved) {
+      const fit=fitHumanFrame({frame:modelFrame,width:size.width,height:size.height,fov:camera.fov});
+      const densities=Object.entries(regionFrames).filter(([key,value])=>key!=='anatomy' && value?.texelsPerWorldUnit>0).map(([,value])=>value.texelsPerWorldUnit);
+      const detail=densities.length?closestDetailedDistance({pixelHeight:size.height*dpr,fov:camera.fov,texelsPerUnit:Math.min(...densities)}):fit.distance*.35;
+      controls.minDistance=Math.max(.12,detail);
+      controls.maxDistance=Math.max(controls.minDistance*1.1,Math.min(40,fit.distance*3.4));
+      const zoom=use3DStore.getState().cameraZoom;
+      const desired={...saved,distance:saved.distance*zoom};
+      const floor=showStage && cameraMode!=='HANGING'?0:null;
+      if(floor!==null)desired.target[1]=Math.max(desired.target[1],floor+CAMERA_LIMITS.floorMargin-Math.max(controls.minDistance,desired.distance)+.001);
+      const bounded=constrain(desired,{mode:cameraMode,floorY:floor,minDistance:controls.minDistance,maxDistance:controls.maxDistance});
+      const start=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+      animation.current={current:start,target:new THREE.Spherical(bounded.distance,bounded.polar,nearestOrbitAngle(start.theta,bounded.azimuth)),
+        center:controls.target.clone(),destination:new THREE.Vector3(...bounded.target),immediate:initialFrame.current || reducedMotion};
+      baseDistance.current=saved.distance;previousZoom.current=zoom;initialFrame.current=false;
+      return;
+    }
     const preset = CAMERA_PRESETS[cameraPreset] || CAMERA_PRESETS.FRONT;
     const candidate = viewMode === 'SOLO' ? BODY_PART_MAP[focusedBodyPart] : null;
     const region = candidate?.private && !privateAllowed ? null : candidate;
@@ -102,7 +133,7 @@ export default function CameraRig() {
       immediate: initialFrame.current || reducedMotion,
     };
     initialFrame.current = false;
-  }, [camera, cameraPreset, cameraRevision, focusedBodyPart, modelFrame, regionFrames, privateAllowed, reducedMotion, size.height, size.width, viewMode,cameraMode,showStage,dpr]);
+  }, [camera, cameraPreset, cameraRevision, bookmarkView, focusedBodyPart, modelFrame, regionFrames, privateAllowed, reducedMotion, size.height, size.width, viewMode,cameraMode,showStage,dpr]);
 
   // Zoom around the user's current target and direction, including after a pan.
   useEffect(() => {
@@ -122,8 +153,9 @@ export default function CameraRig() {
     const onStart = () => {
       animation.current = null;
       interacting.current=true;
-      manualStart.current = use3DStore.getState().cameraPreset !== 'CUSTOM';
-      use3DStore.setState({ cameraPreset: 'CUSTOM' });
+      const state=use3DStore.getState();
+      manualStart.current = state.cameraPreset!=='CUSTOM' || Boolean(state.cameraBookmarkView);
+      use3DStore.setState({ cameraPreset: 'CUSTOM',cameraBookmarkView:null });
     };
     const onEnd = () => {
       interacting.current=false;resumeAt.current=performance.now()+3000;
@@ -143,7 +175,7 @@ export default function CameraRig() {
     let start = null;
     let last = null;
     let pointers = new Set();
-    const down = (event) => { pointers.add(event.pointerId); if (pointers.size > 1) { start = null; last = null; return; } start = event.isPrimary && event.button === 0 ? { x: event.clientX, y: event.clientY, time: event.timeStamp } : null; };
+    const down = (event) => {if(event.defaultPrevented || use3DStore.getState().poseDragging){start=null;last=null;return;} pointers.add(event.pointerId); if (pointers.size > 1) { start = null; last = null; return; } start = event.isPrimary && event.button === 0 ? { x: event.clientX, y: event.clientY, time: event.timeStamp } : null; };
     const up = (event) => {
       pointers.delete(event.pointerId);
       if (!start || !event.isPrimary || event.timeStamp - start.time > 280 || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) { start = null; return; }
@@ -163,6 +195,7 @@ export default function CameraRig() {
   useFrame((_, delta) => {
     const controls = orbitRef.current;
     if (!controls) return;
+    if(poseDragging){animation.current=null;reportCamera();return;}
     const transition = animation.current;
     if (transition) {
       const t = transition.immediate ? 1 : 1 - Math.exp(-Math.max(0, delta) * 7);
@@ -194,7 +227,7 @@ export default function CameraRig() {
     reportCamera();
   });
 
-  return <OrbitControls ref={orbitRef} rotateSpeed={0.7} zoomSpeed={0.8} minDistance={0.12} maxDistance={40}
+  return <OrbitControls ref={orbitRef} enabled={!poseDragging} rotateSpeed={0.7} zoomSpeed={0.8} minDistance={0.12} maxDistance={40}
     minPolarAngle={.02} maxPolarAngle={Math.PI/2}
     enablePan panSpeed={0.65} screenSpacePanning enableDamping={!reducedMotion} dampingFactor={0.08}
     mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}

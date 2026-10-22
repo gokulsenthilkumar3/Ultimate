@@ -18,13 +18,18 @@
  */
 
 import React, { useRef, useEffect, useMemo } from "react";
-import { createPortal, useFrame, useThree }             from "@react-three/fiber";
+import { useFrame, useThree }             from "@react-three/fiber";
 import { useShallow }                         from "zustand/react/shallow";
 import * as THREE                             from "three";
+import {useTexture} from '@react-three/drei';
+import {HUMAN_SURFACE} from '../../lib/humanSurface';
 
 import { useModelLoader }       from "./useModelLoader";
 import { useMorphInterpolator } from "./MorphInterpolator";
 import PostureRig               from "./PostureRig";
+import { createSkinnedBoundsUpdater } from './skinnedBounds';
+import PoseTargetMarkers from './PoseTargetMarkers';
+import { poseIsActive } from '../../lib/poseStudio';
 import use3DStore               from "../../store/use3DStore";
 import { createSkinMaterial, updateSkinUniforms, createRimAuraMaterial, updateAuraUniforms } from "./UberShader";
 import { createClothMaterial, isClothPreset } from "./WardrobeShader";
@@ -36,7 +41,10 @@ import { createSoleGrounder } from './grounding';
 import { isAnatomyVisible } from './anatomyVisibility';
 import { useAnatomyEligibility } from './useAnatomyEligibility';
 import { registerAvatarSource } from './avatarExport';
+import { measureModelSections } from './modelMeasurements';
+import { registerModelMeasurement } from './modelMeasurementRuntime';
 import { STRAND_FEATURES, createHairCardMaterial, createStrandMaterial, scalpHairline } from './featureMaterials';
+import { APPEARANCE_DETAIL, resolveHairDetail } from '../../lib/appearanceDetail';
 import { applyAnatomySurface, updateAnatomySurface } from './anatomySurface';
 import { createMorphNormalUpdater } from './deformedGeometryNormals';
 import { createRegionFrameSampler } from './regionFrames';
@@ -48,6 +56,13 @@ import {createAuthoredGarment,publishGarmentEvidence} from './authoredGarments';
 import {useWardrobeAsset} from './useWardrobeAsset';
 import {registerCaptureGuard} from './captureRuntime';
 import {protectAvatarCapture} from './protectedCapture';
+import {createEyeMaterial, updateEyePupil, freezeEyePupil} from './eyeMaterial';
+import { EYE_APPEARANCE } from '../../lib/eyeAppearance';
+import {createIdleController, idleMotionEnabled} from './idleMotion';
+import {freezeIdlePose} from './idleCapture';
+import {configureSurfaceParts,updateSurfaceParts,freezeSurfaceParts} from './surfaceParts';
+import {createMouthInterior} from './faceGeometry';
+import {sampleAvatarSpeech} from './avatarSpeech';
 
 const ProceduralHumanoid = React.lazy(() => import("./ProceduralHumanoid"));
 
@@ -108,7 +123,15 @@ export default function HumanoidClone({
   }));
 
   // ── Load model ──────────────────────────────────────────────────────────────
-  const { bodyMesh, morphIndexMap, morphMeshes, privateAnatomyMesh, featureMeshes, skeleton, scene, diagnostics } = useModelLoader(modelPreference);
+  const { bodyMesh, bodySourceMaterial, morphIndexMap, morphMeshes, privateAnatomyMesh, featureMeshes, surfaceParts, skeleton, scene, referenceFrame, diagnostics } = useModelLoader(modelPreference);
+  const microSource=useTexture(`${import.meta.env.BASE_URL}${HUMAN_SURFACE.micro.heightPath}`);
+  const microTile=useMemo(()=>{const tile=microSource.clone();tile.wrapS=tile.wrapT=THREE.RepeatWrapping;tile.colorSpace=THREE.NoColorSpace;tile.needsUpdate=true;return tile;},[microSource]);
+  useEffect(()=>()=>microTile.dispose(),[microTile]);
+  const updateSkinBounds=useMemo(()=>{
+    const skins=[bodyMesh,privateAnatomyMesh,...(surfaceParts || []).map(p=>p.mesh)].filter(mesh=>mesh?.isSkinnedMesh);
+    const updaters=skins.map(mesh=>({mesh,update:createSkinnedBoundsUpdater(mesh)}));
+    return()=>updaters.forEach(({mesh,update})=>{if(mesh.visible)update();});
+  },[bodyMesh,privateAnatomyMesh,surfaceParts]);
   const useProcedural = !bodyMesh || diagnostics?.isSuspicious;
   const anatomyAllowed = useAnatomyEligibility(diagnostics).allowed;
   const updateAnatomyNormals = useMemo(() => createMorphNormalUpdater(privateAnatomyMesh), [privateAnatomyMesh]);
@@ -129,6 +152,18 @@ export default function HumanoidClone({
   const animationState = use3DStore((s) => s.animationState);
   const reducedMotion=use3DStore(s=>s.rendererQualityTelemetry.reducedMotion);
   const measurementView=use3DStore(s=>s.avatarWorkspace.inspectorOpen && ['measurements','anatomy'].includes(s.avatarWorkspace.inspectorSection));
+  const naturalMotion=use3DStore(s=>s.avatarWorkspace.naturalMotion);
+  const viewMode=use3DStore(s=>s.viewMode);
+  const savedPose=use3DStore(s=>s.avatarWorkspace.poseStudio[cloneKey==='B'?'goal':'current']);
+  // Workspace validation clones nested preferences. Resample only an actual
+  // pose change, so changing a background/layout cannot reset a panned camera.
+  const poseSignature=JSON.stringify(savedPose);
+  const poseInspector=use3DStore(s=>s.avatarWorkspace.inspectorOpen && s.avatarWorkspace.inspectorSection==='pose');
+  const poseActive=poseIsActive({pose:savedPose,viewMode,measurementView,renderMode,overridden:Boolean(metricsOverride || weightsOverride)});
+  const idleController=useMemo(()=>createIdleController(cloneKey==='A'?17:29),[cloneKey]);
+  const idleSample=useRef({blink:0,breath:0,gaze:{yaw:0,pitch:0},active:false});
+  const breathingBone=useMemo(()=>skeleton?.bones.find(bone=>/^(?:Spine2|mixamorigSpine2|Bip01_Spine2)$/i.test(bone.name)),[skeleton]);
+  const breathingRestScale=useMemo(()=>breathingBone?.scale.clone(),[breathingBone]);
   const anatomyProfile = use3DStore(s => s.anatomyCustomization[cloneKey === 'B' ? 'goal' : 'current']);
   const anatomyPreview = use3DStore(s => s.anatomyPreview);
   const privateDeformer=useMemo(()=>createPrivateAnatomyDeformer(privateAnatomyMesh,bodyMesh),[privateAnatomyMesh,bodyMesh]);
@@ -153,6 +188,15 @@ export default function HumanoidClone({
     metrics,
     inheritedMetrics || {},
   ).metrics, [inheritedMetrics, metrics]);
+  const measurementInput = JSON.stringify({ weights, metrics, anatomyProfile });
+  const measurementAvailable = !useProcedural && diagnostics?.modelAsset?.isBundled && !metricsOverride && !weightsOverride;
+  useEffect(() => {
+    if (!measurementAvailable) return;
+    const input = JSON.parse(measurementInput);
+    return registerModelMeasurement(renderer.domElement, cloneKey, {
+      read: () => measureModelSections(bodyMesh, input.weights, input.metrics),
+    });
+  }, [renderer, cloneKey, bodyMesh, measurementInput, measurementAvailable]);
   const heightScale = useMemo(
     () => computeHeightScale(renderMetrics),
     [renderMetrics],
@@ -160,7 +204,9 @@ export default function HumanoidClone({
   const sampleRegions = useMemo(() => createRegionFrameSampler(bodyMesh, privateAnatomyMesh), [bodyMesh, privateAnatomyMesh]);
   const regionElapsed = useRef(0);
   const regionPending = useRef(true);
-  useEffect(() => { regionElapsed.current = 0; regionPending.current = true; }, [weights, posture, heightScale, wardrobe, anatomyAllowed, captureRedacted,anatomyProfile,anatomyPreview]);
+  // A quality change replaces the geometry/atlas even if measurements stay
+  // identical. Resample that asset instead of retaining the former LOD's zoom.
+  useEffect(() => { regionElapsed.current = 0; regionPending.current = true; }, [sampleRegions,weights, posture, heightScale, wardrobe, anatomyAllowed, captureRedacted,anatomyProfile,anatomyPreview,poseSignature,poseActive]);
   useFrame((_,delta) => {
     if (!sampleRegions || !visible || !regionPending.current) return;
     regionElapsed.current += Math.min(delta,.1);
@@ -170,6 +216,7 @@ export default function HumanoidClone({
     regionPending.current = false;
   });
   const skinTone = useMemo(() => resolveSkinTone(renderMetrics), [renderMetrics]);
+  useEffect(()=>configureSurfaceParts(surfaceParts,featureMeshes,{nailColor:renderMetrics.nailColor}),[surfaceParts,featureMeshes,renderMetrics.nailColor]);
   useEffect(() => {
     if (useProcedural || !groupRef.current) return undefined;
     return registerAvatarSource(cloneKey, {
@@ -187,15 +234,10 @@ export default function HumanoidClone({
   }, [weights, updateWeights]);
 
   useEffect(() => {
-    if (!scene || useProcedural) return;
-    // Frame the complete authored avatar, not only the body primitive. This
-    // includes hair, eyes, feet, clothing and visible anatomy attachments.
-    scene.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = new THREE.Vector3();
-    const center = new THREE.Vector3();
-    box.getSize(size);
-    box.getCenter(center);
+    if (!referenceFrame || useProcedural) return;
+    // The loader measures the complete neutral avatar precisely before viewer
+    // parenting. Animated culling envelopes must not change saved-view scale.
+    const {size,center}=referenceFrame;
     
     // Auto-normalize scale and position for arbitrary GLBs
     setModelFrame({
@@ -204,7 +246,7 @@ export default function HumanoidClone({
       height: Math.max(size.y * heightScale, 0.001),
       radius: Math.max(size.x, size.y * heightScale, size.z) * 0.5,
     });
-  }, [bodyMesh, heightScale, scene, setModelFrame, useProcedural]);
+  }, [referenceFrame, heightScale, setModelFrame, useProcedural]);
 
   useEffect(() => {
     setModelDiagnostics(diagnostics ? {
@@ -240,10 +282,11 @@ export default function HumanoidClone({
         // One body albedo for every tone: the material tints it relative to the
         // texture's own tone (physicalSkinMaterial.skinAlbedoTint). The bundled
         // "Light" variant is darker than the base and "Deep" darker than type VI.
-        return createSkinMaterial(toneIndex, bodyMesh?.material || null, {
+        return createSkinMaterial(toneIndex, bodySourceMaterial || null, {
           bodyHairIntensity: renderMetrics?.bodyHairDensity ?? 0,
           skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,
           skinAppearance:renderMetrics,
+          microTile,
           vertexColors: true,
           pubicRegion: pubicAnchor && {
             ...pubicAnchor,
@@ -253,7 +296,7 @@ export default function HumanoidClone({
         });
       }
     }
-  }, [bodyMesh, opacity, pubicAnchor, renderMetrics, renderMode, skinTone]);
+  }, [bodySourceMaterial, microTile, opacity, pubicAnchor, renderMetrics, renderMode, skinTone]);
 
   // The protected anatomy surface uses the same tone but no body atlas. The
   // atlas is laid out for the MakeHuman body UV islands and would otherwise
@@ -268,7 +311,7 @@ export default function HumanoidClone({
   useEffect(()=>{
     if(useProcedural || !visible)return;
     return registerCaptureGuard(renderer.domElement,()=>protectAvatarCapture({body:bodyMesh,
-      privateMesh:privateAnatomyMesh,guides:anatomyGuidesRef.current,material,wardrobe}));
+      privateMesh:privateAnatomyMesh,guides:anatomyGuidesRef.current,material,wardrobe}),20);
   },[renderer,bodyMesh,privateAnatomyMesh,material,wardrobe,useProcedural,visible]);
 
   useEffect(()=> {
@@ -290,65 +333,90 @@ export default function HumanoidClone({
   // their materials per figure so the two comparison models can customize
   // colour independently without mutating the shared GLTF cache.
   const featureMaterials = useMemo(() => {
-    const eyeColor = renderMetrics?.eyeColor || '#6b3b20';
-    const hairColor = renderMetrics?.hairColor || '#21140f';
+    const eyeColor = renderMetrics?.eyeColor || EYE_APPEARANCE.defaults.color;
+    const hairColor = renderMetrics?.hairColor || APPEARANCE_DETAIL.hair.defaults.color;
     const materials = {};
-    (featureMeshes || []).forEach(({ mesh, feature }) => {
-      const source = Array.isArray(mesh?.material) ? mesh.material[0] : mesh?.material;
+    (featureMeshes || []).forEach(({ mesh, sourceMaterial, feature }) => {
+      const source = Array.isArray(sourceMaterial) ? sourceMaterial[0] : sourceMaterial;
       if (feature === 'eyes') {
-        materials.eyes = new THREE.MeshPhysicalMaterial({
-          map: source?.map || null,
-          normalMap: source?.normalMap || null,
-          normalScale: source?.normalScale?.clone?.() || new THREE.Vector2(0.08, 0.08),
-          color: '#ffffff',
-          roughness: 0.16,
-          clearcoat: 0.78,
-          clearcoatRoughness: 0.06,
-          transparent: false,
-          alphaTest: 0.12,
-          side: THREE.DoubleSide,
+        materials.eyes = createEyeMaterial(source,mesh.geometry,eyeColor,bodySourceMaterial?.normalMap, {
+          eyePupilMode: renderMetrics?.eyePupilMode, eyePupilSizeMm: renderMetrics?.eyePupilSizeMm,
+          eyeIrisDetail: renderMetrics?.eyeIrisDetail, eyeSeed: renderMetrics?.eyeSeed,
+          irisLimbalRing: renderMetrics?.irisLimbalRing, scleraColor: renderMetrics?.scleraColor,
+          exposure: renderer.toneMappingExposure,
         });
-        // Keep the sclera white and pupil dark; tint only the coloured iris.
-        materials.eyes.onBeforeCompile = (shader) => {
-          shader.uniforms.uIrisColor = { value: new THREE.Color(eyeColor) };
-          shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uIrisColor;')
-            .replace('#include <map_fragment>', `#include <map_fragment>
-              float irisMax = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b));
-              float irisMin = min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
-              float irisMask = smoothstep(0.025, 0.15, irisMax - irisMin) * smoothstep(0.015, 0.08, irisMax);
-              diffuseColor.rgb = mix(diffuseColor.rgb, uIrisColor * (0.4 + irisMax), irisMask * 0.65);`);
-        };
-        materials.eyes.customProgramCacheKey = () => `iris-${eyeColor}`;
       }
-      if (feature === 'hair') materials.hair = createHairCardMaterial(source, hairColor);
+      if (feature === 'hair') materials.hair = createHairCardMaterial(source, hairColor, {
+        hairDensity: renderMetrics?.hairDensity, hairGrey: renderMetrics?.hairGrey, hairSeed: renderMetrics?.hairSeed,
+      });
       if (STRAND_FEATURES.includes(feature)) materials[feature] = createStrandMaterial(feature, source, hairColor);
     });
     return materials;
-  }, [featureMeshes, renderMetrics]);
+  }, [bodySourceMaterial, featureMeshes, renderer, renderMetrics?.eyeColor, renderMetrics?.hairColor, renderMetrics?.hairDensity, renderMetrics?.hairGrey, renderMetrics?.hairSeed,
+    renderMetrics?.eyePupilMode, renderMetrics?.eyePupilSizeMm, renderMetrics?.eyeIrisDetail, renderMetrics?.eyeSeed, renderMetrics?.irisLimbalRing, renderMetrics?.scleraColor]);
 
   useEffect(() => () => {
-    Object.values(featureMaterials).forEach((featureMaterial) => featureMaterial.dispose());
+    Object.values(featureMaterials).forEach((featureMaterial) => {
+      featureMaterial.userData.depthMaterial?.dispose();
+      featureMaterial.userData.distanceMaterial?.dispose();
+      featureMaterial.dispose();
+    });
   }, [featureMaterials]);
+  useEffect(()=>{
+    if(useProcedural || !visible)return;
+    return registerCaptureGuard(renderer.domElement,()=>{
+      const bindings=(morphMeshes || []).map(binding=>({...binding,skip:binding.mesh===privateAnatomyMesh && privateDeformer?['d_length','d_girth']:[]}));
+      for(const mesh of [clothOverlayRef.current,scalpRef.current,auraRef.current])if(mesh)bindings.push({mesh,morphIndexMap});
+      const restore=interpolator.freezeForCapture(weights,bindings);
+      const uniforms=bodyMesh?.material?.uniforms,vascularity=uniforms?.uVascularityIntensity;
+      const previousVascularity=vascularity?.value;
+      if(vascularity)vascularity.value=interpolator.getWeight('vascularity_intensity');
+      const restoreFrame=()=>{restore();if(vascularity)vascularity.value=previousVascularity;};
+      const updateDerived=()=>{clothOverlayRef.current?.userData.garmentShell?.update();updateSkinBounds();mouthRef.current?.update();};
+      try{updateDerived();}catch(error){restoreFrame();updateDerived();throw error;}
+      return {restore:restoreFrame,afterRestore:updateDerived};
+    },-20);
+  },[renderer,useProcedural,visible,morphMeshes,morphIndexMap,privateAnatomyMesh,privateDeformer,interpolator,weights,updateSkinBounds,bodyMesh]);
+  useEffect(()=>{
+    if(useProcedural || !visible)return;
+    return registerCaptureGuard(renderer.domElement,()=>{
+      const restoreIdle=freezeIdlePose({
+        meshes:(morphMeshes || [{mesh:bodyMesh}]).map(item=>item.mesh),eyeMaterial:featureMaterials.eyes,
+        breathingBone,breathingRestScale,manualBlink:interpolator.getWeight('blink'),
+      });
+      const restorePupil=freezeEyePupil(featureMaterials.eyes,renderer.toneMappingExposure);
+      const restoreParts=freezeSurfaceParts(surfaceParts,bodyMesh,interpolator.getWeight('blink'),renderMode);
+      const jaws=(morphMeshes || []).flatMap(({mesh,morphIndexMap:map})=>map.jaw_open==null?[]:[{mesh,index:map.jaw_open,value:mesh.morphTargetInfluences[map.jaw_open]}]);
+      jaws.forEach(({mesh,index})=>{mesh.morphTargetInfluences[index]=interpolator.getWeight('jaw_open');});mouthRef.current?.update();
+      return()=>{restoreParts();restorePupil();restoreIdle();jaws.forEach(({mesh,index,value})=>{mesh.morphTargetInfluences[index]=value;});mouthRef.current?.update();};
+    },10);
+  },[renderer,useProcedural,visible,morphMeshes,bodyMesh,featureMaterials,breathingBone,breathingRestScale,interpolator,surfaceParts,renderMode]);
+  useEffect(()=>()=>{featureMeshes?.forEach(({mesh})=>mesh.geometry.dispose());},[featureMeshes]);
+  useEffect(()=>()=>{surfaceParts?.forEach(({mesh})=>mesh.geometry.dispose());},[surfaceParts]);
 
-  const headBone = useMemo(
-    () => skeleton?.bones?.find((bone) => bone.name === 'Head') || null,
-    [skeleton],
-  );
+  useEffect(()=>{
+    if(useProcedural || renderMode!=='normal')return;
+    const mouth=createMouthInterior(bodyMesh);mouthRef.current=mouth;
+    return()=>{mouth?.dispose();if(mouthRef.current===mouth)mouthRef.current=null;};
+  },[bodyMesh,useProcedural,renderMode]);
 
   const hairStyle = renderMetrics?.hairStyle || 'short';
-  const hairColor = renderMetrics?.hairColor || '#21140f';
+  const hairColor = renderMetrics?.hairColor || APPEARANCE_DETAIL.hair.defaults.color;
+  const hairDetail = resolveHairDetail(renderMetrics);
   const hairline = useMemo(() => scalpHairline(bodyMesh?.geometry, hairStyle), [bodyMesh, hairStyle]);
   const scalpMaterial = useMemo(() => {
     if (!hairline) return null;
     // Transparent only so the hairline can fade into the skin below it.
     const scalp = new THREE.MeshPhysicalMaterial({
-      color: hairColor,
+      color: new THREE.Color(hairColor).lerp(new THREE.Color(APPEARANCE_DETAIL.hair.greyColor), hairDetail.grey),
       roughness: 0.62,
       metalness: 0,
       sheen: 0.3,
       sheenRoughness: 0.5,
       sheenColor: new THREE.Color(hairColor).offsetHSL(0, 0, 0.1),
       transparent: true,
+      opacity: hairDetail.density,
+      depthWrite: false,
       side: THREE.DoubleSide,
       polygonOffset: true,
       polygonOffsetFactor: -1,
@@ -378,7 +446,7 @@ export default function HumanoidClone({
     };
     scalp.customProgramCacheKey = () => `growthtrack-scalp-${hairline.front.toFixed(4)}-${hairline.back.toFixed(4)}`;
     return scalp;
-  }, [hairColor, hairline]);
+  }, [hairColor, hairline, hairDetail.density, hairDetail.grey]);
 
   useEffect(() => () => scalpMaterial?.dispose(), [scalpMaterial]);
 
@@ -422,16 +490,6 @@ export default function HumanoidClone({
     [bodyMesh, showAura, skeleton],
   );
 
-  const mouthMaterials = useMemo(() => ({
-    interior: new THREE.MeshStandardMaterial({ color: "#190b0d", roughness: 0.72 }),
-    teeth: new THREE.MeshPhysicalMaterial({ color: "#fff8e8", roughness: 0.24, clearcoat: 0.32 }),
-    tongue: new THREE.MeshPhysicalMaterial({ color: "#a34f5f", roughness: 0.42, clearcoat: 0.08 }),
-  }), []);
-
-  useEffect(() => () => {
-    Object.values(mouthMaterials).forEach((mouthMaterial) => mouthMaterial.dispose());
-  }, [mouthMaterials]);
-
   useEffect(() => () => {
     clothMaterial?.dispose?.();
   }, [clothMaterial]);
@@ -449,16 +507,16 @@ export default function HumanoidClone({
     (featureMeshes || []).forEach(({ mesh, feature }) => {
       const next = renderMode === 'normal' ? featureMaterials[feature] : material;
       if (next) mesh.material = next;
-      if (feature === 'hair') mesh.visible = ['short', 'medium', 'long'].includes(hairStyle);
+      if (feature === 'hair') {
+        mesh.visible = ['short', 'medium', 'long'].includes(hairStyle) && hairDetail.density > 0;
+        mesh.customDepthMaterial = renderMode === 'normal' ? next?.userData.depthMaterial : undefined;
+        mesh.customDistanceMaterial = renderMode === 'normal' ? next?.userData.distanceMaterial : undefined;
+      }
       mesh.renderOrder = renderMode === 'ghost' ? 3 : 0;
       mesh.castShadow = renderMode === 'normal';
       mesh.receiveShadow = false;
     });
-  }, [featureMeshes, featureMaterials, hairStyle, material, renderMode]);
-
-  useEffect(() => () => {
-    Object.values(featureMaterials).forEach((featureMaterial) => featureMaterial.dispose());
-  }, [featureMaterials]);
+  }, [featureMeshes, featureMaterials, hairStyle, hairDetail.density, material, renderMode]);
 
   // Separate authored garment topology follows measured body changes through
   // surface bindings and shares the pose rig. Custom assets retain the shell
@@ -525,6 +583,7 @@ export default function HumanoidClone({
       (morphMeshes || [{ mesh: bodyMesh }]).forEach(({ mesh, sensitive }) => {
         if (!mesh) return;
         if (featureMeshes.some((feature) => feature.mesh === mesh)) return;
+        if (surfaceParts?.some(part=>part.mesh===mesh)) return;
         mesh.material = sensitive ? privateMaterial : material;
         mesh.castShadow = renderMode === "normal";
         mesh.receiveShadow = false;
@@ -537,7 +596,7 @@ export default function HumanoidClone({
       // eslint-disable-next-line react-hooks/immutability
       privateAnatomyMesh.material = privateMaterial;
     }
-  }, [bodyMesh, featureMeshes, material, morphMeshes, privateAnatomyMesh, privateMaterial, renderMode, useProcedural]);
+  }, [bodyMesh, featureMeshes, surfaceParts, material, morphMeshes, privateAnatomyMesh, privateMaterial, renderMode, useProcedural]);
 
   useEffect(() => {
     if (!privateAnatomyMesh) return;
@@ -557,11 +616,26 @@ export default function HumanoidClone({
   useFrame((_, delta) => {
     if (!bodyMesh || useProcedural) return;
     interpolator.tick(delta);
+    const motion=idleController.advance(delta,idleMotionEnabled({
+      naturalMotion:naturalMotion && !poseActive,reducedMotion,measurementView,capturing:captureRedacted,visible,
+      current:cloneKey==='A' && !metricsOverride && !weightsOverride,
+      solo:viewMode==='SOLO',normal:renderMode==='normal',
+      playing:animationState?.playing!==false,animationId:animationState?.animationId,
+    }),interpolator.getWeight('blink'));
+    idleSample.current=motion;
+    const spokenJaw=visible && viewMode==='SOLO' && !measurementView && !captureRedacted && renderMode==='normal'
+      ? sampleAvatarSpeech(renderer.domElement,cloneKey==='B'?'goal':'current') : null;
+    // Three.js metadata belongs to the imperative render loop.
+    // eslint-disable-next-line react-hooks/immutability
+    bodyMesh.userData.speech={active:spokenJaw!==null,jaw:spokenJaw,context:cloneKey==='B'?'goal':'current'};
     const targets = morphMeshes?.length
       ? morphMeshes
       : [{ mesh: bodyMesh, morphIndexMap }];
     targets.forEach(({ mesh, morphIndexMap: indexMap }) => {
       interpolator.applyToMesh(mesh, indexMap);
+      const blinkIndex=indexMap?.blink;
+      if(blinkIndex!=null)mesh.morphTargetInfluences[blinkIndex]=motion.blink;
+      if(spokenJaw!==null && indexMap?.jaw_open!=null)mesh.morphTargetInfluences[indexMap.jaw_open]=spokenJaw;
       if(mesh === privateAnatomyMesh && privateDeformer) for(const name of ['d_length','d_girth']) {
         const index=mesh.morphTargetDictionary[name]; if(index!=null) mesh.morphTargetInfluences[index]=0;
       }
@@ -586,20 +660,18 @@ export default function HumanoidClone({
       groundElapsed.current = 0;
     }
 
-    const blink = interpolator.getWeight("blink");
-    const smile = interpolator.getWeight("smile");
-    const jawOpen = interpolator.getWeight("jaw_open");
     (featureMeshes || []).forEach(({ mesh, feature }) => {
-      if (feature === "eyes") mesh.visible = blink < 0.78;
+      if(feature==='eyelashes' && bodyMesh.userData.eyelidCorrective) mesh.visible=motion.blink<HUMAN_SURFACE.eyelashClosureThreshold;
+      if (feature === "eyes") {
+        mesh.visible=true;
+        mesh.material?.userData?.gaze?.value.set(motion.gaze.yaw,motion.gaze.pitch);
+        updateEyePupil(mesh.material,renderer.toneMappingExposure,delta,
+          reducedMotion || measurementView || captureRedacted || animationState?.playing===false);
+      }
     });
-    if (mouthRef.current) {
-      mouthRef.current.visible = jawOpen > 0.035 || smile > 0.58;
-      mouthRef.current.scale.set(
-        0.82 + smile * 0.30,
-        0.70 + jawOpen * 1.55,
-        0.82 + jawOpen * 0.20,
-      );
-    }
+    updateSurfaceParts(surfaceParts,bodyMesh,motion.blink,motion.gaze,renderMode);
+    // Three.js scene metadata is imperative renderer state, outside React.
+    bodyMesh.userData.idleMotion={active:motion.active,blink:motion.blink,breath:motion.breath,gaze:motion.gaze};
 
     // Shader uniforms for Layer 4 materials
     if (bodyMesh.material?.uniforms) {
@@ -623,7 +695,7 @@ export default function HumanoidClone({
     if (renderMode === "delta") {
       updateDeltaUniforms(material, { deltas: deltaMetrics || {}, time: _.clock.elapsedTime });
     }
-  });
+  }, -1);
 
   // ── Visibility guard ────────────────────────────────────────────────────────
   if (!visible) return null;
@@ -656,34 +728,20 @@ export default function HumanoidClone({
     <group ref={groupRef} position={position} scale={[1, heightScale, 1]} name={`clone-${cloneKey}`}>
       {scene && <primitive object={scene} />}
 
-      {/* Teeth/tongue are currently procedural production geometry because the
-          authored GLB has no mouth-detail nodes. Portalling them into Head keeps
-          them correct under every posture instead of using a scene-space patch. */}
-      {headBone && createPortal(
-        <>
-          <group ref={mouthRef} position={[0, -0.02, 0.302]} visible={false} name="GrowthTrackMouthDetails">
-            <mesh material={mouthMaterials.interior} scale={[1.15, 0.68, 0.34]} name="GrowthTrackMouthInterior">
-              <sphereGeometry args={[0.036, 24, 14]} />
-            </mesh>
-            <mesh position={[0, 0.010, 0.014]} material={mouthMaterials.teeth} scale={[1.0, 0.50, 0.22]} name="GrowthTrackTeeth">
-              <boxGeometry args={[0.076, 0.022, 0.008, 4, 2, 1]} />
-            </mesh>
-            <mesh position={[0, -0.012, 0.018]} material={mouthMaterials.tongue} scale={[1.0, 0.64, 0.30]} name="GrowthTrackTongue">
-              <sphereGeometry args={[0.024, 24, 14]} />
-            </mesh>
-          </group>
-        </>,
-        headBone,
-      )}
-
       {/* Posture bone rig — drives skeleton from measurements + animation presets */}
       <PostureRig
         skeleton={skeleton}
         posture={posture}
-        animationId={measurementView || reducedMotion && !animationState.userInitiated ? 'standing' : animationState?.animationId || 'idle'}
-        playing={!measurementView && animationState?.playing !== false && (!reducedMotion || animationState.userInitiated)}
+        idleSample={idleSample}
+        pose={poseActive?savedPose:null}
+        bodyMesh={bodyMesh}
+        onPoseApplied={()=>{updateSkinBounds();mouthRef.current?.update();}}
+        neutral={measurementView || viewMode!=='SOLO'}
+        animationId={measurementView || viewMode!=='SOLO' || reducedMotion && !animationState.userInitiated ? 'standing' : animationState?.animationId || 'idle'}
+        playing={!poseActive && !measurementView && viewMode==='SOLO' && animationState?.playing !== false && (!reducedMotion || animationState.userInitiated)}
         speed={animationState?.speed || 1}
       />
+      <PoseTargetMarkers bodyMesh={bodyMesh} targets={savedPose.targets} joints={savedPose.joints} context={cloneKey==='B'?'goal':'current'} visible={poseActive && poseInspector && !captureRedacted}/>
     </group>
   );
 }

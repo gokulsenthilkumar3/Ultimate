@@ -1,0 +1,363 @@
+{
+  "version": 1,
+  "sourceInputs": [
+    {
+      "path": "makehuman/data/3dobjs/base.obj",
+      "sha256": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c"
+    },
+    {
+      "path": "makehuman/data/targets/macrodetails/universal-male-young-averagemuscle-averageweight.target",
+      "sha256": "4ba5396ddabda448ece15650a566fbebfbb10239256ccb201e8f883429e12249"
+    },
+    {
+      "path": "makehuman/data/targets/macrodetails/african-male-young.target",
+      "sha256": "894abc1fbb3d28543a51fef16f89d5d4bdf9aa2e1534413339811a3d47818b7d"
+    },
+    {
+      "path": "makehuman/data/targets/macrodetails/asian-male-young.target",
+      "sha256": "ed2e8c191cb6b87b4a2d97c80486acb2604fa549316c7aa2a738a5d5a14334dc"
+    },
+    {
+      "path": "makehuman/data/targets/macrodetails/caucasian-male-young.target",
+      "sha256": "70e228ba7164737dae664454394536fc5935fa48d333c1a97d77e2dc6eacc5f5"
+    }
+  ],
+  "assets": [
+    {
+      "asset": "public/assets/models/humanoid-preview-75.glb",
+      "sha256": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
+      "bytes": 25047568,
+      "joints": 79,
+      "addedJoints": 59,
+      "boundDigitVertices": 4948,
+      "nails": [
+        {
+          "id": "LeftThumb",
+          "vertices": 64,
+          "rayMisses": 12,
+          "closestSurfaceFallbacks": 12,
+          "maxFallbackDistance": 0.006038351871731515
+        },
+        {
+          "id": "LeftIndex",
+          "vertices": 64,
+          "rayMisses": 2,
+          "closestSurfaceFallbacks": 2,
+          "maxFallbackDistance": 0.0005103532578568158
+        },
+        {
+          "id": "LeftMiddle",
+          "vertices": 64,
+          "rayMisses": 7,
+          "closestSurfaceFallbacks": 7,
+          "maxFallbackDistance": 0.0011717440716793774
+        },
+        {
+          "id": "LeftRing",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.0004493301225604334
+        },
+        {
+          "id": "LeftPinky",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "LeftToe1",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.00040412508188685155
+        },
+        {
+          "id": "LeftToe2",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.0006111281048620293
+        },
+        {
+          "id": "LeftToe3",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "LeftToe4",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "LeftToe5",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "RightThumb",
+          "vertices": 64,
+          "rayMisses": 12,
+          "closestSurfaceFallbacks": 12,
+          "maxFallbackDistance": 0.0060383518711316555
+        },
+        {
+          "id": "RightIndex",
+          "vertices": 64,
+          "rayMisses": 2,
+          "closestSurfaceFallbacks": 2,
+          "maxFallbackDistance": 0.0005103532586296047
+        },
+        {
+          "id": "RightMiddle",
+          "vertices": 64,
+          "rayMisses": 7,
+          "closestSurfaceFallbacks": 7,
+          "maxFallbackDistance": 0.0011717440716985618
+        },
+        {
+          "id": "RightRing",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.00044933012245262303
+        },
+        {
+          "id": "RightPinky",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "RightToe1",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.00040412508188685155
+        },
+        {
+          "id": "RightToe2",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.000611128104862002
+        },
+        {
+          "id": "RightToe3",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "RightToe4",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "RightToe5",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        }
+      ],
+      "parts": [
+        {
+          "name": "GrowthTrackNails",
+          "vertices": 1280,
+          "triangles": 1600
+        },
+        {
+          "name": "GrowthTrackCornea",
+          "vertices": 576,
+          "triangles": 960
+        },
+        {
+          "name": "GrowthTrackTearline",
+          "vertices": 100,
+          "triangles": 96
+        }
+      ],
+      "jointOffsetMorphs": 41
+    },
+    {
+      "asset": "public/assets/models/humanoid-preview-75-lite.glb",
+      "sha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab",
+      "bytes": 8133056,
+      "joints": 79,
+      "addedJoints": 59,
+      "boundDigitVertices": 4948,
+      "nails": [
+        {
+          "id": "LeftThumb",
+          "vertices": 64,
+          "rayMisses": 12,
+          "closestSurfaceFallbacks": 12,
+          "maxFallbackDistance": 0.006038351871731515
+        },
+        {
+          "id": "LeftIndex",
+          "vertices": 64,
+          "rayMisses": 2,
+          "closestSurfaceFallbacks": 2,
+          "maxFallbackDistance": 0.0005103532578568158
+        },
+        {
+          "id": "LeftMiddle",
+          "vertices": 64,
+          "rayMisses": 7,
+          "closestSurfaceFallbacks": 7,
+          "maxFallbackDistance": 0.0011717440716793774
+        },
+        {
+          "id": "LeftRing",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.0004493301225604334
+        },
+        {
+          "id": "LeftPinky",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "LeftToe1",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.00040412508188685155
+        },
+        {
+          "id": "LeftToe2",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.0006111281048620293
+        },
+        {
+          "id": "LeftToe3",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "LeftToe4",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "LeftToe5",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "RightThumb",
+          "vertices": 64,
+          "rayMisses": 12,
+          "closestSurfaceFallbacks": 12,
+          "maxFallbackDistance": 0.0060383518711316555
+        },
+        {
+          "id": "RightIndex",
+          "vertices": 64,
+          "rayMisses": 2,
+          "closestSurfaceFallbacks": 2,
+          "maxFallbackDistance": 0.0005103532586296047
+        },
+        {
+          "id": "RightMiddle",
+          "vertices": 64,
+          "rayMisses": 7,
+          "closestSurfaceFallbacks": 7,
+          "maxFallbackDistance": 0.0011717440716985618
+        },
+        {
+          "id": "RightRing",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.00044933012245262303
+        },
+        {
+          "id": "RightPinky",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "RightToe1",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.00040412508188685155
+        },
+        {
+          "id": "RightToe2",
+          "vertices": 64,
+          "rayMisses": 1,
+          "closestSurfaceFallbacks": 1,
+          "maxFallbackDistance": 0.000611128104862002
+        },
+        {
+          "id": "RightToe3",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "RightToe4",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        },
+        {
+          "id": "RightToe5",
+          "vertices": 64,
+          "rayMisses": 0,
+          "closestSurfaceFallbacks": 0,
+          "maxFallbackDistance": 0
+        }
+      ],
+      "parts": [
+        {
+          "name": "GrowthTrackNails",
+          "vertices": 1280,
+          "triangles": 1600
+        },
+        {
+          "name": "GrowthTrackCornea",
+          "vertices": 576,
+          "triangles": 960
+        },
+        {
+          "name": "GrowthTrackTearline",
+          "vertices": 100,
+          "triangles": 96
+        }
+      ],
+      "jointOffsetMorphs": 41
+    }
+  ]
+}

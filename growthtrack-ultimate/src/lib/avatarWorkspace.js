@@ -1,6 +1,6 @@
 import { DEFAULT_AVATAR_PRESENTATION, sanitizeAvatarPresentation } from './avatarPresentation';
 
-export const INSPECTOR_SECTIONS = ['measurements', 'face', 'hair', 'skin', 'anatomy', 'clothing', 'view'];
+export const INSPECTOR_SECTIONS = ['measurements', 'face', 'hair', 'skin', 'anatomy', 'clothing', 'pose', 'view'];
 export const WORKSPACE_MODES = ['current', 'goal', 'compare', 'timeline'];
 export const COMPARE_STYLES = ['side-by-side', 'overlay', 'split', 'difference'];
 

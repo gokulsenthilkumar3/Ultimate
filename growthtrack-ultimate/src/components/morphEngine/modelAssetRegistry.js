@@ -1,13 +1,15 @@
+import surface from '../../config/humanSurface.json';
 const base = import.meta.env.BASE_URL;
 
 const DEFAULT_ASSETS = Object.freeze({
-  production: `${base}assets/models/humanoid-adult-v2.glb`,
-  lite: `${base}assets/models/humanoid-adult-v2-lite.glb`,
+  production: `${base}assets/models/${surface.assets.production}`,
+  lite: `${base}assets/models/${surface.assets.lite}`,
 });
 const LEGACY_ASSETS = Object.freeze({
   production: `${base}assets/models/humanoid-base.glb`,
   lite: `${base}assets/models/humanoid-base-lite.glb`,
 });
+const bundledAssets=new Set(surface.reviewedBundledAssets.map(file=>`${base}assets/models/${file}`));
 
 // External anatomy carried by the assessed full/lite pairs. They contain the
 // male procedural surface (see docs/ANATOMY_ASSET_PLAN.md). Other assets declare
@@ -71,7 +73,8 @@ export function resolveModelAsset(preference = {}, gpuTier = 'MED') {
   const upgradedDefault=!customAsset && !selectedV2 && [DEFAULT_ASSETS.production,DEFAULT_ASSETS.lite].includes(path);
   return {
     path,
-    anatomySex: [...Object.values(DEFAULT_ASSETS),...Object.values(LEGACY_ASSETS)].includes(path) ? DEFAULT_ANATOMY_SEX : null,
+    isBundled:bundledAssets.has(path),
+    anatomySex: bundledAssets.has(path) ? DEFAULT_ANATOMY_SEX : null,
     preset,
     version: customAsset ? 'profile' : selectedV2 || upgradedDefault ? 'v2' : 'legacy',
     source: customAsset ? 'profile' : selectedV2 ? 'environment-v2' : !isDefault ? 'environment' : 'default',

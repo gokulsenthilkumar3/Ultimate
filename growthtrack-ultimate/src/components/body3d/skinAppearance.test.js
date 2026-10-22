@@ -3,6 +3,11 @@ import {glbMeshFixture} from '../../tests/helpers/glbMeshFixture';
 import {prepareSkinRegions,resolveSkinAppearance,skinLayerMultiplier} from './skinAppearance';
 import {bodyProfileToGoals,metricsToBodyProfile} from '../../lib/physiqueProfile';
 describe('independent skin layers',()=>{
+  it.each(['constructor','toString','__proto__','unknown'])('keeps malformed saved undertone %s out of shader uniforms', value => {
+    const appearance=resolveSkinAppearance({skinUndertone:value});
+    expect(appearance.undertone).toBe(0);
+    expect(skinLayerMultiplier(appearance).every(Number.isFinite)).toBe(true);
+  });
   it('leaves the base unchanged at rest; tan darkens exposed skin more than protected skin',()=>{
     expect(skinLayerMultiplier()).toEqual([1,1,1]);
     const exposed=skinLayerMultiplier({tan:1,exposure:.9}),protectedSkin=skinLayerMultiplier({tan:1,exposure:.04});
@@ -19,6 +24,12 @@ describe('independent skin layers',()=>{
     const exposure=body.geometry.attributes.skinExposure.array;
     expect(Math.min(...exposure)).toBeGreaterThanOrEqual(0);expect(Math.max(...exposure)).toBeLessThanOrEqual(1.001);
     expect(Math.min(...exposure)).toBeLessThan(.1);expect(Math.max(...exposure)).toBeGreaterThan(.8);
+    const roughness=Array.from(body.geometry.attributes.skinRoughness.array);
+    expect(roughness.every(Number.isFinite)).toBe(true);
+    expect(Math.min(...roughness)).toBeGreaterThanOrEqual(.82 - 1e-6);
+    expect(Math.min(...roughness)).toBeLessThan(1);
+    expect(Math.max(...roughness)).toBeGreaterThan(1);
+    expect(Math.max(...roughness)).toBeLessThanOrEqual(1.15 + 1e-6);
   });
   it('stores render layers outside database measurement fields and restores independent goal appearance',()=>{
     expect(metricsToBodyProfile({height:175,skinColor:'#bc8970',skinTan:.6,skinFlush:.3})).toEqual({heightCm:175,skinColorHex:'#bc8970'});

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { APPEARANCE_DETAIL, APPEARANCE_HASH_GLSL, resolveHairDetail } from '../../lib/appearanceDetail';
 
 // Linear median of the opaque texels of the MakeHuman short02 hair-card albedo
 // (measured from the CC0 source). The texture already carries brown hair, so
@@ -17,8 +18,8 @@ export function hairAlbedoTint(hex) {
 
 /** Hair cards: opaque alpha-tested strands. Sorted transparency drew back
     cards over front ones and left holes; hair has no clearcoat. */
-export function createHairCardMaterial(source, hairColor) {
-  return new THREE.MeshPhysicalMaterial({
+export function createHairCardMaterial(source, hairColor, metrics = {}) {
+  const material = new THREE.MeshPhysicalMaterial({
     map: source?.map || null,
     normalMap: source?.normalMap || null,
     color: new THREE.Color().setRGB(...hairAlbedoTint(hairColor)),
@@ -33,13 +34,56 @@ export function createHairCardMaterial(source, hairColor) {
     alphaToCoverage: true,
     side: THREE.DoubleSide,
   });
+  const detail = resolveHairDetail(metrics);
+  const hairUniform = { value: new THREE.Vector3(detail.density, detail.grey, detail.seed) };
+  material.userData.hairDetail = hairUniform;
+  const grey = new THREE.Color(APPEARANCE_DETAIL.hair.greyColor);
+  const greyTint = new THREE.Color().setRGB(...grey.toArray().map((value, channel) => value / HAIR_ALBEDO_REFERENCE[channel]));
+  const install = (target, shaded) => {
+    target.customProgramCacheKey = () => `growthtrack-seeded-hair-v1-${shaded}`;
+    target.onBeforeCompile = shader => {
+      shader.uniforms.uHairDetail = hairUniform;
+      shader.uniforms.uHairSilverTint = { value: greyTint };
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vHairPatternUv;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHairPatternUv = uv;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+          uniform vec3 uHairDetail;
+          uniform vec3 uHairSilverTint;
+          varying vec2 vHairPatternUv;
+          ${APPEARANCE_HASH_GLSL}
+          uint hairPatternHash(uint offset) {
+            return appearanceHash(ivec2(floor(vHairPatternUv.x * ${APPEARANCE_DETAIL.hair.strandColumns.toFixed(1)}), 0), uint(uHairDetail.z) + offset);
+          }`)
+        .replace('#include <alphatest_fragment>', `
+          float retained = float(hairPatternHash(0u) & 65535u) / 65536.0;
+          if (retained >= uHairDetail.x) discard;
+          #include <alphatest_fragment>`);
+      if (shaded) shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+        #ifdef USE_MAP
+          float silver = float(hairPatternHash(1u) & 65535u) / 65536.0 < uHairDetail.y ? 1.0 : 0.0;
+          diffuseColor.rgb = mix(diffuseColor.rgb, sampledDiffuseColor.rgb * uHairSilverTint, silver);
+        #endif`);
+    };
+  };
+  install(material, true);
+  // Shadow passes use the identical seeded cutout, including alpha from the
+  // authored cards. Otherwise removed strands would still cast a full wig.
+  const shadowOptions = { map: source?.map || null, alphaTest: material.alphaTest, side: THREE.DoubleSide };
+  const depth = new THREE.MeshDepthMaterial({ ...shadowOptions, depthPacking: THREE.RGBADepthPacking });
+  const distance = new THREE.MeshDistanceMaterial(shadowOptions);
+  install(depth, false); install(distance, false);
+  material.userData.depthMaterial = depth;
+  material.userData.distanceMaterial = distance;
+  return material;
 }
 
 // Eyebrow and eyelash textures are soft strand masks (eyebrow001 alpha has a
 // median of 0.33), so alpha testing them left dashed fragments. They are
 // blended, coloured by the material and use the texture only for coverage.
 const STRAND_SETTINGS = Object.freeze({
-  eyebrows: Object.freeze({ shade: 0.85, alphaBoost: 2.2 }),
+  eyebrows: Object.freeze({ shade: 0.85, alphaBoost: 1.35 }),
   eyelashes: Object.freeze({ shade: 0.55, alphaBoost: 1 }),
 });
 

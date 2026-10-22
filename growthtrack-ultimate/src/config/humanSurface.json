@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "assets": {"production":"humanoid-preview-75.glb","lite":"humanoid-preview-75-lite.glb"},
+  "retainedAssets": ["humanoid-base.glb","humanoid-base-lite.glb","humanoid-adult-v2.glb","humanoid-adult-v2-lite.glb"],
+  "reviewedBundledAssets": ["humanoid-base.glb","humanoid-base-lite.glb","humanoid-adult-v2.glb","humanoid-adult-v2-lite.glb","humanoid-preview-75.glb","humanoid-preview-75-lite.glb"],
+  "assetMetadata": {
+    "humanoid-base.glb": {"label":"Retained body preview","textureLabel":"Full textures"},
+    "humanoid-base-lite.glb": {"label":"Retained body preview","textureLabel":"Compact textures"},
+    "humanoid-adult-v2.glb": {"label":"Retained attachment preview","textureLabel":"Full textures"},
+    "humanoid-adult-v2-lite.glb": {"label":"Retained attachment preview","textureLabel":"Compact textures"},
+    "humanoid-preview-75.glb": {"label":"Articulated preview","textureLabel":"Full textures"},
+    "humanoid-preview-75-lite.glb": {"label":"Articulated preview","textureLabel":"Compact textures"}
+  },
+  "sourceUnitsToMetres": 0.1,
+  "baseSculpt": [
+    ["macrodetails/universal-male-young-averagemuscle-averageweight",1],
+    ["macrodetails/african-male-young",0.3333333333333333],
+    ["macrodetails/asian-male-young",0.3333333333333333],
+    ["macrodetails/caucasian-male-young",0.3333333333333333]
+  ],
+  "digits": {
+    "fingers":["Thumb","Index","Middle","Ring","Pinky"],
+    "curlDegrees":[45,65,45],
+    "spreadDegrees":12,
+    "jointBlend":0.22,
+    "minimumParentInfluence":0.12,
+    "shapes":[
+      {"id":"open","label":"Open","curl":[0,0,0,0,0]},
+      {"id":"relaxed","label":"Relaxed","curl":[0.2,0.25,0.3,0.35,0.4]},
+      {"id":"fist","label":"Fist study","curl":[0.65,1,1,1,1]},
+      {"id":"point","label":"Point","curl":[0.5,0,1,1,1]}
+    ],
+    "strength":{"min":0,"max":1,"step":0.01,"default":1},
+    "toeCurl":{"min":-0.3,"max":1,"step":0.01,"default":0}
+  },
+  "jointOffsets":{"nearestVertices":12,"distancePower":2,"maximumSegmentRatio":0.65},
+  "micro": {
+    "size":256,"seed":76123,"cells":16,"tileMetres":0.02,"heightMetres":0.000035,
+    "heightPath":"assets/models/skin-micro-height.png","normalPath":"assets/models/skin-micro-normal.png",
+    "strength":{"min":0,"max":1,"step":0.01,"default":0.45},
+    "roughnessVariation":0.055
+  },
+  "nails":{"segments":16,"rings":3,"lengthRatio":0.4,"widthRatio":0.28,"offsetRatio":0.006,"color":"#d7b2a2","roughness":0.3,"clearcoat":0.8},
+  "cornea":{"segments":32,"rings":8,"radiusRatio":0.51,"bulgeRatio":0.075,"clearanceRatio":0.008,"ior":1.376,"roughness":0.055,"opacity":0.16},
+  "tearline":{"segments":24,"widthRatio":0.012,"clearanceRatio":0.012,"color":"#b67b78","roughness":0.13},
+  "eyelashClosureThreshold":0.9,
+  "drag":{"event":"growthtrack:pose-target","hitRadiusRatio":0.045,"markerRadiusRatio":0.022}
+}

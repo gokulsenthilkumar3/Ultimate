@@ -24,7 +24,7 @@
 
 import { useState, useCallback } from "react";
 import { MORPH_TARGET_NAMES }  from "./constants";
-import { constrainMorphWeights } from "./morphMath";
+import { sanitizeMorphWeights } from "./morphMath";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CUBIC BEZIER SOLVER
@@ -157,7 +157,7 @@ export class MorphInterpolator {
    * @param {Object} weights - { [morphName]: 0-1 value }
    */
   setTargets(weights) {
-    const safeWeights = constrainMorphWeights(weights);
+    const safeWeights = sanitizeMorphWeights(weights);
     let anyChanged = false;
     for (let i = 0; i < this.count; i++) {
       const name  = this.morphNames[i];
@@ -213,7 +213,7 @@ export class MorphInterpolator {
    * @param {Object} weights
    */
   snapToTargets(weights) {
-    const safeWeights = constrainMorphWeights(weights);
+    const safeWeights = sanitizeMorphWeights(weights);
     for (let i = 0; i < this.count; i++) {
       const name       = this.morphNames[i];
       const rawValue   = safeWeights[name] ?? 0;
@@ -258,6 +258,23 @@ export class MorphInterpolator {
   getWeight(name) {
     const i = this.morphNames.indexOf(name);
     return i >= 0 ? this.current[i] : 0;
+  }
+
+  /** Capture the latest parameter result even mid-transition, then restore the
+   * exact live interpolation and mesh state. The caller owns the render/finally. */
+  freezeForCapture(weights,bindings=[]){
+    const fields=['current','target','_from','_progress'];
+    const saved=fields.map(key=>this[key].slice()),converged=this.converged;
+    const meshes=[...new Map(bindings.filter(binding=>binding.mesh?.morphTargetInfluences).map(binding=>[binding.mesh,binding])).values()];
+    const influences=meshes.map(({mesh})=>Array.from(mesh.morphTargetInfluences));
+    let restored=false;
+    const restore=()=>{if(restored)return;restored=true;fields.forEach((key,i)=>this[key].set(saved[i]));this.converged=converged;
+      meshes.forEach(({mesh},i)=>influences[i].forEach((value,index)=>{mesh.morphTargetInfluences[index]=value;}));};
+    try{
+      this.snapToTargets(weights);
+      meshes.forEach(({mesh,morphIndexMap,skip=[]},i)=>{this.applyToMesh(mesh,morphIndexMap);skip.forEach(name=>{const index=morphIndexMap[name];if(index!=null)mesh.morphTargetInfluences[index]=influences[i][index];});});
+      return restore;
+    }catch(error){restore();throw error;}
   }
 
   /** Resets all weights to zero instantly. */

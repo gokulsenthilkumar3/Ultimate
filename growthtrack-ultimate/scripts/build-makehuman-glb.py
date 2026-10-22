@@ -786,7 +786,10 @@ def make_static_mesh(npz, body_center, body_min_y, body_scale, target_center, ta
     source_uvs = npz["texco"].astype(np.float32)
     faces = npz["fvert"].astype(np.int64)
     face_uvs = npz["fuvs"].astype(np.int64)
-    face_counts = npz.get("nfaces", np.full(len(faces), 4, dtype=np.uint8))[:len(faces)]
+    # MakeHuman nfaces is the valence of each VERTEX, not polygon arity.
+    # Triangles are padded by repeating their first vertex in fvert; quads
+    # need both triangles regardless of how many faces touch a vertex.
+    face_counts = np.asarray([3 if row[3] == row[0] else 4 for row in faces])
 
     source_center = (source_positions.min(axis=0) + source_positions.max(axis=0)) * 0.5
     centered = source_positions - source_center
@@ -832,7 +835,7 @@ def make_static_mesh(npz, body_center, body_min_y, body_scale, target_center, ta
         np.add.at(normals, indices[offset::3], cross)
     lengths = np.linalg.norm(normals, axis=1, keepdims=True)
     normals /= np.maximum(lengths, 1e-8)
-    return {"positions": positions, "normals": normals, "colors": np.ones_like(positions, dtype=np.float32), "uv_values": uv_values, "indices": indices, "original_index": np.asarray([key[0] for key in vertex_map], dtype=np.int64)}
+    return {"positions": positions, "normals": normals, "colors": np.ones_like(positions, dtype=np.float32), "uv_values": uv_values, "indices": indices, "original_index": np.asarray([key[0] for key in vertex_map], dtype=np.int64), "vertex_keys": list(vertex_map)}
 
 
 def fit_proxy(npz, proxy_path, body):

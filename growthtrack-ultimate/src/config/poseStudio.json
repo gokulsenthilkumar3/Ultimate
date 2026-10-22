@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "angleStep": 1,
+  "targetStep": 0.02,
+  "targetLimit": 1.2,
+  "headBinding":{"neckBlendStart":-0.9,"neckBlendEnd":-0.25},
+  "bodyBinding": {
+    "distancePower": 6,
+    "distanceFloorRatio": 0.005,
+    "armBlend": [0.8, 1.08],
+    "segments": {
+      "Hips":"Spine", "Spine":"Spine1", "Spine1":"Spine2", "Spine2":"Neck",
+      "LeftShoulder":"LeftUpperArm", "LeftUpperArm":"LeftForeArm", "LeftForeArm":"LeftHand",
+      "RightShoulder":"RightUpperArm", "RightUpperArm":"RightForeArm", "RightForeArm":"RightHand",
+      "LeftUpLeg":"LeftLeg", "LeftLeg":"LeftFoot", "RightUpLeg":"RightLeg", "RightLeg":"RightFoot"
+    }
+  },
+  "joints": [
+    {"id":"head","label":"Head","limits":[[-25,25],[-55,55],[-20,20]]},
+    {"id":"neck","label":"Neck","limits":[[-15,15],[-25,25],[-15,15]]},
+    {"id":"spine1","label":"Lower spine","limits":[[-15,25],[-20,20],[-15,15]]},
+    {"id":"spine2","label":"Upper spine","limits":[[-15,25],[-25,25],[-20,20]]},
+    {"id":"leftUpperArm","label":"Left upper arm","limits":[[-75,75],[-60,60],[-100,100]]},
+    {"id":"rightUpperArm","label":"Right upper arm","limits":[[-75,75],[-60,60],[-100,100]]},
+    {"id":"leftForeArm","label":"Left forearm","limits":[[-100,100],[-60,60],[-70,70]]},
+    {"id":"rightForeArm","label":"Right forearm","limits":[[-100,100],[-60,60],[-70,70]]},
+    {"id":"leftThigh","label":"Left thigh","limits":[[-55,75],[-30,30],[-30,30]]},
+    {"id":"rightThigh","label":"Right thigh","limits":[[-55,75],[-30,30],[-30,30]]},
+    {"id":"leftShin","label":"Left shin","limits":[[-100,15],[-10,10],[-10,10]]},
+    {"id":"rightShin","label":"Right shin","limits":[[-100,15],[-10,10],[-10,10]]},
+    {"id":"leftFoot","label":"Left foot","limits":[[-25,35],[-20,20],[-15,15]]},
+    {"id":"rightFoot","label":"Right foot","limits":[[-25,35],[-20,20],[-15,15]]}
+  ],
+  "presets": [
+    {"id":"neutral","label":"Neutral","joints":{}},
+    {"id":"look-left","label":"Look left","joints":{"head":[0,28,0],"neck":[0,8,0]}},
+    {"id":"open-arms","label":"Open arms","joints":{"leftUpperArm":[-15,0,40],"rightUpperArm":[-15,0,-40]}},
+    {"id":"step-study","label":"Step study","joints":{"leftThigh":[-25,0,0],"leftShin":[-30,0,0],"rightThigh":[12,0,0]}}
+  ],
+  "limbs": [
+    {"id":"leftWrist","label":"Left wrist","chain":["leftUpperArm","leftForeArm","leftHand"],"pole":[0,-1,-0.25],"maxFlexRad":2.5},
+    {"id":"rightWrist","label":"Right wrist","chain":["rightUpperArm","rightForeArm","rightHand"],"pole":[0,-1,-0.25],"maxFlexRad":2.5},
+    {"id":"leftAnkle","label":"Left ankle","chain":["leftThigh","leftShin","leftFoot"],"pole":[0,0,1],"maxFlexRad":2.4},
+    {"id":"rightAnkle","label":"Right ankle","chain":["rightThigh","rightShin","rightFoot"],"pole":[0,0,1],"maxFlexRad":2.4}
+  ],
+  "axes":[{"id":"x","label":"Pitch"},{"id":"y","label":"Turn"},{"id":"z","label":"Roll"}],
+  "targetAxes":["Side","Up","Forward"],
+  "marker":{"radiusRatio":0.018,"color":"#62e0dd","limitedColor":"#f5b45c"}
+}

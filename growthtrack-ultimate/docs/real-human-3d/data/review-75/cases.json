@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "assets": [
+    "humanoid-base.glb",
+    "humanoid-base-lite.glb",
+    "humanoid-adult-v2.glb",
+    "humanoid-adult-v2-lite.glb",
+    "humanoid-preview-75.glb",
+    "humanoid-preview-75-lite.glb"
+  ],
+  "fullBodyViews": ["Front", "Back", "Side"],
+  "obliqueDrag": {"start":[0.45,0.5],"end":[0.59,0.44],"steps":10},
+  "headTurnDegrees": 30,
+  "morphStress": {"hand_length":0.8,"upper_arm_length":0.6,"leg_length":0.5,"torso_length":0.6,"head_circumference":0.4},
+  "limits": {"skinSurfaceClearanceMetres":0.0005,"neutralVertexErrorMetres":0.00001,"reachableTargetErrorMetres":0.001}
+}

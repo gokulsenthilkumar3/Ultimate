@@ -1,0 +1,30 @@
+import React from 'react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import AvatarCreationWizard from './AvatarCreationWizard';
+import use3DStore from '../store/use3DStore';
+
+afterEach(cleanup);
+it('sends validated dimensions and shape edits through the persistent editor callbacks', () => {
+  use3DStore.getState().setCurrentMetrics({height:175});
+  const metric=vi.fn((key,value)=>use3DStore.getState().setCurrentMetric(key,Number(value)));
+  const morph=vi.fn(),wardrobe=vi.fn();
+  render(<AvatarCreationWizard onComplete={vi.fn()} onMetric={metric} onMorph={morph} onAppearance={vi.fn()} onWardrobe={wardrobe}/>);
+  const height=screen.getByLabelText('Setup Height');
+  fireEvent.change(height,{target:{value:'6 ft'}});fireEvent.blur(height);
+  expect(metric).toHaveBeenCalledWith('height','182.88');
+  fireEvent.click(screen.getByRole('button',{name:'Next step'}));
+  fireEvent.click(screen.getByRole('button',{name:'Next step'}));
+  fireEvent.change(screen.getByLabelText('Setup Jaw Width'),{target:{value:'0.7'}});
+  expect(morph).toHaveBeenCalledWith('jaw_width',.7);
+  fireEvent.click(screen.getByRole('button',{name:'Next step'}));
+  fireEvent.click(screen.getByRole('button',{name:'Next step'}));
+  const torso=screen.getByLabelText('Setup Torso length');
+  fireEvent.change(torso,{target:{value:'0.5'}});fireEvent.blur(torso);
+  expect(torso).toHaveAttribute('aria-invalid','true');
+  fireEvent.change(torso,{target:{value:'52 cm'}});fireEvent.blur(torso);
+  expect(metric).toHaveBeenCalledWith('torsoLength','52');
+  fireEvent.click(screen.getByRole('button',{name:'Next step'}));
+  fireEvent.change(screen.getByLabelText('Clothing'),{target:{value:'CASUAL'}});
+  expect(wardrobe).toHaveBeenCalledWith({preset:'CASUAL'});
+});

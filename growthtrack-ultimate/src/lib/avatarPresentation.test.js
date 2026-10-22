@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AVATAR_PANEL_WIDTH, DEFAULT_AVATAR_PRESENTATION, resolveAvatarEffects, sanitizeAvatarPresentation } from './avatarPresentation';
 import { buildAvatarEvidence } from './avatarEvidence';
 import { resolveBodyMetrics } from './bodyMetricFallbacks';
+import { HUMAN_SURFACE } from './humanSurface';
 
 describe('saved avatar presentation contract', () => {
   it('whitelists choices, clamps width, and rejects malformed preferences', () => {
@@ -13,6 +14,11 @@ describe('saved avatar presentation contract', () => {
   it('retains custom backgrounds and independent neutral lighting, rejecting malformed colors',()=> {
     expect(sanitizeAvatarPresentation({backgroundMode:'gradient',backgroundColor:'#abcdef',backgroundBottomColor:'#123456',showStage:false,lightingMode:'neutral'})).toMatchObject({backgroundMode:'gradient',backgroundColor:'#abcdef',backgroundBottomColor:'#123456',showStage:false,lightingMode:'neutral'});
     expect(sanitizeAvatarPresentation({backgroundMode:'url',backgroundColor:'url(https://invalid)',lightingMode:'unknown'})).toMatchObject({backgroundMode:'scene',backgroundColor:DEFAULT_AVATAR_PRESENTATION.backgroundColor,lightingMode:'neutral'});
+  });
+  it('saves an explicit natural-motion choice and ignores malformed values', () => {
+    expect(sanitizeAvatarPresentation({ naturalMotion: false }).naturalMotion).toBe(false);
+    expect(sanitizeAvatarPresentation({ naturalMotion: 'false' }).naturalMotion).toBe(true);
+    expect(sanitizeAvatarPresentation({ naturalMotion: null }).naturalMotion).toBe(true);
   });
   it('honors every effect toggle rather than applying an unconditional vignette', () => {
     const off = resolveAvatarEffects({ gpuTier:'HIGH', cinematic:{} });
@@ -37,7 +43,7 @@ describe('evidence-based avatar status', () => {
     expect(evidence.checks.percent).toBe(100);
     expect(evidence.humanLikenessPercent).toBeNull();
     expect(evidence.humanLikenessLabel).toBe('Not assessed');
-    expect(evidence.assetLabel).toBe('v2 asset loaded');
+    expect(evidence.assetLabel).toBe('Authored model preview');
   });
   it('counts only valid recorded measurements and reports actual technical evidence', () => {
     const metrics = { height:175,weight:'',bodyFat:999,chest:99 };
@@ -49,5 +55,35 @@ describe('evidence-based avatar status', () => {
     expect(evidence.checks).toEqual({ passed:1,total:3,pending:1,percent:33 });
     expect(evidence.assetLabel).toBe('Loading model');
     expect(buildAvatarEvidence().checks.percent).toBeNull();
+  });
+  it('names every bundled model from its JSON metadata even when explicitly selected', () => {
+    for (const [filename, metadata] of Object.entries(HUMAN_SURFACE.assetMetadata)) {
+      for (const source of ['default', 'profile']) {
+        const evidence = buildAvatarEvidence({ diagnostics: { health:'healthy', modelAsset: {
+          path:`/Ultimate/assets/models/${filename}`, isBundled:true, source, version:source === 'profile' ? 'profile' : 'v2',
+        } } });
+        expect(evidence.assetLabel).toBe(`${metadata.label} · ${metadata.textureLabel}`);
+        expect(evidence.capabilities.handsAndToes).toBe(false);
+      }
+    }
+  });
+  it('reports hands, eye layers and nails from loaded capabilities without inferring them from the filename or joint count', () => {
+    const diagnostics = { health:'healthy', boneCount:79, modelAsset:{
+      path:'/Ultimate/assets/models/humanoid-preview-75-lite.glb', isBundled:true,
+    }, capabilities:{ digitGroups:['leftHand','rightHand','leftFoot','rightFoot'],surfaceParts:['cornea','tearline','nails'] } };
+    expect(buildAvatarEvidence({ diagnostics }).capabilities).toEqual({ handsAndToes:true,eyeLayers:true,nails:true });
+    expect(buildAvatarEvidence({ diagnostics:{...diagnostics,capabilities:{digitGroups:['leftHand'],surfaceParts:['cornea']}} }).capabilities)
+      .toEqual({ handsAndToes:false,eyeLayers:false,nails:false });
+    expect(buildAvatarEvidence({ diagnostics:{...diagnostics,health:'needs-repair'} }).capabilities.handsAndToes).toBe(false);
+    const fallback = buildAvatarEvidence({ diagnostics:{...diagnostics,activeRenderer:'procedural-production'} });
+    expect(fallback.assetLabel).toBe('Procedural preview');
+    expect(Object.values(fallback.capabilities).every(value => value === false)).toBe(true);
+  });
+  it('keeps unrecognized owner assets distinct even if their filename matches a bundled model', () => {
+    const evidence = buildAvatarEvidence({ diagnostics:{ health:'healthy',modelAsset:{
+      path:'/uploads/humanoid-preview-75.glb',isBundled:false,source:'profile',
+    } } });
+    expect(evidence.assetLabel).toBe('Custom model preview');
+    expect(evidence.humanLikenessPercent).toBeNull();
   });
 });

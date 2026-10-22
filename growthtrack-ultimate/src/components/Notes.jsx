@@ -7,6 +7,7 @@ import Button from './ui/Button';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { noteStructure, noteBacklinks, resolveNoteReference, stableNoteLink, remarkNoteKnowledge } from '../domains/workspace/domain/noteKnowledge';
+import { duplicateNote } from '../domains/workspace/domain/duplicateNote';
 import '../styles/notes.css';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280'];
@@ -71,6 +72,13 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
   const [viewMode,  setViewMode]  = useState('preview');
   const [saveStatus, setSaveStatus] = useState('saved');
   const [creating, setCreating] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const [duplicateError, setDuplicateError] = useState('');
+  const duplicatePending = useRef(null);
+  const duplicateLock = useRef(false);
+  const duplicateSession = useRef(null);
+  const draftIdentity = useRef(null);
+  draftIdentity.current = JSON.stringify([activeId, draft]);
   const [localView, setLocalView] = useState('all');
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
@@ -120,6 +128,14 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
   const recoveryServerNote = recoveryReview && workspaceNotes.find(note => note.id === recoveryReview.data.noteId);
   const canRecoverExisting = recoveryServerNote?.updatedAt && recoveryServerNote.updatedAt === recoveryReview?.data.baseUpdatedAt
     && (!recoveryReview.data.baseRevision || recoveryServerNote.revision === recoveryReview.data.baseRevision);
+
+  useEffect(() => {
+    const session = {};
+    duplicateSession.current = session;
+    duplicatePending.current = null; duplicateLock.current = false;
+    setDuplicating(false); setDuplicateError('');
+    return () => { if (duplicateSession.current === session) duplicateSession.current = null; };
+  }, [ownerId]);
 
   useEffect(() => {
     let alive = true;
@@ -364,6 +380,38 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
     navigator.clipboard.writeText(`# ${note.title}\n\n${note.content}`).then(() => {
       toast.success('Copied to clipboard');
     }).catch(() => toast.error('Note could not be copied.'));
+  };
+
+  const duplicateActiveNote = async () => {
+    if (duplicateLock.current || !activeNote || !ownerId) return;
+    duplicateLock.current = true; setDuplicating(true);
+    const session = duplicateSession.current;
+    try {
+      const source = editMode ? { ...activeNote, ...draft, title: draft.title.trim() || 'Untitled Note' } : activeNote;
+      // Retry can be requested after navigating to another editor. Preserve
+      // that editor too before opening the acknowledged copy.
+      if (editMode && saveStatus !== 'saved' && !await saveNote()) return;
+      if (duplicateSession.current !== session) return;
+      if (!duplicatePending.current) {
+        duplicatePending.current = duplicateNote(source);
+      }
+      const pending = duplicatePending.current, identity = draftIdentity.current;
+      const saved = await addNote(pending);
+      if (duplicateSession.current !== session) return;
+      if (!saved?.id || saved.id !== pending.id) throw new Error('The copy was not acknowledged.');
+      duplicatePending.current = null;
+      setDuplicateError('');
+      // A slow acknowledgement must not replace a newer editor or its draft.
+      if (draftIdentity.current === identity) {
+        navigationFocus.current = true;
+        selectNote(saved, true);
+      }
+      toast.success('Note duplicated.');
+    } catch {
+      if (duplicateSession.current === session) setDuplicateError(`The copy “${duplicatePending.current?.title || 'Untitled Note'}” could not be confirmed. Retry uses the same copy ID. Your original note is still available.`);
+    } finally {
+      if (duplicateSession.current === session) { duplicateLock.current = false; setDuplicating(false); }
+    }
   };
 
   const changeView = async next => {
@@ -656,6 +704,9 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
               <Button variant="secondary" loading={recoveryBusy} loadingLabel="Saving copy…" onClick={() => createRecoveredCopy({ ...draft, noteId: activeId, baseUpdatedAt: baseVersion.current })}>Save a separate copy</Button>
             </div>}
             {/* Toolbar */}
+            {duplicateError && <div className="notes-recovery-notice" role="alert"><p>{duplicateError}</p>
+              <Button variant="secondary" loading={duplicating} loadingLabel="Retrying copy…" onClick={duplicateActiveNote}>Retry duplicate</Button>
+            </div>}
             <div className="notes-toolbar">
               <div className="notes-toolbar-left">
                 <div className="notes-mode-toggles">
@@ -676,6 +727,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
                 )}
               </div>
               <div className="notes-toolbar-right">
+                <Button variant="secondary" disabled={Boolean(duplicateError)} loading={duplicating} loadingLabel="Duplicating…" onClick={duplicateActiveNote}>Duplicate note</Button>
                 <Button variant="secondary" onClick={copyLink}>Copy link</Button>
                 {records?.revisions && <Button variant="secondary" onClick={() => loadHistory()}>History</Button>}
                 <Button variant="secondary" onClick={exportNote} icon={<Download size={16} />}>Export Markdown</Button>

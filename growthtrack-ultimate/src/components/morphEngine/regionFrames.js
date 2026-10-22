@@ -36,7 +36,7 @@ export function createRegionFrameSampler(body, anatomy) {
       box.expandByPoint(point);
     }
     if (box.isEmpty()) return null;
-    return { center: box.getCenter(new Vector3()).toArray(), size: box.getSize(new Vector3()).toArray(), source: 'evaluated-surface' };
+    return { center: box.getCenter(new Vector3()).toArray(), size: box.getSize(new Vector3()).toArray(), source: 'evaluated-surface',sourceGeometry:mesh.geometry.uuid };
   }
   return (includePrivate = false, root = null) => {
     if (root) root.getWorldPosition(origin); else origin.set(0,0,0);

@@ -50,6 +50,13 @@ export const BODY_METRIC_GROUPS = [
     id: 'proportions',
     label: 'Proportions and face',
     metrics: [
+      { key: 'torsoLength', label: 'Torso length', unit: 'cm', currentField: 'torsoLengthCm' },
+      { key: 'upperArm', label: 'Upper arm length', unit: 'cm', currentField: 'upperArmCm' },
+      { key: 'lowerArm', label: 'Forearm length', unit: 'cm', currentField: 'lowerArmCm' },
+      { key: 'handLength', label: 'Hand length', unit: 'cm', currentField: 'handLengthCm' },
+      { key: 'legLength', label: 'Leg length', unit: 'cm', currentField: 'legLengthCm' },
+      { key: 'footLength', label: 'Foot length', unit: 'cm', currentField: 'footLengthCm' },
+      { key: 'headCirc', label: 'Head circumference', unit: 'cm', currentField: 'headCircCm' },
       { key: 'sittingHeight', label: 'Sitting height', unit: 'cm', currentField: 'sittingHeightCm' },
       { key: 'inseam', label: 'Inseam', unit: 'cm', currentField: 'inseamCm' },
       { key: 'upperLegLength', label: 'Upper leg length', unit: 'cm', currentField: 'upperLegLengthCm' },
@@ -68,6 +75,8 @@ export const BODY_METRIC_GROUPS = [
     id: 'asymmetry',
     label: 'Left / right symmetry',
     metrics: [
+      { key: 'leftWrist', label: 'Left wrist', unit: 'cm', currentField: 'leftWristCm' },
+      { key: 'rightWrist', label: 'Right wrist', unit: 'cm', currentField: 'rightWristCm' },
       { key: 'leftUpperArm', label: 'Left upper arm', unit: 'cm', currentField: 'leftUpperArmCircumferenceCm' },
       { key: 'rightUpperArm', label: 'Right upper arm', unit: 'cm', currentField: 'rightUpperArmCircumferenceCm' },
       { key: 'leftForearm', label: 'Left forearm', unit: 'cm', currentField: 'leftForearmCm' },
@@ -120,7 +129,11 @@ export const BODY_METRIC_MAP = Object.fromEntries(BODY_METRICS.map((metric) => [
 export const BODY_APPEARANCE_FIELDS = Object.freeze([
   // Renderer layers live in physiqueTargets.appearanceMetrics. They are not
   // new database columns or body measurements.
-  ['skinTan', null], ['skinFlush', null],
+  ['skinTan', null], ['skinFlush', null], ['skinTanPattern', null],
+  ['skinMicroDetail', null],
+  ['skinFreckleSizeMm', null], ['skinFreckleContrast', null], ['skinFreckleSeed', null],
+  ['hairGrey', null], ['hairSeed', null],
+  ['eyePupilMode', null], ['eyePupilSizeMm', null], ['eyeIrisDetail', null], ['eyeSeed', null],
   ['skinTone', 'skinTone'], ['skinFitzpatrickIndex', 'skinFitzpatrickIndex'], ['skinColor', 'skinColorHex'], ['skinUndertone', 'skinUndertone'], ['skinTextureVariant', 'skinTextureVariant'], ['skinFreckleDensity', 'skinFreckleDensity'], ['skinFeatureMap', 'skinFeatureMap'],
   ['eyeColor', 'eyeColorHex'], ['eyePattern', 'eyePattern'], ['eyelidShape', 'eyelidShape'], ['eyelashStyle', 'eyelashStyle'], ['scleraColor', 'scleraColorHex'], ['irisLimbalRing', 'irisLimbalRing'], ['lipColor', 'lipColorHex'],
   ['hairStyle', 'hairStyle'], ['hairColor', 'hairColorHex'], ['hairTexture', 'hairTexture'], ['hairlineStyle', 'hairlineStyle'], ['hairPart', 'hairPart'],

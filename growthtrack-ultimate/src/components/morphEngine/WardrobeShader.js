@@ -36,6 +36,7 @@ import * as THREE from "three";
 import {CLOTHING_FABRICS,wardrobeDefaults} from '../../lib/wardrobePreferences';
 import {prepareGarmentAttributes} from './garmentGeometry';
 import {authoredGarmentLandmarks,prepareWaistContour} from './authoredGarments';
+import { WARDROBE_COVERAGE, garmentCoverage } from '../../lib/wardrobeCoverage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WARDROBE CONFIGURATIONS
@@ -52,11 +53,7 @@ export const WARDROBE_CONFIGS = {
     sheen:         0.4,
     sheenColor:    [0.5, 0.55, 0.65],
     weaveType:     0,                    // 0 = smooth/compression
-    coverage: {
-      // regions covered by fabric: [yMin, yMax]
-      torso:  [1.00, 1.65],   // tank top
-      lower:  [0.62, 0.96],   // compression shorts
-    },
+    coverage: WARDROBE_COVERAGE.GYM,
     exposedRegions: ["arms", "legs", "head", "neck"],
   },
 
@@ -69,10 +66,7 @@ export const WARDROBE_CONFIGS = {
     sheen:         0.15,
     sheenColor:    [0.6, 0.6, 0.6],
     weaveType:     1,                    // 1 = knit/fleece
-    coverage: {
-      torso:  [0.90, 1.72],   // hoodie (covers neck)
-      lower:  [0.14, 1.01],   // trousers meet the shirt instead of a bare waist gap
-    },
+    coverage: WARDROBE_COVERAGE.CASUAL,
     exposedRegions: ["hands", "head"],
   },
 
@@ -85,10 +79,7 @@ export const WARDROBE_CONFIGS = {
     sheen:         0.25,
     sheenColor:    [0.9, 0.9, 0.9],
     weaveType:     2,                    // 2 = woven/poplin
-    coverage: {
-      torso:  [0.98, 1.70],
-      lower:  [0.12, 1.04],
-    },
+    coverage: WARDROBE_COVERAGE.FORMAL,
     exposedRegions: ["hands", "head", "neck"],
   },
 
@@ -101,9 +92,7 @@ export const WARDROBE_CONFIGS = {
     sheen:         0.55,
     sheenColor:    [0.3, 0.6, 0.9],
     weaveType:     0,                    // smooth nylon
-    coverage: {
-      lower:  [0.68, 0.96],   // board shorts only
-    },
+    coverage: WARDROBE_COVERAGE.SWIMWEAR,
     exposedRegions: ["torso", "arms", "legs", "head", "neck"],
   },
 
@@ -116,9 +105,7 @@ export const WARDROBE_CONFIGS = {
     sheen:         0.3,
     sheenColor:    [0.4, 0.4, 0.45],
     weaveType:     1,                    // jersey knit
-    coverage: {
-      lower: [0.72, 0.97],
-    },
+    coverage: WARDROBE_COVERAGE.UNDERWEAR,
     exposedRegions: ["torso", "arms", "legs", "head", "neck"],
   },
 
@@ -165,8 +152,7 @@ export function createClothMaterial(preset = 'GYM', geometry = null, options = {
     map:options.pattern==='source'?asset?.map || null:null,normalMap:['CASUAL','FORMAL'].includes(preset)?asset?.normal || null:null,normalScale:new THREE.Vector2(detail,detail),
     side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
   });
-  const lowerBand = [...(preset === 'UNDERWEAR' ? ({briefs:[.83,.97],trunks:[.76,.97],boxerBriefs:[.70,.97]}[options.variant] || config.coverage.lower)
-    : preset === 'GYM' ? options.variant === 'compression' ? [.57,.99] : [.62,.99] : preset==='SWIMWEAR' && options.variant==='short'?[.76,.96]:config.coverage.lower)];
+  const { lower: lowerBand, tank, sleeves } = garmentCoverage(preset, options.variant);
   // The shell's legacy bands cut authored pants across the seat. Preserve the
   // complete native waist opening; rise remains a separate geometry adjustment.
   if(waistMax!==null)lowerBand[1]=waistMax;
@@ -175,8 +161,6 @@ export function createClothMaterial(preset = 'GYM', geometry = null, options = {
   const physicalHem=lowerBand[0]-(length-1)*1.92*.14*Math.max(0,Math.min(1,(.95-lowerBand[0])/.8));
   const maskWaist=lowerBand[1];
   const physicalWaist=maskWaist+(options.waistRiseCm || 0)*1.92/175*Math.max(0,Math.min(1,(maskWaist-.72)/.25));
-  const tank = preset === 'GYM' && (!options.variant || options.variant === 'tank');
-  const sleeves = preset === 'CASUAL' ? options.variant === 'tee' ? 1 : 2 : preset === 'FORMAL' ? 2 : preset === 'GYM' && !tank ? 1 : 0;
   const uniforms = {
     uClothMin: { value: box?.min.y ?? -.81676 },
     uClothScale: { value: 1.92 / Math.max(.1, box ? box.max.y-box.min.y : 1.66589) },

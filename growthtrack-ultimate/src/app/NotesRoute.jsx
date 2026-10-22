@@ -55,5 +55,5 @@ export default function NotesRoute(props) {
   return <><div className="notes-sync-status" aria-live="polite">{services && <>
     <span>{syncStatus === 'synced' ? 'Server changes checked' : syncStatus === 'offline' ? 'Offline — unsent editor text stays in local drafts' : syncStatus === 'failed' ? 'Server changes could not be checked' : 'Checking server changes…'}</span>
     {syncStatus === 'failed' && <button type="button" onClick={() => services.sync.pull().then(() => setSyncStatus('synced')).catch(() => setSyncStatus('failed'))}>Retry refresh</button>}
-  </>}</div><Notes {...props} records={services?.records} draftStore={encryptedNoteDrafts} fileTransfer={files} /></>;
+  </>}</div><Notes key={ownerId || 'signed-out'} {...props} records={services?.records} draftStore={encryptedNoteDrafts} fileTransfer={files} /></>;
 }

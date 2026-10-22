@@ -1,0 +1,105 @@
+{
+  "reviewedOn": "2026-10-22",
+  "status": "runtime-re-review-verified; authored-asset gates remain open",
+  "scope": "GrowthTrack 3D re-review only; retain current files and finance applications",
+  "planningPoints": {"before": 50, "after": 50, "reviewRepairPoints": 0},
+  "architecture": "../../11-review-50.md",
+  "repairs": [
+    {
+      "issue": "rest-cached skin bounds exclude posed body vertices",
+      "reproduction": "left upper arm roll 100 degrees after caching rest bounds",
+      "outsideRestSpherePerAsset": 1901,
+      "assetsReproduced": 4,
+      "implementation": "bind-space joint and morph envelopes updated after animation/pose and synchronous capture/restoration",
+      "proof": ["all evaluated vertices enclosed", "actual ray hit beyond old sphere", "combined morphs and outer transforms", "geometry invalidation", "exact fallback", "capture restoration without frame"]
+    },
+    {
+      "issue": "joint-origin proximity weighting pulls torso skin and bends the hand during upper-arm rotation",
+      "implementation": "clone-only measured bone-segment weighting and smooth measured shoulder-span influence gate, followed by existing head repair",
+      "policy": "src/config/poseStudio.json bodyBinding",
+      "dimensions": "derived from loaded rig; no user measurements embedded in code",
+      "proof": ["four asset variants", "rest shape retained", "normalized four-weight skin", "shared source buffers retained", "morphs retained", "unsupported rigs retained"],
+      "regressionTolerances": {
+        "distalHandErrorReductionMinPct": 90,
+        "distalHandResidualMaxMetres": 0.002,
+        "centralTorsoDriftReductionMinPct": 80,
+        "centralTorsoResidualMaxMetres": 0.01,
+        "meaning": "fixture regression tolerances, not anatomical calibration"
+      }
+    },
+    {
+      "issue": "conservative animation bounds leaked into camera frame measurement, causing reload-dependent bookmark scaling",
+      "foundBy": "first combined production smoke: 15 passed, 1 camera-reload regression failed",
+      "implementation": "measure a precise neutral geometry reference once in the loader, before viewer transforms; apply current height scale once",
+      "proof": ["four-asset cached-envelope invariance", "actual orbit and pan recall after reload"]
+    }
+  ],
+  "assetConformance": {
+    "profile": "full-v3",
+    "requiredPassed": 9,
+    "requiredApplicable": 23,
+    "recommendedPassed": 0,
+    "recommendedApplicable": 5,
+    "sameResultForAllFourAssets": true,
+    "bodyVertices": 16001,
+    "bodyTriangles": 29682,
+    "joints": 20,
+    "bodyMorphs": 58,
+    "reports": [
+      "v3-conformance.humanoid-base.json",
+      "v3-conformance.humanoid-base-lite.json",
+      "v3-conformance.humanoid-adult-v2.json",
+      "v3-conformance.humanoid-adult-v2-lite.json"
+    ],
+    "meaning": "unfinished authored-asset gates; separate from the runtime planning score"
+  },
+  "checks": {
+    "focusedTests": {"passed": 314, "files": 54, "measurementIntegrationRunSeparately": true},
+    "productionChromiumSmoke": {
+      "passed": 16,
+      "durationMinutes": 6.3,
+      "configuration": "playwright.milestone-review.config.ts",
+      "server": "isolated production build and preview",
+      "automaticShutdown": true,
+      "includesCameraReloadRegression": true,
+      "includesExistingFlowsAndNewRaisedArmFlow": true,
+      "includesPaintAndActualJointEndpointAssertions": true
+    },
+    "typecheck": "passed",
+    "targetedEslint": "passed",
+    "humanSpec": {"passed": 84},
+    "productionBuild": "passed; existing large Three.js chunk warning remains",
+    "bundledGlbValidation": {"passed": 4},
+    "assetProvenance": "passed",
+    "databasePersistence": "existing focused Prisma/SQLite test; isolated temporary database with reconnect and owner separation",
+    "repositoryWideSuite": "not claimed",
+    "trackedFileDeletions": 0,
+    "financeEdits": 0,
+    "onDiskModelEditsDuringThisReview": 0
+  },
+  "evidence": [
+    "../../evidence/review-50-raised-arm-front-before.png",
+    "../../evidence/review-50-raised-arm-front-after.png",
+    "../../evidence/review-50-raised-arm-back-before.png",
+    "../../evidence/review-50-raised-arm-back-after.png",
+    "../../evidence/review-50-face-high-after.png",
+    "../../evidence/review-50-raised-arm-export-after.png",
+    "../../evidence/review-50-camera-oblique.png"
+  ],
+  "research": [
+    "https://github.com/mrdoob/three.js/blob/r184/src/objects/SkinnedMesh.js",
+    "https://github.khronos.org/glTF-Tutorials/gltfTutorial/gltfTutorial_020_Skins.html",
+    "https://docs.unity3d.com/Packages/com.unity.animation.rigging@1.2/manual/constraints/TwoBoneIKConstraint.html",
+    "https://docs.blender.org/manual/en/latest/modeling/modifiers/deform/armature.html"
+  ],
+  "remainingGates": [
+    "artist-authored shoulder and twist weights/correctives",
+    "authored finger/toe rig and 52 face shapes",
+    "morph joint offsets and full-v3 metadata",
+    "cornea/wetline and texture tiles",
+    "collision and walking foot lock",
+    "pointer-drag posing",
+    "anatomical and appearance calibration",
+    "native-device performance and Safari"
+  ]
+}

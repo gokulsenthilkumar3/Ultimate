@@ -1,0 +1,193 @@
+{
+  "reviewedOn": "2026-10-22",
+  "status": "verified 75-point partial rig/surface/runtime milestone; complete authored-asset and device gates remain open",
+  "scope": "GrowthTrack 3D only; retain current files and finance applications",
+  "planningPoints": {
+    "before": 50,
+    "after": 75,
+    "reviewRepairPoints": 0
+  },
+  "architecture": "../../12-articulated-surface-architecture.md",
+  "slices": [
+    {
+      "milestone": 11,
+      "points": 5,
+      "reserve": "remaining viewer",
+      "feature": "Captured pointer wrist/ankle dragging with keyboard/depth alternatives, cancellation and camera ownership"
+    },
+    {
+      "milestone": 12,
+      "points": 5,
+      "reserve": "asset",
+      "feature": "Source-landmark finger/toe chains, generated preview weights, saved independent hand/toe controls"
+    },
+    {
+      "milestone": 13,
+      "points": 5,
+      "reserve": "asset",
+      "feature": "Measured morph region and joint offset metadata with inverse-bind and rigid-attachment compensation"
+    },
+    {
+      "milestone": 14,
+      "points": 5,
+      "reserve": "asset",
+      "feature": "Periodic physical-scale micro tile, measured tangent/region/tile/local-scale attributes and saved pore strength"
+    },
+    {
+      "milestone": 15,
+      "points": 5,
+      "reserve": "asset",
+      "feature": "Separate cornea, tearline and twenty surface-projected nail patches with gaze/blink/capture integration"
+    }
+  ],
+  "assets": {
+    "buildRecord": "asset-build.json",
+    "newModels": [
+      "public/assets/models/humanoid-preview-75.glb",
+      "public/assets/models/humanoid-preview-75-lite.glb"
+    ],
+    "defaultScope": "male preset; covered legacy female/neutral fallbacks and custom asset choices retained",
+    "originalModelFilesRetained": 4,
+    "newModelCount": 2,
+    "bodyVertices": 16001,
+    "bodyTriangles": 29682,
+    "bodyMorphs": 58,
+    "joints": 79,
+    "addedJoints": 59,
+    "boundDigitVertices": 4948,
+    "jointOffsetMorphs": 41,
+    "surfaceParts": {
+      "nails": {
+        "patches": 20,
+        "vertices": 1280,
+        "triangles": 1600
+      },
+      "cornea": {
+        "vertices": 576,
+        "triangles": 960
+      },
+      "tearline": {
+        "vertices": 100,
+        "triangles": 96
+      }
+    },
+    "sourcePreservation": "Each derivative retains original body POSITION/NORMAL/UV/index arrays, all 58 body morph deltas and original embedded images byte for byte; original asset hashes verified by existing four-asset integrity tests",
+    "fullV3Conformance": {
+      "requiredPassed": 17,
+      "requiredApplicable": 23,
+      "recommendedPassed": 0,
+      "recommendedApplicable": 5,
+      "sameForBothNewAssets": true
+    },
+    "conformanceReports": [
+      "conformance.humanoid-preview-75.json",
+      "conformance.humanoid-preview-75-lite.json"
+    ],
+    "sizeBytes": {
+      "full": 24817392,
+      "lite": 7902880
+    },
+    "sha256": {
+      "full": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
+      "lite": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab"
+    },
+    "limitations": "Same body geometry at full/lite; lite is not the planned compressed 3 MiB first-paint core. Named face/twist nodes and metadata are structural progress, not calibrated anatomy or a complete facial rig."
+  },
+  "persistence": {
+    "store": "Existing owner-scoped Prisma User.physiqueTargets JSON via /api/physique_targets",
+    "fields": [
+      "appearanceMetrics.skinMicroDetail",
+      "goalMetrics.skinMicroDetail",
+      "viewerPreferences.poseStudio.current.digits",
+      "viewerPreferences.poseStudio.goal.digits"
+    ],
+    "definitions": "src/config/humanSurface.json",
+    "databaseCheck": "Isolated SQLite write, reconnect and owner separation test passed",
+    "userDatabaseUsedForBrowserTests": false
+  },
+  "repairsDuringIntegration": [
+    "Compensated rigid eye/hair/brow attachments for shifted rest pivots to prevent double morph displacement",
+    "Excluded optical/nail parts from the generic skin-material assignment",
+    "Projected missed nail rays onto closest real triangles and transferred skin/morph data barycentrically",
+    "Corrected outward nail/cornea winding and removed unnecessary empty part morph slots",
+    "Kept skin texture validation strict while accepting declared constant optical PBR surfaces",
+    "Reused the initial 45-second asset readiness budget consistently during browser startup",
+    "Synchronized test-only GPU readback for original completed-frame visual evidence",
+    "Gated hand/toe UI on actual digit group metadata rather than an unrelated model's bone count",
+    "Converted configured sRGB swatches to linear glTF material factors; runtime already used the proper Color conversion"
+  ],
+  "checks": {
+    "focusedTests": {
+      "passed": 337,
+      "files": 62,
+      "mainRun": {
+        "passed": 336,
+        "files": 61
+      },
+      "measurementIntegrationSeparate": {
+        "passed": 1,
+        "files": 1
+      }
+    },
+    "productionChromiumSmoke": {
+      "status": "passed",
+      "passed": 19,
+      "durationMinutes": 8.8,
+      "configuration": "playwright.milestone-review.config.ts",
+      "server": "isolated production build/preview with automatic shutdown",
+      "coverage": "All prior flows plus actual pointer drag/cancel, hand/toe pose/reload/neutral mode, mobile controls, micro detail, optical layers, blink and export",
+      "assetNote": "Combined run used the final geometry/runtime. Its asset factors preceded the final sRGB-to-linear builder correction, which does not alter runtime material assignment."
+    },
+    "postAssetColorCorrection": {
+      "focusedAssetTestsPassed": 19,
+      "focusedAssetFiles": 5,
+      "browserFlowsPassed": 3,
+      "browserDurationMinutes": 1.4,
+      "reason": "Final standalone GLB material-factor correction; both new asset files revalidated and new flows rerun against their final hashes"
+    },
+    "typecheck": "passed",
+    "targetedEslint": "passed",
+    "humanSpec": {
+      "passed": 84
+    },
+    "productionBuild": "passed; existing large Three.js chunk warning remains",
+    "bundledGlbValidation": {
+      "passed": 6
+    },
+    "assetProvenance": "passed",
+    "repositoryWideSuite": "not claimed",
+    "trackedFileDeletions": 0,
+    "financeEdits": 0,
+    "originalGlbWritesDuringThisMilestone": 0
+  },
+  "research": [
+    "https://r3f.docs.pmnd.rs/api/events",
+    "https://threejs.org/docs/pages/SkinnedMesh.html",
+    "https://threejs.org/docs/pages/MeshPhysicalMaterial.html",
+    "https://github.khronos.org/glTF-Tutorials/gltfTutorial/gltfTutorial_020_Skins.html"
+  ],
+  "evidence": [
+    "../../evidence/milestone-75-articulation-side.png",
+    "../../evidence/milestone-75-hand-close.png",
+    "../../evidence/milestone-75-toes-close.png",
+    "../../evidence/milestone-75-controls-mobile.png",
+    "../../evidence/milestone-75-layered-eye.png",
+    "../../evidence/milestone-75-closed-eye.png",
+    "../../evidence/milestone-75-protected-export.png"
+  ],
+  "remainingBudget": {
+    "measurementUxAndUserValidation": 5,
+    "assetAuthoring": 10,
+    "crossDevicePrivacyFinalConformance": 10
+  },
+  "remainingGates": [
+    "52 face shapes, expressive calibration and complete face controls",
+    "Teeth, gums, tongue and scalp surfaces",
+    "Artist-authored skin weights, twist/shoulder correctives, hand contact and collision",
+    "Regional skin density, head/hand geometric detail and true texture tiles",
+    "KTX2, meshopt, first-paint streaming and geometric LODs",
+    "Walking foot lock, head/hips FABRIK and multi-pointer limb posing",
+    "Reference photographs and anatomical/optical calibration",
+    "Native GPU, Safari, cross-device performance, user/privacy acceptance"
+  ]
+}

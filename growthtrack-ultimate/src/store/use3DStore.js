@@ -12,11 +12,13 @@
 
 import { create } from "zustand";
 import { subscribeWithSelector, devtools } from "zustand/middleware";
-import { buildMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
+import { AvatarParameterMatrix, buildMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
 import { DEFAULT_AVATAR_WORKSPACE, sanitizeAvatarWorkspace, workspaceToRendererMode } from "../lib/avatarWorkspace";
 import { AVATAR_EXPOSURE } from '../lib/avatarPresentation';
+import { sanitizeCameraView } from '../lib/cameraBookmarks';
 import { createAnatomyCustomization } from '../lib/anatomyCustomization';
 import { sanitizeWardrobePreferences } from '../lib/wardrobePreferences';
+import { avatarPosture } from '../lib/avatarPosture';
 
 export { computeMorphWeights } from "../components/morphEngine/metricsToBlendshapes";
 
@@ -322,6 +324,9 @@ const use3DStore = create(
       /** Human-view framing multiplier; 1 = default fit */
       cameraZoom: 1,
       cameraRevision: 0,
+      cameraBookmarkView: null,
+      poseDragging: false,
+      poseDragJoint: 'head',
       /** Actual model bounds from the loaded GLB / procedural fallback */
       modelFrame: null,
       /** Loader diagnostics for the active humanoid asset */
@@ -429,15 +434,19 @@ const use3DStore = create(
         const prev = get().cloneA;
         const updatedMetrics = { ...prev.metrics, [key]: value };
         const goal = get().cloneB;
+        const matrix=new AvatarParameterMatrix(prev.metrics,get().morphOverrides.current).withMetric(key,value);
         set(
           {
+            morphOverrides:{...get().morphOverrides,current:matrix.overrides},
             cloneA: {
               ...prev,
               metrics: updatedMetrics,
-              weights: buildMorphWeights(updatedMetrics, get().morphOverrides.current),
+              posture: avatarPosture(updatedMetrics),
+              weights: matrix.weights,
             },
             cloneB: {
               ...goal,
+              posture: avatarPosture(goal.metrics, updatedMetrics),
               weights: buildMorphWeights(goal.metrics, get().morphOverrides.goal, updatedMetrics),
             },
           },
@@ -454,12 +463,15 @@ const use3DStore = create(
       setGoalMetric: (key, value) => {
         const prev = get().cloneB;
         const updatedMetrics = { ...prev.metrics, [key]: value };
+        const matrix=new AvatarParameterMatrix(prev.metrics,get().morphOverrides.goal,get().cloneA.metrics).withMetric(key,value);
         set(
           {
+            morphOverrides:{...get().morphOverrides,goal:matrix.overrides},
             cloneB: {
               ...prev,
               metrics: updatedMetrics,
-              weights: buildMorphWeights(updatedMetrics, get().morphOverrides.goal, get().cloneA.metrics),
+              posture: avatarPosture(updatedMetrics, get().cloneA.metrics),
+              weights: matrix.weights,
             },
           },
           false,
@@ -478,6 +490,7 @@ const use3DStore = create(
             cloneA: {
               ...prev,
               metrics,
+              posture: avatarPosture(metrics),
               weights: buildMorphWeights(metrics, get().morphOverrides.current),
             },
           },
@@ -488,6 +501,7 @@ const use3DStore = create(
         set({
           cloneB: {
             ...goal,
+            posture: avatarPosture(goal.metrics, metrics),
             weights: buildMorphWeights(goal.metrics, get().morphOverrides.goal, metrics),
           },
         }, false, "refreshGoalFallbacks");
@@ -504,6 +518,7 @@ const use3DStore = create(
             cloneB: {
               ...prev,
               metrics,
+              posture: avatarPosture(metrics, get().cloneA.metrics),
               weights: buildMorphWeights(metrics, get().morphOverrides.goal, get().cloneA.metrics),
             },
           },
@@ -660,7 +675,12 @@ const use3DStore = create(
           console.warn(`[use3DStore] Unknown camera preset: ${preset}`);
           return;
         }
-        set((state) => ({ cameraPreset: preset, focusedBodyPart: preserveFocus ? state.focusedBodyPart : null, cameraRevision: state.cameraRevision + 1 }), false, `setCameraPreset:${preset}`);
+        set((state) => ({ cameraPreset: preset, cameraBookmarkView:null, focusedBodyPart: preserveFocus ? state.focusedBodyPart : null, cameraRevision: state.cameraRevision + 1 }), false, `setCameraPreset:${preset}`);
+      },
+
+      openCameraBookmark: (view) => {
+        const safe=sanitizeCameraView(view);if(!safe)return;
+        set(state=>({cameraBookmarkView:safe,cameraPreset:'CUSTOM',cameraZoom:1,focusedBodyPart:null,autoRotate:false,cameraRevision:state.cameraRevision+1}),false,'openCameraBookmark');
       },
 
       setTimelineSnaps: (snaps) => {
@@ -688,7 +708,7 @@ const use3DStore = create(
 
       fitCameraToBody: () => {
         // CameraRig calculates the fit from FOV, viewport and comparison mode.
-        set((state) => ({ cameraPreset: 'FRONT', cameraZoom: 1, focusedBodyPart: null, cameraRevision: state.cameraRevision + 1 }), false, "fitCameraToBody");
+        set((state) => ({ cameraPreset: 'FRONT', cameraBookmarkView:null, cameraZoom: 1, focusedBodyPart: null, cameraRevision: state.cameraRevision + 1 }), false, "fitCameraToBody");
       },
 
       setModelFrame: (frame) => {
@@ -828,7 +848,7 @@ const use3DStore = create(
        * @param {string|null} partName — e.g. "chest", "biceps", null to clear
        */
       setFocusedBodyPart: (partName) => {
-        set((state) => ({ focusedBodyPart: partName, cameraPreset: partName ? 'CUSTOM' : state.cameraPreset, cameraZoom: 1, autoRotate: false,
+        set((state) => ({ focusedBodyPart: partName, cameraBookmarkView:null, cameraPreset: partName ? 'CUSTOM' : state.cameraPreset, cameraZoom: 1, autoRotate: false,
           cameraRevision: state.cameraRevision + 1 }), false, 'setFocusedBodyPart');
       },
       setModelRegionFrames: (cloneKey, regions) => set(state => ({ modelRegionFrames: { ...state.modelRegionFrames, [cloneKey]: regions } }), false, 'setModelRegionFrames'),

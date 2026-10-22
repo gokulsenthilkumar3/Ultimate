@@ -1,6 +1,61 @@
 import { resolveBodyMetrics } from '../../lib/bodyMetricFallbacks';
-import { constrainMorphWeights } from './morphMath';
+import { constrainMorphWeights, sanitizeMorphWeights } from './morphMath';
 import { anatomyMorphWeights } from './anatomyCalibration';
+import { MORPH_TARGET_NAMES } from './constants';
+
+export const FACE_SHAPE_CONTROLS = Object.freeze([
+  ['eye_size','Eye Size'],['brow_depth','Brow Ridge'],['nose_bridge_width','Nose Bridge'],
+  ['nose_tip_size','Nose Tip'],['lip_fullness','Lip Fullness'],['ear_prominence','Ear Prominence'],
+  ['jaw_width','Jaw Width'],['chin_projection','Chin Projection'],['cheekbone_width','Cheekbone Width'],
+  ['forehead_height','Forehead Height'],['temple_narrowing','Temple Narrowing'],['nose_length','Nose Length Shape'],['jaw_angle','Jaw Angle'],
+].map(([key,label])=>Object.freeze({key,label,min:0,max:1,step:.01})));
+
+const sourceRank={measured:0,inherited:1,estimated:2};
+function preferredMetric(resolution,...keys){
+  return keys.filter(key=>firstMetric(resolution.metrics[key])!==undefined)
+    .sort((a,b)=>(sourceRank[resolution.sourceByKey[a]]??3)-(sourceRank[resolution.sourceByKey[b]]??3))[0];
+}
+function circumferenceMetric(resolution,primary,left,right){
+  const pair=[left,right].filter(key=>firstMetric(resolution.metrics[key])!==undefined);
+  const pairRank=Math.min(...pair.map(key=>sourceRank[resolution.sourceByKey[key]]??3));
+  const primaryRank=sourceRank[resolution.sourceByKey[primary]]??3;
+  return pairRank<=primaryRank?averageMetric(...pair.map(key=>resolution.metrics[key])):resolution.metrics[primary];
+}
+
+/** Immutable parameter model. Measurements, fallback resolution and manual
+ * overrides have one owner; constraints run once when an output is produced.
+ * It contains no React, renderer, database or inferred identity state. */
+export class AvatarParameterMatrix {
+  #metrics; #inherited; #overrides; #resolution; #raw;
+  constructor(metrics={},overrides={},inherited={}){
+    this.#metrics={...metrics};this.#inherited={...inherited};
+    const safe=sanitizeMorphWeights(overrides);
+    this.#overrides=Object.fromEntries(MORPH_TARGET_NAMES.filter(key=>overrides?.[key]!==null && overrides?.[key]!=='' && overrides?.[key]!==undefined && Number.isFinite(Number(overrides[key]))).map(key=>[key,safe[key]]));
+    this.#resolution=resolveBodyMetrics(this.#metrics,this.#inherited);
+    this.#raw=deriveMorphWeights(this.#resolution);
+  }
+  get metrics(){return {...this.#metrics};}
+  get overrides(){return {...this.#overrides};}
+  get weights(){return constrainMorphWeights({...this.#raw,...this.#overrides});}
+  get heightScale(){return heightScaleFor(this.#resolution.metrics.height);}
+  describe(){return {
+    sourceByKey:{...this.#resolution.sourceByKey},invalidKeys:[...this.#resolution.invalidKeys],
+    // These saved measurements have no dedicated channel in the current rig.
+    recordedOnly:['eyeSpacing','earWidth','earLength'].filter(key=>this.#resolution.sourceByKey[key]),
+    identity:'approximation',
+  };}
+  withMetric(key,value){
+    const next=new AvatarParameterMatrix({...this.#metrics,[key]:value},{},this.#inherited);
+    // A changed measurement replaces only manual channels that it drives.
+    // Loading a profile uses the constructor, preserving saved customization.
+    const overrides=Object.fromEntries(Object.entries(this.#overrides).filter(([name])=>Math.abs((this.#raw[name]??0)-(next.#raw[name]??0))<1e-9));
+    return new AvatarParameterMatrix(next.metrics,overrides,this.#inherited);
+  }
+  withoutFaceOverrides(){
+    const face=new Set(FACE_SHAPE_CONTROLS.map(field=>field.key));
+    return new AvatarParameterMatrix(this.#metrics,Object.fromEntries(Object.entries(this.#overrides).filter(([key])=>!face.has(key))),this.#inherited);
+  }
+}
 
 /**
  * Pure metric-to-render mapping used by both the store and the 3D layer.
@@ -112,28 +167,26 @@ function heightScaleFor(heightCm) {
 
 const pickAnatomyWeights = ({ d_length, d_girth }) => ({ d_length, d_girth });
 
-export function computeMorphWeights(metrics = {}, inheritedMetrics = {}) {
-  const { metrics: renderMetrics } = resolveBodyMetrics(metrics, inheritedMetrics);
-  const armCirc = firstMetric(averageMetric(renderMetrics.leftUpperArm, renderMetrics.rightUpperArm), renderMetrics.arms);
-  const forearmCirc = firstMetric(averageMetric(renderMetrics.leftForearm, renderMetrics.rightForearm), renderMetrics.forearm);
-  const thighCirc = firstMetric(averageMetric(renderMetrics.leftThigh, renderMetrics.rightThigh), renderMetrics.thighs);
-  const calfCirc = firstMetric(averageMetric(renderMetrics.leftCalf, renderMetrics.rightCalf), renderMetrics.calves);
-  const hipCirc = firstMetric(averageMetric(renderMetrics.leftHip, renderMetrics.rightHip), renderMetrics.hips);
-  const shoulderValue = firstMetric(renderMetrics.shoulderBreadth, renderMetrics.bideltoidBreadth, renderMetrics.shoulders);
-  const shoulderRange = renderMetrics.shoulderBreadth != null ? 'shoulderBreadth' : renderMetrics.bideltoidBreadth != null ? 'bideltoidBreadth' : 'shoulders';
+function deriveMorphWeights(resolution) {
+  const {metrics:renderMetrics}=resolution;
+  const armCirc = circumferenceMetric(resolution,'arms','leftUpperArm','rightUpperArm');
+  const forearmCirc = circumferenceMetric(resolution,'forearm','leftForearm','rightForearm');
+  const thighCirc = circumferenceMetric(resolution,'thighs','leftThigh','rightThigh');
+  const calfCirc = circumferenceMetric(resolution,'calves','leftCalf','rightCalf');
+  const hipCirc = circumferenceMetric(resolution,'hips','leftHip','rightHip');
+  const shoulderRange = preferredMetric(resolution,'shoulderBreadth','bideltoidBreadth','shoulders');
+  const shoulderValue = renderMetrics[shoulderRange];
   const hipValue = firstMetric(renderMetrics.pelvicBreadth, hipCirc);
   const hipRange = renderMetrics.pelvicBreadth != null ? 'pelvicBreadth' : 'hips';
-  const chestDepthValue = renderMetrics.chestDepth != null
-    ? normaliseMetric(renderMetrics.chestDepth, 'chestDepth')
-    : normaliseMetric(renderMetrics.chest, 'chest');
-  const legLengthValue = renderMetrics.inseam != null
-    ? normaliseMetric(renderMetrics.inseam, 'inseam')
-    : normaliseMetric(renderMetrics.legLength ?? (renderMetrics.height ? renderMetrics.height * 0.52 : undefined), 'legLength');
-  const torsoValue = firstMetric(renderMetrics.torsoLength, renderMetrics.sittingHeight, renderMetrics.height ? renderMetrics.height * 0.28 : undefined);
-  const torsoRange = renderMetrics.torsoLength != null ? 'torsoLength' : renderMetrics.sittingHeight != null ? 'sittingHeight' : 'torsoLength';
+  const chestRange=preferredMetric(resolution,'chestDepth','chest');
+  const chestDepthValue=normaliseMetric(renderMetrics[chestRange],chestRange);
+  const legRange=preferredMetric(resolution,'inseam','legLength');
+  const legLengthValue=normaliseMetric(renderMetrics[legRange],legRange);
+  const torsoRange=preferredMetric(resolution,'torsoLength','sittingHeight');
+  const torsoValue=renderMetrics[torsoRange];
   const normalise = normaliseMetric;
 
-  return constrainMorphWeights({
+  return {
     overall_mass: normalise(renderMetrics.weight, 'weight'),
     gut_volume: Math.max(normalise(renderMetrics.weight, 'weight') * 0.6, normalise(renderMetrics.bodyFat, 'bodyFat') * 0.4),
     face_roundness: normalise(renderMetrics.bodyFat, 'bodyFat') * 0.7,
@@ -202,12 +255,13 @@ export function computeMorphWeights(metrics = {}, inheritedMetrics = {}) {
     ...pickAnatomyWeights(anatomyMorphWeights(renderMetrics, { heightScale: heightScaleFor(renderMetrics.height) })),
     vascularity_intensity: renderMetrics.bodyFat < 15 ? Math.max(0, (15 - renderMetrics.bodyFat) / 10) : 0,
     fitzpatrick_index: SKIN_TONES.indexOf(resolveSkinTone(renderMetrics)),
-  });
+  };
+}
+
+export function computeMorphWeights(metrics = {}, inheritedMetrics = {}) {
+  return new AvatarParameterMatrix(metrics,{},inheritedMetrics).weights;
 }
 
 export function buildMorphWeights(metrics = {}, overrides = {}, inheritedMetrics = {}) {
-  return constrainMorphWeights({
-    ...computeMorphWeights(metrics, inheritedMetrics),
-    ...overrides,
-  });
+  return new AvatarParameterMatrix(metrics,overrides,inheritedMetrics).weights;
 }

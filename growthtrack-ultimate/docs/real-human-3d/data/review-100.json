@@ -1,0 +1,26 @@
+{
+  "reviewedAt": "2026-10-22",
+  "scope": "Review milestone ranges 1–100 and support creating separate people from UI measurements",
+  "status": "review and implementation complete with documented likeness and asset limitations",
+  "subjectiveReadinessScore": 66,
+  "scoreMeaning": "Development assessment for personal human creation; not likeness accuracy or planning milestone completion",
+  "measurementFields": 77,
+  "additionalPeopleLimit": 30,
+  "newProfileMappings": ["torsoLength", "upperArm", "lowerArm", "handLength", "legLength", "footLength", "headCirc", "leftWrist", "rightWrist"],
+  "verification": {
+    "focusedUnitTests": { "passed": 357, "files": 53 },
+    "finalFocusedFollowup": { "passed": 49, "files": 7, "note": "Overlaps the broad suite; includes the final posture mapping and measurement workbench." },
+    "humanSpec": { "passed": 84 },
+    "glb": { "assets": 6, "projectChecks": "passed", "officialErrors": 0, "officialWarnings": 0 },
+    "assetProvenance": "passed",
+    "typecheck": "passed",
+    "targetedLint": "passed",
+    "productionBuild": "passed; existing Three.js chunk warning",
+    "browser": { "combinedPassed": 23, "combinedDurationMinutes": 10.1, "finalFollowupPassed": 6, "finalFollowupDurationMinutes": 2.9, "finalVisualFollowupPassed": 1, "note": "Follow-up rechecks measurement entry, saved people, setup, zero goals, poses, reach, cameras and bounds after the final posture changes; it overlaps the 23-flow suite. The saved-people flow passed again after fixing light-theme button contrast, and the retained mobile screenshot was visually inspected." }
+  },
+  "assetGeometryChanged": false,
+  "ownerDatabaseUsed": false,
+  "deployed": false,
+  "remaining": ["calibrated metric-to-mesh fitting", "independent bilateral body shapes", "exact personal likeness", "high-detail face and regional textures", "female/neutral authored body variants", "additional hair and facial-hair assets", "native device and audio verification", "contact-correct animation"],
+  "evidence": ["evidence/review-100/buddy-human.png", "evidence/review-100/people-mobile.png"]
+}

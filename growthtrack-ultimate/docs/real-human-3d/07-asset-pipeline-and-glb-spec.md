@@ -3,8 +3,10 @@
 This is how the human is built, packaged and proven. It extends, rather than replaces, the repository's existing contracts:
 `DIGITAL_HUMAN_V2_PLAN.md` (budgets and release gates), `digitalHumanV2.js` (required parts, at least 55 bones and 80 morph
 targets), `humanoid-glb-spec.md`, `ASSET-PROVENANCE.json` and `npm run check:assets`. **GLB v3 is the asset that finally
-satisfies the v2 contract** (the app still resolves the legacy file, because no v2 asset was ever supplied), with the stricter
+satisfies the v2 contract**, with the stricter
 requirements the audit showed are needed.
+
+**Current implementation at 75 planning points:** the default male preset resolves the additive preview-75 full/lite pair; covered female/neutral fallbacks and custom asset choices remain. The new pair has 79 named joints, generated digit bindings, measured morph metadata, surface attributes, micro tiles and separate cornea/tearline/nails, passing **17/23 applicable required checks and 0/5 recommended checks**. It is not a complete v2/v3 authored asset. The four retained source files keep their historical 9/23 baseline. Full/lite still share the body geometry and the lite file exceeds the proposed compressed first-paint budget. See [current architecture](12-articulated-surface-architecture.md) and [fresh verification](data/milestone-75/review.json). Budgets below remain acceptance targets.
 
 ## 1 · Budgets
 

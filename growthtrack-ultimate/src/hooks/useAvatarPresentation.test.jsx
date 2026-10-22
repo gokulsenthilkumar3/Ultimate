@@ -61,3 +61,23 @@ it('flushes pending layout edits when leaving the workspace', async () => {
   expect(apiRequest).toHaveBeenCalledTimes(1);
   expect(useStore.getState().physiqueTargets.viewerPreferences.interfaceEffects).toBe(false);
 });
+
+it('preserves saved poses and camera views when resetting the layout',async()=>{
+  const {result}=renderHook(()=>useAvatarPresentation());
+  const poseStudio={current:{enabled:true,joints:{head:[0,20,0]},targets:{leftWrist:[.3,-.6,.2]}},goal:{enabled:false,joints:{},targets:{}}};
+  const cameraBookmarks=[{id:'view-1',name:'Oblique',view:{azimuth:.5,polar:1.5,distanceRatio:2,targetOffset:[0,.5,0]}}];
+  act(()=>result.current.change({poseStudio,cameraBookmarks,density:'compact'}));
+  await tick();act(()=>result.current.reset());await tick();
+  expect(useStore.getState().physiqueTargets.viewerPreferences).toMatchObject({poseStudio,cameraBookmarks,density:'comfortable'});
+});
+
+it('does not carry another owner’s pose, bookmarks or active view across an account change',async()=>{
+  const {result}=renderHook(()=>useAvatarPresentation());
+  const view={azimuth:1,polar:1.5,distanceRatio:2,targetOffset:[0,.5,0]};
+  act(()=>{result.current.change({poseStudio:{current:{enabled:true,joints:{head:[0,20,0]}}},cameraBookmarks:[{id:'v',name:'Private draft',view}]});use3DStore.getState().openCameraBookmark(view);});
+  act(()=>useStore.setState({user:{id:'other-owner'},physiqueTargets:{}}));await tick();
+  expect(apiRequest).not.toHaveBeenCalled();
+  expect(use3DStore.getState().avatarWorkspace.cameraBookmarks).toEqual([]);
+  expect(use3DStore.getState().avatarWorkspace.poseStudio.current.enabled).toBe(false);
+  expect(use3DStore.getState().cameraBookmarkView).toBeNull();
+});

@@ -1,14 +1,14 @@
 import * as THREE from 'three';
+import { SKIN_APPEARANCE_PRESETS } from '../../lib/skinAppearancePresets';
 import {resolveSkinAppearance,skinLayerMultiplier,skinOpticsGLSL} from './skinAppearance';
+import { resolveTanPattern, tanLineUniforms, TAN_LINES_GLSL } from './skinTanLines';
+import { freckleUniforms, FRECKLES_GLSL } from './skinFreckles';
+import {HUMAN_SURFACE,microStrength} from '../../lib/humanSurface';
 
-export const FITZPATRICK_TABLE = Object.freeze([
-  { base: [1.00, 0.91, 0.84], sss: [1.00, 0.72, 0.64], spec: [0.95, 0.85, 0.80] },
-  { base: [0.96, 0.82, 0.68], sss: [0.98, 0.62, 0.52], spec: [0.90, 0.80, 0.72] },
-  { base: [0.91, 0.72, 0.54], sss: [0.92, 0.55, 0.42], spec: [0.85, 0.72, 0.60] },
-  { base: [0.78, 0.52, 0.26], sss: [0.85, 0.40, 0.25], spec: [0.72, 0.58, 0.40] },
-  { base: [0.55, 0.34, 0.16], sss: [0.70, 0.28, 0.15], spec: [0.58, 0.42, 0.28] },
-  { base: [0.30, 0.18, 0.08], sss: [0.50, 0.18, 0.08], spec: [0.40, 0.28, 0.18] },
-]);
+export const FITZPATRICK_TABLE = Object.freeze(SKIN_APPEARANCE_PRESETS.map(({hex}) => ({
+  base: [1,3,5].map(start => parseInt(hex.slice(start,start+2),16)/255),
+  sss: [0.88,0.44,0.35], spec: [1,1,1],
+})));
 
 // Median linear colour of the body albedo (MakeHuman young_lightskinned_male,
 // measured from the CC0 source). The texture already carries a tan skin tone,
@@ -43,7 +43,7 @@ function toneFrom(toneOrColor) {
     return FITZPATRICK_LINEAR[Math.max(0, Math.min(5, Math.round(toneOrColor)))];
   }
 
-  const baseColor = new THREE.Color(toneOrColor || '#C68642');
+  const baseColor = new THREE.Color(toneOrColor || SKIN_APPEARANCE_PRESETS[3].hex);
   const scatterColor = baseColor.clone().lerp(new THREE.Color('#ff8068'), 0.34);
   const specularColor = baseColor.clone().lerp(new THREE.Color('#fff2e8'), 0.58);
   return {
@@ -60,7 +60,7 @@ export function pubicHairDensity(pattern) {
 }
 
 function installSurfaceDetailShader(material) {
-  material.customProgramCacheKey = () => 'growthtrack-physical-skin-v7';
+  material.customProgramCacheKey = () => 'growthtrack-physical-skin-v11-micro-tile';
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uVascularityIntensity = material.uniforms.uVascularityIntensity;
     shader.uniforms.uBodyHairIntensity = material.uniforms.uBodyHairIntensity;
@@ -70,21 +70,35 @@ function installSurfaceDetailShader(material) {
     shader.uniforms.uUnitsPerCm = material.uniforms.uUnitsPerCm;
     shader.uniforms.uSkinLayers = material.uniforms.uSkinLayers;
     shader.uniforms.uSkinMicroDetail = material.uniforms.uSkinMicroDetail;
+    for(const key of ['uSkinMicroTile','uSkinMicroStrength','uSkinMicroReady'])shader.uniforms[key]=material.uniforms[key];
+    shader.uniforms.uFreckles = material.uniforms.uFreckles;
+    for(const key of ['uTanPattern','uTanLower','uTanTorso','uTanTank','uTanSleeves'])shader.uniforms[key]=material.uniforms[key];
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
         `#include <common>
          varying vec3 vGrowthTrackBasePosition;
+         varying vec3 vFreckleNormal;
          varying vec2 vGrowthTrackSkinUv;
          attribute float skinExposure;
          attribute float skinBlood;
+         attribute float skinRoughness;
+         attribute vec4 skinTanRegions;
+         attribute vec2 skinTanCoordinates;
+         varying vec4 vSkinTanRegions;
+         varying vec2 vSkinTanCoordinates;
+         varying float vSkinRoughness;
          varying vec2 vSkinRegion;`,
       )
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
          vGrowthTrackBasePosition = position;
+         vFreckleNormal = normal;
          vGrowthTrackSkinUv = uv;
+         vSkinTanRegions = skinTanRegions;
+         vSkinTanCoordinates = skinTanCoordinates;
+         vSkinRoughness = skinRoughness;
          vSkinRegion=vec2(skinExposure,skinBlood);`,
       );
     shader.fragmentShader = shader.fragmentShader
@@ -99,8 +113,14 @@ function installSurfaceDetailShader(material) {
          uniform float uUnitsPerCm;
          uniform vec3 uSkinLayers;
          uniform float uSkinMicroDetail;
+         uniform sampler2D uSkinMicroTile;
+         uniform float uSkinMicroStrength;
+         uniform float uSkinMicroReady;
          varying vec2 vSkinRegion;
+         varying float vSkinRoughness;
          ${skinOpticsGLSL()}
+         ${TAN_LINES_GLSL}
+         ${FRECKLES_GLSL}
          varying vec3 vGrowthTrackBasePosition;
          varying vec2 vGrowthTrackSkinUv;
 
@@ -176,7 +196,8 @@ function installSurfaceDetailShader(material) {
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
-         diffuseColor.rgb *= skinLayerMultiplier(uSkinLayers,vSkinRegion.x,vSkinRegion.y);
+         diffuseColor.rgb *= skinLayerMultiplier(uSkinLayers,vSkinRegion.x*skinSunCoverage(),vSkinRegion.y);
+         diffuseColor.rgb *= 1.0 - skinFreckles(vGrowthTrackBasePosition, vSkinRegion.x);
          float vein = growthTrackVeins(vGrowthTrackSkinUv) * clamp(uVascularityIntensity, 0.0, 1.0);
          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.80, 0.85, 0.95), vein * 0.32);
          float bodyHair = growthTrackBodyHair(vGrowthTrackBasePosition, vGrowthTrackSkinUv)
@@ -189,6 +210,14 @@ function installSurfaceDetailShader(material) {
            diffuseColor.rgb = mix(diffuseColor.rgb, uPubicHairColor, pubic * coverage * clamp(uPubicHair, 0.0, 1.0));
          }`,
       )
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        // Authored micro-roughness remains visible; regional oil changes its
+        // mean without turning the entire body into glossy plastic.
+        vec3 microP=vGrowthTrackBasePosition/${HUMAN_SURFACE.micro.tileMetres.toFixed(5)};
+        vec3 microBlend=abs(normalize(vFreckleNormal));microBlend/=max(dot(microBlend,vec3(1.0)),.001);
+        float microHeight=dot(vec3(texture2D(uSkinMicroTile,microP.yz).r,texture2D(uSkinMicroTile,microP.zx).r,texture2D(uSkinMicroTile,microP.xy).r),microBlend);
+        roughnessFactor = clamp(roughnessFactor * max(vSkinRoughness, 0.75)+(microHeight-.5)*${HUMAN_SURFACE.micro.roughnessVariation.toFixed(5)}*uSkinMicroStrength*uSkinMicroReady*uSkinMicroDetail, 0.32, 0.85);
+      `)
       .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
         if(uSkinMicroDetail>0.0){
           // Rest positions in glTF metres keep the grain continuous across UV
@@ -196,7 +225,8 @@ function installSurfaceDetailShader(material) {
           vec3 skinMm=vGrowthTrackBasePosition*1000.0;
           float footprint=max(length(dFdx(skinMm)),length(dFdy(skinMm)));
           float resolved=1.0-smoothstep(.35,1.2,footprint);
-          float relief=(growthTrackValueNoise(skinMm.xy*2.2)+growthTrackValueNoise(skinMm.yz*2.2)+growthTrackValueNoise(skinMm.zx*2.2)-1.5)*.000025*resolved;
+          float baseRelief=(growthTrackValueNoise(skinMm.xy*2.2)+growthTrackValueNoise(skinMm.yz*2.2)+growthTrackValueNoise(skinMm.zx*2.2)-1.5)*.000025;
+          float relief=mix(baseRelief,(microHeight-.5)*${HUMAN_SURFACE.micro.heightMetres.toFixed(8)},uSkinMicroReady)*resolved*uSkinMicroStrength;
           vec3 sx=dFdx(-vViewPosition),sy=dFdy(-vViewPosition);
           vec3 r1=cross(sy,normal),r2=cross(normal,sx);
           float determinant=dot(sx,r1);
@@ -223,17 +253,16 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     normalScale: sourceMaterial?.normalScale?.clone?.() || new THREE.Vector2(0.52, 0.52),
     roughnessMap: sourceMaterial?.roughnessMap || null,
     metalnessMap: sourceMaterial?.metalnessMap || null,
-    // Improved SSS simulation:
-    // clearcoat = wet micro-film on skin surface (sweat, oil)
-    clearcoat: 0.08,
+    // Small surface oil response. These lobes are not subsurface scattering.
+    clearcoat: 0.03,
     clearcoatRoughness: 0.50,
-    // sheen = back-scatter approximation (fibrous skin texture)
-    sheen: 0.22,
+    sheen: 0.06,
     sheenColor: new THREE.Color(...tone.sss).offsetHSL(0.02, 0.08, 0.06),
     sheenRoughness: 0.62,
-    // Warm emissive simulates indirect subsurface light bleeding through skin
-    emissive: new THREE.Color(...tone.sss),
-    emissiveIntensity: 0.028,
+    // Skin must go dark with the lights. Self-emission is not a substitute
+    // for diffusion through tissue; full subsurface transport remains open.
+    emissive: new THREE.Color(0,0,0),
+    emissiveIntensity: 0,
     // Skin is opaque. Transmission made the body look waxy and added an
     // unnecessary full-scene refraction render for every figure.
     transmission: 0,
@@ -242,7 +271,7 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     attenuationDistance: 0.62,
     ior: 1.42,
     specularIntensity: 0.38,
-    specularColor: new THREE.Color('#fff3e8'),  // warm specular tint for skin
+    specularColor: new THREE.Color('#ffffff'),
     envMapIntensity: sourceMaterial?.envMapIntensity ?? 1.18,
     side: THREE.FrontSide,
     transparent: false,
@@ -258,6 +287,8 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     aoStrategy: 'baked-base-color',
     layeredSkinShader:surfaceDetail,
     skinAppearance:appearance,
+    tanPattern:resolveTanPattern(options.skinAppearance?.skinTanPattern).id,
+    microDetail:{strength:microStrength(options.skinAppearance?.skinMicroDetail),tile:Boolean(options.microTile),metres:HUMAN_SURFACE.micro.tileMetres},
     // Shown only while the anatomy is revealed (HumanoidClone sets uPubicHair).
     pubicHairDensity: options.pubicRegion ? pubicHairDensity(options.pubicRegion.pattern) : 0,
   };
@@ -276,6 +307,11 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     uTime: { value: 0 },
     uSkinLayers:{value:new THREE.Vector3(appearance.tan*appearance.capacity,appearance.undertone,appearance.flush)},
     uSkinMicroDetail:{value:1},
+    uSkinMicroTile:{value:options.microTile || null},
+    uSkinMicroReady:{value:options.microTile?1:0},
+    uSkinMicroStrength:{value:microStrength(options.skinAppearance?.skinMicroDetail)},
+    ...tanLineUniforms(options.skinAppearance?.skinTanPattern),
+    ...freckleUniforms(options.skinAppearance),
   };
   if (surfaceDetail) installSurfaceDetailShader(material);
   return material;
@@ -300,10 +336,9 @@ export function updatePhysicalSkinMaterial(material, {
   const appearance=material.userData.skinAppearance;
   const multiplier=material.userData.layeredSkinShader?[1,1,1]:skinLayerMultiplier({...appearance,exposure:0});
   material.color?.setRGB(...skinAlbedoTint(tone.base.map((channel,i)=>channel*multiplier[i]), Boolean(material.map)));
-  material.emissive?.setRGB(...tone.sss);
   material.attenuationColor?.setRGB(...tone.sss);
   material.sheenColor?.setRGB(...tone.sss);
-  material.specularColor?.set('#fff5ef');
+  material.specularColor?.set('#ffffff');
   material.uniforms.uBaseColor.value.setRGB(...tone.base);
   material.uniforms.uSSSColor.value.setRGB(...tone.sss);
   material.uniforms.uSpecColor.value.setRGB(...tone.spec);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import { SKIN_APPEARANCE_PRESETS } from '../lib/skinAppearancePresets';
 import {
   BODY_ALBEDO_REFERENCE,
   createPhysicalSkinMaterial,
@@ -8,6 +9,19 @@ import {
 } from '../components/body3d/physicalSkinMaterial';
 
 describe('physical skin material', () => {
+  it('uses the same six display swatches as the editor and never adds self-emission', () => {
+    SKIN_APPEARANCE_PRESETS.forEach(({ hex }, index) => {
+      const material = createPhysicalSkinMaterial(index);
+      const expected = new THREE.Color(hex);
+      expect(material.color.r).toBeCloseTo(expected.r, 5);
+      expect(material.color.g).toBeCloseTo(expected.g, 5);
+      expect(material.color.b).toBeCloseTo(expected.b, 5);
+      updatePhysicalSkinMaterial(material, { fitzpatrickIndex: index });
+      expect(material.emissiveIntensity).toBe(0);
+      expect(material.emissive.getHex()).toBe(0);
+      material.dispose();
+    });
+  });
   it('keeps authored PBR maps while using the physical material pipeline', () => {
     const map = new THREE.Texture();
     const normalMap = new THREE.Texture();
@@ -48,9 +62,8 @@ describe('physical skin material', () => {
     expect(material.uniforms.uVascularityIntensity.value).toBe(0.72);
     expect(material.uniforms.uBodyHairIntensity.value).toBe(0.46);
     expect(material.uniforms.uTime.value).toBe(4.5);
-    // Type VI is #4D2E14 / #803014 in display values; materials hold linear values.
-    expect(material.color.r).toBeCloseTo(new THREE.Color().setRGB(0.3, 0.18, 0.08, THREE.SRGBColorSpace).r, 4);
-    expect(material.attenuationColor.r).toBeCloseTo(new THREE.Color().setRGB(0.5, 0.18, 0.08, THREE.SRGBColorSpace).r, 4);
+    expect(material.color.r).toBeCloseTo(new THREE.Color('#51382c').r, 4);
+    expect(material.emissiveIntensity).toBe(0);
 
     material.dispose();
   });
@@ -58,7 +71,7 @@ describe('physical skin material', () => {
   it('renders a textured body at the chosen tone on average', () => {
     const map = new THREE.Texture();
     const material = createPhysicalSkinMaterial(3, new THREE.MeshStandardMaterial({ map }));
-    const target = new THREE.Color().setRGB(0.78, 0.52, 0.26, THREE.SRGBColorSpace);
+    const target = new THREE.Color('#ac7d63');
     // texture median × tint = the type IV colour (within the clamp range).
     expect(material.color.r * BODY_ALBEDO_REFERENCE[0]).toBeCloseTo(target.r, 3);
     expect(material.color.g * BODY_ALBEDO_REFERENCE[1]).toBeCloseTo(target.g, 3);

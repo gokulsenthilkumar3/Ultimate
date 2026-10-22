@@ -1,6 +1,12 @@
 import { fitModelFeatures } from './fitModelFeatures';
+import {prepareFaceGeometry} from './faceGeometry';
+import { prepareHeadPoseBinding } from './headPoseBinding';
+import { prepareBodyPoseBinding } from './bodyPoseBinding';
+import { createModelReferenceFrame } from './modelReferenceFrame';
 import {scopeFacialMorphs} from './facialMorphScope';
 import {prepareSkinRegions} from '../body3d/skinAppearance';
+import {prepareEyelidCorrective} from './eyelidCorrective';
+import {bindBrowsToSkin} from './browSurfaceBinding';
 /**
  * GrowthTrack Ultimate — Layer 3: Parametric Morph Engine
  * useModelLoader.js
@@ -26,7 +32,7 @@ import {prepareSkinRegions} from '../body3d/skinAppearance';
 import { useMemo }       from 'react';
 import { useGLTF }       from '@react-three/drei';
 import * as THREE        from 'three';
-import { SkeletonUtils } from 'three-stdlib';
+import { cloneHumanoidScene } from './cloneHumanoidScene';
 import use3DStore from '../../store/use3DStore';
 
 import { GEOMETRY_MORPH_TARGETS } from './morphMath';
@@ -36,7 +42,7 @@ import { DEFAULT_ASSETS, resolveModelAsset } from './modelAssetRegistry';
 // CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ASSET_REVISION = 'clean-skin-20261019';
+const ASSET_REVISION = 'review75-20261022';
 export const MODEL_PATH = `${DEFAULT_ASSETS.production}?v=${ASSET_REVISION}`;
 export const MODEL_PATH_LITE = `${DEFAULT_ASSETS.lite}?v=${ASSET_REVISION}`;
 
@@ -168,7 +174,7 @@ export function useModelLoader(modelPreference = {}) {
     () => resolveModelAsset({ avatarAsset, biologicalSex, modelPreset, modelVersion }, gpuTier),
     [avatarAsset, biologicalSex, gpuTier, modelPreset, modelVersion],
   );
-  const modelPath = modelAsset.source === 'default' ? `${modelAsset.path}?v=${ASSET_REVISION}` : modelAsset.path;
+  const modelPath = modelAsset.isBundled ? `${modelAsset.path}?v=${ASSET_REVISION}` : modelAsset.path;
   // useGLTF must be called unconditionally (Rules of Hooks).
   // Suspense promises must be re-thrown so React Suspense can catch them.
   // Network / parse errors are caught and we fall through to the dev fallback.
@@ -207,8 +213,8 @@ export function useModelLoader(modelPreference = {}) {
 
     try {
       // Clone the scene so each HumanoidClone gets its own morph influence array.
-      // SkeletonUtils.clone also correctly rebinds bone references for SkinnedMeshes.
-      const clonedScene = SkeletonUtils.clone(gltf.scene);
+      // Clone bone references and mutable inverse-bind matrices together.
+      const clonedScene = cloneHumanoidScene(gltf.scene);
       const skinVariantMaterials = Object.fromEntries(
         Object.entries(gltf.materials || {}).filter(([name]) => name.startsWith('SkinVariant_')),
       );
@@ -219,6 +225,7 @@ export function useModelLoader(modelPreference = {}) {
       let privateAnatomyMesh = null;
       let declaredAnatomySex = null;
       const featureMeshes = [];
+      const surfaceParts = [];
       let skeleton     = null;
       let bounds = null;
 
@@ -227,12 +234,17 @@ export function useModelLoader(modelPreference = {}) {
 
         const lowerName = String(node.name || '').toLowerCase();
         const isSensitive = lowerName.includes('privateanatomy') || node.userData?.sensitive === true;
+        const part=lowerName.match(/growthtrack(cornea|tearline|nails)$/)?.[1];
+        if(part){node.geometry=node.geometry.clone();surfaceParts.push({mesh:node,part});}
         // Face features keep their own alpha-masked materials instead of the skin.
         const feature = lowerName.includes('growthtrackeyebrows') ? 'eyebrows'
           : lowerName.includes('growthtrackeyelashes') ? 'eyelashes'
             : lowerName.includes('growthtrackeyes') ? 'eyes'
               : lowerName.includes('growthtrackhair') ? 'hair' : null;
-        if (feature) featureMeshes.push({ mesh: node, feature });
+        if (feature) {
+          node.geometry = node.geometry.clone();
+          featureMeshes.push({ mesh: node, feature, sourceMaterial: node.material });
+        }
         const nodeMorphIndexMap = buildMorphIndexMap(node);
         if (Object.keys(nodeMorphIndexMap).length > 0) {
           morphMeshes.push({ mesh: node, morphIndexMap: nodeMorphIndexMap, sensitive: isSensitive });
@@ -253,6 +265,7 @@ export function useModelLoader(modelPreference = {}) {
           node.visible = false;
           return;
         }
+        if(part)return;
 
         // Accept: nodes explicitly named body, OR the first SkinnedMesh with significant vertex count,
         // OR the largest Mesh by vertex count as a last resort.
@@ -291,11 +304,21 @@ export function useModelLoader(modelPreference = {}) {
       }
 
       if (bodyMesh) {
+        bodyMesh.userData.modelAsset=modelAsset.path;
         // Local posterior shaping must not mutate the GLTF cache or goal clone.
         bodyMesh.geometry = bodyMesh.geometry.clone();
         bodyMesh.userData.facialScope=scopeFacialMorphs(bodyMesh);
         prepareSkinRegions(bodyMesh);
         fitModelFeatures(bodyMesh, featureMeshes);
+        if(modelAsset.isBundled) {
+          prepareFaceGeometry(bodyMesh,featureMeshes);
+          bodyMesh.userData.eyelidCorrective=prepareEyelidCorrective(bodyMesh,featureMeshes);
+          bindBrowsToSkin(bodyMesh,featureMeshes);
+          if(!bodyMesh.userData.growthtrack?.bindingPrepared){
+            prepareBodyPoseBinding(bodyMesh);
+            prepareHeadPoseBinding(bodyMesh);
+          }
+        }
         // Normalize the model so the humanoid reads like a full body figure.
         // Many GLBs arrive with an offset origin or inconsistent scale, which
         // makes the human look cropped even when the mesh itself is correct.
@@ -319,15 +342,22 @@ export function useModelLoader(modelPreference = {}) {
         bounds = { center, size, height: height * scale, radius };
         return {
           bodyMesh,
+          bodySourceMaterial: bodyMesh.material,
           morphIndexMap,
           morphMeshes,
           privateAnatomyMesh,
           featureMeshes,
+          surfaceParts,
           skinVariantMaterials,
           skeleton,
           scene: clonedScene,
+          referenceFrame: createModelReferenceFrame(clonedScene),
           bounds,
           diagnostics: { ...buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh), modelAsset, boneCount: skeleton?.bones?.length ?? 0,
+            capabilities: {
+              digitGroups: [...new Set((skeleton?.bones || []).map(bone => bone.userData.digitBinding?.group).filter(Boolean))],
+              surfaceParts: [...new Set(surfaceParts.map(({part}) => part))],
+            },
             // The asset's own declaration wins; the registry covers the shipped placeholder.
             privateAnatomySex: privateAnatomyMesh ? declaredAnatomySex ?? modelAsset.anatomySex ?? null : null },
           isDev: false,

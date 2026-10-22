@@ -1,8 +1,12 @@
+import { sanitizeSpaceSky } from './spaceSky';
+import { DEFAULT_POSE_STUDIO, sanitizePoseStudio } from './poseStudio';
+import { sanitizeCameraBookmarks } from './cameraBookmarks';
 // Shared settings contract. Defaults describe the UI, never the owner's body.
 export const AVATAR_PANEL_WIDTH = Object.freeze({ min: 320, max: 520, step: 20, default: 400 });
 export const AVATAR_EXPOSURE = Object.freeze({ min: .72, max: 1.35, step: .01 });
 export const DEFAULT_AVATAR_PRESENTATION = Object.freeze({ density: 'comfortable', guideDetail: 'detailed', interfaceEffects: true, inspectorWidth: AVATAR_PANEL_WIDTH.default,
-  backgroundMode:'scene',backgroundColor:'#263247',backgroundBottomColor:'#0b0f16',showStage:true,lightingMode:'neutral',cameraMode:'ORBIT',autoRotateSpeed:12,qualityPreference:'automatic',captureScale:2 });
+  backgroundMode:'scene',spaceSky:'void-studio',naturalMotion:true,backgroundColor:'#263247',backgroundBottomColor:'#0b0f16',showStage:true,lightingMode:'neutral',cameraMode:'ORBIT',autoRotateSpeed:12,qualityPreference:'automatic',captureScale:2,
+  poseStudio:DEFAULT_POSE_STUDIO,cameraBookmarks:[] });
 export const AVATAR_CAMERA_MODES=Object.freeze([['TURNTABLE','Turntable'],['ORBIT','Free orbit'],['TOP','Top view'],['HANGING','Floating']]);
 export const AVATAR_DENSITY_OPTIONS = Object.freeze([{ value:'comfortable', label:'Comfortable' }, { value:'compact', label:'Compact' }]);
 export const AVATAR_GUIDE_OPTIONS = Object.freeze([{ value:'detailed', label:'Diagram and instructions' }, { value:'concise', label:'Diagram with expandable instructions' }]);
@@ -21,7 +25,9 @@ export function sanitizeAvatarPresentation(input = {}) {
     guideDetail: AVATAR_GUIDE_OPTIONS.some(o => o.value === source.guideDetail) ? source.guideDetail : DEFAULT_AVATAR_PRESENTATION.guideDetail,
     interfaceEffects: typeof source.interfaceEffects === 'boolean' ? source.interfaceEffects : DEFAULT_AVATAR_PRESENTATION.interfaceEffects,
     inspectorWidth: Number.isFinite(width) && width > 0 ? Math.max(AVATAR_PANEL_WIDTH.min,Math.min(AVATAR_PANEL_WIDTH.max,width)) : AVATAR_PANEL_WIDTH.default,
-    backgroundMode:['scene','color','gradient'].includes(source.backgroundMode) ? source.backgroundMode : 'scene',
+    backgroundMode:['scene','space','color','gradient'].includes(source.backgroundMode) ? source.backgroundMode : 'scene',
+    spaceSky:sanitizeSpaceSky(source.spaceSky),
+    naturalMotion:typeof source.naturalMotion==='boolean'?source.naturalMotion:true,
     backgroundColor:/^#[\da-f]{6}$/i.test(source.backgroundColor || '') ? source.backgroundColor : DEFAULT_AVATAR_PRESENTATION.backgroundColor,
     backgroundBottomColor:/^#[\da-f]{6}$/i.test(source.backgroundBottomColor || '') ? source.backgroundBottomColor : DEFAULT_AVATAR_PRESENTATION.backgroundBottomColor,
     showStage:source.cameraMode === 'HANGING' ? false : typeof source.showStage === 'boolean' ? source.showStage : true,
@@ -30,6 +36,8 @@ export function sanitizeAvatarPresentation(input = {}) {
     autoRotateSpeed:source.autoRotateSpeed != null && source.autoRotateSpeed !== '' && Number.isFinite(Number(source.autoRotateSpeed))?Math.max(4,Math.min(30,Number(source.autoRotateSpeed))):12,
     qualityPreference:['automatic','performance','balanced','high'].includes(source.qualityPreference)?source.qualityPreference:'automatic',
     captureScale:[1,2,4].includes(Number(source.captureScale))?Number(source.captureScale):2,
+    poseStudio:sanitizePoseStudio(source.poseStudio),
+    cameraBookmarks:sanitizeCameraBookmarks(source.cameraBookmarks),
   };
 }
 

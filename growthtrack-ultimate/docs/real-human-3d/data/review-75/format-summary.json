@@ -1,0 +1,280 @@
+{
+  "version": 1,
+  "reviewedOn": "2026-10-22",
+  "scope": "All six retained GrowthTrack GLBs before and after the 1-75 format repair",
+  "validator": "Khronos glTF-Validator",
+  "severityOverrides": false,
+  "issuesIgnored": false,
+  "retention": {
+    "canonical": "This compact record is committed with pinned repair and asset provenance records.",
+    "raw": "Full format-before and format-after reports are preserved locally and excluded from Git.",
+    "regenerateCurrent": "node scripts/validate-glb-format.mjs --out .tmp/review-75-format",
+    "historical": "Pre-repair reports describe the original bytes. They cannot be reproduced from the current repaired assets; their exact report and asset hashes are retained here."
+  },
+  "assets": [
+    {
+      "file": "humanoid-base.glb",
+      "before": {
+        "sha256": "ce85dd2f5b613d4278788d99be0d4ac247b206daac8c671175cd09153c9f6b6d",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T06:59:36.749Z",
+        "errors": 66,
+        "warnings": 8,
+        "infos": 2,
+        "hints": 34,
+        "truncated": false,
+        "issueCodeCounts": {
+          "BUFFER_VIEW_TARGET_MISSING": 34,
+          "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE": 4,
+          "MESH_PRIMITIVE_POSITION_ACCESSOR_WITHOUT_BOUNDS": 66,
+          "UNEXPECTED_PROPERTY": 4,
+          "UNUSED_OBJECT": 2
+        },
+        "rawReport": {
+          "path": "format-before/format.humanoid-base.json",
+          "sha256": "fcdc5a7ad092de6fc16ea43be51739c529f153549698bb786c98a42104482856",
+          "retention": "ignored local artifact"
+        }
+      },
+      "after": {
+        "sha256": "23a38d4f539f0e2a28feb5976bf22f8c966742b6e027e379b146cf899bc81ecd",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T07:23:11.735Z",
+        "errors": 0,
+        "warnings": 0,
+        "infos": 2,
+        "hints": 0,
+        "truncated": false,
+        "issueCodeCounts": {
+          "UNUSED_OBJECT": 2
+        },
+        "rawReport": {
+          "path": "format-after/format.humanoid-base.json",
+          "sha256": "d5af62592b31cb394d125ec5ab4a1d9116b5a49a66ad5412059e597fee75ce99",
+          "retention": "ignored local artifact"
+        }
+      }
+    },
+    {
+      "file": "humanoid-base-lite.glb",
+      "before": {
+        "sha256": "17aec581c082a3db6a678dacb019051f8a976e0eb0cc3c1ae902cdb9b319aa95",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T06:59:37.297Z",
+        "errors": 66,
+        "warnings": 8,
+        "infos": 2,
+        "hints": 34,
+        "truncated": false,
+        "issueCodeCounts": {
+          "BUFFER_VIEW_TARGET_MISSING": 34,
+          "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE": 4,
+          "MESH_PRIMITIVE_POSITION_ACCESSOR_WITHOUT_BOUNDS": 66,
+          "UNEXPECTED_PROPERTY": 4,
+          "UNUSED_OBJECT": 2
+        },
+        "rawReport": {
+          "path": "format-before/format.humanoid-base-lite.json",
+          "sha256": "0f4594b1dca0444a17c54e0d1f253cd36236aca0fab78923c0c3f7b52d77f0ce",
+          "retention": "ignored local artifact"
+        }
+      },
+      "after": {
+        "sha256": "deb7b29e3ea7e7070eb5411ba26ee65f4e2f3a894dbd527039c6bc0ec589ed35",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T07:23:12.334Z",
+        "errors": 0,
+        "warnings": 0,
+        "infos": 2,
+        "hints": 0,
+        "truncated": false,
+        "issueCodeCounts": {
+          "UNUSED_OBJECT": 2
+        },
+        "rawReport": {
+          "path": "format-after/format.humanoid-base-lite.json",
+          "sha256": "a4be5179045289e728b493fa63afc1b72051b779e5696f30c971c40117d4a48a",
+          "retention": "ignored local artifact"
+        }
+      }
+    },
+    {
+      "file": "humanoid-adult-v2.glb",
+      "before": {
+        "sha256": "fbb17a5d09ec3f3da20a7f21f7283b44cd5cff64481ce707dcf175edc09b7f16",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T06:59:37.925Z",
+        "errors": 60,
+        "warnings": 8,
+        "infos": 2,
+        "hints": 34,
+        "truncated": false,
+        "issueCodeCounts": {
+          "BUFFER_VIEW_TARGET_MISSING": 34,
+          "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE": 4,
+          "MESH_PRIMITIVE_POSITION_ACCESSOR_WITHOUT_BOUNDS": 60,
+          "UNEXPECTED_PROPERTY": 4,
+          "UNUSED_OBJECT": 2
+        },
+        "rawReport": {
+          "path": "format-before/format.humanoid-adult-v2.json",
+          "sha256": "e75832e7a5100d4bdf06c94910736d8d760f65ec9175d590bd325b98c7c49941",
+          "retention": "ignored local artifact"
+        }
+      },
+      "after": {
+        "sha256": "983e1b1b3b9827d153d2d4a22675c3397599ee237a9d9becf8909c3e64582b2f",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T07:23:12.800Z",
+        "errors": 0,
+        "warnings": 0,
+        "infos": 2,
+        "hints": 0,
+        "truncated": false,
+        "issueCodeCounts": {
+          "UNUSED_OBJECT": 2
+        },
+        "rawReport": {
+          "path": "format-after/format.humanoid-adult-v2.json",
+          "sha256": "fdae0398c0d44ccaa1387b57aaae1836235c7fc92ab5520947ebb56c80caec60",
+          "retention": "ignored local artifact"
+        }
+      }
+    },
+    {
+      "file": "humanoid-adult-v2-lite.glb",
+      "before": {
+        "sha256": "4cf4625c96db4304f12fca8c552e4fb1daa94e15d6f498199181701b7320812d",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T06:59:38.519Z",
+        "errors": 60,
+        "warnings": 8,
+        "infos": 2,
+        "hints": 34,
+        "truncated": false,
+        "issueCodeCounts": {
+          "BUFFER_VIEW_TARGET_MISSING": 34,
+          "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE": 4,
+          "MESH_PRIMITIVE_POSITION_ACCESSOR_WITHOUT_BOUNDS": 60,
+          "UNEXPECTED_PROPERTY": 4,
+          "UNUSED_OBJECT": 2
+        },
+        "rawReport": {
+          "path": "format-before/format.humanoid-adult-v2-lite.json",
+          "sha256": "2e3a718443dcf782311ad7aa3cffb695df3136f05f9ad0e06f07e14ea29c3e70",
+          "retention": "ignored local artifact"
+        }
+      },
+      "after": {
+        "sha256": "37f332e8322a9c728b460f4c8f26604f154cf24abecf32d3da80aad60eb41171",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T07:23:13.403Z",
+        "errors": 0,
+        "warnings": 0,
+        "infos": 2,
+        "hints": 0,
+        "truncated": false,
+        "issueCodeCounts": {
+          "UNUSED_OBJECT": 2
+        },
+        "rawReport": {
+          "path": "format-after/format.humanoid-adult-v2-lite.json",
+          "sha256": "b477b49bf2e5bebb4bb16f756cb61bef623f4fdf8222a36a519ede2d8758e8f5",
+          "retention": "ignored local artifact"
+        }
+      }
+    },
+    {
+      "file": "humanoid-preview-75.glb",
+      "before": {
+        "sha256": "f53cb8311eb1fecb8a790f521e95775a9350b9bf74eef34705e9c5a863bdf0d5",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T06:59:39.263Z",
+        "errors": 93,
+        "warnings": 8027,
+        "infos": 4,
+        "hints": 51,
+        "truncated": false,
+        "issueCodeCounts": {
+          "ACCESSOR_JOINTS_USED_ZERO_WEIGHT": 8020,
+          "BUFFER_VIEW_TARGET_MISSING": 51,
+          "EMPTY_ENTITY": 31,
+          "MESH_PRIMITIVE_ACCESSOR_UNALIGNED": 2,
+          "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE": 3,
+          "MESH_PRIMITIVE_POSITION_ACCESSOR_WITHOUT_BOUNDS": 60,
+          "UNEXPECTED_PROPERTY": 4,
+          "UNUSED_OBJECT": 4
+        },
+        "rawReport": {
+          "path": "format-before/format.humanoid-preview-75.json",
+          "sha256": "a23b9ff6b1bc925e19e5dcc4b7a0ffb3858787ca356b0d73f33cba24d574dd7c",
+          "retention": "ignored local artifact"
+        }
+      },
+      "after": {
+        "sha256": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T07:23:14.186Z",
+        "errors": 0,
+        "warnings": 0,
+        "infos": 4,
+        "hints": 0,
+        "truncated": false,
+        "issueCodeCounts": {
+          "UNUSED_OBJECT": 4
+        },
+        "rawReport": {
+          "path": "format-after/format.humanoid-preview-75.json",
+          "sha256": "78f8e39758989f91d34642987f2370c63111f00ee05c322fde72f9401c9e595c",
+          "retention": "ignored local artifact"
+        }
+      }
+    },
+    {
+      "file": "humanoid-preview-75-lite.glb",
+      "before": {
+        "sha256": "841322038c95255092fa2ae8b1c8ae8bfb2cc4cf97881c1c59b844c400928b04",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T06:59:40.410Z",
+        "errors": 93,
+        "warnings": 8027,
+        "infos": 4,
+        "hints": 51,
+        "truncated": false,
+        "issueCodeCounts": {
+          "ACCESSOR_JOINTS_USED_ZERO_WEIGHT": 8020,
+          "BUFFER_VIEW_TARGET_MISSING": 51,
+          "EMPTY_ENTITY": 31,
+          "MESH_PRIMITIVE_ACCESSOR_UNALIGNED": 2,
+          "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE": 3,
+          "MESH_PRIMITIVE_POSITION_ACCESSOR_WITHOUT_BOUNDS": 60,
+          "UNEXPECTED_PROPERTY": 4,
+          "UNUSED_OBJECT": 4
+        },
+        "rawReport": {
+          "path": "format-before/format.humanoid-preview-75-lite.json",
+          "sha256": "59b817b4b9092748c28669e2b2b41dde5b35f73e92f5eeed5c076d8018e159a2",
+          "retention": "ignored local artifact"
+        }
+      },
+      "after": {
+        "sha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab",
+        "validatorVersion": "2.0.0-dev.3.10",
+        "validatedAt": "2026-10-22T07:23:15.377Z",
+        "errors": 0,
+        "warnings": 0,
+        "infos": 4,
+        "hints": 0,
+        "truncated": false,
+        "issueCodeCounts": {
+          "UNUSED_OBJECT": 4
+        },
+        "rawReport": {
+          "path": "format-after/format.humanoid-preview-75-lite.json",
+          "sha256": "f5cbbb592f5f4ba7583655d22a1360b10d518219a6857426452b473e3539a975",
+          "retention": "ignored local artifact"
+        }
+      }
+    }
+  ]
+}
