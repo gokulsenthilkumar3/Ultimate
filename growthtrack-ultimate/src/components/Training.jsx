@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -492,23 +493,13 @@ export default function Training() {
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Training</p>
-          <h1 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
-            <Dumbbell size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
-            Training Matrix
-          </h1>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Schedule · Live logger · PRs · Progressive overload · Volume tracking</p>
-        </div>
-        {activeSession && (
+      <PageHeader accent="Wellness" title="Training" subtitle={<>Schedule · Live logger · PRs · Progressive overload · Volume tracking</>} icon={<Dumbbell size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />} actions={<>{activeSession && (
           <div style={{ padding: '0.6rem 1.2rem', borderRadius: '12px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', animation: 'pulse 1s infinite' }} />
             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#10b981' }}>LIVE: {activeSession.day.day} {activeSession.day.muscleGroup}</span>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{activeSession.sets.filter(s => s.done).length}/{activeSession.sets.length} sets</span>
           </div>
-        )}
-      </div>
+        )}</>} />
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>

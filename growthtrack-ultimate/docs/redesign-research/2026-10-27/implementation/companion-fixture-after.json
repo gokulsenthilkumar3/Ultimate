@@ -1,0 +1,366 @@
+[
+  {
+    "product": "finsync",
+    "route": "/auth/ultimate/callback",
+    "body": "The sign-in handoff is missing.",
+    "overflow": 0,
+    "controls": 0,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/analytics",
+    "title": "Analytics",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nAnal",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/bills",
+    "title": "Bills",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBill",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/budget",
+    "title": "Budget",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBudg",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/cards",
+    "title": "Cards",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nCard",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/investments",
+    "title": "Investments",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nInve",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard",
+    "title": "Dashboard",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nDash",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/profile",
+    "title": "Profile",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nProf",
+    "overflow": 0,
+    "controls": 8,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/settings",
+    "title": "Settings",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nSett",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/transactions",
+    "title": "Transactions",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nTran",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/wallets",
+    "title": "Wallets",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nWall",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/forgot-password",
+    "title": "Forgot Password?",
+    "body": "Back to Sign In\nForgot Password?\n\nNo worries! Enter your email and we'll send you reset instructions.\n\nEmail Address\nSend Reset Link\n\nNeed help? Contact our sup",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "💰\nFinSync Super\nMoney, simplified\nfor you.\n\nTrack spending, monitor investments, and plan your financial future — all in one place.\n\nAI-powered SMS & Email par",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/onboarding",
+    "title": "Let's get to know you",
+    "body": "💰\nFinSync Super\n1\nPersonal Info\n2\nBudget Preview\n3\nAll Set!\nLet's get to know you\n\nThis helps us personalise your financial journey based on your household.\n\nF",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/",
+    "title": "Money, simplifiedfor you.",
+    "body": "💰\nFinSync Super\nMoney, simplified\nfor you.\n\nTrack spending, monitor investments, and plan your financial future — all in one place.\n\nAI-powered SMS & Email par",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/signup",
+    "title": "Join 50,000+smart savers.",
+    "body": "💰\nFinSync Super\nJoin 50,000+\nsmart savers.\n\nStart your free account today and take control of your finances with AI-powered insights.\n\nFree forever plan availa",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/test-dashboard",
+    "title": "Good afternoon, Gokul 👋",
+    "body": "Good afternoon, Gokul 👋\n\nHere's an overview of your finances — March 2026.\n\nTotal Balance\n💰\n₹1,24,500\n↑ +2.5% from last month\nMonthly Income\n📥\n₹85,000\n↑ +0% ",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/auth/error",
+    "title": "Authentication Error",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\nAuthentication Erro",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/auth/ultimate/callback",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nThe sign-in handof",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/bills",
+    "title": "Bills & Payments",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nPAYMENTS\n\nBills & ",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/cards",
+    "title": "Cards",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nPAYMENTS\n\nCards\n\nC",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/dashboard",
+    "title": "Alex",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nGood evening 👋\n\nA",
+    "overflow": 0,
+    "controls": 14,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/investments",
+    "title": "Investments",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nWEALTH\n\nInvestment",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/",
+    "title": "OxFin",
+    "body": "O\nOxFin\n\nIntelligence reimagined.\n\nLog in\nSign up\nEmail\nPassword\nForgot?\nContinue\nOR CONTINUE WITH\nGoogle\nGitHub",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/settings",
+    "title": "Settings",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\nSettings\n\nManage yo",
+    "overflow": 0,
+    "controls": 15,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/transactions",
+    "title": "Activity",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\nBack to Overview\nAc",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/wallets",
+    "title": "Wallets",
+    "body": "OX\n\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\nWallets\n\nManage you",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/",
+    "title": "One place for all your family stories & memories",
+    "body": "🌳\nFamilyConnect\nLog in\nGet Started\nOne place for all your\nfamily stories & memories\n\nCelebrate your heritage, map out multi-generational connections, and build",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/auth",
+    "title": "Welcome back",
+    "body": "🌳\nWelcome back\n\nDon't have an account? Sign up\n\nEmail address\nPassword\nSign In",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/auth/ultimate/callback",
+    "body": "The sign-in handoff is missing.",
+    "overflow": 0,
+    "controls": 0,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/dashboard",
+    "title": "Welcome to Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\n\nFixture family\n\n1 members\n\nWelcome to Fixture family\n\nHere's what's happening i",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/tree",
+    "title": "Family Tree",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\n\nFixture family\n\n1 members\n\nFamily Tree\n\nInteractive view of your family connect",
+    "overflow": 0,
+    "controls": 14,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/timeline",
+    "title": "Family Timeline",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\n\nFixture family\n\n1 members\n\nFamily Timeline\n\nChronological journey of your famil",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/media",
+    "title": "Media & Memories",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\n\nFixture family\n\n1 members\n\nMedia & Memories\n\nPreserve your family's precious ph",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/members",
+    "title": "Family Members",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\n\nFixture family\n\n1 members\n\nFamily Members\n\n1 members in this tree\n\nAdd Member\nF",
+    "overflow": 0,
+    "controls": 8,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/events",
+    "title": "Family Calendar",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\n\nFixture family\n\n1 members\n\nFamily Calendar\n\nUpcoming birthdays, anniversaries, ",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/profile/fixture-member",
+    "title": "Alex Fixture",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\n\nFixture family\n\n1 members\n\nBack to Directory\nAF\nEdit Profile\nAlex Fixture\n\nFami",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "family",
+    "route": "/settings",
+    "title": "Settings",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\n\nFixture family\n\n1 members\n\nSettings\n\nManage your account preferences and tree s",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "equity",
+    "route": "/auth/ultimate/callback",
+    "body": "The sign-in handoff is missing.",
+    "overflow": 0,
+    "controls": 0,
+    "errors": []
+  },
+  {
+    "product": "equity",
+    "route": "/",
+    "title": "NiftyLens 📈",
+    "body": "NiftyLens 📈\n\nReal-time NSE/BSE Dashboard\n\nMarket Closed· Opens Mon 09:15 IST\nNSE Top 200 — Live Prices\n\n⚠ Live market data is not configured locally.",
+    "overflow": 0,
+    "controls": 0,
+    "errors": []
+  },
+  {
+    "product": "forex",
+    "route": "/",
+    "body": "RUNNING...\nStop\nDeploy",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  }
+]

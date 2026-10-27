@@ -4,6 +4,7 @@ import {resolveSkinAppearance,skinLayerMultiplier,skinOpticsGLSL} from './skinAp
 import { resolveTanPattern, tanLineUniforms, TAN_LINES_GLSL } from './skinTanLines';
 import { freckleUniforms, FRECKLES_GLSL } from './skinFreckles';
 import {HUMAN_SURFACE,microStrength} from '../../lib/humanSurface';
+import {resolveHumanRealism} from '../../lib/appearanceDetail';
 
 export const FITZPATRICK_TABLE = Object.freeze(SKIN_APPEARANCE_PRESETS.map(({hex}) => ({
   base: [1,3,5].map(start => parseInt(hex.slice(start,start+2),16)/255),
@@ -20,9 +21,9 @@ const TINT_RANGE = Object.freeze([0.02, 2.5]);
 
 /** Material colour for a target tone: the tone itself without a texture, or
     the per-channel ratio to the texture's own tone (clamped) with one. */
-export function skinAlbedoTint(base, textured) {
+export function skinAlbedoTint(base, textured, reference=BODY_ALBEDO_REFERENCE) {
   if (!textured) return base;
-  return base.map((value, channel) => Math.min(TINT_RANGE[1], Math.max(TINT_RANGE[0], value / BODY_ALBEDO_REFERENCE[channel])));
+  return base.map((value, channel) => Math.min(TINT_RANGE[1], Math.max(TINT_RANGE[0], value / reference[channel])));
 }
 
 // The table is written in display (sRGB) values; materials, the texture
@@ -59,8 +60,76 @@ export function pubicHairDensity(pattern) {
   return PUBIC_HAIR_BY_PATTERN[String(pattern || 'natural').toLowerCase()] ?? PUBIC_HAIR_BY_PATTERN.natural;
 }
 
+// Dimensionless angular broadening, not a mean-free-path or tissue thickness.
+// This single-pass approximation redistributes direct diffuse light; it does
+// not compute diffusion, transmission through ears, or screen-space transport.
+export const SKIN_SCATTERING_DEFAULTS = Object.freeze({ strength: 0.22, wrap: 0.4 });
+const SCATTERING_CHANNEL_SPREAD = Object.freeze([1, 0.35, 0.18]);
+
+export function resolveSkinScattering(settings) {
+  const bounded = (value, fallback) => Number.isFinite(value) ? THREE.MathUtils.clamp(value, 0, 1) : fallback;
+  return {
+    strength: settings === false ? 0 : bounded(settings?.strength, SKIN_SCATTERING_DEFAULTS.strength),
+    wrap: bounded(settings?.wrap, SKIN_SCATTERING_DEFAULTS.wrap),
+  };
+}
+
+function installSkinScatteringShader(material) {
+  const previousCompile = material.onBeforeCompile;
+  const previousKey = material.customProgramCacheKey();
+  material.customProgramCacheKey = () => `${previousKey}-normalized-skin-wrap-v1`;
+  material.onBeforeCompile = (shader, ...args) => {
+    previousCompile.call(material, shader, ...args);
+    const anchor = '#include <lights_physical_pars_fragment>';
+    if (!shader.fragmentShader.includes(anchor)) {
+      material.userData.skinScattering.shaderStatus = 'unsupported-shader';
+      return;
+    }
+    material.userData.skinScattering.shaderStatus = 'installed';
+    shader.uniforms.uSkinScatteringStrength = material.uniforms.uSkinScatteringStrength;
+    shader.uniforms.uSkinScatteringWrap = material.uniforms.uSkinScatteringWrap;
+    shader.fragmentShader = shader.fragmentShader.replace(anchor, `${anchor}
+      uniform float uSkinScatteringStrength;
+      uniform vec3 uSkinScatteringWrap;
+
+      // Keep the stock physical specular/clearcoat/sheen calculations. Only
+      // redistribute the diffuse term, using the SAME shadow-attenuated light
+      // that Three.js supplies to its direct-light equation.
+      void RE_Direct_GrowthTrackSkin(
+        const in IncidentLight directLight,
+        const in vec3 geometryPosition,
+        const in vec3 geometryNormal,
+        const in vec3 geometryViewDir,
+        const in vec3 geometryClearcoatNormal,
+        const in PhysicalMaterial material,
+        inout ReflectedLight reflectedLight
+      ) {
+        RE_Direct_Physical(directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight);
+        if (uSkinScatteringStrength > 0.0) {
+          float cosine = dot(geometryNormal, directLight.direction);
+          vec3 spread = uSkinScatteringWrap;
+          // Integral over the sphere equals Lambert's pi for each channel:
+          // integral[-w,1] (x+w)/(1+w)^2 dx = 1/2.
+          // Red spreads farther than green/blue, without adding a red light.
+          vec3 wrapped = max(vec3(cosine) + spread, vec3(0.0)) / ((vec3(1.0) + spread) * (vec3(1.0) + spread));
+          float sheenCompensation = 1.0;
+          #ifdef USE_SHEEN
+            float skinSheenV = IBLSheenBRDF(geometryNormal, geometryViewDir, material.sheenRoughness);
+            float skinSheenL = IBLSheenBRDF(geometryNormal, directLight.direction, material.sheenRoughness);
+            sheenCompensation = 1.0 - max3(material.sheenColor) * max(skinSheenV, skinSheenL);
+          #endif
+          reflectedLight.directDiffuse += directLight.color * BRDF_Lambert(material.diffuseContribution)
+            * (wrapped - vec3(max(cosine, 0.0))) * uSkinScatteringStrength * sheenCompensation;
+        }
+      }
+      #undef RE_Direct
+      #define RE_Direct RE_Direct_GrowthTrackSkin
+    `);
+  };
+}
+
 function installSurfaceDetailShader(material) {
-  material.customProgramCacheKey = () => 'growthtrack-physical-skin-v11-micro-tile';
+  material.customProgramCacheKey = () => 'growthtrack-physical-skin-v12-human-realism';
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uVascularityIntensity = material.uniforms.uVascularityIntensity;
     shader.uniforms.uBodyHairIntensity = material.uniforms.uBodyHairIntensity;
@@ -70,6 +139,7 @@ function installSurfaceDetailShader(material) {
     shader.uniforms.uUnitsPerCm = material.uniforms.uUnitsPerCm;
     shader.uniforms.uSkinLayers = material.uniforms.uSkinLayers;
     shader.uniforms.uSkinMicroDetail = material.uniforms.uSkinMicroDetail;
+    shader.uniforms.uHumanRealism = material.uniforms.uHumanRealism;
     for(const key of ['uSkinMicroTile','uSkinMicroStrength','uSkinMicroReady'])shader.uniforms[key]=material.uniforms[key];
     shader.uniforms.uFreckles = material.uniforms.uFreckles;
     for(const key of ['uTanPattern','uTanLower','uTanTorso','uTanTank','uTanSleeves'])shader.uniforms[key]=material.uniforms[key];
@@ -113,6 +183,7 @@ function installSurfaceDetailShader(material) {
          uniform float uUnitsPerCm;
          uniform vec3 uSkinLayers;
          uniform float uSkinMicroDetail;
+         uniform float uHumanRealism;
          uniform sampler2D uSkinMicroTile;
          uniform float uSkinMicroStrength;
          uniform float uSkinMicroReady;
@@ -216,7 +287,8 @@ function installSurfaceDetailShader(material) {
         vec3 microP=vGrowthTrackBasePosition/${HUMAN_SURFACE.micro.tileMetres.toFixed(5)};
         vec3 microBlend=abs(normalize(vFreckleNormal));microBlend/=max(dot(microBlend,vec3(1.0)),.001);
         float microHeight=dot(vec3(texture2D(uSkinMicroTile,microP.yz).r,texture2D(uSkinMicroTile,microP.zx).r,texture2D(uSkinMicroTile,microP.xy).r),microBlend);
-        roughnessFactor = clamp(roughnessFactor * max(vSkinRoughness, 0.75)+(microHeight-.5)*${HUMAN_SURFACE.micro.roughnessVariation.toFixed(5)}*uSkinMicroStrength*uSkinMicroReady*uSkinMicroDetail, 0.32, 0.85);
+        roughnessFactor = mix(roughness,roughnessFactor,uHumanRealism);
+        roughnessFactor = clamp(roughnessFactor * mix(1.0,max(vSkinRoughness, 0.75),uHumanRealism)+(microHeight-.5)*${HUMAN_SURFACE.micro.roughnessVariation.toFixed(5)}*uSkinMicroStrength*uSkinMicroReady*uSkinMicroDetail, 0.32, 0.85);
       `)
       .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
         if(uSkinMicroDetail>0.0){
@@ -241,26 +313,32 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
   const tone = toneFrom(/^#[0-9a-f]{6}$/i.test(String(options.skinColorHex || '')) ? String(options.skinColorHex) : toneOrColor);
   const sourceMaterial = mapOrMaterial?.isMaterial ? mapOrMaterial : null;
   const map = sourceMaterial?.map || (mapOrMaterial?.isTexture ? mapOrMaterial : null);
-  const surfaceDetail = Boolean(sourceMaterial && options.surfaceDetail !== false);
+  const albedoReference=sourceMaterial?.userData?.albedoReference || BODY_ALBEDO_REFERENCE;
+  const surfaceDetail = options.surfaceDetail === true || Boolean(sourceMaterial && options.surfaceDetail !== false);
   const appearance=resolveSkinAppearance(options.skinAppearance);
+  const humanRealismPercent=resolveHumanRealism(options.skinAppearance);
+  const humanRealism=humanRealismPercent/100;
+  const skinMicroStrength=microStrength(options.skinAppearance?.skinMicroDetail)*humanRealism;
+  const skinScattering=resolveSkinScattering(options.skinScattering);
   const adjustedBase=surfaceDetail?tone.base:tone.base.map((channel,i)=>channel*skinLayerMultiplier({...appearance,exposure:0})[i]);
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(...skinAlbedoTint(adjustedBase, Boolean(map))),
-    roughness: THREE.MathUtils.clamp(sourceMaterial?.roughness ?? 0.56, 0.44, 0.72),
+    color: new THREE.Color(...skinAlbedoTint(adjustedBase, Boolean(map),albedoReference)),
+    roughness: sourceMaterial?.userData?.nativeTissueMaps ? 1 : THREE.MathUtils.clamp(sourceMaterial?.roughness ?? 0.56, 0.44, 0.72),
     metalness: 0,
     map,
     normalMap: sourceMaterial?.normalMap || null,
-    normalScale: sourceMaterial?.normalScale?.clone?.() || new THREE.Vector2(0.52, 0.52),
+    normalScale: (sourceMaterial?.normalScale?.clone?.() || new THREE.Vector2(0.52, 0.52)).multiplyScalar(humanRealism),
     roughnessMap: sourceMaterial?.roughnessMap || null,
     metalnessMap: sourceMaterial?.metalnessMap || null,
     // Small surface oil response. These lobes are not subsurface scattering.
-    clearcoat: 0.03,
+    clearcoat: 0.03*humanRealism,
     clearcoatRoughness: 0.50,
-    sheen: 0.06,
+    sheen: 0.06*humanRealism,
     sheenColor: new THREE.Color(...tone.sss).offsetHSL(0.02, 0.08, 0.06),
     sheenRoughness: 0.62,
     // Skin must go dark with the lights. Self-emission is not a substitute
-    // for diffusion through tissue; full subsurface transport remains open.
+    // for diffusion through tissue. The direct diffuse-wrap shader below is
+    // an approximation; full subsurface transport remains open.
     emissive: new THREE.Color(0,0,0),
     emissiveIntensity: 0,
     // Skin is opaque. Transmission made the body look waxy and added an
@@ -284,11 +362,21 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
   material.userData = {
     ...(material.userData ?? {}),
     growthTrackSkinMaterial: true,
+    albedoReference,
     aoStrategy: 'baked-base-color',
     layeredSkinShader:surfaceDetail,
     skinAppearance:appearance,
+    humanRealismPercent,
     tanPattern:resolveTanPattern(options.skinAppearance?.skinTanPattern).id,
-    microDetail:{strength:microStrength(options.skinAppearance?.skinMicroDetail),tile:Boolean(options.microTile),metres:HUMAN_SURFACE.micro.tileMetres},
+    microDetail:{strength:skinMicroStrength,tile:Boolean(options.microTile),metres:HUMAN_SURFACE.micro.tileMetres},
+    skinScattering:{
+      model:'normalized-diffuse-wrap-v1',
+      ...skinScattering,
+      shaderStatus:'pending',
+      thicknessMap:false,
+      supportedLights:['directional','point','spot'],
+      limitations:['no-thickness-transport','no-screen-space-diffusion','no-area-or-environment-scattering'],
+    },
     // Shown only while the anatomy is revealed (HumanoidClone sets uPubicHair).
     pubicHairDensity: options.pubicRegion ? pubicHairDensity(options.pubicRegion.pattern) : 0,
   };
@@ -307,13 +395,17 @@ export function createPhysicalSkinMaterial(toneOrColor = 3, mapOrMaterial = null
     uTime: { value: 0 },
     uSkinLayers:{value:new THREE.Vector3(appearance.tan*appearance.capacity,appearance.undertone,appearance.flush)},
     uSkinMicroDetail:{value:1},
+    uHumanRealism:{value:humanRealism},
     uSkinMicroTile:{value:options.microTile || null},
     uSkinMicroReady:{value:options.microTile?1:0},
-    uSkinMicroStrength:{value:microStrength(options.skinAppearance?.skinMicroDetail)},
+    uSkinMicroStrength:{value:skinMicroStrength},
+    uSkinScatteringStrength:{value:skinScattering.strength*humanRealism},
+    uSkinScatteringWrap:{value:new THREE.Vector3(...SCATTERING_CHANNEL_SPREAD.map(channel=>channel*skinScattering.wrap))},
     ...tanLineUniforms(options.skinAppearance?.skinTanPattern),
     ...freckleUniforms(options.skinAppearance),
   };
   if (surfaceDetail) installSurfaceDetailShader(material);
+  installSkinScatteringShader(material);
   return material;
 }
 
@@ -324,6 +416,7 @@ export function updatePhysicalSkinMaterial(material, {
   vascularityIntensity = 0,
   bodyHairIntensity = 0,
   microDetail = true,
+  skinScattering,
   time = 0,
 } = {}) {
   // Delta, aura and other diagnostic ShaderMaterials also expose `uniforms`.
@@ -335,7 +428,7 @@ export function updatePhysicalSkinMaterial(material, {
     : toneFrom(fitzpatrickIndex);
   const appearance=material.userData.skinAppearance;
   const multiplier=material.userData.layeredSkinShader?[1,1,1]:skinLayerMultiplier({...appearance,exposure:0});
-  material.color?.setRGB(...skinAlbedoTint(tone.base.map((channel,i)=>channel*multiplier[i]), Boolean(material.map)));
+  material.color?.setRGB(...skinAlbedoTint(tone.base.map((channel,i)=>channel*multiplier[i]), Boolean(material.map),material.userData.albedoReference));
   material.attenuationColor?.setRGB(...tone.sss);
   material.sheenColor?.setRGB(...tone.sss);
   material.specularColor?.set('#ffffff');
@@ -347,4 +440,15 @@ export function updatePhysicalSkinMaterial(material, {
   material.uniforms.uBodyHairIntensity.value = bodyHairIntensity;
   material.uniforms.uTime.value = time;
   material.uniforms.uSkinMicroDetail.value = microDetail?1:0;
+  if (skinScattering !== undefined) {
+    const previous=material.userData.skinScattering;
+    const settings=resolveSkinScattering(skinScattering===false ? false : {...previous,...skinScattering});
+    Object.assign(previous,settings);
+    material.uniforms.uSkinScatteringWrap.value.set(...SCATTERING_CHANNEL_SPREAD.map(channel=>channel*settings.wrap));
+  }
+  // Reuse the existing LOW-tier detail gate without changing the saved skin
+  // identity. Restoring detail restores the selected scattering strength.
+  material.uniforms.uSkinScatteringStrength.value = microDetail
+    ? material.userData.skinScattering.strength*(material.userData.humanRealismPercent/100)
+    : 0;
 }

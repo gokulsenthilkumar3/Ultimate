@@ -8,7 +8,7 @@ import {
     LayoutDashboard, Wallet, TrendingUp, CreditCard,
     Receipt, Settings, Activity, LogOut, Menu, X, ChevronRight,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const navigation = [
     { name: 'Dashboard',   href: '/dashboard',   icon: LayoutDashboard },
@@ -24,6 +24,13 @@ export default function NavigationRail() {
     const pathname = usePathname();
     const { data: session } = useSession();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const toggleRef = useRef<HTMLButtonElement>(null);
+    useEffect(() => {
+        if (!mobileOpen) return;
+        const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMobileOpen(false); toggleRef.current?.focus(); } };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [mobileOpen]);
 
     if (pathname === '/') return null;
 
@@ -35,16 +42,22 @@ export default function NavigationRail() {
         <>
             {/* Mobile toggle */}
             <button
+                ref={toggleRef}
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl border border-white/10 text-white transition-all hover:bg-white/8"
                 style={{ background: 'rgba(5,5,10,0.85)', backdropFilter: 'blur(20px)' }}
                 aria-label="Toggle menu"
+                aria-expanded={mobileOpen}
+                aria-controls="oxfin-navigation"
             >
                 {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
             {/* Sidebar */}
             <aside
+                id="oxfin-navigation"
+                data-open={mobileOpen}
+                aria-label="OxFin navigation"
                 className={cn(
                     'fixed left-0 top-0 h-screen w-64 z-40 flex flex-col',
                     'border-r border-white/[0.06]',
@@ -61,7 +74,7 @@ export default function NavigationRail() {
                             OX
                         </div>
                         <div>
-                            <h1 className="text-sm font-bold text-white leading-none">OxFin</h1>
+                            <p className="text-sm font-bold text-white leading-none">OxFin</p>
                             <p className="text-[10px] text-white/30 mt-0.5 font-medium tracking-wider uppercase">Global Finance</p>
                         </div>
                     </div>
@@ -76,6 +89,7 @@ export default function NavigationRail() {
                             <Link
                                 key={item.name}
                                 href={item.href}
+                                aria-current={isActive ? 'page' : undefined}
                                 onClick={() => setMobileOpen(false)}
                                 className={cn(
                                     'group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative',

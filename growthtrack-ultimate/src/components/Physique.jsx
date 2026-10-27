@@ -56,11 +56,11 @@ export default function Physique({ user: suppliedUser }) {
 
   return <div className="physique-page physique-workspace" data-view={view}>
     <header className="px-page-header">
-      <div><span className="px-eyebrow">Wellness / Physique</span><h1>Your body, in perspective.</h1><p>Know where you are. Choose your next step. See what changes.</p></div>
-      <div className="px-action-row"><Button variant="secondary" onClick={() => selectView('3d')} icon={<Box size={17} />}>Open 3D Mirror</Button><Button onClick={openMeasurements} icon={<Ruler size={17} />}>Record a check-in</Button></div>
+      <div><span className="px-eyebrow">Wellness / Physique</span><h1>{view === '3d' ? '3D Mirror' : 'Your body, in perspective.'}</h1>{view !== '3d' && <p>Know where you are. Choose your next step. See what changes.</p>}</div>
+      <div className="px-action-row">{view !== '3d' && <Button variant="secondary" onClick={() => selectView('3d')} icon={<Box size={17} />}>Open 3D Mirror</Button>}<Button variant={view === '3d' ? 'secondary' : 'primary'} onClick={openMeasurements} icon={<Ruler size={17} />}>Record a check-in</Button></div>
     </header>
 
-    <Tabs label="Physique views" idPrefix="physique-tab" className="px-view-tabs" tabs={WORKSPACE_VIEWS} value={view} onChange={selectView} />
+    <Tabs label="Physique views" idPrefix="physique-tab" className="px-view-tabs" tabs={view === '3d' ? WORKSPACE_VIEWS.map(tab => ({ ...tab, description: undefined })) : WORKSPACE_VIEWS} value={view} onChange={selectView} />
 
     <section hidden={view !== 'blueprint'} id="physique-panel-blueprint" role="tabpanel" aria-labelledby="physique-tab-blueprint" tabIndex={0} className="px-panel">
       <div className="px-stat-grid">

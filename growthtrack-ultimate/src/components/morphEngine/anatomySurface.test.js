@@ -12,6 +12,11 @@ describe('anatomy surface', () => {
     expect(shader.fragmentShader).toContain('float glansSurface');
     updateAnatomySurface(material,{foreskinCoverage:.75});
     expect(shader.uniforms.uAnatomyCoverage.value).toBe(.75);
+    material.userData.humanRealismPercent=0;
+    updateAnatomySurface(material,{landmarks:{coronaT:.69}});
+    expect(material.bumpScale).toBe(0);
+    expect(shader.uniforms.uAnatomyRealism.value).toBe(0);
+    expect(shader.uniforms.uAnatomyCorona.value).toBe(.69);
     material.dispose();
   });
   it('keeps the shaft nearly flat and folds the scrotum', () => {
@@ -33,7 +38,8 @@ describe('anatomy surface', () => {
     expect(texture.image.width).toBe(ANATOMY_SURFACE_SIZE);
     expect(texture).toMatchObject({ generateMipmaps: true, colorSpace: THREE.NoColorSpace, wrapS: THREE.RepeatWrapping });
     const material = applyAnatomySurface(new THREE.MeshPhysicalMaterial());
-    expect(material).toMatchObject({ vertexColors: true, bumpMap: texture });
+    expect(material.vertexColors).toBe(true);
+    expect(material.bumpMap).toBe(texture);
     expect(material.bumpScale).toBe(ANATOMY_BUMP_SCALE);
   });
 

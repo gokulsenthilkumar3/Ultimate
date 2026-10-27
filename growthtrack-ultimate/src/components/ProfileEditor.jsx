@@ -208,7 +208,7 @@ const getBodyProfileFormDefaults = (profile = {}) => ({
 
 const BODY_APPEARANCE_SELECT_FIELDS = Object.freeze([
   { field: 'biologicalSex', label: 'Biological sex', options: ['', 'female', 'male', 'intersex', 'nonbinary', 'prefer_not_to_say'] },
-  { field: 'modelVersion', label: '3D model version', options: ['', 'legacy', 'v2'] },
+  { field: 'modelVersion', label: '3D model version', options: ['', 'legacy', 'v2', 'human-r2'] },
   { field: 'modelPreset', label: 'Model asset preset', options: ['', 'auto', 'neutral', 'female', 'male'] },
   { field: 'skinUndertone', label: 'Skin undertone', options: ['', 'cool', 'neutral', 'warm', 'olive'] },
   { field: 'skinTextureVariant', label: 'Skin texture', options: ['', 'natural', 'smooth', 'detailed', 'mature'] },
@@ -836,7 +836,7 @@ export default function ProfileEditor() {
       <header className="gt-editorial-settings__header">
         <div>
           <p className="gt-editorial-settings__eyebrow">YOUR ACCOUNT / GROWTH<span aria-hidden="true">TRACK</span></p>
-          <h1 className="gt-editorial-settings__title">A considered space for your details.</h1>
+          <h1 className="gt-editorial-settings__title">Profile &amp; settings</h1>
           <p className="gt-editorial-settings__intro">Review your identity, privacy, connections and display preferences.</p>
         </div>
         <div className="gt-editorial-settings__save">

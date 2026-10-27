@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Network, Users, CalendarDays, Settings, ChevronLeft, ChevronRight, BookOpen, Image as ImageIcon } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
@@ -20,10 +20,23 @@ export const Sidebar: React.FC = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore();
   const { currentUser } = useAuthStore();
   const { currentUserRole } = useFamilyStore();
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && window.matchMedia('(max-width: 1023px)').matches) {
+        toggleSidebar();
+        document.querySelector<HTMLButtonElement>('.family-topbar button')?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sidebarOpen, toggleSidebar]);
 
   return (
-    <div 
-      className={`bg-gradient-to-b from-[var(--color-navy)] to-[#050814] text-white h-screen flex flex-col transition-all duration-300 relative border-r border-white/5 shadow-2xl ${
+    <>
+    {sidebarOpen && <button type="button" className="family-nav-backdrop" aria-label="Close navigation" onClick={toggleSidebar} />}
+    <div id="family-navigation" data-open={sidebarOpen}
+      className={`family-sidebar bg-gradient-to-b from-[var(--color-navy)] to-[#050814] text-white h-screen flex flex-col transition-all duration-300 relative border-r border-white/5 shadow-2xl ${
         sidebarOpen ? 'w-64' : 'w-20'
       }`}
     >
@@ -43,6 +56,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Toggle Button */}
       <button 
+        type="button" aria-label={sidebarOpen ? 'Collapse navigation' : 'Expand navigation'} aria-expanded={sidebarOpen} aria-controls="family-navigation"
         onClick={toggleSidebar}
         className="absolute -right-3 top-20 bg-gradient-to-r from-[var(--color-saffron)] to-orange-500 text-white p-1.5 rounded-full shadow-lg shadow-orange-500/20 z-10 hover:scale-110 transition-transform border border-white/20"
       >
@@ -50,7 +64,7 @@ export const Sidebar: React.FC = () => {
       </button>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-3 space-y-2">
+      <nav aria-label="Family navigation" className="flex-1 min-h-0 overflow-y-auto py-6 px-3 space-y-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -116,5 +130,6 @@ export const Sidebar: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };

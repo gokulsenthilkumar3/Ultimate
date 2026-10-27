@@ -38,7 +38,7 @@ export default function InvestmentsPage() {
 
             {/* Performance Card */}
             <div className="card" style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.1), rgba(0,212,160,0.02))', border: '1px solid rgba(108,99,255,0.2)', padding: '24px 32px', marginBottom: 28 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="fs-investment-summary">
                     <div>
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>Current Portfolio Value</div>
                         <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-1px' }}>
@@ -55,7 +55,7 @@ export default function InvestmentsPage() {
             </div>
 
             {/* Asset Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
+            <div className="fs-asset-grid">
                 {assets.map((asset) => {
                     const value = asset.shares * asset.currentPrice;
                     const assetPL = value - asset.invested;

@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import useStore, {
   selectGoals, selectAddGoal, selectDeleteGoal, selectUpdateGoal,
@@ -324,16 +325,9 @@ export default function GoalsDashboard() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.3rem' }}>Goal Tracking</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Goals</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{stats.active} active · {stats.completed} completed</p>
-        </div>
-        <button type="button" aria-expanded={showAdd} aria-controls="new-goal-form" onClick={() => setShowAdd(s => !s)} className="btn-primary">
+      <PageHeader accent="Workspace" title="Goals" subtitle={<>{stats.active} active · {stats.completed} completed</>} actions={<><button type="button" aria-expanded={showAdd} aria-controls="new-goal-form" onClick={() => setShowAdd(s => !s)} className="btn-primary">
           <Plus size={14} /> New Goal
-        </button>
-      </div>
+        </button></>} />
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>

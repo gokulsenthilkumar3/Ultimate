@@ -99,11 +99,15 @@ export function measureModelSections(mesh, weights = {}, metrics = {}) {
   const cmPerUnit = 175 / height, centerX = (minX + maxX) / 2;
   const points = neutralMorphPositions(mesh, weights);
   return MODEL_SECTIONS.map(({ key, label, fraction }) => {
-    const contours = horizontalContours(points, mesh.geometry.index, minY + height * fraction);
+    const landmark=mesh.userData?.humanLandmarks?.sections?.[key];
+    const vertex=landmark?.vertex;
+    const hasLandmark=Number.isInteger(vertex) && vertex>=0 && vertex<base.count;
+    const planeY=hasLandmark?points[vertex*3+1]:minY + height * fraction;
+    const contours = horizontalContours(points, mesh.geometry.index, planeY);
     const torso = contours.filter(({ polygon }) => Math.min(...polygon.map(p => p[0])) < centerX && Math.max(...polygon.map(p => p[0])) > centerX);
     const measured = torso.length === 1 ? torso[0].perimeter * cmPerUnit : null;
     const entered = typeof metrics[key] === 'number' && Number.isFinite(metrics[key]) && metrics[key] > 0 ? metrics[key] : null;
-    return { key, label, fraction, measured, entered, error: measured !== null && entered !== null ? measured - entered : null,
+    return { key, label, fraction, method:hasLandmark?'asset-landmark':'stature-fraction',landmarkValidated:hasLandmark && mesh.userData.humanLandmarks.validated===true, measured, entered, error: measured !== null && entered !== null ? measured - entered : null,
       reason: measured === null ? 'A unique closed torso contour could not be measured.' : null };
   });
 }

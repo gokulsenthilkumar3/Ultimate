@@ -50,7 +50,7 @@ export default function NotificationCenter({ notificationState }) {
     {error && <PageState state="error" title="Notifications could not be loaded" description={error.message} onRetry={() => perform(state.refresh)} />}
     {loading && <PageState state="loading" title="Loading reminders" />}
     {!state.enabled && <p role="status">Notifications are paused for this account. Enable them in Profile &amp; Settings.</p>}
-    {preferences && <Card style={{ padding: '1rem' }}>
+    {preferences && <details className="notification-preferences"><summary>Reminder preferences</summary><Card style={{ padding: '1rem' }}>
       <h2>Reminder preferences</h2>
       <p>Changes are shown after the server acknowledges them. Financial renewals start off. Reminders never complete or edit source records.</p>
       <fieldset disabled={disabled} style={{ border: 0, padding: 0, display: 'flex', flexWrap: 'wrap', gap: '.75rem 1.5rem' }}>
@@ -63,7 +63,7 @@ export default function NotificationCenter({ notificationState }) {
         </label>)}
       </fieldset>
       {state.timeZone && <small>Due dates use your profile timezone: {state.timeZone}.</small>}
-    </Card>}
+    </Card></details>}
     <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
       {['unread', 'all', 'dismissed'].map(filter => <Button key={filter} variant="secondary" aria-pressed={view === filter} onClick={() => setView(filter)}>{filter[0].toUpperCase() + filter.slice(1)}</Button>)}
       <label>Source <select value={category} onChange={event => setCategory(event.target.value)}>

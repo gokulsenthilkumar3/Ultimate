@@ -1,0 +1,36 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"16px","primaryColor":"#f6f6f3","primaryTextColor":"#242b27","primaryBorderColor":"#65716b","lineColor":"#65716b","clusterBkg":"#ffffff","clusterBorder":"#abb5ae"},"flowchart":{"htmlLabels":true,"curve":"basis","nodeSpacing":28,"rankSpacing":45}}}%%
+flowchart LR
+  subgraph CLIENT["CURRENT / Browser runtime"]
+    SHELL["App / Physique route<br/>Initial account-load gate"]
+    STATE["Per-person semantic draft<br/>useAvatarRecord + useParametricAvatar<br/>Current / Goal JSON"]
+    UI["ParametricAvatarStudio<br/>Controls / asset and export orchestration"]
+    CPU["ParametricAvatarViewport<br/>parametricIdentity + rig fit<br/>CPU bake on MAIN THREAD"]
+    PREP["Attachment / posed-buffer preparation<br/>MAIN THREAD"]
+    QUEUE["garmentFitQueue<br/>80 ms debounce<br/>Latest revision + convergence checks"]
+    WORKER["garmentFit.worker<br/>BVH / proxy contact solve"]
+    RENDER["R3F / Three.js Canvas<br/>Neutral lighting / PBR materials<br/>Render on demand"]
+    EXPORT["Browser GLB / ZIP export<br/>Waits for current garment fit<br/>Download to a file"]
+    LEGACY["Comparison branch<br/>HumanoidViewer / CloneEngine<br/>use3DStore"]
+    SHELL --> STATE
+    SHELL --> LEGACY
+    STATE --> UI
+    UI --> CPU
+    CPU -->|baked body| RENDER
+    CPU --> PREP
+    PREP --> QUEUE
+    QUEUE -->|transfer posed arrays| WORKER
+    WORKER -->|revision / result| QUEUE
+    QUEUE -->|apply accepted garment| RENDER
+    UI -->|request export| EXPORT
+    RENDER -->|current runtime snapshot| EXPORT
+    QUEUE -->|flush current revision| EXPORT
+  end
+  ASSETS["Static GLBs / textures / manifests<br/>Parametric basis hash-verified<br/>No persistent GLB cache today"]
+  API["Workspace gateway -> Ultimate API<br/>Acknowledged semantic saves"]
+  DB[("SQLite / existing profile JSON<br/>No GLB export stored here")]
+  ASSETS --> UI
+  ASSETS --> LEGACY
+  STATE -->|400 ms save debounce| API
+  API --> DB
+  classDef main fill:#fff5de,stroke:#a46b16,color:#29251f,stroke-width:2px;
+  class CPU,PREP main;

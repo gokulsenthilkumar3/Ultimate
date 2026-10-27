@@ -1,5 +1,6 @@
 import {Box3, Float32BufferAttribute, Group, Matrix4, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, SphereGeometry, Vector3} from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {createFallbackCrown, FALLBACK_DENTAL_ARCH} from './dentalGeometry.js';
 
 const smooth = (a,b,x) => {const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 
@@ -55,12 +56,13 @@ export function prepareFaceGeometry(body, features=[]) {
 }
 
 function roundedPart(size,position){
-  const geometry=new SphereGeometry(1,12,8);geometry.scale(...size);geometry.translate(...position);return geometry;
+  const geometry=new SphereGeometry(1,12,8);geometry.deleteAttribute('uv');geometry.scale(...size);geometry.translate(...position);return geometry;
 }
 
-/** One oral assembly, fitted to actual upper/lower lip anchors. Six draw
- * calls, independent upper/lower dental arches, and a recessed cavity. The
- * anchor vertices already include facial morphs and skinning. */
+/** Calibrated procedural fallback for the bundled HM08-derived family. The
+ * upper arch follows the skull; only the lower arch/tongue follow the jaw.
+ * Posed lips determine visibility and cavity cover, never tooth motion.
+ * This is not a reference-fitted dental asset or a clinical jaw model. */
 export function createMouthInterior(body){
   const calibration=body?.userData.faceCorrective;if(!calibration)return null;
   const {scale}=calibration, centre=new Vector3(...calibration.centre),p=body.geometry.attributes.position;
@@ -72,36 +74,105 @@ export function createMouthInterior(body){
   const cavityMaterial=new MeshStandardMaterial({color:'#210c10',roughness:1});
   const tongueMaterial=new MeshPhysicalMaterial({color:'#9c515b',roughness:.52,clearcoat:.12});
   const arch=(upper)=>{
-    const pieces=[],gums=[];
-    for(let i=0;i<12;i++){
-      const angle=(i-5.5)*.2, x=Math.sin(angle)*.025, z=(Math.cos(angle)-1)*.027;
-      const width=Math.abs(i-5.5)<2?.0036:.0030, height=upper?.0042:.0034;
-      pieces.push(roundedPart([width,height,.0025],[x,(upper?1:-1)*.002,z]));
-      gums.push(roundedPart([width*1.05,.003,.003],[x,(upper?1:-1)*.0065,z-.001]));
+    const pieces=[],gums=[],toothRecords=[];
+    for(const side of [-1,1])for(const tooth of FALLBACK_DENTAL_ARCH){
+      const angle=side*tooth.angle, x=Math.sin(angle)*.028, z=(Math.cos(angle)-1)*.030;
+      const height=tooth.height*(upper?1:.86),width=tooth.width*(upper?1:.94);
+      const crown=createFallbackCrown({...tooth,height,width});
+      // Crowns grow from their gum toward the opposing dental row.
+      if(upper)crown.rotateZ(Math.PI);
+      // Fit the cutting edge below the upper lip and the lower crowns above
+      // its margin. A gum-centred mount hid every upper crown behind the lip.
+      crown.rotateY(angle);crown.translate(x,upper?.003:-.007,z-(upper?0:.0055));
+      const start=pieces.reduce((count,g)=>count+g.attributes.position.count,0);
+      toothRecords.push({id:`${upper?'upper':'lower'}-${side<0?'right':'left'}-${tooth.kind}`,
+        kind:tooth.kind,start,count:crown.attributes.position.count});
+      pieces.push(crown);
+      const gingiva=roundedPart([width*.56,.0028,tooth.depth*.58],[0,0,0]);
+      gingiva.rotateY(angle);gingiva.translate(x,upper?.004:-.008,z-.0007-(upper?0:.0055));gums.push(gingiva);
     }
+    // Roof/floor provide backing behind the dental rows without new draws.
+    gums.push(roundedPart([.022,.003,.022],[0,upper?.012:-.009,upper?-.020:-.0255]));
     const geometry=mergeGeometries([...pieces,...gums],true);pieces.concat(gums).forEach(g=>g.dispose());
-    geometry.groups.forEach((entry,i)=>{entry.materialIndex=i<12?0:1;});
     // Collapse adjacent groups to two material draws per arch.
-    const split=geometry.groups[12].start,total=geometry.index.count;geometry.clearGroups();geometry.addGroup(0,split,0);geometry.addGroup(split,total-split,1);
-    return new Mesh(geometry,[teeth,gum]);
+    const split=geometry.groups[pieces.length].start,total=geometry.index.count;geometry.clearGroups();geometry.addGroup(0,split,0);geometry.addGroup(split,total-split,1);
+    const mesh=new Mesh(geometry,[teeth,gum]);
+    mesh.userData={source:'procedural-dental-fallback-v1',teeth:toothRecords};
+    return mesh;
   };
-  const upper=arch(true),lower=arch(false),cavity=new Mesh(roundedPart([.028,.021,.012],[0,0,-.014]),cavityMaterial),tongue=new Mesh(roundedPart([.017,.0035,.014],[0,0,-.010]),tongueMaterial);
+  // The rear cap must stay behind the entire lower dental path. A cap fitted
+  // only to the closed mouth occludes the receding lower arch during opening.
+  const upper=arch(true),lower=arch(false),cavity=new Mesh(roundedPart([.028,.021,.012],[0,0,-.040]),cavityMaterial),tongue=new Mesh(roundedPart([.017,.0035,.014],[0,0,-.027]),tongueMaterial);
   upper.name='UpperTeethAndGums';lower.name='LowerTeethAndGums';tongue.name='Tongue';
-  group.add(cavity,upper,lower,tongue);group.scale.setScalar(scale);body.add(group);
-  const a=new Vector3(),b=new Vector3(),l=new Vector3(),r=new Vector3(),x=new Vector3(),y=new Vector3(),z=new Vector3(),basis=new Matrix4();
+  cavity.name='OralCavity';
+  const jawGroup=new Group();jawGroup.name='CalibratedLowerJaw';
+  // Older baked R2 metadata has centre/scale only. Derive the same pivot used
+  // by prepareFaceGeometry without rewriting the asset's baked correctives.
+  const pivot=new Vector3(0,.775-.7313,.103-.1545+.006);
+  jawGroup.position.copy(pivot);lower.position.copy(pivot).negate();
+  tongue.position.copy(pivot).negate().y-=.004;
+  jawGroup.add(lower,tongue);group.add(cavity,upper,jawGroup);body.add(group);
+
+  const skull={left:nearest(centre.clone().add(new Vector3(-.038,.037,-.020).multiplyScalar(scale))),
+    right:nearest(centre.clone().add(new Vector3(.038,.037,-.020).multiplyScalar(scale))),
+    top:nearest(centre.clone().add(new Vector3(0,.080,-.031).multiplyScalar(scale)))};
+  // These landmarks fit the head envelope. Local lip/nose/eye changes must
+  // not drag the maxillary dental row with the skin they happen to modify.
+  const excluded=new Set(['blink','smile','jaw_open','lip_fullness','nose_bridge_width','nose_tip_size','nose_length','eye_size','brow_depth','ear_prominence']);
+  const identityMorphs=Object.entries(body.morphTargetDictionary || {})
+    .filter(([name,index])=>!excluded.has(name) && body.geometry.morphAttributes.position?.[index])
+    .map(([,index])=>({index,attribute:body.geometry.morphAttributes.position[index]}));
+  const scratch=new Vector3(),base=new Vector3();
+  function identityPosition(index,target){
+    target.fromBufferAttribute(p,index);
+    for(const {index:slot,attribute} of identityMorphs){
+      const weight=body.morphTargetInfluences?.[slot] || 0;if(!weight)continue;
+      scratch.fromBufferAttribute(attribute,index);
+      if(!body.geometry.morphTargetsRelative)scratch.sub(base.fromBufferAttribute(p,index));
+      target.addScaledVector(scratch,weight);
+    }
+    return target;
+  }
+  const left=new Vector3(),right=new Vector3(),top=new Vector3(),mid=new Vector3(),x=new Vector3(),y=new Vector3(),z=new Vector3();
+  const restBasis=new Matrix4(),identityBasis=new Matrix4(),headSkin=new Matrix4(),fitted=new Matrix4();
+  function skullBasis(target,identity=false){
+    if(identity){identityPosition(skull.left,left);identityPosition(skull.right,right);identityPosition(skull.top,top);}
+    else {left.fromBufferAttribute(p,skull.left);right.fromBufferAttribute(p,skull.right);top.fromBufferAttribute(p,skull.top);}
+    mid.copy(left).add(right).multiplyScalar(.5);
+    x.subVectors(right,left);const width=x.length();x.normalize();
+    y.subVectors(top,mid);const height=y.length();
+    z.crossVectors(x,y).normalize();y.crossVectors(z,x).normalize();
+    target.makeBasis(x.multiplyScalar(width),y.multiplyScalar(height),z.multiplyScalar((width+height)*.5));target.setPosition(mid);
+    return width>1e-8 && height>1e-8 && z.lengthSq()>1e-12;
+  }
+  if(!skullBasis(restBasis)){group.removeFromParent();group.traverse(node=>node.geometry?.dispose());[teeth,gum,cavityMaterial,tongueMaterial].forEach(m=>m.dispose());return null;}
+  restBasis.invert();
+  const placement=new Matrix4().makeTranslation(centre.x,centre.y,centre.z-.006*scale);
+  placement.scale(new Vector3(scale,scale,scale));
+  const headIndex=body.skeleton?.bones.findIndex(bone=>/^(head|mixamorighead|bip01_head)$/i.test(bone.name)) ?? -1;
+  const a=new Vector3(),b=new Vector3(),normal=new Vector3(),localNormal=new Vector3(0,1,0);
+  const report={method:'skull-bound-hinged-jaw-fallback-v1',source:'procedural-dental-fallback-v1',gap:0,visible:false,jawAngle:0,
+    toothCount:28,crownTypes:['incisor','canine','premolar','molar'],
+    upperAttachment:'skull',lowerAttachment:'calibrated-jaw-hinge',parts:['upperTeeth','lowerTeeth','gums','tongue','palate','floor','cavity']};
   function update(){
     body.updateWorldMatrix(true,false);body.skeleton?.update();
-    body.getVertexPosition(anchors.upper,a);body.getVertexPosition(anchors.lower,b);body.getVertexPosition(anchors.left,l);body.getVertexPosition(anchors.right,r);
-    x.subVectors(r,l).normalize();y.subVectors(a,b).normalize();z.crossVectors(x,y).normalize();y.crossVectors(z,x).normalize();
-    if(z.lengthSq()<.5){group.visible=false;return;}
-    group.position.copy(a).addScaledVector(z,-.006*scale);
-    basis.makeBasis(x,y,z);group.quaternion.setFromRotationMatrix(basis);
-    const gap=Math.max(0,a.distanceTo(b)/scale-.0012);
-    lower.position.y=-gap;upper.position.y=0;tongue.position.y=-gap+.002;
+    if(!skullBasis(identityBasis,true)){group.visible=false;report.visible=false;return;}
+    fitted.copy(identityBasis).multiply(restBasis).multiply(placement);
+    if(headIndex>=0){
+      headSkin.copy(body.bindMatrixInverse).multiply(body.skeleton.bones[headIndex].matrixWorld)
+        .multiply(body.skeleton.boneInverses[headIndex]).multiply(body.bindMatrix);
+      fitted.premultiply(headSkin);
+    }
+    fitted.decompose(group.position,group.quaternion,group.scale);
+    body.getVertexPosition(anchors.upper,a);body.getVertexPosition(anchors.lower,b);
+    normal.copy(localNormal).applyQuaternion(group.quaternion);
+    const gap=Math.max(0,a.sub(b).dot(normal)/scale-.0012);
+    const jaw=Math.max(0,Math.min(1,body.morphTargetInfluences?.[body.morphTargetDictionary?.jaw_open] || 0));
+    jawGroup.rotation.x=.36*jaw;
     cavity.position.y=-gap*.5;cavity.scale.y=Math.max(.35,(gap+.008)/.04);
-    const jaw=body.morphTargetInfluences[body.morphTargetDictionary.jaw_open] || 0;
-    group.visible=jaw>.025;
-    body.userData.mouthInterior={method:'posed-lip-anchors',gap,visible:group.visible,parts:['upperTeeth','lowerTeeth','gums','tongue','cavity']};
+    group.visible=gap>.0005;
+    report.gap=gap;report.visible=group.visible;report.jawAngle=jawGroup.rotation.x;
+    body.userData.mouthInterior=report;
   }
-  return {group,anchors,update,dispose(){group.removeFromParent();group.children.forEach(m=>m.geometry.dispose());[teeth,gum,cavityMaterial,tongueMaterial].forEach(m=>m.dispose());}};
+  return {group,anchors,upper,lower,jaw:jawGroup,update,dispose(){group.removeFromParent();group.traverse(m=>m.geometry?.dispose());[teeth,gum,cavityMaterial,tongueMaterial].forEach(m=>m.dispose());if(body.userData.mouthInterior===report)delete body.userData.mouthInterior;}};
 }

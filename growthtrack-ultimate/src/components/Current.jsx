@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import { EMPTY_RECORD } from '../lib/emptyValues';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -136,23 +137,18 @@ export default function Current() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Hero: Time-of-day gradient */}
-      <div style={{
-        borderRadius: '20px', overflow: 'hidden', marginBottom: '1.5rem',
-        background: `linear-gradient(135deg, ${tg.from}, ${tg.to})`,
-        position: 'relative', padding: '2.5rem 2rem',
-        boxShadow: `0 8px 40px ${tg.to}33`,
-      }}>
+      <PageHeader accent="Insights" title="Current" subtitle="Local conditions and current information. Location is optional." /><section className="current-context">
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <p style={{ fontSize: '0.72rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+              <p style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--gt-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
                 {tg.emoji} {tg.label} · {formatDate(now, user, { style: 'long', weekday: true })}
               </p>
-              <p style={{ fontSize: '3rem', fontWeight: 900, color: '#fff', lineHeight: 1, fontFamily: 'var(--font-display, system-ui)', marginBottom: '0.25rem' }}>
+              <p style={{ fontSize: '1.75rem', fontWeight: 650, color: 'var(--gt-text)', lineHeight: 1, fontFamily: 'var(--font-display, system-ui)', marginBottom: '0.25rem' }}>
                 {formatTime(now, user, { hour: '2-digit', minute: '2-digit' })}
               </p>
               {city && (
-                <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--gt-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <MapPin size={13} /> {city}
                 </p>
               )}
@@ -160,7 +156,7 @@ export default function Current() {
 
             {/* Weather summary */}
             {weatherLoading && location ? (
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>Loading weather…</div>
+              <div style={{ color: 'var(--gt-muted)', fontSize: '0.82rem' }}>Loading weather…</div>
             ) : weatherError ? (
               <div style={{ color: 'rgba(255,100,100,0.9)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <AlertTriangle size={14} /> Weather is unavailable right now. Try again when you are ready.
@@ -170,25 +166,25 @@ export default function Current() {
             ) : cur && (
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '3rem', lineHeight: 1 }}>{wmo.icon}</p>
-                <p style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{formatTemperature(cur.temperature_2m, user)}</p>
-                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.8)', marginTop: '4px' }}>{wmo.label}</p>
+                <p style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--gt-text)', lineHeight: 1 }}>{formatTemperature(cur.temperature_2m, user)}</p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--gt-muted)', marginTop: '4px' }}>{wmo.label}</p>
               </div>
             )}
           </div>
 
           {/* Hour progress bar */}
-          <div style={{ marginTop: '1.5rem' }}>
+          <div style={{ marginTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.6)' }}>00:00</span>
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.6)' }}>Day {Math.round((hour / 24) * 100)}%</span>
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.6)' }}>24:00</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--gt-muted)' }}>00:00</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--gt-muted)' }}>Day {Math.round((hour / 24) * 100)}%</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--gt-muted)' }}>24:00</span>
             </div>
             <div style={{ height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '99px' }}>
               <div style={{ height: '100%', width: `${(hour / 24) * 100}%`, background: 'rgba(255,255,255,0.7)', borderRadius: '99px', transition: 'width 1s ease' }} />
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Weather detail cards */}
       {!weatherLoading && !weatherError && weatherCards.length > 0 && (

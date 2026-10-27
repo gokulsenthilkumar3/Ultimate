@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "model": "burley-profile-local-preintegration-v1",
+  "basisSha256": "6627588660aa6c754aaa2edb181bc01a8ca60c3b4c534efa3e87f636ce5cda18",
+  "maps": {
+    "thickness": {
+      "path": "assets/parametric/skin/thickness.png",
+      "sha256": "9236a985d817efe9a036d682a25555debae777cbfbc9cc1bd84843cf3c8018ad",
+      "bytes": 350238,
+      "width": 1024,
+      "height": 1024,
+      "colorSpace": "linear",
+      "flipY": false,
+      "losslessRequired": true
+    },
+    "diffusionLut": {
+      "path": "assets/parametric/skin/thickness-diffusion-lut.png",
+      "sha256": "a4129f5b063cc43e8f3b783c8dfaa9e4fc7e04267e805463759684e5d8d490ac",
+      "bytes": 12001,
+      "width": 128,
+      "height": 128,
+      "colorSpace": "linear",
+      "flipY": false,
+      "losslessRequired": true,
+      "generateMipmaps": false,
+      "minFilter": "linear",
+      "purpose": "lookup"
+    }
+  },
+  "diffusionDistanceMm": [
+    1.2,
+    0.55,
+    0.3
+  ],
+  "maximumCurvaturePerMm": 0.25,
+  "maximumThicknessMm": 60,
+  "encoding": {
+    "thickness": "RG-u16-normalized-mm",
+    "confidence": "B",
+    "thicknessMeaning": "neutral-object-inward-normal-chord",
+    "physiologicalDermalThickness": false
+  },
+  "bake": {
+    "vertices": 14517,
+    "validVertices": 14458,
+    "epsilonMetres": 0.00005,
+    "maximumRayMetres": 0.6,
+    "minUnclippedMm": 0.7477730206674146,
+    "medianUnclippedMm": 36.31694800958235,
+    "p95UnclippedMm": 212.9451757948203,
+    "maxUnclippedMm": 504.21359016639144,
+    "neutralOnly": true
+  },
+  "sources": [
+    {
+      "title": "Burley 2015 normalized diffusion profile and its radial CDF, independent formula implementation",
+      "url": "https://raw.githubusercontent.com/mmp/pbrt-v3/master/src/materials/disney.cpp"
+    },
+    {
+      "title": "Burley 2015 BSDF course notes: spatial diffusion assumptions and limitations",
+      "url": "https://blog.selfshadow.com/publications/s2015-shading-course/burley/s2015_pbs_disney_bsdf_notes.pdf"
+    },
+    {
+      "title": "Chen, Lambert and Penner 2014: preintegrated curvature and its limitations",
+      "url": "https://history.siggraph.org/wp-content/uploads/2022/12/2014-Poster-77-Chen_PDSS_-Pre-Integrated-Deferred-Subsurface-Scattering.pdf"
+    }
+  ],
+  "licenseFiles": [
+    {
+      "path": "assets/parametric/skin/thickness-SOURCE.md",
+      "sha256": "710e34ba94ec754282f089a8729c937f6bb93cef673b7d104f3bce08f26530dd",
+      "bytes": 2306
+    }
+  ],
+  "limitations": [
+    "Local curvature irradiance proxy, not a full spatial BSSRDF.",
+    "No irradiance transport across shadow boundaries or area/environment subsurface integration.",
+    "Neutral whole-object chord thickness is not measured skin-layer thickness and is not refitted for identity/pose.",
+    "Profile-tail thin-object response is a bounded approximation, not a thin-slab volume solution.",
+    "Initial channel distances need reference-image calibration."
+  ]
+}

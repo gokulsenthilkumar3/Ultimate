@@ -1,0 +1,24 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"17px","primaryColor":"#f6f6f3","primaryTextColor":"#242b27","primaryBorderColor":"#65716b","lineColor":"#65716b","clusterBkg":"#ffffff","clusterBorder":"#abb5ae"},"flowchart":{"htmlLabels":true,"curve":"basis","nodeSpacing":30,"rankSpacing":48}}}%%
+flowchart LR
+  subgraph BROWSER["Client browser / Ultimate command center"]
+    UI["React shell and navigation<br/>App.jsx"]
+    AVATAR["3D subsystem<br/>Comparison viewer + appearance studio<br/>Expanded in avatar-3d-current"]
+    CHAT["Agents UI<br/>Ask / Insights / reviewed plans"]
+    UI -->|lazy route| AVATAR
+    UI --> CHAT
+  end
+  HOST["UI / static asset host<br/>Vite :5000 in development"]
+  GATEWAY["Workspace API gateway<br/>:5300 / HTTP routing"]
+  CORE["Ultimate API :3001<br/>Auth / records / Agents proxy"]
+  DB[("SQLite via Prisma<br/>Semantic records and avatar JSON")]
+  PRODUCTS["Companion UI and API processes<br/>FinSync / OxFin / Forex<br/>Family Connect / Equity"]
+  AI["Model service boundary<br/>Groq hosted models OR Ollama<br/>No avatar generation implemented"]
+  HOST -->|JS / GLBs / textures| UI
+  HOST -->|direct static requests| AVATAR
+  UI -->|workspace API proxy| GATEWAY
+  CHAT -->|authenticated API requests| GATEWAY
+  GATEWAY --> CORE
+  GATEWAY --> PRODUCTS
+  CORE --> DB
+  CORE -->|text generation only| AI
+  UI -->|embedded product pages| PRODUCTS

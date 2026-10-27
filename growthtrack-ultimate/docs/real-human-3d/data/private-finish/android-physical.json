@@ -1,0 +1,5 @@
+{
+  "status": "no-device",
+  "physicalDeviceTested": false,
+  "detail": "Exactly one USB-debugging-authorized Android phone is required. No unrelated browser tabs or owner records are inspected."
+}

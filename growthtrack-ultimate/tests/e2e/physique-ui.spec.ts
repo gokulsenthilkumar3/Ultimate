@@ -124,7 +124,8 @@ test('failed profile saves preserve the draft and do not write history', async (
 
 test('3D mirror detail tabs are accessible and responsive', async ({ page }) => {
   await seedPhysique(page); const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/wellness/physique?view=3d'); await expect(page.getByRole('heading', { name: 'Your 3D mirror', exact: true })).toBeVisible();
+  await page.goto('/wellness/physique?view=3d'); await expect(page.getByRole('heading', { name: '3D Mirror', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Appearance studio', exact: true }).click();
   const editor = page.getByRole('tablist', { name: 'Avatar editor', exact: true });
   await expect(editor).toBeVisible({ timeout: 30000 });
   for (const name of ['Measure', 'Face', 'Hair', 'Skin', 'Anatomy', 'Clothing', 'View']) {
@@ -135,6 +136,7 @@ test('3D mirror detail tabs are accessible and responsive', async ({ page }) => 
   }
   await editor.getByRole('tab', { name: 'View', exact: true }).focus(); await page.keyboard.press('Home');
   await expect(editor.getByRole('tab', { name: 'Measure', exact: true })).toBeFocused();
+  await page.getByText('History, snapshots and measurements', { exact: true }).click();
   const details = page.getByRole('tablist', { name: 'Physique details', exact: true }); await expect(details).toBeVisible({ timeout: 30000 });
   await details.getByRole('tab', { name: 'Summary', exact: true }).focus(); await page.keyboard.press('ArrowRight');
   await expect(details.getByRole('tab', { name: 'Measurements', exact: true })).toBeFocused();
@@ -161,17 +163,16 @@ test('3D mirror detail tabs are accessible and responsive', async ({ page }) => 
 test('editing a live metric leaves the frozen timeline and shows the edited clone', async ({ page }) => {
   await seedPhysique(page);
   await page.goto('/wellness/physique?view=3d');
-  await expect(page.getByRole('heading', { name: 'Your 3D mirror', exact: true })).toBeVisible();
-  const timelineMode = page.getByRole('group', { name: 'Comparison mode' }).getByRole('button', { name: 'Timeline', exact: true });
+  await expect(page.getByRole('heading', { name: '3D Mirror', exact: true })).toBeVisible();
+  await page.getByText('History, snapshots and measurements', { exact: true }).click();
+  const timelineMode = page.getByRole('button', { name: 'Open timeline', exact: true });
   const currentMode = page.getByRole('group', { name: 'Comparison mode' }).getByRole('button', { name: 'Current', exact: true });
   await timelineMode.click();
-  await expect(timelineMode).toHaveAttribute('aria-pressed', 'true');
-  const measureTab = page.getByRole('tablist', { name: 'Avatar editor', exact: true }).getByRole('tab', { name: 'Measure', exact: true });
-  await measureTab.click();
-  const currentWeight = page.getByRole('slider', { name: 'Current Weight', exact: true });
-  await currentWeight.focus();
-  await currentWeight.press('ArrowRight');
+  await expect(page.getByRole('slider', { name: 'Timeline position' })).toBeVisible();
+  const currentWeight = page.getByRole('textbox', { name: 'Current Weight (kg)', exact: true });
+  await currentWeight.fill('75');
+  await currentWeight.press('Enter');
   await expect(currentWeight).toHaveValue('75');
   await expect(currentMode).toHaveAttribute('aria-pressed', 'true');
-  await expect(timelineMode).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('slider', { name: 'Timeline position' })).toBeHidden();
 });

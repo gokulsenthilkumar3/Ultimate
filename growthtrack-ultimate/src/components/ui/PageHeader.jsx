@@ -4,7 +4,7 @@ import React from 'react';
  * PageHeader — consistent page-level header used across all dashboard modules.
  *
  * @param {{ title: string, accent?: string, icon?: React.ReactNode,
- * subtitle?: string, actions?: React.ReactNode, status?: React.ReactNode,
+ * subtitle?: React.ReactNode, actions?: React.ReactNode, status?: React.ReactNode,
  * headingLevel?: 1 | 2 }} props
  */
 export default function PageHeader({ accent, icon, title, subtitle, actions, status, headingLevel = 1 }) {

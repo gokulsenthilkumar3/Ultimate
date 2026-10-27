@@ -7,6 +7,7 @@ import {scopeFacialMorphs} from './facialMorphScope';
 import {prepareSkinRegions} from '../body3d/skinAppearance';
 import {prepareEyelidCorrective} from './eyelidCorrective';
 import {bindBrowsToSkin} from './browSurfaceBinding';
+import {inspectHeadCapabilities} from './headCapabilities';
 /**
  * GrowthTrack Ultimate — Layer 3: Parametric Morph Engine
  * useModelLoader.js
@@ -174,7 +175,7 @@ export function useModelLoader(modelPreference = {}) {
     () => resolveModelAsset({ avatarAsset, biologicalSex, modelPreset, modelVersion }, gpuTier),
     [avatarAsset, biologicalSex, gpuTier, modelPreset, modelVersion],
   );
-  const modelPath = modelAsset.isBundled ? `${modelAsset.path}?v=${ASSET_REVISION}` : modelAsset.path;
+  const modelPath = modelAsset.nativeFamily ? modelAsset.path+'?v='+modelAsset.sha256.slice(0,12) : modelAsset.isBundled ? `${modelAsset.path}?v=${ASSET_REVISION}` : modelAsset.path;
   // useGLTF must be called unconditionally (Rules of Hooks).
   // Suspense promises must be re-thrown so React Suspense can catch them.
   // Network / parse errors are caught and we fall through to the dev fallback.
@@ -307,18 +308,21 @@ export function useModelLoader(modelPreference = {}) {
         bodyMesh.userData.modelAsset=modelAsset.path;
         // Local posterior shaping must not mutate the GLTF cache or goal clone.
         bodyMesh.geometry = bodyMesh.geometry.clone();
-        bodyMesh.userData.facialScope=scopeFacialMorphs(bodyMesh);
+        if(!modelAsset.nativeFamily)bodyMesh.userData.facialScope=scopeFacialMorphs(bodyMesh);
         prepareSkinRegions(bodyMesh);
-        fitModelFeatures(bodyMesh, featureMeshes);
+        if(!modelAsset.nativeFamily)fitModelFeatures(bodyMesh, featureMeshes);
         if(modelAsset.isBundled) {
-          prepareFaceGeometry(bodyMesh,featureMeshes);
-          bodyMesh.userData.eyelidCorrective=prepareEyelidCorrective(bodyMesh,featureMeshes);
+          if(!modelAsset.nativeFamily){
+            prepareFaceGeometry(bodyMesh,featureMeshes);
+            bodyMesh.userData.eyelidCorrective=prepareEyelidCorrective(bodyMesh,featureMeshes);
+          }
           bindBrowsToSkin(bodyMesh,featureMeshes);
           if(!bodyMesh.userData.growthtrack?.bindingPrepared){
             prepareBodyPoseBinding(bodyMesh);
             prepareHeadPoseBinding(bodyMesh);
           }
         }
+        bodyMesh.userData.headCapabilities = inspectHeadCapabilities(bodyMesh);
         // Normalize the model so the humanoid reads like a full body figure.
         // Many GLBs arrive with an offset origin or inconsistent scale, which
         // makes the human look cropped even when the mesh itself is correct.
@@ -353,13 +357,14 @@ export function useModelLoader(modelPreference = {}) {
           scene: clonedScene,
           referenceFrame: createModelReferenceFrame(clonedScene),
           bounds,
-          diagnostics: { ...buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh), modelAsset, boneCount: skeleton?.bones?.length ?? 0,
+          diagnostics: { ...buildDiagnosticsFromScene(clonedScene, bodyMesh, morphIndexMap, bounds, privateAnatomyMesh), hasPrivateAnatomy:Boolean(privateAnatomyMesh || modelAsset.privatePath), modelAsset, boneCount: skeleton?.bones?.length ?? 0,
             capabilities: {
+              head: bodyMesh.userData.headCapabilities,
               digitGroups: [...new Set((skeleton?.bones || []).map(bone => bone.userData.digitBinding?.group).filter(Boolean))],
               surfaceParts: [...new Set(surfaceParts.map(({part}) => part))],
             },
             // The asset's own declaration wins; the registry covers the shipped placeholder.
-            privateAnatomySex: privateAnatomyMesh ? declaredAnatomySex ?? modelAsset.anatomySex ?? null : null },
+            privateAnatomySex: privateAnatomyMesh || modelAsset.privatePath ? declaredAnatomySex ?? modelAsset.anatomySex ?? null : null },
           isDev: false,
         };
       }

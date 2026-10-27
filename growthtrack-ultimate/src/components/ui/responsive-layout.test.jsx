@@ -12,7 +12,7 @@ import Tabs from './Tabs';
 
 let browser, css;
 beforeAll(async () => {
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
   const entryUrl = new URL('../../styles/app-styles.css', import.meta.url);
   const entry = await readFile(entryUrl, 'utf8');
   const imports = [...entry.matchAll(/@import\s+(['"])([^'"]+)\1(?:\s+layer\(([\w-]+)\))?;/g)];
@@ -36,14 +36,14 @@ const content = renderToStaticMarkup(<PageTemplate type="record" title="Transact
 function shell(dir = 'ltr', collapsed = false, width = 1280) {
   const navigation = width < 640
     ? `<div class="gt-mobile-navigation" data-responsive-foundation><nav class="gt-mobile-dock">${['Finance', 'Insights', 'Wellness', 'Workspace'].map(label => `<a href="#"><span>${label}</span></a>`).join('')}<button>More</button></nav></div>`
-    : `<aside class="gt-app-navigation" data-mode="${width < 1024 ? 'compact' : 'desktop'}" data-responsive-foundation data-collapsed="${collapsed}"><div class="gt-navigation-rail"><a href="#">Finance</a><button>Modules</button></div></aside>`;
+    : `<aside class="gt-app-navigation" data-mode="${width < 1440 ? 'compact' : 'desktop'}" data-responsive-foundation data-collapsed="${collapsed}"><div class="gt-navigation-rail"><a href="#">Finance</a><button>Modules</button></div></aside>`;
   return `<style>html,body{margin:0;font-family:Arial,sans-serif}button{font:inherit}</style><style>${css}</style>
   <div class="app-shell" dir="${dir}" data-ui-system="v3"><div class="main-area"><header class="app-header">Header</header><nav class="command-subnav">Legacy strip</nav><main class="content-area">${content}</main></div>
   ${navigation}</div>`;
 }
 
 describe('browser responsive geometry and accessibility styles', () => {
-  it.each([320, 639, 640, 1023, 1024, 1280])('keeps one navigation surface, 44px targets, and content within the viewport at %ipx', async width => {
+  it.each([320, 639, 640, 1023, 1024, 1280, 1366, 1440, 1920])('keeps one navigation surface, 44px targets, and content within the viewport at %ipx', async width => {
     const page = await browser.newPage({ viewport: { width, height: 800 }, reducedMotion: 'reduce' });
     try {
       await page.setContent(shell('ltr', false, width));
@@ -58,7 +58,7 @@ describe('browser responsive geometry and accessibility styles', () => {
       expect(result.rail).toBe(width >= 640); expect(result.dock).toBe(width <= 639);
       expect(result.minHeight).toBeGreaterThanOrEqual(44); expect(result.minWidth).toBeGreaterThanOrEqual(44);
       expect(result.overflow).toBeLessThanOrEqual(1);
-      expect(result.offset).toBe(width <= 639 ? 0 : width < 1024 ? 76 : 332);
+      expect(result.offset).toBe(width <= 639 ? 0 : width < 1440 ? 76 : 332);
       expect(result.strip).toBe('none');
       expect(result.mainLeft).toBe(0); expect(result.mainRight).toBe(width);
       expect(result.headerClearance).toBeGreaterThanOrEqual(44);

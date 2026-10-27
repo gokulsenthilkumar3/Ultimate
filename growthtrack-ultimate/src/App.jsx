@@ -16,6 +16,7 @@ import PremiumSidebar from './components/PremiumSidebar';
 import Header from './components/Header';
 import LoadingSkeleton from './components/ui/LoadingSkeleton';
 import PageState from './components/ui/PageState';
+import PageHeader from './components/ui/PageHeader';
 import NotFound from './components/NotFound';
 import { TIMING } from './constants';
 import { logPageView } from './lib/logger';
@@ -94,7 +95,7 @@ function ModulePage({ feature, view, user, theme, setActiveTab, notificationStat
   if (['finsync', 'oxfin', 'equity', 'forex', 'family', 'companion'].includes(feature.id)) {
     return <UnifiedWorkspace defaultApp={feature.id === 'companion' ? 'matrix' : feature.id} onNavigate={setActiveTab} />;
   }
-  if (feature.id === 'healthSync') return <PageState state="setup" title="Pair a health companion" description="Health imports require an authorized iOS or Android companion. No simulated readings are written. Device pairing is not configured in this deployment." />;
+  if (feature.id === 'healthSync') return <section className="module-page"><PageHeader accent="Wellness" title="Health Sync" subtitle="Review supported health sources and connection requirements." /><PageState state="setup" title="Pair a health companion" description="Health imports require an authorized iOS or Android companion. No simulated readings are written. Device pairing is not configured in this deployment." /></section>;
   const Component = MODULE_COMPONENTS[feature.id];
   return Component ? <Component {...(feature.id === 'notes' ? { view: view || 'all', onViewChange: next => setActiveTab('notes', next) } : {})} user={user} setUser={useStore.getState().setUser} theme={theme} setTheme={useStore.getState().setTheme} setActiveTab={setActiveTab} onNavigate={setActiveTab} notificationState={notificationState} onOpenCheckIn={onOpenCheckIn} onDismissCheckIn={onDismissCheckIn} checkInAvailable={checkInAvailable} /> : <NotFound />;
 }

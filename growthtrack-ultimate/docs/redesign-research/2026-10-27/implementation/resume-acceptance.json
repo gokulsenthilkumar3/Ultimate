@@ -1,0 +1,141 @@
+{
+  "checkedAt": "2026-10-27T16:37:51.713Z",
+  "status": "automated acceptance passed with recorded limits",
+  "fixture": "Isolated browser identities and intercepted API traffic",
+  "sourceTreeSHA256": "8d1f9b6f70c3fb660840ba9769cb10adb22d43f84b0320d4839fb87607e81dee",
+  "sourceFilesHashed": 683,
+  "assets": [
+    {
+      "path": "public/assets/models/humanoid-preview-75-lite.glb",
+      "sha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab"
+    },
+    {
+      "path": "public/assets/models/parametric-base-v1.glb",
+      "sha256": "6627588660aa6c754aaa2edb181bc01a8ca60c3b4c534efa3e87f636ce5cda18"
+    }
+  ],
+  "checks": {
+    "typecheck": "passed",
+    "productionBuild": "passed with existing large 3D chunk warning",
+    "viteConfigLint": "passed",
+    "designAdapters": "5 adapters verified at 3.0.0",
+    "unitTests": {
+      "cases": 23,
+      "files": 6
+    },
+    "browserCases": {
+      "uniqueCases": 25,
+      "note": "Combined coverage from full and targeted runs; earlier failed attempts are retained as historical evidence.",
+      "suites": {
+        "redesign": 8,
+        "laptop": 5,
+        "physiqueUI": 8,
+        "appearanceAndParametricAndPeople": 4
+      }
+    },
+    "finalRuns": [
+      {
+        "artifact": "artifacts/resume-reflow-verified/.last-run.json",
+        "status": "passed"
+      },
+      {
+        "artifact": "artifacts/resume-csv-verified/.last-run.json",
+        "status": "passed"
+      },
+      {
+        "artifact": "artifacts/resume-live-edit-verified/.last-run.json",
+        "status": "passed"
+      },
+      {
+        "artifact": "artifacts/resume-viewer-verified/.last-run.json",
+        "status": "passed"
+      },
+      {
+        "artifact": "artifacts/resume-people-final/.last-run.json",
+        "status": "passed"
+      }
+    ],
+    "companion": {
+      "states": 164,
+      "failures": 0,
+      "widths": [
+        1280,
+        1366,
+        1920,
+        390
+      ]
+    },
+    "nativeViews": {
+      "states": 251,
+      "queryViews": 191,
+      "renderFailures": 0,
+      "sameAsDefault": 156
+    }
+  },
+  "limitations": [
+    "156 registered query views do not establish distinct content in the empty fixture.",
+    "Real companion sign-in and external integrations are unverified.",
+    "Reflow at narrow CSS widths was tested; native 200%/400% browser zoom, physical display dimensions and trackpad behavior are not certified.",
+    "Existing FinSync and OxFin standalone type-check errors remain outside this layout change.",
+    "The optional Ollama agent engine is not running."
+  ],
+  "services": {
+    "checkedAt": "2026-10-27T16:37:43.183Z",
+    "results": [
+      {
+        "service": "UI",
+        "url": "http://localhost:5000/Ultimate/",
+        "status": 200,
+        "online": true
+      },
+      {
+        "service": "API",
+        "url": "http://localhost:3001/api/health",
+        "status": 200,
+        "online": true
+      },
+      {
+        "service": "Gateway",
+        "url": "http://127.0.0.1:5300/api/gateway/health",
+        "status": 200,
+        "online": true
+      },
+      {
+        "service": "Database Studio",
+        "url": "http://localhost:5556/",
+        "status": 200,
+        "online": true
+      },
+      {
+        "service": "FinSync",
+        "url": "http://localhost:5000/Ultimate/products/finsync/",
+        "status": 200,
+        "online": true
+      },
+      {
+        "service": "OxFin",
+        "url": "http://localhost:5000/Ultimate/products/oxfin/",
+        "status": 200,
+        "online": true
+      },
+      {
+        "service": "Family Connect",
+        "url": "http://localhost:5000/Ultimate/products/family/",
+        "status": 200,
+        "online": true
+      },
+      {
+        "service": "Equity",
+        "url": "http://localhost:5000/Ultimate/products/equity/",
+        "status": 200,
+        "online": true
+      },
+      {
+        "service": "Forex",
+        "url": "http://localhost:5000/Ultimate/products/forex/",
+        "status": 200,
+        "online": true
+      }
+    ]
+  }
+}

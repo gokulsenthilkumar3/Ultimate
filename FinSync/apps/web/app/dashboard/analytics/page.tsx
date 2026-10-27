@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Cashflow summaries */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 28 }}>
+            <div className="fs-summary-grid">
                 <div className="stat-card" style={{ borderLeft: '4px solid var(--accent-green)' }}>
                     <div className="stat-card-label">Total Cash Inflow</div>
                     <div className="stat-card-value" style={{ color: 'var(--accent-green)' }}>{formatCurrency(totalIncome)}</div>
@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 24 }}>
+            <div className="fs-two-column">
                 {/* Visual SVG chart */}
                 <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     <div className="card-header">

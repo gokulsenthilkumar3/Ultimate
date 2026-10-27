@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import useStore, { selectMoodLogs, selectAddMoodLog } from '../store/useStore';
@@ -592,21 +593,12 @@ export default function MindWellness() {
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
       {saveError && <p role="alert">{saveError}</p>}
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div>
-          <p className="label-caps" style={{ marginBottom: '0.35rem', color: '#a78bfa' }}>Mind & Wellness</p>
-          <h1 className="text-display" style={{ fontSize: '2rem', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.3rem' }}>
-            <Brain size={24} color="#a78bfa" /> Mental Health
-          </h1>
-          <p className="text-secondary">Daily mood · energy · breathwork · journaling</p>
-        </div>
-        <div style={{ textAlign: 'right' }}>
+      <PageHeader accent="Wellness" title="Mind & wellness" subtitle={<>Daily mood · energy · breathwork · journaling</>} icon={<Brain size={24} color="#a78bfa" />} actions={<><div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '2rem', fontWeight: 900, color: '#a78bfa', fontFamily: 'var(--font-display)' }}>
             {streak > 0 ? `${streak}🔥` : '—'}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>day streak</div>
-        </div>
-      </div>
+        </div></>} />
 
       {/* ── KPI row ── */}
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.85rem', marginBottom: '1.5rem' }}>

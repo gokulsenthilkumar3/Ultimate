@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { finiteObservation, observationDate } from '../utils/projectGoal';
@@ -252,11 +253,7 @@ export default function Analytics() {
   return (
     <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Command Center</p>
-        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Analytics</h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Cross-domain correlations · Audit logs · Growth forecast</p>
-      </div>
+      <PageHeader accent="Insights" title="Analytics" subtitle={<>Cross-domain correlations · Audit logs · Growth forecast</>} />
 
       <nav aria-label="Related insight modules" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
         <Link to="/hub/logs">Audit Logs</Link>

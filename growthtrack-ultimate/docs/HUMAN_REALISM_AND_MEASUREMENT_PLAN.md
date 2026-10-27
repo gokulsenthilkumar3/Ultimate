@@ -20,7 +20,7 @@ Repeat the application scenarios with `npx playwright test --config playwright.i
 
 Follow-up verification: all seven inspection scenarios passed together; the four customization, one avatar-presentation, and eight physique-UI scenarios also passed across the targeted runs (20 distinct scenarios). All 11 focused interaction/presentation unit tests passed. Production build passed; lint reported no errors and 97 warnings elsewhere in the project. Browser runs used a frontend-only preview on port 5177 with an isolated Vite cache alongside the running application on port 5000.
 
-Companion: [interactive plan, tab by tab (revision 04)](../../v4Plan_3DModel.html) — a real 3D human fitted to entered measurements, organised by the Physique tabs; the earlier [measurement guide (revision 03)](../../v3Plan_HumanRealism.html) is kept. Extends [adult anatomy research](ANATOMY_CUSTOMIZATION_RESEARCH_PLAN.md) and the [original model plan](../../v2Plan_3DModel.html).
+Companion: [interactive plan, tab by tab (revision 04)](../../v4Plan_3DModel.html) — a real 3D human fitted to entered measurements, organised by the Physique tabs; the earlier [measurement guide (revision 03)](../../v3Plan_HumanRealism.html) is kept. Extends [adult anatomy research](real-human-3d/16-private-anatomy.md) and the [original model plan](../../v2Plan_3DModel.html).
 
 ## 1. Outcome and limits
 
@@ -94,7 +94,7 @@ Organize by region and acquisition difficulty. Provide an “I don't know” opt
 
 ### E. Adult private external anatomy
 
-Retain the detailed [existing anatomy plan](ANATOMY_CUSTOMIZATION_RESEARCH_PLAN.md): independent resting/erect endpoints, visible versus bone-pressed length records, base/middle/distal sections, width/depth or girth mode, taper, curvature, glans/foreskin, external scrotal envelope, optional independent testicular records, buttock contour and regional materials.
+Retain the detailed [existing anatomy plan](real-human-3d/16-private-anatomy.md): independent resting/erect endpoints, visible versus bone-pressed length records, base/middle/distal sections, width/depth or girth mode, taper, curvature, glans/foreskin, external scrotal envelope, optional independent testicular records, buttock contour and regional materials.
 
 Clarify base circumference with a neutral schematic: root at the attachment end; highlighted closed tape loop at the specified shaft section immediately beyond the attachment transition; middle and distal loops shown separately. The chosen plane must be perpendicular to the local centerline. This is an app geometry definition, not a claim that an unspecified legacy value followed a clinical protocol. A root fold or abrupt flare can make this section ambiguous: allow a section marker to be positioned and store its location.
 

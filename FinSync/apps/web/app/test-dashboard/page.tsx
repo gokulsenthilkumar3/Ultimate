@@ -29,14 +29,14 @@ function fmt(n: number) {
 
 export default function DashboardPage() {
     return (
-        <div className="fade-in">
+        <div className="fs-demo fade-in">
             {/* Welcome */}
             <div style={{ marginBottom: 32 }}>
                 <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 800, letterSpacing: '-0.6px', color: 'var(--text-primary)', marginBottom: 4 }}>
-                    Good afternoon, Gokul 👋
+                    Sample finance workspace
                 </h2>
                 <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-                    Here's an overview of your finances — March 2026.
+                    Development preview with sample records.
                 </p>
             </div>
 
@@ -59,7 +59,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Two-column layout */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
+            <div className="fs-two-column">
                 {/* Transactions */}
                 <div className="card">
                     <div className="card-header">

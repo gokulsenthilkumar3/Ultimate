@@ -1,0 +1,59 @@
+{
+  "family": "generic-adult-r2",
+  "retainedAssetCount": 6,
+  "assets": [
+    {
+      "file": "public/assets/models/humanoid-human-r2-core.glb",
+      "sha256": "fe2d25ab242ee10dbb7071af4cb659e2f55f8d8a4452547de01146b7dce4bc0a",
+      "bytes": 1946332,
+      "budget": 3000000,
+      "budgetPassed": true,
+      "decodedErrors": 0,
+      "decodedWarnings": 0,
+      "issueCounts": {
+        "UNUSED_MESH_TANGENT": 1,
+        "UNUSED_OBJECT": 2
+      }
+    },
+    {
+      "file": "public/assets/models/humanoid-human-r2-private-core.glb",
+      "sha256": "62108cf9deba13e17c5d406d18e05e3838ef26e4436b227a64c1aa58fba3c2ab",
+      "bytes": 1180304,
+      "budget": 2000000,
+      "budgetPassed": true,
+      "decodedErrors": 0,
+      "decodedWarnings": 0,
+      "issueCounts": {
+        "UNUSED_MESH_TANGENT": 1,
+        "UNUSED_OBJECT": 2
+      }
+    },
+    {
+      "file": "public/assets/models/humanoid-human-r2-hero.glb",
+      "sha256": "b22c5c6f49acc35446129c7e2a487b21ce1b852a7c490d0fb7a5c5f2044a7faf",
+      "bytes": 4318948,
+      "budget": 5000000,
+      "budgetPassed": true,
+      "decodedErrors": 0,
+      "decodedWarnings": 0,
+      "issueCounts": {
+        "UNUSED_MESH_TANGENT": 1,
+        "UNUSED_OBJECT": 2
+      }
+    },
+    {
+      "file": "public/assets/models/humanoid-human-r2-private-hero.glb",
+      "sha256": "53cba1d3cdc91f22e6573083c4e05db67d8473bea506a601e1642b232884b750",
+      "bytes": 2073924,
+      "budget": 5000000,
+      "budgetPassed": true,
+      "decodedErrors": 0,
+      "decodedWarnings": 0,
+      "issueCounts": {
+        "UNUSED_MESH_TANGENT": 1,
+        "UNUSED_OBJECT": 2
+      }
+    }
+  ],
+  "errors": 0
+}

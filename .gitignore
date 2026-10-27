@@ -18,8 +18,32 @@ __pycache__/
 Thumbs.db
 .env
 .env.*
+*.env
 !.env.example
-!.env.test
+# This one tracked file contains dummy CI values only.
+!/growthtrack-ultimate/.env.test
+.envrc
+.direnv/
+
+# Local credentials and signing keys, across every workspace app.
+secrets/
+.secrets/
+credentials.json
+credentials-*.json
+service-account*.json
+serviceAccountKey*.json
+firebase-adminsdk*.json
+**/.streamlit/secrets.toml
+**/.docker/config.json
+.aws/
+.ssh/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -28,6 +52,38 @@ yarn-error.log*
 *.temp
 *.bak
 *.old
+
+# Python environments and tool caches.
+.venv/
+venv/
+__pypackages__/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.hypothesis/
+.ipynb_checkpoints/
+
+# Local scratch files and process output.
+tmp/
+temp/
+logs/
+*.pid
+*.pid.lock
+*.swp
+*.swo
+*~
+
+# Native build caches and machine-specific settings.
+.gradle/
+.kotlin/
+local.properties
+.cxx/
+.externalNativeBuild/
+.build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
 
 # Project-specific large assets
 public/assets/models/
@@ -49,6 +105,8 @@ growthtrack-ultimate/.env.local
 .pnpm-store/
 playwright-report/
 test-results/
+test-results-*/
+blob-report/
 .nyc_output/
 .eslintcache
 *.tsbuildinfo

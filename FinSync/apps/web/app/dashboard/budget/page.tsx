@@ -88,7 +88,7 @@ export default function BudgetPage() {
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Configure your monthly income and rule allocation thresholds</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 28 }}>
+            <div className="fs-two-column fs-two-column--budget">
                 {/* Form configuration */}
                 <form onSubmit={handleSaveBudget} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

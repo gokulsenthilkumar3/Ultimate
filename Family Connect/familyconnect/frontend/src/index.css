@@ -1,6 +1,21 @@
 @import "tailwindcss";
 @import './growthtrack-design.css';
 
+.family-shell { height: 100dvh; }
+.family-main { min-width: 0; container: family-content / inline-size; padding: clamp(16px, 2vw, 28px); }
+.family-main h1 { font-size: clamp(1.5rem, 2.3vw, 1.9rem); line-height: 1.2; }
+.family-sidebar { flex-shrink: 0; background: var(--color-navy); box-shadow: none; }
+.family-sidebar nav a { min-height: 44px; }
+.family-nav-backdrop { display: none; }
+@media (max-height: 800px) { .family-sidebar nav { padding-block: 12px; } }
+@media (max-width: 1023px) {
+  .family-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; width: 256px; visibility: hidden; transform: translateX(-100%); }
+  .family-sidebar[data-open="true"] { visibility: visible; transform: none; }
+  .family-nav-backdrop { display: block; position: fixed; inset: 0; z-index: 55; background: #0008; border: 0; }
+  .family-sidebar > button { right: 8px; top: 68px; }
+  .family-main { padding: 16px; }
+}
+
 @theme {
   --color-saffron: #FF6B35;
   --color-navy: #0A1128;

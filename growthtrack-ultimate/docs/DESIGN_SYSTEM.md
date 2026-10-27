@@ -2,7 +2,17 @@
 
 ## Direction
 
-Ultimate uses a refined, iOS-inspired glass system: semantic color, soft depth, deliberate motion, and high-contrast content. It is not a reproduction of proprietary Apple UI.
+The approved direction (27 October 2026) refines Ultimate’s calm editorial interface:
+readable typography, quiet surfaces, semantic color and focused task layouts. Use
+the existing editorial components and semantic tokens. Large decorative gradients,
+glass effects and marketing-style page introductions are not the application default.
+The screen-specific contract is in [Screen Design Reference](SCREEN_DESIGN_REFERENCE.md).
+
+Every page has one primary heading and a clear primary action. Record pages lead
+with their list or daily task, analytics pages identify the question and period,
+and the 3D Mirror leads with Current/Goal comparison. Specialist controls use
+contextual panels. A compact laptop layout must retain readable text and 44px
+interactive controls rather than shrinking the entire interface.
 
 ## Tokens
 

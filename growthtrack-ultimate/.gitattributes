@@ -1,0 +1,4 @@
+# These bundles are hash-verified byte for byte by the browser and builders.
+# Git line-ending conversion would invalidate JSON bindings and source notices.
+/public/assets/parametric/** -text
+/src/config/parametricSkin.json text eol=lf

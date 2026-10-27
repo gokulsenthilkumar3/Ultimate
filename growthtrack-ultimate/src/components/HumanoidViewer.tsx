@@ -51,7 +51,7 @@ import MeasurementHelp from './physique/MeasurementHelp';
 import ModelMeasurementCheck from './physique/ModelMeasurementCheck';
 import { getBodyMeasurementDefinition } from '../lib/bodyMeasurementDefinitions';
 import { createAnatomyCustomization } from '../lib/anatomyCustomization';
-import { AvatarParameterMatrix, FACE_SHAPE_CONTROLS, computeHeightScale } from './morphEngine/metricsToBlendshapes';
+import { AvatarParameterMatrix, computeHeightScale } from './morphEngine/metricsToBlendshapes';
 import { trackEvent } from '../lib/analytics';
 import AvatarEvidence from './physique/AvatarEvidence';
 import AvatarViewOptions from './physique/AvatarViewOptions';
@@ -63,7 +63,10 @@ import HairDetailControls from './physique/HairDetailControls';
 import EyeAppearanceControls from './physique/EyeAppearanceControls';
 import SpeechControls from './physique/SpeechControls';
 import LikenessControls from './physique/LikenessControls';
+import HeadFeatureControls from './physique/HeadFeatureControls';
+import {HEAD_FEATURES,headExpressionCapability,supportedHeadMorphKeys} from '../lib/headFeatureRegistry';
 import AvatarPeopleWorkspace from './physique/AvatarPeopleWorkspace';
+import AvatarComparisonSummary from './physique/AvatarComparisonSummary';
 import useAvatarRecord from '../hooks/useAvatarRecord';
 import PoseStudioControls from './physique/PoseStudioControls';
 import CameraBookmarkControls from './physique/CameraBookmarkControls';
@@ -71,7 +74,7 @@ import { patchPose,POSE_STUDIO } from '../lib/poseStudio';
 import {HUMAN_SURFACE,microStrength} from '../lib/humanSurface';
 import { inspectAvatarSurfaces } from './morphEngine/captureRuntime';
 import { readBookmarkCamera } from './morphEngine/cameraBookmarkRuntime';
-import { APPEARANCE_DETAIL } from '../lib/appearanceDetail';
+import { APPEARANCE_DETAIL, resolveHumanRealism } from '../lib/appearanceDetail';
 import { RESET_SKIN_LAYERS } from './body3d/skinTanLines';
 import {preloadWardrobeAsset} from './morphEngine/useWardrobeAsset';
 import useWardrobePreferences from '../hooks/useWardrobePreferences';
@@ -84,11 +87,13 @@ import AnimationPanel from './morphEngine/AnimationPanel';
 import { AVATAR_EXPOSURE } from '../lib/avatarPresentation';
 import { buildAvatarEvidence } from '../lib/avatarEvidence';
 import '../styles/avatar-workspace.css';
+import '../styles/parametric-studio.css';
 import { formatDate, formatMeasurement, formatNumber, getMeasurementUnit } from '../utils/userFormatters';
 
 // Lazy load the heavy 3D canvas
 const ChamberCanvas = lazy(() => import('./PhysiqueRenderer'));
 const Sprite3DViewer = lazy(() => import('./Sprite3DViewer'));
+const ParametricAvatarStudio = lazy(() => import('./physique/ParametricAvatarStudio'));
 
 const EMPTY_OBJECT = {};
 const EMPTY_ARRAY: never[] = [];
@@ -263,7 +268,30 @@ function AnatomySVG({ depth }: { depth: number }) {
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HumanoidViewer() {
-  return <AvatarPeopleWorkspace><PersonViewer /></AvatarPeopleWorkspace>;
+  return <AvatarPeopleWorkspace><AvatarWorkspaceSelector /></AvatarPeopleWorkspace>;
+}
+
+function AvatarWorkspaceSelector() {
+  const record = useAvatarRecord();
+  const [mode, setMode] = useState('tracker');
+  const [switching, setSwitching] = useState(false);
+  const [error, setError] = useState('');
+  const switchMode = async (next: string) => {
+    if (switching || mode === next) return;
+    setSwitching(true); setError('');
+    try { await record.flushEdits(); setMode(next); }
+    catch (cause: any) { setError(cause.message || 'Save the current edits before switching editors.'); }
+    finally { setSwitching(false); }
+  };
+  return <>
+    <div className="avatar-workspace-picker" role="group" aria-label="Avatar workspace">
+      <button className="chamber-pill" type="button" aria-pressed={mode === 'tracker'} disabled={switching} onClick={() => switchMode('tracker')}>Body tracker</button>
+      <button className="chamber-pill" type="button" aria-pressed={mode === 'parametric'} disabled={switching} onClick={() => switchMode('parametric')}>Parametric human editor</button>
+      {switching && <span role="status">Saving current edits…</span>}
+    </div>
+    {error && <p role="alert">{error}</p>}
+    <div className="avatar-workspace-content" inert={switching || undefined}>{mode === 'tracker' ? <PersonViewer /> : <TabErrorBoundary tabName="Parametric editor"><Suspense fallback={<p role="status">Opening parametric editor…</p>}><ParametricAvatarStudio /></Suspense></TabErrorBoundary>}</div>
+  </>;
 }
 
 function PersonViewer() {
@@ -283,6 +311,7 @@ function PersonViewer() {
   const captureBusy = useRef(false);
   const [partDragOver, setPartDragOver] = useState(false);
   const [guideMetric, setGuideMetric] = useState('chest');
+  const [showMeasurementGuide, setShowMeasurementGuide] = useState(false);
   const [metricGroup, setMetricGroup] = useState('essentials');
   const [metricSearch, setMetricSearch] = useState('');
   const shownMetrics = (metricSearch.trim() || metricGroup === 'all' ? BODY_METRICS
@@ -326,8 +355,8 @@ function PersonViewer() {
   const stressLevel       = use3DStore((s) => s.stressLevel);
   const ambitionPath      = use3DStore((s) => s.ambitionPath);
   const hasGoalComparison = useMemo(() => Object.keys(METRIC_LABELS).some((key) => (
-    Number.isFinite(Number((currentMetrics as any)[key]))
-    && Number.isFinite(Number((goalMetrics as any)[key]))
+    validateBodyMetric(key, (currentMetrics as any)[key], { allowEmpty: false }).valid
+    && validateBodyMetric(key, (goalMetrics as any)[key], { allowEmpty: false }).valid
   )), [currentMetrics, goalMetrics]);
   const hasTimelineData = snapshots.length > 0;
   const canUseViewMode = useCallback((mode: string) => {
@@ -368,7 +397,6 @@ function PersonViewer() {
   const updateCurrentMetric = use3DStore((s) => s.setCurrentMetric);
   const updateGoalMetric  = use3DStore((s) => s.setGoalMetric);
   const setPosture        = use3DStore((s) => s.setPosture);
-  const addTimelineSnap   = use3DStore((s) => s.addTimelineSnap);
   const setTimelineSnaps  = use3DStore((s) => s.setTimelineSnaps);
   const setCurrentMetrics = use3DStore((s) => s.setCurrentMetrics);
   const setGoalMetrics    = use3DStore((s) => s.setGoalMetrics);
@@ -522,6 +550,12 @@ function PersonViewer() {
     const next={...state.morphOverrides,[context]:matrix.overrides};
     setMorphOverrides(next);queueProfileSave(currentMetrics,goalMetrics,next.current);
   };
+  const resetFaceRegionToMeasurements=(keys:string[])=>{
+    const state=use3DStore.getState(),context=state.avatarWorkspace.avatarContext;
+    const supported=new Set(HEAD_FEATURES.map(feature=>feature.key).filter(key=>keys.includes(key)));
+    const next={...state.morphOverrides,[context]:Object.fromEntries(Object.entries(state.morphOverrides[context] || {}).filter(([key])=>!supported.has(key)))};
+    setMorphOverrides(next);queueProfileSave(currentMetrics,goalMetrics,next.current);
+  };
   const beginMotion = () => {
     const state=use3DStore.getState(),context=state.avatarWorkspace.avatarContext;
     setViewMode('SOLO');
@@ -632,9 +666,10 @@ function PersonViewer() {
 
   const saveSnapshot = useCallback(async () => {
     const snapshot = { id: Date.now().toString(), metrics: publicBodyMetrics(currentMetrics), date: new Date().toISOString(), label: 'Physique check-in' };
-    addTimelineSnap(snapshot);
     await saveMetricLog({ date: snapshot.date.slice(0, 10), metric: 'physique_snapshot', source: 'physique', metrics: snapshot.metrics, label: snapshot.label });
-  }, [addTimelineSnap, currentMetrics, saveMetricLog]);
+    // The record hook publishes acknowledged logs. The hydration effect owns
+    // the selected person's timeline, including if they switch while saving.
+  }, [currentMetrics, saveMetricLog]);
 
   // ── Local UI state
   const showEditor = avatarWorkspace.inspectorOpen;
@@ -642,6 +677,7 @@ function PersonViewer() {
   const [exportingAvatar, setExportingAvatar] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const editorTab = avatarWorkspace.inspectorSection;
+  const [studioOpen, setStudioOpen] = useState(() => editorTab !== 'measurements');
   const sensitiveUnlocked = wardrobe === 'ANATOMICAL';
   const [splitDragging, setSplitDragging] = useState(false);
   const [storyStage, setStoryStage] = useState('current');
@@ -654,7 +690,7 @@ function PersonViewer() {
   const surfaceDetailStatus = renderMode === 'SPRITE' ? 'Pore detail needs interactive 3D.'
     : !modelDiagnostics || modelDiagnostics.health !== 'healthy' ? 'Checking skin detail availability…'
       : quality === 'LOW' ? 'Pore detail paused by Performance quality.'
-        : microStrength(skinEditorMetrics.skinMicroDetail) > 0 ? 'Pore detail on · inspect skin close up.' : 'Pore detail off · adjust it in Skin detail.';
+        : resolveHumanRealism(skinEditorMetrics) > 0 && microStrength(skinEditorMetrics.skinMicroDetail) > 0 ? 'Pore detail on · inspect skin close up.' : 'Pore detail off · adjust it in Skin detail.';
   const updateSkinAppearance = avatarWorkspace.avatarContext === 'goal' ? updateGoalAppearance : updateCurrentAppearance;
   const resetSkinLayers = () => {
     if (avatarWorkspace.avatarContext === 'goal') {
@@ -701,6 +737,7 @@ function PersonViewer() {
 
   // ── Persist tab selection
   const handleTabChange = useCallback((id: string) => {
+    if (id !== 'measurements') setStudioOpen(true);
     setAvatarWorkspace({ inspectorOpen: true, inspectorSection: id });
     sessionStorage.setItem('chamber_tab', id);
   }, [setAvatarWorkspace]);
@@ -869,12 +906,20 @@ function PersonViewer() {
     }
   }, [avatarWorkspace.captureScale, setCaptureRedacted, toast, waitForProtectedRedraw]);
 
+  const snapshotBusy = useRef(false);
+  const [savingSnapshot, setSavingSnapshot] = useState(false);
   const handleSaveSnapshot = useCallback(async () => {
+    if (snapshotBusy.current) return;
+    snapshotBusy.current = true;
+    setSavingSnapshot(true);
     try {
       await saveSnapshot();
       toast.success('Timeline snapshot saved.');
     } catch {
       toast.error('Could not save the snapshot.');
+    } finally {
+      snapshotBusy.current = false;
+      setSavingSnapshot(false);
     }
   }, [saveSnapshot, toast]);
 
@@ -909,7 +954,7 @@ function PersonViewer() {
 
   return (
     <>
-    <div className="chamber fade-in chamber-fullscreen-wrap" data-presentation={presentation.active ? 'on' : 'off'} data-inspector={showEditor ? 'open' : 'closed'} data-density={avatarWorkspace.density} data-interface-effects={avatarWorkspace.interfaceEffects ? 'on' : 'off'} style={{ '--avatar-inspector-width': `${avatarWorkspace.inspectorWidth}px` } as React.CSSProperties}>
+    <div className="chamber fade-in chamber-fullscreen-wrap" data-workspace={studioOpen ? 'studio' : 'tracking'} data-presentation={presentation.active ? 'on' : 'off'} data-inspector={showEditor ? 'open' : 'closed'} data-density={avatarWorkspace.density} data-interface-effects={avatarWorkspace.interfaceEffects ? 'on' : 'off'} style={{ '--avatar-inspector-width': `${avatarWorkspace.inspectorWidth}px` } as React.CSSProperties}>
       <header className="chamber-topbar">
         <div className="chamber-topbar__brand">
           <div className="chamber-topbar__title-row">
@@ -924,12 +969,32 @@ function PersonViewer() {
             </button>
           </div>
         </div>
+            <div className="chamber-view-modes" role="group" aria-label="Comparison mode">
+              {(['current', 'goal', 'compare'] as const).map((mode) => {
+                const available = mode !== 'compare' || hasGoalComparison;
+                return <button key={mode} className={`chamber-pill${avatarWorkspace.workspaceMode === mode ? ' active' : ''}`}
+                  aria-pressed={avatarWorkspace.workspaceMode === mode} disabled={!available}
+                  title={available ? undefined : modeUnavailableReason('DUAL')}
+                  onClick={() => setAvatarWorkspace({ workspaceMode: mode, avatarContext: mode === 'goal' ? 'goal' : mode === 'current' ? 'current' : avatarWorkspace.avatarContext })}>
+                  {mode[0].toUpperCase() + mode.slice(1)}
+                </button>;
+              })}
+              {avatarWorkspace.workspaceMode === 'compare' && <select aria-label="Comparison style" value={avatarWorkspace.compareStyle}
+                onChange={(event) => setAvatarWorkspace({ compareStyle: event.target.value })}>
+                <option value="side-by-side">Side by side</option><option value="overlay">Overlay</option>
+                <option value="split">Split</option><option value="difference">Difference</option>
+              </select>}
+            </div>
         <div className="chamber-render-controls chamber-topbar__controls">
+          <button type="button" className="chamber-pill" aria-pressed={studioOpen} onClick={() => {
+            if (studioOpen) { setStudioOpen(false); handleTabChange('measurements'); }
+            else { setStudioOpen(true); handleTabChange('face'); }
+          }}>{studioOpen ? 'Body comparison' : 'Appearance studio'}</button>
           <button className="chamber-pill" aria-expanded={showEditor} aria-controls="avatar-model-inspector" onClick={() => setShowEditor(!showEditor)}>
             <SlidersHorizontal size={16} /> {showEditor ? 'Close editor' : 'Edit avatar'}
           </button>
-          <button className="chamber-pill chamber-pill--primary" onClick={handleSaveSnapshot}>
-            <Save size={16} /> Save check-in
+          <button className="chamber-pill chamber-pill--primary" onClick={handleSaveSnapshot} disabled={savingSnapshot} aria-busy={savingSnapshot}>
+            <Save size={16} /> {savingSnapshot ? 'Saving check-in…' : 'Save check-in'}
           </button>
           <button className="chamber-pill" onClick={captureScreenshot}><Download size={16} /> Export</button>
           <details className="workspace-overflow"><summary aria-label="More avatar actions"><MoreHorizontal size={18} /></summary><div>
@@ -941,26 +1006,6 @@ function PersonViewer() {
         </div>
       </header>
 
-      <section className="avatar-model-tools" aria-label="Model tools">
-        <div className="avatar-model-tools__heading"><strong>Model tools</strong><span>{modelEvidence.assetLabel}</span></div>
-        <div className="avatar-model-tools__actions" role="group" aria-label="Open model controls">
-          <button type="button" className="chamber-pill" onClick={() => { setAvatarWorkspace({ avatarContext: 'current', workspaceMode: 'current' }); setShowWizard(true); }}><Ruler size={16} /> Guided setup</button>
-          <button type="button" className="chamber-pill" onClick={() => openModelControls('pose')}><UserRound size={16} /> Pose controls</button>
-          <button type="button" className="chamber-pill" onClick={() => openModelControls('skin')}><Palette size={16} /> Skin detail</button>
-          <button type="button" className="chamber-pill" onClick={() => openModelControls('face')}><Eye size={16} /> Face controls</button>
-          <button type="button" className="chamber-pill" onClick={() => openModelControls('view')}><Activity size={16} /> View model details</button>
-        </div>
-        <p>{!modelDiagnostics ? 'Checking model controls…' : renderMode === 'SPRITE' ? 'Interactive 3D is required for pose and surface previews.'
-          : modelEvidence.capabilities.handsAndToes ? `Hands and toes available${modelEvidence.capabilities.eyeLayers ? ' · Separate eye layers' : ''}${modelEvidence.capabilities.nails ? ' · Attached nails' : ''}. Open Pose controls and enable Use saved pose to edit articulation.`
-            : 'This model has no articulated hand and toe controls. Review your model choice in Profile → Body & measurements → 3D appearance & anatomy: Model asset preset, 3D model version and Avatar asset key.'}</p>
-        <p className="avatar-model-tools__surface-status">{surfaceDetailStatus}</p>
-        {modelDiagnostics?.modelAsset?.isBundled && modelDiagnostics.modelAsset.preset==='male' && !modelEvidence.capabilities.handsAndToes &&
-          <button type="button" className="chamber-pill" onClick={()=>{
-            const next={...currentMetrics,modelVersion:'v2',avatarAsset:''};setCurrentMetrics(next);queueProfileSave(next,goalMetrics,manualMorphOverrides);
-          }}>Use articulated model</button>}
-      </section>
-      <BodyPartNavigator privateAllowed={sensitiveUnlocked && anatomy.allowed && !captureRedacted} dropTargetRef={modelDropTarget}
-        disabled={renderMode === 'SPRITE' || rendererTelemetry.status === 'context-lost'} />
       {/* ═══ VIEWPORT + EDITOR LAYOUT ═══ */}
       <div className="chamber-layout">
         {/* ── VIEWPORT ── */}
@@ -972,45 +1017,6 @@ function PersonViewer() {
           </div>}
           {presentation.active && <button className="chamber-pill avatar-presentation-exit" onClick={presentation.exit}><Minimize2 size={16}/> Exit presentation <kbd>Esc</kbd></button>}
           {/* Top overlay bar */}
-          <div className="chamber-overlay-top">
-            <div className="chamber-view-modes" role="group" aria-label="Comparison mode">
-              {(['current', 'goal', 'compare', 'timeline'] as const).map((mode) => {
-                const available = mode === 'timeline' ? hasTimelineData : mode !== 'compare' || hasGoalComparison;
-                return <button key={mode} className={`chamber-pill${avatarWorkspace.workspaceMode === mode ? ' active' : ''}`}
-                  aria-pressed={avatarWorkspace.workspaceMode === mode} disabled={!available}
-                  title={available ? undefined : mode === 'timeline' ? modeUnavailableReason('TIMELINE') : modeUnavailableReason('DUAL')}
-                  onClick={() => setAvatarWorkspace({ workspaceMode: mode, avatarContext: mode === 'goal' ? 'goal' : mode === 'current' ? 'current' : avatarWorkspace.avatarContext })}>
-                  {mode[0].toUpperCase() + mode.slice(1)}
-                </button>;
-              })}
-              {avatarWorkspace.workspaceMode === 'compare' && <select aria-label="Comparison style" value={avatarWorkspace.compareStyle}
-                onChange={(event) => setAvatarWorkspace({ compareStyle: event.target.value })}>
-                <option value="side-by-side">Side by side</option><option value="overlay">Overlay</option>
-                <option value="split">Split</option><option value="difference">Difference</option>
-              </select>}
-            </div>
-            <div className="chamber-overlay-row">
-              {/* Camera presets */}
-              <div className="chamber-pill-group">
-                {CAMERA_PRESETS.map((p) => (
-                  <button key={p.id} className={`chamber-pill${cameraPreset === p.id ? ' active' : ''}`}
-                    onClick={() => setCameraPreset(p.id, { preserveFocus: true })}>{p.label}</button>
-                ))}
-              </div>
-              <div className="chamber-pill-group">
-                <button className="chamber-pill" onClick={() => fitCameraToBody()}>
-                  Full Body
-                </button>
-                <button className="chamber-pill" onClick={() => resetCameraZoom()}>
-                  Reset
-                </button>
-                <button className="chamber-pill" onClick={() => { setViewMode('SOLO'); setSelectedPart('head'); }}>Face</button>
-                <button className="chamber-pill chamber-icon-button" aria-label="Zoom in" title="Zoom in" onClick={() => setCameraZoom(cameraZoom / 1.2)}><ZoomIn size={16} /></button>
-                <button className="chamber-pill chamber-icon-button" aria-label="Zoom out" title="Zoom out" onClick={() => setCameraZoom(cameraZoom * 1.2)}><ZoomOut size={16} /></button>
-              </div>
-            </div>
-          </div>
-
           <aside className="chamber-intelligence-rail" aria-label="Digital twin readout">
             <div className="chamber-readout__label">LIVE READOUT</div>
             <div className="chamber-readout__focus">
@@ -1102,6 +1108,31 @@ function PersonViewer() {
             </Suspense>
           </TabErrorBoundary>
 
+          <div className="chamber-overlay-top">
+            <div className="chamber-overlay-row">
+              {/* Camera presets */}
+              <div className="chamber-pill-group">
+                {CAMERA_PRESETS.map((p) => (
+                  <button key={p.id} className={`chamber-pill${cameraPreset === p.id ? ' active' : ''}`}
+                    onClick={() => setCameraPreset(p.id, { preserveFocus: true })}>{p.label}</button>
+                ))}
+              </div>
+              <div className="chamber-pill-group">
+                <button className="chamber-pill" onClick={() => fitCameraToBody()}>
+                  Full Body
+                </button>
+                <button className="chamber-pill" onClick={() => resetCameraZoom()}>
+                  Reset
+                </button>
+                <button className="chamber-pill" onClick={() => { setViewMode('SOLO'); setSelectedPart('head'); }}>Face</button>
+                <button className="chamber-pill chamber-icon-button" aria-label="Zoom in" title="Zoom in" onClick={() => setCameraZoom(cameraZoom / 1.2)}><ZoomIn size={16} /></button>
+                <button className="chamber-pill chamber-icon-button" aria-label="Zoom out" title="Zoom out" onClick={() => setCameraZoom(cameraZoom * 1.2)}><ZoomOut size={16} /></button>
+              </div>
+            </div>
+          </div>
+
+
+
           {/* ── TIMELINE SCRUBBER ── */}
           {viewMode === 'TIMELINE' && (() => {
             const firstSnap = snapshots[0] as any;
@@ -1154,7 +1185,7 @@ function PersonViewer() {
         {showEditor && (
           <div className="chamber-editor" id="avatar-model-inspector">
             {/* Editor tabs */}
-            <div className="chamber-editor__tabs" role="tablist" aria-label="Avatar editor" onKeyDown={event => {
+            {studioOpen && <div className="chamber-editor__tabs" role="tablist" aria-label="Avatar editor" onKeyDown={event => {
               const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
               const index = buttons.indexOf(event.target as HTMLButtonElement);
               if (index < 0 || !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
@@ -1184,13 +1215,15 @@ function PersonViewer() {
                   <span>{tab.label}</span>
                 </button>
               ))}
-            </div>
+            </div>}
 
-            <div className="chamber-editor__body" id="avatar-editor-panel" role="tabpanel" aria-labelledby={`avatar-editor-tab-${editorTab}`} tabIndex={0}>
+            <div className="chamber-editor__body" id="avatar-editor-panel" role={studioOpen ? 'tabpanel' : 'region'} aria-label={!studioOpen ? 'Body measurements' : undefined} aria-labelledby={studioOpen ? `avatar-editor-tab-${editorTab}` : undefined} tabIndex={0}>
 
               {/* ── METRICS TAB ── */}
               {editorTab === 'measurements' && (
                 <div className="chamber-editor__section">
+                  {avatarWorkspace.workspaceMode === 'compare' && <AvatarComparisonSummary current={currentMetrics} goal={goalMetrics} user={user} />}
+                  {!hasGoalComparison && <p className="chamber-note" role="status">Add a goal measurement to compare it with Current. Choose Goal, then enter a measurement below.</p>}
                   <h4 className="chamber-editor__heading">
                     <Ruler size={14} /> Body Metrics
                   </h4>
@@ -1202,15 +1235,13 @@ function PersonViewer() {
                       {context === 'current' ? 'Current measurements' : 'Goal measurements'}
                     </button>)}
                   </div>
-                  <ModelMeasurementCheck context={avatarWorkspace.avatarContext === 'goal' ? 'B' : 'A'} readCanvas={() => modelDropTarget.current?.querySelector('canvas')} user={user} />
                   <label className="workspace-field"><span>Measurement group</span><select aria-label="Measurement group" value={metricGroup} onChange={event => setMetricGroup(event.target.value)}>
                     <option value="essentials">Essentials</option><option value="all">All measurements ({BODY_METRICS.length})</option>
                     {BODY_METRIC_GROUPS.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}
                   </select></label>
                   <label className="workspace-field"><span>Find a measurement</span><input type="search" aria-label="Find a measurement" placeholder="Face, hand, waist…" value={metricSearch} onChange={event => setMetricSearch(event.target.value)} /></label>
                   <div className="chamber-metric-list">
-                    <p id="avatar-measurement-hint" className="chamber-note">Type a value or include units, such as 98,5 cm, 5 ft 10 in, or 180 lb. Enter or leave the field to apply. Arrow keys adjust; Shift makes a larger step; Escape cancels.</p>
-                    <MeasurementHelp key={guideMetric} definition={getBodyMeasurementDefinition(guideMetric)} label={BODY_METRIC_MAP[guideMetric]?.label || guideMetric} onInspect={focusInspectionPart} />
+                    <p id="avatar-measurement-hint" className="gt-foundation-sr-only">Type a value or include units. Enter or leave the field to apply. Arrow keys adjust; Shift makes a larger step; Escape cancels.</p>
                     {!shownMetrics.length && <p>No matching measurements. Try another name.</p>}
                     {shownMetrics.map(meta => {
                       const key = meta.key;
@@ -1238,7 +1269,7 @@ function PersonViewer() {
                           <div className="chamber-metric-row__header">
                             <span className="chamber-metric-row__label">
                               {meta.label}
-                              <button type="button" className="chamber-pill" aria-label={`How to measure ${meta.label}`} onClick={() => { setGuideMetric(key); focusInspectionPart(getBodyMeasurementDefinition(key).region); }}>Show me</button>
+                              <button type="button" className="chamber-pill" aria-label={`How to measure ${meta.label}`} onClick={() => { setGuideMetric(key); setShowMeasurementGuide(true); focusInspectionPart(getBodyMeasurementDefinition(key).region); requestAnimationFrame(() => document.getElementById('avatar-measurement-guide')?.scrollIntoView({ block:'nearest' })); }}>Show me</button>
                               <small className={`chamber-metric-source${currentIsMeasured ? ' is-measured' : ''}`}>
                                 {currentIsMeasured ? 'Entered' : cur === null ? 'Not recorded' : 'Estimated'}
                               </small>
@@ -1279,8 +1310,13 @@ function PersonViewer() {
                         </div>
                       );
                     })}
-
                   </div>
+                  <details id="avatar-measurement-guide" className="avatar-secondary-tools" open={showMeasurementGuide} onToggle={event => setShowMeasurementGuide(event.currentTarget.open)}>
+                    <summary>Measurement guide · {BODY_METRIC_MAP[guideMetric]?.label || guideMetric}</summary>
+                    <p className="chamber-note">Use values such as 98,5 cm, 5 ft 10 in, or 180 lb. Enter or leave the field to apply; Escape cancels.</p>
+                    <MeasurementHelp key={guideMetric} definition={getBodyMeasurementDefinition(guideMetric)} label={BODY_METRIC_MAP[guideMetric]?.label || guideMetric} onInspect={focusInspectionPart} />
+                  </details>
+                  <ModelMeasurementCheck context={avatarWorkspace.avatarContext === 'goal' ? 'B' : 'A'} readCanvas={() => modelDropTarget.current?.querySelector('canvas')} user={user} />
                 </div>
               )}
 
@@ -1409,25 +1445,10 @@ function PersonViewer() {
                   <p className="chamber-note">Build an approximate face from your measurements, then refine its features. A parameter model cannot determine your exact identity without reference data. Edits update the avatar and new image exports; previously downloaded images remain snapshots.</p>
                   <details className="chamber-note"><summary>What controls this face?</summary><p>Face width, face height, nose length, nose width and head circumference influence the supported shapes. Missing values use estimates or defaults. Eye spacing, ear length and ear width are recorded measurements but do not yet deform this model independently.</p><p>Changing a measurement releases related manual shape overrides. Other custom features and expressions are retained. The sliders describe shape strength, not likeness accuracy.</p></details>
                   <button type="button" className="chamber-pill" onClick={resetFaceToMeasurements}>Use face measurements</button>
-                  <LikenessControls key={`${user?.id}-${avatarWorkspace.avatarContext}`} context={avatarWorkspace.avatarContext} onPreset={applyFaceChanges}/>
+                  <LikenessControls key={`${user?.id}-${avatarWorkspace.avatarContext}`} context={avatarWorkspace.avatarContext} onPreset={applyFaceChanges} supportedKeys={supportedHeadMorphKeys(modelDiagnostics,renderMode!=='SPRITE')}/>
                   <SpeechControls key={`speech-${user?.id}-${avatarWorkspace.avatarContext}`} viewerRef={modelDropTarget} context={avatarWorkspace.avatarContext} ownerId={user?.id} available={viewMode==='SOLO' && renderMode!=='SPRITE' && modelDiagnostics?.health==='healthy'}/>
                   <EyeAppearanceControls metrics={skinEditorMetrics} onChange={updateSkinAppearance} />
-                  {FACE_SHAPE_CONTROLS.map((s) => {
-                    const val = (faceOverrides[s.key] as number) ?? (faceWeights[s.key] as number) ?? 0.35;
-                    return (
-                      <div key={s.key} className="chamber-morph-row">
-                        <div className="chamber-morph-row__header">
-                          <span>{s.label}</span>
-                          <span className="chamber-morph-row__value">{(val * 100).toFixed(0)}%</span>
-                        </div>
-                        <input type="range" aria-label={s.label} min={s.min} max={s.max} step={s.step}
-                          disabled={Boolean(modelDiagnostics?.missingMorphTargets?.includes(s.key))}
-                          value={val}
-                          onChange={(e) => applyFaceChanges({[s.key]:parseFloat(e.target.value)})}
-                          className="chamber-slider" />
-                      </div>
-                      );
-                    })}
+                  <HeadFeatureControls key={`head-${user?.id}-${avatarWorkspace.avatarContext}`} overrides={faceOverrides} weights={faceWeights} diagnostics={modelDiagnostics} interactive={renderMode!=='SPRITE'} onChange={applyFaceChanges} onReset={resetFaceRegionToMeasurements}/>
 
                   <div className="chamber-divider" />
                   <h4 className="chamber-editor__heading"><Zap size={14} /> Expressions</h4>
@@ -1440,13 +1461,14 @@ function PersonViewer() {
                     { key: 'jaw_open', label: 'Jaw open' },
                   ].map((s) => {
                     const val = Number(faceOverrides[s.key] ?? faceWeights[s.key] ?? 0);
+                    const capability=headExpressionCapability(s.key,modelDiagnostics,renderMode!=='SPRITE');
                     return (
                       <div key={s.key} className="chamber-morph-row">
                         <div className="chamber-morph-row__header">
                           <span>{s.label}</span>
                           <span className="chamber-morph-row__value">{Math.round(val * 100)}%</span>
                         </div>
-                        <input type="range" aria-label={s.label} min={0} max={1} step={0.01} value={val}
+                        <input type="range" aria-label={s.label} min={0} max={1} step={0.01} value={val} disabled={!capability.available} title={capability.reason}
                           onChange={(e) => applyFaceChanges({[s.key]:parseFloat(e.target.value)})}
                           className="chamber-slider" />
                       </div>
@@ -1625,7 +1647,37 @@ function PersonViewer() {
         )}
       </div>
 
-      <AvatarEvidence metrics={currentMetrics} diagnostics={modelDiagnostics} qualityGate={qualityGate} />
+      <details className="avatar-secondary-tools"><summary>Model tools and body regions</summary>
+      <section className="avatar-model-tools" aria-label="Model tools">
+        <div className="avatar-model-tools__heading"><strong>Model tools</strong><span>{modelEvidence.assetLabel}</span></div>
+        <div className="avatar-model-tools__actions" role="group" aria-label="Open model controls">
+          <button type="button" className="chamber-pill" onClick={() => { setAvatarWorkspace({ avatarContext: 'current', workspaceMode: 'current' }); setShowWizard(true); }}><Ruler size={16} /> Guided setup</button>
+          <button type="button" className="chamber-pill" onClick={() => openModelControls('pose')}><UserRound size={16} /> Pose controls</button>
+          <button type="button" className="chamber-pill" onClick={() => openModelControls('skin')}><Palette size={16} /> Skin detail</button>
+          <button type="button" className="chamber-pill" onClick={() => openModelControls('face')}><Eye size={16} /> Face controls</button>
+          <button type="button" className="chamber-pill" onClick={() => openModelControls('view')}><Activity size={16} /> View model details</button>
+          {modelDiagnostics?.modelAsset?.preset==='male' && <button type="button" className="chamber-pill" onClick={()=>{
+            const next={...currentMetrics,modelVersion:currentMetrics.modelVersion==='human-r2'?'v2':'human-r2',avatarAsset:''};
+            setCurrentMetrics(next);queueProfileSave(next,goalMetrics,manualMorphOverrides);
+          }}>{currentMetrics.modelVersion==='human-r2'?'Use reviewed model':'Try human realism preview'}</button>}
+        </div>
+        <p>{!modelDiagnostics ? 'Checking model controls…' : renderMode === 'SPRITE' ? 'Interactive 3D is required for pose and surface previews.'
+          : modelEvidence.capabilities.handsAndToes ? `Hands and toes available${modelEvidence.capabilities.eyeLayers ? ' · Separate eye layers' : ''}${modelEvidence.capabilities.nails ? ' · Attached nails' : ''}. Open Pose controls and enable Use saved pose to edit articulation.`
+            : 'This model has no articulated hand and toe controls. Review your model choice in Profile → Body & measurements → 3D appearance & anatomy: Model asset preset, 3D model version and Avatar asset key.'}</p>
+        <p className="avatar-model-tools__surface-status">{surfaceDetailStatus}</p>
+        {modelDiagnostics?.modelAsset?.nativeFamily && <p className="chamber-note">Human realism preview. Visual and device acceptance are still in progress.</p>}
+        {modelDiagnostics?.privateAssetStatus==='loading' && <p className="chamber-note" role="status">Loading anatomy…</p>}
+        {modelDiagnostics?.privateAssetStatus==='error' && <p className="chamber-note" role="alert">Anatomy could not be loaded. Cover the model and reveal it again to retry.</p>}
+        {modelDiagnostics?.modelAsset?.isBundled && modelDiagnostics.modelAsset.preset==='male' && !modelEvidence.capabilities.handsAndToes &&
+          <button type="button" className="chamber-pill" onClick={()=>{
+            const next={...currentMetrics,modelVersion:'v2',avatarAsset:''};setCurrentMetrics(next);queueProfileSave(next,goalMetrics,manualMorphOverrides);
+          }}>Use articulated model</button>}
+      </section>
+      <BodyPartNavigator privateAllowed={sensitiveUnlocked && anatomy.allowed && !captureRedacted} dropTargetRef={modelDropTarget}
+        disabled={renderMode === 'SPRITE' || rendererTelemetry.status === 'context-lost'} />
+      </details>
+
+      <details className="avatar-secondary-tools"><summary>Model information and readiness</summary><AvatarEvidence metrics={currentMetrics} diagnostics={modelDiagnostics} qualityGate={qualityGate} /></details>
 
       {/* ═══ SETTINGS DRAWER ═══ */}
       {showSettings && (
@@ -1812,6 +1864,10 @@ function PersonViewer() {
           onAppearance={updateCurrentAppearance} onMorph={setAdvancedMorph} onWardrobe={wardrobeControls.change} />
       ) : null}
 
+      <details className="avatar-secondary-tools avatar-history">
+        <summary>History, snapshots and measurements</summary>
+        {!hasTimelineData && <p className="chamber-note">No snapshots yet. Save a check-in to begin your dated history.</p>}
+        <button type="button" className="chamber-pill" disabled={!hasTimelineData} onClick={() => setAvatarWorkspace({ workspaceMode: 'timeline' })}>Open timeline</button>
       <PhysiqueDataPanel
         current={currentMetrics}
         goal={goalMetrics}
@@ -1823,6 +1879,7 @@ function PersonViewer() {
         onSaveSnapshot={handleSaveSnapshot}
         onToggleMilestone={handleToggleMilestone}
       />
+      </details>
 
     </div>
       {showShareModal && (

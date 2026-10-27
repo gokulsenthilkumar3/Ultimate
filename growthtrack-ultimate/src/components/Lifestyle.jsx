@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Smile, Zap, Trophy, BarChart2, Flame, Calendar, CheckSquare } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
@@ -186,13 +187,7 @@ export default function Lifestyle() {
       />
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Behavioural Telemetry</p>
-          <h2 className="text-display" style={{ fontSize: '2.25rem' }}>Habit Matrix</h2>
-          <p className="text-secondary">Track atomic consistency and neurological patterns.</p>
-        </div>
-        <div style={{ display: 'flex', align: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+      <PageHeader accent="Wellness" title="Lifestyle & routines" subtitle={<>Track atomic consistency and neurological patterns.</>} actions={<><div style={{ display: 'flex', align: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <div className="glass-card" style={{ padding: '0.65rem 1.25rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Trophy size={18} color="var(--accent)" />
             <div>
@@ -207,8 +202,7 @@ export default function Lifestyle() {
               <p style={{ fontSize: '1rem', fontWeight: 900 }}>{habits.length}</p>
             </div>
           </div>
-        </div>
-      </div>
+        </div></>} />
 
       {/* ── Contribution Grid ── */}
       <ContributionGrid habits={habits} />

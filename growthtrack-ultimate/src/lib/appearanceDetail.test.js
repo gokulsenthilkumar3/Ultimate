@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { MeshStandardMaterial, ShaderLib, Texture } from 'three';
-import { APPEARANCE_DETAIL, appearanceHash, freckleCell, resolveFreckles, resolveHairDetail } from './appearanceDetail';
+import { APPEARANCE_DETAIL, appearanceHash, freckleCell, resolveFreckles, resolveHairDetail, resolveHumanRealism } from './appearanceDetail';
 import { createHairCardMaterial } from '../components/morphEngine/featureMaterials';
 import { createPhysicalSkinMaterial } from '../components/body3d/physicalSkinMaterial';
 import { bodyProfileToGoals, metricsToBodyProfile, publicBodyMetrics } from './physiqueProfile';
 
 describe('saved cosmetic surface detail', () => {
+  it('keeps legacy profiles at full detail and bounds the realism percentage', () => {
+    expect(resolveHumanRealism()).toBe(100);
+    for (const value of [null, '', false, {}, [], 'invalid', NaN, Infinity]) {
+      expect(resolveHumanRealism({ humanRealismPercent: value })).toBe(100);
+    }
+    expect(resolveHumanRealism({ humanRealismPercent: -20 })).toBe(0);
+    expect(resolveHumanRealism({ humanRealismPercent: 120 })).toBe(100);
+    expect(resolveHumanRealism({ humanRealismPercent: '35' })).toBe(35);
+  });
   it('uses legacy-safe defaults and bounds malformed persisted values', () => {
     expect(resolveHairDetail()).toEqual({ density: 1, grey: 0, seed: 1 });
     expect(resolveFreckles()).toEqual(APPEARANCE_DETAIL.freckles.defaults);
@@ -68,7 +77,7 @@ describe('saved cosmetic surface detail', () => {
   });
 
   it('round-trips goal detail through the profile contract and excludes cosmetics from check-ins', () => {
-    const detail = { hairGrey: .6, hairSeed: 74, hairDensity: .8, skinFreckleDensity: .5, skinFreckleSizeMm: .85, skinFreckleContrast: .7, skinFreckleSeed: 59 };
+    const detail = { hairGrey: .6, hairSeed: 74, hairDensity: .8, skinFreckleDensity: .5, skinFreckleSizeMm: .85, skinFreckleContrast: .7, skinFreckleSeed: 59, humanRealismPercent: 35 };
     expect(bodyProfileToGoals({}, { goalMetrics: detail })).toEqual(detail);
     const payload = metricsToBodyProfile(detail);
     expect(payload).toEqual({ hairDensity: .8, skinFreckleDensity: .5 });

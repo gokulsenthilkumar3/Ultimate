@@ -333,84 +333,94 @@ export default function Nutrition({ user }) {
   }, [nutritionLogs, historyDays]);
 
   return (
-    <div className="fade-in module-page">
+    <div className="fade-in module-page nutrition-page">
       <PageHeader accent="Nutrition" icon={<Apple size={24} />}
-        title="Fueling Strategy" subtitle="Per-meal logging · Dynamic BMR · Live macro targets." />
+        title="Nutrition" subtitle="Log meals and review today’s recorded intake." />
 
-      {/* ── BMR Calculator (live) ─────────────────────────────────────── */}
-      <div className="glass-card mb-lg" style={{ borderTop: '2px solid var(--accent)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-          <Calculator size={18} color="var(--accent)" />
-          <span className="card-title" style={{ margin: 0 }}>Macro Calculator</span>
-          <span style={{
-            marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--text-3)',
-            background: 'var(--bg-elevated)', borderRadius: 99, padding: '2px 8px',
-          }}>Updates live ↻</span>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          {[
-            { label: 'Age', value: calcAge, onChange: setCalcAge, type: 'number', min: 10, max: 100, flex: '1 1 70px' },
-            { label: `Wt (${getMeasurementUnit('kg', user)})`, value: calcWeight, onChange: setCalcWeight, type: 'number', min: 30, max: 300, flex: '1 1 80px' },
-            { label: `Ht (${getMeasurementUnit('cm', user)})`, value: calcHeight, onChange: setCalcHeight, type: 'number', min: 100, max: 250, flex: '1 1 80px' },
-          ].map(f => (
-            <div key={f.label} style={{ flex: f.flex }}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>{f.label}</label>
-              <input className="form-input" type={f.type} min={f.min} max={f.max}
-                     value={f.value} onChange={e => f.onChange(e.target.value)} />
+      {/* ── Log Meal + Today's Log ─────────────────────────────────────── */}
+      <div className="dual-grid mb-lg">
+        <div className="glass-card">
+          <span className="card-title">Log Meal</span>
+          <div className="form-stack mt-sm">
+            <select className="form-input" aria-label="Meal type" value={logForm.meal}
+              onChange={e => setLogForm({ ...logForm, meal: e.target.value })}>
+              {MEAL_TYPES.map(m => <option key={m}>{m}</option>)}
+            </select>
+            <input type="text" aria-label="Meal name" placeholder="Food / meal name" value={logForm.name}
+              ref={nameInputRef}
+              onChange={e => setLogForm({ ...logForm, name: e.target.value })}
+              onKeyDown={e => e.key === 'Enter' && addLog()}
+              className="form-input" />
+            <div className="flex-row gap-sm">
+              <input type="number" aria-label="Calories" placeholder="Calories" value={logForm.calories}
+                onChange={e => setLogForm({ ...logForm, calories: e.target.value })}
+                className="form-input" min="0" />
+              <input type="number" aria-label="Protein (g)" placeholder="Protein (g)" value={logForm.protein_g}
+                onChange={e => setLogForm({ ...logForm, protein_g: e.target.value })}
+                className="form-input" min="0" />
             </div>
-          ))}
-          <div style={{ flex: '1 1 70px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Gender</label>
-            <select className="form-input" value={calcGender} onChange={e => setCalcGender(e.target.value)}>
-              <option value="M">Male</option><option value="F">Female</option>
-            </select>
-          </div>
-          <div style={{ flex: '2 1 150px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Activity Level</label>
-            <select className="form-input" value={calcActivity} onChange={e => setCalcActivity(e.target.value)}>
-              {Object.entries(ACTIVITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </div>
-          <div style={{ flex: '1 1 130px' }}>
-            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Goal</label>
-            <select className="form-input" value={calcGoal} onChange={e => setCalcGoal(e.target.value)}>
-              <option value="cut">Cut (fat loss)</option>
-              <option value="maintain">Maintain</option>
-              <option value="bulk">Bulk</option>
-            </select>
+            <div className="flex-row gap-sm">
+              <input type="number" aria-label="Carbohydrate (g)" placeholder="Carbs (g)" value={logForm.carbs_g}
+                onChange={e => setLogForm({ ...logForm, carbs_g: e.target.value })}
+                className="form-input" min="0" />
+              <input type="number" aria-label="Fat (g)" placeholder="Fat (g)" value={logForm.fat_g}
+                onChange={e => setLogForm({ ...logForm, fat_g: e.target.value })}
+                className="form-input" min="0" />
+            </div>
+            <button onClick={addLog} className="btn-primary btn-full"><Plus size={16} /> Log Meal</button>
           </div>
         </div>
 
-        {/* Live target strip */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.6rem', marginTop: '1rem',
-        }}>
-          {[
-            { label: 'BMR',        value: `${formatNumber(macroTargets.bmr, user)} kcal`,      color: 'var(--text-2)' },
-            { label: 'TDEE (Goal)',value: `${formatNumber(macroTargets.calories, user)} kcal`, color: 'var(--accent)' },
-            { label: 'Protein',    value: `${formatNumber(macroTargets.protein, user)}g`,      color: MACRO_COLORS.protein },
-            { label: 'Carbs',      value: `${formatNumber(macroTargets.carbs, user)}g`,        color: MACRO_COLORS.carbs },
-            { label: 'Fat',        value: `${formatNumber(macroTargets.fat, user)}g`,          color: MACRO_COLORS.fat },
-          ].map(t => (
-            <div key={t.label} style={{
-              padding: '0.7rem 0.5rem', background: 'var(--bg-elevated)',
-              borderRadius: 'var(--radius-sm)', textAlign: 'center',
-            }}>
-              <p className="label-caps" style={{ fontSize: '0.58rem', marginBottom: '4px' }}>{t.label}</p>
-              <span style={{ fontWeight: 800, fontSize: '1rem', color: t.color }}>{t.value}</span>
+        <div className="glass-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <span className="card-title" style={{ margin: 0 }}>Today's Log</span>
+            <button className="btn-icon" onClick={() => fetchInitialData()} title="Refresh"
+              style={{ opacity: isLoading ? 0.5 : 1 }}>
+              <RefreshCw size={14} className={isLoading ? 'spin' : ''} />
+            </button>
+          </div>
+          {todayLog.length === 0 ? (
+            <p className="empty-msg">No meals logged today.</p>
+          ) : (
+            <div className="item-list">
+              {todayLog.map(l => (
+                <div key={l.id} className="list-row">
+                  <div>
+                    <p className="list-row__title">{l.name}</p>
+                    <p className="list-row__sub">
+                      {l.meal} · {l.calories} kcal · P:{l.protein_g||0}g C:{l.carbs_g||0}g F:{l.fat_g||0}g
+                    </p>
+                  </div>
+                  <button onClick={() => removeLog(l.id, l.name)}
+                    className="btn-icon btn-icon--danger" aria-label="Remove meal">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* ── BMR Breakdown ─────────────────────────────────────────────── */}
-      <div className="mb-lg">
-        <BMRBreakdown
-          weight={calcWeightMetric} height={calcHeightMetric} age={calcAge}
-          gender={calcGender} activity={calcActivity} goal={calcGoal}
-          targets={macroTargets} user={user}
-        />
-      </div>
+      {/* ── Per-meal calorie bar chart ─────────────────────────────────── */}
+      {mealBarData.length > 0 && (
+        <div className="glass-card mb-lg">
+          <span className="card-title">Calorie Breakdown by Meal</span>
+          <div style={{ height: 180, marginTop: '1rem' }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={mealBarData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="name" stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={tooltipStyle} formatter={v => [`${v} kcal`, 'Calories']} />
+                <Bar dataKey="calories" fill="var(--accent)" radius={[6, 6, 0, 0]} barSize={36} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+
 
       {/* ── Daily Progress: calorie card + macro bars + rings ─────────── */}
       <div style={{
@@ -487,88 +497,84 @@ export default function Nutrition({ user }) {
         </div>
       </div>
 
-      {/* ── Log Meal + Today's Log ─────────────────────────────────────── */}
-      <div className="dual-grid mb-lg">
-        <div className="glass-card">
-          <span className="card-title">Log Meal</span>
-          <div className="form-stack mt-sm">
-            <select className="form-input" value={logForm.meal}
-              onChange={e => setLogForm({ ...logForm, meal: e.target.value })}>
-              {MEAL_TYPES.map(m => <option key={m}>{m}</option>)}
+      <details className="nutrition-calculator glass-card mb-lg"><summary>Target calculator & assumptions</summary>
+        <p className="text-secondary">These are editable calculation inputs, not a new body measurement or a recorded meal. Review any prefilled assumptions before using the estimates.</p>
+      {/* ── BMR Calculator (live) ─────────────────────────────────────── */}
+      <div className="glass-card mb-lg" style={{ borderTop: '2px solid var(--accent)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+          <Calculator size={18} color="var(--accent)" />
+          <span className="card-title" style={{ margin: 0 }}>Macro Calculator</span>
+          <span style={{
+            marginLeft: 'auto', fontSize: '0.65rem', color: 'var(--text-3)',
+            background: 'var(--bg-elevated)', borderRadius: 99, padding: '2px 8px',
+          }}>Updates live ↻</span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          {[
+            { label: 'Age', value: calcAge, onChange: setCalcAge, type: 'number', min: 10, max: 100, flex: '1 1 70px' },
+            { label: `Wt (${getMeasurementUnit('kg', user)})`, value: calcWeight, onChange: setCalcWeight, type: 'number', min: 30, max: 300, flex: '1 1 80px' },
+            { label: `Ht (${getMeasurementUnit('cm', user)})`, value: calcHeight, onChange: setCalcHeight, type: 'number', min: 100, max: 250, flex: '1 1 80px' },
+          ].map(f => (
+            <div key={f.label} style={{ flex: f.flex }}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>{f.label}</label>
+              <input className="form-input" type={f.type} min={f.min} max={f.max}
+                     value={f.value} onChange={e => f.onChange(e.target.value)} />
+            </div>
+          ))}
+          <div style={{ flex: '1 1 70px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Gender</label>
+            <select className="form-input" value={calcGender} onChange={e => setCalcGender(e.target.value)}>
+              <option value="M">Male</option><option value="F">Female</option>
             </select>
-            <input type="text" placeholder="Food / meal name" value={logForm.name}
-              ref={nameInputRef}
-              onChange={e => setLogForm({ ...logForm, name: e.target.value })}
-              onKeyDown={e => e.key === 'Enter' && addLog()}
-              className="form-input" />
-            <div className="flex-row gap-sm">
-              <input type="number" placeholder="Calories" value={logForm.calories}
-                onChange={e => setLogForm({ ...logForm, calories: e.target.value })}
-                className="form-input" min="0" />
-              <input type="number" placeholder="Protein (g)" value={logForm.protein_g}
-                onChange={e => setLogForm({ ...logForm, protein_g: e.target.value })}
-                className="form-input" min="0" />
-            </div>
-            <div className="flex-row gap-sm">
-              <input type="number" placeholder="Carbs (g)" value={logForm.carbs_g}
-                onChange={e => setLogForm({ ...logForm, carbs_g: e.target.value })}
-                className="form-input" min="0" />
-              <input type="number" placeholder="Fat (g)" value={logForm.fat_g}
-                onChange={e => setLogForm({ ...logForm, fat_g: e.target.value })}
-                className="form-input" min="0" />
-            </div>
-            <button onClick={addLog} className="btn-primary btn-full"><Plus size={16} /> Log Meal</button>
+          </div>
+          <div style={{ flex: '2 1 150px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Activity Level</label>
+            <select className="form-input" value={calcActivity} onChange={e => setCalcActivity(e.target.value)}>
+              {Object.entries(ACTIVITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: '1 1 130px' }}>
+            <label className="label-caps" style={{ display: 'block', marginBottom: '6px' }}>Goal</label>
+            <select className="form-input" value={calcGoal} onChange={e => setCalcGoal(e.target.value)}>
+              <option value="cut">Cut (fat loss)</option>
+              <option value="maintain">Maintain</option>
+              <option value="bulk">Bulk</option>
+            </select>
           </div>
         </div>
 
-        <div className="glass-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <span className="card-title" style={{ margin: 0 }}>Today's Log</span>
-            <button className="btn-icon" onClick={() => fetchInitialData()} title="Refresh"
-              style={{ opacity: isLoading ? 0.5 : 1 }}>
-              <RefreshCw size={14} className={isLoading ? 'spin' : ''} />
-            </button>
-          </div>
-          {todayLog.length === 0 ? (
-            <p className="empty-msg">No meals logged today.</p>
-          ) : (
-            <div className="item-list">
-              {todayLog.map(l => (
-                <div key={l.id} className="list-row">
-                  <div>
-                    <p className="list-row__title">{l.name}</p>
-                    <p className="list-row__sub">
-                      {l.meal} · {l.calories} kcal · P:{l.protein_g||0}g C:{l.carbs_g||0}g F:{l.fat_g||0}g
-                    </p>
-                  </div>
-                  <button onClick={() => removeLog(l.id, l.name)}
-                    className="btn-icon btn-icon--danger" aria-label="Remove meal">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
+        {/* Live target strip */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.6rem', marginTop: '1rem',
+        }}>
+          {[
+            { label: 'BMR',        value: `${formatNumber(macroTargets.bmr, user)} kcal`,      color: 'var(--text-2)' },
+            { label: 'TDEE (Goal)',value: `${formatNumber(macroTargets.calories, user)} kcal`, color: 'var(--accent)' },
+            { label: 'Protein',    value: `${formatNumber(macroTargets.protein, user)}g`,      color: MACRO_COLORS.protein },
+            { label: 'Carbs',      value: `${formatNumber(macroTargets.carbs, user)}g`,        color: MACRO_COLORS.carbs },
+            { label: 'Fat',        value: `${formatNumber(macroTargets.fat, user)}g`,          color: MACRO_COLORS.fat },
+          ].map(t => (
+            <div key={t.label} style={{
+              padding: '0.7rem 0.5rem', background: 'var(--bg-elevated)',
+              borderRadius: 'var(--radius-sm)', textAlign: 'center',
+            }}>
+              <p className="label-caps" style={{ fontSize: '0.58rem', marginBottom: '4px' }}>{t.label}</p>
+              <span style={{ fontWeight: 800, fontSize: '1rem', color: t.color }}>{t.value}</span>
             </div>
-          )}
+          ))}
         </div>
       </div>
 
-      {/* ── Per-meal calorie bar chart ─────────────────────────────────── */}
-      {mealBarData.length > 0 && (
-        <div className="glass-card mb-lg">
-          <span className="card-title">Calorie Breakdown by Meal</span>
-          <div style={{ height: 180, marginTop: '1rem' }}>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={mealBarData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={tooltipStyle} formatter={v => [`${v} kcal`, 'Calories']} />
-                <Bar dataKey="calories" fill="var(--accent)" radius={[6, 6, 0, 0]} barSize={36} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+      {/* ── BMR Breakdown ─────────────────────────────────────────────── */}
+      <div className="mb-lg">
+        <BMRBreakdown
+          weight={calcWeightMetric} height={calcHeightMetric} age={calcAge}
+          gender={calcGender} activity={calcActivity} goal={calcGoal}
+          targets={macroTargets} user={user}
+        />
+      </div>
+
+      </details>
 
       {/* ── Weekly Calorie History (Area Chart) ───────────────────────── */}
       <div className="glass-card mb-lg">

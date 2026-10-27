@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useRef } from 'react';
 import { ShoppingCart, Plus, Trash2, Check, Tag, Star, AlertTriangle, ArrowDown, Search, Pencil, PackageCheck, Truck, Clock3, Upload, Link2, TrendingUp, Info } from 'lucide-react';
 import useStore from '../store/useStore';
@@ -194,14 +195,7 @@ export default function Shopping() {
   return (
     <div className="shopping-workspace">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Shopping</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Shopping List</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{stats.pending} pending · {money(stats.totalCost)} estimated</p>
-        </div>
-        <div className="shopping-header-actions"><button onClick={() => setShowConnectors(s => !s)} className="btn-ghost"><Link2 size={15} /> Import orders</button><button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={15} /> Plan purchase</button></div>
-      </div>
+      <PageHeader accent="Finance" title="Shopping" subtitle={<>{stats.pending} pending · {money(stats.totalCost)} estimated</>} actions={<><div className="shopping-header-actions"><button onClick={() => setShowConnectors(s => !s)} className="btn-ghost"><Link2 size={15} /> Import orders</button><button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={15} /> Plan purchase</button></div></>} />
 
       {showConnectors && <section className="shopping-connectors" aria-label="Shopping imports">
         <div><Upload size={20}/><span><strong>Import order history</strong><small>Export orders from Amazon, Flipkart, or another store as CSV, then import them locally.</small></span><label className="btn-primary">Choose CSV<input type="file" accept=".csv,text/csv" onChange={importOrders}/></label></div>

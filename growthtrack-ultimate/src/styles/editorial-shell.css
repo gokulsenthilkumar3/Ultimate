@@ -91,6 +91,7 @@ body { color: var(--gt-text); }
   container-type: inline-size;
 }
 .app-shell[data-ui-system="editorial"] .content-area > :first-child { margin-block-start: 0; }
+.app-shell[data-ui-system="editorial"] .content-area:has(.physique-workspace[data-view='3d']) { padding:8px 16px 32px; }
 .app-shell[data-ui-system="editorial"] .content-area h1 {
   color: var(--gt-text);
   font-family: var(--gt-font-display);

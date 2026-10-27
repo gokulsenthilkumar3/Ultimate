@@ -83,7 +83,7 @@ export default function ProfilePage() {
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage your personal details and subscription plan</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 28 }}>
+            <div className="fs-two-column fs-two-column--profile">
                 {/* Profile Avatar Card */}
                 <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
                     <div style={{ 

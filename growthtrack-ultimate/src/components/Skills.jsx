@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Zap, Plus, Trash2, ChevronUp, Lock, Star, TrendingUp, Award, Edit3, X } from 'lucide-react';
 import useStore from '../store/useStore';
@@ -215,14 +216,7 @@ export default function Skills() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Growth</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Skill Tree</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{skills.length} skills · {formatNumber(totalXP, user, { maximumFractionDigits: 0 })} total XP</p>
-        </div>
-        <button onClick={() => { if (showAdd) cancelForm(); else setShowAdd(true); }} className="btn-primary"><Plus size={14} /> Add Skill</button>
-      </div>
+      <PageHeader accent="Workspace" title="Skills" subtitle={<>{skills.length} skills · {formatNumber(totalXP, user, { maximumFractionDigits: 0 })} total XP</>} actions={<><button onClick={() => { if (showAdd) cancelForm(); else setShowAdd(true); }} className="btn-primary"><Plus size={14} /> Add Skill</button></>} />
 
       {/* Global stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>

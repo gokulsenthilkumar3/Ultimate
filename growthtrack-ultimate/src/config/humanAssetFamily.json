@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "generic-adult-r2",
+  "label": "Human realism preview",
+  "sex": "male",
+  "referenceHeightCm": 175,
+  "assets": {"core": "humanoid-human-r2-core.glb", "hero": "humanoid-human-r2-hero.glb", "privateCore": "humanoid-human-r2-private-core.glb", "privateHero": "humanoid-human-r2-private-hero.glb"},
+  "source": "humanoid-preview-75.glb",
+  "sourceLite": "humanoid-preview-75-lite.glb",
+  "status": "candidate",
+  "review": {"fov": 28, "exposure": 1, "background": "#e8e7e3", "views": ["front", "back", "side", "oblique", "face", "hands", "feet"], "materials": ["clay", "skin"], "neutralPose": "A", "units": "metres"},
+  "sculpt": {"version": 1, "maximumDisplacementMetres": 0.006, "asymmetryMetres": 0.00035, "heroSubdivision": 1},
+  "budgets": {"coreBytes": 3000000, "heroBytes": 5000000, "privateCoreBytes": 2000000, "privateHeroBytes": 5000000},
+  "acceptance": {"humanVisualReview": "pending", "physicalDeviceBenchmarks": "pending", "clinicalMeasurementValidation": "not-claimed"}
+}

@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useEffect, useState, useMemo } from 'react';
 import useStore, {
   selectHabits, selectAddHabit, selectDeleteHabit, selectUpdateHabit,
@@ -377,13 +378,7 @@ export default React.memo(function HabitsMatrix() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.3rem' }}>Habit Tracking</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Habit Matrix</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{totalActiveToday}/{habits.length} done today</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <PageHeader accent="Wellness" title="Habits" subtitle={<>{totalActiveToday}/{habits.length} done today</>} actions={<><div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
             style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: '8px',
@@ -394,8 +389,7 @@ export default React.memo(function HabitsMatrix() {
           <button onClick={() => setShowAdd(s => !s)} className="btn-primary">
             <Plus size={14} /> New Habit
           </button>
-        </div>
-      </div>
+        </div></>} />
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>

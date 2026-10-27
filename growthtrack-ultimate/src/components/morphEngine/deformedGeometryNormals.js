@@ -27,6 +27,8 @@ export function createMorphNormalUpdater(mesh) {
       if (!weight) return;
       for (let offset = 0; offset < position.array.length; offset += 1) position.array[offset] += morph.array[offset] * weight;
     });
+    // Runtime tissue preparation can remove the old closed tip/root faces.
+    if (geometry.index) scratch.setIndex(geometry.index);
     scratch.computeVertexNormals();
     geometry.attributes.normal.array.set(scratch.attributes.normal.array);
     geometry.attributes.normal.needsUpdate = true;

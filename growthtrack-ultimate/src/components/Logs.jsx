@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Filter, Download, Plus, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Shield, Database, Activity, Cpu, User, Hash, Server } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
@@ -215,13 +216,7 @@ export default function Logs() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>System</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Audit Logs</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{enriched.length} total · {filtered.length} shown</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <PageHeader accent="Hub" title="Logs" subtitle={<>{enriched.length} total · {filtered.length} shown</>} actions={<><div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={fetchLogs} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
             <RefreshCw size={12} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} /> Refresh
           </button>
@@ -233,8 +228,7 @@ export default function Logs() {
           </button>
           <button onClick={runSelfTest} className="btn-primary" disabled={selfTesting}><CheckCircle size={14} /> {selfTesting ? 'Testing…' : 'Test logging'}</button>
           <button onClick={() => setShowAddModal(true)} className="btn-primary"><Plus size={14} /> Add Entry</button>
-        </div>
-      </div>
+        </div></>} />
       {diagnostics && <div className="gt-surface gt-glass" role="status" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem', padding: '0.75rem', fontSize: '0.75rem' }}>
         <span><strong>Logging:</strong> {diagnostics.status}</span>
         {diagnostics.counts && <span>DB events: {diagnostics.counts.total}</span>}

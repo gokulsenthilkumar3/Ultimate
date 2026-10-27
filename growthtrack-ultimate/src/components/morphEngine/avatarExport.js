@@ -1,6 +1,7 @@
 import { Group, Mesh, BufferAttribute, Vector3, Box3 } from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import {publicBodyMetrics} from '../../lib/physiqueProfile';
+import { anatomicalBodyExportIndex } from './anatomyTissueGeometry';
 
 const sources = new Map();
 export function registerAvatarSource(key, source) {
@@ -19,6 +20,9 @@ export function bakeAvatarSurface(source) {
     if (node.userData?.sensitive === true || /Aura|Cloth|ScalpCap|Schematic|PrivateMeasurementGuides|PrivateAnatomy/i.test(node.name)) return;
     node.skeleton?.update();
     const geometry = node.geometry.clone();
+    // Public exports omit the sensitive tissue children and retain the intact
+    // body surface even when the owner was viewing the anatomical version.
+    geometry.setIndex(anatomicalBodyExportIndex(node)?.clone() || null);
     const points = new Float32Array(geometry.attributes.position.count * 3);
     const point = new Vector3();
     for (let i = 0; i < geometry.attributes.position.count; i++) {

@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import { EMPTY_RECORD } from '../lib/emptyValues';
 import { Z_INDEX } from '../constants';
 import React, { useEffect, useState } from 'react';
@@ -31,13 +32,7 @@ export default function HealthExtras() {
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Advanced Telemetry</p>
-          <h2 className="text-display" style={{ fontSize: '2.5rem' }}>Health+ & Extras</h2>
-          <p className="text-secondary" style={{ maxWidth: '600px' }}>Deep bio-metric analysis of your five senses, specialized organ health, and comprehensive lifestyle markers.</p>
-        </div>
-      </div>
+      <PageHeader accent="Wellness" title="Health+" subtitle={<>Deep bio-metric analysis of your five senses, specialized organ health, and comprehensive lifestyle markers.</>} />
 
       {!Object.keys(senses).length && !specialized.length && !recoveryMetrics.length && (
         <div className="glass-card health-empty-state"><Heart size={28} color="var(--accent)" /><div><h3>No fabricated health data</h3><p className="text-secondary">Add recovery metrics below or connect a health source. Saved values will appear from the local Health table.</p></div></div>

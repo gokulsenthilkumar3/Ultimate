@@ -1,4 +1,6 @@
 import surface from '../../config/humanSurface.json';
+import humanFamily from '../../config/humanAssetFamily.json';
+import humanManifest from '../../config/humanAssetManifest.json';
 const base = import.meta.env.BASE_URL;
 
 const DEFAULT_ASSETS = Object.freeze({
@@ -12,9 +14,10 @@ const LEGACY_ASSETS = Object.freeze({
 const bundledAssets=new Set(surface.reviewedBundledAssets.map(file=>`${base}assets/models/${file}`));
 
 // External anatomy carried by the assessed full/lite pairs. They contain the
-// male procedural surface (see docs/ANATOMY_ASSET_PLAN.md). Other assets declare
+// male procedural surface (see docs/real-human-3d/16-private-anatomy.md). Other assets declare
 // `anatomySex` in its PrivateAnatomy node extras or it stays covered.
 const DEFAULT_ANATOMY_SEX = 'male';
+for(const asset of Object.values(humanManifest.assets))bundledAssets.add(base+'assets/models/'+asset.file);
 
 // Alternate authored assets remain opt-in. The bundled adult-v2 pair is an
 // attachment-binding upgrade of the assessed base, not an authored sculpt.
@@ -70,6 +73,15 @@ export function resolveModelAsset(preference = {}, gpuTier = 'MED') {
   const liteAsset=configuredAsset===DEFAULT_ASSETS.production?DEFAULT_ASSETS.lite:LEGACY_ASSETS.lite;
   const useLiteDefault = gpuTier !== 'HIGH' && !customAsset && isDefault;
   const path = customAsset || selectedV2 || (useLiteDefault ? liteAsset : configuredAsset);
+  const requestedHuman=preference.modelVersion==='human-r2' && preset==='male' && !customAsset;
+  const humanLod=requestedHuman?(gpuTier==='HIGH'?'hero':'core'):Object.keys(humanManifest.assets).find(key=>path===base+'assets/models/'+humanManifest.assets[key].file);
+  if(humanLod){
+    const asset=humanManifest.assets[humanLod],humanPath=base+'assets/models/'+asset.file;
+    return {path:humanPath,isBundled:true,anatomySex:asset.anatomySex,preset,version:'human-r2',
+      source:customAsset?'profile':'human-family',isVariantReady:true,v2Ready:true,
+      nativeFamily:humanFamily.id,lod:humanLod,sha256:asset.sha256,
+      privatePath:base+'assets/models/'+asset.privateFile+'?v='+asset.privateSha256.slice(0,12),privateSha256:asset.privateSha256};
+  }
   const upgradedDefault=!customAsset && !selectedV2 && [DEFAULT_ASSETS.production,DEFAULT_ASSETS.lite].includes(path);
   return {
     path,

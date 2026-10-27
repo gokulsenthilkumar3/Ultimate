@@ -16,6 +16,12 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('same-origin Agents client', () => {
+  it('reports the provider selected by the authenticated backend', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => stream(frame('meta', { model: 'openai/gpt-oss-120b', provider: 'groq' }) + frame('delta', { text: 'Ready' }) + frame('done', { done: true }))));
+    expect(await streamAgentsChat(request({ model: 'openai/gpt-oss-120b' }))).toMatchObject({ provider: 'groq', model: 'openai/gpt-oss-120b', text: 'Ready', done: true });
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).not.toHaveProperty('apiKey');
+  });
+
   it('requires actual models even when a response claims readiness', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ready: true, models: [] })));
     expect(await getAgentsReadiness()).toMatchObject({ ready: false, available: false });

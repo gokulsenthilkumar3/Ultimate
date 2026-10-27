@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Adult anatomical asset verification</title>
+<style>body{margin:0;background:#e8e7e3}canvas{display:block;max-width:100vw;max-height:100vh;object-fit:contain}</style></head><body>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
+import manifest from '../src/config/humanAssetManifest.json';
+import {loadNativeAnatomyPackage,attachNativeAnatomy} from '../src/components/morphEngine/useNativeAnatomy.js';
+import {createPhysicalSkinMaterial} from '../src/components/body3d/physicalSkinMaterial.js';
+import {applyAnatomySurface,updateAnatomySurface} from '../src/components/morphEngine/anatomySurface.js';
+import {resolveRigBones} from '../src/components/morphEngine/boneMap.js';
+import {applyJointPose} from '../src/components/morphEngine/poseRuntime.js';
+import {refreshNativeFit} from '../src/components/morphEngine/nativeSurfaceFit.js';
+
+// Isolated, explicit generic-adult authoring fixture. No owner records/API.
+const lod=new URLSearchParams(location.search).get('lod')==='core'?'core':'hero';
+const source=manifest.assets[lod],asset={...source,lod,privatePath:'/assets/models/'+source.privateFile};
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+const renderWidth=Math.min(800,innerWidth),renderHeight=Math.min(900,innerHeight);
+renderer.setPixelRatio(1);renderer.setSize(renderWidth,renderHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;
+document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#e8e7e3');
+const ambient=new THREE.HemisphereLight('#ffffff','#877f77',1.1);scene.add(ambient);
+const lights=[];
+for(const [position,intensity] of [[[1.3,1.7,2.3],2.3],[[-1.8,.8,1],1.4],[[0,1,-2],1.5]]){
+  const light=new THREE.DirectionalLight('#fff8f2',intensity);light.position.fromArray(position);scene.add(light);lights.push(light);
+}
+const camera=new THREE.PerspectiveCamera(28,renderWidth/renderHeight,.005,30);
+const gltf=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/assets/models/'+source.file);
+scene.add(gltf.scene);gltf.scene.updateMatrixWorld(true);
+let body;gltf.scene.traverse(n=>{if(n.isMesh && (n.name==='Body' || n.name==='GrowthTrackBody'))body=n;});
+const bodyOriginal=body.material;
+const attachment=attachNativeAnatomy(await loadNativeAnatomyPackage(asset),body,asset),anatomy=attachment.mesh;
+const materials=[createPhysicalSkinMaterial(2,bodyOriginal,{vertexColors:true}),applyAnatomySurface(createPhysicalSkinMaterial(2,anatomy.nativeSourceMaterial,{surfaceDetail:true}))];
+const clay=new THREE.MeshStandardMaterial({color:'#b9b4ae',roughness:.8,metalness:0,side:THREE.DoubleSide,vertexColors:false});
+body.material=materials[0];anatomy.material=materials[1];anatomy.visible=true;
+const bones=Object.fromEntries(Object.entries(resolveRigBones(body.skeleton)).filter(([,b])=>b).map(([key,bone])=>[key,{bone,rest:bone.quaternion.clone(),restScale:bone.scale.clone()}]));
+let profile={},options={},evidence,view='oblique';
+function render(){gltf.scene.updateMatrixWorld(true);body.skeleton.update();attachment.deformer.updateDetails();renderer.render(scene,camera);}
+function setAnatomy(next={},nextOptions={}){
+  profile=next;options=nextOptions;
+  const heightScale=nextOptions.heightScale || 1;gltf.scene.scale.y=heightScale;gltf.scene.updateMatrixWorld(true);
+  evidence=attachment.deformer.apply(profile,{...options,heightScale,baseColor:materials[1].color});
+  updateAnatomySurface(anatomy.material,evidence);render();return evidence;
+}
+function setView(next){
+  view=next;
+  const directions={front:[0,0,1],back:[0,0,-1],side:[1,0,.03],opposite:[-1,0,.03],oblique:[.65,.12,1],under:[.2,-.8,.8],above:[.3,.8,1]};
+  const box=new THREE.Box3().setFromBufferAttribute(anatomy.geometry.attributes.position),target=box.getCenter(new THREE.Vector3()).applyMatrix4(anatomy.matrixWorld);
+  const radius=box.getSize(new THREE.Vector3()).length();
+  camera.position.copy(target).add(new THREE.Vector3(...directions[next]).normalize().multiplyScalar(Math.max(.4,radius*2.5)*Math.max(1,.8/camera.aspect)));
+  camera.lookAt(target);camera.updateProjectionMatrix();render();
+}
+window.nativeReview={ready:true,lod,setAnatomy,setView,
+  setPose(joints={}){applyJointPose(bones,{joints,targets:{},digits:{}});render();setView(view);return anatomy.userData.nativeRuntime;},
+  setMorph(name,value){for(const mesh of [body,attachment.cage]){const id=mesh.morphTargetDictionary?.[name];if(id!=null)mesh.morphTargetInfluences[id]=value;}render();return anatomy.userData.nativeRuntime;},
+  setSurface(mode){body.material=mode==='clay'?clay:materials[0];anatomy.material=mode==='clay'?clay:materials[1];setAnatomy(profile,options);},
+  setLighting(mode){ambient.intensity=mode==='grazing'?.35:1.1;lights[0].position.set(...(mode==='grazing'?[2.5,.7,.4]:[1.3,1.7,2.3]));lights[1].intensity=mode==='grazing'?.25:1.4;render();},
+  async motion(frames=30){
+    frames=Math.max(2,Math.min(600,Math.floor(frames)||30));
+    const times=[],intervals=[],failures=[];let previous=performance.now(),finite=true;
+    for(let i=0;i<frames;i++){
+      await new Promise(requestAnimationFrame);const start=performance.now();intervals.push(start-previous);previous=start;
+      const phase=i/(frames-1),hip=75*Math.sin(phase*Math.PI),spread=25*Math.sin(phase*Math.PI*2);
+      applyJointPose(bones,{joints:{leftThigh:[hip,0,spread],rightThigh:[hip,0,-spread],leftShin:[-hip,0,0],rightShin:[-hip,0,0]},targets:{},digits:{}});render();
+      times.push(performance.now()-start);finite &&= anatomy.geometry.attributes.position.array.every(Number.isFinite);
+      const fit=refreshNativeFit(evidence.fit,anatomy.userData.surfaceMeasurements),contact=anatomy.userData.contactEvidence;
+      if(fit.status!=='within-tolerance' || contact.unresolved || anatomy.userData.nativeRuntime.degenerateFrames)failures.push({frame:i,phase,fit:fit.status,contactUnresolved:contact.unresolved,degenerateFrames:anatomy.userData.nativeRuntime.degenerateFrames});
+    }
+    const percentile=(values,p)=>values.slice().sort((a,b)=>a-b)[Math.min(values.length-1,Math.floor(values.length*p))];
+    const debug=renderer.getContext().getExtension('WEBGL_debug_renderer_info');
+    return {runAt:new Date().toISOString(),assetHashes:{body:source.sha256,private:source.privateSha256},frames,finite,failures,allFramesPassed:finite && failures.length===0,cpuStepP50Ms:percentile(times,.5),cpuStepP95Ms:percentile(times,.95),frameIntervalP95Ms:percentile(intervals,.95),memory:renderer.info.memory,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,renderer:debug?renderer.getContext().getParameter(debug.UNMASKED_RENDERER_WEBGL):renderer.getContext().getParameter(renderer.getContext().RENDERER),native:anatomy.userData.nativeRuntime,evidence:attachment.deformer.getEvidence()};
+  },
+  inspect(){return {lod,evidence:attachment.deformer.getEvidence(),surface:anatomy.userData.surfaceMeasurements,native:anatomy.userData.nativeRuntime,vertices:anatomy.geometry.attributes.position.count,bodyVertices:body.geometry.attributes.position.count};}
+};
+setAnatomy();setView('oblique');
+</script></body></html>

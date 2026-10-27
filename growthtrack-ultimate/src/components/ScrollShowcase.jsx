@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Activity, MousePointer2, ScanLine, Sparkles } from 'lucide-react';
+import { Activity, MousePointer2, ScanLine } from 'lucide-react';
 
 const HumanoidViewer = lazy(() => import('./HumanoidViewer'));
 const FEATURES = [
@@ -10,17 +10,7 @@ const FEATURES = [
 
 export default function ScrollShowcase() {
   return (
-    <section className="physique-lab physique-lab--cinematic" aria-labelledby="physique-lab-title">
-      <header className="physique-lab__intro">
-        <div>
-          <span className="physique-lab__eyebrow"><Sparkles size={13} /> Explore & compare</span>
-          <h2 id="physique-lab-title">Your 3D mirror</h2>
-          <p>Explore your measurements from every angle. Compare your current body with your goal.</p>
-        </div>
-        <div className="physique-lab__status">
-          Interactive preview
-        </div>
-      </header>
+    <section className="physique-lab physique-lab--comparison" aria-label="Body tracking and comparison">
       <div className="physique-lab__stage">
         <Suspense fallback={<div className="hub-loading"><div className="spin-ring" /> Preparing your digital twin…</div>}>
           <HumanoidViewer />

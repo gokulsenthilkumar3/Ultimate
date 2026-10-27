@@ -2,13 +2,9 @@ import { resolveBodyMetrics } from '../../lib/bodyMetricFallbacks';
 import { constrainMorphWeights, sanitizeMorphWeights } from './morphMath';
 import { anatomyMorphWeights } from './anatomyCalibration';
 import { MORPH_TARGET_NAMES } from './constants';
+import { HEAD_FEATURES } from '../../lib/headFeatureRegistry';
 
-export const FACE_SHAPE_CONTROLS = Object.freeze([
-  ['eye_size','Eye Size'],['brow_depth','Brow Ridge'],['nose_bridge_width','Nose Bridge'],
-  ['nose_tip_size','Nose Tip'],['lip_fullness','Lip Fullness'],['ear_prominence','Ear Prominence'],
-  ['jaw_width','Jaw Width'],['chin_projection','Chin Projection'],['cheekbone_width','Cheekbone Width'],
-  ['forehead_height','Forehead Height'],['temple_narrowing','Temple Narrowing'],['nose_length','Nose Length Shape'],['jaw_angle','Jaw Angle'],
-].map(([key,label])=>Object.freeze({key,label,min:0,max:1,step:.01})));
+export const FACE_SHAPE_CONTROLS = Object.freeze(HEAD_FEATURES.map(({key,label,inputConstraints})=>Object.freeze({key,label,...inputConstraints})));
 
 const sourceRank={measured:0,inherited:1,estimated:2};
 function preferredMetric(resolution,...keys){

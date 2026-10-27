@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "humanRealism": { "key": "humanRealismPercent", "min": 0, "max": 100, "step": 1, "default": 100 },
   "eyes": {
     "defaults": { "color": "#6b3b20", "scleraColor": "#ffffff", "pupilMode": "fixed", "pupilSizeMm": 3.8, "detail": 0.6, "limbalRing": true, "seed": 1 },
     "shades": [

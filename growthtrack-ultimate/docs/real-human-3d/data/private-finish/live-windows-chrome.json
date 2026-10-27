@@ -1,0 +1,31 @@
+{
+  "engine": "windows-chrome",
+  "host": "Windows",
+  "macHardwareTested": false,
+  "offline": true,
+  "networkRequests": 0,
+  "errors": [],
+  "frames": 41,
+  "frameP50Ms": 50,
+  "frameP95Ms": 66.69999999999891,
+  "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x0000A7A0) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "fit": "within-tolerance",
+  "contact": false,
+  "native": {
+    "version": 1,
+    "space": "post-skin-body-local",
+    "degenerateFrames": 0,
+    "parts": 4,
+    "timing": {
+      "totalMs": 45.800000071525574,
+      "contactMs": 34.5,
+      "junctionMs": 3.100000023841858
+    }
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "runAt": "2026-10-24T08:47:19.263Z",
+  "viewerSha256": "bfc07dc5d7bc881b00fdf5e94eb4bf7b4dee14ba9443a055f4532327bf720445"
+}

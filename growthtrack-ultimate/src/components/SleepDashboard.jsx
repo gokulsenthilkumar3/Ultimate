@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useCallback, useMemo } from 'react';
 import {
@@ -157,13 +158,14 @@ export default function SleepDashboard() {
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.75rem' }}>
-        <div>
-          <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Sleep</p>
-          <h1 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Moon size={24} color="var(--accent)" /> Sleep Analytics
-          </h1>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <PageHeader accent="Wellness" title="Sleep" subtitle="Record sleep and understand recent patterns." icon={<Moon size={24} color="var(--accent)" />} actions={<><div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          {VIEWS.map(v => (
+            <button key={v} onClick={() => setActiveView(v)}
+              className={`btn-sm${activeView === v ? ' active' : ''}`}>
+              {v.toUpperCase()}
+            </button>
+          ))}
+        </div></>} status={<><div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{(logs || []).length} sessions logged</p>
             {chartData.length > 0 && (
               <span className={`sleep-debt-badge ${debtClass}`}>
@@ -171,17 +173,7 @@ export default function SleepDashboard() {
                 {sleepDebt === 0 ? 'No Sleep Debt' : `${formatNumber(sleepDebt, user, { maximumFractionDigits: 1 })}h Debt`}
               </span>
             )}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          {VIEWS.map(v => (
-            <button key={v} onClick={() => setActiveView(v)}
-              className={`btn-sm${activeView === v ? ' active' : ''}`}>
-              {v.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
+          </div></>} />
 
       {/* KPI cards */}
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>

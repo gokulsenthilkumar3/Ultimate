@@ -9,6 +9,7 @@ import useStore from '../useStore';
 import { apiRequest } from '../../lib/apiClient';
 import { sanitizeAvatarPresentation } from '../../lib/avatarPresentation';
 import { addAvatarPerson, createAvatarPerson, patchAvatarPerson } from '../../lib/avatarPeople';
+import { createAnatomyCustomization, updateAnatomyPath } from '../../lib/anatomyCustomization';
 
 vi.mock('../../lib/apiClient', () => ({ apiRequest: vi.fn() }));
 vi.mock('../../lib/logger', () => ({ logCRUD: vi.fn().mockResolvedValue(undefined) }));
@@ -46,9 +47,9 @@ it('retains saved Current/Goal detail after reconnecting to SQLite and preserves
   const initial = { viewerPreferences: { spaceSky: 'nebula' }, goalMetrics: { weight: 70 } };
   useStore.setState({ user: { id: 'appearance-owner' }, physiqueTargets: initial });
   const current = { hairGrey: .35, hairDensity: .6, hairSeed: 456, skinFreckleDensity: .4, skinFreckleSizeMm: .8, skinFreckleContrast: .5, skinFreckleSeed: 789,
-    eyeColor: '#4e7897', eyePupilMode: 'exposure', eyePupilSizeMm: 4.2, eyeIrisDetail: .8, eyeSeed: 321, irisLimbalRing: false, skinMicroDetail:.8 };
+    eyeColor: '#4e7897', eyePupilMode: 'exposure', eyePupilSizeMm: 4.2, eyeIrisDetail: .8, eyeSeed: 321, irisLimbalRing: false, skinMicroDetail:.8, humanRealismPercent: 75 };
   const goal = { hairGrey: .1, hairDensity: .9, hairSeed: 654, skinFreckleDensity: .2, skinFreckleSeed: 987,
-    eyeColor: '#507453', eyePupilMode: 'fixed', eyePupilSizeMm: 5.1, eyeSeed: 987, irisLimbalRing: true };
+    eyeColor: '#507453', eyePupilMode: 'fixed', eyePupilSizeMm: 5.1, eyeSeed: 987, irisLimbalRing: true, humanRealismPercent: 100 };
   const viewerPreferences=sanitizeAvatarPresentation({spaceSky:'nebula',poseStudio:{
     current:{enabled:true,joints:{head:[0,25,0]},targets:{leftWrist:[.3,-.6,.2]},digits:{leftHand:{shape:'fist',strength:.7,spread:0},rightFoot:{curl:.3}}},
     goal:{enabled:true,joints:{head:[0,-20,0]},targets:{rightAnkle:[-.2,-.7,.1]}}},
@@ -81,4 +82,20 @@ it('reconnects with separate people, measurements, poses and owner records after
   expect(saved.avatarPeople.people[0]).toMatchObject({ id: 'buddy', bodyProfile: { heightCm: 182.88, handLengthCm: 21 }, physiqueTargets: { goalMetrics: { handLength: 22 }, morphOverrides: { current: { jaw_width: .7 } } } });
   expect(saved.avatarPeople.people[1]).toMatchObject({ id: 'alex', bodyProfile: { heightCm: 168, handLengthCm: 18 }, physiqueTargets: {} });
   expect((await prisma.user.findUnique({ where: { id: 'other-owner' }, select: { physiqueTargets: true } })).physiqueTargets).toBeNull();
+});
+
+it('persists independent guide fitting and placement without rewriting measurements or other profile records',async()=>{
+  useStore.getState().resetSessionData();
+  const anatomyV2=createAnatomyCustomization({current:{scrotum:{envelope:{widthCm:6},leftTestis:{lengthCm:4},rightTestis:{lengthCm:3,placement:{verticalCm:-.4}}}},goal:{scrotum:{fitMode:'envelope',leftTestis:{lengthCm:5}}}});
+  useStore.setState({user:{id:'appearance-owner'},physiqueTargets:{anatomyV2,goalMetrics:{waist:80}}});
+  await Promise.all([
+    useStore.getState().updatePhysiqueTargets(latest=>({...latest,anatomyV2:updateAnatomyPath(latest.anatomyV2,['current','scrotum','fitMode'],'guides')})),
+    useStore.getState().updatePhysiqueTargets(latest=>({...latest,anatomyV2:updateAnatomyPath(latest.anatomyV2,['current','scrotum','leftTestis','placement'],{verticalCm:.6,tiltDeg:20})})),
+    useStore.getState().updatePhysiqueTargets(latest=>({...latest,anatomyV2:updateAnatomyPath(latest.anatomyV2,['goal','scrotum','paddingCm'],.35)})),
+  ]);
+  await prisma.$disconnect();prisma=connect();
+  const saved=JSON.parse((await prisma.user.findUnique({where:{id:'appearance-owner'},select:{physiqueTargets:true}})).physiqueTargets);
+  expect(saved.goalMetrics).toEqual({waist:80});
+  expect(saved.anatomyV2.current.scrotum).toMatchObject({fitMode:'guides',envelope:{widthCm:6},leftTestis:{lengthCm:4,placement:{verticalCm:.6,tiltDeg:20}},rightTestis:anatomyV2.current.scrotum.rightTestis});
+  expect(saved.anatomyV2.goal.scrotum).toMatchObject({fitMode:'envelope',paddingCm:.35,leftTestis:{lengthCm:5}});
 });

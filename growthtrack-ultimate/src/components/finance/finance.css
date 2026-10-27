@@ -1,4 +1,10 @@
 .finance-workspace { display: grid; gap: 20px; min-width: 0; inline-size: 100%; max-inline-size: 100%; padding: 0; color: var(--gt-text); }
+.finance-workspace > .gt-editorial-header { margin-bottom:0; }
+.finance-more-filters { margin-block:8px; border-block-start:1px solid var(--gt-border); }
+.finance-more-filters > summary, .finance-budget-editor > summary { min-height:44px; padding:10px 0; cursor:pointer; font-size:.875rem; color:var(--gt-muted); }
+.finance-active-filters { display:flex; gap:8px; flex-wrap:wrap; }
+.finance-active-filters:empty { display:none; }
+.finance-budget-editor[open] > section { margin-top:8px; }
 .finance-workspace .finance-page-header {
   padding-block: 0 var(--gt-space-4);
   border-block-end: 1px solid var(--gt-border);

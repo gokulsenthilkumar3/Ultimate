@@ -1,5 +1,5 @@
 import {test,expect} from './foundation-fixture';
-import {bodySurface,paintedCanvas,setupHumanViewer} from './helpers/human-viewer';
+import {bodySurface,paintedCanvas,setupHumanViewer,surfaces} from './helpers/human-viewer';
 
 test('face expressions move the mouth and speech restores saved expression without profile writes',async({page})=>{
   await page.addInitScript(()=>{
@@ -76,6 +76,7 @@ test('legacy model can be upgraded from the viewer and an action releases the sa
 });
 
 test('selected head and torso joints drag without orbiting and Escape restores the previous angles',async({page})=>{
+  test.setTimeout(120000);
   const {canvas,targets,errors}=await setupHumanViewer(page,'reduce');
   await page.getByRole('tab',{name:'Pose',exact:true}).click();await page.getByRole('checkbox',{name:'Use saved pose'}).check();
   await page.getByRole('button',{name:'Front',exact:true}).click();await canvas.scrollIntoViewIfNeeded();
@@ -93,6 +94,9 @@ test('selected head and torso joints drag without orbiting and Escape restores t
   await expect.poll(()=>targets().viewerPreferences.poseStudio?.current.joints.spine2).toEqual([5,10,0]);
   await paintedCanvas(canvas,test.info().outputPath('head-and-torso-drag.png'));
   await page.reload();await page.getByRole('tab',{name:'Pose',exact:true}).click();await canvas.scrollIntoViewIfNeeded();
-  await expect.poll(async()=>(await bodySurface(canvas))?.pose?.joints.spine2,{timeout:45000}).toEqual([5,10,0]);
+  // The camera mounts before the GLB finishes transferring. Wait for actual
+  // model readiness separately from the saved-pose assertion.
+  await expect.poll(async()=>(await surfaces(canvas,60000)).length,{timeout:60000}).toBe(5);
+  await expect.poll(async()=>(await bodySurface(canvas))?.pose?.joints.spine2).toEqual([5,10,0]);
   expect(errors).toEqual([]);
 });

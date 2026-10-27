@@ -621,7 +621,7 @@ export default function Tasks() {
       `}</style>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start',
                     gap: '1rem', marginBottom: '1.75rem' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>Tasks Command</h1>
@@ -634,6 +634,8 @@ export default function Tasks() {
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button onClick={fetchTasks} title="Refresh from DB"
             style={{ 
+              minWidth: 44,
+              minHeight: 44,
               padding: '10px', 
               borderRadius: '12px', 
               background: 'var(--bg-elevated)',
@@ -664,6 +666,7 @@ export default function Tasks() {
             disabled={saving}
             onClick={() => { setShowForm(v => !v); if (editId) resetForm(); }}
             style={{ 
+              minHeight: 44,
               padding: '10px 20px', 
               fontSize: '0.85rem', 
               gap: '8px', 
@@ -947,7 +950,7 @@ export default function Tasks() {
               >{c} ({catCounts[c]})</button>
             );
           })}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.6rem' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 600 }}>Sort:</span>
             <div className="segmented--compact" style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: '10px', padding: '3px', border: '1px solid var(--border)' }}>
               {[['created','Created'],['priority','Priority'],['due','Due']].map(([v, l]) => {
@@ -978,16 +981,20 @@ export default function Tasks() {
             </div>
             <div style={{ width: '1px', height: '14px', background: 'var(--border-strong)', margin: '0 4px' }} />
             <button 
+              aria-label="List view"
+              aria-pressed={viewMode === 'list'}
               onClick={() => setViewMode('list')} 
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : 'var(--text-3)', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
+              style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: viewMode === 'list' ? 'var(--accent)' : 'var(--text-3)', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
               onMouseEnter={e => { if (viewMode !== 'list') e.currentTarget.style.color = 'var(--text-1)'; }}
               onMouseLeave={e => { if (viewMode !== 'list') e.currentTarget.style.color = 'var(--text-3)'; }}
             >
               <ListIcon size={16} />
             </button>
             <button 
+              aria-label="Priority matrix view"
+              aria-pressed={viewMode === 'matrix'}
               onClick={() => setViewMode('matrix')} 
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: viewMode === 'matrix' ? 'var(--accent)' : 'var(--text-3)', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
+              style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: viewMode === 'matrix' ? 'var(--accent)' : 'var(--text-3)', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
               onMouseEnter={e => { if (viewMode !== 'matrix') e.currentTarget.style.color = 'var(--text-1)'; }}
               onMouseLeave={e => { if (viewMode !== 'matrix') e.currentTarget.style.color = 'var(--text-3)'; }}
             >

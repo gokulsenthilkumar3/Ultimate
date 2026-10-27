@@ -22,7 +22,7 @@ export function createHairCardMaterial(source, hairColor, metrics = {}) {
   const material = new THREE.MeshPhysicalMaterial({
     map: source?.map || null,
     normalMap: source?.normalMap || null,
-    color: new THREE.Color().setRGB(...hairAlbedoTint(hairColor)),
+    color: source?.map?new THREE.Color().setRGB(...hairAlbedoTint(hairColor)):new THREE.Color(hairColor),
     roughness: 0.58,
     metalness: 0,
     specularIntensity: 0.45,
@@ -38,7 +38,7 @@ export function createHairCardMaterial(source, hairColor, metrics = {}) {
   const hairUniform = { value: new THREE.Vector3(detail.density, detail.grey, detail.seed) };
   material.userData.hairDetail = hairUniform;
   const grey = new THREE.Color(APPEARANCE_DETAIL.hair.greyColor);
-  const greyTint = new THREE.Color().setRGB(...grey.toArray().map((value, channel) => value / HAIR_ALBEDO_REFERENCE[channel]));
+  const greyTint = source?.map?new THREE.Color().setRGB(...grey.toArray().map((value, channel) => value / HAIR_ALBEDO_REFERENCE[channel])):grey;
   const install = (target, shaded) => {
     target.customProgramCacheKey = () => `growthtrack-seeded-hair-v1-${shaded}`;
     target.onBeforeCompile = shader => {
@@ -61,9 +61,11 @@ export function createHairCardMaterial(source, hairColor, metrics = {}) {
           if (retained >= uHairDetail.x) discard;
           #include <alphatest_fragment>`);
       if (shaded) shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
-        #ifdef USE_MAP
           float silver = float(hairPatternHash(1u) & 65535u) / 65536.0 < uHairDetail.y ? 1.0 : 0.0;
+        #ifdef USE_MAP
           diffuseColor.rgb = mix(diffuseColor.rgb, sampledDiffuseColor.rgb * uHairSilverTint, silver);
+        #else
+          diffuseColor.rgb = mix(diffuseColor.rgb, uHairSilverTint, silver);
         #endif`);
     };
   };

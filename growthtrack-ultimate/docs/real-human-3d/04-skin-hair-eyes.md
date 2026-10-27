@@ -7,15 +7,17 @@ region sharp as the camera approaches. All numbers marked *tested* come from the
 asset code must match. All constants marked *starting value* are calibrated in step S3 of the
 [roadmap](08-roadmap.md) against reference photographs.
 
+**2026-10-23 research correction:** [R2/I2](16-private-anatomy.md#review-findings-and-corrections) is the current full-human approval plan. Numerical reference tests below do not validate optical constants or clinical skin classes. Fitzpatrick phototype describes sun response, not a calibrated RGB/ITA identity; preset conversions remain artistic approximations. Standard glTF ORM is red occlusion, green roughness and blue metallic (zero for skin), not blue cavity. The proposed maps and scattering tiers are not all present in the runtime.
+
 **2026-10-21 runtime checkpoint:** shared artistic skin swatches, regional roughness, retained authored maps, local bundled eyelid correction and deterministic blink/breath/gaze motion now run in the application. The idle reference tests import the runtime sampler. This is the partial appearance milestone recorded in [implementation progress](IMPLEMENTATION_PROGRESS.md), not completion of the texture, cornea, pupil, strand-hair or anatomical authoring specifications below.
 
 **20-point checkpoint:** the live Skin tab now saves an independent clothing exposure history. Swim shorts, tank/shorts, tee/shorts and long sleeves/trousers protect skin using the wardrobe's neutral bands and blended rest-surface regions; no pattern remains the default. Only the tan term is masked, preserving base colour, undertone and flush. Current/Goal layers, reset, full/lite transitions, mobile controls and protected PNGs are covered by runtime tests. These are approximate neutral styles, not authored seam masks or calibrated sun-response predictions. The absolute optical model and asset-authoring requirements below remain targets.
 
 ## 1 · Why skin tone, tan and "melanin" must be separate data
 
-Today the skin is **one photographic albedo that already contains a tan**, tinted per Fitzpatrick type
+At the original audit, the skin used **one photographic albedo that already contained a tan**, tinted by artistic skin presets
 (`physicalSkinMaterial.js`): the file notes that the map's own median colour is linear `(0.776, 0.429, 0.27)` and tints
-it by the ratio to that, clamped to `[0.02, 2.5]` per channel. That has four consequences you can see in the audit
+it by the ratio to that, clamped to `[0.02, 2.5]` per channel. That historical baseline had four consequences visible in the audit
 screenshots:
 
 1. A tan **cannot** be added or removed: it is baked into the one map.
@@ -25,14 +27,11 @@ screenshots:
    and a light tone gets bleached ones.
 4. Blood colour (blush, flush) cannot change without changing the tone.
 
-The fix is to describe skin by what it is made of. Melanin is **one pigment with two sources**: the genetic baseline
-(constitutive, what the sun never reaches) and the sun's addition (facultative, a tan). The model keeps them as two
-separate inputs that add into the same optical density, so "skin tone" and "tan" are independent controls, a tan can
-never make someone a different skin type, and a tan can be masked by region and clothing.
+The proposed renderer separates baseline pigmentation from exposure-related darkening, so base appearance and tan can be edited independently and masked by region. Its additive optical-density formula is an approximation, not a complete account of melanin chemistry, skin physiology or an individual's UV response. Regional appearance remains editable rather than inferred from ethnicity or a phototype label. See [DermNet's phototype definition](https://dermnetnz.org/topics/skin-phototype).
 
 | Layer | What it is | Who sets it | Changes with | Region-dependent |
 | --- | --- | --- | --- | --- |
-| **Constitutive melanin** | Genetic skin tone of never-exposed skin | The person (one number, ITA, or Fitzpatrick I to VI) | Never (age slowly) | Yes (palms, soles, lips, areolae are lighter or darker by a fixed offset) |
+| **Baseline pigmentation** | Approximate constitutive appearance | User-selected colour or calibrated colour input; phototype is separate metadata | Stable default, user editable | Editable regional multipliers, not universal fixed biological offsets |
 | **Facultative melanin (tan)** | UV-induced darkening | A "sun tan" amount, plus "tan lines" | Weeks | Yes (exposure per region × clothing coverage) |
 | **Haemoglobin** | Redness from blood | Baseline per region; "flush" and "burn" are transient | Seconds to days | Yes (cheeks, nose, ears, lips, knuckles) |
 | **Carotene** | Yellowness | Undertone | Slowly | Mild |
@@ -40,6 +39,8 @@ never make someone a different skin type, and a tan can be masked by region and 
 | **Surface condition** | Oil, sweat, dryness, goosebumps | Activity and environment | Seconds | Yes (T-zone oil) |
 
 ## 2 · The colour model (tested)
+
+Here, **tested means numerical behavior of a reference approximation**. It does not mean measured optical validation, a melanin assay, a clinical phototype classifier or proof of a real person's skin colour. Source calibration and uncertainty remain open under R2-11/12.
 
 `code/skin-layers.mjs`: a two-layer Beer-Lambert reflectance. Light crosses the epidermis (melanin and carotene absorb),
 is scattered by the dermis (haemoglobin absorbs) and crosses the epidermis again:
@@ -59,11 +60,11 @@ tested: ITA falls monotonically with melanin and spans about +73° (no melanin) 
 
 | Input | Range | Meaning |
 | --- | --- | --- |
-| `tone` | Fitzpatrick I to VI, or ITA −60° to +70° | Constitutive skin tone. The existing `skinTone` choice maps to a representative ITA per type: I 60°, II 48°, III 35°, IV 20°, V −5°, VI −45° |
-| `undertone` | −1 cool/pink to +1 warm/golden | Moves haemoglobin and carotene, not lightness |
-| `tan` | 0 to 1 | Tan on fully exposed skin; scaled by the type's **tanning capacity** (*starting values*: I 0.2, II 0.5, III 0.85, IV 1.0, V 0.75, VI 0.35) because type I burns instead of tanning and type VI is already dark |
+| `tone` | Artistic preset or reference ITA −60° to +70° | Baseline appearance. The reference lookup assigns I 60°, II 48°, III 35°, IV 20°, V −5°, VI −45°; these are preset fixture values, not a one-to-one biological conversion from phototype |
+| `undertone` | −1 cool/pink to +1 warm/golden | Artistic chromophore adjustment; may affect both chroma and lightness while preserving the stored baseline input |
+| `tan` | 0 to 1 | Artistic exposure-related darkening; the reference response multipliers I 0.2, II 0.5, III 0.85, IV 1.0, V 0.75, VI 0.35 are uncalibrated fixture values and do not predict an individual's tanning or burning |
 | `coverage` | 0 to 1 per region/texel | 0 under clothing that is always worn (tan line), 1 where skin is bare |
-| `flush`, `burn` | 0 to 1 | Transient blood: exercise/heat, sunburn. These change redness (a\*) and not the tone (tested) |
+| `flush`, `burn` | 0 to 1 | Artistic transient-redness controls; the baseline input stays unchanged, while rendered lightness/chroma may also change. This is not physiological prediction |
 
 **Region table** (`REGIONS`, 19 skin regions): each has `exposure` (how much sun it normally gets), `hb` (redness
 multiplier) and `mel` (pigment multiplier). Examples: face exposure 1.0, hb 1.35; palm exposure 0.04, mel 0.45; lips hb
@@ -72,10 +73,10 @@ build script, so the shader and the tested JavaScript read one source.
 
 **Tested properties** (`code/skin-layers.check.mjs`, 9 tests):
 
-- ITA is monotonic in melanin and each Fitzpatrick type lands inside its ITA band and round-trips within 0.2°.
+- The approximation's ITA is monotonic in its melanin parameter; the preset lookup round-trips its assigned ITA values within 0.2°. This is not a clinical phototype validation.
 - A tan darkens exposed skin for every type **and leaves the constitutive layer unchanged** (the separation).
 - Skin with coverage 0 (swim trunks) is bit-identical with tan 0 and tan 1: tan lines work.
-- Palms never tan (facultative melanin under 10% of the back of the hand's); type I tans under half as much as type IV.
+- In the reference fixture, palm darkening is strongly reduced and preset I darkens less than preset IV. These are model assumptions, not universal physiology.
 - A flush or sunburn raises redness without changing the constitutive layer.
 - Every region × type combination yields valid sRGB.
 - The GLSL constants are **generated** from the module (`node code/skin-layers.mjs --glsl`), never copied by hand.
@@ -101,17 +102,19 @@ computed once per wardrobe change by rasterising the garment meshes into the ski
 edge is soft), cached, and applied only when "tan lines" is on. The SWIMWEAR and UNDERWEAR presets define what was worn
 "for the summer"; the default is off, so the person has an even tan.
 
-**What stays in the textures:** a *detail albedo* with mean 1.0 (pores' darkness, small colour variation, a few
-freckle-scale dots), never a tone. The bake script divides the painted detail by its own blur so every region averages
-1.00 ± 0.02, which guarantees the detail cannot shift tone or tan. Masks pack as:
+**What stays in the textures:** separate intrinsic colour variation from lighting and from the chosen baseline tone. A relative-detail map may target linear mean 1.00 ± 0.02, but that does not guarantee unchanged perceived colour after nonuniform lighting, nonlinear tone mapping or roughness changes. Preserve meaningful regional/vascular variation; do not blindly remove it by blur division. Calibrate the complete render path using [the linear colour workflow](https://threejs.org/manual/pages/color-management.html). Masks pack as:
 
 | Map | R | G | B | A |
 | --- | --- | --- | --- | --- |
 | `MASK_A` | Regional haemoglobin | Regional melanin multiplier | Sun exposure (from `REGIONS`) | Freckle/mole density |
 | `MASK_B` | Vein map | Scar / stretch-mark / birthmark | Oil / sheen | Skin thickness (ears, nostrils, lids, fingertips are thin) |
-| `ORM` | Ambient occlusion | Roughness | Cavity (for crease darkening) | — |
+| `ORM` | Ambient occlusion | Roughness | Metallic (zero for skin) | — |
+
+Fine cavity modulation, if separately needed, requires an explicitly declared map role; it must not be written into glTF's metallic channel. The channel contract follows [Khronos export documentation](https://github.com/KhronosGroup/glTF-Blender-IO/blob/main/docs/blender_docs/scene_gltf2.rst).
 
 ## 3 · Light transport by quality tier
+
+The rows below are proposed techniques, not completed runtime features. Benchmark the complete viewer, skin mask boundaries and all pass allocations on named devices; published paper timings and a fixed hair-count reduction cannot establish this application's budget. Scattering must not bleed into eyes, hair, teeth or background.
 
 | Tier | Skin shading | Ears, nostrils, fingers | Cost |
 | --- | --- | --- | --- |

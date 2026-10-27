@@ -29,11 +29,12 @@ beforeEach(() => {
 function route(component: React.ReactNode, initial = '/finance/transactions') { return render(<MemoryRouter initialEntries={[initial]}>{component}</MemoryRouter>); }
 
 describe('Finance canonical module rendering', () => {
-  it('renders Transactions directly without a second module tab strip or h1', () => {
+  it('renders Transactions with one page heading and no second module tab strip', () => {
     route(<Finance initialTab="Transactions" />);
     expect(screen.getByRole('region', { name: 'Transactions table' })).toBeVisible();
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Transactions' })).toBeVisible();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.queryByText('Spending calendar')).not.toBeInTheDocument();
   });
   it('renders pathname modules and changes when initialTab changes', () => {

@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, OWNER, emptyState } from '../foundation-fixture';
 import { writeFile } from 'node:fs/promises';
 
-export async function setupHumanViewer(page: Page, reducedMotion: 'reduce' | 'no-preference', appearanceMetrics: Record<string, unknown> = {}, bodyOverrides: Record<string, unknown> = {}) {
+export async function setupHumanViewer(page: Page, reducedMotion: 'reduce' | 'no-preference', appearanceMetrics: Record<string, unknown> = {}, bodyOverrides: Record<string, unknown> = {}, options: { studio?: boolean, tools?: boolean } = { studio: true, tools: true }) {
   const errors: string[] = [], bodyWrites: unknown[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => {
@@ -44,6 +44,13 @@ export async function setupHumanViewer(page: Page, reducedMotion: 'reduce' | 'no
   // compilation finish. Keep the same asset-readiness budget as the canvas;
   // the short assertion default is not a first-render loading deadline.
   await expect.poll(async () => (await surfaces(canvas,45000)).length, { timeout: 45000 }).toBe(5);
+  // Specialist specs historically started with every category and model tool
+  // exposed. Open their secondary workspace explicitly after the frame loads.
+  if (options.studio) {
+    await page.getByRole('button', { name: 'Appearance studio', exact: true }).click();
+    await page.getByRole('tab', { name: 'Measure', exact: true }).click();
+  }
+  if (options.tools) await page.getByText('Model tools and body regions', { exact: true }).click();
   return { canvas, errors, targets: () => targets, bodyWrites, holdNextBodyWrite, failNextBodyWrite: () => { rejectNextBodyWrite = true; } };
 }
 
