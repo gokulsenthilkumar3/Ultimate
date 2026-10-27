@@ -1,0 +1,90 @@
+[
+  {
+    "product": "family",
+    "route": "/dashboard",
+    "title": "Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\nFixture family\n\n1 members\n\nWelcome to Fixture family\n\nHere's what's happening in",
+    "overflow": 0,
+    "controls": 6,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "family",
+    "route": "/tree",
+    "title": "Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\nFixture family\n\n1 members\n\nFamily Tree\n\nInteractive view of your family connecti",
+    "overflow": 0,
+    "controls": 13,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "family",
+    "route": "/timeline",
+    "title": "Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\nFixture family\n\n1 members\n\nFamily Timeline\n\nChronological journey of your family",
+    "overflow": 0,
+    "controls": 3,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "family",
+    "route": "/media",
+    "title": "Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\nFixture family\n\n1 members\n\nMedia & Memories\n\nPreserve your family's precious pho",
+    "overflow": 0,
+    "controls": 6,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "family",
+    "route": "/members",
+    "title": "Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\nFixture family\n\n1 members\n\nFamily Members\n\n1 members in this tree\n\nAdd Member\nFi",
+    "overflow": 0,
+    "controls": 7,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "family",
+    "route": "/events",
+    "title": "Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\nFixture family\n\n1 members\n\nFamily Calendar\n\nUpcoming birthdays, anniversaries, a",
+    "overflow": 0,
+    "controls": 4,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "family",
+    "route": "/profile/fixture-member",
+    "title": "Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\nFixture family\n\n1 members\n\nBack to Directory\nAF\nEdit Profile\nAlex Fixture\n\nFamil",
+    "overflow": 0,
+    "controls": 5,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "family",
+    "route": "/settings",
+    "title": "Fixture family",
+    "body": "🌳\nFamilyConnect\nDashboard\nFamily Tree\nTimeline\nMedia\nMembers\nCalendar\nSettings\nFixture family\n\n1 members\n\nSettings\n\nManage your account preferences and tree se",
+    "overflow": 0,
+    "controls": 8,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  }
+]

@@ -46,6 +46,19 @@ body {
   min-height: 100vh;
 }
 
+.oxfin-main { min-width: 0; }
+.oxfin-main > div { width: 100%; }
+.oxfin-main h1 { font-size: clamp(1.65rem, 2.3vw, 2rem); line-height: 1.2; }
+#oxfin-navigation nav a { min-height: 44px; }
+@media (max-height: 800px) and (min-width: 1024px) {
+  .oxfin-main > div { padding: 24px; }
+  .oxfin-main > .space-y-8 > :not(:last-child) { margin-block-end: 24px; }
+}
+@media (max-width: 1023px) {
+  #oxfin-navigation[data-open="false"] { visibility: hidden; }
+  .oxfin-main > div { padding-top: 76px; }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }

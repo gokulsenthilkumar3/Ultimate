@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Plus, Trash2, Edit3, DollarSign, RefreshCw } from 'lucide-react';
@@ -207,13 +208,8 @@ export default function Portfolio() {
   }
 
   return <div className="module-page" style={{ padding: '0.5rem 0' }}>
-    <div className="section-head">
-      <div><p className="label-caps">Investments</p><h2 className="text-display">Portfolio</h2>
-        <p className="text-secondary">Prices come from connected sources (dated and attributed) or your own dated snapshots. Undated prices cannot establish gains or returns.</p>
-      </div>
-      <button className="btn-secondary" onClick={refreshPrices} disabled={refreshing || saving} aria-busy={refreshing}><RefreshCw size={14} /> {refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
-      <button className="btn-primary" onClick={() => setShowAdd(open => !open)} aria-expanded={showAdd} aria-controls="portfolio-add-form" disabled={saving}><Plus size={14} /> Add Holding</button>
-    </div>
+    <PageHeader accent="Finance" title="Portfolio" subtitle={<>Prices come from connected sources (dated and attributed) or your own dated snapshots. Undated prices cannot establish gains or returns.</>} actions={<><button className="btn-secondary" onClick={refreshPrices} disabled={refreshing || saving} aria-busy={refreshing}><RefreshCw size={14} /> {refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
+<button className="btn-primary" onClick={() => setShowAdd(open => !open)} aria-expanded={showAdd} aria-controls="portfolio-add-form" disabled={saving}><Plus size={14} /> Add Holding</button></>} />
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', margin: '1rem 0' }}>
       {[['Recorded cost', totalCost], ['Dated value', totalValue], ['Unrealized difference', totalDifference]].map(([label, value]) => <div key={label} className="glass-card"><p>{label}</p><strong>{money(value)}</strong></div>)}
     </div>

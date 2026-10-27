@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "basisSha256": "6627588660aa6c754aaa2edb181bc01a8ca60c3b4c534efa3e87f636ce5cda18",
+  "source": ".tmp/makehuman-cc0-assets/eyes/materials/brown_eye.png",
+  "sourceArchiveSha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+  "license": "CC0-1.0",
+  "albedo": {
+    "file": "eye-albedo.png",
+    "sha256": "4659691c7295ad6206c78b003e5fd0e5f91dcd53032fa914a229bb48cabe424b",
+    "bytes": 610817,
+    "width": 1024,
+    "height": 1024,
+    "colorSpace": "srgb",
+    "flipY": false
+  },
+  "atlas": {
+    "left": [
+      0.708,
+      0.298
+    ],
+    "right": [
+      0.293,
+      0.71
+    ],
+    "irisRadius": 0.111,
+    "scleraRadius": 0.278
+  },
+  "optics": {
+    "model": "layered-native-transmission-v1",
+    "effectiveIor": 1.336,
+    "corneaThicknessMetres": 0.0025,
+    "physiologicalCalibration": false
+  },
+  "licenseFiles": [
+    {
+      "file": "EYES-CC0.txt",
+      "sha256": "5f3ab0cf6f7ebe92efe4b83213131c617d308d164eeefd5da230373640b0c226",
+      "bytes": 7003
+    },
+    {
+      "file": "EYES-MATERIAL.txt",
+      "sha256": "4abad93ce50541c08127721e77bce035640c9f16bed16cd0f5524b1cd5908465",
+      "bytes": 1247
+    },
+    {
+      "file": "EYES-SOURCE.md",
+      "sha256": "8ffb7e4ceb6287189cfc2cbaea5e50187654b8ca19145f400f7aa37f8c9b37b2",
+      "bytes": 1070
+    }
+  ]
+}

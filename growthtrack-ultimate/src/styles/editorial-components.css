@@ -36,18 +36,24 @@
   gap: var(--gt-space-3) var(--gt-space-5);
   min-inline-size: 0;
   margin-block-end: var(--gt-space-5);
-  padding: var(--gt-space-5) 0 var(--gt-space-4);
+  padding: var(--gt-space-2) 0 var(--gt-space-4);
   border: 0;
   border-block-end: 1px solid var(--gt-border);
   border-radius: 0;
-  /* Subtle editorial gradient: fades from a tinted canvas to the page surface */
-  background-image: linear-gradient(to bottom, color-mix(in srgb, var(--gt-action, #5c67e8) 4%, var(--gt-canvas, #fafaf9)), transparent);
+  background: transparent;
   color: var(--gt-text);
   box-shadow: none;
 }
 
 .gt-page-template > .gt-editorial-header { margin-block-end: 0; }
 .gt-editorial-header::after { content: none; }
+.nutrition-calculator > summary { min-height:44px; padding:10px 0; cursor:pointer; font-weight:600; }
+.nutrition-calculator[open] > .text-secondary { margin:12px 0 20px; font-size:.875rem; line-height:1.6; }
+.nutrition-diary input, .nutrition-diary select { min-width:0; min-height:44px; }
+.nutrition-diary .flex-row > * { flex:1; width:0; }
+.current-context { padding:20px; margin-bottom:20px; border:1px solid var(--gt-border); border-radius:var(--gt-radius-md); background:var(--gt-surface); color:var(--gt-text); }
+.notification-preferences { border-block:1px solid var(--gt-border); }
+.notification-preferences > summary { min-height:44px; padding:10px 0; color:var(--gt-muted); cursor:pointer; }
 .gt-editorial-header__intro { grid-column: 1; min-inline-size: 0; }
 .gt-editorial-header .gt-editorial-header__eyebrow {
   margin: 0 0 var(--gt-space-2);
@@ -64,7 +70,7 @@
   min-inline-size: 0;
   margin: 0;
   color: var(--gt-text);
-  font: 500 clamp(2rem, 2.5vw, 2.7rem)/1.1 var(--gt-font-display);
+  font: 500 clamp(1.75rem, 2.1vw, 2.3rem)/1.15 var(--gt-font-display);
   letter-spacing: -.035em;
   overflow-wrap: anywhere;
 }
@@ -82,7 +88,7 @@
   max-inline-size: 68ch;
   margin: var(--gt-space-2) 0 0;
   color: var(--gt-muted);
-  font: 400 .95rem/1.6 var(--gt-font);
+  font: 400 .875rem/1.6 var(--gt-font);
   overflow-wrap: anywhere;
 }
 .gt-editorial-header .page-header-block__actions,

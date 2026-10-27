@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useCallback, useMemo } from 'react';
 import {
@@ -236,16 +237,9 @@ export default function SocialMedia() {
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Digital Identity</p>
-          <h1 className="text-display" style={{ fontSize: '2.2rem', marginBottom: '0.35rem' }}>Social profiles</h1>
-          <p className="text-secondary">Saved links and manually entered figures. Automatic provider analytics are not connected.</p>
-        </div>
-        <button onClick={handleSave} disabled={isSaving} className="btn-primary">
+      <PageHeader accent="Life" title="Social" subtitle={<>Saved links and manually entered figures. Automatic provider analytics are not connected.</>} actions={<><button onClick={handleSave} disabled={isSaving} className="btn-primary">
           <Save size={16} /> {isSaving ? 'SAVING…' : 'SAVE MANUAL RECORDS'}
-        </button>
-      </div>
+        </button></>} />
 
       {/* Stats overview */}
       {linkedPlatforms.length > 0 && (

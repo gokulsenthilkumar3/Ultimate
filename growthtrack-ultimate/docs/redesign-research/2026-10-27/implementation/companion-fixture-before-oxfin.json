@@ -1,0 +1,83 @@
+[
+  {
+    "product": "oxfin",
+    "route": "/dashboard",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nGood evening 👋\n\nAl",
+    "overflow": 0,
+    "controls": 14,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/wallets",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\nWallets\n\nManage your",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/investments",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nWEALTH\n\nInvestments",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/cards",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nPAYMENTS\n\nCards\n\nCa",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/bills",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nPAYMENTS\n\nBills & P",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/transactions",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\nBack to Overview\nAct",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/settings",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\nSettings\n\nManage you",
+    "overflow": 0,
+    "controls": 15,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/auth/error",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\nAuthentication Error",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "oxfin",
+    "route": "/auth/ultimate/callback",
+    "title": "OxFin",
+    "body": "OX\nOxFin\n\nGLOBAL FINANCE\n\nMENU\n\nDashboard\nWallets\nInvestments\nCards\nBills\n4\nActivity\nSettings\nAF\n\nAlex Fixture\n\nalex@example.test\n\nSign Out\n\nThe sign-in handoff",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  }
+]

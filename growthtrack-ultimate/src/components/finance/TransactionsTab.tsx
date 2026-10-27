@@ -32,6 +32,7 @@ export default function TransactionsTab({ transactions, today, user, currencySym
   const [confirmDelete, setConfirmDelete] = useState<string[] | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(() => Boolean(filters.category || filters.method || filters.from || filters.to));
   const pending = useRef(false);
   const categories = useMemo(() => [...new Set(transactions.map(row => row.category))].sort(), [transactions]);
   const methods = useMemo(() => [...new Set(transactions.map(row => row.method).filter((value): value is string => Boolean(value)))].sort(), [transactions]);
@@ -86,13 +87,19 @@ export default function TransactionsTab({ transactions, today, user, currencySym
       <fieldset disabled={deleting} style={{ border: 0, margin: 0, padding: 0 }}><div className="finance-controls">
         <label className="finance-field">Search transactions<input type="search" className="form-input" value={filters.query} onChange={event => changeFilter('q', event.target.value)} placeholder="Category, description, method…" /></label>
         <label className="finance-field">Transaction type<select className="form-input" value={filters.type} onChange={event => changeFilter('type', event.target.value)}><option value="">All types</option>{['Income', 'Expense', 'Investment'].map(type => <option key={type}>{type}</option>)}</select></label>
+        <label className="finance-field">Sort transactions<select className="form-input" value={sort} onChange={event => changeFilter('sort', event.target.value)}>{SORTS.map((value, index) => <option key={value} value={value}>{SORT_LABELS[index]}</option>)}</select></label>
+        <button type="button" className="btn-sm" onClick={() => { setParams({}); setSelected(new Set()); setConfirmDelete(null); setAdvancedOpen(false); }}>Clear filters</button>
+      </div>
+      <details className="finance-more-filters" open={advancedOpen} onToggle={event => setAdvancedOpen(event.currentTarget.open)}>
+        <summary>More filters{[filters.category,filters.method,filters.from,filters.to].filter(Boolean).length ? ` · ${[filters.category,filters.method,filters.from,filters.to].filter(Boolean).length} active` : ''}</summary>
+        <div className="finance-controls">
         <label className="finance-field">Filter category<select className="form-input" value={filters.category} onChange={event => changeFilter('category', event.target.value)}><option value="">All categories</option>{[...new Set([...categories, filters.category].filter(Boolean))].map(category => <option key={category}>{category}</option>)}</select></label>
         <label className="finance-field">Filter payment method<select className="form-input" value={filters.method} onChange={event => changeFilter('method', event.target.value)}><option value="">All methods</option>{methods.map(method => <option key={method}>{method}</option>)}</select></label>
         <label className="finance-field">From date<input type="date" className="form-input" value={filters.from} onChange={event => changeFilter('from', event.target.value)} /></label>
         <label className="finance-field">To date<input type="date" className="form-input" value={filters.to} onChange={event => changeFilter('to', event.target.value)} /></label>
-        <label className="finance-field">Sort transactions<select className="form-input" value={sort} onChange={event => changeFilter('sort', event.target.value)}>{SORTS.map((value, index) => <option key={value} value={value}>{SORT_LABELS[index]}</option>)}</select></label>
-        <button type="button" className="btn-sm" onClick={() => { setParams({}); setSelected(new Set()); setConfirmDelete(null); }}>Clear filters</button>
-      </div></fieldset>
+        </div>
+      </details></fieldset>
+      <div className="finance-active-filters" aria-label="Active transaction filters">{([['category','Category',filters.category],['method','Method',filters.method],['from','From',filters.from],['to','To',filters.to]] as const).filter(([, , value]) => value).map(([key,label,value]) => <button type="button" key={key} className="btn-sm" onClick={() => changeFilter(key,'')} aria-label={`Remove ${label.toLowerCase()} filter: ${value}`}>{label}: {value} ×</button>)}</div>
       {invalidRange && <p role="alert" className="finance-error">From date must be on or before to date.</p>}
       {invalidDate && <p role="alert" className="finance-error">Date filters must use valid dates in YYYY-MM-DD format. Clear the filters to reset them.</p>}
       <dl className="finance-summary" aria-label="Filtered totals"><div><dt>Income</dt><dd>{formatMoney(summary.income)}</dd></div><div><dt>Expenses</dt><dd>{formatMoney(summary.expenses)}</dd></div><div><dt>Investments</dt><dd>{formatMoney(summary.investments)}</dd></div><div><dt>Balance</dt><dd>{formatMoney(summary.balance)}</dd></div></dl>

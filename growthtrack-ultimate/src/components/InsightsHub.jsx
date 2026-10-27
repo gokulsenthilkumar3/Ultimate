@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -48,7 +49,7 @@ function OwningModule({ tab, logs, setActiveTab }) {
     {tab === 'current' && <Current />}
     {tab === 'analytics' && <Analytics />}
     {tab === 'dashboards' && <Dashboards />}
-    {tab === 'progress' && <ReadOnlyProgressSummary />}
+    {tab === 'progress' && <section className="module-page"><PageHeader accent="Insights" title="Progress" subtitle="Review changes in your dated records." /><ReadOnlyProgressSummary /></section>}
     {tab === 'forecast' && <TransformationPredictor logs={storeLogs ?? logs} />}
   </Suspense>;
 }

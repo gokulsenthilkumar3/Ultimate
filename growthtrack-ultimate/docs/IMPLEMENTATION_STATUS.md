@@ -1,10 +1,27 @@
-# GrowthTrack implementation status (baseline 2026-09-29; updated 2026-10-22)
+# GrowthTrack implementation status (baseline 2026-09-29; updated 2026-10-27)
 
 This is an implementation snapshot, not a claim that the whole approved plan is
 production-ready. Scope is Ultimate and its repository build workflows. The
 additive local Notes migration was applied after a verified backup/restore and
 parity rehearsal; its snapshot contained zero Notes. Owner storage was not
 reset or used by automated tests. Companion product data was not merged.
+
+## Parametric editor and editable exports (2026-10-27)
+
+- **Exact-collider comparison:** curved palm/finger capsules and torso boxes, plus cached shortest-path garment projection, are implemented as offline candidates. The mixed collider candidate still has 142 belly/elbow garment crossings; production retains the better **149/150** result and its 77-crossing failure. [Measured comparison and research qualifications](real-human-3d/26-analytic-capsules-and-geodesic-timing.md) separate 12.5–33.3 ms cached projection samples from the much slower complete fit. No additional garment was added.
+
+- **Garment and rig continuation (27 October):** the shared worker/offline solver now passes **149/150** fixtures. A certified convex-part fallback clears both flexed-torso cases; body self-intersections and signed diagnostics remain separately reported. The belly/elbow case still has 77 crossing pairs, so strict acceptance and wardrobe expansion remain blocked. Bone-collider and corrected graph-geodesic experiments stay offline. [Current evidence and limitations](real-human-3d/25-garment-classification-and-projection.md) distinguish successful exterior classification from visual acceptance and solve speed. Both GLB profiles carry fitted rest joints; editable export metadata and its accessible button description disclose external refitting requirements. Authored hair finishing, expressions and calibrated joint placement remain open. Personal likeness references and Android hardware remain unspecified. The foundation counts below are the earlier checkpoint.
+
+- **3D Mirror → Parametric human editor** now provides an opt-in pinned 306-channel human basis, 22 simple controls, independent Current/Goal state, per-person saves and CPU-baked viewing without the full GPU morph bank.
+- Export a compact rigged GLB, a desktop GLB retaining all 306 named body shapes, or an editable package carrying semantic state, the original basis and source notices. Package restore validates identity/integrity and restores both editing states. External sculpt modifications are not reimported.
+- Evidence: 82 focused tests, two Chromium flows, typecheck and production build passed; lint has zero errors and 93 warnings. App GLBs have zero validation errors/warnings. Blender 5.1.1 retained the 52 joints and 306 shape keys through an external edit and export; its re-export has five hierarchy warnings.
+- This establishes customization/export plumbing. Finished skin, eyes, hair, rig fitting, wardrobe and physical-device/visual acceptance remain open. See [the implementation and evidence record](real-human-3d/20-parametric-editor-and-export.md).
+
+## Human asset family candidate (2026-10-23)
+
+- Approved R2/I2 implementation now delivers four actual public/private core/hero GLBs, new sculpt/groom LODs, an editable Blender scene and a native triangle-frame adapter. Select **Try human realism preview** in 3D Mirror's Model tools.
+- Public core/hero payloads are 1.92/4.29 MB; private packages are 0.48/0.68 MB. Eligibility/reveal gates loading; hash checks, cancellation and synchronous public-body restoration protect transitions, captures and exports. No owner data was migrated.
+- See [the implementation record](real-human-3d/17-human-asset-family.md) for delivered artifacts and the remaining sculpt, fitting, optics, contact, human-review and device gates. The model stays opt-in and is not declared lifelike-complete.
 
 ## Model measurements, independent figures and Notes duplication (2026-10-22)
 
@@ -42,7 +59,7 @@ This continuation changed no GLB assets, database schema or owner records and pe
 
 ## Digital twin anatomy safeguards and asset provenance (2026-10-19)
 
-- Anatomical mode is adults-only (saved date of birth, enforced in the renderer and therefore in body export), never shows the shipped male placeholder on a female or neutral base, and requires assets to declare their anatomy. Size inputs are centimetres with published reference ranges and geometry-derived morph mapping; the placeholder's drawable range is disclosed. See [ANATOMY_ASSET_PLAN.md](ANATOMY_ASSET_PLAN.md).
+- Anatomical mode is adults-only (saved date of birth, enforced in the renderer and therefore in body export), never shows the shipped male placeholder on a female or neutral base, and requires assets to declare their anatomy. Size inputs are centimetres with published reference ranges and geometry-derived morph mapping; the placeholder's drawable range is disclosed. See [real-human-3d/16-private-anatomy.md](real-human-3d/16-private-anatomy.md).
 - Added `ASSET-PROVENANCE.json` and `npm run check:assets` (CI). The MakeHuman-derived body, skin, eye and hair components are recorded as licence-unresolved; release mode fails until resolved.
 - Evidence: policy, calibration (re-measures both GLBs), visibility, mapping and provenance tests pass; backend suite 103/103; frontend 674/676 with the two failures being the pre-existing Finance heading test and a load timeout that passes in isolation; typecheck and build pass. Not verified in a signed-in browser session.
 

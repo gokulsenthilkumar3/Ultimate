@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useMemo, useState } from 'react';
 import useStore, {
   selectMedicalData,
@@ -297,20 +298,10 @@ export default function Medical() {
   return (
     <div className="fade-in medical-theme" style={{ padding: '0.5rem 0' }} id="medical-report">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--danger)' }}>Clinical Overview</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
-            <Stethoscope size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem', color: 'var(--danger)' }} />
-            Medical History
-          </h2>
-          <p style={{ color: 'var(--text-2)', fontSize: '0.85rem' }}>Clinical baseline data, required diagnostics, and medication tracking.</p>
-        </div>
-        <button className="btn-primary no-print" onClick={() => window.print()}
+      <PageHeader accent="Wellness" title="Medical" subtitle={<>Clinical baseline data, required diagnostics, and medication tracking.</>} icon={<Stethoscope size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem', color: 'var(--danger)' }} />} actions={<><button className="btn-primary no-print" onClick={() => window.print()}
           style={{ background: 'var(--danger)', color: '#fff', border: 'none' }}>
           <Printer size={16} /> Export PDF
-        </button>
-      </div>
+        </button></>} />
 
       {/* Warning Banner */}
       <div className="glass-card pulse-glow mb-lg" style={{ borderColor: 'var(--danger)', background: 'rgba(244,63,94,0.06)' }}>

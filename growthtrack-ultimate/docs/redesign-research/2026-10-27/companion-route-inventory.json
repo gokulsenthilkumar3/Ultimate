@@ -1,0 +1,393 @@
+[
+  {
+    "product": "FinSync",
+    "path": "/auth/ultimate/callback",
+    "source": "FinSync/apps/web/app/auth/ultimate/callback/page.tsx",
+    "headings": [],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Keep identity and return destination clear; use compact labeled forms and explicit loading/error/retry states. Preserve each product’s authentication boundary."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/analytics",
+    "source": "FinSync/apps/web/app/dashboard/analytics/page.tsx",
+    "headings": [
+      "Visual Insights"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Name the question, period, units and data source; offer accessible chart alternatives."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/bills",
+    "source": "FinSync/apps/web/app/dashboard/bills/page.tsx",
+    "headings": [
+      "Bills & subscriptions"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Lead with due date and status; keep capture/import review separate from confirmation."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/budget",
+    "source": "FinSync/apps/web/app/dashboard/budget/page.tsx",
+    "headings": [
+      "Personal CFO Budget Planner"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Use a month-scoped budget ledger and focused category form; preserve product-specific calculations."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/cards",
+    "source": "FinSync/apps/web/app/dashboard/cards/page.tsx",
+    "headings": [
+      "Cards"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Lead with account identity, balances and dated activity; keep editing and transfer actions distinct."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/investments",
+    "source": "FinSync/apps/web/app/dashboard/investments/page.tsx",
+    "headings": [
+      "Investment Portfolio"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Identify valuation date, source and assumptions; distinguish recorded holdings from estimates."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard",
+    "source": "FinSync/apps/web/app/dashboard/page.tsx",
+    "headings": [],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Reduce duplicate host/product chrome, preserve primary workflow and add consistent laptop/empty/error layouts."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/profile",
+    "source": "FinSync/apps/web/app/dashboard/profile/page.tsx",
+    "headings": [
+      "Account Settings"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Use focused settings sections with explicit save and connection states."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/settings",
+    "source": "FinSync/apps/web/app/dashboard/settings/page.tsx",
+    "headings": [
+      "Preferences & Settings"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Use focused settings sections with explicit save and connection states."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/transactions",
+    "source": "FinSync/apps/web/app/dashboard/transactions/page.tsx",
+    "headings": [
+      "Transaction Ledger"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Use a readable transaction list, shared filter language and contextual details; retain source attribution."
+  },
+  {
+    "product": "FinSync",
+    "path": "/dashboard/wallets",
+    "source": "FinSync/apps/web/app/dashboard/wallets/page.tsx",
+    "headings": [
+      "Your money, in one place"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Lead with account identity, balances and dated activity; keep editing and transfer actions distinct."
+  },
+  {
+    "product": "FinSync",
+    "path": "/forgot-password",
+    "source": "FinSync/apps/web/app/forgot-password/page.tsx",
+    "headings": [
+      "Forgot Password?",
+      "Check Your Email"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Keep identity and return destination clear; use compact labeled forms and explicit loading/error/retry states. Preserve each product’s authentication boundary."
+  },
+  {
+    "product": "FinSync",
+    "path": "/login",
+    "source": "FinSync/apps/web/app/login/page.tsx",
+    "headings": [
+      "Welcome back"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Keep identity and return destination clear; use compact labeled forms and explicit loading/error/retry states. Preserve each product’s authentication boundary."
+  },
+  {
+    "product": "FinSync",
+    "path": "/onboarding",
+    "source": "FinSync/apps/web/app/onboarding/page.tsx",
+    "headings": [
+      "Let's get to know you",
+      "Your Customised Financial Plan",
+      "You're all set!"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Keep identity and return destination clear; use compact labeled forms and explicit loading/error/retry states. Preserve each product’s authentication boundary."
+  },
+  {
+    "product": "FinSync",
+    "path": "/",
+    "source": "FinSync/apps/web/app/page.tsx",
+    "headings": [],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Reduce duplicate host/product chrome, preserve primary workflow and add consistent laptop/empty/error layouts."
+  },
+  {
+    "product": "FinSync",
+    "path": "/signup",
+    "source": "FinSync/apps/web/app/signup/page.tsx",
+    "headings": [
+      "Create account"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Keep identity and return destination clear; use compact labeled forms and explicit loading/error/retry states. Preserve each product’s authentication boundary."
+  },
+  {
+    "product": "FinSync",
+    "path": "/test-dashboard",
+    "source": "FinSync/apps/web/app/test-dashboard/page.tsx",
+    "headings": [
+      "Good afternoon, Gokul 👋"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Treat as a development/test destination; verify whether it belongs in user navigation before any redesign."
+  },
+  {
+    "product": "OxFin",
+    "path": "/auth/error",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/auth/error/page.tsx",
+    "headings": [],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Keep identity and return destination clear; use compact labeled forms and explicit loading/error/retry states. Preserve each product’s authentication boundary."
+  },
+  {
+    "product": "OxFin",
+    "path": "/auth/ultimate/callback",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/auth/ultimate/callback/page.tsx",
+    "headings": [],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Keep identity and return destination clear; use compact labeled forms and explicit loading/error/retry states. Preserve each product’s authentication boundary."
+  },
+  {
+    "product": "OxFin",
+    "path": "/bills",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/bills/page.tsx",
+    "headings": [
+      "Bills & Payments",
+      "Bill activity"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Lead with due date and status; keep capture/import review separate from confirmation."
+  },
+  {
+    "product": "OxFin",
+    "path": "/cards",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/cards/page.tsx",
+    "headings": [
+      "Cards",
+      "No cards or wallets yet",
+      "Recent payment activity"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Lead with account identity, balances and dated activity; keep editing and transfer actions distinct."
+  },
+  {
+    "product": "OxFin",
+    "path": "/dashboard",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/dashboard/page.tsx",
+    "headings": [
+      "Income vs Expense",
+      "Spending",
+      "Recent Activity"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Reduce duplicate host/product chrome, preserve primary workflow and add consistent laptop/empty/error layouts."
+  },
+  {
+    "product": "OxFin",
+    "path": "/investments",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/investments/page.tsx",
+    "headings": [
+      "Investments",
+      "Your portfolio is waiting"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Identify valuation date, source and assumptions; distinguish recorded holdings from estimates."
+  },
+  {
+    "product": "OxFin",
+    "path": "/",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/page.tsx",
+    "headings": [
+      "OxFin"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Reduce duplicate host/product chrome, preserve primary workflow and add consistent laptop/empty/error layouts."
+  },
+  {
+    "product": "OxFin",
+    "path": "/settings",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/settings/page.tsx",
+    "headings": [
+      "Settings",
+      "Profile & Account",
+      "Security Settings"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Use focused settings sections with explicit save and connection states."
+  },
+  {
+    "product": "OxFin",
+    "path": "/transactions",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/transactions/page.tsx",
+    "headings": [
+      "Activity"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Use a readable transaction list, shared filter language and contextual details; retain source attribution."
+  },
+  {
+    "product": "OxFin",
+    "path": "/wallets",
+    "source": "FinSync/OxFin/ox-fin-web/src/app/wallets/page.tsx",
+    "headings": [
+      "Wallets",
+      "Ox Wallet (Full)",
+      "Wallet Lite"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Lead with account identity, balances and dated activity; keep editing and transfer actions distinct."
+  },
+  {
+    "product": "Equity Lens",
+    "path": "/auth/ultimate/callback",
+    "source": "Equity/NiftyLens/src/app/auth/ultimate/callback/page.tsx",
+    "headings": [],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Keep identity and return destination clear; use compact labeled forms and explicit loading/error/retry states. Preserve each product’s authentication boundary."
+  },
+  {
+    "product": "Equity Lens",
+    "path": "/",
+    "source": "Equity/NiftyLens/src/app/page.tsx",
+    "headings": [
+      "NSE Top 200 — Live Prices"
+    ],
+    "coverage": "Source-reviewed route; authenticated inner UI not certified by this research.",
+    "proposal": "Reduce duplicate host/product chrome, preserve primary workflow and add consistent laptop/empty/error layouts."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/",
+    "source": "Family Connect/familyconnect/frontend/src/pages/LandingPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Keep a concise overview, a clear next action and readable laptop navigation."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/auth",
+    "source": "Family Connect/familyconnect/frontend/src/pages/AuthPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Explain sign-in or expired handoff and retain a clear route back to Ultimate."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/auth/ultimate/callback",
+    "source": "Family Connect/familyconnect/frontend/src/pages/UltimateCallbackPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Explain sign-in or expired handoff and retain a clear route back to Ultimate."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/dashboard",
+    "source": "Family Connect/familyconnect/frontend/src/pages/DashboardPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Keep a concise overview, a clear next action and readable laptop navigation."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/tree",
+    "source": "Family Connect/familyconnect/frontend/src/pages/TreeCanvasPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Prioritize the tree canvas, selected-person inspector, fit/search and a keyboard-usable member-list alternative."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/timeline",
+    "source": "Family Connect/familyconnect/frontend/src/pages/TimelinePage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Use dated events with filters and a list alternative; preserve person context."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/media",
+    "source": "Family Connect/familyconnect/frontend/src/pages/MediaPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Use an accessible media library with upload progress, selection and recoverable errors."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/members",
+    "source": "Family Connect/familyconnect/frontend/src/pages/MembersPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Keep identity and relationship context visible; open detailed editing in a focused panel."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/events",
+    "source": "Family Connect/familyconnect/frontend/src/pages/EventsPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Use dated events with filters and a list alternative; preserve person context."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/profile/:id",
+    "source": "Family Connect/familyconnect/frontend/src/pages/ProfilePage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Keep identity and relationship context visible; open detailed editing in a focused panel."
+  },
+  {
+    "product": "Family Connect",
+    "path": "/settings",
+    "source": "Family Connect/familyconnect/frontend/src/pages/SettingsPage.tsx",
+    "headings": [],
+    "coverage": "Route and source inventory; no authenticated family records opened.",
+    "proposal": "Group privacy, family access and connection settings with explicit save state."
+  },
+  {
+    "product": "Forex",
+    "path": "/",
+    "source": "Forex/app/dashboard.py",
+    "headings": [
+      "Present (Recent) & Future",
+      "Past (Historical)",
+      "Data Table"
+    ],
+    "coverage": "Source-reviewed Streamlit dashboard; model behavior and predictions were not evaluated.",
+    "proposal": "Use a compact currency/model/date control area, separate historical fit from forward forecast and preserve provenance, assumptions and unavailable-model states."
+  }
+]

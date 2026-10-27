@@ -20,6 +20,7 @@ export function buildAvatarEvidence({ metrics = {}, diagnostics = null, qualityG
   };
   const assetLabel = !diagnostics ? 'Loading model' : diagnostics.activeRenderer === 'procedural-production'
     ? 'Procedural preview' : diagnostics.health !== 'healthy' ? 'Model needs attention'
+      : diagnostics.modelAsset?.nativeFamily ? 'Human realism preview'
       : bundledMetadata ? `${bundledMetadata.label} · ${bundledMetadata.textureLabel}`
         : diagnostics.modelAsset?.source === 'profile' ? 'Custom model preview' : 'Authored model preview';
   return {

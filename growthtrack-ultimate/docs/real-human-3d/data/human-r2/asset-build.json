@@ -1,0 +1,373 @@
+{
+  "family": "generic-adult-r2",
+  "retainedAssets": {
+    "public/assets/models/humanoid-base.glb": "23a38d4f539f0e2a28feb5976bf22f8c966742b6e027e379b146cf899bc81ecd",
+    "public/assets/models/humanoid-base-lite.glb": "deb7b29e3ea7e7070eb5411ba26ee65f4e2f3a894dbd527039c6bc0ec589ed35",
+    "public/assets/models/humanoid-adult-v2.glb": "983e1b1b3b9827d153d2d4a22675c3397599ee237a9d9becf8909c3e64582b2f",
+    "public/assets/models/humanoid-adult-v2-lite.glb": "37f332e8322a9c728b460f4c8f26604f154cf24abecf32d3da80aad60eb41171",
+    "public/assets/models/humanoid-preview-75.glb": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
+    "public/assets/models/humanoid-preview-75-lite.glb": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab"
+  },
+  "assets": [
+    {
+      "lod": "core",
+      "source": "public/assets/models/humanoid-preview-75-lite.glb",
+      "sourceSha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab",
+      "sculpt": {
+        "vertices": 16377,
+        "moved": 8375,
+        "maximumDisplacementMetres": 0.002193540394075888,
+        "recipe": 1,
+        "pelvicRefinement": {
+          "originalVertices": 16001,
+          "vertices": 16377,
+          "triangles": 30434
+        }
+      },
+      "refinement": null,
+      "public": {
+        "file": "public/assets/models/humanoid-human-r2-core.glb",
+        "sha256": "fe2d25ab242ee10dbb7071af4cb659e2f55f8d8a4452547de01146b7dce4bc0a",
+        "bytes": 1946332,
+        "decodedBytes": 4663160,
+        "maximumCompressionErrorMetres": 9.5367431640625e-7,
+        "meshes": [
+          {
+            "name": "GrowthTrackBody",
+            "vertices": 16377,
+            "triangles": 30434,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackEyes",
+            "vertices": 1076,
+            "triangles": 2040,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackHair",
+            "vertices": 2400,
+            "triangles": 1920,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackEyebrows",
+            "vertices": 126,
+            "triangles": 192,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackEyelashes",
+            "vertices": 250,
+            "triangles": 368,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackNails",
+            "vertices": 1280,
+            "triangles": 1600,
+            "morphs": 10
+          },
+          {
+            "name": "GrowthTrackCornea",
+            "vertices": 576,
+            "triangles": 960,
+            "morphs": 10
+          },
+          {
+            "name": "GrowthTrackTearline",
+            "vertices": 100,
+            "triangles": 96,
+            "morphs": 7
+          }
+        ]
+      },
+      "private": {
+        "file": "public/assets/models/humanoid-human-r2-private-core.glb",
+        "sha256": "62108cf9deba13e17c5d406d18e05e3838ef26e4436b227a64c1aa58fba3c2ab",
+        "bytes": 1180304,
+        "maximumCompressionErrorMetres": 9.5367431640625e-7,
+        "renderTriangles": 7844,
+        "removedBodyTriangles": 156,
+        "binding": {
+          "vertices": 4481,
+          "maximumNeutralResidualMetres": 2.7863784897804254e-17,
+          "bodyBoundVertices": 581,
+          "cageBoundVertices": 3900,
+          "maximumOffsetMetres": 0.012760976632426854,
+          "standaloneRest": {
+            "fit": {
+              "source": "rendered-native-surface",
+              "iterations": 2,
+              "status": "within-tolerance",
+              "dimensions": [
+                {
+                  "key": "lengthCm",
+                  "requested": 9.16,
+                  "achieved": 9.159981353925616,
+                  "residualCm": -0.000018646074384065514,
+                  "toleranceCm": 0.01,
+                  "minimum": false,
+                  "passed": true
+                },
+                {
+                  "key": "midCircumferenceCm",
+                  "requested": 9.31,
+                  "achieved": 9.309998959712262,
+                  "residualCm": -0.0000010402877386184173,
+                  "toleranceCm": 0.01,
+                  "minimum": false,
+                  "passed": true
+                }
+              ],
+              "rule": "Measured rendered dimensions; 0.1 mm or 0.1%, whichever is greater. Numerical surface tolerance is not clinical accuracy."
+            },
+            "contact": {
+              "method": "posed-triangle-supported-contact",
+              "iterations": 2,
+              "correctedVertices": 504,
+              "maximumCorrectionMetres": 0.03940962042002499,
+              "sacAdvanceMetres": 0,
+              "shaftAdvanceMetres": 0,
+              "shaftLiftDegrees": 25.58125,
+              "sacDisplacement": [
+                0,
+                0,
+                0
+              ],
+              "unresolved": false,
+              "scope": "Actual triangle crossings outside the authored attachment collar; quasistatic support, not tissue dynamics."
+            }
+          },
+          "tissueMaps": {
+            "size": 512,
+            "maps": 3,
+            "encodedBytes": 329896
+          }
+        },
+        "simplification": [
+          {
+            "name": "PrivateAnatomy",
+            "relativeError": 0.001952556543983519,
+            "triangles": 2124
+          },
+          {
+            "name": "PrivateAnatomyMeatus",
+            "relativeError": 0.0005767640541307628,
+            "triangles": 142
+          },
+          {
+            "name": "PrivateAnatomyForeskin",
+            "relativeError": 0.001952274003997445,
+            "triangles": 2602
+          },
+          {
+            "name": "PrivateAnatomyPelvicTransition",
+            "relativeError": 0,
+            "triangles": 2976
+          }
+        ]
+      },
+      "budgets": {
+        "publicBytes": true,
+        "privateBytes": true,
+        "privateTriangles": true
+      },
+      "acceptance": {
+        "humanVisualReview": "pending",
+        "physicalDeviceBenchmarks": "pending",
+        "clinicalMeasurementValidation": "not-claimed"
+      },
+      "groom": {
+        "style": "short-swept-ribbons",
+        "roots": 240,
+        "segments": 4,
+        "vertices": 2400,
+        "triangles": 1920,
+        "rootMethod": "actual-scalp-triangle-frames"
+      }
+    },
+    {
+      "lod": "hero",
+      "source": "public/assets/models/humanoid-preview-75.glb",
+      "sourceSha256": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
+      "sculpt": {
+        "vertices": 45999,
+        "moved": 22401,
+        "maximumDisplacementMetres": 0.002193540394075888,
+        "recipe": 1,
+        "pelvicRefinement": {
+          "originalVertices": 16001,
+          "vertices": 16377,
+          "triangles": 30434
+        }
+      },
+      "refinement": {
+        "originalVertices": 16377,
+        "vertices": 45999,
+        "triangles": 87842
+      },
+      "public": {
+        "file": "public/assets/models/humanoid-human-r2-hero.glb",
+        "sha256": "b22c5c6f49acc35446129c7e2a487b21ce1b852a7c490d0fb7a5c5f2044a7faf",
+        "bytes": 4318948,
+        "decodedBytes": 11927560,
+        "maximumCompressionErrorMetres": 9.5367431640625e-7,
+        "meshes": [
+          {
+            "name": "GrowthTrackBody",
+            "vertices": 45999,
+            "triangles": 87842,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackEyes",
+            "vertices": 1076,
+            "triangles": 2040,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackHair",
+            "vertices": 8960,
+            "triangles": 7680,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackEyebrows",
+            "vertices": 126,
+            "triangles": 192,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackEyelashes",
+            "vertices": 250,
+            "triangles": 368,
+            "morphs": 58
+          },
+          {
+            "name": "GrowthTrackNails",
+            "vertices": 1280,
+            "triangles": 1600,
+            "morphs": 10
+          },
+          {
+            "name": "GrowthTrackCornea",
+            "vertices": 576,
+            "triangles": 960,
+            "morphs": 10
+          },
+          {
+            "name": "GrowthTrackTearline",
+            "vertices": 100,
+            "triangles": 96,
+            "morphs": 7
+          }
+        ]
+      },
+      "private": {
+        "file": "public/assets/models/humanoid-human-r2-private-hero.glb",
+        "sha256": "53cba1d3cdc91f22e6573083c4e05db67d8473bea506a601e1642b232884b750",
+        "bytes": 2073924,
+        "maximumCompressionErrorMetres": 9.5367431640625e-7,
+        "renderTriangles": 14952,
+        "removedBodyTriangles": 156,
+        "binding": {
+          "vertices": 8037,
+          "maximumNeutralResidualMetres": 2.7863784897804254e-17,
+          "bodyBoundVertices": 581,
+          "cageBoundVertices": 7456,
+          "maximumOffsetMetres": 0.012760976632426854,
+          "standaloneRest": {
+            "fit": {
+              "source": "rendered-native-surface",
+              "iterations": 2,
+              "status": "within-tolerance",
+              "dimensions": [
+                {
+                  "key": "lengthCm",
+                  "requested": 9.16,
+                  "achieved": 9.159983428809902,
+                  "residualCm": -0.000016571190098346733,
+                  "toleranceCm": 0.01,
+                  "minimum": false,
+                  "passed": true
+                },
+                {
+                  "key": "midCircumferenceCm",
+                  "requested": 9.31,
+                  "achieved": 9.31000094204572,
+                  "residualCm": 9.42045719654061e-7,
+                  "toleranceCm": 0.01,
+                  "minimum": false,
+                  "passed": true
+                }
+              ],
+              "rule": "Measured rendered dimensions; 0.1 mm or 0.1%, whichever is greater. Numerical surface tolerance is not clinical accuracy."
+            },
+            "contact": {
+              "method": "posed-triangle-supported-contact",
+              "iterations": 2,
+              "correctedVertices": 1648,
+              "maximumCorrectionMetres": 0.03958159932670214,
+              "sacAdvanceMetres": 0,
+              "shaftAdvanceMetres": 0,
+              "shaftLiftDegrees": 25.70625,
+              "sacDisplacement": [
+                0,
+                0,
+                0
+              ],
+              "unresolved": false,
+              "scope": "Actual triangle crossings outside the authored attachment collar; quasistatic support, not tissue dynamics."
+            }
+          },
+          "tissueMaps": {
+            "size": 1024,
+            "maps": 3,
+            "encodedBytes": 1041267
+          }
+        },
+        "simplification": [
+          {
+            "name": "PrivateAnatomy",
+            "relativeError": 0.00041383664938621223,
+            "triangles": 6604
+          },
+          {
+            "name": "PrivateAnatomyMeatus",
+            "relativeError": 0.00007604114944115281,
+            "triangles": 458
+          },
+          {
+            "name": "PrivateAnatomyForeskin",
+            "relativeError": 0.00047937475028447807,
+            "triangles": 4914
+          },
+          {
+            "name": "PrivateAnatomyPelvicTransition",
+            "relativeError": 0,
+            "triangles": 2976
+          }
+        ]
+      },
+      "budgets": {
+        "publicBytes": true,
+        "privateBytes": true,
+        "privateTriangles": true
+      },
+      "acceptance": {
+        "humanVisualReview": "pending",
+        "physicalDeviceBenchmarks": "pending",
+        "clinicalMeasurementValidation": "not-claimed"
+      },
+      "groom": {
+        "style": "short-swept-ribbons",
+        "roots": 640,
+        "segments": 6,
+        "vertices": 8960,
+        "triangles": 7680,
+        "rootMethod": "actual-scalp-triangle-frames"
+      }
+    }
+  ]
+}

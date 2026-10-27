@@ -1,5 +1,5 @@
 import { test, expect } from './foundation-fixture';
-import { setupHumanViewer, bodySurface, surfaces } from './helpers/human-viewer';
+import { setupHumanViewer, bodySurface, surfaces, paintedCanvas } from './helpers/human-viewer';
 import type { Locator, Page } from '@playwright/test';
 
 async function focusFace(page: Page, canvas: Locator) {
@@ -28,6 +28,46 @@ async function changedPixels(page: Page, first: Buffer, second: Buffer) {
     return changed;
   }, { first: first.toString('base64'), second: second.toString('base64') });
 }
+
+test('human realism blends rendered skin detail, persists per figure and preserves measurements', async ({ page }) => {
+  const { canvas, targets, errors, bodyWrites } = await setupHumanViewer(page, 'reduce', { skinColor: '#d8ac91', skinTone: 'II', skinMicroDetail: .8, skinFreckleDensity: .3 });
+  await page.getByRole('tab', { name: 'Skin', exact: true }).click();
+  const realism = page.getByRole('slider', { name: 'Human appearance detail', exact: true });
+  await expect(realism).toHaveValue('100');
+  await page.getByRole('button', { name: 'Lock neutral inspection lighting', exact: true }).click();
+  await focusFace(page, canvas);
+  const detailed = await paintedCanvas(canvas, test.info().outputPath('realism-full.png'));
+  const before = await bodySurface(canvas);
+  expect(before.humanRealismPercent).toBe(100);
+  await realism.fill('0');
+  await canvas.scrollIntoViewIfNeeded();
+  await expect.poll(async () => (await bodySurface(canvas)).humanRealismPercent).toBe(0);
+  const smooth = await paintedCanvas(canvas, test.info().outputPath('realism-smooth.png'));
+  expect(await changedPixels(page, detailed, smooth)).toBeGreaterThan(100);
+  const after = await bodySurface(canvas);
+  expect(after.microDetail.strength).toBe(0);
+  expect(after.geometry).toBe(before.geometry);
+  expect(after.shapeWeights).toEqual(before.shapeWeights);
+  expect(after.baseColor).toBe(before.baseColor);
+  expect(after.freckles).toEqual(before.freckles);
+  await expect.poll(() => targets().appearanceMetrics).toMatchObject({ humanRealismPercent: 0, skinMicroDetail: .8, skinFreckleDensity: .3 });
+  expect(bodyWrites.every((write: any) => !('humanRealismPercent' in write) && write.heightCm === 175 && write.weightKg === 74)).toBe(true);
+  await page.reload();
+  await canvas.scrollIntoViewIfNeeded();
+  await expect.poll(async () => (await bodySurface(canvas))?.humanRealismPercent, { timeout: 45000 }).toBe(0);
+  await page.getByRole('tab', { name: 'Skin', exact: true }).click();
+  await expect(realism).toHaveValue('0');
+  await expect(page.getByRole('slider', { name: 'Pore detail', exact: true })).toHaveValue('0.8');
+  const modes = page.getByRole('group', { name: 'Comparison mode', exact: true });
+  await modes.getByRole('button', { name: 'Goal', exact: true }).click();
+  await realism.fill('50');
+  await expect.poll(() => targets().goalMetrics).toMatchObject({ humanRealismPercent: 50, height: 175, weight: 70, waist: 76 });
+  expect(targets().appearanceMetrics.humanRealismPercent).toBe(0);
+  await modes.getByRole('button', { name: 'Compare', exact: true }).click();
+  await canvas.scrollIntoViewIfNeeded();
+  await expect.poll(async () => (await surfaces(canvas)).filter(item => /^(?:Body|GrowthTrackBody)(?:_\d+)?$/.test(item.name)).map(item => item.humanRealismPercent)).toEqual([0, 50]);
+  expect(errors).toEqual([]);
+});
 
 test('hair shades, seeded greying and thinning render, save and remain independent in Goal', async ({ page }) => {
   const { canvas, targets, errors } = await setupHumanViewer(page, 'reduce', { hairColor: '#62412b', hairStyle: 'short' });

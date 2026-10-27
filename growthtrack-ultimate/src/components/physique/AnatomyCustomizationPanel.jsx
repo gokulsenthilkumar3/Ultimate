@@ -7,6 +7,20 @@ const SECTIONS = [
   ['penis', 'Penis'], ['scrotum', 'Scrotum'], ['buttocks', 'Buttocks'], ['skin', 'Skin regions'],
 ];
 
+function recordedMeasurements(selected, section, state) {
+  const values = (rows, record) => rows.map(([key]) => record?.[key]);
+  const records = section === 'penis' ? values(ANATOMY_FIELDS[state], selected.penis[state].measurements)
+    : section === 'scrotum' ? [
+      ...values(ANATOMY_FIELDS.scrotum, selected.scrotum.envelope),
+      ...values(ANATOMY_FIELDS.testis, selected.scrotum.leftTestis),
+      ...values(ANATOMY_FIELDS.testis, selected.scrotum.rightTestis),
+    ] : section === 'buttocks' ? [
+      ...values(ANATOMY_FIELDS.buttocks, selected.buttocks.measurements), selected.buttocks.measurements?.pelvicBreadthCm,
+    ] : [];
+  const recorded = records.filter(value => value != null && String(value).trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= 0).length;
+  return { recorded, total: records.length };
+}
+
 function NumberField({ label, unit, value, onChange, displayUnit = 'cm', step = '0.1', ariaLabel, onHelp, onFocusGuide, support, warning }) {
   const linear = unit === 'cm';
   const shown = value == null ? '' : linear && displayUnit === 'in' ? (Number(value) / 2.54).toFixed(2) : value;
@@ -30,10 +44,10 @@ function NumberField({ label, unit, value, onChange, displayUnit = 'cm', step = 
   }} aria-invalid={Boolean(error)} aria-describedby={error || warning ? messageId : undefined} aria-label={ariaLabel || `${label} ${displayUnit === 'in' && linear ? '(in)' : `(${unit})`}`} /></label>{onHelp && <button type="button" aria-label={`How to measure ${label}`} onClick={onHelp}>Show me</button>}</div>{support && <p className="anatomy-custom-field__support">{support}</p>}{(error || warning) && <p id={messageId} className="anatomy-custom-field__warning" role="status">{error || warning}</p>}</div>;
 }
 
-function ShapeField({ label, value, onChange, min = 0, max = 100, unit = '%', defaultValue = 0 }) {
+function ShapeField({ label, value, onChange, min = 0, max = 100, step = 1, disabled = false, unit = '%', defaultValue = 0 }) {
   const id=useId();
   const safe = value!=null && Number.isFinite(Number(value)) ? Number(value) : defaultValue;
-  return <label className="anatomy-custom-shape" htmlFor={id}><span>{label}<output htmlFor={id}>{Number(safe.toFixed(1))}{unit}</output></span><input id={id} aria-label={label} aria-valuetext={`${Number(safe.toFixed(1))}${unit}`} type="range" min={min} max={max} step="1" value={safe} onChange={(event) => onChange(Number(event.target.value))} /></label>;
+  return <label className="anatomy-custom-shape" htmlFor={id}><span>{label}<output htmlFor={id}>{Number(safe.toFixed(2))}{unit}</output></span><input id={id} aria-label={label} aria-valuetext={`${Number(safe.toFixed(2))}${unit}`} type="range" min={min} max={max} step={step} disabled={disabled} value={safe} onChange={(event) => onChange(Number(event.target.value))} /></label>;
 }
 
 /** Private owner-authored adult body measurements and appearance preferences. */
@@ -46,6 +60,7 @@ export default function AnatomyCustomizationPanel({ value, onSave, onInspect, on
   const guideRef = useRef(null);
   const anatomy = useMemo(() => createAnatomyCustomization(value), [value]);
   const selected = anatomy[target];
+  const measurementCount = recordedMeasurements(selected, section, state);
   const displayUnit = anatomy.preferences.displayUnit === 'in' ? 'in' : 'cm';
   const set = (path, next) => {
     let updated=updateAnatomyPath(anatomy,[target,...path],next);
@@ -62,12 +77,14 @@ export default function AnatomyCustomizationPanel({ value, onSave, onInspect, on
       ? `${state === 'resting' ? 'Resting' : 'Erect'} length ${profile}`
       : basePath[0] === 'penis' && key === 'midCircumferenceCm'
         ? `${state === 'resting' ? '' : 'Erect '}Mid-shaft circumference ${profile}`.trim()
-        : `${label} ${profile}`;
+        : basePath[0] === 'scrotum' && basePath[1] !== 'envelope'
+          ? `${basePath[1] === 'leftTestis' ? 'Left' : 'Right'} testicle ${label.toLowerCase()} ${profile}`
+          : `${label} ${profile}`;
     return (
     <NumberField key={`${basePath.join('.')}.${key}`} label={label} unit={unit} displayUnit={displayUnit}
       ariaLabel={`${fieldName} (${displayUnit === 'in' && unit === 'cm' ? 'in' : unit})`}
       value={basePath.reduce((node, part) => node?.[part], selected)?.[key]}
-      onHelp={() => showHelp(true)} onFocusGuide={() => showHelp()} support={!previewSupported?'Saved record · loaded asset needs a section layout':basePath[0] === 'scrotum' && basePath[1] !== 'envelope' ? 'Optional schematic guide · enable 3D guides to see it' : basePath[0] === 'buttocks' ? 'Changes posterior envelope · approximate fit' : 'Updates the 3D surface'}
+      onHelp={() => showHelp(true)} onFocusGuide={() => showHelp()} support={!previewSupported?'Saved record · loaded asset needs a section layout':basePath[0] === 'scrotum' && basePath[1] !== 'envelope' ? selected.scrotum.fitMode==='guides'?'Shapes the fitted sac · internal guide is schematic':'Optional schematic guide · enable 3D guides to see it' : basePath[0] === 'buttocks' ? 'Changes posterior envelope · approximate fit' : 'Updates the 3D surface'}
       warning={anatomyPreviewWarning(key,basePath.reduce((node,part)=>node?.[part],selected)?.[key],basePath[0])}
       onChange={(next) => set([...basePath, key], next)} />
     );
@@ -83,20 +100,26 @@ export default function AnatomyCustomizationPanel({ value, onSave, onInspect, on
 
       <details className="workspace-anatomy-info" open>
         <summary><strong>Live 3D preview</strong></summary>
-        <p>Dimensions and shape controls update a procedural surface. Suggested ranges are warnings; values outside them are kept. Unspecified dimensions use a generic preview. Body shape and pose can change achieved dimensions.</p>
+        <p>Dimensions and shape controls update the 3D surface. Unspecified dimensions use a generic adult preview. The rendered surface is measured after fitting and pose; contact can change the achieved dimensions.</p>
         {!previewSupported && <p role="status" className="anatomy-custom-field__warning">This asset has no compatible section layout. Records remain editable; choose the bundled body asset to preview all fields.</p>}
         <label className="workspace-switch"><span>3D measurement guides<small>Section rings, centerline and optional internal ellipsoid guides. Internal guides are schematic.</small></span><input type="checkbox" aria-label="3D anatomy guides" checked={Boolean(preview?.guides)} onChange={event=>onPreviewChange?.({guides:event.target.checked})}/></label>
         <button type="button" className="chamber-pill" onClick={()=>onInspect?.(section==='buttocks'?'glutes':'anatomy')}>Inspect edited region</button>
-        {evidence && <dl className="anatomy-calibration-readout" aria-label="Generated surface dimensions">
-          <div><dt>Centerline before body pose</dt><dd>{evidence.centrelineCm.toFixed(1)} cm</dd></div>
-          <div><dt>Middle section perimeter</dt><dd>{evidence.midCircumferenceCm.toFixed(1)} cm</dd></div>
-          <div><dt>Middle width × depth</dt><dd>{evidence.midWidthCm.toFixed(1)} × {evidence.midDepthCm.toFixed(1)} cm</dd></div>
+        {evidence && (!evidence.rendered || evidence.rendered.status==='measured') && <dl className="anatomy-calibration-readout" aria-label="Generated surface dimensions">
+          <div><dt>{evidence.rendered?'Posed surface centerline':'Centerline before body pose'}</dt><dd>{evidence.centrelineCm.toFixed(2)} cm</dd></div>
+          <div><dt>Middle section perimeter</dt><dd>{evidence.midCircumferenceCm.toFixed(2)} cm</dd></div>
+          <div><dt>Middle width × depth</dt><dd>{evidence.midWidthCm.toFixed(2)} × {evidence.midDepthCm.toFixed(2)} cm</dd></div>
         </dl>}
+        {evidence?.fit && <p role="status">Rendered dimension fit: {evidence.fit.status==='within-tolerance'?'within numerical tolerance':'inspect residuals'} · {Math.max(0,...evidence.fit.dimensions.map(d=>Math.abs(d.residualCm || 0)*10)).toFixed(2)} mm maximum residual. This is a surface fitting check.</p>}
+        {evidence?.rendered && evidence.rendered.status!=='measured' && <p role="status">A closed surface section could not be measured in this configuration.</p>}
       </details>
 
       <nav className="anatomy-customizer__tabs" aria-label="Body region">
         {SECTIONS.map(([id, label]) => <button key={id} type="button" className={section === id ? 'active' : ''} aria-pressed={section === id} onClick={() => { setSection(id); setActiveHelp(null);onPreviewChange?.({section:id}); }}>{label}</button>)}
       </nav>
+
+      {measurementCount.total > 0 && <p className="anatomy-customizer__note" aria-label="Saved measurement completeness" aria-live="polite">
+        {target === 'goal' ? 'Goal' : 'Current'} · {section === 'penis' ? state === 'resting' ? 'Resting' : 'Erect' : SECTIONS.find(([id]) => id === section)[1]}: {measurementCount.recorded} of {measurementCount.total} measurements recorded; {measurementCount.total - measurementCount.recorded} not recorded. All are optional. This counts saved entries, not anatomical accuracy.
+      </p>}
 
       {section === 'penis' && <>
         <div className="anatomy-customizer__states" aria-label="Measurement state">
@@ -109,24 +132,43 @@ export default function AnatomyCustomizationPanel({ value, onSave, onInspect, on
           <ShapeField label="Base to tip taper" defaultValue={50} value={selected.penis[state].shape?.taper} onChange={(n) => set(['penis', state, 'shape', 'taper'], n)} />
           <ShapeField label="Cross-section ovalness" defaultValue={50} value={selected.penis[state].shape?.ovalness} onChange={(n) => set(['penis', state, 'shape', 'ovalness'], n)} />
           <ShapeField label="Glans flare" defaultValue={50} value={selected.penis[state].shape?.glansFlare} onChange={(n) => set(['penis', state, 'shape', 'glansFlare'], n)} />
+          <ShapeField label="Glans length" defaultValue={50} unit=" / 100" value={selected.penis[state].shape?.glansLength} onChange={(n) => set(['penis', state, 'shape', 'glansLength'], n)} />
+          <ShapeField label="Corona definition" defaultValue={50} unit=" / 100" value={selected.penis[state].shape?.coronaDefinition} onChange={(n) => set(['penis', state, 'shape', 'coronaDefinition'], n)} />
+          <ShapeField label="Frenulum definition" defaultValue={50} unit=" / 100" value={selected.penis[state].shape?.frenulumDefinition} onChange={(n) => set(['penis', state, 'shape', 'frenulumDefinition'], n)} />
+          <p className="anatomy-customizer__note">Glans length adjusts its share of the overall length. Corona and frenulum controls adjust the rim and underside fold. These 0–100 controls describe adult surface shape; they are not measurements or realism percentages.</p>
           <ShapeField label="Curvature" value={selected.penis[state].shape?.curvature} min={-60} max={60} unit="°" onChange={(n) => set(['penis', state, 'shape', 'curvature'], n)} />
           <ShapeField label="Bend direction" value={selected.penis[state].shape?.curvatureDirectionDeg} min={-180} max={180} unit="°" onChange={(n)=>set(['penis',state,'shape','curvatureDirectionDeg'],n)} />
           <ShapeField label="Elevation from horizontal" value={selected.penis[state].shape?.elevationDeg} defaultValue={state==='erect' ? Math.atan2(.18,.984)*180/Math.PI : 0} min={-85} max={85} unit="°" onChange={(n)=>set(['penis',state,'shape','elevationDeg'],n)} />
           <ShapeField label="Foreskin coverage" value={selected.penis[state].shape?.foreskinCoverage} onChange={(n) => set(['penis', state, 'shape', 'foreskinCoverage'], n)} />
           <ShapeField label="Foreskin retraction" value={selected.penis[state].shape?.foreskinRetraction} onChange={(n)=>set(['penis',state,'shape','foreskinRetraction'],n)} />
-          <p className="anatomy-customizer__note">Coverage describes skin forward; retraction draws it back independently in each state. Bend direction: 0° sideways, 90° upward, −90° downward. Unset orientation uses the generic asset. This is a closed surface envelope; inner foreskin and an opening need authored topology.</p>
+          <p className="anatomy-customizer__note">Coverage describes skin forward; retraction draws it back independently in each state. The preview includes outer and inner skin, a folded rim and a recessed opening. Bend direction: 0° sideways, 90° upward, −90° downward. Unset orientation uses the generic asset.</p>
         </div>
         <label className="anatomy-customizer__select"><span>Measurement method</span><select value={selected.penis[state].measurementMethod || ''} onChange={(event) => set(['penis', state, 'measurementMethod'], event.target.value || null)}><option value="">Not specified</option><option value="visible">Visible junction to tip</option><option value="bone-pressed">Bone pressed</option><option value="manual-estimate">Visual estimate</option></select></label>
+        {selected.penis[state].measurementMethod === 'bone-pressed' && <p className="anatomy-custom-field__warning" role="status">Bone-pressed length starts beneath the visible skin junction. Your record is retained, but the preview starts at the skin and cannot reproduce that measurement exactly.</p>}
       </>}
 
       {section === 'scrotum' && <>
         <p className="anatomy-customizer__note">The external sac and each testicle are recorded separately. Side differences are optional.</p>
+        <label className="anatomy-customizer__select"><span>Envelope shaping</span><select aria-label="Scrotal envelope mode" value={selected.scrotum.fitMode || 'envelope'} onChange={event=>set(['scrotum','fitMode'],event.target.value)}><option value="envelope">Use sac dimensions</option><option value="guides">Fit sac around guides</option></select></label>
+        <p className="anatomy-customizer__note">Guide fitting expands the sac around the two internal ellipsoid guides and spaces them apart. Sac dimensions act as a minimum shape. Blank internal dimensions use generic guides. {evidence?.rendered?'Containment samples check the posed surface after fitting and contact. Internal guides remain schematic.':'Samples check the neutral sac before body morphs and pose; they do not verify contact at the pelvic attachment.'}</p>
+        <ShapeField label="Guide padding" value={selected.scrotum.paddingCm} defaultValue={.2} min={0} max={1} step={.05} unit=" cm" disabled={selected.scrotum.fitMode!=='guides'} onChange={n=>set(['scrotum','paddingCm'],n)}/>
+        {evidence?.scrotumFit && <div aria-label="Scrotal fit result">
+          <p>{evidence.rendered?'Posed external surface':'External preview before body pose'}: {evidence.scrotumFit.achieved.widthCm.toFixed(1)} × {evidence.scrotumFit.achieved.heightCm.toFixed(1)} × {evidence.scrotumFit.achieved.depthCm.toFixed(1)} cm (width × height × depth).</p>
+          {evidence.scrotumFit.mode==='guides' && <p role="status">Padded guide fit: {evidence.scrotumFit.maxOutsideCm<=.1 && !evidence.scrotumFit.unresolvedRays?'Within 1 mm at sampled points':'Attachment limits the fit'} · {evidence.scrotumFit.sampleCount} samples · maximum outside distance {(evidence.scrotumFit.maxOutsideCm*10).toFixed(1)} mm.</p>}
+          {evidence.scrotumFit.separationAdjustmentCm>0 && <p>Guide spacing increased by {evidence.scrotumFit.separationAdjustmentCm.toFixed(2)} cm per side to keep the guides apart.</p>}
+          {evidence.scrotumFit.status==='attachment-limited' && <p className="anatomy-custom-field__warning">Some padded guide samples extend beyond the sac near its fixed attachment. Reduce guide dimensions or placement offsets and inspect the region.</p>}
+        </div>}
         <div className="anatomy-customizer__group"><h5>External sac</h5><div className="anatomy-customizer__grid">{fields(ANATOMY_FIELDS.scrotum, ['scrotum', 'envelope'])}</div>
           <ShapeField label="Fold detail" value={selected.scrotum.envelope?.foldDetail} onChange={(n) => set(['scrotum', 'envelope', 'foldDetail'], n)} />
           <ShapeField label="Left-right asymmetry" value={selected.scrotum.envelope?.asymmetry} min={-50} max={50} onChange={(n) => set(['scrotum', 'envelope', 'asymmetry'], n)} />
           <label className="anatomy-customizer__select"><span>Presentation</span><select value={selected.scrotum.presentation || 'relaxed'} onChange={(event) => set(['scrotum', 'presentation'], event.target.value)}><option value="relaxed">Relaxed</option><option value="contracted">Contracted</option></select></label>
         </div>
-        {['leftTestis', 'rightTestis'].map((side) => <div className="anatomy-customizer__group" key={side}><h5>{side === 'leftTestis' ? 'Left testicle (optional)' : 'Right testicle (optional)'}</h5><div className="anatomy-customizer__grid">{fields(ANATOMY_FIELDS.testis, ['scrotum', side])}</div><label className="anatomy-customizer__select"><span>Volume method</span><select value={selected.scrotum[side]?.volumeMethod || ''} onChange={(event) => set(['scrotum', side, 'volumeMethod'], event.target.value || null)}><option value="">Not specified</option><option value="ultrasound-lambert">Ultrasound (Lambert estimate)</option><option value="ellipsoid">Ellipsoid estimate</option><option value="manual-estimate">Visual estimate</option></select></label></div>)}
+        <label className="workspace-switch"><span>Mirror guide placement<small>Uses left placement for both sides. Separate dimensions and saved right placement are retained.</small></span><input type="checkbox" aria-label="Mirror guide placement" checked={Boolean(selected.scrotum.mirrorPlacement)} onChange={event=>set(['scrotum','mirrorPlacement'],event.target.checked)}/></label>
+        {['leftTestis', 'rightTestis'].map((side) => <div className="anatomy-customizer__group" key={side}><h5>{side === 'leftTestis' ? 'Left testicle (optional)' : 'Right testicle (optional)'}</h5><div className="anatomy-customizer__grid">{fields(ANATOMY_FIELDS.testis, ['scrotum', side])}</div><label className="anatomy-customizer__select"><span>Volume method</span><select value={selected.scrotum[side]?.volumeMethod || ''} onChange={(event) => set(['scrotum', side, 'volumeMethod'], event.target.value || null)}><option value="">Not specified</option><option value="ultrasound-lambert">Ultrasound (Lambert estimate)</option><option value="ellipsoid">Ellipsoid estimate</option><option value="manual-estimate">Visual estimate</option></select></label>
+          <details><summary>{side==='leftTestis'?'Left':'Right'} guide placement</summary><p>Visual offsets in cm; positive vertical moves up, lateral moves away from the center, and forward moves toward the front.</p>
+            {[['verticalCm','vertical offset'],['lateralCm','lateral offset'],['forwardCm','forward offset'],['tiltDeg','tilt']].map(([key,label])=><ShapeField key={key} label={`${side==='leftTestis'?'Left':'Right'} guide ${label}`} value={selected.scrotum[side]?.placement?.[key]} min={key==='tiltDeg'?-45:-5} max={key==='tiltDeg'?45:5} step={key==='tiltDeg'?1:.1} unit={key==='tiltDeg'?'°':' cm'} disabled={side==='rightTestis' && Boolean(selected.scrotum.mirrorPlacement)} onChange={n=>set(['scrotum',side,'placement',key],n)}/>)}
+          </details>
+        </div>)}
       </>}
 
       {section === 'buttocks' && <>
@@ -158,7 +200,7 @@ export default function AnatomyCustomizationPanel({ value, onSave, onInspect, on
       </>}
 
       {activeHelp && <div ref={guideRef} className="anatomy-measurement-help"><MeasurementHelp key={activeHelp.definition.id} definition={activeHelp.definition} label={activeHelp.label} onInspect={onInspect} /><button type="button" className="chamber-pill" onClick={() => setActiveHelp(null)}>Close measurement guide</button></div>}
-      <p className="anatomy-customizer__footnote">Saved privately. Surface dimensions, endpoint states, contour and regional appearance update the preview. Testicular records drive optional schematic guides. Volume edits adjust an envelope estimate; they do not establish clinical volume. A bone-pressed record is approximated at the visible junction.</p>
+      <p className="anatomy-customizer__footnote">Saved privately. Surface dimensions, endpoint states, contour and regional appearance update the preview. Testicular records drive optional schematic guides and the explicit guide-fit mode. Volume edits adjust an envelope estimate; they do not establish clinical volume. Visible-junction and bone-pressed lengths have different starting points; the preview cannot infer the distance between them.</p>
     </section>
   );
 }

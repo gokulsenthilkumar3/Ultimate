@@ -1,0 +1,47 @@
+.avatar-workspace-picker { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin:1rem 0; }
+.avatar-workspace-picker button,.parametric-studio button { min-height:2.75rem; padding:.5rem .875rem; border:1px solid var(--gt-border,#ccc); border-radius:var(--gt-radius-sm,.5rem); background:var(--gt-surface,#fff); color:var(--gt-text,#1b1b1b); cursor:pointer; font:inherit; font-size:.875rem; }
+.avatar-workspace-picker button[aria-pressed=true],.parametric-studio button[aria-pressed=true] { border-color:var(--gt-action,#806329); background:var(--gt-surface-raised,#f1eee7); font-weight:650; }
+.parametric-studio button:disabled { opacity:.5; cursor:wait; }
+.parametric-studio { padding:clamp(.75rem,2vw,1.5rem); border:1px solid var(--gt-border,#ccc); border-radius:var(--gt-radius-lg,1rem); color:var(--gt-text,#1b1b1b); background:var(--gt-canvas,#faf9f6); }
+.parametric-studio :is(h2,h3,p) { margin:0 0 .75rem; }
+.parametric-studio h2 { font-size:1.25rem; }
+.parametric-studio p { font-size:.875rem; line-height:1.6; }
+.parametric-studio :is(button,input,select):focus-visible,.avatar-workspace-picker button:focus-visible { outline:2px solid var(--gt-focus,#86662b); outline-offset:3px; }
+.parametric-studio__header,.parametric-studio__actions,.parametric-studio__toolbar,.parametric-studio__toolbar>div { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; }
+.parametric-studio__header { justify-content:space-between; margin-bottom:1rem; }
+.parametric-studio__scope,.parametric-studio__import { padding:.875rem; border:1px solid var(--gt-border,#ccc); border-radius:.5rem; background:var(--gt-surface,#fff); }
+.parametric-studio__error { color:var(--gt-danger,#a21c20); }
+.parametric-studio__toolbar { padding:.75rem 0; border:0; margin:0; }
+.parametric-studio__toolbar>div { margin-right:.75rem; }
+.parametric-studio__layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(16rem,21rem); gap:1rem; align-items:start; }
+.parametric-studio__layout>* { min-width:0; }
+.parametric-studio__canvas { height:clamp(18rem,55dvh,46rem); min-width:0; border-radius:.75rem; overflow:hidden; background:#e8e7e3; touch-action:none; }
+.parametric-studio__canvas canvas { display:block; }
+.parametric-studio__hint { color:var(--gt-muted,#666); font-size:.8125rem!important; margin-top:.75rem!important; }
+.parametric-studio__editor { min-width:0; padding:1rem; border:1px solid var(--gt-border,#ccc); border-radius:.75rem; background:var(--gt-surface,#fff); }
+.parametric-studio__editor legend { padding:0 .5rem; font-weight:650; }
+.parametric-studio__field,.parametric-studio__colours label { display:grid; gap:.375rem; margin-bottom:.875rem; font-size:.875rem; }
+.parametric-studio :is(select,input[type=search]) { width:100%; box-sizing:border-box; min-height:2.75rem; padding:.5rem; border:1px solid var(--gt-border,#ccc); border-radius:.375rem; background:var(--gt-surface,#fff); color:inherit; font:inherit; }
+.parametric-studio__colours { display:flex; gap:1rem; flex-wrap:wrap; }
+.parametric-studio__colours input { width:4.5rem; height:2.5rem; border:1px solid var(--gt-border,#ccc); border-radius:.375rem; background:none; }
+.parametric-studio__sliders { max-height:26rem; overflow:auto; padding:.25rem; margin:0 -.25rem .75rem; }
+.parametric-studio__slider { display:grid; gap:.25rem; margin-bottom:.875rem; font-size:.875rem; }
+.parametric-studio__slider>span { display:flex; justify-content:space-between; gap:.5rem; }
+.parametric-studio__slider output { font-variant-numeric:tabular-nums; color:var(--gt-muted,#666); }
+.parametric-studio__slider input { width:100%; min-height:2rem; margin:0; accent-color:var(--gt-action,#806329); }
+.parametric-studio__slider small { color:var(--gt-muted,#666); line-height:1.4; }
+.parametric-studio__diagnostics { margin-top:1rem; padding-top:.875rem; border-top:1px solid var(--gt-border,#ccc); }
+.parametric-studio__diagnostics summary { min-height:2.75rem; cursor:pointer; font-size:.875rem; }
+.parametric-studio__import button { margin-right:.5rem; }
+.parametric-studio__exports { margin-bottom:1rem; border-block:1px solid var(--gt-border); padding:.5rem 0; }
+.parametric-studio__exports summary { min-height:44px; padding:.65rem 0; cursor:pointer; font-size:.875rem; }
+.parametric-studio__export-options { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr)); gap:1rem; }
+.parametric-studio__export-options > div { padding:1rem; border:1px solid var(--gt-border); border-radius:.5rem; }
+.parametric-studio__export-options h3 { font-size:.9375rem; }
+.parametric-studio__restore { padding-top:1rem; }
+@media(max-width:760px) { .parametric-studio__layout { grid-template-columns:minmax(0,1fr); }.parametric-studio__canvas { height:28rem; }.parametric-studio__sliders { max-height:24rem; }.parametric-studio__actions { width:100%; }.parametric-studio__actions button { flex:1 1 9rem; } }
+@container workspace (max-width: 900px) {
+  .parametric-studio__layout { grid-template-columns: minmax(0, 1fr); }
+  .parametric-studio__actions { width: 100%; }
+  .parametric-studio__actions button { flex: 1 1 9rem; }
+}

@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useMemo, useState } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -106,11 +107,7 @@ export default function SIPCalculator() {
 
   return (
     <div style={{ padding: '0.5rem 0' }}>
-      <div style={{ marginBottom: '1.75rem' }}>
-        <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Finance</p>
-        <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>SIP Calculator</h2>
-        <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Systematic Investment Plan · Inflation-adjusted projections</p>
-      </div>
+      <PageHeader accent="Finance" title="SIP Calculator" subtitle={<>Systematic Investment Plan · Inflation-adjusted projections</>} />
 
       <div className="sip-calculator-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 380px) minmax(0, 1fr)', gap: '1.5rem' }}>
         {/* Controls */}

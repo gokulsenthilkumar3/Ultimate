@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Clock, Play, Pause, Square, Plus, Trash2, Download, DollarSign, BarChart2, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -283,18 +284,11 @@ export default function Timesheet() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Productivity</p>
-          <h1 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Timesheet</h1>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Time tracking · Billable hours · Earnings</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <PageHeader accent="Workspace" title="Timesheet" subtitle={<>Time tracking · Billable hours · Earnings</>} actions={<><div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
             <Download size={12} /> Export
           </button>
-        </div>
-      </div>
+        </div></>} />
 
       {loadError && <p role="alert">{loadError} <button type="button" onClick={fetchEntries}>Retry load</button></p>}
       <p role="status">{saving ? 'Waiting for server acknowledgment…' : draftMessage}</p>

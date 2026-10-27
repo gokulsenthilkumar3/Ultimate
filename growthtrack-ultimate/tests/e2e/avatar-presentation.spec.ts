@@ -25,10 +25,12 @@ test('live evidence, customization and renderer effects persist without changing
   await page.goto('/wellness/physique?view=3d');
   const chamber = page.locator('.chamber-fullscreen-wrap');
   const evidence = page.getByRole('region',{name:'Avatar evidence and readiness'});
+  await page.getByText('Model information and readiness',{exact:true}).click();
   await expect(evidence).toContainText('Not assessed');
   await expect(evidence.getByRole('progressbar')).toHaveAttribute('value','7');
   await expect(evidence).toContainText('7 of 10 key measurements recorded');
   await expect(page.getByText('Restoration Plan',{exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Appearance studio',exact:true}).click();
   await page.getByRole('tab',{name:'View',exact:true}).click();
   await page.getByLabel('Avatar spacing',{exact:true}).selectOption('compact');
   await page.getByLabel('Measurement help detail',{exact:true}).selectOption('concise');
@@ -62,6 +64,8 @@ test('live evidence, customization and renderer effects persist without changing
   await expect(chamber).toHaveAttribute('data-density','compact');
   await expect(chamber).toHaveAttribute('data-interface-effects','off');
   await expect(chamber).toHaveCSS('--avatar-inspector-width','480px');
+  const openStudio=page.getByRole('button',{name:'Appearance studio',exact:true});
+  if(await openStudio.isVisible())await openStudio.click();
   await page.getByRole('tab',{name:'View',exact:true}).click();
   await expect(page.getByLabel('Measurement help detail',{exact:true})).toHaveValue('concise');
   await expect(shading).not.toBeChecked();

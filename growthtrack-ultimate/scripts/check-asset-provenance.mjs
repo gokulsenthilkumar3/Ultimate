@@ -27,10 +27,13 @@ export async function shippedAssets(root) {
   const publicDir = path.join(root, 'public');
   const modelsDir = path.join(publicDir, 'assets', 'models');
   const wardrobeDir = path.join(publicDir, 'assets', 'wardrobe');
+  const parametricDir = path.join(publicDir, 'assets', 'parametric');
   return (await walk(publicDir))
     .filter(file => {
       const extension = path.extname(file).toLowerCase();
-      return ASSET_EXTENSIONS.has(extension) || (TEXTURE_EXTENSIONS.has(extension) && [modelsDir,wardrobeDir].some(folder=>file.startsWith(folder + path.sep)));
+      return ASSET_EXTENSIONS.has(extension)
+        || (TEXTURE_EXTENSIONS.has(extension) && [modelsDir, wardrobeDir, parametricDir].some(folder => file.startsWith(folder + path.sep)))
+        || (extension === '.json' && [path.join(parametricDir, 'skin'), path.join(parametricDir, 'attachments')].some(folder => file.startsWith(folder + path.sep)));
     })
     .map(file => path.relative(root, file).split(path.sep).join('/'))
     .sort();

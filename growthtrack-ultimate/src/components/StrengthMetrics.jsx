@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Dumbbell, Plus, Trash2, TrendingUp, TrendingDown, Minus, Award, Activity } from 'lucide-react';
 import {
@@ -297,14 +298,7 @@ export default function StrengthMetrics() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Training</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Strength Metrics</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{strengthLogs.length} logs · {Object.keys(PRs).length} exercises tracked</p>
-        </div>
-        <button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Log Set</button>
-      </div>
+      <PageHeader accent="Wellness" title="Strength" subtitle={<>{strengthLogs.length} logs · {Object.keys(PRs).length} exercises tracked</>} actions={<><button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Log Set</button></>} />
 
       {/* PR Summary */}
       {Object.keys(PRs).length > 0 && (

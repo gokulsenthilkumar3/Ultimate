@@ -130,7 +130,7 @@ export const BODY_APPEARANCE_FIELDS = Object.freeze([
   // Renderer layers live in physiqueTargets.appearanceMetrics. They are not
   // new database columns or body measurements.
   ['skinTan', null], ['skinFlush', null], ['skinTanPattern', null],
-  ['skinMicroDetail', null],
+  ['skinMicroDetail', null], ['humanRealismPercent', null],
   ['skinFreckleSizeMm', null], ['skinFreckleContrast', null], ['skinFreckleSeed', null],
   ['hairGrey', null], ['hairSeed', null],
   ['eyePupilMode', null], ['eyePupilSizeMm', null], ['eyeIrisDetail', null], ['eyeSeed', null],

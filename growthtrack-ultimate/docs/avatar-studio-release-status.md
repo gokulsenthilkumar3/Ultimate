@@ -1,5 +1,7 @@
 # Personal Avatar Studio — implementation evidence
 
+This document records the earlier source-preparation baseline. The current R2 candidate and its remaining visual limits are documented in [the browser finish pass](real-human-3d/18-private-anatomy-finish.md); its new geometry and verification supersede the older missing-implementation statements below, but do not establish photorealistic acceptance.
+
 ## Implemented
 
 - Height-required measurement editor with anatomical measurement guidance, explicit draft saving, reset and undo.

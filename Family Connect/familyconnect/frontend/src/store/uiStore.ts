@@ -17,7 +17,7 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
+  sidebarOpen: typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
   activeModal: null,
   toasts: [],
   treeLayout: 'vertical',

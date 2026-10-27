@@ -1,0 +1,3610 @@
+{
+  "date": "2026-10-27T15:46:21.515Z",
+  "viewport": {
+    "width": 1366,
+    "height": 768
+  },
+  "fixture": "isolated empty owner",
+  "results": [
+    {
+      "id": "finance",
+      "url": "/finance/overview",
+      "view": null,
+      "heading": [
+        "Your money, in focus"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "transactions",
+      "url": "/finance/transactions",
+      "view": null,
+      "heading": [
+        "Transactions"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "transactions",
+      "url": "/finance/transactions?view=all",
+      "view": "all",
+      "heading": [
+        "Transactions"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "transactions",
+      "url": "/finance/transactions?view=income",
+      "view": "income",
+      "heading": [
+        "Transactions"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "transactions",
+      "url": "/finance/transactions?view=expenses",
+      "view": "expenses",
+      "heading": [
+        "Transactions"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "financeAnalytics",
+      "url": "/finance/analytics",
+      "view": null,
+      "heading": [
+        "Finance analytics"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "financeAnalytics",
+      "url": "/finance/analytics?view=categories",
+      "view": "categories",
+      "heading": [
+        "Finance analytics"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "financeAnalytics",
+      "url": "/finance/analytics?view=income",
+      "view": "income",
+      "heading": [
+        "Finance analytics"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "financeAnalytics",
+      "url": "/finance/analytics?view=comparisons",
+      "view": "comparisons",
+      "heading": [
+        "Finance analytics"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "financeTrends",
+      "url": "/finance/trends",
+      "view": null,
+      "heading": [
+        "Finance trends"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "financeTrends",
+      "url": "/finance/trends?view=monthly",
+      "view": "monthly",
+      "heading": [
+        "Finance trends"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "financeTrends",
+      "url": "/finance/trends?view=recurring",
+      "view": "recurring",
+      "heading": [
+        "Finance trends"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "budgeting",
+      "url": "/finance/budgeting",
+      "view": null,
+      "heading": [
+        "Budgeting"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "budgeting",
+      "url": "/finance/budgeting?view=current",
+      "view": "current",
+      "heading": [
+        "Budgeting"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "budgeting",
+      "url": "/finance/budgeting?view=history",
+      "view": "history",
+      "heading": [
+        "Budgeting"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "subscriptions",
+      "url": "/finance/subscriptions",
+      "view": null,
+      "heading": [
+        "Subscriptions"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "subscriptions",
+      "url": "/finance/subscriptions?view=active",
+      "view": "active",
+      "heading": [
+        "Subscriptions"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "subscriptions",
+      "url": "/finance/subscriptions?view=upcoming",
+      "view": "upcoming",
+      "heading": [
+        "Subscriptions"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "subscriptions",
+      "url": "/finance/subscriptions?view=archived",
+      "view": "archived",
+      "heading": [
+        "Subscriptions"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "portfolio",
+      "url": "/finance/portfolio",
+      "view": null,
+      "heading": [
+        "Portfolio"
+      ],
+      "overflow": 0,
+      "active": [
+        "Holdings"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "portfolio",
+      "url": "/finance/portfolio?view=holdings",
+      "view": "holdings",
+      "heading": [
+        "Portfolio"
+      ],
+      "overflow": 0,
+      "active": [
+        "Holdings"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "portfolio",
+      "url": "/finance/portfolio?view=allocation",
+      "view": "allocation",
+      "heading": [
+        "Portfolio"
+      ],
+      "overflow": 0,
+      "active": [
+        "Holdings"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "portfolio",
+      "url": "/finance/portfolio?view=history",
+      "view": "history",
+      "heading": [
+        "Portfolio"
+      ],
+      "overflow": 0,
+      "active": [
+        "Holdings"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "sip",
+      "url": "/finance/sip",
+      "view": null,
+      "heading": [
+        "SIP Calculator"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "sip",
+      "url": "/finance/sip?view=inputs",
+      "view": "inputs",
+      "heading": [
+        "SIP Calculator"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "sip",
+      "url": "/finance/sip?view=projection",
+      "view": "projection",
+      "heading": [
+        "SIP Calculator"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "sip",
+      "url": "/finance/sip?view=comparison",
+      "view": "comparison",
+      "heading": [
+        "SIP Calculator"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "shopping",
+      "url": "/finance/shopping",
+      "view": null,
+      "heading": [
+        "Shopping"
+      ],
+      "overflow": 0,
+      "active": [
+        "Need later"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "shopping",
+      "url": "/finance/shopping?view=lists",
+      "view": "lists",
+      "heading": [
+        "Shopping"
+      ],
+      "overflow": 0,
+      "active": [
+        "Need later"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "shopping",
+      "url": "/finance/shopping?view=planned",
+      "view": "planned",
+      "heading": [
+        "Shopping"
+      ],
+      "overflow": 0,
+      "active": [
+        "Need later"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "shopping",
+      "url": "/finance/shopping?view=purchased",
+      "view": "purchased",
+      "heading": [
+        "Shopping"
+      ],
+      "overflow": 0,
+      "active": [
+        "Need later"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "financeSync",
+      "url": "/finance/sync",
+      "view": null,
+      "heading": [
+        "Finance sync"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "financeSync",
+      "url": "/finance/sync?view=accounts",
+      "view": "accounts",
+      "heading": [
+        "Finance sync"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "financeSync",
+      "url": "/finance/sync?view=csv",
+      "view": "csv",
+      "heading": [
+        "Finance sync"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "financeSync",
+      "url": "/finance/sync?view=history",
+      "view": "history",
+      "heading": [
+        "Finance sync"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "finsync",
+      "url": "/finance/finsync",
+      "view": null,
+      "heading": [
+        "FinSync"
+      ],
+      "overflow": 0,
+      "active": [
+        "💳 FinSync"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "finsync",
+      "url": "/finance/finsync?view=dashboard",
+      "view": "dashboard",
+      "heading": [
+        "FinSync"
+      ],
+      "overflow": 0,
+      "active": [
+        "💳 FinSync"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "finsync",
+      "url": "/finance/finsync?view=budget",
+      "view": "budget",
+      "heading": [
+        "FinSync"
+      ],
+      "overflow": 0,
+      "active": [
+        "💳 FinSync"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "finsync",
+      "url": "/finance/finsync?view=cards",
+      "view": "cards",
+      "heading": [
+        "FinSync"
+      ],
+      "overflow": 0,
+      "active": [
+        "💳 FinSync"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "finsync",
+      "url": "/finance/finsync?view=accounts",
+      "view": "accounts",
+      "heading": [
+        "FinSync"
+      ],
+      "overflow": 0,
+      "active": [
+        "💳 FinSync"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "oxfin",
+      "url": "/finance/oxfin",
+      "view": null,
+      "heading": [
+        "OxFin"
+      ],
+      "overflow": 0,
+      "active": [
+        "🏦 OxFin"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "oxfin",
+      "url": "/finance/oxfin?view=wallets",
+      "view": "wallets",
+      "heading": [
+        "OxFin"
+      ],
+      "overflow": 0,
+      "active": [
+        "🏦 OxFin"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "oxfin",
+      "url": "/finance/oxfin?view=cards",
+      "view": "cards",
+      "heading": [
+        "OxFin"
+      ],
+      "overflow": 0,
+      "active": [
+        "🏦 OxFin"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "oxfin",
+      "url": "/finance/oxfin?view=investments",
+      "view": "investments",
+      "heading": [
+        "OxFin"
+      ],
+      "overflow": 0,
+      "active": [
+        "🏦 OxFin"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "oxfin",
+      "url": "/finance/oxfin?view=intelligence",
+      "view": "intelligence",
+      "heading": [
+        "OxFin"
+      ],
+      "overflow": 0,
+      "active": [
+        "🏦 OxFin"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "equity",
+      "url": "/finance/equity",
+      "view": null,
+      "heading": [
+        "Equity / NiftyLens"
+      ],
+      "overflow": 0,
+      "active": [
+        "📊 Equity / NiftyLens"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "equity",
+      "url": "/finance/equity?view=charts",
+      "view": "charts",
+      "heading": [
+        "Equity / NiftyLens"
+      ],
+      "overflow": 0,
+      "active": [
+        "📊 Equity / NiftyLens"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "equity",
+      "url": "/finance/equity?view=indices",
+      "view": "indices",
+      "heading": [
+        "Equity / NiftyLens"
+      ],
+      "overflow": 0,
+      "active": [
+        "📊 Equity / NiftyLens"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "equity",
+      "url": "/finance/equity?view=options",
+      "view": "options",
+      "heading": [
+        "Equity / NiftyLens"
+      ],
+      "overflow": 0,
+      "active": [
+        "📊 Equity / NiftyLens"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "equity",
+      "url": "/finance/equity?view=chain",
+      "view": "chain",
+      "heading": [
+        "Equity / NiftyLens"
+      ],
+      "overflow": 0,
+      "active": [
+        "📊 Equity / NiftyLens"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "overview",
+      "url": "/insights/overview",
+      "view": null,
+      "heading": [
+        "Your day, in focus"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "overview",
+      "url": "/insights/overview?view=today",
+      "view": "today",
+      "heading": [
+        "Your day, in focus"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "overview",
+      "url": "/insights/overview?view=priorities",
+      "view": "priorities",
+      "heading": [
+        "Your day, in focus"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "overview",
+      "url": "/insights/overview?view=summary",
+      "view": "summary",
+      "heading": [
+        "Your day, in focus"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "actions",
+      "url": "/insights/actions",
+      "view": null,
+      "heading": [
+        "Your next best actions."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "actions",
+      "url": "/insights/actions?view=today",
+      "view": "today",
+      "heading": [
+        "Your next best actions."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "actions",
+      "url": "/insights/actions?view=upcoming",
+      "view": "upcoming",
+      "heading": [
+        "Your next best actions."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "actions",
+      "url": "/insights/actions?view=snoozed",
+      "view": "snoozed",
+      "heading": [
+        "Your next best actions."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "actions",
+      "url": "/insights/actions?view=dismissed",
+      "view": "dismissed",
+      "heading": [
+        "Your next best actions."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "current",
+      "url": "/insights/current",
+      "view": null,
+      "heading": [
+        "Current"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "current",
+      "url": "/insights/current?view=weather",
+      "view": "weather",
+      "heading": [
+        "Current"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "current",
+      "url": "/insights/current?view=news",
+      "view": "news",
+      "heading": [
+        "Current"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "current",
+      "url": "/insights/current?view=local",
+      "view": "local",
+      "heading": [
+        "Current"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "analytics",
+      "url": "/insights/analytics",
+      "view": null,
+      "heading": [
+        "Analytics"
+      ],
+      "overflow": 0,
+      "active": [
+        "correlations"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "analytics",
+      "url": "/insights/analytics?view=trends",
+      "view": "trends",
+      "heading": [
+        "Analytics"
+      ],
+      "overflow": 0,
+      "active": [
+        "correlations"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "analytics",
+      "url": "/insights/analytics?view=correlations",
+      "view": "correlations",
+      "heading": [
+        "Analytics"
+      ],
+      "overflow": 0,
+      "active": [
+        "correlations"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "analytics",
+      "url": "/insights/analytics?view=comparisons",
+      "view": "comparisons",
+      "heading": [
+        "Analytics"
+      ],
+      "overflow": 0,
+      "active": [
+        "correlations"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "progress",
+      "url": "/insights/progress",
+      "view": null,
+      "heading": [
+        "Progress"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "progress",
+      "url": "/insights/progress?view=timeline",
+      "view": "timeline",
+      "heading": [
+        "Progress"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "progress",
+      "url": "/insights/progress?view=comparisons",
+      "view": "comparisons",
+      "heading": [
+        "Progress"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "progress",
+      "url": "/insights/progress?view=milestones",
+      "view": "milestones",
+      "heading": [
+        "Progress"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "forecast",
+      "url": "/insights/forecast",
+      "view": null,
+      "heading": [
+        "Forecast"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "forecast",
+      "url": "/insights/forecast?view=trends",
+      "view": "trends",
+      "heading": [
+        "Forecast"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "forecast",
+      "url": "/insights/forecast?view=scenarios",
+      "view": "scenarios",
+      "heading": [
+        "Forecast"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "forex",
+      "url": "/insights/forex",
+      "view": null,
+      "heading": [
+        "Forex"
+      ],
+      "overflow": 0,
+      "active": [
+        "📈 Forex"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "forex",
+      "url": "/insights/forex?view=models",
+      "view": "models",
+      "heading": [
+        "Forex"
+      ],
+      "overflow": 0,
+      "active": [
+        "📈 Forex"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "forex",
+      "url": "/insights/forex?view=forecast",
+      "view": "forecast",
+      "heading": [
+        "Forex"
+      ],
+      "overflow": 0,
+      "active": [
+        "📈 Forex"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "forex",
+      "url": "/insights/forex?view=analytics",
+      "view": "analytics",
+      "heading": [
+        "Forex"
+      ],
+      "overflow": 0,
+      "active": [
+        "📈 Forex"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "forex",
+      "url": "/insights/forex?view=volatility",
+      "view": "volatility",
+      "heading": [
+        "Forex"
+      ],
+      "overflow": 0,
+      "active": [
+        "📈 Forex"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "wellness",
+      "url": "/wellness/overview",
+      "view": null,
+      "heading": [
+        "Wellness, on the record"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "sleep",
+      "url": "/wellness/sleep",
+      "view": null,
+      "heading": [
+        "Sleep"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "sleep",
+      "url": "/wellness/sleep?view=log",
+      "view": "log",
+      "heading": [
+        "Sleep"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "sleep",
+      "url": "/wellness/sleep?view=trends",
+      "view": "trends",
+      "heading": [
+        "Sleep"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "sleep",
+      "url": "/wellness/sleep?view=history",
+      "view": "history",
+      "heading": [
+        "Sleep"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "lifestyle",
+      "url": "/wellness/lifestyle",
+      "view": null,
+      "heading": [
+        "Lifestyle & routines"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "lifestyle",
+      "url": "/wellness/lifestyle?view=routines",
+      "view": "routines",
+      "heading": [
+        "Lifestyle & routines"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "lifestyle",
+      "url": "/wellness/lifestyle?view=preferences",
+      "view": "preferences",
+      "heading": [
+        "Lifestyle & routines"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "lifestyle",
+      "url": "/wellness/lifestyle?view=history",
+      "view": "history",
+      "heading": [
+        "Lifestyle & routines"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "mind",
+      "url": "/wellness/mind",
+      "view": null,
+      "heading": [
+        "Mind & wellness"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "mind",
+      "url": "/wellness/mind?view=checkin",
+      "view": "checkin",
+      "heading": [
+        "Mind & wellness"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "mind",
+      "url": "/wellness/mind?view=trends",
+      "view": "trends",
+      "heading": [
+        "Mind & wellness"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "mind",
+      "url": "/wellness/mind?view=journal",
+      "view": "journal",
+      "heading": [
+        "Mind & wellness"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "mind",
+      "url": "/wellness/mind?view=breathe",
+      "view": "breathe",
+      "heading": [
+        "Mind & wellness"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "medical",
+      "url": "/wellness/medical",
+      "view": null,
+      "heading": [
+        "Medical"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "medical",
+      "url": "/wellness/medical?view=vitals",
+      "view": "vitals",
+      "heading": [
+        "Medical"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "medical",
+      "url": "/wellness/medical?view=medications",
+      "view": "medications",
+      "heading": [
+        "Medical"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "medical",
+      "url": "/wellness/medical?view=records",
+      "view": "records",
+      "heading": [
+        "Medical"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "medical",
+      "url": "/wellness/medical?view=timeline",
+      "view": "timeline",
+      "heading": [
+        "Medical"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "health",
+      "url": "/wellness/health",
+      "view": null,
+      "heading": [
+        "Health+"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "health",
+      "url": "/wellness/health?view=senses",
+      "view": "senses",
+      "heading": [
+        "Health+"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "health",
+      "url": "/wellness/health?view=lifestyle",
+      "view": "lifestyle",
+      "heading": [
+        "Health+"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "health",
+      "url": "/wellness/health?view=specialized",
+      "view": "specialized",
+      "heading": [
+        "Health+"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "health",
+      "url": "/wellness/health?view=recovery",
+      "view": "recovery",
+      "heading": [
+        "Health+"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "habits",
+      "url": "/wellness/habits",
+      "view": null,
+      "heading": [
+        "Habits"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "habits",
+      "url": "/wellness/habits?view=today",
+      "view": "today",
+      "heading": [
+        "Habits"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "habits",
+      "url": "/wellness/habits?view=matrix",
+      "view": "matrix",
+      "heading": [
+        "Habits"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "habits",
+      "url": "/wellness/habits?view=history",
+      "view": "history",
+      "heading": [
+        "Habits"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "physique",
+      "url": "/wellness/physique",
+      "view": null,
+      "heading": [
+        "Your body, in perspective."
+      ],
+      "overflow": 0,
+      "active": [
+        "BlueprintYour overview"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "physique",
+      "url": "/wellness/physique?view=blueprint",
+      "view": "blueprint",
+      "heading": [
+        "Your body, in perspective."
+      ],
+      "overflow": 0,
+      "active": [
+        "BlueprintYour overview"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "physique",
+      "url": "/wellness/physique?view=measurements",
+      "view": "measurements",
+      "heading": [
+        "Your body, in perspective."
+      ],
+      "overflow": 0,
+      "active": [
+        "MeasurementsRecord & estimate"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "physique",
+      "url": "/wellness/physique?view=targets",
+      "view": "targets",
+      "heading": [
+        "Your body, in perspective."
+      ],
+      "overflow": 0,
+      "active": [
+        "TargetsYour next steps"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "physique",
+      "url": "/wellness/physique?view=history",
+      "view": "history",
+      "heading": [
+        "Your body, in perspective."
+      ],
+      "overflow": 0,
+      "active": [
+        "HistorySee what changed"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "physique",
+      "url": "/wellness/physique?view=3d",
+      "view": "3d",
+      "heading": [
+        "3D Mirror"
+      ],
+      "overflow": 0,
+      "active": [
+        "3D Mirror",
+        "Summary"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "assessment",
+      "url": "/wellness/assessment",
+      "view": null,
+      "heading": [
+        "Assessment"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "assessment",
+      "url": "/wellness/assessment?view=questionnaire",
+      "view": "questionnaire",
+      "heading": [
+        "Assessment"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "assessment",
+      "url": "/wellness/assessment?view=results",
+      "view": "results",
+      "heading": [
+        "Assessment"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "assessment",
+      "url": "/wellness/assessment?view=history",
+      "view": "history",
+      "heading": [
+        "Assessment"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "training",
+      "url": "/wellness/training",
+      "view": null,
+      "heading": [
+        "Training"
+      ],
+      "overflow": 0,
+      "active": [
+        "Schedule"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "training",
+      "url": "/wellness/training?view=schedule",
+      "view": "schedule",
+      "heading": [
+        "Training"
+      ],
+      "overflow": 0,
+      "active": [
+        "Schedule"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "training",
+      "url": "/wellness/training?view=logger",
+      "view": "logger",
+      "heading": [
+        "Training"
+      ],
+      "overflow": 0,
+      "active": [
+        "Live Logger"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "training",
+      "url": "/wellness/training?view=prs",
+      "view": "prs",
+      "heading": [
+        "Training"
+      ],
+      "overflow": 0,
+      "active": [
+        "PRs"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "training",
+      "url": "/wellness/training?view=overload",
+      "view": "overload",
+      "heading": [
+        "Training"
+      ],
+      "overflow": 0,
+      "active": [
+        "Progressive Overload"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "training",
+      "url": "/wellness/training?view=volume",
+      "view": "volume",
+      "heading": [
+        "Training"
+      ],
+      "overflow": 0,
+      "active": [
+        "Volume History"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "training",
+      "url": "/wellness/training?view=sessions",
+      "view": "sessions",
+      "heading": [
+        "Training"
+      ],
+      "overflow": 0,
+      "active": [
+        "Sessions"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "strength",
+      "url": "/wellness/strength",
+      "view": null,
+      "heading": [
+        "Strength"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "strength",
+      "url": "/wellness/strength?view=log",
+      "view": "log",
+      "heading": [
+        "Strength"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "strength",
+      "url": "/wellness/strength?view=progression",
+      "view": "progression",
+      "heading": [
+        "Strength"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "strength",
+      "url": "/wellness/strength?view=1rm",
+      "view": "1rm",
+      "heading": [
+        "Strength"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "strength",
+      "url": "/wellness/strength?view=fatigue",
+      "view": "fatigue",
+      "heading": [
+        "Strength"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "strength",
+      "url": "/wellness/strength?view=volume",
+      "view": "volume",
+      "heading": [
+        "Strength"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "nutrition",
+      "url": "/wellness/nutrition",
+      "view": null,
+      "heading": [
+        "Nutrition"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "nutrition",
+      "url": "/wellness/nutrition?view=daily",
+      "view": "daily",
+      "heading": [
+        "Nutrition"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "nutrition",
+      "url": "/wellness/nutrition?view=history",
+      "view": "history",
+      "heading": [
+        "Nutrition"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "nutrition",
+      "url": "/wellness/nutrition?view=targets",
+      "view": "targets",
+      "heading": [
+        "Nutrition"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "nutrition",
+      "url": "/wellness/nutrition?view=calculator",
+      "view": "calculator",
+      "heading": [
+        "Nutrition"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "hydration",
+      "url": "/wellness/hydration",
+      "view": null,
+      "heading": [
+        "Hydration Tracker"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "hydration",
+      "url": "/wellness/hydration?view=today",
+      "view": "today",
+      "heading": [
+        "Hydration Tracker"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "hydration",
+      "url": "/wellness/hydration?view=history",
+      "view": "history",
+      "heading": [
+        "Hydration Tracker"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "hydration",
+      "url": "/wellness/hydration?view=targets",
+      "view": "targets",
+      "heading": [
+        "Hydration Tracker"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "healthSync",
+      "url": "/wellness/sync",
+      "view": null,
+      "heading": [
+        "Health Sync"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "healthSync",
+      "url": "/wellness/sync?view=devices",
+      "view": "devices",
+      "heading": [
+        "Health Sync"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "healthSync",
+      "url": "/wellness/sync?view=imports",
+      "view": "imports",
+      "heading": [
+        "Health Sync"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "healthSync",
+      "url": "/wellness/sync?view=history",
+      "view": "history",
+      "heading": [
+        "Health Sync"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "workspace",
+      "url": "/workspace/overview",
+      "view": null,
+      "heading": [
+        "Work, made clear"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "calendar",
+      "url": "/workspace/calendar",
+      "view": null,
+      "heading": [
+        "Calendar"
+      ],
+      "overflow": 0,
+      "active": [
+        "Month"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "calendar",
+      "url": "/workspace/calendar?view=month",
+      "view": "month",
+      "heading": [
+        "Calendar"
+      ],
+      "overflow": 0,
+      "active": [
+        "Month"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "calendar",
+      "url": "/workspace/calendar?view=week",
+      "view": "week",
+      "heading": [
+        "Calendar"
+      ],
+      "overflow": 0,
+      "active": [
+        "Week"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "calendar",
+      "url": "/workspace/calendar?view=agenda",
+      "view": "agenda",
+      "heading": [
+        "Calendar"
+      ],
+      "overflow": 0,
+      "active": [
+        "Agenda"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "calendar",
+      "url": "/workspace/calendar?view=connections",
+      "view": "connections",
+      "heading": [
+        "Calendar"
+      ],
+      "overflow": 0,
+      "active": [
+        "Connections"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "documents",
+      "url": "/workspace/files",
+      "view": null,
+      "heading": [
+        "My Files"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "documents",
+      "url": "/workspace/files?view=vault",
+      "view": "vault",
+      "heading": [
+        "My Files"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "documents",
+      "url": "/workspace/files?view=providers",
+      "view": "providers",
+      "heading": [
+        "My Files"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "documents",
+      "url": "/workspace/files?view=recent",
+      "view": "recent",
+      "heading": [
+        "My Files"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "notes",
+      "url": "/workspace/notes",
+      "view": null,
+      "heading": [
+        "My Notes"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "notes",
+      "url": "/workspace/notes?view=all",
+      "view": "all",
+      "heading": [
+        "My Notes"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "notes",
+      "url": "/workspace/notes?view=pinned",
+      "view": "pinned",
+      "heading": [
+        "My Notes"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "notes",
+      "url": "/workspace/notes?view=tags",
+      "view": "tags",
+      "heading": [
+        "My Notes"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "notes",
+      "url": "/workspace/notes?view=editor",
+      "view": "editor",
+      "heading": [
+        "My Notes"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "tasks",
+      "url": "/workspace/tasks",
+      "view": null,
+      "heading": [
+        "Tasks Command"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "tasks",
+      "url": "/workspace/tasks?view=today",
+      "view": "today",
+      "heading": [
+        "Tasks Command"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "tasks",
+      "url": "/workspace/tasks?view=upcoming",
+      "view": "upcoming",
+      "heading": [
+        "Tasks Command"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "tasks",
+      "url": "/workspace/tasks?view=all",
+      "view": "all",
+      "heading": [
+        "Tasks Command"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "tasks",
+      "url": "/workspace/tasks?view=completed",
+      "view": "completed",
+      "heading": [
+        "Tasks Command"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "tasks",
+      "url": "/workspace/tasks?view=list",
+      "view": "list",
+      "heading": [
+        "Tasks Command"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "tasks",
+      "url": "/workspace/tasks?view=board",
+      "view": "board",
+      "heading": [
+        "Tasks Command"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "projects",
+      "url": "/workspace/projects",
+      "view": null,
+      "heading": [
+        "Projects Hub"
+      ],
+      "overflow": 0,
+      "active": [
+        "Repositories (0)"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "projects",
+      "url": "/workspace/projects?view=github",
+      "view": "github",
+      "heading": [
+        "Projects Hub"
+      ],
+      "overflow": 0,
+      "active": [
+        "Repositories (0)"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "projects",
+      "url": "/workspace/projects?view=mine",
+      "view": "mine",
+      "heading": [
+        "Projects Hub"
+      ],
+      "overflow": 0,
+      "active": [
+        "Repositories (0)"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "projects",
+      "url": "/workspace/projects?view=grid",
+      "view": "grid",
+      "heading": [
+        "Projects Hub"
+      ],
+      "overflow": 0,
+      "active": [
+        "Repositories (0)"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "projects",
+      "url": "/workspace/projects?view=list",
+      "view": "list",
+      "heading": [
+        "Projects Hub"
+      ],
+      "overflow": 0,
+      "active": [
+        "Repositories (0)"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "timesheet",
+      "url": "/workspace/timesheet",
+      "view": null,
+      "heading": [
+        "Timesheet"
+      ],
+      "overflow": 0,
+      "active": [
+        "timer"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "timesheet",
+      "url": "/workspace/timesheet?view=timer",
+      "view": "timer",
+      "heading": [
+        "Timesheet"
+      ],
+      "overflow": 0,
+      "active": [
+        "timer"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "timesheet",
+      "url": "/workspace/timesheet?view=sessions",
+      "view": "sessions",
+      "heading": [
+        "Timesheet"
+      ],
+      "overflow": 0,
+      "active": [
+        "sessions"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "timesheet",
+      "url": "/workspace/timesheet?view=analytics",
+      "view": "analytics",
+      "heading": [
+        "Timesheet"
+      ],
+      "overflow": 0,
+      "active": [
+        "analytics"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "skills",
+      "url": "/workspace/skills",
+      "view": null,
+      "heading": [
+        "Skills"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "skills",
+      "url": "/workspace/skills?view=tree",
+      "view": "tree",
+      "heading": [
+        "Skills"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "skills",
+      "url": "/workspace/skills?view=list",
+      "view": "list",
+      "heading": [
+        "Skills"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "skills",
+      "url": "/workspace/skills?view=radar",
+      "view": "radar",
+      "heading": [
+        "Skills"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "skills",
+      "url": "/workspace/skills?view=history",
+      "view": "history",
+      "heading": [
+        "Skills"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "goals",
+      "url": "/workspace/goals",
+      "view": null,
+      "heading": [
+        "Goals"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "goals",
+      "url": "/workspace/goals?view=active",
+      "view": "active",
+      "heading": [
+        "Goals"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "goals",
+      "url": "/workspace/goals?view=completed",
+      "view": "completed",
+      "heading": [
+        "Goals"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "goals",
+      "url": "/workspace/goals?view=archived",
+      "view": "archived",
+      "heading": [
+        "Goals"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "life",
+      "url": "/life/overview",
+      "view": null,
+      "heading": [
+        "Room for the rest of life"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "social",
+      "url": "/life/social",
+      "view": null,
+      "heading": [
+        "Social"
+      ],
+      "overflow": 0,
+      "active": [
+        "profiles"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "social",
+      "url": "/life/social?view=profiles",
+      "view": "profiles",
+      "heading": [
+        "Social"
+      ],
+      "overflow": 0,
+      "active": [
+        "profiles"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "social",
+      "url": "/life/social?view=analytics",
+      "view": "analytics",
+      "heading": [
+        "Social"
+      ],
+      "overflow": 0,
+      "active": [
+        "analytics"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "social",
+      "url": "/life/social?view=connections",
+      "view": "connections",
+      "heading": [
+        "Social"
+      ],
+      "overflow": 0,
+      "active": [
+        "connections"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "entertainment",
+      "url": "/life/entertainment",
+      "view": null,
+      "heading": [
+        "Entertainment Tracker"
+      ],
+      "overflow": 0,
+      "active": [
+        "Library"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "entertainment",
+      "url": "/life/entertainment?view=library",
+      "view": "library",
+      "heading": [
+        "Entertainment Tracker"
+      ],
+      "overflow": 0,
+      "active": [
+        "Library"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "entertainment",
+      "url": "/life/entertainment?view=stats",
+      "view": "stats",
+      "heading": [
+        "Entertainment Tracker"
+      ],
+      "overflow": 0,
+      "active": [
+        "Library"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "entertainment",
+      "url": "/life/entertainment?view=sync",
+      "view": "sync",
+      "heading": [
+        "Entertainment Tracker"
+      ],
+      "overflow": 0,
+      "active": [
+        "Library"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "maps",
+      "url": "/life/places",
+      "view": null,
+      "heading": [
+        "Maps & places"
+      ],
+      "overflow": 0,
+      "active": [
+        "List"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "maps",
+      "url": "/life/places?view=map",
+      "view": "map",
+      "heading": [
+        "Maps & places"
+      ],
+      "overflow": 0,
+      "active": [
+        "Map"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "maps",
+      "url": "/life/places?view=list",
+      "view": "list",
+      "heading": [
+        "Maps & places"
+      ],
+      "overflow": 0,
+      "active": [
+        "List"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "maps",
+      "url": "/life/places?view=timeline",
+      "view": "timeline",
+      "heading": [
+        "Maps & places"
+      ],
+      "overflow": 0,
+      "active": [
+        "Timeline"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "maps",
+      "url": "/life/places?view=privacy",
+      "view": "privacy",
+      "heading": [
+        "Maps & places"
+      ],
+      "overflow": 0,
+      "active": [
+        "Privacy"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "family",
+      "url": "/life/family",
+      "view": null,
+      "heading": [
+        "Family Connect"
+      ],
+      "overflow": 0,
+      "active": [
+        "🌳 Family Connect"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "family",
+      "url": "/life/family?view=tree",
+      "view": "tree",
+      "heading": [
+        "Family Connect"
+      ],
+      "overflow": 0,
+      "active": [
+        "🌳 Family Connect"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "family",
+      "url": "/life/family?view=memories",
+      "view": "memories",
+      "heading": [
+        "Family Connect"
+      ],
+      "overflow": 0,
+      "active": [
+        "🌳 Family Connect"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "family",
+      "url": "/life/family?view=vault",
+      "view": "vault",
+      "heading": [
+        "Family Connect"
+      ],
+      "overflow": 0,
+      "active": [
+        "🌳 Family Connect"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "family",
+      "url": "/life/family?view=timeline",
+      "view": "timeline",
+      "heading": [
+        "Family Connect"
+      ],
+      "overflow": 0,
+      "active": [
+        "🌳 Family Connect"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "hub",
+      "url": "/hub/overview",
+      "view": null,
+      "heading": [
+        "Your operating center"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "apps",
+      "url": "/hub/apps",
+      "view": null,
+      "heading": [
+        "App Hub."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "apps",
+      "url": "/hub/apps?view=modules",
+      "view": "modules",
+      "heading": [
+        "App Hub."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "apps",
+      "url": "/hub/apps?view=favorites",
+      "view": "favorites",
+      "heading": [
+        "App Hub."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "apps",
+      "url": "/hub/apps?view=external",
+      "view": "external",
+      "heading": [
+        "App Hub."
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "companion",
+      "url": "/hub/companion",
+      "view": null,
+      "heading": [
+        "Apps Suite"
+      ],
+      "overflow": 0,
+      "active": [
+        "All products"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "companion",
+      "url": "/hub/companion?view=all",
+      "view": "all",
+      "heading": [
+        "Apps Suite"
+      ],
+      "overflow": 0,
+      "active": [
+        "All products"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "companion",
+      "url": "/hub/companion?view=finsync",
+      "view": "finsync",
+      "heading": [
+        "Apps Suite"
+      ],
+      "overflow": 0,
+      "active": [
+        "All products"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "companion",
+      "url": "/hub/companion?view=oxfin",
+      "view": "oxfin",
+      "heading": [
+        "Apps Suite"
+      ],
+      "overflow": 0,
+      "active": [
+        "All products"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "companion",
+      "url": "/hub/companion?view=equity",
+      "view": "equity",
+      "heading": [
+        "Apps Suite"
+      ],
+      "overflow": 0,
+      "active": [
+        "All products"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "companion",
+      "url": "/hub/companion?view=forex",
+      "view": "forex",
+      "heading": [
+        "Apps Suite"
+      ],
+      "overflow": 0,
+      "active": [
+        "All products"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "companion",
+      "url": "/hub/companion?view=family",
+      "view": "family",
+      "heading": [
+        "Apps Suite"
+      ],
+      "overflow": 0,
+      "active": [
+        "All products"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "ai",
+      "url": "/hub/agents",
+      "view": null,
+      "heading": [
+        "GrowthTrack AI"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "ai",
+      "url": "/hub/agents?view=chat",
+      "view": "chat",
+      "heading": [
+        "GrowthTrack AI"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "ai",
+      "url": "/hub/agents?view=history",
+      "view": "history",
+      "heading": [
+        "GrowthTrack AI"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "ai",
+      "url": "/hub/agents?view=context",
+      "view": "context",
+      "heading": [
+        "GrowthTrack AI"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "ai",
+      "url": "/hub/agents?view=settings",
+      "view": "settings",
+      "heading": [
+        "GrowthTrack AI"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "databases",
+      "url": "/hub/databases",
+      "view": null,
+      "heading": [
+        "Databases"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "databases",
+      "url": "/hub/databases?view=custom",
+      "view": "custom",
+      "heading": [
+        "Databases"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "databases",
+      "url": "/hub/databases?view=application",
+      "view": "application",
+      "heading": [
+        "Databases"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "databases",
+      "url": "/hub/databases?view=imports",
+      "view": "imports",
+      "heading": [
+        "Databases"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "profile",
+      "url": "/hub/settings",
+      "view": null,
+      "heading": [
+        "Profile & settings"
+      ],
+      "overflow": 0,
+      "active": [
+        "AccountIdentity, contact, and personal details"
+      ],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "profile",
+      "url": "/hub/settings?view=personal",
+      "view": "personal",
+      "heading": [
+        "Profile & settings"
+      ],
+      "overflow": 0,
+      "active": [
+        "AccountIdentity, contact, and personal details"
+      ],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "profile",
+      "url": "/hub/settings?view=physical",
+      "view": "physical",
+      "heading": [
+        "Profile & settings"
+      ],
+      "overflow": 0,
+      "active": [
+        "Body & measurementsBody profile and measurement defaults"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "profile",
+      "url": "/hub/settings?view=security",
+      "view": "security",
+      "heading": [
+        "Profile & settings"
+      ],
+      "overflow": 0,
+      "active": [
+        "Privacy & securityPassword, sessions, AI and local drafts"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "profile",
+      "url": "/hub/settings?view=appearance",
+      "view": "appearance",
+      "heading": [
+        "Profile & settings"
+      ],
+      "overflow": 0,
+      "active": [
+        "DisplayTheme, units, language, and accessibility"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "profile",
+      "url": "/hub/settings?view=integrations",
+      "view": "integrations",
+      "heading": [
+        "Profile & settings"
+      ],
+      "overflow": 0,
+      "active": [
+        "ConnectionsService availability and social profiles"
+      ],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "notifications",
+      "url": "/hub/notifications",
+      "view": null,
+      "heading": [
+        " Notifications"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "notifications",
+      "url": "/hub/notifications?view=unread",
+      "view": "unread",
+      "heading": [
+        " Notifications"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "notifications",
+      "url": "/hub/notifications?view=all",
+      "view": "all",
+      "heading": [
+        " Notifications"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "notifications",
+      "url": "/hub/notifications?view=preferences",
+      "view": "preferences",
+      "heading": [
+        " Notifications"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "help",
+      "url": "/hub/help",
+      "view": null,
+      "heading": [
+        "Understand your workspace"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "help",
+      "url": "/hub/help?view=guides",
+      "view": "guides",
+      "heading": [
+        "Understand your workspace"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "help",
+      "url": "/hub/help?view=troubleshooting",
+      "view": "troubleshooting",
+      "heading": [
+        "Understand your workspace"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "help",
+      "url": "/hub/help?view=diagnostics",
+      "view": "diagnostics",
+      "heading": [
+        "Understand your workspace"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "logs",
+      "url": "/hub/logs",
+      "view": null,
+      "heading": [
+        "Logs"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "logs",
+      "url": "/hub/logs?view=activity",
+      "view": "activity",
+      "heading": [
+        "Logs"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "logs",
+      "url": "/hub/logs?view=authentication",
+      "view": "authentication",
+      "heading": [
+        "Logs"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "logs",
+      "url": "/hub/logs?view=sync",
+      "view": "sync",
+      "heading": [
+        "Logs"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "about",
+      "url": "/hub/about",
+      "view": null,
+      "heading": [
+        "About GrowthTrack"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "about",
+      "url": "/hub/about?view=version",
+      "view": "version",
+      "heading": [
+        "About GrowthTrack"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "about",
+      "url": "/hub/about?view=capabilities",
+      "view": "capabilities",
+      "heading": [
+        "About GrowthTrack"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "about",
+      "url": "/hub/about?view=licenses",
+      "view": "licenses",
+      "heading": [
+        "About GrowthTrack"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": true,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "pricing",
+      "url": "/hub/plans",
+      "view": null,
+      "heading": [
+        "Plans & capabilities"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "pricing",
+      "url": "/hub/plans?view=capabilities",
+      "view": "capabilities",
+      "heading": [
+        "Plans & capabilities"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "pricing",
+      "url": "/hub/plans?view=billing",
+      "view": "billing",
+      "heading": [
+        "Plans & capabilities"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "dashboards",
+      "url": "/insights/dashboards",
+      "view": null,
+      "heading": [
+        "Dashboards"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": null,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately."
+    },
+    {
+      "id": "dashboards",
+      "url": "/insights/dashboards?view=saved",
+      "view": "saved",
+      "heading": [
+        "Dashboards"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    },
+    {
+      "id": "dashboards",
+      "url": "/insights/dashboards?view=arrange",
+      "view": "arrange",
+      "heading": [
+        "Dashboards"
+      ],
+      "overflow": 0,
+      "active": [],
+      "errors": [],
+      "distinctFromDefault": false,
+      "coverage": "Empty-state UI and layout; populated/domain behavior covered separately.",
+      "finding": "This registered query view renders the default content in this empty fixture. A distinct view is not established."
+    }
+  ]
+}

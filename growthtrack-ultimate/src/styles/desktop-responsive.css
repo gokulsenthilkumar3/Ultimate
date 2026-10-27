@@ -1,0 +1,51 @@
+/* Screen inches cannot be detected reliably. Target available CSS pixels:
+   scaled 14-inch laptops (1280x720 / 1366x768), desktops, and browser zoom. */
+@layer shell {
+  .app-shell[data-ui-system="editorial"] .content-area {
+    container-name: workspace;
+    min-inline-size: 0;
+  }
+  .app-shell :is(.page-transition-wrapper, .module-page, .gt-page-template,
+    .gt-page-template__content, .glass-card, .gt-card, .panel) {
+    min-inline-size: 0;
+  }
+  .app-shell :is(.page-header-block__actions, .px-action-row) { flex-wrap: wrap; }
+  .app-shell :is(input, select, textarea) { max-inline-size: 100%; }
+
+  @media (min-width: 640px) and (max-width: 1439px) {
+    .app-shell[data-ui-system="editorial"] .content-area {
+      padding: clamp(1rem, 1.6vw, 1.5rem);
+    }
+    .app-shell[data-ui-system="editorial"] .app-header {
+      gap: .75rem;
+      padding-inline: 1rem;
+    }
+    .app-shell[data-ui-system="editorial"] .app-header__context { display: none; }
+    .app-shell[data-ui-system="editorial"] .content-area h1 {
+      font-size: clamp(1.75rem, 2.5vw, 2.25rem);
+    }
+  }
+
+  /* Respond to content width, including an open navigation panel or zoom. */
+  @container workspace (max-width: 1000px) {
+    .overview-snapshot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .overview-snapshot-grid > :last-child { grid-column: 1 / -1; }
+    .editorial-overview__lower,
+    .px-target-layout,
+    .px-measurement-layout,
+    .sip-calculator-layout { grid-template-columns: minmax(0, 1fr) !important; }
+  }
+  @container workspace (max-width: 760px) {
+    .editorial-overview__lead,
+    .px-blueprint-grid,
+    .calendar-layout,
+    .dual-grid,
+    .gt-page-template__layout[data-has-aside=true] { grid-template-columns: minmax(0, 1fr) !important; }
+    .px-field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @container workspace (max-width: 480px) {
+    .overview-snapshot-grid { grid-template-columns: minmax(0, 1fr) !important; }
+    .overview-snapshot-grid > :last-child { grid-column: auto; }
+    .px-field-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+}

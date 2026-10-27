@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
 
   return {
   base: env.VITE_BASE_PATH || '/Ultimate/',
+  // Trace snapshots are generated HTML, not application entry points.
+  optimizeDeps: { entries: ['index.html'] },
   plugins: [
     react(),
     serviceWorkerPlugin(),
@@ -48,6 +50,11 @@ export default defineConfig(({ mode }) => {
       // Without this, every DB transaction triggers HMR, restarts server.js,
       // and can corrupt or wipe in-flight data.
       ignored: [
+        // Playwright writes HTML snapshots while recording. Watching them
+        // reloads the app during the test and can interrupt model loading.
+        '**/artifacts/**',
+        '**/test-results/**',
+        '**/playwright-report/**',
         '**/*.db',
         '**/*.db-journal',
         '**/*.db-wal',

@@ -57,7 +57,7 @@ export default function AppLauncher({ setActiveTab }) {
       const app = configured.get(id) || DEFAULT_APPS.find(item => item.id === id) || {};
       return {
         id,
-        label: typeof app.label === 'string' && app.label.trim() ? app.label : meta.label,
+        label: (typeof app.label === 'string' && app.label.trim() ? app.label : meta.label) === 'Overview' ? `${GROUPS[meta.group]?.label || 'Workspace'} overview` : (typeof app.label === 'string' && app.label.trim() ? app.label : meta.label),
         description: typeof app.description === 'string' && app.description.trim() ? app.description : APP_DESCRIPTIONS[id] || meta.keywords.join(' · '),
         keywords: meta.keywords.join(' '),
         group: typeof app.group === 'string' && app.group.trim() ? app.group : GROUPS[meta.group]?.label || 'More',
@@ -70,7 +70,7 @@ export default function AppLauncher({ setActiveTab }) {
   const pinnedTabs = useStore(selectPinnedTabs) || EMPTY_LIST;
   const togglePinnedTab = useStore(selectTogglePinnedTab);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState(() => safeLocalStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid');
+  const [viewMode, setViewMode] = useState(() => safeLocalStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list');
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [groupFilter, setGroupFilter] = useState('all');
   const [clickCounts, setClickCounts] = useState(getClickCounts);
@@ -142,7 +142,16 @@ export default function AppLauncher({ setActiveTab }) {
         </div>
         <div className="app-hub-hero__meta"><span><strong>{allApps.length}</strong> tools</span><span><strong>{groupOrder.length}</strong> areas</span><span><strong>{pinnedApps.length}</strong> pinned</span></div>
       </div>
-      <section className="app-hub-panel" aria-label="Quick launch">
+      <div className="app-hub-library-heading"><h2>Explore your tools</h2><p>Find a familiar favorite or something new.</p></div>
+      <div className="app-hub-toolbar">
+        <label className="app-hub-search"><Search size={19} /><input type="search" value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') setSearch(''); }} placeholder="Search tools, interests, or actions…" aria-label="Search apps" />{search && <button onClick={() => setSearch('')} aria-label="Clear app search"><X size={16} /></button>}</label>
+        <button className="app-hub-pinned-filter" aria-label={`Pinned ${pinnedApps.length}`} aria-pressed={pinnedOnly} onClick={() => setPinnedOnly(value => !value)}><Pin size={16} />Pinned<span>{pinnedApps.length}</span></button>
+        <div className="app-hub-view-switch" role="group" aria-label="App display">
+          {[['grid', Grid], ['list', List]].map(([mode, Icon]) => <button key={mode} onClick={() => changeView(mode)} aria-label={`${mode === 'grid' ? 'Grid' : 'List'} view`} aria-pressed={viewMode === mode}>{React.createElement(Icon, { size: 18 })}</button>)}
+        </div>
+        <div className="app-hub-filters" role="group" aria-label="Filter apps by group">{['all', ...groupOrder].map(group => <button key={group} onClick={() => setGroupFilter(group)} aria-pressed={groupFilter === group}>{group === 'all' ? 'All modules' : group}</button>)}</div>
+      </div>
+      <section className="app-hub-panel" aria-label="Quick launch" hidden={Boolean(search.trim()) || groupFilter !== 'all' || pinnedOnly}>
         <h2 className="app-hub-label"><Pin size={15} />{pinnedApps.length ? 'Pinned for you' : 'Start here'}</h2>
         <div className="app-launch-dock">{dockApps.map(app => <button key={app.id} onClick={() => onNavigate(app.id)} className="app-launch-dock__item" style={{ '--app-color': app.color }} aria-label={`Open ${app.label}`}>
           <span className="app-launch-dock__icon" aria-hidden="true">{appIcon(app)}</span><span>{app.label}</span>
@@ -153,43 +162,10 @@ export default function AppLauncher({ setActiveTab }) {
         <div><p className="app-hub-label">Personal website</p><p className="app-hub-copy">Visit your linked portfolio.</p></div>
         <a href={portfolioUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">Open website <ArrowUpRight size={15} /></a>
       </div>}
-      <section className="app-hub-panel product-launcher" aria-labelledby="connected-products-title">
-        <div className="product-launcher__heading">
-          <div><p className="app-hub-label"><Server size={15} /> Connected products</p><h2 id="connected-products-title">Everything inside Ultimate.</h2><p>Open finance, family, markets and forecasting in your workspace.</p></div>
-          <span className="product-launcher__gateway" aria-busy={serviceState.loading}><Circle size={9} fill={serviceState.loading ? 'currentColor' : '#30d158'} /> Workspace connected</span>
-        </div>
-        <div className="product-launcher__grid">
-          {PRODUCTS.map((product, idx) => {
-            const online = Boolean(serviceState.services[product.id]?.online);
-            const isOffline = !serviceState.loading && !online;
-            return <article className="product-card" key={product.id} style={{ '--product-color': product.color }} data-offline={String(isOffline)}>
-              <div className="product-card__top"><span className="product-card__icon" aria-hidden="true">{product.icon}</span><span className={`product-card__status ${online ? 'is-online' : ''}`}><i />{serviceState.loading ? 'Checking' : online ? 'Online' : 'Offline'}</span></div>
-              <div><h3>{product.name}</h3><p>{product.description}</p></div>
-              <div className="product-card__actions">
-                <button type="button" onClick={() => launchProduct(product)}
-                  data-tip={isOffline ? product.command : undefined}
-                  aria-label={`Open ${product.name}${isOffline ? ' (run ' + product.command + ' to start locally)' : ''}`}
-                >Open app <ArrowUpRight size={14} /></button>
-                <a href={`http://127.0.0.1:5300${product.healthUrl}`} target="_blank" rel="noopener noreferrer">API</a>
-              </div>
-              <button className="product-card__command" type="button" title="Copy local start command" onClick={() => navigator.clipboard?.writeText(product.command)}><Copy size={12} /> {product.command}</button>
-            </article>;
-          })}
-        </div>
-      </section>
       {frequentApps.length > 0 && <section className="app-hub-frequent" aria-label="Frequently used modules">
         <h2 className="app-hub-label"><Star size={13} /> Frequently used</h2>
         <div className="chip-row">{frequentApps.map(app => <button className="app-hub-kpi" key={app.id} onClick={() => onNavigate(app.id)}>{app.icon} {app.label}</button>)}</div>
       </section>}
-      <div className="app-hub-library-heading"><h2>Explore your tools</h2><p>Find a familiar favorite or something new.</p></div>
-      <div className="app-hub-toolbar">
-        <label className="app-hub-search"><Search size={19} /><input type="search" value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') setSearch(''); }} placeholder="Search tools, interests, or actions…" aria-label="Search apps" />{search && <button onClick={() => setSearch('')} aria-label="Clear app search"><X size={16} /></button>}</label>
-        <button className="app-hub-pinned-filter" aria-label={`Pinned ${pinnedApps.length}`} aria-pressed={pinnedOnly} onClick={() => setPinnedOnly(value => !value)}><Pin size={16} />Pinned<span>{pinnedApps.length}</span></button>
-        <div className="app-hub-view-switch" role="group" aria-label="App display">
-          {[['grid', Grid], ['list', List]].map(([mode, Icon]) => <button key={mode} onClick={() => changeView(mode)} aria-label={`${mode === 'grid' ? 'Grid' : 'List'} view`} aria-pressed={viewMode === mode}>{React.createElement(Icon, { size: 18 })}</button>)}
-        </div>
-        <div className="app-hub-filters" role="group" aria-label="Filter apps by group">{['all', ...groupOrder].map(group => <button key={group} onClick={() => setGroupFilter(group)} aria-pressed={groupFilter === group}>{group === 'all' ? 'All modules' : group}</button>)}</div>
-      </div>
       <div className="app-hub-results"><p className="app-hub-result-count" role="status">{filtered.length} tool{filtered.length === 1 ? '' : 's'}{groupFilter !== 'all' ? ` in ${groupFilter}` : ''}{pinnedOnly ? ' · Pinned only' : ''}{search.trim() ? ` matching “${search.trim()}”` : ''}</p>{(search || groupFilter !== 'all' || pinnedOnly) && <button onClick={resetFilters}>Clear filters<X size={14} /></button>}</div>
       {filtered.length === 0 && <div className="app-hub-empty">{pinnedOnly && !pinnedApps.length ? <Pin size={28} /> : <Search size={28} />}<h2>{pinnedOnly && !pinnedApps.length ? 'Make this space yours' : 'No tools found'}</h2><p>{pinnedOnly && !pinnedApps.length ? 'Pin tools from the library to keep your favorites together.' : 'Try a broader search or clear your filters to see every tool.'}</p><button className="btn-secondary" onClick={resetFilters}>Show all tools</button></div>}
       {groupOrder.map(group => {
@@ -210,6 +186,35 @@ export default function AppLauncher({ setActiveTab }) {
           })}</div>
         </section>;
       })}
+      <details className="app-hub-companions"><summary>Companion apps · 5 products</summary>
+      <section className="app-hub-panel product-launcher" aria-labelledby="connected-products-title">
+        <div className="product-launcher__heading">
+          <div><p className="app-hub-label"><Server size={15} /> Connected products</p><h2 id="connected-products-title">Everything inside Ultimate.</h2><p>Open finance, family, markets and forecasting in your workspace.</p></div>
+          <span className="product-launcher__gateway" aria-busy={serviceState.loading}><Circle size={9} fill={serviceState.loading ? 'currentColor' : '#30d158'} /> {serviceState.loading ? 'Checking services' : `${PRODUCTS.filter(product => serviceState.services[product.id]?.online).length} of ${PRODUCTS.length} online`}</span>
+        </div>
+        <div className="product-launcher__grid">
+          {PRODUCTS.map((product, idx) => {
+            const online = Boolean(serviceState.services[product.id]?.online);
+            const isOffline = !serviceState.loading && !online;
+            return <article className="product-card" key={product.id} style={{ '--product-color': product.color }} data-offline={String(isOffline)}>
+              <div className="product-card__top"><span className="product-card__icon" aria-hidden="true">{product.icon}</span><span className={`product-card__status ${online ? 'is-online' : ''}`}><i />{serviceState.loading ? 'Checking' : online ? 'Online' : 'Offline'}</span></div>
+              <div><h3>{product.name}</h3><p>{product.description}</p></div>
+              <div className="product-card__actions">
+                <button type="button" onClick={() => launchProduct(product)}
+                  aria-label={`Open ${product.name}`}
+                >Open app <ArrowUpRight size={14} /></button>
+              </div>
+              <details className="product-card__diagnostics"><summary>Service details</summary>
+                <a href={`http://127.0.0.1:5300${product.healthUrl}`} target="_blank" rel="noopener noreferrer">API health</a>
+                <button className="product-card__command" type="button" title="Copy local start command" onClick={() => navigator.clipboard?.writeText(product.command)}><Copy size={12} /> {product.command}</button>
+              </details>
+            </article>;
+          })}
+        </div>
+      </section>
+      </details>
+
+
     </div>
   );
-}
+}

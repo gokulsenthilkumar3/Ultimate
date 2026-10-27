@@ -13,7 +13,7 @@ function subscribeViewport(listener) {
   // changes so zoom and orientation are not missed.
   window.addEventListener('resize', listener);
   const queries = typeof window.matchMedia === 'function'
-    ? [window.matchMedia('(max-width: 639px)'), window.matchMedia('(max-width: 1023px)')]
+    ? [window.matchMedia('(max-width: 639px)'), window.matchMedia('(max-width: 1439px)')]
     : [];
   queries.forEach(query => query.addEventListener('change', listener));
   return () => { window.removeEventListener('resize', listener); queries.forEach(query => query.removeEventListener('change', listener)); };
@@ -21,7 +21,9 @@ function subscribeViewport(listener) {
 function viewportMode() {
   if (typeof window === 'undefined') return 'desktop';
   const width = window.innerWidth || document.documentElement.clientWidth || 1024;
-  return width < 640 ? 'mobile' : width < 1024 ? 'compact' : 'desktop';
+  // A 14-inch laptop often exposes 1280–1366 CSS pixels after display scaling.
+  // Keep its content area available; the module panel opens as a drawer.
+  return width < 640 ? 'mobile' : width < 1440 ? 'compact' : 'desktop';
 }
 export function useNavigationMode() {
   return useSyncExternalStore(subscribeViewport, viewportMode, () => 'desktop');

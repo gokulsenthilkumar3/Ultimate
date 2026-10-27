@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from 'recharts';
@@ -25,16 +26,9 @@ export default React.memo(function TransformationPredictor({ logs }) {
 
   return (
     <section className="module-page" aria-label="Growth forecast">
-      <div className="section-head">
-        <div>
-          <h2 className="text-display">Growth Forecast</h2>
-          <p className="text-secondary">Linear estimates from your dated observations and saved targets.</p>
-          <p className="text-secondary">Each metric needs at least 3 valid observations on distinct dates. Estimates start at the latest observed date and assume that the measured trend continues.</p>
-        </div>
-        <div role="group" aria-label="Forecast views">
+      <PageHeader accent="Insights" title="Forecast" subtitle={<>Linear estimates from your dated observations and saved targets.</>} actions={<><div role="group" aria-label="Forecast views">
           {['cards', 'timeline'].map(next => <button key={next} className="btn-secondary" aria-pressed={view === next} onClick={() => setView(next)}>{next === 'cards' ? 'Cards' : 'Timeline'}</button>)}
-        </div>
-      </div>
+        </div></>} status={<><p className="text-secondary">Each metric needs at least 3 valid observations on distinct dates. Estimates start at the latest observed date and assume that the measured trend continues.</p></>} />
       <p className="text-secondary">
         <Link to="/wellness/physique?view=history">Open measurement history</Link>
         {' · '}<Link to="/wellness/physique">Manage your targets</Link>

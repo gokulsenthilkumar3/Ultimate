@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "assetFamily": "threews-parametric-v1",
+  "label": "Generic CC0 skin study",
+  "albedoReference": [
+    0.7605245046752924,
+    0.4286904966139066,
+    0.2704977910130658
+  ],
+  "albedoReferenceSrgb": [
+    0.8862745098039215,
+    0.6862745098039216,
+    0.5568627450980392
+  ],
+  "referenceMethod": {
+    "region": "neutral chest skin, excluding central sternum and axilla",
+    "samples": 256,
+    "statistic": "independent-channel median"
+  },
+  "maps": {
+    "albedo": {
+      "path": "assets/parametric/skin/albedo.png",
+      "sha256": "862a26e335e958b70534cb5f0d7c47ef30ab148a56c42b3e9da969cf76f12963",
+      "bytes": 3693828,
+      "width": 2048,
+      "height": 2048,
+      "colorSpace": "srgb",
+      "flipY": false,
+      "origin": "authored-source-byte-copy",
+      "license": "CC0-1.0"
+    },
+    "roughness": {
+      "path": "assets/parametric/skin/roughness.png",
+      "sha256": "db3e65e85ffe1535c851479772c9331f71f42391e68f5069d2f9f043c747ac68",
+      "bytes": 38984,
+      "width": 1024,
+      "height": 1024,
+      "colorSpace": "linear",
+      "flipY": false,
+      "origin": "project-estimated-neutral-geometry-regions"
+    },
+    "normal": {
+      "path": "assets/parametric/skin/normal.png",
+      "sha256": "102ed420eadf41245d6b6c2a8df0b24d263ed681acb6e1a1fe637ad7cd51e716",
+      "bytes": 50398,
+      "width": 256,
+      "height": 256,
+      "colorSpace": "linear",
+      "flipY": false,
+      "origin": "project-seeded-pore-microtile",
+      "repeat": [
+        64,
+        64
+      ],
+      "wrap": "repeat"
+    },
+    "scatterMask": {
+      "path": "assets/parametric/skin/scatter-mask.png",
+      "sha256": "bea5f5f1c89a91ab62629b7f2ecb8fe45b0dc4c2a4d58610488cf97aa0c9a9d6",
+      "bytes": 63692,
+      "width": 1024,
+      "height": 1024,
+      "colorSpace": "linear",
+      "flipY": false,
+      "origin": "project-estimated-relative-scattering-weight",
+      "physiologicalThickness": false
+    }
+  },
+  "uvVerification": {
+    "vertices": 14517,
+    "sourceVertices": 13380,
+    "triangles": 26756,
+    "maxUvError": 4.2028173419120515e-8,
+    "maxPositionErrorMetres": 6.193508247512823e-8,
+    "sourceToMetres": 0.1,
+    "sourceTranslationMetres": [
+      0,
+      0.818305,
+      0
+    ]
+  },
+  "sourceFiles": [
+    {
+      "path": ".tmp/makehuman-cc0-assets/skins/young_caucasian_male/young_lightskinned_male_diffuse.png",
+      "sha256": "862a26e335e958b70534cb5f0d7c47ef30ab148a56c42b3e9da969cf76f12963",
+      "license": "CC0-1.0"
+    },
+    {
+      "path": ".tmp/makehuman-v1.3.0/makehuman/data/3dobjs/base.obj",
+      "sha256": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c",
+      "license": "CC0-1.0"
+    },
+    {
+      "path": "public/assets/models/skin-micro-normal.png",
+      "sha256": "102ed420eadf41245d6b6c2a8df0b24d263ed681acb6e1a1fe637ad7cd51e716",
+      "license": "project-authored"
+    }
+  ],
+  "licenseFiles": [
+    {
+      "path": "assets/parametric/skin/SKIN-SOURCE.md",
+      "sha256": "d2c558fb22d58b8fa1eb9c33b4278dd0541df88eac79e5b5cb574b0707aafe1a",
+      "bytes": 1748
+    },
+    {
+      "path": "assets/parametric/skin/SKIN-CC0.txt",
+      "sha256": "5f3ab0cf6f7ebe92efe4b83213131c617d308d164eeefd5da230373640b0c226",
+      "bytes": 7003
+    },
+    {
+      "path": "assets/parametric/skin/SKIN-MATERIAL.txt",
+      "sha256": "6eda60b07ff2afbde078a2535ef3913593d84e9de92b2eb76c30f396a181fe2e",
+      "bytes": 1462
+    }
+  ],
+  "limitations": [
+    "Generic source skin; personal likeness is not inferred.",
+    "Auxiliary maps are estimated/procedural, not measured or scanned.",
+    "Source albedo retains baked shading/body hair; removal of baked illumination is not certified.",
+    "Regional masks use neutral body coordinates and deform through UVs; no pose-dependent skin simulation.",
+    "No physical-device or visual acceptance is implied."
+  ]
+}

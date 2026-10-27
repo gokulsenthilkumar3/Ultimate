@@ -1,6 +1,16 @@
 # 3D implementation progress
 
-Updated: 2026-10-22.
+Updated: 2026-10-24.
+
+Latest private-anatomy work: [rendered surface and movement verification](18-private-anatomy-finish.md) adds dedicated embedded tissue maps, actual rendered measurement/fitting, pelvic attachment correction, exact boundary transfer, contact support and 150 named pose/state fixtures. A complete standalone adult GLB and editable source accompany the runtime/code overlay. Physical-phone and independent visual acceptance are recorded separately.
+
+Approved full-human continuation: [R2 research](16-private-anatomy.md#research-plan-r2) and [I2 implementation](16-private-anatomy.md#implementation-plan-i2). The [actual implementation record](17-human-asset-family.md) covers four candidate GLBs, an editable Blender scene, sculpt/groom LODs, native tissue binding and protected separate loading. The six retained assets remain intact. Full artistic fidelity, native fitting/contact and visual/device acceptance remain open; no historical planning points are added.
+
+Latest geometry refinement: [Private anatomy](16-private-anatomy.md#geometry-refinement) joins body, shaft and scrotal neck through one branched surface, adds paired neutral sac fullness, softens glans/foreskin contours and reviews skin, clay and grazing-light images. All six assets retain their original binaries. The procedural close-ups remain below the finished lifelike asset gate; no completion percentage is assigned.
+
+Latest implementation: [Guide fitting](16-private-anatomy.md#guide-fitting-continuation) connects independent internal guide records to optional external sac fitting, adds placement/padding/mirroring, measures achieved bounds and 52 triangle-based fit samples, and updates whole guide overlays after pose/morph changes. Source measurements, the fixed neck, independent endpoint geometry and public covering are preserved. General contact/collision, authored fidelity and final device acceptance remain open; this slice adds no historical planning points.
+
+Latest anatomy work: [Private anatomy](16-private-anatomy.md) consolidates the asset/customization/research plans and delivers the layered procedural tissues, stitched pelvic boundary, update caching and covered-body restoration for captures/exports. Anatomy review files now have explicit names and use the existing physique Playwright configuration. Authored fidelity and the remaining acceptance matrix stay open; this continuation adds no historical planning points.
 
 Latest review: [Review 1–100 and separate people](14-review-100-and-people.md) adds saved people, 77 searchable measurement/shape fields, nine repaired profile mappings, connected posture records and a corrected persistent setup wizard. It preserves the historical planning ledger below and records outstanding likeness, calibration and asset gates explicitly.
 

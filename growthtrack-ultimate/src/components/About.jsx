@@ -1,3 +1,6 @@
+import PageHeader from './ui/PageHeader';
+import appPackage from '../../package.json';
+import { FEATURES } from '../config/featureRegistry';
 import React, { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { apiRequest } from '../lib/apiClient';
@@ -107,7 +110,7 @@ export default function About() {
     borderRadius: '16px',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     cursor: 'default',
-    boxShadow: '0 10px 30px -10px rgba(0,0,0,0.2)',
+    boxShadow: 'none',
   };
 
   return (
@@ -144,31 +147,7 @@ export default function About() {
       </style>
 
       {/* Hero Header */}
-      <div style={{ 
-        marginBottom: '3rem', 
-        padding: '4rem 3rem', 
-        background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-        backdropFilter: 'blur(20px)',
-        borderRadius: '24px',
-        border: '1px solid rgba(255,255,255,0.05)',
-        position: 'relative',
-        overflow: 'hidden',
-        boxShadow: '0 30px 60px -12px rgba(0,0,0,0.4)',
-        animation: 'slideUpFade 0.6s ease-out'
-      }}>
-        <div style={{ position: 'absolute', top: '-50%', left: '-20%', width: '400px', height: '400px', background: 'var(--accent)', filter: 'blur(120px)', animation: 'glowPulse 6s infinite alternate' }} />
-        <div style={{ position: 'absolute', bottom: '-50%', right: '-20%', width: '400px', height: '400px', background: '#8b5cf6', filter: 'blur(120px)', animation: 'glowPulse 7s infinite alternate-reverse' }} />
-        
-        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '1rem', letterSpacing: '0.25em', fontWeight: 800 }}>About Ultimate</p>
-          <h2 className="text-display" style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', marginBottom: '1.5rem', background: 'linear-gradient(135deg, #fff 0%, #a1a1aa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-            GrowthTrack<br/>Digital Twin Engine
-          </h2>
-          <p style={{ color: 'var(--text-2)', fontSize: '1.1rem', lineHeight: 1.7, maxWidth: '650px', margin: '0 auto', fontWeight: 500 }}>
-            A profoundly robust personal dashboard built for complete life mastery — tracking health, productivity, finance, and exponential growth.
-          </p>
-        </div>
-      </div>
+      <PageHeader accent="Hub" title="About GrowthTrack" subtitle="Your private workspace for wellness, work, money and life." status={<>Version {appPackage.version} · {FEATURES.length} tools</>} />
 
       {/* Status Matrix */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '3rem', animation: 'slideUpFade 0.7s ease-out 0.1s both' }}>
@@ -207,8 +186,8 @@ export default function About() {
           <div style={{ background: 'rgba(139,92,246,0.1)', padding: '12px', borderRadius: '12px' }}><GitBranch size={24} color="#a78bfa" /></div>
           <div>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Core Version</p>
-            <p style={{ fontSize: '0.85rem', fontWeight: 800, color: '#a78bfa' }}>v2.0.0 — Stable</p>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>23 Modules · 2025-07</p>
+            <p style={{ fontSize: '0.85rem', fontWeight: 800, color: '#a78bfa' }}>v{appPackage.version}</p>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>{FEATURES.length} modules · current installation</p>
           </div>
         </div>
       </div>

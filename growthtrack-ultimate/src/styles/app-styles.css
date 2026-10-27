@@ -14,6 +14,7 @@
 @import './entertainment.css' layer(components);
 @import './responsive-foundation.css';
 @import './editorial-shell.css' layer(shell);
+@import './desktop-responsive.css';
 
 @layer components {
   :root {

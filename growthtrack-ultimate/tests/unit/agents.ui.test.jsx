@@ -1,14 +1,17 @@
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AiDashboard from '../../src/components/AiDashboard';
-import { getAgentsReadiness, streamAgentsChat } from '../../src/services/aiClient';
+import { getAgentsReadiness, streamAgentsChat, requestAgentsPlan } from '../../src/services/aiClient';
 
 const fixture = vi.hoisted(() => ({ state: null }));
-vi.mock('../../src/store/useStore', () => ({ default: () => fixture.state }));
+vi.mock('../../src/store/useStore', () => ({ default: Object.assign(() => fixture.state, { getState: () => fixture.state }) }));
 vi.mock('../../src/hooks/useToast', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
-vi.mock('../../src/services/aiClient', () => ({ getAgentsReadiness: vi.fn(), streamAgentsChat: vi.fn() }));
+vi.mock('../../src/services/aiClient', () => ({ getAgentsReadiness: vi.fn(), streamAgentsChat: vi.fn(), requestAgentsPlan: vi.fn() }));
+
+const router = ({ children }) => <MemoryRouter>{children}</MemoryRouter>;
 
 beforeEach(() => {
   fixture.state = {
@@ -25,27 +28,49 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
 async function mount() {
-  const result = render(<AiDashboard />);
+  const result = render(<AiDashboard />, { wrapper: router });
   await screen.findByText('1 installed chat model');
   return result;
 }
 
 async function send(text = 'Help me focus') {
+  fireEvent.click(screen.getByRole('tab', { name: 'Chat', exact: true }));
   fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), { target: { value: text } });
   fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
   await waitFor(() => expect(streamAgentsChat).toHaveBeenCalled());
 }
 
 function openContext() {
-  fireEvent.click(screen.getByRole('button', { name: /^Context/ }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Context', exact: true }));
 }
 
 function openSession() {
-  fireEvent.click(screen.getByRole('button', { name: /^Session/ }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Activity', exact: true }));
 }
 
 describe('Agents UI streaming and privacy', () => {
-  it('uses empty context by default and disables unsupported action confirmation', async () => {
+  it('keeps a large context list searchable while limiting visible rows', async () => {
+    fixture.state.user.tasks.pending = Array.from({ length: 101 }, (_, index) => ({ id: `task-${index}`, title: `Fixture task ${index}`, userId: 'owner' }));
+    await mount(); openContext();
+    expect(screen.getByText(/Showing 100 of 102 sources/)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /Tasks: Fixture task 100/ })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search context records' }), { target: { value: 'Fixture task 100' } });
+    expect(screen.getByRole('checkbox', { name: /Tasks: Fixture task 100/ })).toBeInTheDocument();
+  });
+  it('offers overview insights without sharing data until a source is selected', async () => {
+    await mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Insights', exact: true }));
+    await send('What can the app tell me?');
+    expect(streamAgentsChat.mock.calls[0][0]).toMatchObject({ intent: 'insights', context: [] });
+    openContext();
+    const overview = screen.getByRole('checkbox', { name: /App overviews: Workspace overview/ });
+    expect(overview).not.toBeChecked();
+    fireEvent.click(overview);
+    await send('Analyze my shared workspace.');
+    expect(streamAgentsChat.mock.calls[1][0].context).toEqual([expect.objectContaining({ type: 'workspace_summary', domain: 'workspace' })]);
+    expect(JSON.stringify(streamAgentsChat.mock.calls[1][0].context)).not.toContain('Private');
+  });
+  it('uses empty context by default and keeps conversation in memory', async () => {
     sessionStorage.setItem('gt_ai_cache_v2', '[{"content":"other account"}]');
     await mount();
     expect(sessionStorage.getItem('gt_ai_cache_v2')).toBeNull();
@@ -55,8 +80,7 @@ describe('Agents UI streaming and privacy', () => {
     expect(screen.queryByRole('region', { name: 'Context selection' })).not.toBeInTheDocument();
     openContext();
     for (const name of ['Allow wellness records', 'Allow financial records', 'Allow journal entries']) expect(screen.getByRole('checkbox', { name })).not.toBeChecked();
-    openSession();
-    expect(screen.getByRole('button', { name: 'Confirm proposed actions' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('tab', { name: 'Chat', exact: true }));
     await send();
     expect(streamAgentsChat.mock.calls[0][0]).toMatchObject({ context: [], consent: { wellness: false, finance: false, journal: false } });
     expect(await screen.findByText('Draft suggestion.')).toBeInTheDocument();
@@ -82,10 +106,12 @@ describe('Agents UI streaming and privacy', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Wellness measurements: weight/ }));
     await send('Review measurement');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument());
+    openContext();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Allow wellness records' }));
     await send('Next question');
     expect(streamAgentsChat.mock.calls[1][0]).toMatchObject({ context: [], messages: [{ role: 'user', content: 'Next question' }] });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument());
+    openContext();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Allow wellness records' }));
     expect(screen.getByRole('checkbox', { name: /Wellness measurements: weight/ })).not.toBeChecked();
   });
@@ -96,6 +122,7 @@ describe('Agents UI streaming and privacy', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument());
     openContext();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Allow wellness records' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Chat', exact: true }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), { target: { value: 'Question after consent change' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
     await waitFor(() => expect(streamAgentsChat).toHaveBeenCalledTimes(2));
@@ -172,9 +199,9 @@ describe('Agents UI streaming and privacy', () => {
 
   it('disables send and quick prompts when no model is available', async () => {
     getAgentsReadiness.mockResolvedValue({ ready: false, models: [], reason: 'No chat-capable models.' });
-    render(<AiDashboard />);
+    render(<AiDashboard />, { wrapper: router });
     await screen.findByText('No chat-capable models.');
-    expect(screen.getByRole('button', { name: 'Plan my day' })).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: 'Check connection' }).some(button => !button.disabled)).toBe(true);
     fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), { target: { value: 'Plan' } });
     expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
     expect(streamAgentsChat).not.toHaveBeenCalled();
@@ -182,7 +209,7 @@ describe('Agents UI streaming and privacy', () => {
 
   it('states when sign-in is required while retaining a draftable composer', async () => {
     fixture.state.user = null;
-    render(<AiDashboard />);
+    render(<AiDashboard />, { wrapper: router });
     expect(await screen.findByText('Sign in to use GrowthTrack AI.')).toBeInTheDocument();
     const message = screen.getByRole('textbox', { name: 'Message' });
     fireEvent.change(message, { target: { value: 'Draft for later' } });
@@ -190,15 +217,36 @@ describe('Agents UI streaming and privacy', () => {
     expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
   });
 
-  it('opens compact controls by keyboard and returns focus on Escape', async () => {
+  it('opens context by keyboard and returns to chat on Escape', async () => {
     await mount();
-    const context = screen.getByRole('button', { name: /^Context/ });
+    const context = screen.getByRole('tab', { name: 'Context', exact: true });
     context.focus();
     await userEvent.keyboard('{Enter}');
-    expect(context).toHaveAttribute('aria-expanded', 'true');
+    expect(context).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('region', { name: 'Context selection' })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(context).toHaveAttribute('aria-expanded', 'false');
-    expect(context).toHaveFocus();
+    expect(context).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: 'Chat', exact: true })).toHaveFocus();
+  });
+
+  it('saves a proposed action only after selection and explicit review', async () => {
+    const addTask = vi.fn(async payload => ({ ...payload, id: 'saved-task' }));
+    fixture.state.addTask = addTask;
+    getAgentsReadiness.mockResolvedValue({ ready: true, models: [{ id: 'gemma3:1b', capabilities: { text: true } }], capabilities: { reviewedActions: ['task.create'] } });
+    requestAgentsPlan.mockResolvedValue({ summary: 'A focused next step.', actions: [{ kind: 'task.create', title: 'Review the plan', priority: 'p2' }] });
+    await mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Plan & act' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), { target: { value: 'Prepare a review task' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare plan' }));
+    const choice = await screen.findByRole('checkbox', { name: /Create task: Review the plan/ });
+    expect(addTask).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Review selected actions (0)' })).toBeDisabled();
+    fireEvent.click(choice);
+    fireEvent.click(screen.getByRole('button', { name: 'Review selected actions (1)' }));
+    expect(screen.getByRole('dialog', { name: 'Apply 1 change?' })).toBeInTheDocument();
+    expect(addTask).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply 1 change' }));
+    expect(await screen.findByText('Saved', { exact: true })).toBeInTheDocument();
+    expect(addTask).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ title: 'Review the plan', priority: 'p2' }));
   });
 });

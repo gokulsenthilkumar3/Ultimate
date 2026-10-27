@@ -52,7 +52,7 @@ for (const width of [320, 390, 640, 768, 1024, 1440, 1920, 2560]) {
       await page.getByRole('button', { name: /More/ }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await expect(page.getByRole('dialog').getByRole('link', { name: /Maps/ })).toBeVisible();
-    } else if (width < 1024) {
+    } else if (width < 1440) {
       await page.getByRole('button', { name: 'Open module navigation' }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
     } else await expect(page.getByRole('navigation', { name: 'Workspace modules' })).toBeVisible();

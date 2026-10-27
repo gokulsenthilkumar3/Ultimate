@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import { EMPTY_LIST } from '../lib/emptyValues';
 import { Z_INDEX } from '../constants';
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
@@ -280,15 +281,7 @@ export default function Documents() {
       />
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.4rem' }}>Digital Vault</p>
-          <h2 className="text-display" style={{ fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Folder size={30} color="var(--accent)" /> Documents
-          </h2>
-          <p className="text-secondary">{usage.files} stored files · {storagePercent}% storage used{legacyCount ? ` · ${legacyCount} legacy records without file bytes` : ''}</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <PageHeader accent="Workspace" title="My Files" subtitle={<>{usage.files} stored files · {storagePercent}% storage used{legacyCount ? ` · ${legacyCount} legacy records without file bytes` : ''}</>} icon={<Folder size={30} color="var(--accent)" />} actions={<><div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {documentProviders.filter(item => item.enabled !== false).map(item => (
             <button key={item.id} className="btn-ghost" onClick={() => toggleSync(item.label)} title={`Setup required for ${item.label}`}>
               <Cloud size={16} /> Setup {item.label}
@@ -298,8 +291,7 @@ export default function Documents() {
           <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
             <UploadCloud size={16} /> Upload File
           </button>
-        </div>
-      </div>
+        </div></>} />
 
       {/* Stats cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>

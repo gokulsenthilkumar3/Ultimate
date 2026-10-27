@@ -149,11 +149,11 @@ export default function Dashboard() {
             {/* ── Stat Cards ── */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatCard label="Total Balance" value={loading ? '—' : formatMoney(totalBalance, preferences)}
-                    sub="+2.4% this month" subPositive icon={Wallet} accentClass="bg-blue-500/20 border border-blue-500/30" delay={0} />
-                <StatCard label="Monthly Income" value={loading ? '—' : formatMoney(monthlyIncome, preferences)}
-                    sub="+8.1% vs last month" subPositive icon={ArrowDownRight} accentClass="bg-emerald-500/20 border border-emerald-500/30" delay={80} />
-                <StatCard label="Monthly Spend" value={loading ? '—' : formatMoney(monthlySpend, preferences)}
-                    sub="-3.2% vs last month" subPositive={false} icon={ArrowUpRight} accentClass="bg-red-500/20 border border-red-500/30" delay={160} />
+                    sub="From connected wallets" subPositive icon={Wallet} accentClass="bg-blue-500/20 border border-blue-500/30" delay={0} />
+                <StatCard label="Recorded Income" value={loading ? '—' : formatMoney(monthlyIncome, preferences)}
+                    sub="From available activity" subPositive icon={ArrowDownRight} accentClass="bg-emerald-500/20 border border-emerald-500/30" delay={80} />
+                <StatCard label="Recorded Spend" value={loading ? '—' : formatMoney(monthlySpend, preferences)}
+                    sub="From available activity" subPositive={false} icon={ArrowUpRight} accentClass="bg-red-500/20 border border-red-500/30" delay={160} />
             </div>
 
             {/* ── Main Grid ── */}
@@ -168,10 +168,9 @@ export default function Dashboard() {
                             <Zap size={18} className="text-blue-400" />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-white">Smart Insight</p>
+                            <p className="text-sm font-bold text-white">Activity context</p>
                             <p className="text-sm text-white/60 mt-0.5 leading-relaxed">
-                                You spent <span className="text-white font-semibold">10% less</span> on groceries this week.
-                                Keep it up — you're on track to save <span className="text-emerald-400 font-semibold">$340</span> this month.
+                                Totals use the available wallet activity. A comparison with a previous period is not available here yet.
                             </p>
                         </div>
                     </div>

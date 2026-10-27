@@ -1,0 +1,59 @@
+{
+  "checkedAt": "2026-10-27T16:37:43.183Z",
+  "results": [
+    {
+      "service": "UI",
+      "url": "http://localhost:5000/Ultimate/",
+      "status": 200,
+      "online": true
+    },
+    {
+      "service": "API",
+      "url": "http://localhost:3001/api/health",
+      "status": 200,
+      "online": true
+    },
+    {
+      "service": "Gateway",
+      "url": "http://127.0.0.1:5300/api/gateway/health",
+      "status": 200,
+      "online": true
+    },
+    {
+      "service": "Database Studio",
+      "url": "http://localhost:5556/",
+      "status": 200,
+      "online": true
+    },
+    {
+      "service": "FinSync",
+      "url": "http://localhost:5000/Ultimate/products/finsync/",
+      "status": 200,
+      "online": true
+    },
+    {
+      "service": "OxFin",
+      "url": "http://localhost:5000/Ultimate/products/oxfin/",
+      "status": 200,
+      "online": true
+    },
+    {
+      "service": "Family Connect",
+      "url": "http://localhost:5000/Ultimate/products/family/",
+      "status": 200,
+      "online": true
+    },
+    {
+      "service": "Equity",
+      "url": "http://localhost:5000/Ultimate/products/equity/",
+      "status": 200,
+      "online": true
+    },
+    {
+      "service": "Forex",
+      "url": "http://localhost:5000/Ultimate/products/forex/",
+      "status": 200,
+      "online": true
+    }
+  ]
+}

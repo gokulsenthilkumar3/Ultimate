@@ -3,9 +3,12 @@ import { DoubleSide,Mesh,MeshBasicMaterial,Raycaster,Vector3 } from 'three';
 import { glbMeshFixture } from '../../tests/helpers/glbMeshFixture';
 import { createPrivateAnatomyDeformer } from './anatomyDeformation';
 
-describe.each(['humanoid-base.glb','humanoid-base-lite.glb','humanoid-adult-v2.glb','humanoid-adult-v2-lite.glb'])('pelvic attachment on %s',file=> {
+describe.each(['humanoid-base.glb','humanoid-base-lite.glb','humanoid-adult-v2.glb','humanoid-adult-v2-lite.glb','humanoid-preview-75.glb','humanoid-preview-75-lite.glb'])('pelvic attachment on %s',file=> {
   it('keeps the buried shaft ring inside the pelvic body in both states',()=> {
     const {body,anatomy}=glbMeshFixture(file),d=createPrivateAnatomyDeformer(anatomy,body);
+    // Buried legacy coordinates are retained for measurement compatibility;
+    // evaluate against the intact, covered body rather than its surgical cut.
+    anatomy.visible=false;
     const surface=new Mesh(body.geometry,new MeshBasicMaterial({side:DoubleSide}));surface.updateMatrixWorld(true);
     const caster=new Raycaster(),{segments}=anatomy.userData.layout;
     for(const state of ['resting','erect']) {

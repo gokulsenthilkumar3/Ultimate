@@ -15,7 +15,7 @@ async function start(options = {}, { authenticated = true, parentParser = false 
   const app = express();
   if (parentParser) app.use(express.json({ limit: '1mb' }));
   if (authenticated) app.use((req, _res, next) => { req.user = { id: 'owner' }; next(); });
-  app.use('/api/agents', createAgentsRouter({ ollamaBaseUrl: 'http://model.internal:11434', ...options }));
+  app.use('/api/agents', createAgentsRouter({ provider: 'ollama', ollamaBaseUrl: 'http://model.internal:11434', ...options }));
   const server = await new Promise(resolve => {
     const running = app.listen(0, '127.0.0.1', () => resolve(running));
   });
@@ -137,6 +137,43 @@ describe('Agents router boundary and readiness', () => {
     const sent = JSON.parse(fetchImpl.mock.calls.find(([url]) => url.endsWith('/api/chat'))[1].body);
     expect(sent.messages[1].content).toContain('72kg');
     expect(sent).not.toHaveProperty('tools');
+  });
+});
+
+describe('general questions and evidence-based app insights', () => {
+  it('adds public app knowledge without requiring private records for a general question', async () => {
+    const fetchImpl = upstream();
+    const app = await start({ fetchImpl });
+    const response = await app.post(requestBody({ messages: [{ role: 'user', content: 'Explain photosynthesis with an example.' }], today: '2026-10-27' }));
+    expect(response.status).toBe(200); await response.text();
+    const sent = JSON.parse(fetchImpl.mock.calls.find(([url]) => url.endsWith('/api/chat'))[1].body);
+    expect(sent.messages[0].content).toContain('not restricted to app-only questions');
+    expect(sent.messages[0].content).toContain('/workspace/tasks');
+    expect(sent.messages).toHaveLength(2);
+  });
+  it('adds insight coverage instructions and preserves source text as data', async () => {
+    const fetchImpl = upstream(); const app = await start({ fetchImpl });
+    const response = await app.post(requestBody({ intent: 'insights', context: [{ id: 'loaded-overview', type: 'workspace_summary', domain: 'workspace', label: 'Workspace overview', text: '{"recordsIncluded":2,"tasks":{"open":2}}' }] }));
+    expect(response.status).toBe(200); await response.text();
+    const sent = JSON.parse(fetchImpl.mock.calls.find(([url]) => url.endsWith('/api/chat'))[1].body);
+    expect(sent.messages[0].content).toContain('user selected Insights');
+    expect(sent.messages[0].content).toContain('Missing is unknown, not zero');
+    expect(sent.messages[1].content).toContain('Workspace overview');
+    expect(sent).not.toHaveProperty('tools');
+  });
+  it.each([['finance_summary', 'finance'], ['wellness_summary', 'wellness'], ['journal_summary', 'journal'], ['budgets', 'finance'], ['nutrition', 'wellness'], ['medications', 'wellness']])('requires matching consent for %s', async (type, domain) => {
+    const fetchImpl = upstream(); const app = await start({ fetchImpl });
+    const context = [{ id: 'one', type, domain, label: 'Sensitive fixture', text: '{}' }];
+    expect((await app.post(requestBody({ context }))).status).toBe(400);
+    expect((await app.post(requestBody({ context: [{ ...context[0], domain: 'workspace' }] }))).status).toBe(400);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    const response = await app.post(requestBody({ context, consent: { [domain]: true } }));
+    expect(response.status).toBe(200); await response.text();
+  });
+  it.each([{ intent: 'tool-execution' }, { today: '2026-02-31' }])('rejects invalid analysis metadata %j', async extra => {
+    const fetchImpl = upstream(); const app = await start({ fetchImpl });
+    expect((await app.post(requestBody(extra))).status).toBe(400);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
 

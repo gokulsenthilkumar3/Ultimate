@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import { PRODUCTS, productById } from '../config/products';
 import '../styles/unified-workspace.css';
+import PageHeader from './ui/PageHeader';
 
 // These destinations use Ultimate-owned records. They are related workflows,
 // not a claim that companion features or data have already been migrated.
@@ -54,16 +55,10 @@ export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) 
   const visible = selected ? [selected] : PRODUCTS;
 
   return <section className="unified-workspace" aria-label="Ultimate companion integration">
-    <header className="unified-header">
-      <div>
-        <h1 className="unified-title">One Ultimate workspace</h1>
-        <p className="unified-intro">Finance, family, markets and forecasting, together inside Ultimate.</p>
-      </div>
-      <button type="button" className="unified-action-btn" onClick={() => { refreshHealth(); setFrameVersion(value => value + 1); }}><RefreshCw size={14} /> Refresh{selected ? ' app' : ' status'}</button>
-    </header>
+    <PageHeader accent="Apps Suite" title={selected ? selected.name : 'Apps Suite'} subtitle={selected ? selected.description : 'Choose a connected product. Each keeps its existing records and sign-in.'} actions={<button type="button" className="unified-action-btn" onClick={() => { refreshHealth(); setFrameVersion(value => value + 1); }}><RefreshCw size={14} /> Refresh{selected ? ' app' : ' status'}</button>} />
 
     <nav className="unified-tabs" aria-label="Companion products">
-      <button type="button" className={`unified-tab-btn ${!selected ? 'is-active' : ''}`} aria-current={!selected ? 'page' : undefined} onClick={() => select('matrix')}>All five</button>
+      <button type="button" className={`unified-tab-btn ${!selected ? 'is-active' : ''}`} aria-current={!selected ? 'page' : undefined} onClick={() => select('matrix')}>All products</button>
       {PRODUCTS.map(product => <button type="button" key={product.id}
         className={`unified-tab-btn ${activeTab === product.id ? 'is-active' : ''}`}
         aria-current={activeTab === product.id ? 'page' : undefined}
@@ -73,10 +68,10 @@ export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) 
     {healthError && <p className="unified-health-error" role="status">Service status is unavailable. Ultimate routes remain usable.</p>}
     {selected ? <section className="unified-product-view" aria-label={`${selected.name} workspace`}>
       <div className="unified-product-toolbar">
-        <h2>{selected.icon} {selected.name}</h2>
+        <span className="unified-product-context">Related Ultimate records</span>
         <div className="unified-native-links">{ULTIMATE_DESTINATIONS[selected.id].map(([label, href]) => <Link key={href} to={href}>{label}</Link>)}</div>
       </div>
-      {services[selected.id] && !services[selected.id].online ? <div className="unified-app-offline" role="status"><h3>{selected.name} is starting or unavailable</h3><p>Start the workspace with <code>npm run dev:all</code>, then refresh this app.</p></div> :
+      {services[selected.id] && !services[selected.id].online ? <div className="unified-app-offline" role="status"><h2>{selected.name} is starting or unavailable</h2><p>Refresh after the product is available. Your existing records remain in {selected.name}.</p><details><summary>Local service details</summary><p>Start the workspace with <code>npm run dev:all</code>, then refresh this app.</p></details></div> :
         <iframe key={`${selected.id}-${frameVersion}`} className="unified-product-frame" src={selected.uiUrl} title={`${selected.name} app`} allow="clipboard-read; clipboard-write" />}
     </section> : <div className="unified-matrix-grid">
       {visible.map(product => {

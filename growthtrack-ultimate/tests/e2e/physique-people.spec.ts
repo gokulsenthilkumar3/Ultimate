@@ -3,6 +3,7 @@ import { surfaces, paintedCanvas, bodySurface } from './helpers/human-viewer';
 
 test('people keep measurements, appearance and goals separate through switches and reload', async ({page}) => {
   test.setTimeout(180000);
+  page.setDefaultTimeout(15000);
   let body: any = { heightCm:175, weightKg:74, waistCm:82, modelPreset:'male', biologicalSex:'male' };
   let targets: any = { goalMetrics:{waist:76}, viewerPreferences:{showStage:false,backgroundMode:'color',backgroundColor:'#20242b'} };
   const bodyWrites: any[] = [], errors: string[] = [];
@@ -20,9 +21,10 @@ test('people keep measurements, appearance and goals separate through switches a
   });
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.setViewportSize({width:1440,height:1050});
-  await page.goto('/wellness/physique?view=3d');
+  await page.goto('/wellness/physique?view=3d',{waitUntil:'domcontentloaded'});
   const canvas=page.locator('.chamber-canvas-wrap canvas');
-  await canvas.scrollIntoViewIfNeeded();
+  await expect(canvas).toBeVisible({timeout:45000});
+  await canvas.scrollIntoViewIfNeeded({timeout:45000});
   await expect.poll(async()=>(await surfaces(canvas,45000)).length,{timeout:45000}).toBe(5);
   await page.getByRole('button',{name:'Create a person',exact:true}).click();
   await page.getByRole('textbox',{name:'Person’s name'}).fill('Buddy');
@@ -31,6 +33,7 @@ test('people keep measurements, appearance and goals separate through switches a
   const person=()=>targets.avatarPeople.people[0];
   expect(person().bodyProfile).not.toHaveProperty('heightCm');
   expect(person()).not.toHaveProperty('dateOfBirth');
+  await page.getByRole('button',{name:'Appearance studio',exact:true}).click();
   await page.getByRole('tab',{name:'Measure',exact:true}).click();
   const currentHeight=page.getByRole('textbox',{name:'Current Height (cm)',exact:true});
   await currentHeight.fill('6 ft'); await currentHeight.press('Enter');
@@ -50,6 +53,8 @@ test('people keep measurements, appearance and goals separate through switches a
   const goal=page.getByRole('textbox',{name:'Goal Hand length (cm)',exact:true});
   await goal.fill('22'); await goal.press('Enter');
   await expect.poll(()=>person().physiqueTargets.goalMetrics.handLength).toBe(22);
+  const appearanceStudio=page.getByRole('button',{name:'Appearance studio',exact:true});
+  if(await appearanceStudio.isVisible())await appearanceStudio.click();
   await page.getByRole('tab',{name:'Face',exact:true}).click();
   await page.getByRole('slider',{name:'Jaw Width',exact:true}).fill('0.72');
   await expect.poll(()=>person().physiqueTargets.morphOverrides?.goal?.jaw_width).toBe(.72);
@@ -57,6 +62,8 @@ test('people keep measurements, appearance and goals separate through switches a
   expect(targets.goalMetrics).toEqual({waist:76});
   await page.reload();
   await expect(page.getByRole('heading',{name:'Buddy',exact:true})).toBeVisible();
+  const openStudio=page.getByRole('button',{name:'Appearance studio',exact:true});
+  if(await openStudio.isVisible())await openStudio.click();
   await page.getByRole('tab',{name:'Measure',exact:true}).click();
   await expect(currentHeight).toHaveValue('182.88');
   await page.getByRole('searchbox',{name:'Find a measurement',exact:true}).fill('hand length');
@@ -75,6 +82,7 @@ test('people keep measurements, appearance and goals separate through switches a
   await page.getByRole('combobox',{name:'Person',exact:true}).selectOption('self');
   await expect(page.getByRole('heading',{name:'My avatar',exact:true})).toBeVisible();
   await expect(currentHeight).toHaveValue('175');
+  await page.getByText('Model tools and body regions',{exact:true}).click();
   await page.getByRole('button',{name:'Guided setup',exact:true}).click();
   const setup=page.getByRole('dialog',{name:'Guided avatar setup'});
   await expect(setup).toBeVisible();

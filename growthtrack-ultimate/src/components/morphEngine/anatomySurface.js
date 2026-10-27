@@ -5,10 +5,10 @@ import * as THREE from 'three';
 // (u around from the figure's left, v from the attachment down to the lowest
 // point). The scrotum gets transverse folds (rugae) and the median raphe; the
 // shaft stays smooth apart from a faint skin grain.
-export const ANATOMY_SURFACE_SIZE = 256;
+export const ANATOMY_SURFACE_SIZE = 512;
 // GLB coordinates are metres. Relief is a fraction of a millimetre, not a
 // displacement comparable with the figure's stature.
-export const ANATOMY_BUMP_SCALE = 0.00065;
+export const ANATOMY_BUMP_SCALE = 0.0009;
 
 const fract = value => value - Math.floor(value);
 const hash = (x, y) => fract(Math.sin(x * 127.1 + y * 311.7) * 43758.5453);
@@ -28,7 +28,13 @@ const smoothstep = (edge0, edge1, value) => {
 export function anatomySurfaceHeight(u, v) {
   const angle = u * Math.PI * 2;
   const periodicNoise = (frequency, latitude) => valueNoise(Math.cos(angle) * frequency + latitude, Math.sin(angle) * frequency + latitude * 0.73);
-  if (v < 0.5) return 0.5 + 0.025 * (periodicNoise(20, v * 65) - 0.5);
+  if (v < 0.5) {
+    const t=Math.max(0,(v-.02)/.46);
+    const grain=.025*(periodicNoise(28,t*85)-.5);
+    const skinFold=.008*Math.sin(t*165+.8*Math.sin(angle*3)+periodicNoise(4,t*6)*3)
+      *smoothstep(.03,.13,t)*(1-smoothstep(.62,.72,t));
+    return .5+grain+skinFold;
+  }
   const lat = (v - 0.5) * 2;
   // Folds run around the sac, wavy and irregular, fading out where the skin
   // joins the body and at the lowest point.
@@ -74,25 +80,56 @@ export function applyAnatomySurface(material) {
   const compile=material.onBeforeCompile;
   const cacheKey=material.customProgramCacheKey();
   const coverage={value:0};
+  const corona={value:.73};
+  const realism={value:1};
   material.userData.anatomyCoverage=coverage;
+  material.userData.anatomyCorona=corona;
+  material.userData.anatomyRealism=realism;
   material.onBeforeCompile=(shader,...args)=> {
     compile.call(material,shader,...args);
     shader.uniforms.uAnatomyCoverage=coverage;
+    shader.uniforms.uAnatomyCorona=corona;
+    shader.uniforms.uAnatomyRealism=realism;
     shader.vertexShader=shader.vertexShader
-      .replace('#include <common>','#include <common>\nvarying vec2 vAnatomyUv;')
-      .replace('#include <begin_vertex>','#include <begin_vertex>\nvAnatomyUv = uv;');
+      .replace('#include <common>','#include <common>\nvarying vec2 vAnatomyUv; attribute float _mucosa; varying float vAnatomyMucosa;')
+      .replace('#include <begin_vertex>','#include <begin_vertex>\nvAnatomyUv = uv; vAnatomyMucosa = _mucosa;');
     shader.fragmentShader=shader.fragmentShader
-      .replace('#include <common>','#include <common>\nuniform float uAnatomyCoverage;\nvarying vec2 vAnatomyUv;')
+      .replace('#include <common>',`#include <common>
+        uniform float uAnatomyCoverage;
+        uniform float uAnatomyCorona;
+        uniform float uAnatomyRealism;
+        varying vec2 vAnatomyUv;
+        varying float vAnatomyMucosa;
+        float anatomyHash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+        float anatomyNoise(vec2 p) {
+          vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+          return mix(mix(anatomyHash(i),anatomyHash(i+vec2(1.0,0.0)),f.x),mix(anatomyHash(i+vec2(0.0,1.0)),anatomyHash(i+vec2(1.0)),f.x),f.y);
+        }
+        float anatomyPeriodic(float frequency,float latitude) {
+          float angle=vAnatomyUv.x*6.2831853;
+          return anatomyNoise(vec2(cos(angle),sin(angle))*frequency+vec2(latitude,latitude*.73));
+        }`)
+      .replace('#include <color_fragment>',`#include <color_fragment>
+        // Multiscale pigment variation with a periodic seam; no borrowed body
+        // atlas because its UV coordinates describe different anatomy.
+        float anatomyJoin=smoothstep(0.015,0.09,vAnatomyUv.y);
+        float anatomyMottle=(anatomyPeriodic(6.0,vAnatomyUv.y*22.0)-.5)*.10
+          +(anatomyPeriodic(18.0,vAnatomyUv.y*67.0)-.5)*.035;
+        diffuseColor.rgb *= vec3(1.0)+vec3(anatomyMottle,anatomyMottle*.78,anatomyMottle*.70)*anatomyJoin*uAnatomyRealism;
+        float anatomyPigment=step(.5,vAnatomyUv.y)*smoothstep(.54,.65,vAnatomyUv.y);
+        diffuseColor.rgb *= mix(vec3(1.0),vec3(.96,.90,.88),anatomyPigment*anatomyJoin*uAnatomyRealism);`)
       .replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
         float anatomyT = clamp((vAnatomyUv.y - 0.02) / 0.46, 0.0, 1.0);
-        float skinEdge = mix(0.70, 1.0, uAnatomyCoverage);
-        float skinCover = uAnatomyCoverage > 0.0 ? smoothstep(0.66, 0.73, anatomyT) * (1.0 - smoothstep(skinEdge - 0.025, skinEdge + 0.015, anatomyT)) : 0.0;
-        float glansSurface = (1.0 - step(0.5, vAnatomyUv.y)) * smoothstep(0.70, 0.78, anatomyT) * (1.0 - skinCover);
-        roughnessFactor = mix(roughnessFactor, 0.44, glansSurface);
-        roughnessFactor = mix(roughnessFactor, 0.74, step(0.5, vAnatomyUv.y));`);
+        float skinEdge = mix(uAnatomyCorona-.03, 1.0, uAnatomyCoverage);
+        float skinCover = uAnatomyCoverage > 0.0 ? smoothstep(uAnatomyCorona-.07, uAnatomyCorona, anatomyT) * (1.0 - smoothstep(skinEdge - 0.025, skinEdge + 0.015, anatomyT)) : 0.0;
+        float glansSurface = (1.0 - step(0.5, vAnatomyUv.y)) * smoothstep(uAnatomyCorona-.035, uAnatomyCorona+.04, anatomyT) * (1.0 - skinCover);
+        roughnessFactor = mix(roughnessFactor, 0.48, glansSurface*uAnatomyRealism);
+        roughnessFactor = mix(roughnessFactor, 0.71, step(0.5, vAnatomyUv.y)*uAnatomyRealism);
+        roughnessFactor = mix(roughnessFactor, 0.43, vAnatomyMucosa*uAnatomyRealism);
+        roughnessFactor = clamp(roughnessFactor+(anatomyPeriodic(24.0,vAnatomyUv.y*80.0)-.5)*.075*uAnatomyRealism,.38,.82);`);
   };
   // Compose with the physical skin shader instead of replacing its detail.
-  material.customProgramCacheKey=()=>`${cacheKey}-anatomy-v3`;
+  material.customProgramCacheKey=()=>`${cacheKey}-anatomy-v5`;
   material.needsUpdate = true;
   return material;
 }
@@ -100,4 +137,8 @@ export function applyAnatomySurface(material) {
 export function updateAnatomySurface(material,evidence) {
   const coverage=material?.userData?.anatomyCoverage;
   if(coverage) coverage.value=evidence?.foreskinCoverage ?? 0;
+  if(material?.userData?.anatomyCorona) material.userData.anatomyCorona.value=evidence?.landmarks?.coronaT ?? .73;
+  const detail=Math.max(0,Math.min(1,(material?.userData?.humanRealismPercent ?? 100)/100));
+  if(material?.userData?.anatomyRealism) material.userData.anatomyRealism.value=detail;
+  if(material) material.bumpScale=ANATOMY_BUMP_SCALE*detail;
 }

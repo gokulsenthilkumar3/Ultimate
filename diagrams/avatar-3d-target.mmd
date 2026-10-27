@@ -1,0 +1,42 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"16px","primaryColor":"#f6f6f3","primaryTextColor":"#242b27","primaryBorderColor":"#65716b","lineColor":"#65716b","clusterBkg":"#ffffff","clusterBorder":"#abb5ae"},"flowchart":{"htmlLabels":true,"curve":"basis","nodeSpacing":30,"rankSpacing":48}}}%%
+flowchart LR
+  subgraph DATA["1 / Assets and data"]
+    ASSETS["Pinned public assets<br/>Basis / textures / manifests"]
+    API["Canonical API save adapter<br/>Existing auth and revision checks"]
+    DB[("SQLite<br/>Semantic avatar document")]
+    CACHE["NEW / Owner-scoped local cache<br/>Document drafts + baked viewer GLB<br/>Hash and revision keyed"]
+    API --> DB
+  end
+  subgraph STATE["2 / Browser state and orchestration"]
+    UI["Editor UI<br/>Semantic controls only"]
+    DOC["Avatar session<br/>Owner / person / Current or Goal<br/>No geometry in persistent state"]
+    CTRL["NEW / EditorController<br/>Debounce / cancel / latest revision<br/>Commit coherent render packet"]
+    UI --> DOC
+    DOC --> CTRL
+  end
+  subgraph COMPUTE["3 / Web Workers"]
+    BAKE["NEW / IdentityBakeWorker<br/>CPU identity + posed-body evaluation<br/>Typed-array packets"]
+    FIT["GarmentFitWorker<br/>Reuse BVH / proxies<br/>Convergence and pose scope"]
+  end
+  subgraph DISPLAY["4 / Rendering and delivery"]
+    PREVIEW["Thin editor preview adapter<br/>Accept validated packets only"]
+    VIEWER["NEW / Read-only AvatarViewer<br/>Load baked GLB<br/>No identity or garment jobs"]
+    SCENE["SceneManager / R3F<br/>Camera / neutral lighting / PBR<br/>Demand rendering"]
+    EXPORT["Browser export service<br/>Accepted revision only<br/>GLB / editable ZIP downloads"]
+    PREVIEW --> SCENE
+    VIEWER --> SCENE
+  end
+  ASSETS -->|editor assets| CTRL
+  DOC -->|semantic JSON only| API
+  DOC <-->|owned drafts| CACHE
+  CTRL -->|revision + weights| BAKE
+  BAKE -->|body / rig packet| CTRL
+  CTRL -->|matching body and pose| FIT
+  FIT -->|fit result + revision| CTRL
+  CTRL -->|atomic body + garment| PREVIEW
+  CTRL -->|ready snapshot| EXPORT
+  EXPORT -->|derived viewer artifact| CACHE
+  CACHE -->|matching baked snapshot| VIEWER
+  ASSETS -->|versioned rendering assets| VIEWER
+  classDef proposed fill:#fff8e8,stroke:#967134,color:#29251f,stroke-dasharray:6 3;
+  class CACHE,CTRL,BAKE,VIEWER proposed;

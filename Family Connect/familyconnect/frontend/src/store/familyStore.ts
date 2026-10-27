@@ -124,17 +124,24 @@ export const useFamilyStore = create<FamilyState>((set) => ({
 
 // ─── Granular selectors (use these instead of the whole store) ────────────────
 
-export const selectMembers = (s: FamilyState) =>
-  s.memberIds.map((id) => s.membersById[id]);
+// useSyncExternalStore requires the same snapshot while the selected collection
+// is unchanged. Mapping on every read otherwise loops under Zustand 5/React 19.
+function collectionSelector<T>(read: (s: FamilyState) => [string[], Record<string, T>]) {
+  const cache = new WeakMap<Record<string, T>, WeakMap<string[], T[]>>();
+  return (state: FamilyState): T[] => {
+    const [ids, records] = read(state);
+    let byIds = cache.get(records);
+    if (!byIds) { byIds = new WeakMap(); cache.set(records, byIds); }
+    let values = byIds.get(ids);
+    if (!values) { values = ids.map(id => records[id]); byIds.set(ids, values); }
+    return values;
+  };
+}
 
-export const selectRelationships = (s: FamilyState) =>
-  s.relationshipIds.map((id) => s.relationshipsById[id]);
-
-export const selectEvents = (s: FamilyState) =>
-  s.eventIds.map((id) => s.eventsById[id]);
-
-export const selectDocuments = (s: FamilyState) =>
-  s.documentIds.map((id) => s.documentsById[id]);
+export const selectMembers = collectionSelector<Member>(s => [s.memberIds, s.membersById]);
+export const selectRelationships = collectionSelector<Relationship>(s => [s.relationshipIds, s.relationshipsById]);
+export const selectEvents = collectionSelector<FamilyEvent>(s => [s.eventIds, s.eventsById]);
+export const selectDocuments = collectionSelector<FamilyDocument>(s => [s.documentIds, s.documentsById]);
 
 export const selectMemberById = (id: string) => (s: FamilyState) =>
   s.membersById[id];

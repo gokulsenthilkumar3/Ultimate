@@ -33,6 +33,13 @@ dist-ssr
 playwright-report/
 test-results/
 /test-results-*/
+/blob-report/
+
+# Reproducible browser, model-build, and diagnostic output stays local.
+/artifacts/
+# Keep research summaries; omit raw per-route screenshot and DOM matrices.
+/docs/redesign-research/*/implementation/*.png
+/docs/redesign-research/*/implementation/views/
 
 # Keep compact review records and selected views in Git; retain raw artifacts locally.
 /docs/real-human-3d/data/review-75/format-before/
@@ -49,8 +56,9 @@ test-results/
 
 # Environment files (except examples)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.test
 # Note: .env.example is safe to commit
 # Note: .env.test is committed intentionally for CI — review if it contains secrets
 

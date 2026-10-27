@@ -13,7 +13,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const membersCount = useFamilyStore((s) => s.memberIds.length);
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shrink-0">
+    <header className="family-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shrink-0">
       <div className="flex items-center space-x-3">
         <button
           onClick={onMenuClick || toggleSidebar}
@@ -23,9 +23,9 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
           <Menu size={20} />
         </button>
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">
+          <p className="text-lg font-semibold text-gray-900">
             {activeTree?.name ?? 'FamilyConnect'}
-          </h1>
+          </p>
           {activeTree && (
             <p className="text-xs text-gray-500">
               {membersCount} members

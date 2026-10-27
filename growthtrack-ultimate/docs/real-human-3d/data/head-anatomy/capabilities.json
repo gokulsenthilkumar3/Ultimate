@@ -1,0 +1,1315 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-24T17:16:23.496Z",
+  "registryVersion": 1,
+  "status": "engineering-capability-inventory",
+  "limits": [
+    "Finite nonzero morph displacement confirms binding; it does not establish calibrated dimensions or likeness.",
+    "The dental assembly is a project-authored procedural fallback, not scanned or clinical dentition.",
+    "Sampled jaw states do not certify contact in every expression or establish whole-head realism."
+  ],
+  "sourceHashes": {
+    "src/lib/headFeatureRegistry.js": "7cb66094bef9a4166f6acdc983df9495bc4c717ad94d7f8164e0f2a2881c2160",
+    "src/components/morphEngine/headCapabilities.js": "fc76eb8658c3fafa5e2b9a6c49c4d5e5fe9b559a328a17b59f7cfd41fd9f83a4",
+    "src/components/morphEngine/faceGeometry.js": "bcab9e8b29fbc05990f8ee4c457d5e2dec0d8cb45b2dcf56853e75429310beee",
+    "src/components/morphEngine/dentalGeometry.js": "6a76dcfcafd51f8c1c2bf9bdde06295c6149155dd127d7b6a17eee84f9864e82"
+  },
+  "assets": [
+    {
+      "file": "humanoid-base.glb",
+      "sha256": "23a38d4f539f0e2a28feb5976bf22f8c966742b6e027e379b146cf899bc81ecd",
+      "capabilities": {
+        "registryVersion": 1,
+        "shapeTargets": [
+          "eye_size",
+          "brow_depth",
+          "nose_bridge_width",
+          "nose_tip_size",
+          "lip_fullness",
+          "ear_prominence",
+          "jaw_width",
+          "chin_projection",
+          "cheekbone_width",
+          "forehead_height",
+          "temple_narrowing",
+          "nose_length",
+          "jaw_angle"
+        ],
+        "expressionTargets": [
+          "blink",
+          "smile",
+          "jaw_open"
+        ],
+        "oralAssembly": "differentiated-procedural",
+        "calibration": "artistic",
+        "verification": "finite-nonzero-displacement"
+      },
+      "expressions": [
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.25,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.0035337342340253956,
+          "visible": true,
+          "jawAngle": 0.09,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.65,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.009337082314686582,
+          "visible": true,
+          "jawAngle": 0.23399999999999999,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 1,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.014415011885265647,
+          "visible": true,
+          "jawAngle": 0.36,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "humanoid-base-lite.glb",
+      "sha256": "deb7b29e3ea7e7070eb5411ba26ee65f4e2f3a894dbd527039c6bc0ec589ed35",
+      "capabilities": {
+        "registryVersion": 1,
+        "shapeTargets": [
+          "eye_size",
+          "brow_depth",
+          "nose_bridge_width",
+          "nose_tip_size",
+          "lip_fullness",
+          "ear_prominence",
+          "jaw_width",
+          "chin_projection",
+          "cheekbone_width",
+          "forehead_height",
+          "temple_narrowing",
+          "nose_length",
+          "jaw_angle"
+        ],
+        "expressionTargets": [
+          "blink",
+          "smile",
+          "jaw_open"
+        ],
+        "oralAssembly": "differentiated-procedural",
+        "calibration": "artistic",
+        "verification": "finite-nonzero-displacement"
+      },
+      "expressions": [
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.25,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.0035337342340253956,
+          "visible": true,
+          "jawAngle": 0.09,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.65,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.009337082314686582,
+          "visible": true,
+          "jawAngle": 0.23399999999999999,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 1,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.014415011885265647,
+          "visible": true,
+          "jawAngle": 0.36,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "humanoid-adult-v2.glb",
+      "sha256": "983e1b1b3b9827d153d2d4a22675c3397599ee237a9d9becf8909c3e64582b2f",
+      "capabilities": {
+        "registryVersion": 1,
+        "shapeTargets": [
+          "eye_size",
+          "brow_depth",
+          "nose_bridge_width",
+          "nose_tip_size",
+          "lip_fullness",
+          "ear_prominence",
+          "jaw_width",
+          "chin_projection",
+          "cheekbone_width",
+          "forehead_height",
+          "temple_narrowing",
+          "nose_length",
+          "jaw_angle"
+        ],
+        "expressionTargets": [
+          "blink",
+          "smile",
+          "jaw_open"
+        ],
+        "oralAssembly": "differentiated-procedural",
+        "calibration": "artistic",
+        "verification": "finite-nonzero-displacement"
+      },
+      "expressions": [
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.25,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.0035337342340253956,
+          "visible": true,
+          "jawAngle": 0.09,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.65,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.009337082314686582,
+          "visible": true,
+          "jawAngle": 0.23399999999999999,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 1,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.014415011885265647,
+          "visible": true,
+          "jawAngle": 0.36,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "humanoid-adult-v2-lite.glb",
+      "sha256": "37f332e8322a9c728b460f4c8f26604f154cf24abecf32d3da80aad60eb41171",
+      "capabilities": {
+        "registryVersion": 1,
+        "shapeTargets": [
+          "eye_size",
+          "brow_depth",
+          "nose_bridge_width",
+          "nose_tip_size",
+          "lip_fullness",
+          "ear_prominence",
+          "jaw_width",
+          "chin_projection",
+          "cheekbone_width",
+          "forehead_height",
+          "temple_narrowing",
+          "nose_length",
+          "jaw_angle"
+        ],
+        "expressionTargets": [
+          "blink",
+          "smile",
+          "jaw_open"
+        ],
+        "oralAssembly": "differentiated-procedural",
+        "calibration": "artistic",
+        "verification": "finite-nonzero-displacement"
+      },
+      "expressions": [
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.25,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.0035337342340253956,
+          "visible": true,
+          "jawAngle": 0.09,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.65,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.009337082314686582,
+          "visible": true,
+          "jawAngle": 0.23399999999999999,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 1,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.014415011885265647,
+          "visible": true,
+          "jawAngle": 0.36,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "humanoid-preview-75.glb",
+      "sha256": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
+      "capabilities": {
+        "registryVersion": 1,
+        "shapeTargets": [
+          "eye_size",
+          "brow_depth",
+          "nose_bridge_width",
+          "nose_tip_size",
+          "lip_fullness",
+          "ear_prominence",
+          "jaw_width",
+          "chin_projection",
+          "cheekbone_width",
+          "forehead_height",
+          "temple_narrowing",
+          "nose_length",
+          "jaw_angle"
+        ],
+        "expressionTargets": [
+          "blink",
+          "smile",
+          "jaw_open"
+        ],
+        "oralAssembly": "differentiated-procedural",
+        "calibration": "artistic",
+        "verification": "finite-nonzero-displacement"
+      },
+      "expressions": [
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.25,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.00353371235925242,
+          "visible": true,
+          "jawAngle": 0.09,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.65,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.009337060363672147,
+          "visible": true,
+          "jawAngle": 0.23399999999999999,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 1,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.014414989867539576,
+          "visible": true,
+          "jawAngle": 0.36,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "humanoid-preview-75-lite.glb",
+      "sha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab",
+      "capabilities": {
+        "registryVersion": 1,
+        "shapeTargets": [
+          "eye_size",
+          "brow_depth",
+          "nose_bridge_width",
+          "nose_tip_size",
+          "lip_fullness",
+          "ear_prominence",
+          "jaw_width",
+          "chin_projection",
+          "cheekbone_width",
+          "forehead_height",
+          "temple_narrowing",
+          "nose_length",
+          "jaw_angle"
+        ],
+        "expressionTargets": [
+          "blink",
+          "smile",
+          "jaw_open"
+        ],
+        "oralAssembly": "differentiated-procedural",
+        "calibration": "artistic",
+        "verification": "finite-nonzero-displacement"
+      },
+      "expressions": [
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.25,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.00353371235925242,
+          "visible": true,
+          "jawAngle": 0.09,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.65,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.009337060363672147,
+          "visible": true,
+          "jawAngle": 0.23399999999999999,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 1,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.014414989867539576,
+          "visible": true,
+          "jawAngle": 0.36,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "humanoid-human-r2-core.glb",
+      "sha256": "fe2d25ab242ee10dbb7071af4cb659e2f55f8d8a4452547de01146b7dce4bc0a",
+      "capabilities": {
+        "registryVersion": 1,
+        "shapeTargets": [
+          "eye_size",
+          "brow_depth",
+          "nose_bridge_width",
+          "nose_tip_size",
+          "lip_fullness",
+          "ear_prominence",
+          "jaw_width",
+          "chin_projection",
+          "cheekbone_width",
+          "forehead_height",
+          "temple_narrowing",
+          "nose_length",
+          "jaw_angle"
+        ],
+        "expressionTargets": [
+          "blink",
+          "smile",
+          "jaw_open"
+        ],
+        "oralAssembly": "differentiated-procedural",
+        "calibration": "artistic",
+        "verification": "finite-nonzero-displacement"
+      },
+      "expressions": [
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.25,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.0035333539455733526,
+          "visible": true,
+          "jawAngle": 0.09,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.65,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.009336700692707669,
+          "visible": true,
+          "jawAngle": 0.23399999999999999,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 1,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.014414629096450195,
+          "visible": true,
+          "jawAngle": 0.36,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "humanoid-human-r2-hero.glb",
+      "sha256": "b22c5c6f49acc35446129c7e2a487b21ce1b852a7c490d0fb7a5c5f2044a7faf",
+      "capabilities": {
+        "registryVersion": 1,
+        "shapeTargets": [
+          "eye_size",
+          "brow_depth",
+          "nose_bridge_width",
+          "nose_tip_size",
+          "lip_fullness",
+          "ear_prominence",
+          "jaw_width",
+          "chin_projection",
+          "cheekbone_width",
+          "forehead_height",
+          "temple_narrowing",
+          "nose_length",
+          "jaw_angle"
+        ],
+        "expressionTargets": [
+          "blink",
+          "smile",
+          "jaw_open"
+        ],
+        "oralAssembly": "differentiated-procedural",
+        "calibration": "artistic",
+        "verification": "finite-nonzero-displacement"
+      },
+      "expressions": [
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.25,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.0035333539455733526,
+          "visible": true,
+          "jawAngle": 0.09,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0.65,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.009336700692707669,
+          "visible": true,
+          "jawAngle": 0.23399999999999999,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 1,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0.014414629096450195,
+          "visible": true,
+          "jawAngle": 0.36,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        },
+        {
+          "jaw": 0,
+          "method": "skull-bound-hinged-jaw-fallback-v1",
+          "source": "procedural-dental-fallback-v1",
+          "gap": 0,
+          "visible": false,
+          "jawAngle": 0,
+          "toothCount": 28,
+          "crownTypes": [
+            "incisor",
+            "canine",
+            "premolar",
+            "molar"
+          ],
+          "upperAttachment": "skull",
+          "lowerAttachment": "calibrated-jaw-hinge",
+          "parts": [
+            "upperTeeth",
+            "lowerTeeth",
+            "gums",
+            "tongue",
+            "palate",
+            "floor",
+            "cavity"
+          ]
+        }
+      ]
+    }
+  ]
+}

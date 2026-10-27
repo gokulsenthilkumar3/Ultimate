@@ -24,7 +24,7 @@ import * as THREE                             from "three";
 import {useTexture} from '@react-three/drei';
 import {HUMAN_SURFACE} from '../../lib/humanSurface';
 
-import { useModelLoader }       from "./useModelLoader";
+import { useModelLoader,buildMorphIndexMap } from "./useModelLoader";
 import { useMorphInterpolator } from "./MorphInterpolator";
 import PostureRig               from "./PostureRig";
 import { createSkinnedBoundsUpdater } from './skinnedBounds';
@@ -63,6 +63,7 @@ import {freezeIdlePose} from './idleCapture';
 import {configureSurfaceParts,updateSurfaceParts,freezeSurfaceParts} from './surfaceParts';
 import {createMouthInterior} from './faceGeometry';
 import {sampleAvatarSpeech} from './avatarSpeech';
+import {useNativeAnatomy} from './useNativeAnatomy';
 
 const ProceduralHumanoid = React.lazy(() => import("./ProceduralHumanoid"));
 
@@ -123,7 +124,17 @@ export default function HumanoidClone({
   }));
 
   // ── Load model ──────────────────────────────────────────────────────────────
-  const { bodyMesh, bodySourceMaterial, morphIndexMap, morphMeshes, privateAnatomyMesh, featureMeshes, surfaceParts, skeleton, scene, referenceFrame, diagnostics } = useModelLoader(modelPreference);
+  const loadedModel = useModelLoader(modelPreference);
+  const {bodyMesh,bodySourceMaterial,morphIndexMap,featureMeshes,surfaceParts,skeleton,scene,referenceFrame}=loadedModel;
+  const wardrobe = use3DStore((s) => s.wardrobeState);
+  const captureRedacted = use3DStore((s) => s.captureRedacted);
+  const anatomyAllowed = useAnatomyEligibility(loadedModel.diagnostics).allowed;
+  const nativeAsset=loadedModel.diagnostics?.modelAsset?.nativeFamily?loadedModel.diagnostics.modelAsset:null;
+  const nativeAnatomy=useNativeAnatomy(bodyMesh,nativeAsset,Boolean(nativeAsset && anatomyAllowed && wardrobe==='ANATOMICAL' && !captureRedacted));
+  const nativeAttachment=nativeAnatomy.attachment;
+  const privateAnatomyMesh=nativeAttachment?.mesh || loadedModel.privateAnatomyMesh;
+  const morphMeshes=useMemo(()=>nativeAttachment?[...loadedModel.morphMeshes,{mesh:nativeAttachment.cage,morphIndexMap:buildMorphIndexMap(nativeAttachment.cage),sensitive:true}]:loadedModel.morphMeshes,[loadedModel.morphMeshes,nativeAttachment]);
+  const diagnostics=useMemo(()=>nativeAsset?{...loadedModel.diagnostics,privateAssetStatus:nativeAnatomy.status,privateAssetError:nativeAnatomy.error}:loadedModel.diagnostics,[loadedModel.diagnostics,nativeAsset,nativeAnatomy.status,nativeAnatomy.error]);
   const microSource=useTexture(`${import.meta.env.BASE_URL}${HUMAN_SURFACE.micro.heightPath}`);
   const microTile=useMemo(()=>{const tile=microSource.clone();tile.wrapS=tile.wrapT=THREE.RepeatWrapping;tile.colorSpace=THREE.NoColorSpace;tile.needsUpdate=true;return tile;},[microSource]);
   useEffect(()=>()=>microTile.dispose(),[microTile]);
@@ -133,19 +144,16 @@ export default function HumanoidClone({
     return()=>updaters.forEach(({mesh,update})=>{if(mesh.visible)update();});
   },[bodyMesh,privateAnatomyMesh,surfaceParts]);
   const useProcedural = !bodyMesh || diagnostics?.isSuspicious;
-  const anatomyAllowed = useAnatomyEligibility(diagnostics).allowed;
   const updateAnatomyNormals = useMemo(() => createMorphNormalUpdater(privateAnatomyMesh), [privateAnatomyMesh]);
   useEffect(() => () => {
     updateAnatomyNormals?.dispose();
-    privateAnatomyMesh?.geometry.dispose();
+    if(!privateAnatomyMesh?.userData.nativeBinding)privateAnatomyMesh?.geometry.dispose();
   }, [updateAnatomyNormals, privateAnatomyMesh]);
   const groundSoles = useMemo(() => bodyMesh && scene ? createSoleGrounder(bodyMesh, scene) : null, [bodyMesh, scene]);
   const groundElapsed = useRef(1);
   const setModelFrame = use3DStore((s) => s.setModelFrame);
   const setModelDiagnostics = use3DStore((s) => s.setModelDiagnostics);
   const gpuTier = use3DStore((s) => s.gpuTier);
-  const captureRedacted = use3DStore((s) => s.captureRedacted);
-  const wardrobe = use3DStore((s) => s.wardrobeState);
   const wardrobeOptions=use3DStore(s=>s.wardrobePreferences.outfits[s.wardrobeState] || null);
   const wardrobeAsset=useWardrobeAsset(wardrobe,wardrobeOptions,renderMode==='normal' && isClothPreset(wardrobe));
   const renderer=useThree(state=>state.gl);
@@ -166,9 +174,11 @@ export default function HumanoidClone({
   const breathingRestScale=useMemo(()=>breathingBone?.scale.clone(),[breathingBone]);
   const anatomyProfile = use3DStore(s => s.anatomyCustomization[cloneKey === 'B' ? 'goal' : 'current']);
   const anatomyPreview = use3DStore(s => s.anatomyPreview);
-  const privateDeformer=useMemo(()=>createPrivateAnatomyDeformer(privateAnatomyMesh,bodyMesh),[privateAnatomyMesh,bodyMesh]);
+  const privateDeformer=useMemo(()=>nativeAttachment?.deformer || createPrivateAnatomyDeformer(privateAnatomyMesh,bodyMesh),[privateAnatomyMesh,bodyMesh,nativeAttachment]);
+  useEffect(()=>()=>{if(!nativeAttachment)privateDeformer?.dispose();},[privateDeformer,nativeAttachment]);
   const buttockDeformer=useMemo(()=>createButtockDeformer(bodyMesh,privateDeformer?.junction),[bodyMesh,privateDeformer]);
   const anatomyEvidenceRef=useRef(null);
+  const anatomyEvidenceTimeRef=useRef(0);
   const anatomyGuidesRef=useRef(null);
   const guideSignatureRef=useRef(null);
 
@@ -260,6 +270,7 @@ export default function HumanoidClone({
   // Pubic hair is placed from the anatomy's skin junction (the dorsal vertex of
   // its junction ring) in centimetres of the 175 cm reference body.
   const pubicAnchor = useMemo(() => {
+    if(privateAnatomyMesh?.userData.nativeBinding)return {origin:privateAnatomyMesh.userData.nativeBinding.junction,unitsPerCm:privateDeformer.unit};
     const layout = privateAnatomyMesh?.userData?.layout;
     const anatomyPosition = privateAnatomyMesh?.geometry?.attributes?.position;
     const bodyPosition = bodyMesh?.geometry?.attributes?.position;
@@ -270,7 +281,7 @@ export default function HumanoidClone({
       origin: [anatomyPosition.getX(junction), anatomyPosition.getY(junction), anatomyPosition.getZ(junction)],
       unitsPerCm: (bounds.max.y - bounds.min.y) / 175,
     };
-  }, [bodyMesh, privateAnatomyMesh]);
+  }, [bodyMesh, privateAnatomyMesh,privateDeformer]);
 
   // ── Material ────────────────────────────────────────────────────────────────
   const material = useMemo(() => {
@@ -305,8 +316,18 @@ export default function HumanoidClone({
   const privateMaterial = useMemo(() => {
     if (renderMode !== "normal") return material;
     const toneIndex = { "I":0, "II":1, "III":2, "IV":3, "V":4, "VI":5 }[skinTone] ?? 3;
-    return applyAnatomySurface(createSkinMaterial(toneIndex, null, { skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,skinAppearance:renderMetrics }));
-  }, [material, renderMetrics, renderMode, skinTone]);
+    return applyAnatomySurface(createSkinMaterial(toneIndex, privateAnatomyMesh?.nativeSourceMaterial || null, {
+      skinColorHex: renderMetrics?.skinColor ?? renderMetrics?.skinColorHex,skinAppearance:renderMetrics,
+      surfaceDetail:true,microTile,
+    }));
+  }, [material, microTile, renderMetrics, renderMode, skinTone,privateAnatomyMesh]);
+
+  useEffect(()=> {
+    // The atlas-free private surface shares the same pore detail quality gate.
+    // Three.js uniforms are imperative renderer resources, outside React state.
+    // eslint-disable-next-line react-hooks/immutability
+    if(privateMaterial?.uniforms?.uSkinMicroDetail) privateMaterial.uniforms.uSkinMicroDetail.value=gpuTier!=='LOW'?1:0;
+  },[privateMaterial,gpuTier]);
 
   useEffect(()=>{
     if(useProcedural || !visible)return;
@@ -315,7 +336,11 @@ export default function HumanoidClone({
   },[renderer,bodyMesh,privateAnatomyMesh,material,wardrobe,useProcedural,visible]);
 
   useEffect(()=> {
-    if(!privateDeformer) return;
+    if(!privateDeformer){
+      anatomyEvidenceRef.current=null;
+      use3DStore.getState().setAnatomyEvidence(cloneKey,null);
+      return;
+    }
     const evidence=privateDeformer.apply(anatomyProfile,{state:anatomyPreview.state,heightScale,
       baseColor:privateMaterial?.color || renderMetrics.skinColor,legacy:renderMetrics});
     anatomyEvidenceRef.current=evidence;
@@ -365,18 +390,18 @@ export default function HumanoidClone({
   useEffect(()=>{
     if(useProcedural || !visible)return;
     return registerCaptureGuard(renderer.domElement,()=>{
-      const bindings=(morphMeshes || []).map(binding=>({...binding,skip:binding.mesh===privateAnatomyMesh && privateDeformer?['d_length','d_girth']:[]}));
+      const bindings=(morphMeshes || []).map(binding=>({...binding,skip:(binding.mesh===privateAnatomyMesh || binding.mesh===privateDeformer?.solverMesh) && privateDeformer?['d_length','d_girth']:[]}));
       for(const mesh of [clothOverlayRef.current,scalpRef.current,auraRef.current])if(mesh)bindings.push({mesh,morphIndexMap});
       const restore=interpolator.freezeForCapture(weights,bindings);
       const uniforms=bodyMesh?.material?.uniforms,vascularity=uniforms?.uVascularityIntensity;
       const previousVascularity=vascularity?.value;
       if(vascularity)vascularity.value=interpolator.getWeight('vascularity_intensity');
       const restoreFrame=()=>{restore();if(vascularity)vascularity.value=previousVascularity;};
-      const updateDerived=()=>{clothOverlayRef.current?.userData.garmentShell?.update();updateSkinBounds();mouthRef.current?.update();};
+      const updateDerived=()=>{clothOverlayRef.current?.userData.garmentShell?.update();updateAnatomyNormals?.();updateSkinBounds();privateDeformer?.updateDetails();mouthRef.current?.update();};
       try{updateDerived();}catch(error){restoreFrame();updateDerived();throw error;}
       return {restore:restoreFrame,afterRestore:updateDerived};
     },-20);
-  },[renderer,useProcedural,visible,morphMeshes,morphIndexMap,privateAnatomyMesh,privateDeformer,interpolator,weights,updateSkinBounds,bodyMesh]);
+  },[renderer,useProcedural,visible,morphMeshes,morphIndexMap,privateAnatomyMesh,privateDeformer,interpolator,weights,updateSkinBounds,bodyMesh,updateAnatomyNormals]);
   useEffect(()=>{
     if(useProcedural || !visible)return;
     return registerCaptureGuard(renderer.domElement,()=>{
@@ -636,7 +661,7 @@ export default function HumanoidClone({
       const blinkIndex=indexMap?.blink;
       if(blinkIndex!=null)mesh.morphTargetInfluences[blinkIndex]=motion.blink;
       if(spokenJaw!==null && indexMap?.jaw_open!=null)mesh.morphTargetInfluences[indexMap.jaw_open]=spokenJaw;
-      if(mesh === privateAnatomyMesh && privateDeformer) for(const name of ['d_length','d_girth']) {
+      if((mesh === privateAnatomyMesh || mesh===privateDeformer?.solverMesh) && privateDeformer) for(const name of ['d_length','d_girth']) {
         const index=mesh.morphTargetDictionary[name]; if(index!=null) mesh.morphTargetInfluences[index]=0;
       }
     });
@@ -735,7 +760,17 @@ export default function HumanoidClone({
         idleSample={idleSample}
         pose={poseActive?savedPose:null}
         bodyMesh={bodyMesh}
-        onPoseApplied={()=>{updateSkinBounds();mouthRef.current?.update();}}
+        onPoseApplied={()=>{updateSkinBounds();if(privateAnatomyMesh?.visible){
+          privateDeformer?.updateDetails();anatomyGuidesRef.current?.userData.update?.();
+          const now=performance.now();
+          if(privateDeformer?.getEvidence && now-anatomyEvidenceTimeRef.current>250){
+            const evidence=privateDeformer.getEvidence();
+            if(evidence?.rendered!==anatomyEvidenceRef.current?.rendered){
+              anatomyEvidenceRef.current=evidence;use3DStore.getState().setAnatomyEvidence(cloneKey,evidence);
+            }
+            anatomyEvidenceTimeRef.current=now;
+          }
+        }mouthRef.current?.update();}}
         neutral={measurementView || viewMode!=='SOLO'}
         animationId={measurementView || viewMode!=='SOLO' || reducedMotion && !animationState.userInitiated ? 'standing' : animationState?.animationId || 'idle'}
         playing={!poseActive && !measurementView && viewMode==='SOLO' && animationState?.playing !== false && (!reducedMotion || animationState.userInitiated)}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
@@ -34,6 +34,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const pathname = usePathname();
     const [user, setUser] = useState<UserProfile>({ name: 'Loading…', email: '', initials: '?', plan: 'Free Plan', budgetRule: '50/30/20' });
     const [pageTitle, setPageTitle] = useState('Dashboard');
+    const [navOpen, setNavOpen] = useState(false);
+    const navToggle = useRef<HTMLButtonElement>(null);
+    useEffect(() => {
+        if (!navOpen) return;
+        const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { setNavOpen(false); navToggle.current?.focus(); } };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [navOpen]);
 
     useEffect(() => {
         const nav = [...navItems, ...bottomItems].find(n => n.href === pathname);
@@ -89,8 +97,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div className="dashboard-layout">
+            <button ref={navToggle} type="button" className="sidebar-toggle" aria-expanded={navOpen} aria-controls="finsync-navigation" onClick={() => setNavOpen(!navOpen)}>{navOpen ? 'Close menu' : 'Menu'}</button>
+            {navOpen && <button type="button" className="sidebar-backdrop" aria-label="Close navigation" onClick={() => { setNavOpen(false); navToggle.current?.focus(); }} />}
             {/* Sidebar */}
-            <aside className="sidebar">
+            <aside id="finsync-navigation" className={`sidebar${navOpen ? ' is-open' : ''}`} aria-label="FinSync navigation">
                 <div className="sidebar-logo">
                     <div className="sidebar-logo-icon">💰</div>
                     <span className="sidebar-logo-text">FinSync One</span>
@@ -102,6 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <a
                             key={item.label}
                             href={item.href}
+                            aria-current={pathname === item.href ? 'page' : undefined}
                             className={`sidebar-item${pathname === item.href ? ' active' : ''}`}
                         >
                             {item.icon}
@@ -112,7 +123,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                     <div className="sidebar-section-label">Account</div>
                     {bottomItems.map(item => (
-                        <a key={item.label} href={item.href} className={`sidebar-item${pathname === item.href ? ' active' : ''}`}>
+                        <a key={item.label} href={item.href} aria-current={pathname === item.href ? 'page' : undefined} className={`sidebar-item${pathname === item.href ? ' active' : ''}`}>
                             {item.icon}
                             {item.label}
                         </a>
@@ -138,7 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="main-content">
                 <div className="top-bar">
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div className="top-bar-title">{pageTitle}</div>
+                        <h1 className="top-bar-title">{pageTitle}</h1>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
                             {getGreeting()}, {user.name.split(' ')[0]} 👋
                         </div>

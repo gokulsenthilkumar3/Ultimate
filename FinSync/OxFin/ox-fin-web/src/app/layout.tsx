@@ -22,7 +22,7 @@ export default function RootLayout({
           <div className="flex min-h-screen bg-background text-foreground">
             {/* Main Layout Grid */}
             <NavigationRail />
-            <main className="flex-1 lg:pl-64 transition-all duration-300">
+            <main className="oxfin-main flex-1 min-w-0 lg:pl-64 transition-all duration-300">
               {children}
             </main>
           </div>

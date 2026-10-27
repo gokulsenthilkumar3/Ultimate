@@ -17,3 +17,13 @@ it('disables unsupported rigs and controls saved pore relief with its JSON defau
   fireEvent.change(screen.getByRole('slider',{name:'Pore detail'}),{target:{value:'.2'}});expect(onChange).toHaveBeenLastCalledWith('skinMicroDetail',.2);
   fireEvent.click(screen.getByRole('button',{name:'Reset surface detail'}));expect(onChange).toHaveBeenLastCalledWith('skinMicroDetail',.45);
 });
+it('edits only the saved realism percentage and explains its visual meaning',()=>{
+  const onChange=vi.fn();const {rerender}=render(<SurfaceDetailControls metrics={{height:180,skinMicroDetail:.8}} onChange={onChange}/>);
+  expect(screen.getByRole('slider',{name:'Human appearance detail'}).value).toBe('100');
+  expect(screen.getByText(/not a human likeness or medical accuracy score/)).toBeTruthy();
+  fireEvent.change(screen.getByRole('slider',{name:'Human appearance detail'}),{target:{value:'35'}});
+  expect(onChange).toHaveBeenCalledExactlyOnceWith('humanRealismPercent',35);
+  rerender(<SurfaceDetailControls metrics={{humanRealismPercent:35,height:180,skinMicroDetail:.8}} onChange={onChange}/>);
+  expect(screen.getByRole('slider',{name:'Human appearance detail'}).value).toBe('35');
+  expect(screen.getByRole('slider',{name:'Pore detail'}).value).toBe('0.8');
+});

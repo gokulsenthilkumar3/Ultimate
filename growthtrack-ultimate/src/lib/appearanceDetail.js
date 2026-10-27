@@ -8,6 +8,13 @@ export const numberInRange = (value, min, max, fallback) => {
 };
 export const appearanceSeed = value => Math.round(numberInRange(value, config.seed.min, config.seed.max, config.seed.min));
 
+// A material-detail blend, never a measurement, geometry target or accuracy score.
+// Missing values retain the full existing appearance in older saved profiles.
+export function resolveHumanRealism(metrics = {}) {
+  const range = config.humanRealism;
+  return numberInRange(metrics[range.key], range.min, range.max, range.default);
+}
+
 export function resolveHairDetail(metrics = {}) {
   const defaults = config.hair.defaults;
   return {

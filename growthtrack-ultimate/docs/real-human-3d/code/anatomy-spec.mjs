@@ -204,7 +204,7 @@ export const ANATOMY = [
   // ---- skin ---------------------------------------------------------------------------------------------------
   { id: 'skin_tone', group: 'skin', label: 'Skin tone (constitutive melanin)', today: 'partial', bones: [], tile: null, edgeMm: 0, region: null, metrics: [], appearance: ['skinTone'], newMetrics: ['skinToneIta', 'skinUndertone'],
     real: 'The colour of skin that the sun never reaches, set by genetics; it shifts with undertone but not with the season.',
-    build: 'Computed in the shader from one ITA number (code/skin-layers.mjs); the existing Fitzpatrick choice (I to VI) maps to ITA, and a free ITA slider is the advanced control.' },
+    build: 'User-selected or calibrated baseline colour with independent undertone/tan. The existing reference preset-to-ITA lookup is an artistic approximation, not a clinical conversion from Fitzpatrick phototype. Optical calibration and uncertainty remain open in [R2-11/12](16-private-anatomy.md#research-plan-r2).' },
   { id: 'skin_tan', group: 'skin', label: 'Tan and tan lines (facultative melanin)', today: 'absent', bones: [], tile: null, edgeMm: 0, region: null, metrics: [], newMetrics: ['tanLevel', 'tanLines'],
     real: 'A reversible, uneven darkening that is strongest on the face, forearms and hands, absent under clothing, and edged where clothing used to be; skin type I tans little.',
     build: 'A separate layer added to the same melanin quantity and masked by region exposure and wardrobe coverage (tan lines follow the swimwear preset when "tan lines" is on).' },

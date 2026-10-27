@@ -2,9 +2,9 @@
 
 This is how the human is built, packaged and proven. It extends, rather than replaces, the repository's existing contracts:
 `DIGITAL_HUMAN_V2_PLAN.md` (budgets and release gates), `digitalHumanV2.js` (required parts, at least 55 bones and 80 morph
-targets), `humanoid-glb-spec.md`, `ASSET-PROVENANCE.json` and `npm run check:assets`. **GLB v3 is the asset that finally
-satisfies the v2 contract**, with the stricter
-requirements the audit showed are needed.
+targets), `humanoid-glb-spec.md`, `ASSET-PROVENANCE.json` and `npm run check:assets`. **GLB v3 is the target asset contract**;
+conformance, human visual quality and runtime behavior must each be demonstrated. The current approval scope is
+[the R2/I2 full-human plan](16-private-anatomy.md#implementation-plan-i2); a new file name or larger rig does not satisfy it by itself.
 
 **Current implementation at 75 planning points:** the default male preset resolves the additive preview-75 full/lite pair; covered female/neutral fallbacks and custom asset choices remain. The new pair has 79 named joints, generated digit bindings, measured morph metadata, surface attributes, micro tiles and separate cornea/tearline/nails, passing **17/23 applicable required checks and 0/5 recommended checks**. It is not a complete v2/v3 authored asset. The four retained source files keep their historical 9/23 baseline. Full/lite still share the body geometry and the lite file exceeds the proposed compressed first-paint budget. See [current architecture](12-articulated-surface-architecture.md) and [fresh verification](data/milestone-75/review.json). Budgets below remain acceptance targets.
 
@@ -97,12 +97,14 @@ One image set per tile. Maps use the existing tile names plus these roles:
 | --- | --- | --- | --- |
 | `albedoDetail` | High-pass detail, mean 1.0 per region (never a skin tone; see [04](04-skin-hair-eyes.md)) | sRGB | ETC1S |
 | `normal` | Tangent-space geometry normal | Linear | UASTC |
-| `orm` | R ambient occlusion, G roughness, B cavity | Linear | ETC1S |
+| `orm` | R ambient occlusion, G roughness, B metallic (zero for skin) | Linear | ETC1S |
 | `maskA` | R regional haemoglobin, G regional melanin multiplier, B sun exposure, A freckle/mole density | Linear | ETC1S |
 | `maskB` | R veins, G scars/stretch marks, B oil/sheen, A thickness | Linear | ETC1S |
 
 The MICRO tile has `normal`, `rough` and `height-detail` maps and tiles seamlessly. Mask maps are produced from the `REGIONS`
 table in `skin-layers.mjs` by a build script, with hand-painted overrides.
+
+The ORM contract follows [Khronos export documentation](https://github.com/KhronosGroup/glTF-Blender-IO/blob/main/docs/blender_docs/scene_gltf2.rst). Optional cavity detail needs a separately declared role, not a replacement for metallic. Texture formats, compression settings and UV seam margins must pass a real Blender/glTF/runtime round trip. The statements above describe the proposed asset, not a completed set of production maps.
 
 ### Extensions
 
@@ -187,7 +189,7 @@ The `lite` file, as the `core` profile, passes 4 of 10 required checks
   under copyright assignment), the build command, and the sha256; `check:assets --release` fails on any `unresolved` entry.
 - The artist contract states: copyright assignment or an exclusive perpetual worldwide licence that covers modification and
   real-time web, desktop and mobile distribution; no third-party content; no AI-generated geometry without disclosure
-  (as `ANATOMY_ASSET_PLAN.md` already requires).
+  (as `16-private-anatomy.md` already requires).
 - Sources taken under [02](02-open-source-landscape.md) (MakeHuman CC0, anything from the Anny spike) are recorded with licence
   evidence and retrieval date, as the existing components are.
 - The adult-gated asset keeps its existing marks (`sensitive`, declared `anatomySex`, cover policy).

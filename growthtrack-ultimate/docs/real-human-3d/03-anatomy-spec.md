@@ -118,12 +118,9 @@ the joint budget (4 influences per vertex, as glTF allows).
 
 ## Face shapes
 
-Fifty-two ARKit-compatible blendshapes are the standard vocabulary for facial animation, supported by most
-capture tools and most open-source face rigs, so adopting the same names makes retargeting and future face tracking
-cheap. They are authored as morph targets on the **head mesh only**. The shipped facial shapes cannot be reused: `blink`
-moves 2,940 head vertices (the whole face, so a lid cannot close on its own), and `smile` and `jaw_open` move
-vertices outside the face (the largest group of `jaw_open`'s 576 vertices is in the upper arm), which is why the plan
-page generated its own facial shapes.
+The planned 52 ARKit-compatible names provide a mapping vocabulary for facial feature motion. They are not the complete FACS system, and names alone do not author a realistic expression or guarantee retargeting quality. See [Apple's coefficient model](https://developer.apple.com/documentation/arkit/arfaceanchor) and [R2-07](16-private-anatomy.md#research-plan-r2). Proposed targets affect the **head region only**, with local corrective shapes where needed; this does not require a separate head mesh or introduce a neck seam.
+
+The original raw-asset audit found that `blink` moved 2,940 head vertices and that `jaw_open` included arm vertices. Later runtime repairs add local corrections, as recorded in [the face studio review](13-face-studio-review.md); these do not turn the old source morphs into a finished authored face. The new family needs independent expression and contact validation.
 
 <!-- begin:blendshapes -->
 | Region | Count | Shapes |
@@ -153,7 +150,7 @@ The existing 58 proportion morphs stay, with three rules from the audit:
 ## Adult external anatomy: policy that does not change
 
 The existing mesh (`GrowthTrackPrivateAnatomy`, 4,803 vertices) and its policy stay exactly as defined in
-[`ANATOMY_ASSET_PLAN.md`](../ANATOMY_ASSET_PLAN.md), and the plan adds nothing that weakens them:
+[`16-private-anatomy.md`](16-private-anatomy.md), and the plan adds nothing that weakens them:
 
 - **Adult gate:** shown only when a saved date of birth shows 18 or older (`anatomyPolicy.js`); age is never inferred.
 - **Off by default, per session,** and only when the loaded asset declares a matching body base.
@@ -534,7 +531,7 @@ The existing mesh (`GrowthTrackPrivateAnatomy`, 4,803 vertices) and its policy s
 `skin_tone` · today: **partial** · tile: none · viewer region: to add
 
 - **What a real one is like:** The colour of skin that the sun never reaches, set by genetics; it shifts with undertone but not with the season.
-- **How the plan builds it:** Computed in the shader from one ITA number (code/skin-layers.mjs); the existing Fitzpatrick choice (I to VI) maps to ITA, and a free ITA slider is the advanced control.
+- **How the plan builds it:** User-selected or calibrated baseline colour with independent undertone/tan. The existing reference preset-to-ITA lookup is an artistic approximation, not a clinical conversion from Fitzpatrick phototype. Optical calibration and uncertainty remain open in [R2-11/12](16-private-anatomy.md#research-plan-r2).
 - **Driven by:** `skinTone` (appearance). **New inputs:** `skinToneIta`, `skinUndertone`.
 
 #### Tan and tan lines (facultative melanin)

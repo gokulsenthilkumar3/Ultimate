@@ -1,0 +1,31 @@
+{
+  "engine": "webkit-compatibility",
+  "host": "Windows",
+  "macHardwareTested": false,
+  "offline": true,
+  "networkRequests": 0,
+  "errors": [],
+  "frames": 12,
+  "frameP50Ms": 159,
+  "frameP95Ms": 205,
+  "renderer": "Apple GPU",
+  "fit": "within-tolerance",
+  "contact": false,
+  "native": {
+    "version": 1,
+    "space": "post-skin-body-local",
+    "degenerateFrames": 0,
+    "parts": 4,
+    "timing": {
+      "totalMs": 65,
+      "contactMs": 47,
+      "junctionMs": 4
+    }
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "runAt": "2026-10-24T08:48:06.201Z",
+  "viewerSha256": "bfc07dc5d7bc881b00fdf5e94eb4bf7b4dee14ba9443a055f4532327bf720445"
+}

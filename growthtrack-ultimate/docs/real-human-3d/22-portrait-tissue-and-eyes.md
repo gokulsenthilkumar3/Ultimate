@@ -1,0 +1,47 @@
+# Desktop portrait continuation: local skin diffusion and layered eyes
+
+Date: **27 October 2026**. This continues the [desktop visual pass](21-desktop-visual-assets.md). Target: the user's likeness, desktop first, then Android 15. Personal front/profile references and a named Android device are still missing. This remains a generic prototype.
+
+**Later continuation:** [Garment contact and rig verification](23-garment-contact-verification.md)
+supersedes this checkpoint's garment result: 147/150 now pass, with three real
+collisions still failing the unchanged geometry gates. It also records fitted
+rest joints and the measured interaction-latency regression.
+
+## What changed
+
+The editor now loads six hash-verified skin maps, including neutral-mesh chord thickness and a local-curvature diffusion lookup. The previous partial shader required these maps while the loader supplied only four; the continuation connects the shader, loader, sampling settings and source notices. The lookup uses linear filtering without mipmaps. Materials own their settings while cached textures remain shared.
+
+The direct-light skin response uses an independently implemented normalized radial diffusion profile with RGB distance defaults of 1.2/0.55/0.3 mm. It retains standard physical specular response and shadow attenuation. The bounded thickness response redistributes local illumination rather than adding emissive light. This is **local preintegration, not a full spatial BSSRDF**: it does not transport irradiance between surface points, through shadow boundaries, or from area/environment lighting. The thickness bake measures an inward normal chord through the neutral whole mesh, not skin-layer thickness; it is not recomputed for identity changes or poses. Distances and material settings need reference calibration. Mathematical/source details are in [the generated notice](../../public/assets/parametric/skin/thickness-SOURCE.md) and the pinned manifests.
+
+The source flat eye surface is replaced by eight skinned meshes: separate sclera, recessed iris, dark pupil and transmissive cornea for each eye. A CC0 authored eye atlas supplies iris detail. Native physical transmission uses an effective IOR parameter of 1.336. The assembly follows CPU identity changes and the source eye's skinning without allocating identity morph texture layers in the live renderer. It owns its geometry/materials and restores the source visibility on disposal; it does not own shared atlas textures or skeletons.
+
+Export validation caught iris tint factors above glTF's allowed range. The shared eye factory now normalizes the tint's channel ratios into valid [0,1] base-colour factors. A brown source atlas cannot reproduce arbitrary requested iris colours at their original luminance; this remains an artistic tint, not calibrated eye-colour reconstruction.
+
+Both export paths include the layered eyes. The offline shape-editing GLB retains each eye layer's 30 named source channels and relative normal deltas alongside the 306 body channels. Per-channel bounds fitting is affine; combined shape deformations remain an additive approximation. The compact export bakes the selected identity. Corneas use standard glTF transmission/volume/IOR material extensions; appearance depends on the external renderer. The custom browser skin response falls back to standard PBR on export. Source notices for both eyes and skin calculations accompany editable packages.
+
+The semantic material identity is now `growthtrack-skin-v3`. Explicit adapters accept only the known v1/v2 material identities with otherwise identical pinned source/topology/rig/solver identities. They preserve Current/Goal parameters and colours, record the visual upgrade and reject unknown material versions. Merely opening the editor does not persist a migration.
+
+## Evidence and remaining gates
+
+- [Current neutral portrait](../../artifacts/parametric-visual/desktop-neutral-face.png) and seven other fixed views show the actual result. Iris detail and reflections are visible; the coarse hairline and generic facial form remain visible defects. No likeness or lifelike visual acceptance is claimed.
+- The desktop browser reports six skin maps, eight eye meshes, zero rendered identity morph layers, no WebGL error and no context loss. The final run's 20 sequential edits recorded p95 CPU identity evaluation **16.8 ms**, input-to-two-frame-callback latency **105.4 ms**, and host frame interval **50.2 ms**. These are separate short desktop measurements, not sustained GPU frame timings or Android certification. [Raw record](../../artifacts/parametric-visual/desktop-active-editing.json).
+- **82 focused tests in 13 files passed**, including profile normalization, scale invariance and bounded response; geometric thickness fixtures; eye refraction/geometry/skinning/resource isolation; six-map loading, failed-load cleanup and retry; material migration; retained shape exports; and existing package/attachment/identity regressions. Typecheck, targeted JavaScript ESLint, production build and release asset provenance checks passed. The existing large Three.js bundle warning remains. TypeScript browser tests are checked by Playwright/typecheck and are outside the repository ESLint configuration.
+- **Three Chromium flows passed**: dedicated desktop visual/interaction evidence, saved-state/export/package restoration, and mobile-width/per-person isolation. Both app-generated GLBs have **zero validator errors and zero warnings** (seven informational unused-UV notices). The compact sample is **16,759,276 bytes** and the editing sample **87,024,500 bytes**, both with 14 meshes and 52 joints. The editing file retains 306 body shapes and 30 shapes on each of eight eye layers. [Compact validation](../../artifacts/parametric-human/export-validation.json), [editing validation](../../artifacts/parametric-human/shape-editing-validation.json).
+- **Blender 5.1.1 imported, edited and re-exported both profiles**, preserving all 14 meshes and 52 source joints. The editing profile preserved all 306 body channels, all eight sets of 30 eye channels and an external `noseWider` edit from approximately 0.45 to 0.60. Material, vertex and pose edits also completed. Blender re-exports have **zero validator errors and 14 `NODE_SKINNED_MESH_NON_ROOT` warnings**; Blender additionally reports texture sampler selection warnings. External renderer appearance has not been compared. [Compact DCC report](../../artifacts/parametric-portrait/blender-compact/blender-edit-verification.json), [editing DCC report](../../artifacts/parametric-portrait/blender-shape-editing/blender-edit-verification.json).
+- The independent garment matrix was rerun across **30 bodies × 5 explicit joint fixtures = 150 cases**. **All 150 fail its contact/clearance gate**, including neutral; strict mode exits with status 1 as intended. Triangle-interior checks expose intersections that selected vertex-clearance checks miss. This is a failed acceptance result, not a wardrobe certification. The tee remains a prototype. [Full report](../../artifacts/parametric-portrait/garment-matrix.json).
+- The hair audit confirms alpha-bearing authored cards and canonical binding, but no declared root-to-tip attribute, scalp underlayer or LOD variants. No new groom was authored in this continuation. [Hair readiness](../../artifacts/parametric-portrait/hair-readiness.json).
+- Tearlines, corrected eyelids, oral reconstruction, expressions/visemes, proportion-aware rest-skeleton fitting, a collision-safe wardrobe, authored hairline/LODs, calibrated likeness and physical Android performance remain open. Eye geometry is a fitted approximation, not measured ocular anatomy.
+
+## Reproduction
+
+```powershell
+node scripts/parametric-portrait/build-thickness.mjs
+node scripts/parametric-portrait/build-eyes.mjs
+node scripts/parametric-portrait/update-provenance.mjs
+node scripts/parametric-portrait/review-garment-matrix.mjs
+node scripts/check-asset-provenance.mjs --release
+node node_modules/playwright/cli.js test --config playwright.parametric-visual.config.ts
+node node_modules/playwright/cli.js test --config playwright.parametric.config.ts
+```
+
+Builders use the pinned local source caches and reject changed inputs. Browser fixtures intercept API calls; they do not modify the owner's database. Test reports and screenshots are local artifacts. No deployment or external service integration was performed.

@@ -1,0 +1,10 @@
+import {chromium} from '@playwright/test';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+const browser=await chromium.launch({channel:'chrome'}),page=await browser.newPage();
+page.on('pageerror',error=>console.log('PAGE ERROR: '+error.message));
+page.on('console',message=>{if(message.type()==='error')console.log('CONSOLE: '+message.text().slice(0,1200));});
+await page.goto(pathToFileURL(path.resolve('artifacts/human-r2/live-human-3d.html')).href);
+await page.waitForTimeout(3000);
+console.log(JSON.stringify(await page.evaluate(()=>({api:typeof window.liveHuman,ready:window.liveHuman?.ready,loading:document.getElementById('loading').textContent,scripts:Array.from(document.scripts).map(script=>({type:script.type,length:script.textContent.length,start:script.textContent.slice(0,80)}))}))));
+await browser.close();

@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore, { selectAssessmentQA, apiSync } from '../store/useStore';
@@ -94,16 +95,7 @@ export default function Assessment() {
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.75rem' }}>
-        <div>
-          <p className="label-caps" style={{ marginBottom: '0.35rem', color: 'var(--accent)' }}>Assessment</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>
-            <ClipboardList size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />
-            Health Assessment
-          </h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Diagnostic rounds · {assessmentQA.length} record{assessmentQA.length !== 1 ? 's' : ''} saved.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+      <PageHeader accent="Wellness" title="Assessment" subtitle={<>Diagnostic rounds · {assessmentQA.length} record{assessmentQA.length !== 1 ? 's' : ''} saved.</>} icon={<ClipboardList size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />} actions={<><div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           {view === 'history' && (
             <>
               <div style={{ position: 'relative' }}>
@@ -120,8 +112,7 @@ export default function Assessment() {
           {view === 'form' && (
             <button className="btn-secondary" onClick={() => setView('history')}>← Back to History</button>
           )}
-        </div>
-      </div>
+        </div></>} />
 
       {/* ── QA FORM (Stepper) */}
       {view === 'form' && (

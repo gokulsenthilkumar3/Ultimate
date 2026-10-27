@@ -1,0 +1,105 @@
+[
+  {
+    "product": "finsync",
+    "route": "/dashboard",
+    "title": "Good evening, Alex 👋",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nDash",
+    "overflow": 0,
+    "controls": 5,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/transactions",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nTran",
+    "overflow": 0,
+    "controls": 3,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED",
+      "snap.forEach is not a function"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/analytics",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nAnal",
+    "overflow": 0,
+    "controls": 3,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED",
+      "TypeError: snap.forEach is not a function\n    at http://127.0.0.1:5571/@fs/D:/Projects/Tracker/FinSync/apps/web/app/dashboard/analytics/page.tsx?t=1793114405489:31:10"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/budget",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBudg",
+    "overflow": 0,
+    "controls": 6,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/investments",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nInve",
+    "overflow": 0,
+    "controls": 3,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/wallets",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nWall",
+    "overflow": 0,
+    "controls": 4,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/bills",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBill",
+    "overflow": 0,
+    "controls": 4,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/cards",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nCard",
+    "overflow": 0,
+    "controls": 4,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/profile",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nProf",
+    "overflow": 0,
+    "controls": 7,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/settings",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nSett",
+    "overflow": 0,
+    "controls": 8,
+    "errors": [
+      "Failed to load resource: net::ERR_NETWORK_ACCESS_DENIED"
+    ]
+  }
+]

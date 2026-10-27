@@ -129,7 +129,7 @@ export default function DashboardPage() {
                 </h2>
                 <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                     {hasBudget
-                        ? `Your personalised ${profile?.budgetRule} budget plan is active for March 2026.`
+                        ? `Your personalised ${profile?.budgetRule} budget plan.`
                         : 'Complete onboarding to activate your personalised budget plan.'}
                 </p>
             </div>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Two-column layout */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
+            <div className="fs-two-column">
                 {/* Transactions */}
                 <div className="card">
                     <div className="card-header">

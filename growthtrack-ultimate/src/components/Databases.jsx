@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Edit3, Check, X, Download, Upload, Search, ChevronUp, ChevronDown, Database, ArrowUpDown, Filter, Copy } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
@@ -661,17 +662,10 @@ export default function Databases() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Data</p>
-          <h2 className="text-display" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Databases</h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>{tables.length} table{tables.length !== 1 ? 's' : ''} · Sortable, filterable, CSV import/export · Double-click cells to edit</p>
-        </div>
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+      <PageHeader accent="Hub" title="Databases" subtitle={<>{tables.length} table{tables.length !== 1 ? 's' : ''} · Sortable, filterable, CSV import/export · Double-click cells to edit</>} actions={<><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => setShowConsole(true)} className="btn-secondary"><Database size={14} /> All databases</button>
           <button onClick={() => setShowNew(s => !s)} className="btn-primary"><Plus size={14} /> New Table</button>
-        </div>
-      </div>
+        </div></>} />
 
       {showNew && (
         <div className="glass-card mb-lg" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

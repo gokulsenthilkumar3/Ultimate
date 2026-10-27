@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><title>Private anatomy · neutral adult study</title>
+<style>body{margin:0;background:#e8e7e3}canvas{display:block;width:800px;height:900px}</style></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { createPhysicalSkinMaterial } from '../src/components/body3d/physicalSkinMaterial.js';
+import { applyAnatomySurface, updateAnatomySurface } from '../src/components/morphEngine/anatomySurface.js';
+import { createPrivateAnatomyDeformer } from '../src/components/morphEngine/anatomyDeformation.js';
+import { createMorphNormalUpdater } from '../src/components/morphEngine/deformedGeometryNormals.js';
+import { HUMAN_SURFACE } from '../src/lib/humanSurface.js';
+import { createDeltaMaterial } from '../src/components/morphEngine/DeltaHeatmapShader.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(800, 900); renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15; document.body.append(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#e8e7e3');
+const ambient=new THREE.HemisphereLight('#ffffff', '#877f77', 1.3);scene.add(ambient);
+const lights=[];
+for (const [position, intensity] of [[[1.3, 1.7, 2.3], 3.1], [[-1.8, .8, 1], 1.8], [[0, 1, -2], 2.1]]) {
+  const light = new THREE.DirectionalLight('#fff8f2', intensity); light.position.fromArray(position); scene.add(light);lights.push(light);
+}
+const camera = new THREE.PerspectiveCamera(28, 800 / 900, .01, 30);
+const query = new URLSearchParams(location.search);
+const asset = query.get('asset') || '/assets/models/humanoid-preview-75-lite.glb';
+const gltf = await new GLTFLoader().loadAsync(asset);
+const microTile = await new THREE.TextureLoader().loadAsync(`/${HUMAN_SURFACE.micro.heightPath}`);
+microTile.wrapS = microTile.wrapT = THREE.RepeatWrapping;
+microTile.colorSpace = THREE.NoColorSpace; microTile.needsUpdate = true;
+scene.add(gltf.scene); gltf.scene.updateMatrixWorld(true);
+const baseScale = gltf.scene.scale.clone();
+let body, anatomy;
+gltf.scene.traverse(mesh => {
+  if (!mesh.isMesh) return;
+  if (/privateanatomy/i.test(mesh.name)) {
+    anatomy = mesh; mesh.visible = true;
+    // Match the runtime's atlas-free layered skin and physical-scale detail.
+    mesh.material = applyAnatomySurface(createPhysicalSkinMaterial(2, null, { surfaceDetail: true, microTile }));
+  } else if (mesh.name === 'Body' || /growthtrackbody/i.test(mesh.name)) {
+    body = mesh; mesh.material = createPhysicalSkinMaterial(2, mesh.material, { microTile });
+  }
+});
+if (!body || !anatomy) throw new Error('Pelvis review requires the body and external anatomy meshes.');
+const skinMaterials=[body.material,anatomy.material],deltaMaterial=createDeltaMaterial();
+const clayMaterial=new THREE.MeshStandardMaterial({color:'#bdb8b0',roughness:.8});
+const deformer = createPrivateAnatomyDeformer(anatomy, body);
+if (!deformer) throw new Error('Pelvis review requires a compatible section layout for the runtime anatomy surface.');
+let evidence;
+const updateNormals = createMorphNormalUpdater(anatomy);
+const box = new THREE.Box3().setFromBufferAttribute(body.geometry.attributes.position);
+const center = box.getCenter(new THREE.Vector3()).applyMatrix4(body.matrixWorld);
+const height = box.max.y - box.min.y;
+const focus = new THREE.Vector3(center.x, box.min.y + height * .435, center.z);
+const directions = { front: [0, 0, 1], side: [1, 0, .08], back: [0, 0, -1], oblique: [.65, .05, 1], opposite: [-.65,.05,1], underside: [.15,-.75,1] };
+const render = () => {
+  // These channels are already baked by the runtime section deformer.
+  for (const name of ['d_length', 'd_girth']) {
+    const index = anatomy.morphTargetDictionary?.[name];
+    if (index != null) anatomy.morphTargetInfluences[index] = 0;
+  }
+  updateNormals?.(); gltf.scene.updateMatrixWorld(true); deformer.updateDetails(); renderer.render(scene, camera);
+};
+window.pelvisReview = {
+  ready: true,
+  setSurface(surface) {
+    body.material=surface==='clay'?clayMaterial:skinMaterials[0];
+    anatomy.material=surface==='clay'?clayMaterial:skinMaterials[1];render();
+  },
+  setLighting(mode) {
+    ambient.intensity=mode==='grazing'?.45:1.3;
+    lights[0].position.set(...(mode==='grazing'?[2.5,.7,.4]:[1.3,1.7,2.3]));
+    lights[1].intensity=mode==='grazing'?.3:1.8;render();
+  },
+  setRenderMode(mode) {
+    body.material=mode==='delta'?deltaMaterial:skinMaterials[0];
+    anatomy.material=mode==='delta'?deltaMaterial:skinMaterials[1];
+    render();
+  },
+  setView(view, close = false) {
+    const target=close ? new THREE.Vector3(...deformer.junction).add(new THREE.Vector3(0,-height*.035,0)).applyMatrix4(anatomy.matrixWorld) : focus;
+    camera.position.copy(target).add(new THREE.Vector3(...directions[view]).normalize().multiplyScalar(height * (close ? .30 : .81)));
+    camera.lookAt(target); camera.updateProjectionMatrix(); render();
+  },
+  setMorph(name, weight) {
+    gltf.scene.traverse(mesh => { const index = mesh.morphTargetDictionary?.[name]; if (index != null) mesh.morphTargetInfluences[index] = weight; }); render();
+  },
+  setAnatomy(profile = {}, options = {}) {
+    const heightScale = Number.isFinite(options.heightScale) && options.heightScale > 0 ? options.heightScale : 1;
+    gltf.scene.scale.y = baseScale.y * heightScale;
+    evidence = deformer.apply(profile, { ...options, heightScale, baseColor: anatomy.material.color });
+    updateAnatomySurface(anatomy.material, evidence);
+    render(); return evidence;
+  },
+  inspect() { return { asset, bodyVertices: body.geometry.attributes.position.count, anatomyVertices: anatomy.geometry.attributes.position.count, bumpScale: anatomy.material.bumpScale, evidence, previewVersion: evidence?.version, layeredSkinShader: anatomy.material.userData.layeredSkinShader,
+    pelvicMaterialShared:anatomy.getObjectByName('PrivateAnatomyPelvicTransition')?.material===anatomy.material }; },
+};
+window.pelvisReview.setAnatomy();
+window.pelvisReview.setView('front');
+</script></body></html>

@@ -1,0 +1,79 @@
+﻿{
+    "auditDate":  "2026-10-24",
+    "capturedAtUtc":  "2026-10-24T12:54:45.6100797Z",
+    "scope":  "Research/proposal audit; existing source and one existing render inspected; no new runtime test or model changes.",
+    "threeVersion":  "0.184.0",
+    "reviewedImage":  {
+                          "path":  "artifacts/human-r2/human-r2-oblique.png",
+                          "width":  640,
+                          "height":  800,
+                          "kind":  "Existing source render, not a new browser capture"
+                      },
+    "files":  [
+                  {
+                      "path":  "package.json",
+                      "bytes":  6740,
+                      "sha256":  "13dced5913e84b365d80ed876b10d7edd6f727ea03f6edb4bc952c385a9e7fd7"
+                  },
+                  {
+                      "path":  "src/config/appearanceDetail.json",
+                      "bytes":  3433,
+                      "sha256":  "221b4464bc5219b771b12a2e387368ac1110bd3f084e42afa5b9238a339474f7"
+                  },
+                  {
+                      "path":  "src/config/humanAssetManifest.json",
+                      "bytes":  856,
+                      "sha256":  "2c2001f6bae2e162a3f2b92f6990a4c6309e2605694d8b8a3f8a429d6e3e8489"
+                  },
+                  {
+                      "path":  "src/components/morphEngine/faceGeometry.js",
+                      "bytes":  7531,
+                      "sha256":  "7f00d8203d66071447c0e12763fa4cd3db54ff493ce5b89970a741644b7aed20"
+                  },
+                  {
+                      "path":  "src/components/morphEngine/surfaceParts.js",
+                      "bytes":  3865,
+                      "sha256":  "1a07d9e7d500fc73a05daa6174dd665cca596a957ffbbe67ff8caaf6fc3d4de5"
+                  },
+                  {
+                      "path":  "src/components/morphEngine/eyeMaterial.js",
+                      "bytes":  7837,
+                      "sha256":  "fa0202203327204387be5dac3715e2b50fa4726c73fce629e625c54237d46a52"
+                  },
+                  {
+                      "path":  "src/components/morphEngine/featureMaterials.js",
+                      "bytes":  6595,
+                      "sha256":  "ea63b44eea84dac9ac863a7ae45273f91fe170bc95f7960446a239ebd40b1a6b"
+                  },
+                  {
+                      "path":  "src/components/body3d/physicalSkinMaterial.js",
+                      "bytes":  19995,
+                      "sha256":  "7aadb245d92db049f99844aa406fa361fb4c44ff2c6e71d0345021c85ad0937b"
+                  },
+                  {
+                      "path":  "node_modules/three/package.json",
+                      "bytes":  3574,
+                      "sha256":  "8308e43d6d6dd4c636c2dfe2e724da07dcd9fe4349bba6afb56f2c5ba6625391"
+                  },
+                  {
+                      "path":  "node_modules/three/src/textures/Texture.js",
+                      "bytes":  18698,
+                      "sha256":  "ab2b297f91c58c69a95849ef8d1d3a9b7c0e7d2c3a574964b0ffd90b107452c6"
+                  },
+                  {
+                      "path":  "node_modules/three/src/renderers/webgl/WebGLPrograms.js",
+                      "bytes":  22274,
+                      "sha256":  "a4ecefefdfcbe54e6c7e87a4ee72a910b235c6db9200faf36e478921c20668fc"
+                  },
+                  {
+                      "path":  "node_modules/three/src/renderers/shaders/ShaderChunk/transmission_fragment.glsl.js",
+                      "bytes":  1131,
+                      "sha256":  "bb9c75f01893d49794a39fcf62db746a9d0351c0f8ad6ba89b943da25d818285"
+                  },
+                  {
+                      "path":  "artifacts/human-r2/human-r2-oblique.png",
+                      "bytes":  459560,
+                      "sha256":  "73c0c85c246057b65f41b35d373ebde4f95ebe4cd0d5b638fa6190af486c3ff7"
+                  }
+              ]
+}

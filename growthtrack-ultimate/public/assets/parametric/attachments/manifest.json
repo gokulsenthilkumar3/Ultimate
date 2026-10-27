@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "basisSha256": "6627588660aa6c754aaa2edb181bc01a8ca60c3b4c534efa3e87f636ce5cda18",
+  "bodyVertexCount": 14517,
+  "sourceBaseSha256": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c",
+  "license": "CC0-1.0",
+  "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+  "archiveSha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+  "fitting": "HM08 proxy interpolation; hidden-helper anchors approximated by visible-surface barycentric displacement",
+  "assets": {
+    "short02": {
+      "file": "short02.json",
+      "sha256": "f5923888442f2ca104691a893f06c7b26446c2e85c01c317e1ee28d11cc81f7a",
+      "bytes": 452781,
+      "textures": {
+        "albedo": {
+          "file": "short02-albedo.png",
+          "sha256": "47fe33831a3929567c733356dd66243116e05df2ace1f884ddca0080b728229f",
+          "bytes": 3553543,
+          "source": ".tmp/makehuman-cc0-assets/hair/short02/short02_diffuse.png"
+        },
+        "normal": {
+          "file": "short02-normal.png",
+          "sha256": "2cfac7619f8eec77dd90df979d912415058f4f0fc16940cba40a8eb1ae6d74b5",
+          "bytes": 1626745,
+          "source": ".tmp/makehuman-cc0-assets/hair/short02/short02_normal.png"
+        }
+      },
+      "notice": "short02-CC0.txt",
+      "noticeSha256": "903eb195f7ad2a2501d8dfd5a4e79c9d653822e7a9454ade831959c8c3bd15ae",
+      "vertices": 2061,
+      "triangles": 3344,
+      "exactBodyAnchors": 707,
+      "approximateHelperAnchors": 0,
+      "helperProjectionMaxDistanceMetres": 0
+    },
+    "tee": {
+      "file": "tee.json",
+      "sha256": "2d3f7c11964e6f500ce9ddd32f4cb8183f8c9cd18177dec29284e15e260dde56",
+      "bytes": 652508,
+      "textures": {
+        "albedo": {
+          "file": "tee-albedo.png",
+          "sha256": "b13950859a2bf6ab149aa7e6c9c1e0043be6be7f3f52acb9bbac21c1e1d846d7",
+          "bytes": 1187411,
+          "source": "public/assets/wardrobe/tee_diffuse.png"
+        },
+        "normal": {
+          "file": "tee-normal.png",
+          "sha256": "93d01b25bc00fdbb272c0a2909c282c06fc194b0a5ae9bb855927071ddc7dd98",
+          "bytes": 741964,
+          "source": "public/assets/wardrobe/tee_normal.png"
+        }
+      },
+      "notice": "tee-CC0.txt",
+      "noticeSha256": "903eb195f7ad2a2501d8dfd5a4e79c9d653822e7a9454ade831959c8c3bd15ae",
+      "vertices": 916,
+      "triangles": 1528,
+      "exactBodyAnchors": 6,
+      "approximateHelperAnchors": 1805,
+      "helperProjectionMaxDistanceMetres": 0.01924772562880827
+    }
+  }
+}

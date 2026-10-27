@@ -21,6 +21,7 @@ export default function MeasurementWorkbench({ current, user, onSaveProfile, onS
   const [draft, setDraft] = useState({});
   const [errors, setErrors] = useState({});
   const [query, setQuery] = useState('');
+  const [region, setRegion] = useState('essentials');
   const [saving, setSaving] = useState(false);
   const [activeMeasurement, setActiveMeasurement] = useState('height');
   const helpRef = useRef(null);
@@ -36,7 +37,7 @@ export default function MeasurementWorkbench({ current, user, onSaveProfile, onS
   };
   const calculation = navyBodyFat({ sex: formula, height: metricFor('height'), neck: metricFor('neck'), waist: metricFor('waist'), hips: metricFor('hips') });
   const required = formula === 'F' ? ['height', 'neck', 'waist', 'hips'] : ['height', 'neck', 'waist'];
-  const filteredGroups = useMemo(() => GROUPS.map(group => ({ ...group, metrics: group.metrics.filter(metric => metric.label.toLowerCase().includes(query.trim().toLowerCase())) })).filter(group => group.metrics.length), [query]);
+  const filteredGroups = useMemo(() => GROUPS.filter(group => query.trim() || region === 'all' || group.id === region).map(group => ({ ...group, metrics: group.metrics.filter(metric => metric.label.toLowerCase().includes(query.trim().toLowerCase())) })).filter(group => group.metrics.length), [query, region]);
 
   const change = (key, value) => {
     setDraft(previous => ({ ...previous, [key]: value }));
@@ -56,6 +57,7 @@ export default function MeasurementWorkbench({ current, user, onSaveProfile, onS
     if (Object.keys(invalid).length) {
       setErrors(invalid);
       setQuery('');
+      setRegion('all');
       setFeedback({ type: 'error', text: 'Review the highlighted measurements before saving.' });
       requestAnimationFrame(() => {
         const input = document.getElementById(`physique-input-${Object.keys(invalid)[0]}`);
@@ -81,7 +83,10 @@ export default function MeasurementWorkbench({ current, user, onSaveProfile, onS
   return <div className="px-measurement-layout">
     <form onSubmit={save} className="px-card px-measurement-form" noValidate>
       <div className="px-section-heading"><div><span className="px-eyebrow">A moment to check in</span><h2>Measurements</h2><p>Enter what you know. Leave unrecorded measurements empty.</p></div><span className="px-unit-badge">{getMeasurementUnit('cm', user)} / {getMeasurementUnit('kg', user)}</span></div>
-      <div className="px-search"><Search size={17} aria-hidden="true" /><TextField type="search" label="Find a measurement" placeholder="Search measurements…" value={query} onChange={event => setQuery(event.target.value)} /></div>
+      <div className="px-measurement-toolbar">
+        <SelectField label="Measurement region" value={region} onChange={event => setRegion(event.target.value)} options={[{ value:'essentials',label:'Essentials' }, ...GROUPS.filter(group => group.id !== 'essentials').map(group => ({ value:group.id,label:group.label })), { value:'all',label:'All measurements' }]} />
+        <div className="px-search"><Search size={17} aria-hidden="true" /><TextField type="search" label="Find a measurement" placeholder="Search every region…" value={query} onChange={event => setQuery(event.target.value)} /></div>
+      </div>
       <div className="px-measurement-groups">
         {filteredGroups.map(group => {
           const fields = <div className="px-field-grid">{group.metrics.map(metric => <div className="measurement-field-help" key={metric.key}>

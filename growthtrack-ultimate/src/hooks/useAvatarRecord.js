@@ -4,6 +4,7 @@ import useStore from '../store/useStore';
 export const AvatarRecordContext = createContext(null);
 const EMPTY = Object.freeze({});
 const NO_FLUSH = (_flush) => () => {};
+const NO_PENDING_EDITS = async () => {};
 
 // The owner remains the authentication/formatting identity. Only avatar data
 // is scoped; creating a friend never replaces the signed-in account.
@@ -20,5 +21,5 @@ export default function useAvatarRecord() {
   return scoped || { personId: 'self', name: 'My avatar', legacyUser: user || EMPTY,
     dateOfBirth: user?.dob ?? user?.dateOfBirth ?? null,
     bodyProfile, physiqueTargets, metricLogs, updateBodyProfile, updatePhysiqueTargets, saveMetricLog,
-    updateDateOfBirth: value => updateUser({ dob: value }), registerFlush: NO_FLUSH };
+    updateDateOfBirth: value => updateUser({ dob: value }), registerFlush: NO_FLUSH, flushEdits: NO_PENDING_EDITS };
 }

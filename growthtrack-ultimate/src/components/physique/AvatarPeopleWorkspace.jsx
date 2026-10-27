@@ -25,6 +25,9 @@ function PeopleSession({ children }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const flushers = useRef(new Set());
   const registerFlush = useCallback(flush => { flushers.current.add(flush); return () => flushers.current.delete(flush); }, []);
+  const flushEdits = useCallback(async () => {
+    for (const flush of [...flushers.current]) await flush();
+  }, []);
   const people = avatarPeople(targets);
   const person = people.find(item => item.id === targets?.avatarPeople?.activePersonId);
   const personId = person?.id || 'self';
@@ -46,15 +49,15 @@ function PeopleSession({ children }) {
     updateBodyProfile: person ? scopedSaveBody : saveBody,
     updatePhysiqueTargets: person ? scopedSaveTargets : saveTargets,
     saveMetricLog: person ? scopedSaveLog : saveLog,
-    updateDateOfBirth, registerFlush,
-  }), [personId, person, owner, body, targets, logs, scopedSaveBody, saveBody, scopedSaveTargets, saveTargets, scopedSaveLog, saveLog, updateDateOfBirth, registerFlush]);
+    updateDateOfBirth, registerFlush, flushEdits,
+  }), [personId, person, owner, body, targets, logs, scopedSaveBody, saveBody, scopedSaveTargets, saveTargets, scopedSaveLog, saveLog, updateDateOfBirth, registerFlush, flushEdits]);
 
   async function changePerson(nextPerson) {
     if (busy) return;
     setBusy(true); setError('');
     try {
       // Finish all drafts before replacing the canvas/editor and their refs.
-      for (const flush of [...flushers.current]) await flush();
+      await flushEdits();
       if (useStore.getState().user?.id !== ownerId) return;
       await saveTargets(latest => typeof nextPerson === 'object' ? addAvatarPerson(latest, nextPerson)
         : { ...latest, avatarPeople: { ...latest?.avatarPeople, schemaVersion: 1, activePersonId: nextPerson } });
@@ -69,11 +72,11 @@ function PeopleSession({ children }) {
 
   return <div className="avatar-people-workspace">
     <section className="avatar-people" aria-label="Saved people">
-      <label className="workspace-field"><span>Person</span><select aria-label="Person" disabled={busy} value={personId} onChange={event => changePerson(event.target.value)}>
+      <label className="workspace-field"><span>Person</span><select aria-label="Person" aria-describedby="avatar-person-help" disabled={busy} value={personId} onChange={event => changePerson(event.target.value)}>
         <option value="self">Me · my avatar</option>{people.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select></label>
       <button className="chamber-pill" type="button" disabled={busy} aria-expanded={adding} onClick={() => setAdding(!adding)}>Create a person</button>
-      <p>Each person has their own measurements, appearance, poses and goals.</p>
+      <span className="avatar-people__hint" id="avatar-person-help">Measurements and goals belong to the selected person.</span>
       {busy && <p role="status">Saving edits and opening the selected person…</p>}
       {adding && <form className="avatar-people__form" onSubmit={event => {
         event.preventDefault();
@@ -87,6 +90,6 @@ function PeopleSession({ children }) {
       </form>}
       {error && <p role="alert">{error}</p>}
     </section>
-    <AvatarRecordContext.Provider value={value}><div key={personId} inert={busy || undefined}>{children}</div></AvatarRecordContext.Provider>
+    <AvatarRecordContext.Provider value={value}><div className="avatar-person-content" key={personId} inert={busy || undefined}>{children}</div></AvatarRecordContext.Provider>
   </div>;
 }

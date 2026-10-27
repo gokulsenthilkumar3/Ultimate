@@ -1,4 +1,5 @@
 import { getCsrfToken } from '../lib/apiClient';
+import { agentPlanSchema, validatePlanReferences } from '../lib/agentActions';
 
 const ROOT = '/api/agents';
 const MAX_EVENT_CHARS = 256 * 1024;
@@ -21,7 +22,10 @@ async function checkResponse(response) {
   const message = response.status === 401 ? 'Sign in again to use Agents.'
     : response.status === 403 ? 'Your session could not be verified. Sign in again.'
       : data?.error || data?.reason || `Agents request failed (${response.status}).`;
-  throw new AgentsError(message, response.status, data?.code);
+  const error = new AgentsError(message, response.status, data?.code);
+  if (typeof data?.configured === 'boolean') error.configured = data.configured;
+  if (typeof data?.provider === 'string') error.provider = data.provider;
+  throw error;
 }
 
 export async function getAgentsReadiness({ signal } = {}) {
@@ -32,15 +36,30 @@ export async function getAgentsReadiness({ signal } = {}) {
   return { ...data, models, ready: data.ready && models.length > 0, available: data.ready && models.length > 0 };
 }
 
+export async function requestAgentsPlan({ model, prompt, context = [], consent = {}, today, agent = 'custom', signal } = {}) {
+  if (signal?.aborted) throw abortError();
+  const headers = new Headers({ 'Content-Type': 'application/json', Accept: 'application/json' });
+  const csrf = getCsrfToken();
+  if (csrf) headers.set('X-CSRF-Token', csrf);
+  const response = await checkResponse(await fetch(`${ROOT}/plan`, {
+    method: 'POST', headers, credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal,
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], context, consent, today, agent }),
+  }));
+  const result = await response.json();
+  if (result.requiresReview !== true) throw new AgentsError('The backend did not return a reviewable plan.');
+  try { return { ...validatePlanReferences(agentPlanSchema.parse({ summary: result.summary, actions: result.actions }), context), model: result.model || model }; }
+  catch { throw new AgentsError('The proposed actions could not be validated. Try a simpler request.', 0, 'invalid_plan'); }
+}
+
 /** Consume actual SSE deltas. Caller owns cancellation and conversation state. */
-export async function streamAgentsChat({ model, messages, context = [], consent = {}, responseStyle = 'standard', signal, onDelta, onMeta } = {}) {
+export async function streamAgentsChat({ model, messages, context = [], consent = {}, responseStyle = 'standard', intent = 'general', today, signal, onDelta, onMeta } = {}) {
   if (signal?.aborted) throw abortError();
   const headers = new Headers({ 'Content-Type': 'application/json', Accept: 'text/event-stream' });
   const csrf = getCsrfToken();
   if (csrf) headers.set('X-CSRF-Token', csrf);
   const response = await checkResponse(await fetch(`${ROOT}/chat`, {
     method: 'POST', headers, credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal,
-    body: JSON.stringify({ model, messages, context, consent, responseStyle }),
+    body: JSON.stringify({ model, messages, context, consent, responseStyle, intent, today }),
   }));
   if (!response.headers.get('Content-Type')?.includes('text/event-stream') || !response.body?.getReader) throw new AgentsError('The Agents backend did not return a response stream.');
   const reader = response.body.getReader();
@@ -92,7 +111,7 @@ export async function streamAgentsChat({ model, messages, context = [], consent 
       if (done) break;
     }
     if (!completed) throw new AgentsError('The response stream was interrupted. Try again.', 0, 'incomplete_stream');
-    return { text, model: metadata.model || model, provider: 'ollama-local', done: true };
+    return { text, model: metadata.model || model, provider: metadata.provider || 'ollama-local', done: true };
   } finally {
     signal?.removeEventListener('abort', stop);
     await reader.cancel().catch(() => {});

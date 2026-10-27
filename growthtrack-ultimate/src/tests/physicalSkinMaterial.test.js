@@ -68,6 +68,54 @@ describe('physical skin material', () => {
     material.dispose();
   });
 
+  it('blends surface detail independently of skin identity, source maps and performance gating', () => {
+    const source = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), normalMap: new THREE.Texture(), roughnessMap: new THREE.Texture() });
+    source.normalScale.set(.6,.8);
+    const settings = { skinMicroDetail: .8, skinFreckleDensity: .6, skinFreckleSeed: 24 };
+    const full = createPhysicalSkinMaterial(3, source, { skinAppearance: settings });
+    const half = createPhysicalSkinMaterial(3, source, { skinAppearance: { ...settings, humanRealismPercent: 50 } });
+    const smooth = createPhysicalSkinMaterial(3, source, { skinAppearance: { ...settings, humanRealismPercent: 0 } });
+    expect(full.normalScale.toArray()).toEqual([.6,.8]);
+    expect(half.normalScale.toArray()).toEqual([.3,.4]);
+    expect(smooth.normalScale.toArray()).toEqual([0,0]);
+    expect(source.normalScale.toArray()).toEqual([.6,.8]);
+    for (const [material, percent, strength] of [[full,100,.8],[half,50,.4],[smooth,0,0]]) {
+      expect(material.userData.humanRealismPercent).toBe(percent);
+      expect(material.uniforms.uSkinMicroStrength.value).toBe(strength);
+      expect(material.map).toBe(source.map);
+      expect(material.normalMap).toBe(source.normalMap);
+      expect(material.roughnessMap).toBe(source.roughnessMap);
+      expect(material.color.toArray()).toEqual(full.color.toArray());
+      expect(material.uniforms.uFreckles.value.toArray()).toEqual(full.uniforms.uFreckles.value.toArray());
+      for (const microDetail of [false,true]) {
+        updatePhysicalSkinMaterial(material,{microDetail});
+        expect(material.uniforms.uHumanRealism.value).toBe(percent/100);
+        expect(material.uniforms.uSkinMicroStrength.value).toBe(strength);
+        expect(material.uniforms.uSkinMicroDetail.value).toBe(microDetail?1:0);
+      }
+      const shader={...THREE.ShaderLib.physical,uniforms:{}};
+      material.onBeforeCompile(shader);
+      expect(shader.uniforms.uHumanRealism).toBe(material.uniforms.uHumanRealism);
+      expect(shader.fragmentShader).toContain('roughnessFactor = mix(roughness,roughnessFactor,uHumanRealism)');
+      material.dispose();
+    }
+    source.dispose();
+  });
+
+  it('supports atlas-free anatomy surface detail when explicitly requested', () => {
+    const microTile=new THREE.Texture();
+    const material=createPhysicalSkinMaterial(3,null,{surfaceDetail:true,microTile,skinAppearance:{humanRealismPercent:50,skinMicroDetail:.8}});
+    const shader={...THREE.ShaderLib.physical,uniforms:{}};
+    material.onBeforeCompile(shader);
+    expect(material.map).toBeNull();
+    expect(material.userData.layeredSkinShader).toBe(true);
+    expect(shader.uniforms.uSkinMicroTile.value).toBe(microTile);
+    expect(shader.uniforms.uSkinMicroReady.value).toBe(1);
+    expect(shader.uniforms.uSkinMicroStrength.value).toBe(.4);
+    expect(shader.fragmentShader).toContain('vGrowthTrackBasePosition*1000.0');
+    material.dispose();microTile.dispose();
+  });
+
   it('renders a textured body at the chosen tone on average', () => {
     const map = new THREE.Texture();
     const material = createPhysicalSkinMaterial(3, new THREE.MeshStandardMaterial({ map }));

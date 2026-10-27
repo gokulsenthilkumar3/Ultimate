@@ -1,3 +1,4 @@
+import PageHeader from './ui/PageHeader';
 import React from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -162,29 +163,11 @@ export default function Dashboards() {
 
   return (
     <div id="dashboard-overview" className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        marginBottom: '2rem',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        padding: '1.25rem 1.4rem',
-        borderRadius: '24px',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
-        border: '1px solid var(--border)',
-      }}>
-        <div style={{ maxWidth: '680px' }}>
-          <p className="label-caps" style={{ color: 'var(--accent)', marginBottom: '0.35rem' }}>Unified Analytics</p>
-          <h2 className="text-display" style={{ fontSize: '2.1rem', margin: 0 }}>Minimal dashboards for fast decisions</h2>
-          <p className="text-secondary" style={{ marginTop: '0.6rem' }}>
+      <PageHeader accent="Insights" title="Dashboards" subtitle={<>
             A cleaner command surface for body, habit, finance, and goal signals.
-          </p>
-        </div>
-        <button className="btn-primary" onClick={() => handleExport('dashboard-overview', 'growthtrack-dashboard')}>
+          </>} actions={<><button className="btn-primary" onClick={() => handleExport('dashboard-overview', 'growthtrack-dashboard')}>
            <Download size={18} /> EXPORT DASHBOARD
-        </button>
-      </div>
+        </button></>} />
 
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
         

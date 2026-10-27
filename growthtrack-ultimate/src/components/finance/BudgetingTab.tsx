@@ -20,6 +20,7 @@ export default function BudgetingTab({ budgets, transactions, month, currencySym
   const pending = useRef(false);
   const draftId = useRef(crypto.randomUUID());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(() => budgets.length === 0);
   const visible = budgets.filter(row => history ? Boolean(row.month && row.month !== month) : !row.month || row.month === month);
   const expenseRows = transactions.filter(row => row.type === 'Expense' && row.date.startsWith(month + '-'));
   const breakdown = financeBreakdown(expenseRows, 'category');
@@ -54,12 +55,12 @@ export default function BudgetingTab({ budgets, transactions, month, currencySym
   }
   return <>
     <div className="finance-controls"><label className="finance-field">Budget view<select className="form-input" value={history ? 'history' : 'current'} disabled={saving} onChange={event => { const next = new URLSearchParams(params); next.set('view', event.target.value); setParams(next); setEditing(null); setForm({ category: '', limit: '' }); }}><option value="current">Current budgets</option><option value="history">Budget history</option></select></label></div>
-    {!history && <section className="glass-card"><div className="finance-card-heading"><h2>{editing ? 'Edit budget' : 'Create a category budget'}</h2></div><p className="finance-note">Limits apply to {month}. A zero limit allows no spending in that category.</p>
+    {!history && <details className="finance-budget-editor" open={Boolean(editing) || createOpen} onToggle={event => setCreateOpen(event.currentTarget.open)}><summary>{editing ? 'Edit category budget' : 'Create a category budget'}</summary><section className="glass-card"><div className="finance-card-heading"><h2>{editing ? 'Edit budget' : 'Budget details'}</h2></div><p className="finance-note">Limits apply to {month}. A zero limit allows no spending in that category.</p>
       <form onSubmit={submit}><fieldset disabled={saving} style={{ border: 0, margin: 0, padding: 0 }}><div className="finance-fields">
         <label>Budget category<select className="form-input" required value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}><option value="">Select category</option>{[...new Set([...CATEGORIES, ...budgets.map(row => row.category), ...transactions.map(row => row.category)])].map(category => <option key={category}>{category}</option>)}</select></label>
         <label>Limit ({currencySymbol})<input className="form-input" type="number" min="0" step="0.01" required value={form.limit} onChange={event => setForm({ ...form, limit: event.target.value })} /></label>
       </div><div className="finance-controls mt-sm"><button type="submit" className="btn-primary">{saving ? 'Saving…' : editing ? 'Save budget changes' : 'Add budget'}</button>{editing && <button className="btn-sm" type="button" onClick={() => { setEditing(null); setForm({ category: '', limit: '' }); }}>Cancel edit</button>}</div></fieldset></form>
-    </section>}
+    </section></details>}
     {error && <p role="alert" className="finance-error">{error}</p>}
     {confirmDelete && <div role="group" aria-label="Confirm budget deletion" className="finance-error"><p>Delete this category budget?</p><button type="button" className="btn-sm" disabled={saving} onClick={() => void remove()}>{saving ? 'Deleting…' : 'Confirm delete budget'}</button> <button type="button" className="btn-sm" disabled={saving} onClick={() => setConfirmDelete(null)}>Cancel deletion</button></div>}
     <section className="glass-card"><div className="finance-card-heading"><h2>{history ? 'Budget history' : 'Category budgets'}</h2></div>

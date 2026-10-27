@@ -1,14 +1,16 @@
 import React,{useEffect,useRef,useState} from 'react';
 
 const PRESETS={
-  neutral:{eye_size:.35,brow_depth:.35,nose_bridge_width:.35,nose_tip_size:.35,lip_fullness:.35,ear_prominence:.35,jaw_width:.35,chin_projection:.35,smile:0,jaw_open:0,blink:0},
-  broad:{eye_size:.32,brow_depth:.5,nose_bridge_width:.45,nose_tip_size:.35,lip_fullness:.3,ear_prominence:.35,jaw_width:.65,chin_projection:.5,smile:0,jaw_open:0,blink:0},
-  soft:{eye_size:.4,brow_depth:.2,nose_bridge_width:.3,nose_tip_size:.3,lip_fullness:.5,ear_prominence:.3,jaw_width:.2,chin_projection:.3,smile:0,jaw_open:0,blink:0},
+  neutral:{eye_size:.35,brow_depth:.35,nose_bridge_width:.35,nose_tip_size:.35,lip_fullness:.35,ear_prominence:.35,jaw_width:.35,chin_projection:.35},
+  broad:{eye_size:.32,brow_depth:.5,nose_bridge_width:.45,nose_tip_size:.35,lip_fullness:.3,ear_prominence:.35,jaw_width:.65,chin_projection:.5},
+  soft:{eye_size:.4,brow_depth:.2,nose_bridge_width:.3,nose_tip_size:.3,lip_fullness:.5,ear_prominence:.3,jaw_width:.2,chin_projection:.3},
 };
 
-export default function LikenessControls({onPreset,context}){
+export default function LikenessControls({onPreset,context,supportedKeys}){
   const [mode,setMode]=useState('generic'),[reference,setReference]=useState(null),[error,setError]=useState('');
   const url=useRef(null);
+  const presetPatch=preset=>Object.fromEntries(Object.entries(preset).filter(([key])=>!supportedKeys || supportedKeys.includes(key)));
+  const applyPreset=preset=>{const patch=presetPatch(preset);if(Object.keys(patch).length)onPreset(patch);};
   const clear=()=>{if(url.current)URL.revokeObjectURL(url.current);url.current=null;setReference(null);};
   useEffect(()=>()=>{if(url.current)URL.revokeObjectURL(url.current);},[]);
   function load(file){
@@ -19,9 +21,9 @@ export default function LikenessControls({onPreset,context}){
   return <fieldset className="avatar-likeness-controls"><legend>Face design · {context==='goal'?'Goal':'Current'}</legend>
     <label className="workspace-field"><span>Design from</span><select aria-label="Face design mode" value={mode} onChange={e=>setMode(e.target.value)}><option value="generic">Generic adult</option><option value="personal">Personal reference</option></select></label>
     {mode==='generic'?<div className="avatar-model-tools__actions">
-      <button className="chamber-pill" type="button" onClick={()=>onPreset(PRESETS.neutral)}>Neutral face</button>
-      <button className="chamber-pill" type="button" onClick={()=>onPreset(PRESETS.broad)}>Broader features</button>
-      <button className="chamber-pill" type="button" onClick={()=>onPreset(PRESETS.soft)}>Softer features</button>
+      <button className="chamber-pill" type="button" disabled={!Object.keys(presetPatch(PRESETS.neutral)).length} onClick={()=>applyPreset(PRESETS.neutral)}>Neutral face</button>
+      <button className="chamber-pill" type="button" disabled={!Object.keys(presetPatch(PRESETS.broad)).length} onClick={()=>applyPreset(PRESETS.broad)}>Broader features</button>
+      <button className="chamber-pill" type="button" disabled={!Object.keys(presetPatch(PRESETS.soft)).length} onClick={()=>applyPreset(PRESETS.soft)}>Softer features</button>
     </div>:<div className="avatar-reference" onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';}} onDrop={e=>{e.preventDefault();load(e.dataTransfer.files[0]);}}>
       <label className="workspace-field"><span>Reference photo</span><input aria-label="Reference photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{load(e.target.files[0]);e.target.value='';}}/></label>
       <p>Choose or drop a front-facing photo, then match the facial controls below. This is manual matching; the photo does not generate a 3D scan.</p>

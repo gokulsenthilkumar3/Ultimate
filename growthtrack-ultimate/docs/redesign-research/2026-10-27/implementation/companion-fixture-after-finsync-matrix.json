@@ -1,0 +1,950 @@
+[
+  {
+    "product": "finsync",
+    "route": "/auth/ultimate/callback",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/auth/ultimate/callback",
+    "body": "The sign-in handoff is missing.",
+    "overflow": 0,
+    "controls": 0,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/analytics",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/analytics",
+    "title": "Analytics",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nAnal",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/bills",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/bills",
+    "title": "Bills",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBill",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/budget",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/budget",
+    "title": "Budget",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBudg",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/cards",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/cards",
+    "title": "Cards",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nCard",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/investments",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/investments",
+    "title": "Investments",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nInve",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard",
+    "title": "Dashboard",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nDash",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/profile",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/profile",
+    "title": "Profile",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nProf",
+    "overflow": 0,
+    "controls": 8,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/settings",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/settings",
+    "title": "Settings",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nSett",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/transactions",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/transactions",
+    "title": "Transactions",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nTran",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/wallets",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/wallets",
+    "title": "Wallets",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nWall",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/forgot-password",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/forgot-password",
+    "title": "Forgot Password?",
+    "body": "Back to Sign In\nForgot Password?\n\nNo worries! Enter your email and we'll send you reset instructions.\n\nEmail Address\nSend Reset Link\n\nNeed help? Contact our sup",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/login",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "💰\nFinSync Super\nMoney, simplified\nfor you.\n\nTrack spending, monitor investments, and plan your financial future — all in one place.\n\nAI-powered SMS & Email par",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/onboarding",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/onboarding",
+    "title": "Let's get to know you",
+    "body": "💰\nFinSync Super\n1\nPersonal Info\n2\nBudget Preview\n3\nAll Set!\nLet's get to know you\n\nThis helps us personalise your financial journey based on your household.\n\nF",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "💰\nFinSync Super\nMoney, simplified\nfor you.\n\nTrack spending, monitor investments, and plan your financial future — all in one place.\n\nAI-powered SMS & Email par",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/signup",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/signup",
+    "title": "Join 50,000+smart savers.",
+    "body": "💰\nFinSync Super\nJoin 50,000+\nsmart savers.\n\nStart your free account today and take control of your finances with AI-powered insights.\n\nFree forever plan availa",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/test-dashboard",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "landedURL": "http://127.0.0.1:5571/test-dashboard",
+    "title": "Sample finance workspace",
+    "body": "Sample finance workspace\n\nDevelopment preview with sample records.\n\nTotal Balance\n💰\n₹1,24,500\n↑ +2.5% from last month\nMonthly Income\n📥\n₹85,000\n↑ +0% from last",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/auth/ultimate/callback",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/auth/ultimate/callback",
+    "body": "The sign-in handoff is missing.",
+    "overflow": 0,
+    "controls": 0,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/analytics",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/analytics",
+    "title": "Analytics",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nAnal",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/bills",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/bills",
+    "title": "Bills",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBill",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/budget",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/budget",
+    "title": "Budget",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBudg",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/cards",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/cards",
+    "title": "Cards",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nCard",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/investments",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/investments",
+    "title": "Investments",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nInve",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard",
+    "title": "Dashboard",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nDash",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/profile",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/profile",
+    "title": "Profile",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nProf",
+    "overflow": 0,
+    "controls": 8,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/settings",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/settings",
+    "title": "Settings",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nSett",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/transactions",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/transactions",
+    "title": "Transactions",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nTran",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/wallets",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/wallets",
+    "title": "Wallets",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nWall",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/forgot-password",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/forgot-password",
+    "title": "Forgot Password?",
+    "body": "Back to Sign In\nForgot Password?\n\nNo worries! Enter your email and we'll send you reset instructions.\n\nEmail Address\nSend Reset Link\n\nNeed help? Contact our sup",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/login",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "💰\nFinSync Super\nMoney, simplified\nfor you.\n\nTrack spending, monitor investments, and plan your financial future — all in one place.\n\nAI-powered SMS & Email par",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/onboarding",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/onboarding",
+    "title": "Let's get to know you",
+    "body": "💰\nFinSync Super\n1\nPersonal Info\n2\nBudget Preview\n3\nAll Set!\nLet's get to know you\n\nThis helps us personalise your financial journey based on your household.\n\nF",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "💰\nFinSync Super\nMoney, simplified\nfor you.\n\nTrack spending, monitor investments, and plan your financial future — all in one place.\n\nAI-powered SMS & Email par",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/signup",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/signup",
+    "title": "Join 50,000+smart savers.",
+    "body": "💰\nFinSync Super\nJoin 50,000+\nsmart savers.\n\nStart your free account today and take control of your finances with AI-powered insights.\n\nFree forever plan availa",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/test-dashboard",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "landedURL": "http://127.0.0.1:5571/test-dashboard",
+    "title": "Sample finance workspace",
+    "body": "Sample finance workspace\n\nDevelopment preview with sample records.\n\nTotal Balance\n💰\n₹1,24,500\n↑ +2.5% from last month\nMonthly Income\n📥\n₹85,000\n↑ +0% from last",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/auth/ultimate/callback",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/auth/ultimate/callback",
+    "body": "The sign-in handoff is missing.",
+    "overflow": 0,
+    "controls": 0,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/analytics",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/analytics",
+    "title": "Analytics",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nAnal",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/bills",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/bills",
+    "title": "Bills",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBill",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/budget",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/budget",
+    "title": "Budget",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nBudg",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/cards",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/cards",
+    "title": "Cards",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nCard",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/investments",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/investments",
+    "title": "Investments",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nInve",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard",
+    "title": "Dashboard",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nDash",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/profile",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/profile",
+    "title": "Profile",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nProf",
+    "overflow": 0,
+    "controls": 8,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/settings",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/settings",
+    "title": "Settings",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nSett",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/transactions",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/transactions",
+    "title": "Transactions",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nTran",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/wallets",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/wallets",
+    "title": "Wallets",
+    "body": "💰\nFinSync One\nMAIN\nDashboard\nTransactions\nNew\nAnalytics\nBudget\nInvestments\nWallets\nBills\nCards\nACCOUNT\nProfile\nSettings\nSign Out\nAF\nAlex Fixture\nFree Plan\nWall",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/forgot-password",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/forgot-password",
+    "title": "Forgot Password?",
+    "body": "Back to Sign In\nForgot Password?\n\nNo worries! Enter your email and we'll send you reset instructions.\n\nEmail Address\nSend Reset Link\n\nNeed help? Contact our sup",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/login",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "💰\nFinSync Super\nMoney, simplified\nfor you.\n\nTrack spending, monitor investments, and plan your financial future — all in one place.\n\nAI-powered SMS & Email par",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/onboarding",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/onboarding",
+    "title": "Let's get to know you",
+    "body": "💰\nFinSync Super\n1\nPersonal Info\n2\nBudget Preview\n3\nAll Set!\nLet's get to know you\n\nThis helps us personalise your financial journey based on your household.\n\nF",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "💰\nFinSync Super\nMoney, simplified\nfor you.\n\nTrack spending, monitor investments, and plan your financial future — all in one place.\n\nAI-powered SMS & Email par",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/signup",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/signup",
+    "title": "Join 50,000+smart savers.",
+    "body": "💰\nFinSync Super\nJoin 50,000+\nsmart savers.\n\nStart your free account today and take control of your finances with AI-powered insights.\n\nFree forever plan availa",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/test-dashboard",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "landedURL": "http://127.0.0.1:5571/test-dashboard",
+    "title": "Sample finance workspace",
+    "body": "Sample finance workspace\n\nDevelopment preview with sample records.\n\nTotal Balance\n💰\n₹1,24,500\n↑ +2.5% from last month\nMonthly Income\n📥\n₹85,000\n↑ +0% from last",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/auth/ultimate/callback",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/auth/ultimate/callback",
+    "body": "The sign-in handoff is missing.",
+    "overflow": 0,
+    "controls": 0,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/analytics",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/analytics",
+    "title": "Analytics",
+    "body": "Menu\nAnalytics\nGood evening, Alex 👋\nAF\nVisual Insights\n\nAdvanced breakdown of your cashflow and category spend\n\nTotal Cash Inflow\n₹0\nTotal Cash Outflow\n₹1,200\n",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/bills",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/bills",
+    "title": "Bills",
+    "body": "Menu\nBills\nGood evening, Alex 👋\nAF\nBills & subscriptions\n\nStay ahead of every payment without leaving your budget.\n\n+ Add bill\nDue in the next 14 days\n₹2,839\n2",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/budget",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/budget",
+    "title": "Budget",
+    "body": "Menu\nBudget\nGood evening, Alex 👋\nAF\nPersonal CFO Budget Planner\n\nConfigure your monthly income and rule allocation thresholds\n\nMonthly Base Income (₹)\nBudget R",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/cards",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/cards",
+    "title": "Cards",
+    "body": "Menu\nCards\nGood evening, Alex 👋\nAF\nCards\n\nManage your payment cards and see their impact on your spending plan.\n\n+ Link card\nFinSync One\nVISA\n•••• •••• •••• 42",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/investments",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/investments",
+    "title": "Investments",
+    "body": "Menu\nInvestments\nGood evening, Alex 👋\nAF\nInvestment Portfolio\n\nTrack all your stock, mutual fund, and crypto asset holdings\n\nCurrent Portfolio Value\n₹1,06,315\n",
+    "overflow": 0,
+    "controls": 4,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard",
+    "title": "Dashboard",
+    "body": "Menu\nDashboard\nGood evening, Alex 👋\nAF\nGood evening, Alex 👋\n\nYour personalised 50/30/20 budget plan.\n\nMonthly Income\n📥\n₹80,000\nFrom onboarding\nNeeds (50%)\n🏠",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/profile",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/profile",
+    "title": "Profile",
+    "body": "Menu\nProfile\nGood evening, Alex 👋\nAF\nAccount Settings\n\nManage your personal details and subscription plan\n\nAF\nAlex Fixture\n\nalex@example.test\n\nFREE PLAN\nFull N",
+    "overflow": 0,
+    "controls": 8,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/settings",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/settings",
+    "title": "Settings",
+    "body": "Menu\nSettings\nGood evening, Alex 👋\nAF\nPreferences & Settings\n\nConfigure notifications, security, and transaction engine rules\n\nAutomation Engine\nAI SMS & Email",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/transactions",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/transactions",
+    "title": "Transactions",
+    "body": "Menu\nTransactions\nGood evening, Alex 👋\nAF\nTransaction Ledger\n\nView and manage all income and expense logs\n\n+ Add Transaction\nFilter Category\nAll Categories\nFoo",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/dashboard/wallets",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/dashboard/wallets",
+    "title": "Wallets",
+    "body": "Menu\nWallets\nGood evening, Alex 👋\nAF\nYour money, in one place\n\nAccounts, cash, and savings synced alongside your expense plan.\n\n+ Add account\nTotal available b",
+    "overflow": 0,
+    "controls": 5,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/forgot-password",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/forgot-password",
+    "title": "Forgot Password?",
+    "body": "Back to Sign In\nForgot Password?\n\nNo worries! Enter your email and we'll send you reset instructions.\n\nEmail Address\nSend Reset Link\n\nNeed help? Contact our sup",
+    "overflow": 0,
+    "controls": 3,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/login",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "Welcome back\n\nSign in to continue to your dashboard\n\nContinue with Google\nContinue with Microsoft\nOR\nEmail address\nPassword\nForgot password?\nSign in\nDon't have ",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/onboarding",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/onboarding",
+    "title": "Let's get to know you",
+    "body": "💰\nFinSync Super\n1\nPersonal Info\n2\nBudget Preview\n3\nAll Set!\nLet's get to know you\n\nThis helps us personalise your financial journey based on your household.\n\nF",
+    "overflow": 0,
+    "controls": 7,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/login",
+    "title": "Money, simplifiedfor you.",
+    "body": "Welcome back\n\nSign in to continue to your dashboard\n\nContinue with Google\nContinue with Microsoft\nOR\nEmail address\nPassword\nForgot password?\nSign in\nDon't have ",
+    "overflow": 0,
+    "controls": 6,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/signup",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/signup",
+    "title": "Join 50,000+smart savers.",
+    "body": "Create account\n\nFill in the details below to get started\n\nSign up with Google\nSign up with Microsoft\nOR\nEmail address\nPassword\nConfirm password\nI accept the Ter",
+    "overflow": 0,
+    "controls": 9,
+    "errors": []
+  },
+  {
+    "product": "finsync",
+    "route": "/test-dashboard",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "landedURL": "http://127.0.0.1:5571/test-dashboard",
+    "title": "Sample finance workspace",
+    "body": "Sample finance workspace\n\nDevelopment preview with sample records.\n\nTotal Balance\n💰\n₹1,24,500\n↑ +2.5% from last month\nMonthly Income\n📥\n₹85,000\n↑ +0% from last",
+    "overflow": 0,
+    "controls": 2,
+    "errors": []
+  }
+]
