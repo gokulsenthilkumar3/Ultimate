@@ -16,7 +16,10 @@ export const MEASUREMENT_GROUP_HELP = {
 export function selectMeasurements(group, search = '') {
   const query = search.trim().toLowerCase();
   const source = query || group === 'all' ? BODY_METRICS
-    : group === 'essentials' ? ESSENTIAL_MEASUREMENTS.map(key => BODY_METRICS.find(metric => metric.key === key))
+    : group === 'essentials' ? ESSENTIAL_MEASUREMENTS.flatMap(key => {
+      const metric = BODY_METRICS.find(item => item.key === key);
+      return metric ? [metric] : [];
+    })
     : BODY_METRIC_GROUPS.find(item => item.id === group)?.metrics || [];
   return source.filter(metric => metric && `${metric.label} ${metric.key}`.toLowerCase().includes(query));
 }
