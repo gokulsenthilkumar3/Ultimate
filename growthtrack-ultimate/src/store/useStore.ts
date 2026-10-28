@@ -11,6 +11,7 @@ import { createJournalActions } from './journalActions';
 import { createLibraryActions, createShoppingConversion, validateMedia, validateShopping } from './libraryActions';
 import { createWorkoutCompletion } from './workoutActions';
 import { conflictRecord, holdingRecords, recordWriteMessage } from '../api/records';
+import { palettePreferencePatch, themePreferencePatch } from '../design/appearancePresets';
 
 export async function apiSync(endpoint: string, method: string = 'POST', data: any = null): Promise<any> {
   const apiPath = endpoint.startsWith('/api/') ? endpoint : `/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -96,10 +97,11 @@ const useStore = create<any>()(
       const portfolioQueue = createWriteQueue();
       const bodyProfileQueue = createWriteQueue();
       let initialRequest = 0;
-      const savePreferences = (updates: any) => {
+      const savePreferences = (changes: any) => {
         const current = captureSession(get);
         return preferenceQueue(`${get()._sessionVersion}:${get().user?.id}:preferences`, async () => {
           if (!current()) throw new Error('The session changed. Refresh and try again.');
+          const updates = typeof changes === 'function' ? changes(get()) : changes;
           const keys = Object.keys(updates);
           const previous = Object.fromEntries(keys.map(key => [key, get()[key]]));
           set({ ...updates, preferenceSaveError: null });
@@ -136,10 +138,10 @@ const useStore = create<any>()(
 
       // Saved preferences win; new workspaces follow the operating system.
       theme: 'system',
-      palette: 'gold',
+      palette: 'forest',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'logs'],
-      navigationOrder: ['money', 'insights', 'wellness', 'work', 'life', 'system'],
+      navigationOrder: ['customers', 'money', 'wellness', 'work', 'life', 'insights', 'system'],
       navigationTabOrder: {},
       sidebarCollapsed: false,
       reducedMotion: false,
@@ -220,8 +222,8 @@ const useStore = create<any>()(
       setCheckInAlertDismissedDate: (date: string) => set({ checkInAlertDismissedDate: date }),
       setActiveTab: (tab: string) => set({ activeTab: tab }),
       setOnboardingComplete: (status: boolean) => savePreferences({ onboardingComplete: status }),
-      setTheme: (theme: string) => savePreferences({ theme }),
-      setPalette: (palette: string) => savePreferences({ palette }),
+      setTheme: (theme: string) => savePreferences((state: any) => themePreferencePatch(state.palette, theme)),
+      setPalette: (palette: string) => savePreferences(palettePreferencePatch(palette)),
 
       setUser: (userOrUpdater: any) => {
         const currentUser = get().user;
@@ -368,7 +370,7 @@ const useStore = create<any>()(
             initialLoadError: null,
             _dataRevision: get()._dataRevision + 1,
             user: { ...(stored.user || {}), tasks: { pending, completed } },
-            theme: preference.theme || get().theme || 'system', palette: preference.palette || 'gold',
+            theme: preference.theme || get().theme || 'system', palette: preference.palette || 'forest',
             sidebarCollapsed: Boolean(preference.sidebarCollapsed), onboardingComplete: Boolean(preference.onboardingComplete),
             reducedMotion: Boolean(preference.reducedMotion),
             density: preference.density === 'compact' ? 'compact' : 'comfortable',

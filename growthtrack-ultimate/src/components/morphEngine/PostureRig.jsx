@@ -19,6 +19,7 @@ import { registerCaptureGuard } from './captureRuntime';
 import { resolveRigBones } from './boneMap';
 import {applyArticulation,applyTwistBindings} from './articulation';
 import {createMorphRig} from './morphRig';
+import {applyPresetReach,retargetPresetAngles} from './presetRetargeting';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXTENDED BONE MAP — supports hands, legs, feet, spine, hair
@@ -31,7 +32,7 @@ const LERP_SPEED = 4.5;
 /**
  * Core hook: resolves skeleton bones, applies posture + animation offsets every frame.
  */
-function usePostureRig(skeleton, posture, animationId, animTime, idleSample, pose, bodyMesh, neutral, onPoseApplied) {
+function usePostureRig(skeleton, posture, animationId, animTime, idleSample, pose, bodyMesh, neutral, onPoseApplied, sampleTime) {
   const euler = useMemo(() => new THREE.Euler(), []);
   const renderer=useThree(state=>state.gl);
   const updateMorphRig=useMemo(()=>createMorphRig(bodyMesh),[bodyMesh]);
@@ -90,7 +91,8 @@ function usePostureRig(skeleton, posture, animationId, animTime, idleSample, pos
 
     // 2. Animation frame sample (high-frequency keyframe animation)
     const preset = ANIMATION_PRESET_MAP[animationId==='idle' && idleSample?'standing':animationId];
-    const animBones = sampleAnimation(preset, animTime.current);
+    const sampledTime=Number.isFinite(sampleTime)?sampleTime:animTime.current;
+    const animBones = sampleAnimation(preset, sampledTime);
 
     // Apply both layers to every bone touched by either source.
     const allBoneKeys = Object.keys(bones);
@@ -100,7 +102,7 @@ function usePostureRig(skeleton, posture, animationId, animTime, idleSample, pos
       if (!item) continue;
 
       const postureAngles = postureOff[key] || [0, 0, 0];
-      const animAngles    = animBones[key]   || null;
+      const animAngles = bodyMesh?.userData.growthtrack?.previewVersion===75?retargetPresetAngles(key,animBones[key],preset?.id):animBones[key] || null;
 
       // Measurements are posture offsets, not a competing animation layer.
       const [rx, ry, rz] = postureAngles.map((value,i)=>value+(animAngles?.[i] || 0));
@@ -116,8 +118,9 @@ function usePostureRig(skeleton, posture, animationId, animTime, idleSample, pos
         item.bone.scale.set(item.restScale.x*(1+breath*.004),item.restScale.y,item.restScale.z*(1+breath*.008));
       }
     }
-    applyArticulation(bones,null);applyTwistBindings(bones);
-    if(bodyMesh)bodyMesh.userData.poseEvidence={active:false,rigJoints:skeleton.bones.length,digitGroups,joints:{},digits:{},limbs:applyReachTargets(bones),
+    const retargeted=bodyMesh?.userData.growthtrack?.previewVersion===75?applyPresetReach(bones,preset,sampledTime):null;
+    applyArticulation(bones,preset?.id==='flex'?{leftHand:{shape:'fist',strength:1},rightHand:{shape:'fist',strength:1}}:null);applyTwistBindings(bones);
+    if(bodyMesh)bodyMesh.userData.poseEvidence={active:false,animationId,sampleTime:sampledTime,rigJoints:skeleton.bones.length,digitGroups,joints:{},digits:{},limbs:retargeted || applyReachTargets(bones),
       rotations:Object.fromEntries(Object.entries(bones).filter(([,item])=>item).map(([key,item])=>[key,item.bone.quaternion.toArray()]))};
     onPoseApplied?.();
   });
@@ -132,7 +135,7 @@ function usePostureRig(skeleton, posture, animationId, animTime, idleSample, pos
  *   playing      boolean — if true, advance time; if false, freeze at t=0
  *   speed        number — playback speed multiplier (default: 1)
  */
-export default function PostureRig({ skeleton, posture, animationId = 'idle', playing = true, speed = 1, idleSample, pose=null, bodyMesh, neutral=false, onPoseApplied }) {
+export default function PostureRig({ skeleton, posture, animationId = 'idle', playing = true, speed = 1, idleSample, pose=null, bodyMesh, neutral=false, onPoseApplied, sampleTime=null }) {
   const animTime = useRef(0);
   const preset = ANIMATION_PRESET_MAP[animationId];
 
@@ -148,7 +151,7 @@ export default function PostureRig({ skeleton, posture, animationId = 'idle', pl
     }
   });
 
-  usePostureRig(skeleton, posture, animationId, animTime, idleSample, pose, bodyMesh, neutral, onPoseApplied);
+  usePostureRig(skeleton, posture, animationId, animTime, idleSample, pose, bodyMesh, neutral, onPoseApplied, sampleTime);
 
   return null;
 }

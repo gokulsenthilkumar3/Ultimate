@@ -1,26 +1,44 @@
-# Bills Service
+# OxFin bills prototype
 
-The Bills Service handles bill detection, tracking, and automated payments.
+Reference bill-management handlers.
 
-## 🚀 Features
-- **Bill Detection:** Placeholder for NLP-based detection from SMS/Email.
-- **Autopay Rules:** Users can set rules for fixed amounts or full statement payments.
-- **Scheduled Execution:** Executes due payments via the Payments Service.
-- **Persistence:** Stores bills and autopay rules in Postgres (optional).
+**Runtime:** TypeScript service prototype.
 
-## 🔌 Endpoints
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Service health check. |
-| GET | `/v1/bills` | Lists all bills for the authenticated user. |
-| POST | `/v1/bills` | Manually adds a new bill. |
-| POST | `/v1/bills/:id/autopay` | Enables autopay rule for a specific bill. |
-| GET | `/v1/autopay-rules` | Lists all active autopay rules. |
-| POST | `/v1/autopay/execute-due` | Triggers execution of all currently due bills. |
+**Status:** Incomplete dependency manifest; retained as reference source.
 
-## ⚙️ Configuration
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BILLS_PORT` | 3004 | Port for the service. |
-| `BILLS_DB_URL` | (None) | Postgres connection string. |
-| `PAYMENTS_SERVICE_URL` | `http://localhost:3003` | URL for Payments Service. |
+## Setup
+
+Run these commands from this application directory. Configure required values locally before starting the live application.
+
+This is reference source, not a complete standalone installation. Follow the status and limitations below before attempting execution.
+
+## Run
+
+No supported standalone launch is documented for this reference package.
+
+## Configuration
+
+- Supply local service configuration only after reviewing the implementation.
+
+Keep credentials in ignored local environment files or a deployment secret manager. Tracked examples contain empty secret fields. Do not paste passwords, keys, personal records or production connection strings into this README. `NEXT_PUBLIC_`, `VITE_` and `EXPO_PUBLIC_` values are visible to clients.
+
+## Verification
+
+No complete verification command is declared for this reference package.
+
+## Scope and limitations
+
+- Complete dependency declarations, authentication and persistence checks before standalone use. It is not a default launcher target.
+
+## Workspace documentation
+
+- [Application directory](../../../../docs/APPLICATIONS.md)
+- [Ownership and independent builds](../../../../docs/BUILD_BOUNDARIES.md)
+- [Desktop redesign and architecture](../../../../docs/plans/2026-10-28-admin-redesign.md)
+- [Complete architecture and UI review handoff](../../../../docs/UI_ARCHITECTURE_HANDOFF.md)
+- [Implemented UI proposal and remaining review gates](../../../../docs/plans/2026-10-28-proposal-implementation.md)
+- [Approved production UI integration](../../../../docs/plans/2026-10-28-production-ui.md)
+- [UI impact and scale checks](../../../../docs/plans/2026-10-28-ui-system-impact.md)
+- [Code retrieval and embedding plan](../../../../docs/plans/2026-10-28-code-retrieval.md)
+
+<!-- Generated from docs/applications.json by scripts/application-docs.mjs. Edit the catalog, then regenerate. -->

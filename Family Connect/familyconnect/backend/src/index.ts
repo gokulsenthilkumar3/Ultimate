@@ -14,8 +14,10 @@ import aiRoutes from './routes/ai.routes';
 import { startCronJobs } from './services/cron.service';
 import { globalLimiter, authLimiter } from './middlewares/rateLimiter.middleware';
 import path from 'path';
+import { getJwtSecret } from './config/environment';
 
 dotenv.config();
+getJwtSecret(); // Refuse to start without an explicit signing secret.
 
 const app = express();
 const PORT = process.env.PORT || 3000;

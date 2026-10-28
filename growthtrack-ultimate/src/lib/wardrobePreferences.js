@@ -20,8 +20,8 @@ export const CLOTHING_FABRICS = Object.freeze({
 });
 export const CLOTHING_PATTERNS = Object.freeze([['solid','Solid fabric'],['source','Original garment texture'],['pinstripe','Pinstripe']]);
 export const CLOTHING_ADJUSTMENTS = Object.freeze({
-  easeCm:{label:'Garment ease',unit:'cm',min:0,max:6,step:.1,default:1.2,description:'Extra space around the garment, separate from body measurements.'},
-  hemLength:{label:'Hem length',unit:'%',min:80,max:120,step:1,default:100,description:'Shortens or lengthens the selected style at its hem.'},
+  easeCm:{label:'Extra surface clearance',unit:'cm',min:0,max:6,step:.1,default:1.2,description:'Moves the fabric away from the body. This is a surface gap, not added circumference.'},
+  hemLength:{label:'Bottom hem length',unit:'%',min:80,max:120,step:1,default:100,description:'Shortens or lengthens the lower garment. The top keeps its original hem.'},
   waistRiseCm:{label:'Waist rise',unit:'cm',min:-3,max:3,step:.1,default:0,description:'Moves the waistband up or down.'},
   textureStrength:{label:'Fabric detail',unit:'%',min:0,max:100,step:1,default:65,description:'Strength of the garment’s surface texture and stitching.'},
 });
@@ -32,7 +32,7 @@ export function wardrobeDefaults(preset) {
   const config=CLOTHING_OPTIONS[preset];
   if(!config) return null;
   return {variant:config.defaultVariant,fit:'regular',topColor:config.colors.top,bottomColor:config.colors.bottom,trimColor:config.colors.trim,
-    fabric:preset==='GYM'||preset==='SWIMWEAR'?'performance':preset==='FORMAL'?'wool':'cotton',pattern:'solid',
+    fabric:preset==='GYM'||preset==='SWIMWEAR'?'performance':'cotton',pattern:'solid',
     ...Object.fromEntries(Object.entries(CLOTHING_ADJUSTMENTS).map(([key,spec])=>[key,spec.default]))};
 }
 const color=(input,fallback)=>/^#[\da-f]{6}$/i.test(input || '')?input:fallback;

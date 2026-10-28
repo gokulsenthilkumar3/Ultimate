@@ -1,5 +1,10 @@
 # GrowthTrack Workspace
 
+Current redesign proposal: [desktop admin portal plan](docs/plans/2026-10-28-admin-redesign.md).
+Run `npm run dev:design` for the isolated review demo. The runtime described below
+is the existing integration, before native module migration. FinSync and OxFin
+remain separate customer products; their customer-admin UI will live in Ultimate.
+
 A monorepo of personal-growth and finance products, with **Ultimate** as the local control center.
 
 The current default launcher provides **one UI port (5000), one API gateway
@@ -23,7 +28,7 @@ npm run dev:core
 npm run dev:all  # or: node scripts/workspace.mjs gateway ultimate finsync
 
 # Per-product dev commands
-npm run dev:gateway   # API gateway on :3000
+npm run dev:gateway   # API gateway on :5300
 npm run dev:ultimate  # Ultimate UI :5000  /  API :3001
 npm run dev:finsync   # FinSync web  :5101
 npm run dev:oxfin     # OxFin web    :5102
@@ -38,7 +43,7 @@ npm run dev:forex     # Forex (Streamlit) :8501  — requires Python venv
 
 | Service | UI port | API / notes |
 | --- | --- | --- |
-| **Gateway** | — | :3000 (all `/api/*` routes) |
+| **Gateway** | — | :5300 (all `/api/*` routes) |
 | **Ultimate** | :5000 (`/Ultimate/`) | :3001 (internal API) |
 | **FinSync** | :5101 | Next.js API routes on same port |
 | **OxFin** | :5102 | Next.js API routes on same port |

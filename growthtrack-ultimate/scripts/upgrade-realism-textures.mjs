@@ -1,0 +1,35 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {readGlb} from './plan-preview/glb.mjs';
+import {decompressGlb,compressGlb} from './human-realism/glb-family.mjs';
+import {appender} from './human75/glb-tools.mjs';
+import {glbFromBytes} from './gltf-format.mjs';
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+const source='.tmp/makehuman-cc0-assets/skins/young_caucasian_male/young_lightskinned_male_diffuse.png';
+if(!fs.existsSync(source))throw new Error('The verified CC0 MakeHuman skin source must be fetched first.');
+const manifestFile='src/config/humanAssetManifest.json',manifest=JSON.parse(fs.readFileSync(manifestFile));
+const provenanceFile='public/assets/models/ASSET-PROVENANCE.json',provenance=JSON.parse(fs.readFileSync(provenanceFile));
+const output='.tmp/realism-review/skin-detail';fs.mkdirSync(output,{recursive:true});
+const prepared=[];
+for(const [lod,maximum] of [['core',1024],['hero',2048]]) {
+ const record=manifest.assets[lod],file='public/assets/models/'+record.file,original=fs.readFileSync(file),pinned=sha(original);
+ if(pinned!==record.sha256)throw new Error('Model hash mismatch: '+file);
+ fs.writeFileSync(path.join(output,record.file+'.'+pinned.slice(0,12)+'.backup'),original);
+ const jpeg=path.join(output,lod+'-skin.jpg');
+ const encoded=spawnSync('python',['scripts/realism-review/encode-skin.py',source,jpeg,String(maximum)],{encoding:'utf8',windowsHide:true});
+ if(encoded.status!==0)throw new Error(encoded.stderr);
+ const glb=await decompressGlb(readGlb(file)),body=glb.json.meshes.find(mesh=>mesh.name==='GrowthTrackBody'),material=glb.json.materials[body.primitives[0].material];
+ const imageIndex=glb.json.textures[material.pbrMetallicRoughness.baseColorTexture.index].source,writer=appender(glb);
+ writer.json.images[imageIndex]={...writer.json.images[imageIndex],bufferView:writer.view(fs.readFileSync(jpeg)),mimeType:'image/jpeg'};
+ const result=await compressGlb(glbFromBytes(writer.pack()));
+ if(result.bytes.length>(lod==='core'?3000000:5000000))throw new Error('Skin upgrade exceeds model budget: '+lod);
+ prepared.push({file,bytes:result.bytes});record.sha256=sha(result.bytes);record.bytes=result.bytes.length;
+ const entry=provenance.assets.find(item=>item.path===file);
+ entry.sha256=record.sha256;entry.builtBy=(entry.builtBy || '')+'; node scripts/upgrade-realism-textures.mjs';
+ entry.skinDetail={source:'MakeHuman CC0 young_lightskinned_male_diffuse.png',sourceSha256:sha(fs.readFileSync(source)),maximumPixels:maximum,encoding:'JPEG 90, 4:4:4',geometryUnchanged:true};
+ console.log(JSON.stringify({lod,bytes:record.bytes,maximumPixels:maximum,sha256:record.sha256}));
+}
+for(const item of prepared)fs.writeFileSync(item.file,item.bytes);
+fs.writeFileSync(manifestFile,JSON.stringify(manifest,null,2)+'\n');fs.writeFileSync(provenanceFile,JSON.stringify(provenance,null,2)+'\n');

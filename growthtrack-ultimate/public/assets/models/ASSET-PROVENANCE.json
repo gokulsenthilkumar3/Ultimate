@@ -871,10 +871,10 @@
     },
     {
       "path": "public/assets/models/humanoid-human-r2-core.glb",
-      "sha256": "fe2d25ab242ee10dbb7071af4cb659e2f55f8d8a4452547de01146b7dce4bc0a",
+      "sha256": "c907a3778396b6f478cf218341b5a610e496ff793d7084e5dce889a472476f70",
       "sourceAsset": "public/assets/models/humanoid-preview-75-lite.glb",
       "sourceSha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab",
-      "builtBy": "node scripts/build-human-realism.mjs",
+      "builtBy": "node scripts/build-human-realism.mjs; node scripts/upgrade-realism-textures.mjs",
       "components": [
         {
           "name": "Body mesh, skeleton binding and morph targets (GrowthTrackBody)",
@@ -946,7 +946,14 @@
           "modified": true,
           "note": "Candidate; independent visual and physical-device acceptance remain pending."
         }
-      ]
+      ],
+      "skinDetail": {
+        "source": "MakeHuman CC0 young_lightskinned_male_diffuse.png",
+        "sourceSha256": "862a26e335e958b70534cb5f0d7c47ef30ab148a56c42b3e9da969cf76f12963",
+        "maximumPixels": 1024,
+        "encoding": "JPEG 90, 4:4:4",
+        "geometryUnchanged": true
+      }
     },
     {
       "path": "public/assets/models/humanoid-human-r2-private-core.glb",
@@ -1029,10 +1036,10 @@
     },
     {
       "path": "public/assets/models/humanoid-human-r2-hero.glb",
-      "sha256": "b22c5c6f49acc35446129c7e2a487b21ce1b852a7c490d0fb7a5c5f2044a7faf",
+      "sha256": "5d0e8d250821aff9d1335e001e749b7abb3132754f4474e1bf74cfa509ec1002",
       "sourceAsset": "public/assets/models/humanoid-preview-75.glb",
       "sourceSha256": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
-      "builtBy": "node scripts/build-human-realism.mjs",
+      "builtBy": "node scripts/build-human-realism.mjs; node scripts/upgrade-realism-textures.mjs",
       "components": [
         {
           "name": "Body mesh, skeleton binding and morph targets (GrowthTrackBody)",
@@ -1104,7 +1111,14 @@
           "modified": true,
           "note": "Candidate; independent visual and physical-device acceptance remain pending."
         }
-      ]
+      ],
+      "skinDetail": {
+        "source": "MakeHuman CC0 young_lightskinned_male_diffuse.png",
+        "sourceSha256": "862a26e335e958b70534cb5f0d7c47ef30ab148a56c42b3e9da969cf76f12963",
+        "maximumPixels": 2048,
+        "encoding": "JPEG 90, 4:4:4",
+        "geometryUnchanged": true
+      }
     },
     {
       "path": "public/assets/models/humanoid-human-r2-private-hero.glb",

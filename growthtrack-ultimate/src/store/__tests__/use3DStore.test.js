@@ -51,3 +51,21 @@ describe('progressive metric precision', () => {
     );
   });
 });
+
+
+describe('deterministic pose samples', () => {
+  it('keeps an explicit motion sample and clears it for normal playback', () => {
+    const store = use3DStore.getState();
+    store.setAnimation('walking', { playing: false, sampleTime: .45 });
+    expect(use3DStore.getState().animationState.sampleTime).toBe(.45);
+    store.setAnimation('walking', { playing: true });
+    expect(use3DStore.getState().animationState.sampleTime).toBeNull();
+    store.setAnimation('standing', { playing: false, sampleTime: -3 });
+    expect(use3DStore.getState().animationState.sampleTime).toBe(0);
+    store.setAnimation('walking', { playing: false, sampleTime: .25 });
+    store.toggleAnimation();
+    expect(use3DStore.getState().animationState.sampleTime).toBeNull();
+    expect(use3DStore.getState().animationState.playing).toBe(true);
+    store.setAnimation('standing', { playing: false });
+  });
+});

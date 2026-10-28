@@ -29,26 +29,26 @@ beforeEach(() => {
 afterEach(() => { cleanup(); viewportListeners.clear(); model.listeners.clear(); vi.unstubAllGlobals(); });
 
 describe('responsive canonical navigation', () => {
-  it('uses six canonical area links, Finance first, and preserves saved area/module order', async () => {
+  it('uses seven canonical areas and preserves saved area/module order', async () => {
     model.state.navigationOrder = ['life', 'money'];
     model.state.navigationTabOrder = { money: [...GROUPS.money.tabs].reverse() };
     const navigate = vi.fn();
     mount({ setActiveTab: navigate });
-    const areas = within(screen.getByRole('navigation', { name: 'Product areas' })).getAllByRole('link');
-    expect(areas).toHaveLength(6);
+    const areas = within(screen.getByRole('navigation', { name: 'Product areas' })).getAllByRole('link').filter(link => link.hasAttribute('aria-label'));
+    expect(areas).toHaveLength(7);
     expect(areas[0]).toHaveAccessibleName('Life');
     expect(areas[1]).toHaveAccessibleName('Finance');
     const modules = within(screen.getByRole('navigation', { name: 'Finance modules' })).getAllByRole('link');
     expect(modules).toHaveLength(GROUPS.money.tabs.length);
     expect(modules[0]).toHaveAttribute('href', tabMeta(GROUPS.money.tabs.at(-1)).canonicalPath);
     await userEvent.click(areas.find(link => link.textContent === 'Insights'));
-    expect(screen.getByTestId('location')).toHaveTextContent(tabMeta('overview').canonicalPath);
+    expect(screen.getByTestId('location')).toHaveTextContent(tabMeta('analytics').canonicalPath);
     expect(navigate).not.toHaveBeenCalled();
     expect(model.setCollapsed).not.toHaveBeenCalled();
   });
   it('keeps the desktop reopen control reachable and removes collapsed links from tab order', async () => {
     mount();
-    await userEvent.click(screen.getByRole('button', { name: 'Close modules', exact: true }));
+    await userEvent.click(screen.getByRole('button', { name: 'Close module navigation', exact: true }));
     expect(screen.queryByRole('navigation', { name: 'Finance modules' })).toBeNull();
     const reopen = screen.getByRole('button', { name: 'Open module navigation' });
     expect(reopen).toHaveFocus();
@@ -62,9 +62,8 @@ describe('responsive canonical navigation', () => {
     mount();
     const trigger = screen.getByRole('button', { name: 'Open module navigation' });
     await userEvent.click(trigger);
-    const dialog = screen.getByRole('dialog', { name: 'Finance' });
-    const buttons = within(dialog).getAllByRole('button');
-    expect(buttons[0]).toHaveFocus();
+    const dialog = screen.getByRole('dialog', { name: 'Workspace navigation' });
+    expect(within(dialog).getByRole('link', { name: 'GrowthTrack Home' })).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
     expect(within(dialog).getAllByRole('link').at(-1)).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -75,23 +74,23 @@ describe('responsive canonical navigation', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(model.setCollapsed).not.toHaveBeenCalled();
   });
-  it('renders four destinations plus an explicit More at 639, and one rail at 640/1023/1024', async () => {
+  it('uses a mobile dock at 639, a drawer at 640/959 and a desktop rail at 960', async () => {
     width = 639; vi.stubGlobal('innerWidth', width);
     mount();
     const dock = within(screen.getByRole('navigation', { name: 'Quick navigation' }));
-    expect(dock.getAllByRole('link').map(link => link.getAttribute('aria-label'))).toEqual(['Finance', 'Insights', 'Wellness', 'Workspace']);
+    expect(dock.getAllByRole('link').map(link => link.getAttribute('aria-label'))).toEqual(['Customers', 'Finance', 'Growth', 'Work']);
     expect(dock.getAllByRole('button')).toHaveLength(1);
     expect(screen.queryByRole('navigation', { name: 'Product areas' })).toBeNull();
     await userEvent.click(dock.getByRole('button', { name: 'More' }));
     expect(screen.getByRole('searchbox', { name: 'Find a module' })).toHaveFocus();
-    expect(within(screen.getByRole('dialog')).getAllByRole('heading', { level: 3 })).toHaveLength(6);
+    expect(within(screen.getByRole('dialog')).getAllByRole('heading', { level: 3 })).toHaveLength(7);
     resize(640);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('navigation', { name: 'Quick navigation' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Open module navigation' })).toBeVisible();
-    resize(1023);
+    resize(959);
     expect(screen.queryByRole('navigation', { name: 'Finance modules' })).toBeNull();
-    resize(1024);
+    resize(960);
     expect(screen.getByRole('navigation', { name: 'Finance modules' })).toBeVisible();
   });
   it('searches all six areas, follows module links, and respects custom quick order', async () => {
@@ -122,7 +121,7 @@ describe('responsive canonical navigation', () => {
     vi.stubGlobal('matchMedia', undefined);
     vi.stubGlobal('innerWidth', 800);
     mount();
-    expect(screen.getByRole('navigation', { name: 'Product areas' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open module navigation' })).toBeVisible();
     expect(screen.queryByRole('navigation', { name: 'Finance modules' })).toBeNull();
     vi.stubGlobal('innerWidth', 390);
     fireEvent(window, new Event('resize'));
@@ -130,7 +129,7 @@ describe('responsive canonical navigation', () => {
     expect(screen.queryByRole('navigation', { name: 'Product areas' })).toBeNull();
   });
   it.each([
-    { trigger: 'Close modules', collapsed: false, next: true },
+    { trigger: 'Close module navigation', collapsed: false, next: true },
     { trigger: 'Open module navigation', collapsed: true, next: false },
   ])('handles rejected collapse promises and retries the failed intent ($trigger)', async ({ trigger, collapsed, next }) => {
     model.state.sidebarCollapsed = collapsed;
@@ -155,5 +154,15 @@ describe('responsive canonical navigation', () => {
     await act(async () => { resolve(); });
     expect(toggle).not.toHaveAttribute('aria-busy');
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+  it('does not steal focus after a delayed preference save when the user moves on', async () => {
+    let complete;
+    model.setCollapsed.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Close module navigation' }));
+    const help = screen.getByRole('link', { name: 'Help', exact: true });
+    await userEvent.click(help);
+    await act(async () => complete());
+    expect(help).toHaveFocus();
   });
 });

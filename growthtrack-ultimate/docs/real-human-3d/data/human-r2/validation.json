@@ -4,8 +4,8 @@
   "assets": [
     {
       "file": "public/assets/models/humanoid-human-r2-core.glb",
-      "sha256": "fe2d25ab242ee10dbb7071af4cb659e2f55f8d8a4452547de01146b7dce4bc0a",
-      "bytes": 1946332,
+      "sha256": "c907a3778396b6f478cf218341b5a610e496ff793d7084e5dce889a472476f70",
+      "bytes": 2066456,
       "budget": 3000000,
       "budgetPassed": true,
       "decodedErrors": 0,
@@ -30,8 +30,8 @@
     },
     {
       "file": "public/assets/models/humanoid-human-r2-hero.glb",
-      "sha256": "b22c5c6f49acc35446129c7e2a487b21ce1b852a7c490d0fb7a5c5f2044a7faf",
-      "bytes": 4318948,
+      "sha256": "5d0e8d250821aff9d1335e001e749b7abb3132754f4474e1bf74cfa509ec1002",
+      "bytes": 4776532,
       "budget": 5000000,
       "budgetPassed": true,
       "decodedErrors": 0,

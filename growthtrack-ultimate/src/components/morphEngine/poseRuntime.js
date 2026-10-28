@@ -37,7 +37,7 @@ function aim(bone,child,point,frame) {
   bone.updateWorldMatrix(false,true);
 }
 
-export function applyReachTargets(bones,targets={}) {
+export function applyReachTargets(bones,targets={},poles={}) {
   const limbs={};
   for(const definition of POSE_STUDIO.limbs) {
     const [upper,middle,end]=definition.chain.map(key=>bones[key]?.bone || bones[key]);
@@ -49,7 +49,7 @@ export function applyReachTargets(bones,targets={}) {
     const target=targets[definition.id];let result=null;
     if(target) {
       const goal=root.clone().add(new Vector3(...target).multiplyScalar(reach));
-      result=solveTwoBone({root:root.toArray(),l1,l2,target:goal.toArray(),pole:root.clone().add(new Vector3(...definition.pole)).toArray(),maxFlexRad:definition.maxFlexRad});
+      result=solveTwoBone({root:root.toArray(),l1,l2,target:goal.toArray(),pole:root.clone().add(new Vector3(...(poles[definition.id] || definition.pole))).toArray(),maxFlexRad:definition.maxFlexRad});
       aim(upper,middle,result.mid,frame);aim(middle,end,result.end,frame);
     }
     const actual=positionIn(end,frame),requested=target?root.clone().add(new Vector3(...target).multiplyScalar(reach)):actual;

@@ -9,7 +9,11 @@ dotenv.config();
 
 const app = express();
 const port = process.env.IDENTITY_PORT || 3001;
-const JWT_SECRET = process.env.AUTH_JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = (() => {
+  const secret = process.env.AUTH_JWT_SECRET;
+  if (!secret?.trim()) throw new Error('AUTH_JWT_SECRET must be configured.');
+  return secret;
+})();
 const JWT_EXPIRES_IN_SECONDS = 3600;
 
 app.use(helmet()); app.use(cors()); app.use(express.json()); app.use(morgan('dev'));

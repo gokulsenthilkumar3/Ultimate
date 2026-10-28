@@ -402,8 +402,8 @@ const use3DStore = create(
        * manualBone: optional { boneName, rx, ry, rz } for interactive drag
        */
       animationState: {
-        animationId: 'idle',
-        playing: true,
+        animationId: 'standing',
+        playing: false,
         speed: 1.0,
         manualBones: {},
       },
@@ -867,7 +867,7 @@ const use3DStore = create(
       /**
        * Set the active animation preset by id.
        * @param {string} animationId - e.g. 'walking', 'running', 'sitting', 'idle'
-       * @param {{ playing?: boolean, speed?: number }} opts
+       * @param {{ playing?: boolean, speed?: number, sampleTime?: number }} opts
        */
       setAnimation: (animationId, opts = {}) => {
         set((state) => ({
@@ -875,6 +875,7 @@ const use3DStore = create(
             ...state.animationState,
             animationId: animationId || 'idle',
             userInitiated:true,
+            sampleTime: Number.isFinite(opts.sampleTime) ? Math.max(0, opts.sampleTime) : null,
             playing: opts.playing !== undefined ? Boolean(opts.playing) : true,
             speed: opts.speed !== undefined ? Math.max(0.1, Math.min(4, Number(opts.speed) || 1)) : state.animationState.speed,
           },
@@ -887,6 +888,7 @@ const use3DStore = create(
           animationState: {
             ...state.animationState,
             playing: !state.animationState.playing,
+            sampleTime: null,
             userInitiated:true,
           },
         }), false, 'toggleAnimation');

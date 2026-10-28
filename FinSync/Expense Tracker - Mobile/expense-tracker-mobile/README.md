@@ -1,115 +1,50 @@
-# 📱 Expense Tracker — Offline Mobile App
+# Expense Tracker Mobile reference
 
-> A single-user, fully offline mobile expense tracker with recurring payments, loan/chit-fund tracking, variable bills, budgeting, local payment reminders, and multi-format report exports.
+An earlier Expo expense-tracking application, retained separately from the canonical FinSync mobile package.
 
----
+**Runtime:** Expo and React Native.
 
-## ✨ Features
+**Status:** Reference application. Desktop portal work does not imply its features are merged or mobile-tested.
 
-- 🔐 Device-only login (PIN / password / biometric) — no cloud, no sync
-- 📋 One-time, recurring fixed, and recurring variable expense entries
-- 🏦 Loan & chit-fund installment tracking with tenure, paid/remaining count, due dates
-- 💡 Variable bill support (Wi-Fi, EB, mobile) with expected amount range
-- 🔔 Local payment reminders (1 day / 3 days / on due date / overdue)
-- 💰 Monthly & category-wise budgeting with threshold alerts (80%, 100%)
-- 📊 Dashboard with totals, category splits, pending dues, and overdue items
-- 📤 Export reports in **PDF**, **CSV**, and **Excel (XLSX)**
-- 🗓️ Custom date-range report filtering
-- 🗂️ Fully customizable categories, subcategories, tags, and payment modes
-- 💾 Manual backup & restore via local file
-- 🌐 Works 100% offline — no internet required
+## Setup
 
----
+Run these commands from this application directory. Configure required values locally before starting the live application.
 
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | React Native (Expo) |
-| Local DB | SQLite via `expo-sqlite` |
-| Notifications | `expo-notifications` (local only) |
-| PDF Export | `expo-print` + `expo-sharing` |
-| Excel Export | `xlsx` (SheetJS) |
-| CSV Export | Native string builder |
-| Navigation | React Navigation v6 |
-| State | Zustand |
-| Charts | Victory Native / Gifted Charts |
-| Styling | NativeWind (Tailwind for RN) |
-
----
-
-## 📁 Project Structure
-
-```
-expense-tracker-mobile/
-├── docs/
-│   ├── PRD.md                   # Full Product Requirements Document
-│   └── DB_SCHEMA.md             # Database entity & schema definitions
-├── src/
-│   ├── app/                     # Expo Router screens
-│   │   ├── (auth)/              # Login / PIN setup
-│   │   ├── (tabs)/              # Dashboard, Expenses, Recurring, Budget, Reports
-│   │   └── modals/              # Add/Edit modals
-│   ├── components/              # Shared UI components
-│   ├── db/                      # SQLite schema, migrations, queries
-│   ├── store/                   # Zustand state slices
-│   ├── services/
-│   │   ├── notifications.ts     # Local reminder scheduling
-│   │   ├── export/
-│   │   │   ├── pdf.ts           # PDF report generation
-│   │   │   ├── excel.ts         # XLSX report generation
-│   │   │   └── csv.ts           # CSV report generation
-│   │   └── backup.ts            # Backup & restore helpers
-│   ├── hooks/                   # Custom React hooks
-│   ├── utils/                   # Date, currency, formatting helpers
-│   └── constants/               # App-wide constants & enums
-├── assets/                      # Icons and splash
-├── docs/
-├── app.json
-├── package.json
-└── tsconfig.json
-```
-
----
-
-## 🚀 Getting Started
-
-```bash
-# 1. Clone the repo
-git clone https://github.com/gokulsenthilkumar3/expense-tracker-mobile.git
-cd expense-tracker-mobile
-
-# 2. Install dependencies
+```powershell
 npm install
-
-# 3. Start Expo dev server
-npx expo start
 ```
 
-> Requires Node 18+ and Expo CLI installed globally (`npm i -g expo-cli`)
+## Run
 
----
+```powershell
+npm start
+```
 
-## 📄 Documentation
+## Configuration
 
-- [Product Requirements Document](./docs/PRD.md)
-- [Database Schema](./docs/DB_SCHEMA.md)
+- Configure only integrations used by this application's source; public app configuration cannot hold secrets.
 
----
+Keep credentials in ignored local environment files or a deployment secret manager. Tracked examples contain empty secret fields. Do not paste passwords, keys, personal records or production connection strings into this README. `NEXT_PUBLIC_`, `VITE_` and `EXPO_PUBLIC_` values are visible to clients.
 
-## 🗺️ Roadmap
+## Verification
 
-- [ ] Phase 1 — Auth + DB setup + base navigation
-- [ ] Phase 2 — Expense entry (one-time & recurring)
-- [ ] Phase 3 — Loan / chit-fund installment tracker
-- [ ] Phase 4 — Budgeting module + alerts
-- [ ] Phase 5 — Local notifications & reminders
-- [ ] Phase 6 — Reports & multi-format export
-- [ ] Phase 7 — Backup / restore
-- [ ] Phase 8 — UI polish & QA
+```powershell
+npm run lint
+```
 
----
+## Scope and limitations
 
-## 📜 License
+- Use FinSync/apps/mobile for canonical FinSync mobile development. Keep customer administration in Ultimate.
 
-MIT — built and maintained by [Gokul S](https://github.com/gokulsenthilkumar3)
+## Workspace documentation
+
+- [Application directory](../../../docs/APPLICATIONS.md)
+- [Ownership and independent builds](../../../docs/BUILD_BOUNDARIES.md)
+- [Desktop redesign and architecture](../../../docs/plans/2026-10-28-admin-redesign.md)
+- [Complete architecture and UI review handoff](../../../docs/UI_ARCHITECTURE_HANDOFF.md)
+- [Implemented UI proposal and remaining review gates](../../../docs/plans/2026-10-28-proposal-implementation.md)
+- [Approved production UI integration](../../../docs/plans/2026-10-28-production-ui.md)
+- [UI impact and scale checks](../../../docs/plans/2026-10-28-ui-system-impact.md)
+- [Code retrieval and embedding plan](../../../docs/plans/2026-10-28-code-retrieval.md)
+
+<!-- Generated from docs/applications.json by scripts/application-docs.mjs. Edit the catalog, then regenerate. -->

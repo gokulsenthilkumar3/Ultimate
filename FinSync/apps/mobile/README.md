@@ -1,50 +1,50 @@
-# Welcome to your Expo app 👋
+# FinSync Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The Expo mobile application source for the FinSync customer product.
 
-## Get started
+**Runtime:** Expo Router and React Native.
 
-1. Install dependencies
+**Status:** Mobile source retained. Desktop portal redesign is the current priority; this is not a completed mobile feature audit.
 
-   ```bash
-   npm install
-   ```
+## Setup
 
-2. Start the app
+Run these commands from this application directory. Configure required values locally before starting the live application.
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```powershell
+npm install --prefix ../..
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Run
 
-## Learn more
+```powershell
+npm start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Configuration
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Configure only integrations actually used by the mobile source. Expo-public variables are not secrets.
 
-## Join the community
+Keep credentials in ignored local environment files or a deployment secret manager. Tracked examples contain empty secret fields. Do not paste passwords, keys, personal records or production connection strings into this README. `NEXT_PUBLIC_`, `VITE_` and `EXPO_PUBLIC_` values are visible to clients.
 
-Join our community of developers creating universal apps.
+## Verification
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```powershell
+npm run lint
+```
+
+## Scope and limitations
+
+- An emulator or supported development device is needed for native previews. Customer administration belongs in Ultimate.
+
+## Workspace documentation
+
+- [Application directory](../../../docs/APPLICATIONS.md)
+- [Ownership and independent builds](../../../docs/BUILD_BOUNDARIES.md)
+- [Desktop redesign and architecture](../../../docs/plans/2026-10-28-admin-redesign.md)
+- [Complete architecture and UI review handoff](../../../docs/UI_ARCHITECTURE_HANDOFF.md)
+- [Implemented UI proposal and remaining review gates](../../../docs/plans/2026-10-28-proposal-implementation.md)
+- [Approved production UI integration](../../../docs/plans/2026-10-28-production-ui.md)
+- [UI impact and scale checks](../../../docs/plans/2026-10-28-ui-system-impact.md)
+- [Code retrieval and embedding plan](../../../docs/plans/2026-10-28-code-retrieval.md)
+
+<!-- Generated from docs/applications.json by scripts/application-docs.mjs. Edit the catalog, then regenerate. -->

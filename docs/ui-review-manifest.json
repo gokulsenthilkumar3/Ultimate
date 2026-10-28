@@ -1,0 +1,3313 @@
+{
+  "schemaVersion": 1,
+  "preparedOn": "2026-10-28",
+  "purpose": "Portable planning/source manifest for independent UI review. Initial statuses are untested planning values, not imported user approvals or browser observations.",
+  "counts": {
+    "pages": 65,
+    "pageViewDestinations": 201,
+    "lazyRouteFamilies": 13,
+    "screenComponents": 24,
+    "sourceStylesheetsInventoried": 54,
+    "ownershipBatches": 7,
+    "applicationPackages": 23,
+    "workPackages": 30,
+    "reviewStates": 6,
+    "baseReviewVariants": 4824,
+    "plannedViewportVariants": 24120
+  },
+  "sourceOfTruth": [
+    "AGENTS.md",
+    "growthtrack-ultimate/src/config/featureRegistry.ts",
+    "growthtrack-ultimate/src/admin-demo/catalog.js",
+    "growthtrack-ultimate/src/admin-demo/screenRegistry.js",
+    "docs/applications.json",
+    "docs/plans/ui-impact-analysis.json"
+  ],
+  "detailedImportGraph": "docs/plans/ui-impact-analysis.json",
+  "productionUiIntegration": {
+    "status": "Approved demo direction applied to production shell and shared primitives; no deployment",
+    "source": "docs/plans/2026-10-28-production-ui.md",
+    "featureRoutes": 61,
+    "authentication": "Existing Ultimate owner session and domain stores retained",
+    "customerAdmin": "Dedicated product-scoped UI; authenticated readiness endpoint returns setup until real restricted adapters exist",
+    "nativeCompanions": "Equity/Family/Forex retain existing integration until parity; no fixture substitution",
+    "sharedSources": [
+      "growthtrack-ultimate/src/design/tokens.ts",
+      "growthtrack-ultimate/src/styles/app-styles.css",
+      "growthtrack-ultimate/src/styles/editorial-shell.css",
+      "growthtrack-ultimate/src/styles/responsive-foundation.css",
+      "growthtrack-ultimate/src/components/PremiumSidebar.jsx",
+      "growthtrack-ultimate/src/components/Header.jsx",
+      "growthtrack-ultimate/src/components/ui/DataTable.tsx",
+      "growthtrack-ultimate/src/domains/customer-admin/CustomerAdminPage.jsx",
+      "growthtrack-ultimate/src/domains/customer-admin/customerAdminClient.js",
+      "growthtrack-ultimate/server/domains/customerAdmin.js"
+    ],
+    "browserVerification": "pending"
+  },
+  "sharedReviewSources": [
+    "growthtrack-ultimate/src/admin-demo/AdminDemo.jsx",
+    "growthtrack-ultimate/src/admin-demo/components.jsx",
+    "growthtrack-ultimate/src/admin-demo/screens.jsx",
+    "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+    "growthtrack-ultimate/src/admin-demo/PreviewState.jsx",
+    "growthtrack-ultimate/src/admin-demo/models/screenScope.js",
+    "growthtrack-ultimate/src/admin-demo/models/reviewModel.js",
+    "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+    "growthtrack-ultimate/src/admin-demo/dialogs/ReviewCatalog.jsx"
+  ],
+  "styleGroups": {
+    "shared": [
+      "growthtrack-ultimate/src/admin-demo/styles/tokens.css",
+      "growthtrack-ultimate/src/admin-demo/portal.css",
+      "growthtrack-ultimate/src/admin-demo/styles/proposal.css",
+      "growthtrack-ultimate/src/admin-demo/styles/workspaces.css"
+    ],
+    "physique": [
+      "growthtrack-ultimate/src/admin-demo/styles/physique.css"
+    ]
+  },
+  "preview": {
+    "command": "npm run dev:design",
+    "baseUrl": "http://127.0.0.1:5410/admin-demo.html",
+    "data": "fictional",
+    "credentialCollection": false,
+    "productApisConnected": false,
+    "physiqueRenderer": "schematic SVG; production 3D not connected"
+  },
+  "reviewDimensions": {
+    "version": "growthtrack-admin-design-2026-10-28-v5",
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "densities": [
+      "comfortable",
+      "compact"
+    ],
+    "states": [
+      "populated",
+      "empty",
+      "loading",
+      "error",
+      "denied",
+      "unavailable"
+    ],
+    "viewports": [
+      {
+        "width": 1024,
+        "height": 768
+      },
+      {
+        "width": 1280,
+        "height": 800
+      },
+      {
+        "width": 1440,
+        "height": 900
+      },
+      {
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "width": 390,
+        "height": 844
+      }
+    ],
+    "additionalCases": [
+      "200% zoom",
+      "Long text and numeric values",
+      "Keyboard and focus",
+      "Reduced motion and forced colours",
+      "Storage denied/corrupt/full",
+      "Back/Forward and direct routes",
+      "Rapid edits and navigation persistence",
+      "Provider/permission/conflict states during production integration"
+    ]
+  },
+  "productRules": [
+    "Ultimate is the desktop portal; Equity, Family and Forex move toward native portal modules.",
+    "FinSync and OxFin remain separate customer products; only their customer-admin presentation belongs in Ultimate.",
+    "Customer-product sessions are not admin credentials; real access needs product/tenant permissions and audit.",
+    "Domain data and release ownership remain separate; frontend layout does not grant backend access.",
+    "Production UI promotion requires the user review for affected scopes.",
+    "Optional agents/embeddings are not product runtime requirements; keep source retrieval local and ignored."
+  ],
+  "ownerBatches": [
+    {
+      "id": "B01",
+      "ownerArea": "Customer administration",
+      "pages": [
+        "finsync",
+        "oxfin",
+        "customers"
+      ],
+      "destinations": 9,
+      "productionGate": "Authenticated product-specific adapters, roles, audit and rendered verification; design direction is approved"
+    },
+    {
+      "id": "B02",
+      "ownerArea": "Personal finance and markets",
+      "pages": [
+        "finance",
+        "transactions",
+        "financeAnalytics",
+        "financeTrends",
+        "budgeting",
+        "subscriptions",
+        "portfolio",
+        "sip",
+        "shopping",
+        "financeSync",
+        "equity"
+      ],
+      "destinations": 30,
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "id": "B03",
+      "ownerArea": "Growth and Physique",
+      "pages": [
+        "wellness",
+        "sleep",
+        "lifestyle",
+        "mind",
+        "medical",
+        "health",
+        "habits",
+        "physique",
+        "assessment",
+        "training",
+        "strength",
+        "nutrition",
+        "hydration",
+        "healthSync"
+      ],
+      "destinations": 51,
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "id": "B04",
+      "ownerArea": "Workspace",
+      "pages": [
+        "workspace",
+        "calendar",
+        "documents",
+        "notes",
+        "tasks",
+        "projects",
+        "timesheet",
+        "skills",
+        "goals"
+      ],
+      "destinations": 32,
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "id": "B05",
+      "ownerArea": "Insights",
+      "pages": [
+        "overview",
+        "actions",
+        "current",
+        "analytics",
+        "dashboards",
+        "progress",
+        "forecast",
+        "forex"
+      ],
+      "destinations": 24,
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "id": "B06",
+      "ownerArea": "Family and life",
+      "pages": [
+        "life",
+        "social",
+        "entertainment",
+        "maps",
+        "family"
+      ],
+      "destinations": 15,
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "id": "B07",
+      "ownerArea": "Portal platform",
+      "pages": [
+        "hub",
+        "apps",
+        "companion",
+        "ai",
+        "databases",
+        "profile",
+        "notifications",
+        "help",
+        "logs",
+        "about",
+        "pricing",
+        "welcome",
+        "login",
+        "privacy",
+        "terms"
+      ],
+      "destinations": 40,
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    }
+  ],
+  "pages": [
+    {
+      "id": "finance",
+      "title": "Personal finance",
+      "path": "/finance/overview",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Personal ledger overview, totals and recent transactions.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Shared sample ledger and calculated totals; no financial account API.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "transactions",
+      "title": "Transactions",
+      "path": "/finance/transactions",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "all",
+        "income",
+        "expenses"
+      ],
+      "featureIntent": "Record, search and distinguish income and expenses.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Typed local amounts/dates/categories feed filtered tables and summaries.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "financeAnalytics",
+      "title": "Analytics",
+      "path": "/finance/analytics",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "categories",
+        "income",
+        "comparisons"
+      ],
+      "featureIntent": "Category spending, income analysis and comparisons.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Sample ledger summaries work; specialised comparison layouts need review.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "financeTrends",
+      "title": "Trends",
+      "path": "/finance/trends",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "monthly",
+        "recurring"
+      ],
+      "featureIntent": "Monthly spending context and recurring costs.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Shared ledger and active subscription views; no live trend provider.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "budgeting",
+      "title": "Budgeting",
+      "path": "/finance/budgeting",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "current",
+        "history"
+      ],
+      "featureIntent": "Category limits, current spending and historical budgets.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Current category totals and a distinct historical sample; local category creation.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "subscriptions",
+      "title": "Subscriptions",
+      "path": "/finance/subscriptions",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "active",
+        "upcoming",
+        "archived"
+      ],
+      "featureIntent": "Active, upcoming and archived plans with recurring totals.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Status/date filters and local creation; no billing integration.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "portfolio",
+      "title": "Portfolio",
+      "path": "/finance/portfolio",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "holdings",
+        "allocation",
+        "history"
+      ],
+      "featureIntent": "Holdings, sector allocation and portfolio value history.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Distinct sample holdings/allocation/history views; prices and returns are fictional.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "sip",
+      "title": "SIP Calculator",
+      "path": "/finance/sip",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "inputs",
+        "projection",
+        "comparison"
+      ],
+      "featureIntent": "Illustrative recurring-contribution projection and rate comparison.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Interactive assumptions and distinct tables; not investment advice or guaranteed returns.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "shopping",
+      "title": "Shopping",
+      "path": "/finance/shopping",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "lists",
+        "planned",
+        "purchased"
+      ],
+      "featureIntent": "Planned/purchased items, amounts, categories and totals.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Typed local item creation and status-specific totals; no checkout.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "financeSync",
+      "title": "Sync",
+      "path": "/finance/sync",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "accounts",
+        "csv",
+        "history"
+      ],
+      "featureIntent": "Account connections, CSV import and import history.",
+      "previewLevel": "setup-layout",
+      "currentCoverage": "Setup proposal; no account connection or CSV persistence is implemented by the demo.",
+      "screenFamily": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "finsync",
+      "title": "FinSync customers",
+      "path": "/customers/finsync",
+      "area": "customers",
+      "ownerArea": "Customer administration",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "featureIntent": "Administer FinSync customers, profiles, activity and support.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Product-scoped fictional directory, sample plans and local notes; real admin adapter planned.",
+      "screenFamily": "customers",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "oxfin",
+      "title": "OxFin customers",
+      "path": "/customers/oxfin",
+      "area": "customers",
+      "ownerArea": "Customer administration",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "featureIntent": "Administer OxFin customers, profiles, activity and support.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Product-scoped fictional directory, sample plans and local notes; real admin adapter planned.",
+      "screenFamily": "customers",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "equity",
+      "title": "Equity",
+      "path": "/finance/equity",
+      "area": "finance",
+      "ownerArea": "Personal finance and markets",
+      "views": [
+        "charts",
+        "indices",
+        "options",
+        "chain"
+      ],
+      "featureIntent": "Instruments, market charts, indices and option-chain research.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Selectable sample market context and distinct tables; no live feed or orders.",
+      "screenFamily": "markets",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/MarketsScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "overview",
+      "title": "Workspace overview",
+      "path": "/insights/overview",
+      "area": "insights",
+      "ownerArea": "Insights",
+      "views": [
+        "today",
+        "priorities",
+        "summary"
+      ],
+      "featureIntent": "Workspace summary, priorities, quick entry and navigation.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Navigation and quick-add work; summary/priority tabs need distinct intent review.",
+      "screenFamily": "overview",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/OverviewScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "actions",
+      "title": "Action Center",
+      "path": "/insights/actions",
+      "area": "insights",
+      "ownerArea": "Insights",
+      "views": [
+        "today",
+        "upcoming",
+        "snoozed",
+        "dismissed"
+      ],
+      "featureIntent": "Triage today, upcoming, snoozed and dismissed work.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Distinct segments with local 24-hour snooze, dismiss, restore and shared task completion; session-only.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "current",
+      "title": "Current",
+      "path": "/insights/current",
+      "area": "insights",
+      "ownerArea": "Insights",
+      "views": [
+        "weather",
+        "news",
+        "local"
+      ],
+      "featureIntent": "Weather, news and local context.",
+      "previewLevel": "setup-layout",
+      "currentCoverage": "Provider-specific not-connected states; no fabricated live weather, news or location.",
+      "screenFamily": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "analytics",
+      "title": "Analytics",
+      "path": "/insights/analytics",
+      "area": "insights",
+      "ownerArea": "Insights",
+      "views": [
+        "trends",
+        "correlations",
+        "comparisons"
+      ],
+      "featureIntent": "Cross-workspace trends, correlations and comparisons.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Named input/output contracts replace generic computed-looking charts; no measured analysis.",
+      "screenFamily": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "dashboards",
+      "title": "Dashboards",
+      "path": "/insights/dashboards",
+      "area": "insights",
+      "ownerArea": "Insights",
+      "views": [
+        "saved",
+        "arrange"
+      ],
+      "featureIntent": "Saved dashboards and arrangement workflow.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Local widget ordering is shared between Saved/Arrange views; widget sources remain sample or not connected.",
+      "screenFamily": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "progress",
+      "title": "Progress",
+      "path": "/insights/progress",
+      "area": "insights",
+      "ownerArea": "Insights",
+      "views": [
+        "timeline",
+        "comparisons",
+        "milestones"
+      ],
+      "featureIntent": "Timeline, comparisons and milestones.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Named artifact contracts identify required inputs and intended outputs; no measured personal progress.",
+      "screenFamily": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "forecast",
+      "title": "Forecast",
+      "path": "/insights/forecast",
+      "area": "insights",
+      "ownerArea": "Insights",
+      "views": [
+        "trends",
+        "scenarios"
+      ],
+      "featureIntent": "Trend/scenario research presentation.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Explicit scenario/model contracts; no connected model or personal outcome prediction.",
+      "screenFamily": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "forex",
+      "title": "Forex",
+      "path": "/insights/forex",
+      "area": "insights",
+      "ownerArea": "Insights",
+      "views": [
+        "models",
+        "forecast",
+        "analytics",
+        "volatility"
+      ],
+      "featureIntent": "Model comparison, pair forecasts, analytics and volatility.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Selectable sample pairs/periods and model notes; Python inference/training remains separate.",
+      "screenFamily": "markets",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/MarketsScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "wellness",
+      "title": "GrowthTrack overview",
+      "path": "/wellness/overview",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Growth overview, activity, routines and weekly rhythm.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Sample summary and routine details; not a connected health platform.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "sleep",
+      "title": "Sleep",
+      "path": "/wellness/sleep",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "log",
+        "trends",
+        "history"
+      ],
+      "featureIntent": "Sleep log, trends and history.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Sample records and charts; real logging/provider persistence is outside the demo.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "lifestyle",
+      "title": "Lifestyle",
+      "path": "/wellness/lifestyle",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "routines",
+        "preferences",
+        "history"
+      ],
+      "featureIntent": "Routines, preferences and history.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Shared growth layout; distinct preferences/history workflows need review.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "mind",
+      "title": "Mind & Wellness",
+      "path": "/wellness/mind",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "checkin",
+        "trends",
+        "journal",
+        "breathe"
+      ],
+      "featureIntent": "Check-ins, journal, trends and breathing exercise.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Breathing interaction and sample check-ins; journal/trends are not a complete backend workflow.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "medical",
+      "title": "Medical",
+      "path": "/wellness/medical",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "vitals",
+        "medications",
+        "records",
+        "timeline"
+      ],
+      "featureIntent": "Vitals, medication context, records and timeline.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Fictional record layout; no clinical integration, diagnosis or private documents.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "health",
+      "title": "Health+",
+      "path": "/wellness/health",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "senses",
+        "lifestyle",
+        "specialized",
+        "recovery"
+      ],
+      "featureIntent": "Senses, lifestyle, specialised and recovery context.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Shared growth family; domain-specific screens/data need definition.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "habits",
+      "title": "Habits",
+      "path": "/wellness/habits",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "today",
+        "matrix",
+        "history"
+      ],
+      "featureIntent": "Today matrix and habit history.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Clickable sample matrix; history and navigation persistence require review.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "physique",
+      "title": "Physique",
+      "path": "/wellness/physique",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "blueprint",
+        "measurements",
+        "targets",
+        "history",
+        "3d"
+      ],
+      "featureIntent": "Blueprint, measurements, Goal targets, saved history and model workspace.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Independent Current/Goal drafts, bounded sliders, debounced SVG schematic and explicit local saves; renderer/GLB unavailable.",
+      "screenFamily": "physique",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PhysiqueScreen.jsx",
+      "styleGroups": [
+        "shared",
+        "physique"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "assessment",
+      "title": "Assessment",
+      "path": "/wellness/assessment",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "questionnaire",
+        "results",
+        "history"
+      ],
+      "featureIntent": "Questionnaire, assessment results and history.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Sample history; no complete questionnaire/scoring workflow in this preview.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "training",
+      "title": "Training",
+      "path": "/wellness/training",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "schedule",
+        "logger",
+        "prs",
+        "overload",
+        "volume",
+        "sessions"
+      ],
+      "featureIntent": "Schedule, session logger, personal records, overload and volume.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Sample sessions and trend layouts; specialised logger/record workflows need review.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "strength",
+      "title": "Strength",
+      "path": "/wellness/strength",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "log",
+        "progression",
+        "1rm",
+        "fatigue",
+        "volume"
+      ],
+      "featureIntent": "Strength log, progression, 1RM, fatigue and volume.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Sample records/charts; the 1RM tab is not a complete input/result calculator.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "nutrition",
+      "title": "Nutrition",
+      "path": "/wellness/nutrition",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "daily",
+        "history",
+        "targets",
+        "calculator"
+      ],
+      "featureIntent": "Daily food, history, targets and calculator.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Sample food/target context; specialised calculator and persistent logging remain incomplete.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "hydration",
+      "title": "Hydration",
+      "path": "/wellness/hydration",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "today",
+        "history",
+        "targets"
+      ],
+      "featureIntent": "Water today, history and targets.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Local 250 ml increment interaction; history/target consistency and persistence need review.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "healthSync",
+      "title": "Health Sync",
+      "path": "/wellness/sync",
+      "area": "wellness",
+      "ownerArea": "Growth and Physique",
+      "views": [
+        "devices",
+        "imports",
+        "history"
+      ],
+      "featureIntent": "Device connections, consented imports and import history.",
+      "previewLevel": "setup-layout",
+      "currentCoverage": "Explicit setup state; no live device/import connection.",
+      "screenFamily": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "workspace",
+      "title": "Work overview",
+      "path": "/workspace/overview",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Work overview and access to tasks, projects, calendar and files.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Navigation and shared local task interactions.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "calendar",
+      "title": "Calendar",
+      "path": "/workspace/calendar",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        "month",
+        "week",
+        "agenda",
+        "connections"
+      ],
+      "featureIntent": "Month, week, agenda and calendar connections.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Valid UTC date keys and shared local/family events; provider connection is setup-only.",
+      "screenFamily": "calendar",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/CalendarScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "documents",
+      "title": "My Files",
+      "path": "/workspace/files",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        "vault",
+        "providers",
+        "recent"
+      ],
+      "featureIntent": "Vault, providers and recent files.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Sample metadata/detail views; Providers is explicit setup, with no upload or private file access.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "notes",
+      "title": "Notes",
+      "path": "/workspace/notes",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        "all",
+        "pinned",
+        "tags",
+        "editor"
+      ],
+      "featureIntent": "All, pinned/tagged notes and editor.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Selection and shared-session note drafts; no server-side note storage.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "tasks",
+      "title": "Tasks",
+      "path": "/workspace/tasks",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        "today",
+        "upcoming",
+        "all",
+        "completed",
+        "list",
+        "board"
+      ],
+      "featureIntent": "Today/upcoming/all/completed, list and board workflows.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Local creation/completion and status views; verify every presentation and date filter.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "projects",
+      "title": "Projects",
+      "path": "/workspace/projects",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        "github",
+        "mine",
+        "grid",
+        "list"
+      ],
+      "featureIntent": "Connected GitHub work, personal projects, grid and list.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Local progress cards and creation; GitHub setup is not a connected repository.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "timesheet",
+      "title": "Timesheet",
+      "path": "/workspace/timesheet",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        "timer",
+        "sessions",
+        "analytics"
+      ],
+      "featureIntent": "Focus timer, session history and analytics.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Distinct timer, session table and daily/project analytics from one sample/session history; completion deduplicates even off-page.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "skills",
+      "title": "Skills",
+      "path": "/workspace/skills",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        "tree",
+        "list",
+        "radar",
+        "history"
+      ],
+      "featureIntent": "Skill tree, list, radar and history.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Skill-specific library, groups, sample practice coverage and history; coverage is not a measured competency score.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "goals",
+      "title": "Goals",
+      "path": "/workspace/goals",
+      "area": "workspace",
+      "ownerArea": "Workspace",
+      "views": [
+        "active",
+        "completed",
+        "archived"
+      ],
+      "featureIntent": "Active, completed and archived goals.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Local goal/progress samples and meaningful status filtering.",
+      "screenFamily": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "life",
+      "title": "Life overview",
+      "path": "/life/overview",
+      "area": "life",
+      "ownerArea": "Family and life",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Family and life overview with module navigation.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Navigation into family, places and library proposals.",
+      "screenFamily": "life",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "social",
+      "title": "Social",
+      "path": "/life/social",
+      "area": "life",
+      "ownerArea": "Family and life",
+      "views": [
+        "profiles",
+        "analytics",
+        "connections"
+      ],
+      "featureIntent": "Social profiles, analytics and connections.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Sample collection; no connected social account or measured analytics.",
+      "screenFamily": "life",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "entertainment",
+      "title": "Entertainment",
+      "path": "/life/entertainment",
+      "area": "life",
+      "ownerArea": "Family and life",
+      "views": [
+        "library",
+        "stats",
+        "sync"
+      ],
+      "featureIntent": "Library, statistics and synchronisation.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Sample book/film/music collection; statistics/sync workflows need definition.",
+      "screenFamily": "life",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "maps",
+      "title": "Maps & Places",
+      "path": "/life/places",
+      "area": "life",
+      "ownerArea": "Family and life",
+      "views": [
+        "map",
+        "list",
+        "timeline",
+        "privacy"
+      ],
+      "featureIntent": "Saved places, map/list/timeline and privacy.",
+      "previewLevel": "schematic-layout",
+      "currentCoverage": "Schematic fictional map; no map provider, precise location or distinct real timeline.",
+      "screenFamily": "life",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "family",
+      "title": "Family Connect",
+      "path": "/life/family",
+      "area": "life",
+      "ownerArea": "Family and life",
+      "views": [
+        "tree",
+        "memories",
+        "vault",
+        "timeline"
+      ],
+      "featureIntent": "Tree/members, memories, family vault and timeline/events.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Local unlinked members, shared events and scoped sample files; memories are sample collections and no uploads occur.",
+      "screenFamily": "family",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FamilyScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "hub",
+      "title": "Administration overview",
+      "path": "/hub/overview",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Administration overview and access to portal modules.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Native-module/admin launch cards; not live product orchestration.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "apps",
+      "title": "Workspace modules",
+      "path": "/hub/apps",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "modules",
+        "favorites",
+        "external"
+      ],
+      "featureIntent": "Modules, favourites and external applications.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Module cards; tab-specific favourites/external behaviour needs review.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "companion",
+      "title": "Connected products",
+      "path": "/hub/companion",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "all",
+        "finsync",
+        "oxfin",
+        "equity",
+        "forex",
+        "family"
+      ],
+      "featureIntent": "Connected product discovery and product-specific contexts.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Module/admin launch cards; product-specific views are not equivalent to embedded customer apps.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "ai",
+      "title": "Optional assistants",
+      "path": "/hub/agents",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "chat",
+        "history",
+        "context",
+        "settings"
+      ],
+      "featureIntent": "Optional assistant chat, history, context and configuration.",
+      "previewLevel": "setup-layout",
+      "currentCoverage": "Optional tools/setup proposal; no assistant provider is required or connected.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "databases",
+      "title": "Databases",
+      "path": "/hub/databases",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "custom",
+        "application",
+        "imports"
+      ],
+      "featureIntent": "Custom/application data-source connections and imports.",
+      "previewLevel": "setup-layout",
+      "currentCoverage": "Setup proposal; no private database query or import service in the demo.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "profile",
+      "title": "Profile & Settings",
+      "path": "/hub/settings",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "personal",
+        "physical",
+        "security",
+        "appearance",
+        "integrations"
+      ],
+      "featureIntent": "Personal/physical profile, security, appearance and integrations.",
+      "previewLevel": "partial-layout",
+      "currentCoverage": "Theme and density preferences work locally; security/integration/profile data are conceptual samples.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "notifications",
+      "title": "Notifications",
+      "path": "/hub/notifications",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "unread",
+        "all",
+        "preferences"
+      ],
+      "featureIntent": "Unread/all notifications and preferences.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Session mark-read/unread/all actions, preference controls and an unread-aware header indicator.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "help",
+      "title": "Helpdesk",
+      "path": "/hub/help",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "guides",
+        "troubleshooting",
+        "diagnostics"
+      ],
+      "featureIntent": "Guides, troubleshooting and diagnostics.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Guide/navigation layout; no complete diagnostics or support backend.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "logs",
+      "title": "Logs",
+      "path": "/hub/logs",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "activity",
+        "authentication",
+        "sync"
+      ],
+      "featureIntent": "Activity, authentication and sync audit context.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Distinct read-only sample event schemas; authentication creates no session and sync attempts are not fabricated.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "about",
+      "title": "About",
+      "path": "/hub/about",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "version",
+        "capabilities",
+        "licenses"
+      ],
+      "featureIntent": "Version, capabilities and licences.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Informational/guide family; verify content matches the chosen tab and actual shipped capabilities.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "pricing",
+      "title": "Plans",
+      "path": "/hub/plans",
+      "area": "hub",
+      "ownerArea": "Portal platform",
+      "views": [
+        "capabilities",
+        "billing"
+      ],
+      "featureIntent": "Capabilities and billing concepts.",
+      "previewLevel": "layout-proposal",
+      "currentCoverage": "Concept plans only; no settled pricing, billing or checkout is connected.",
+      "screenFamily": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "customers",
+      "title": "All customers",
+      "path": "/customers",
+      "area": "customers",
+      "ownerArea": "Customer administration",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "featureIntent": "Unified FinSync/OxFin customer administration.",
+      "previewLevel": "working-demo",
+      "currentCoverage": "Fictional directory, local customer/profile/plan/note workflows with product scoping.",
+      "screenFamily": "customers",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "welcome",
+      "title": "Welcome",
+      "path": "/welcome",
+      "area": "public",
+      "ownerArea": "Portal platform",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Public introduction and entry to the sample workspace.",
+      "previewLevel": "public-layout",
+      "currentCoverage": "Interactive navigation and illustrative workspace preview.",
+      "screenFamily": "public",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "login",
+      "title": "Sign in",
+      "path": "/login",
+      "area": "public",
+      "ownerArea": "Portal platform",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Sign-in page composition and post-sign-in layout.",
+      "previewLevel": "public-layout",
+      "currentCoverage": "Read-only sample account and preview result; no password collection or real session.",
+      "screenFamily": "public",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "privacy",
+      "title": "Privacy",
+      "path": "/privacy",
+      "area": "public",
+      "ownerArea": "Portal platform",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Privacy-policy typography and reading layout.",
+      "previewLevel": "public-layout",
+      "currentCoverage": "Policy structure proposal only; not an approved/published legal policy.",
+      "screenFamily": "public",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "id": "terms",
+      "title": "Terms",
+      "path": "/terms",
+      "area": "public",
+      "ownerArea": "Portal platform",
+      "views": [
+        ""
+      ],
+      "featureIntent": "Terms typography and reading layout.",
+      "previewLevel": "public-layout",
+      "currentCoverage": "Policy structure proposal only; no legal agreement is collected.",
+      "screenFamily": "public",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx",
+      "styleGroups": [
+        "shared"
+      ],
+      "initialReviewStatus": "not-tested"
+    }
+  ],
+  "destinations": [
+    {
+      "pageId": "finance",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/overview",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "transactions",
+      "view": "all",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/transactions?view=all",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "transactions",
+      "view": "income",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/transactions?view=income",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "transactions",
+      "view": "expenses",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/transactions?view=expenses",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "financeAnalytics",
+      "view": "categories",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/analytics?view=categories",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "financeAnalytics",
+      "view": "income",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/analytics?view=income",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "financeAnalytics",
+      "view": "comparisons",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/analytics?view=comparisons",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "financeTrends",
+      "view": "monthly",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/trends?view=monthly",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "financeTrends",
+      "view": "recurring",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/trends?view=recurring",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "budgeting",
+      "view": "current",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/budgeting?view=current",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "budgeting",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/budgeting?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "subscriptions",
+      "view": "active",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/subscriptions?view=active",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "subscriptions",
+      "view": "upcoming",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/subscriptions?view=upcoming",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "subscriptions",
+      "view": "archived",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/subscriptions?view=archived",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "portfolio",
+      "view": "holdings",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/portfolio?view=holdings",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "portfolio",
+      "view": "allocation",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/portfolio?view=allocation",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "portfolio",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/portfolio?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "sip",
+      "view": "inputs",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/sip?view=inputs",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "sip",
+      "view": "projection",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/sip?view=projection",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "sip",
+      "view": "comparison",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/sip?view=comparison",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "shopping",
+      "view": "lists",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/shopping?view=lists",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "shopping",
+      "view": "planned",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/shopping?view=planned",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "shopping",
+      "view": "purchased",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/shopping?view=purchased",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "financeSync",
+      "view": "accounts",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/sync?view=accounts",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "financeSync",
+      "view": "csv",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/sync?view=csv",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "financeSync",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/sync?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "finsync",
+      "view": "customers",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers/finsync?view=customers",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "finsync",
+      "view": "activity",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers/finsync?view=activity",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "finsync",
+      "view": "support",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers/finsync?view=support",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "oxfin",
+      "view": "customers",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers/oxfin?view=customers",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "oxfin",
+      "view": "activity",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers/oxfin?view=activity",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "oxfin",
+      "view": "support",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers/oxfin?view=support",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "equity",
+      "view": "charts",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/equity?view=charts",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "equity",
+      "view": "indices",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/equity?view=indices",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "equity",
+      "view": "options",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/equity?view=options",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "equity",
+      "view": "chain",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/equity?view=chain",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "overview",
+      "view": "today",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/overview?view=today",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "overview",
+      "view": "priorities",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/overview?view=priorities",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "overview",
+      "view": "summary",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/overview?view=summary",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "actions",
+      "view": "today",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/actions?view=today",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "actions",
+      "view": "upcoming",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/actions?view=upcoming",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "actions",
+      "view": "snoozed",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/actions?view=snoozed",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "actions",
+      "view": "dismissed",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/actions?view=dismissed",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "current",
+      "view": "weather",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/current?view=weather",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "current",
+      "view": "news",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/current?view=news",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "current",
+      "view": "local",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/current?view=local",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "analytics",
+      "view": "trends",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/analytics?view=trends",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "analytics",
+      "view": "correlations",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/analytics?view=correlations",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "analytics",
+      "view": "comparisons",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/analytics?view=comparisons",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "dashboards",
+      "view": "saved",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/dashboards?view=saved",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "dashboards",
+      "view": "arrange",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/dashboards?view=arrange",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "progress",
+      "view": "timeline",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/progress?view=timeline",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "progress",
+      "view": "comparisons",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/progress?view=comparisons",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "progress",
+      "view": "milestones",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/progress?view=milestones",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "forecast",
+      "view": "trends",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/forecast?view=trends",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "forecast",
+      "view": "scenarios",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/forecast?view=scenarios",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "forex",
+      "view": "models",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/forex?view=models",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "forex",
+      "view": "forecast",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/forex?view=forecast",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "forex",
+      "view": "analytics",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/forex?view=analytics",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "forex",
+      "view": "volatility",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/insights/forex?view=volatility",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "wellness",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/overview",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "sleep",
+      "view": "log",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/sleep?view=log",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "sleep",
+      "view": "trends",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/sleep?view=trends",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "sleep",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/sleep?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "lifestyle",
+      "view": "routines",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/lifestyle?view=routines",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "lifestyle",
+      "view": "preferences",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/lifestyle?view=preferences",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "lifestyle",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/lifestyle?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "mind",
+      "view": "checkin",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/mind?view=checkin",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "mind",
+      "view": "trends",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/mind?view=trends",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "mind",
+      "view": "journal",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/mind?view=journal",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "mind",
+      "view": "breathe",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/mind?view=breathe",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "medical",
+      "view": "vitals",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/medical?view=vitals",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "medical",
+      "view": "medications",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/medical?view=medications",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "medical",
+      "view": "records",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/medical?view=records",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "medical",
+      "view": "timeline",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/medical?view=timeline",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "health",
+      "view": "senses",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/health?view=senses",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "health",
+      "view": "lifestyle",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/health?view=lifestyle",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "health",
+      "view": "specialized",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/health?view=specialized",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "health",
+      "view": "recovery",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/health?view=recovery",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "habits",
+      "view": "today",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/habits?view=today",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "habits",
+      "view": "matrix",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/habits?view=matrix",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "habits",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/habits?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "physique",
+      "view": "blueprint",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/physique?view=blueprint",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "physique",
+      "view": "measurements",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/physique?view=measurements",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "physique",
+      "view": "targets",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/physique?view=targets",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "physique",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/physique?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "physique",
+      "view": "3d",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/physique?view=3d",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "assessment",
+      "view": "questionnaire",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/assessment?view=questionnaire",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "assessment",
+      "view": "results",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/assessment?view=results",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "assessment",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/assessment?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "training",
+      "view": "schedule",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/training?view=schedule",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "training",
+      "view": "logger",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/training?view=logger",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "training",
+      "view": "prs",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/training?view=prs",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "training",
+      "view": "overload",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/training?view=overload",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "training",
+      "view": "volume",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/training?view=volume",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "training",
+      "view": "sessions",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/training?view=sessions",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "strength",
+      "view": "log",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/strength?view=log",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "strength",
+      "view": "progression",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/strength?view=progression",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "strength",
+      "view": "1rm",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/strength?view=1rm",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "strength",
+      "view": "fatigue",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/strength?view=fatigue",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "strength",
+      "view": "volume",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/strength?view=volume",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "nutrition",
+      "view": "daily",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/nutrition?view=daily",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "nutrition",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/nutrition?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "nutrition",
+      "view": "targets",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/nutrition?view=targets",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "nutrition",
+      "view": "calculator",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/nutrition?view=calculator",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "hydration",
+      "view": "today",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/hydration?view=today",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "hydration",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/hydration?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "hydration",
+      "view": "targets",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/hydration?view=targets",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "healthSync",
+      "view": "devices",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/sync?view=devices",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "healthSync",
+      "view": "imports",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/sync?view=imports",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "healthSync",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/wellness/sync?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "workspace",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/overview",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "calendar",
+      "view": "month",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/calendar?view=month",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "calendar",
+      "view": "week",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/calendar?view=week",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "calendar",
+      "view": "agenda",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/calendar?view=agenda",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "calendar",
+      "view": "connections",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/calendar?view=connections",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "documents",
+      "view": "vault",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/files?view=vault",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "documents",
+      "view": "providers",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/files?view=providers",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "documents",
+      "view": "recent",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/files?view=recent",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "notes",
+      "view": "all",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/notes?view=all",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "notes",
+      "view": "pinned",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/notes?view=pinned",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "notes",
+      "view": "tags",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/notes?view=tags",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "notes",
+      "view": "editor",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/notes?view=editor",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "tasks",
+      "view": "today",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/tasks?view=today",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "tasks",
+      "view": "upcoming",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/tasks?view=upcoming",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "tasks",
+      "view": "all",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/tasks?view=all",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "tasks",
+      "view": "completed",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/tasks?view=completed",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "tasks",
+      "view": "list",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/tasks?view=list",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "tasks",
+      "view": "board",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/tasks?view=board",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "projects",
+      "view": "github",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/projects?view=github",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "projects",
+      "view": "mine",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/projects?view=mine",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "projects",
+      "view": "grid",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/projects?view=grid",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "projects",
+      "view": "list",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/projects?view=list",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "timesheet",
+      "view": "timer",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/timesheet?view=timer",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "timesheet",
+      "view": "sessions",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/timesheet?view=sessions",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "timesheet",
+      "view": "analytics",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/timesheet?view=analytics",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "skills",
+      "view": "tree",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/skills?view=tree",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "skills",
+      "view": "list",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/skills?view=list",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "skills",
+      "view": "radar",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/skills?view=radar",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "skills",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/skills?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "goals",
+      "view": "active",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/goals?view=active",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "goals",
+      "view": "completed",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/goals?view=completed",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "goals",
+      "view": "archived",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/workspace/goals?view=archived",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "life",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/overview",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "social",
+      "view": "profiles",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/social?view=profiles",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "social",
+      "view": "analytics",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/social?view=analytics",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "social",
+      "view": "connections",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/social?view=connections",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "entertainment",
+      "view": "library",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/entertainment?view=library",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "entertainment",
+      "view": "stats",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/entertainment?view=stats",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "entertainment",
+      "view": "sync",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/entertainment?view=sync",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "maps",
+      "view": "map",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/places?view=map",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "maps",
+      "view": "list",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/places?view=list",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "maps",
+      "view": "timeline",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/places?view=timeline",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "maps",
+      "view": "privacy",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/places?view=privacy",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "family",
+      "view": "tree",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=tree",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "family",
+      "view": "memories",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=memories",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "family",
+      "view": "vault",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=vault",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "family",
+      "view": "timeline",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=timeline",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "hub",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/overview",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "apps",
+      "view": "modules",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/apps?view=modules",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "apps",
+      "view": "favorites",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/apps?view=favorites",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "apps",
+      "view": "external",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/apps?view=external",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "companion",
+      "view": "all",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/companion?view=all",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "companion",
+      "view": "finsync",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/companion?view=finsync",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "companion",
+      "view": "oxfin",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/companion?view=oxfin",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "companion",
+      "view": "equity",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/companion?view=equity",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "companion",
+      "view": "forex",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/companion?view=forex",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "companion",
+      "view": "family",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/companion?view=family",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "ai",
+      "view": "chat",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/agents?view=chat",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "ai",
+      "view": "history",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/agents?view=history",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "ai",
+      "view": "context",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/agents?view=context",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "ai",
+      "view": "settings",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/agents?view=settings",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "databases",
+      "view": "custom",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/databases?view=custom",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "databases",
+      "view": "application",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/databases?view=application",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "databases",
+      "view": "imports",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/databases?view=imports",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "profile",
+      "view": "personal",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/settings?view=personal",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "profile",
+      "view": "physical",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/settings?view=physical",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "profile",
+      "view": "security",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/settings?view=security",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "profile",
+      "view": "appearance",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/settings?view=appearance",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "profile",
+      "view": "integrations",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/settings?view=integrations",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "notifications",
+      "view": "unread",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/notifications?view=unread",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "notifications",
+      "view": "all",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/notifications?view=all",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "notifications",
+      "view": "preferences",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/notifications?view=preferences",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "help",
+      "view": "guides",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/help?view=guides",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "help",
+      "view": "troubleshooting",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/help?view=troubleshooting",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "help",
+      "view": "diagnostics",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/help?view=diagnostics",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "logs",
+      "view": "activity",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/logs?view=activity",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "logs",
+      "view": "authentication",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/logs?view=authentication",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "logs",
+      "view": "sync",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/logs?view=sync",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "about",
+      "view": "version",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/about?view=version",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "about",
+      "view": "capabilities",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/about?view=capabilities",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "about",
+      "view": "licenses",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/about?view=licenses",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "pricing",
+      "view": "capabilities",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/plans?view=capabilities",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "pricing",
+      "view": "billing",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/hub/plans?view=billing",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "customers",
+      "view": "customers",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers?view=customers",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "customers",
+      "view": "activity",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers?view=activity",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "customers",
+      "view": "support",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/customers?view=support",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "welcome",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/welcome",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "login",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/login",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "privacy",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/privacy",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "terms",
+      "view": "",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/terms",
+      "initialReviewStatus": "not-tested"
+    }
+  ],
+  "applications": [
+    {
+      "path": ".",
+      "title": "GrowthTrack workspace",
+      "purpose": "A desktop workspace for personal growth, work, family, equity and Forex research, with a dedicated customer-admin area for the separate FinSync and OxFin products.",
+      "runtime": "Node.js/npm workspace; Ultimate uses React, Vite and Express. Companion services retain their current frameworks.",
+      "recordedStatus": "The existing application runs through a shared local launcher. A new isolated UI demo is ready for review; native module consolidation and real customer-admin adapters are planned.",
+      "readme": "README.md"
+    },
+    {
+      "path": "growthtrack-ultimate",
+      "title": "GrowthTrack Ultimate",
+      "purpose": "The desktop portal for personal growth, work, insights and family/market modules, and the future customer-admin home for FinSync and OxFin.",
+      "runtime": "React, Vite, Express, Prisma/SQLite; optional Electron desktop packaging and Three.js physique tools.",
+      "recordedStatus": "Existing authenticated application plus a separate interactive redesign demo. Live customer management and native companion migrations remain planned.",
+      "readme": "growthtrack-ultimate/README.md"
+    },
+    {
+      "path": "FinSync",
+      "title": "FinSync",
+      "purpose": "A separate customer finance application for budgets, spending, account connections and financial planning, with web and mobile source packages.",
+      "runtime": "npm workspaces, Next.js web frontend, Firebase integration and Expo mobile source.",
+      "recordedStatus": "Customer application under development. Its customer administration belongs in GrowthTrack Ultimate; the customer app is not merged into Ultimate.",
+      "readme": "FinSync/README.md"
+    },
+    {
+      "path": "FinSync/apps/web",
+      "title": "FinSync Web",
+      "purpose": "The customer-facing FinSync web interface for sign-in, onboarding, spending, budgets and account settings.",
+      "runtime": "Next.js App Router, React and Firebase.",
+      "recordedStatus": "Independent customer app. Future administrator pages are owned by Ultimate.",
+      "readme": "FinSync/apps/web/README.md"
+    },
+    {
+      "path": "FinSync/apps/mobile",
+      "title": "FinSync Mobile",
+      "purpose": "The Expo mobile application source for the FinSync customer product.",
+      "runtime": "Expo Router and React Native.",
+      "recordedStatus": "Mobile source retained. Desktop portal redesign is the current priority; this is not a completed mobile feature audit.",
+      "readme": "FinSync/apps/mobile/README.md"
+    },
+    {
+      "path": "FinSync/OxFin",
+      "title": "OxFin",
+      "purpose": "A separate customer product for wallets, cards, bills and investment-related workflows.",
+      "runtime": "Next.js web application, PostgreSQL/Redis infrastructure and reference service prototypes.",
+      "recordedStatus": "Under development. Ultimate is the target for OxFin customer administration; existing service prototypes are not a production admin backend.",
+      "readme": "FinSync/OxFin/README.md"
+    },
+    {
+      "path": "FinSync/OxFin/ox-fin-web",
+      "title": "OxFin Web",
+      "purpose": "The independent OxFin customer interface for wallets, cards, bills and investment workflows.",
+      "runtime": "Next.js, React, NextAuth and PostgreSQL.",
+      "recordedStatus": "Customer application under development. Shared customer-admin adapters are planned in Ultimate.",
+      "readme": "FinSync/OxFin/ox-fin-web/README.md"
+    },
+    {
+      "path": "FinSync/OxFin/ox-fin-backend",
+      "title": "OxFin local infrastructure",
+      "purpose": "Local PostgreSQL and Redis definitions and SQL initialisation for OxFin.",
+      "runtime": "Docker Compose; this folder is not a Node.js API package.",
+      "recordedStatus": "Development infrastructure. Initialisation scripts run only for new database volumes.",
+      "readme": "FinSync/OxFin/ox-fin-backend/README.md"
+    },
+    {
+      "path": "Equity",
+      "title": "Equity",
+      "purpose": "Market-research product area. NiftyLens is the canonical application.",
+      "runtime": "See NiftyLens/package.json.",
+      "recordedStatus": "Targeted for native views inside Ultimate.",
+      "readme": "Equity/README.md"
+    },
+    {
+      "path": "Equity/NiftyLens",
+      "title": "Equity / NiftyLens",
+      "purpose": "Equity instruments, market charts, watchlists and market-data API source.",
+      "runtime": "Next.js, React, Firebase/Supabase integrations and a separate pipeline folder.",
+      "recordedStatus": "Existing application with a planned native portal UI. Provider availability depends on configuration.",
+      "readme": "Equity/NiftyLens/README.md"
+    },
+    {
+      "path": "Family Connect",
+      "title": "Family Connect",
+      "purpose": "Family trees, member profiles, memories, shared events and documents.",
+      "runtime": "Frontend and backend packages in familyconnect/.",
+      "recordedStatus": "Existing application targeted for native portal views.",
+      "readme": "Family Connect/README.md"
+    },
+    {
+      "path": "Family Connect/familyconnect",
+      "title": "Family Connect application",
+      "purpose": "Family membership, relationship trees, memories, calendar events and document workflows.",
+      "runtime": "React/Vite frontend and Express/Prisma/PostgreSQL backend.",
+      "recordedStatus": "Under development; native portal migration is planned.",
+      "readme": "Family Connect/familyconnect/README.md"
+    },
+    {
+      "path": "Family Connect/familyconnect/frontend",
+      "title": "Family Connect Frontend",
+      "purpose": "Family-tree, memory, profile, event and document interfaces.",
+      "runtime": "React, TypeScript, Vite and React Flow.",
+      "recordedStatus": "Current standalone UI. Replacement portal views are at the design-review stage.",
+      "readme": "Family Connect/familyconnect/frontend/README.md"
+    },
+    {
+      "path": "Family Connect/familyconnect/backend",
+      "title": "Family Connect Backend",
+      "purpose": "Family authentication, trees, relationships, events, documents and notification APIs.",
+      "runtime": "Express, TypeScript, Prisma and PostgreSQL; optional Redis and AI integration.",
+      "recordedStatus": "Existing backend. Preserve its per-family permissions during portal migration.",
+      "readme": "Family Connect/familyconnect/backend/README.md"
+    },
+    {
+      "path": "Forex",
+      "title": "Forex research and inference",
+      "purpose": "Currency-data preparation, model research, saved-model inference and a Streamlit research dashboard.",
+      "runtime": "Python, Streamlit and FastAPI, with model dependencies in requirements.txt.",
+      "recordedStatus": "Canonical Forex service source. Native portal views are a design proposal; useful predictions require compatible data and trained model artifacts.",
+      "readme": "Forex/README.md"
+    },
+    {
+      "path": "Forex/Forex-Ensemble-Prediction",
+      "title": "Forex historical reference",
+      "purpose": "An earlier copy of Forex research and model code retained for reference.",
+      "runtime": "Python research source.",
+      "recordedStatus": "Historical copy; use the parent Forex/ application for setup and changes.",
+      "readme": "Forex/Forex-Ensemble-Prediction/README.md"
+    },
+    {
+      "path": "FinSync/Expense Tracker - Mobile/expense-tracker-mobile",
+      "title": "Expense Tracker Mobile reference",
+      "purpose": "An earlier Expo expense-tracking application, retained separately from the canonical FinSync mobile package.",
+      "runtime": "Expo and React Native.",
+      "recordedStatus": "Reference application. Desktop portal work does not imply its features are merged or mobile-tested.",
+      "readme": "FinSync/Expense Tracker - Mobile/expense-tracker-mobile/README.md"
+    },
+    {
+      "path": "FinSync/OxFin/services/api-gateway",
+      "title": "OxFin gateway prototype",
+      "purpose": "Reference request routing and JWT checks for experimental OxFin services.",
+      "runtime": "TypeScript/Express prototype.",
+      "recordedStatus": "Incomplete dependency manifest; not part of the default workspace launcher and not a production admin gateway.",
+      "readme": "FinSync/OxFin/services/api-gateway/README.md"
+    },
+    {
+      "path": "FinSync/OxFin/services/identity-service",
+      "title": "OxFin identity prototype",
+      "purpose": "Reference token, registration and consent handlers.",
+      "runtime": "TypeScript/Express prototype.",
+      "recordedStatus": "Prototype only: login does not verify passwords. It must not authorise real customers or administrators.",
+      "readme": "FinSync/OxFin/services/identity-service/README.md"
+    },
+    {
+      "path": "FinSync/OxFin/services/wallet-service",
+      "title": "OxFin wallet prototype",
+      "purpose": "Reference wallet workflow handlers.",
+      "runtime": "TypeScript service prototype.",
+      "recordedStatus": "Incomplete dependency manifest; not a production wallet or admin backend.",
+      "readme": "FinSync/OxFin/services/wallet-service/README.md"
+    },
+    {
+      "path": "FinSync/OxFin/services/payments-service",
+      "title": "OxFin payment prototype",
+      "purpose": "Reference payment-provider workflow handlers.",
+      "runtime": "TypeScript service prototype.",
+      "recordedStatus": "Incomplete dependency manifest; no live payment integration is enabled by the UI work.",
+      "readme": "FinSync/OxFin/services/payments-service/README.md"
+    },
+    {
+      "path": "FinSync/OxFin/services/bills-service",
+      "title": "OxFin bills prototype",
+      "purpose": "Reference bill-management handlers.",
+      "runtime": "TypeScript service prototype.",
+      "recordedStatus": "Incomplete dependency manifest; retained as reference source.",
+      "readme": "FinSync/OxFin/services/bills-service/README.md"
+    },
+    {
+      "path": "FinSync/OxFin/services/ox-service",
+      "title": "OxFin OX prototype",
+      "purpose": "Reference OX-related workflow handlers.",
+      "runtime": "TypeScript service prototype.",
+      "recordedStatus": "Incomplete dependency manifest; retained as reference source.",
+      "readme": "FinSync/OxFin/services/ox-service/README.md"
+    }
+  ],
+  "workPackages": [
+    {
+      "id": "D01",
+      "task": "Maintain product/route/CSS inventory and independent build map",
+      "ownerArea": "Portal platform",
+      "dependsOn": "Source catalog",
+      "acceptance": "Delivered; regenerate/check on changes",
+      "status": "delivered-supporting-work"
+    },
+    {
+      "id": "D02",
+      "task": "Maintain fictional review demo, scoped feedback and safe sample state",
+      "ownerArea": "Portal platform",
+      "dependsOn": "D01",
+      "acceptance": "Delivered; preserve isolation and scope",
+      "status": "delivered-supporting-work"
+    },
+    {
+      "id": "D03",
+      "task": "Maintain universal READMEs, env examples, plan relocation and ignore policy",
+      "ownerArea": "Developer tooling",
+      "dependsOn": "D01",
+      "acceptance": "Delivered; docs/config/index checks remain passing",
+      "status": "delivered-supporting-work"
+    },
+    {
+      "id": "D04",
+      "task": "Implement supplied redesign proposal in the isolated review demo",
+      "ownerArea": "Portal platform / domain owners",
+      "dependsOn": "D02, supplied brief",
+      "acceptance": "Delivered supporting implementation; see reconciliation report; browser/user gates remain open",
+      "status": "delivered-supporting-work"
+    },
+    {
+      "id": "R01",
+      "task": "Capture rendered baseline and classify every required scope",
+      "ownerArea": "Portal platform / reviewer",
+      "dependsOn": "D02, connected browser",
+      "acceptance": "Screenshots, console observations, tested/untested ledger",
+      "status": "pending-review"
+    },
+    {
+      "id": "R02",
+      "task": "Review shell, tokens, typography, density, navigation and overlays",
+      "ownerArea": "Portal platform / reviewer",
+      "dependsOn": "R01",
+      "acceptance": "Desktop widths, zoom, focus, contrast and responsive fallback evidence",
+      "status": "pending-review"
+    },
+    {
+      "id": "R03",
+      "task": "Review FinSync/OxFin admin directories, profiles, notes and statuses",
+      "ownerArea": "Customer administration",
+      "dependsOn": "R02",
+      "acceptance": "Product scope, clear actions, tables, validation and failure states",
+      "status": "pending-review"
+    },
+    {
+      "id": "R04",
+      "task": "Review ledger, budgets, subscriptions, portfolio, SIP and shopping",
+      "ownerArea": "Personal finance",
+      "dependsOn": "R02",
+      "acceptance": "Amount/date/totals consistency, correct filters and distinct view intent",
+      "status": "pending-review"
+    },
+    {
+      "id": "R05",
+      "task": "Review Equity and Forex research layouts",
+      "ownerArea": "Markets / Insights",
+      "dependsOn": "R02",
+      "acceptance": "Legible numeric tables/charts, selected context, timestamps and honest sample uncertainty",
+      "status": "pending-review"
+    },
+    {
+      "id": "R06",
+      "task": "Review family tree, events, memories, vault and life views",
+      "ownerArea": "Family and life",
+      "dependsOn": "R02",
+      "acceptance": "Member/event consistency, document scope, long content and privacy-aware presentation",
+      "status": "pending-review"
+    },
+    {
+      "id": "R07",
+      "task": "Review growth, health, routines, training and wellbeing views",
+      "ownerArea": "Growth",
+      "dependsOn": "R02",
+      "acceptance": "Correct domain language, distinct specialised tabs and safe fictional data",
+      "status": "pending-review"
+    },
+    {
+      "id": "R08",
+      "task": "Review work, calendar, files, notes, tasks, projects, goals and time",
+      "ownerArea": "Workspace",
+      "dependsOn": "R02",
+      "acceptance": "Keyboard actions, state persistence, dates, timer, sorting and empty recovery",
+      "status": "pending-review"
+    },
+    {
+      "id": "R09",
+      "task": "Review Current/Goal editor and 3D workspace controls",
+      "ownerArea": "Physique",
+      "dependsOn": "R02",
+      "acceptance": "Draft/save/history boundaries, rapid edits, storage failure and honest export state",
+      "status": "pending-review"
+    },
+    {
+      "id": "R10",
+      "task": "Review insights, settings, notifications, help, public and plan pages",
+      "ownerArea": "Portal platform / Insights",
+      "dependsOn": "R02",
+      "acceptance": "No unrelated actions or invented backend/legal/billing capability",
+      "status": "pending-review"
+    },
+    {
+      "id": "R11",
+      "task": "Review separate FinSync/OxFin customer apps and mobile fallback",
+      "ownerArea": "Product owners",
+      "dependsOn": "Their builds and configured preview access",
+      "acceptance": "Separate evidence; no portal approval reused for customer apps",
+      "status": "pending-review"
+    },
+    {
+      "id": "R12",
+      "task": "Resolve cross-page patterns and present redesign proposals",
+      "ownerArea": "Reviewer / designer",
+      "dependsOn": "R03–R11",
+      "acceptance": "Prioritised findings, reusable patterns, proposed page frames and tradeoffs",
+      "status": "pending-review"
+    },
+    {
+      "id": "R13",
+      "task": "Record the user's design decisions and rendered coverage",
+      "ownerArea": "User / reviewer",
+      "dependsOn": "R12",
+      "acceptance": "Demo direction and real implementation approved; unvisited rendered variants remain pending",
+      "status": "direction-approved-rendered-ledger-pending"
+    },
+    {
+      "id": "I01",
+      "task": "Apply approved shell, tokens and shared primitives to the real app",
+      "ownerArea": "Portal platform",
+      "dependsOn": "User approval received",
+      "acceptance": "Implemented in source with existing auth/stores retained; 200 targeted production checks; rendered verification pending",
+      "status": "implemented-in-source-rendered-verification-pending"
+    },
+    {
+      "id": "I02",
+      "task": "Implement FinSync/OxFin read-only admin contracts and roles",
+      "ownerArea": "Customer administration / backend",
+      "dependsOn": "Approved contract, I01",
+      "acceptance": "Auth, product/tenant isolation, bounded pagination, minimal fields and audit",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "I03",
+      "task": "Add support-note/entitlement mutations",
+      "ownerArea": "Customer administration / backend",
+      "dependsOn": "I02",
+      "acceptance": "Validation, conflicts, retry/idempotency, audit and no false success",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "I04",
+      "task": "Migrate Equity views and remove iframe launcher after parity",
+      "ownerArea": "Equity",
+      "dependsOn": "I01, approved Equity pages",
+      "acceptance": "Providers/saved state preserved, tested redirects and isolated build",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "I05",
+      "task": "Migrate Family views and document permissions",
+      "ownerArea": "Family",
+      "dependsOn": "I01, approved Family pages",
+      "acceptance": "Family access, files/events parity, no data movement without a separate migration",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "I06",
+      "task": "Migrate Forex presentation while retaining Python services",
+      "ownerArea": "Forex / Insights",
+      "dependsOn": "I01, approved Forex pages",
+      "acceptance": "Timestamp/horizon/evaluation/uncertainty and unavailable model states",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "I07",
+      "task": "Replace layout-only Growth/Workspace/Insights workflows with domain UI",
+      "ownerArea": "Respective owners",
+      "dependsOn": "I01, relevant R13",
+      "acceptance": "Correct inputs/results, real query states and integration regressions",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "I08",
+      "task": "Connect approved Physique UI to semantic save/viewer/worker adapters",
+      "ownerArea": "Physique",
+      "dependsOn": "R09, I01",
+      "acceptance": "Revision/cancellation contract, owner scope, context loss and matching-fit export",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "I09",
+      "task": "Consolidate obsolete production CSS incrementally",
+      "ownerArea": "Portal platform / domain owners",
+      "dependsOn": "Each approved/migrated page",
+      "acceptance": "Every stylesheet disposition tracked; generated adapters stay consistent",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "I10",
+      "task": "Resolve documented production blockers before real customer writes",
+      "ownerArea": "FinSync/OxFin owners / backend",
+      "dependsOn": "Before I03 rollout",
+      "acceptance": "FinSync browser-held encryption replacement and verified OxFin identity; separate data/key migration approval",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "V01",
+      "task": "Run affected builds, contract checks and browser regression review",
+      "ownerArea": "Each owner / QA",
+      "dependsOn": "Relevant implementation",
+      "acceptance": "Evidence for changed consumers; no claim that one demo build certifies all apps",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "V02",
+      "task": "Release gradually with health checks and rollback",
+      "ownerArea": "Release owner",
+      "dependsOn": "V01, explicit deployment authorisation",
+      "acceptance": "Approved release, data preservation, failures observable and rollback verified",
+      "status": "planned-after-relevant-gates"
+    },
+    {
+      "id": "T01",
+      "task": "Evaluate parser-backed retrieval and optional local embeddings",
+      "ownerArea": "Developer tooling",
+      "dependsOn": "D03, evaluation set",
+      "acceptance": "Better bounded retrieval measured; no secret paths or silent source upload",
+      "status": "optional-planned-tooling"
+    }
+  ],
+  "reviewOutput": {
+    "statuses": [
+      "not-tested",
+      "reviewed-no-finding",
+      "changes-requested",
+      "blocked"
+    ],
+    "requiredFindingFields": [
+      "id",
+      "severity",
+      "pageId",
+      "view",
+      "theme",
+      "density",
+      "state",
+      "viewport",
+      "reviewType",
+      "summary",
+      "steps",
+      "observed",
+      "expected",
+      "evidence",
+      "sourceCandidates",
+      "affectedPages",
+      "recommendation",
+      "verification"
+    ],
+    "severity": [
+      "P0",
+      "P1",
+      "P2",
+      "P3"
+    ],
+    "approvalAuthority": "User approval is separate from a review recommendation."
+  },
+  "baselineEvidence": {
+    "status": "last recorded local verification; see source for the current run and preserved separate baseline results",
+    "uiChecksPassed": 989,
+    "routeThemeDensityRenderChecks": 804,
+    "separateAvatarContractChecksPassed": 22,
+    "browserVisualSignoff": "pending",
+    "source": "docs/plans/2026-10-28-verification.md"
+  }
+}

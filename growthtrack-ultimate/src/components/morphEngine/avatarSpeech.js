@@ -2,6 +2,8 @@
 // It never writes text, microphone input or animated weights to the profile.
 const sessions=new WeakMap();
 const time=()=>performance.now()/1000;
+export const AVATAR_SPEECH_EVENT = 'growthtrack:avatar-speech';
+export const avatarSpeechActive = canvas => Boolean(sessions.get(canvas)?.speaking);
 
 export function sampleAvatarSpeech(canvas,context,now=time()){
   const session=sessions.get(canvas);
@@ -18,12 +20,13 @@ export function sampleAvatarSpeech(canvas,context,now=time()){
 
 export function createAvatarSpeech({canvas,context,synthesis,Utterance,onState=()=>{},now=time}){
   let active=null,disposed=false;
+  const report=state=>{canvas?.dispatchEvent?.(new Event(AVATAR_SPEECH_EVENT));onState(state);};
   const stop=()=>{
     const owns=active && sessions.get(canvas)===active;
     if(owns)sessions.delete(canvas);
     active=null;
     if(owns)synthesis.cancel();
-    if(!disposed)onState('idle');
+    if(!disposed)report('idle');
   };
   const speak=(text,{voice,rate=1}={})=>{
     if(disposed || !canvas || !synthesis || !Utterance)return false;
@@ -36,11 +39,11 @@ export function createAvatarSpeech({canvas,context,synthesis,Utterance,onState=(
     active=session;sessions.set(canvas,session);utterance.rate=session.rate;
     if(voice){utterance.voice=voice;utterance.lang=voice.lang;}
     const valid=()=>!disposed && active===session && sessions.get(canvas)===session;
-    utterance.onstart=()=>{if(valid()){session.speaking=true;session.at=now();onState('speaking');}};
+    utterance.onstart=()=>{if(valid()){session.speaking=true;session.at=now();report('speaking');}};
     utterance.onboundary=e=>{if(valid() && Number.isFinite(e.charIndex)){session.index=e.charIndex;session.at=now();}};
-    const finish=state=>{if(!valid())return;sessions.delete(canvas);active=null;onState(state);};
+    const finish=state=>{if(!valid())return;sessions.delete(canvas);active=null;report(state);};
     utterance.onend=()=>finish('idle');utterance.onerror=()=>finish('error');
-    onState('queued');
+    report('queued');
     try{synthesis.speak(utterance);}catch{finish('error');return false;}
     return true;
   };

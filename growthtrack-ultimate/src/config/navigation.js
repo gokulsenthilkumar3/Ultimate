@@ -67,23 +67,23 @@ const AREA_ICON = { finance: WalletCards, insights: TrendingUp, wellness: HeartP
 export const TABS = Object.freeze(Object.fromEntries(FEATURES.map(feature => {
   const meta = TAB_CORE[feature.id] || { icon: AREA_ICON[feature.area], emoji: '▦', keywords: [] };
   return [feature.id, Object.freeze({
-    ...meta, ...feature, group: AREA_GROUP[feature.area], description: `${feature.label} · ${feature.area}`,
+    ...meta, ...feature, group: ['customers', 'finsync', 'oxfin'].includes(feature.id) ? 'customers' : feature.id === 'forex' ? 'money' : AREA_GROUP[feature.area], description: `${feature.label} · ${feature.area}`,
     shortLabel: feature.label, order: 0, navigation: 'secondary', pageTemplate: feature.template,
   })];
 })));
 
 export const GROUPS = {
-  insights: { label: 'Insights', icon: TrendingUp, tabs: ['overview', 'actions', 'current', 'analytics', 'dashboards', 'progress', 'forecast', 'forex'] },
-  money: { label: 'Finance', icon: WalletCards, tabs: FEATURES.filter(item => item.area === 'finance').map(item => item.id) },
-  wellness: { label: 'Wellness', icon: HeartPulse, tabs: ['wellness', 'sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration'] },
-  work: { label: 'Workspace', icon: BriefcaseBusiness, tabs: ['workspace', 'calendar', 'documents', 'notes', 'tasks', 'projects', 'timesheet', 'skills', 'goals'] },
+  customers: { label: 'Customers', icon: Users, tabs: ['customers', 'finsync', 'oxfin'] },
+  insights: { label: 'Insights', icon: TrendingUp, tabs: ['actions', 'current', 'analytics', 'dashboards', 'progress', 'forecast'] },
+  money: { label: 'Finance', icon: WalletCards, tabs: [...FEATURES.filter(item => item.area === 'finance' && !['finsync', 'oxfin'].includes(item.id)).map(item => item.id), 'forex'] },
+  wellness: { label: 'Growth', icon: HeartPulse, tabs: ['wellness', 'sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration', 'healthSync'] },
+  work: { label: 'Work', icon: BriefcaseBusiness, tabs: ['workspace', 'calendar', 'documents', 'notes', 'tasks', 'projects', 'timesheet', 'skills', 'goals'] },
   life: { label: 'Life', icon: Users, tabs: ['life', 'family', 'social', 'entertainment', 'maps'] },
-  system: { label: 'Hub', icon: LayoutDashboard, tabs: ['hub', 'companion', 'apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
+  system: { label: 'Platform', icon: LayoutDashboard, tabs: ['hub', 'companion', 'apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
 };
 
-// Finance is the primary command and appears first in the main navigation.
-export const GROUP_ORDER = ['money', 'insights', 'wellness', 'work', 'life', 'system'];
-export const MOBILE_QUICK_GROUPS = ['money', 'insights', 'wellness', 'work'];
+export const GROUP_ORDER = ['customers', 'money', 'wellness', 'work', 'life', 'insights', 'system'];
+export const MOBILE_QUICK_GROUPS = ['customers', 'money', 'wellness', 'work'];
 const LEGACY_DEFAULT_GROUP_ORDER = ['wellness', 'insights', 'work', 'money', 'life', 'system'];
 export const TAB_GROUP_MAP = Object.fromEntries(Object.entries(TABS).map(([id, tab]) => [id, tab.group]));
 export const ROUTE_ALIASES = Object.fromEntries(FEATURES.flatMap(item => item.aliases.map(alias => [alias, item.id])));
@@ -99,7 +99,7 @@ export function normalizeGroupOrder(saved = []) {
   const valid = Array.isArray(saved) ? saved.filter(id => Object.hasOwn(GROUPS, id)) : [];
   // Prior releases persisted their old default with removed 'today'/'body'
   // entries. Treat that exact sequence as an obsolete default, not a choice.
-  if (valid.join('|') === LEGACY_DEFAULT_GROUP_ORDER.join('|')) return [...GROUP_ORDER];
+  if ([LEGACY_DEFAULT_GROUP_ORDER, ['money', 'insights', 'wellness', 'work', 'life', 'system']].some(order => valid.join('|') === order.join('|'))) return [...GROUP_ORDER];
   return [...new Set([...valid, ...GROUP_ORDER])];
 }
 
@@ -113,7 +113,7 @@ export function navigationGroups(configured = []) {
     const custom = Array.isArray(configured) ? configured.find(item => item?.id === id) : null;
     return [id, {
       ...group,
-      label: id === 'system' ? 'Hub' : (typeof custom?.label === 'string' && custom.label.trim() ? custom.label : group.label),
+      label: typeof custom?.label === 'string' && custom.label.trim() ? custom.label : group.label,
       // Configuration may reorder modules, but must never hide built-in destinations.
       tabs: normalizeTabOrder(custom?.tabs, group.tabs),
     }];

@@ -27,3 +27,9 @@ it('edits only the saved realism percentage and explains its visual meaning',()=
   expect(screen.getByRole('slider',{name:'Human appearance detail'}).value).toBe('35');
   expect(screen.getByRole('slider',{name:'Pore detail'}).value).toBe('0.8');
 });
+
+it('keeps supported hands editable when toe groups are missing',()=>{
+  render(<DigitPoseControls onChange={()=>{}} readPose={()=>({digitGroups:['leftHand','rightHand']})}/>);
+  expect(screen.getByRole('combobox',{name:'Left hand shape'})).not.toBeDisabled();
+  expect(screen.getByRole('slider',{name:'Left toes curl'})).toBeDisabled();
+});

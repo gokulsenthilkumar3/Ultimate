@@ -14,6 +14,7 @@ import { useToast } from '../hooks/useToast';
 import StunningDatePicker from './ui/StunningDatePicker';
 import SegmentedControl from './ui/SegmentedControl';
 import Switch from './ui/Switch';
+import AppearanceThemePresets from './ui/AppearanceThemePresets';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../utils/cropImage';
 import { apiRequest } from '../lib/apiClient';
@@ -1322,6 +1323,7 @@ export default function ProfileEditor() {
 
             {activeTab === 'appearance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <AppearanceThemePresets value={palette} onChange={setPalette} />
                 <div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Theme</h4>
                   <div className="appearance-options">
@@ -1329,7 +1331,7 @@ export default function ProfileEditor() {
                   </div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', margin: '1.5rem 0 1rem' }}>Accent</h4>
                   <div className="appearance-options appearance-options--palette">
-                    {['gold', 'violet', 'ocean', 'mint', 'rose'].map(option => <button key={option} className={palette === option ? 'is-active' : ''} onClick={() => setPalette(option)}><span data-palette-preview={option} />{option}</button>)}
+                    {['forest', 'gold', 'violet', 'ocean', 'mint', 'rose'].map(option => <button key={option} className={palette === option ? 'is-active' : ''} onClick={() => setPalette(option)}><span data-palette-preview={option} />{option}</button>)}
                   </div>
                 </div>
                 <div>

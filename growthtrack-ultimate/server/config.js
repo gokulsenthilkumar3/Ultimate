@@ -49,6 +49,7 @@ const schema = z.object({
   // Logs and gateway
   LOG_RETENTION_DAYS: int(90, 1, 3650),
   LOG_CLEANUP_HOURS: int(6, 1, 168),
+  LOG_CLEANUP_ENABLED: flag('on'),
   GATEWAY_PROBE_TIMEOUT_MS: int(1800, 100, 30_000),
   COMPANION_FINSYNC_URL: httpUrl('http://localhost:5101'),
   COMPANION_OXFIN_URL: httpUrl('http://localhost:5102'),
@@ -124,7 +125,7 @@ export function loadServerConfig(env = process.env) {
     security: { origins, frameAncestors, sessionHours: e.SESSION_HOURS, sessionTouchMs: e.SESSION_TOUCH_MS,
       loginWindowMs: e.LOGIN_WINDOW_MS, loginMaxAttempts: e.LOGIN_MAX_ATTEMPTS, apiRateLimitPerMinute: e.API_RATE_LIMIT_PER_MINUTE,
       handoffSecret: e.HANDOFF_SECRET || null, encryptionKey: e.APP_ENCRYPTION_KEY || null },
-    logs: { retentionDays: e.LOG_RETENTION_DAYS, cleanupIntervalMs: e.LOG_CLEANUP_HOURS * 60 * MINUTE },
+    logs: { retentionDays: e.LOG_RETENTION_DAYS, cleanupIntervalMs: e.LOG_CLEANUP_HOURS * 60 * MINUTE, cleanupEnabled: e.LOG_CLEANUP_ENABLED },
     gateway: { probeTimeoutMs: e.GATEWAY_PROBE_TIMEOUT_MS, url: e.GATEWAY_URL, dbStudioUrl: e.DB_STUDIO_URL,
       companions: [
         workspaceCompanion('finsync', 'FinSync', e.COMPANION_FINSYNC_URL),

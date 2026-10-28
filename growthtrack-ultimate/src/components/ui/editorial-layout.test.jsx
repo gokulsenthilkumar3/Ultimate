@@ -50,8 +50,8 @@ describe('editorial component layout', () => {
       });
       expect(metrics.overflow).toBeLessThanOrEqual(1);
       expect(metrics.minButtonHeight).toBeGreaterThanOrEqual(44);
-      expect(metrics.headingSize).toBeGreaterThanOrEqual(32);
-      expect(metrics.headerBackground).toContain('gradient');
+      expect(metrics.headingSize).toBe(28);
+      expect(metrics.headerBackground).toBe('none');
       await page.locator('[role="tab"]').first().focus();
       expect(parseFloat(await page.locator('[role="tab"]').first().evaluate(node => getComputedStyle(node).outlineWidth))).toBeGreaterThanOrEqual(3);
     } finally { await page.close(); }

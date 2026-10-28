@@ -20,7 +20,7 @@ Repeat the application scenarios with `npx playwright test --config playwright.i
 
 Follow-up verification: all seven inspection scenarios passed together; the four customization, one avatar-presentation, and eight physique-UI scenarios also passed across the targeted runs (20 distinct scenarios). All 11 focused interaction/presentation unit tests passed. Production build passed; lint reported no errors and 97 warnings elsewhere in the project. Browser runs used a frontend-only preview on port 5177 with an isolated Vite cache alongside the running application on port 5000.
 
-Companion: [interactive plan, tab by tab (revision 04)](../../v4Plan_3DModel.html) — a real 3D human fitted to entered measurements, organised by the Physique tabs; the earlier [measurement guide (revision 03)](../../v3Plan_HumanRealism.html) is kept. Extends [adult anatomy research](real-human-3d/16-private-anatomy.md) and the [original model plan](../../v2Plan_3DModel.html).
+Companion: [interactive plan, tab by tab (revision 04)](3d-plans/v4Plan_3DModel.html) — a real 3D human fitted to entered measurements, organised by the Physique tabs; the earlier [measurement guide (revision 03)](3d-plans/v3Plan_HumanRealism.html) is kept. Extends [adult anatomy research](real-human-3d/16-private-anatomy.md) and the [original model plan](3d-plans/v2Plan_3DModel.html).
 
 ## 1. Outcome and limits
 

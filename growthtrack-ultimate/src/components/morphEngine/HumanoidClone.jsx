@@ -127,6 +127,7 @@ export default function HumanoidClone({
   const loadedModel = useModelLoader(modelPreference);
   const {bodyMesh,bodySourceMaterial,morphIndexMap,featureMeshes,surfaceParts,skeleton,scene,referenceFrame}=loadedModel;
   const wardrobe = use3DStore((s) => s.wardrobeState);
+  const showStage=use3DStore(s=>s.avatarWorkspace.showStage);
   const captureRedacted = use3DStore((s) => s.captureRedacted);
   const anatomyAllowed = useAnatomyEligibility(loadedModel.diagnostics).allowed;
   const nativeAsset=loadedModel.diagnostics?.modelAsset?.nativeFamily?loadedModel.diagnostics.modelAsset:null;
@@ -543,6 +544,16 @@ export default function HumanoidClone({
     });
   }, [featureMeshes, featureMaterials, hairStyle, hairDetail.density, material, renderMode]);
 
+  const garmentMesh=wardrobeAsset?.mesh;
+  const fit=wardrobeOptions?.fit,easeCm=wardrobeOptions?.easeCm,hemLength=wardrobeOptions?.hemLength,waistRiseCm=wardrobeOptions?.waistRiseCm;
+  const garmentFit=useMemo(()=>({fit,easeCm,hemLength,waistRiseCm}),[fit,easeCm,hemLength,waistRiseCm]);
+  const garmentShell=useMemo(() => {
+    if(renderMode!=="normal" || !isClothPreset(wardrobe) || useProcedural || !bodyMesh || !scene || !skeleton)return null;
+    return createAuthoredGarment(bodyMesh,garmentMesh,garmentFit) || createGarmentGeometry(bodyMesh,garmentFit);
+  }, [bodyMesh,scene,skeleton,useProcedural,renderMode,wardrobe,garmentMesh,
+    garmentFit]);
+  useEffect(()=>()=>garmentShell?.dispose(),[garmentShell]);
+
   // Separate authored garment topology follows measured body changes through
   // surface bindings and shares the pose rig. Custom assets retain the shell
   // fallback when they do not match the approved binding topology.
@@ -550,7 +561,8 @@ export default function HumanoidClone({
     if(!clothMaterial) {publishGarmentEvidence(renderer.domElement,wardrobe,null);return undefined;}
     if (useProcedural || !bodyMesh || !scene || !skeleton) return undefined;
     const parent = bodyMesh.parent || scene;
-    const shell=createAuthoredGarment(bodyMesh,wardrobeAsset?.mesh,wardrobeOptions || {}) || createGarmentGeometry(bodyMesh,wardrobeOptions || {});
+    const shell=garmentShell;
+    if(!shell)return undefined;
     const restoreBody=shell.authored?clothMaterial.userData.maskBody(material,bodyMesh):null;
     const overlay = new THREE.SkinnedMesh(shell.geometry, clothMaterial);
     overlay.userData.garmentShell=shell;
@@ -575,11 +587,10 @@ export default function HumanoidClone({
 
     return () => {
       parent.remove(overlay);
-      shell.dispose();
       restoreBody?.();
       if (clothOverlayRef.current === overlay) clothOverlayRef.current = null;
     };
-  }, [bodyMesh, cloneKey, clothMaterial, scene, skeleton, useProcedural,wardrobeOptions,wardrobeAsset,wardrobe,renderer,material]);
+  }, [bodyMesh, cloneKey, clothMaterial, scene, skeleton, useProcedural,garmentShell,wardrobe,wardrobeOptions?.variant,renderer,material]);
 
   // An aura must share the body's parent, bind matrix and morphs. A sibling
   // outside the normalized scene produces detached glowing face/hand patches.
@@ -681,7 +692,7 @@ export default function HumanoidClone({
     if (auraRef.current) interpolator.applyToMesh(auraRef.current, morphIndexMap);
     groundElapsed.current += delta;
     if (groundElapsed.current >= 0.15) {
-      groundSoles?.(0.04 / heightScale);
+      groundSoles?.((showStage?0.04:0.005) / heightScale);
       groundElapsed.current = 0;
     }
 
@@ -775,6 +786,7 @@ export default function HumanoidClone({
         animationId={measurementView || viewMode!=='SOLO' || reducedMotion && !animationState.userInitiated ? 'standing' : animationState?.animationId || 'idle'}
         playing={!poseActive && !measurementView && viewMode==='SOLO' && animationState?.playing !== false && (!reducedMotion || animationState.userInitiated)}
         speed={animationState?.speed || 1}
+        sampleTime={animationState?.sampleTime}
       />
       <PoseTargetMarkers bodyMesh={bodyMesh} targets={savedPose.targets} joints={savedPose.joints} context={cloneKey==='B'?'goal':'current'} visible={poseActive && poseInspector && !captureRedacted}/>
     </group>

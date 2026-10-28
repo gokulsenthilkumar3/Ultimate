@@ -36,6 +36,8 @@
       "!**/.env*",
       "!**/uploads/**",
       "!**/vault/**",
+      "!**/.code-index/**",
+      "!**/.codeindexignore",
       "package.json",
       "node_modules/@prisma/client/**/*",
       "node_modules/.prisma/**/*",
@@ -46,6 +48,9 @@
     ]
   },
   "scripts": {
+    "dev:design": "vite --config vite.admin-demo.config.js",
+    "build:design": "vite build --config vite.admin-demo.config.js",
+    "test:design": "vitest run --config vite.admin-demo.config.js",
     "build:desktop": "node scripts/build-desktop.mjs",
     "dev": "concurrently \"vite\" \"node server.js\"",
     "build": "vite build",

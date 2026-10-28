@@ -116,10 +116,36 @@ function createLayerSeparation(geometry,landmarks,height) {
 export function createAuthoredGarment(body,source,options={}) {
   const bindings=source?.geometry?.getAttribute('_body_indices');
   const sourceGeometry=source?.geometry,bodyGeometry=body?.geometry;
-  if(!bindings || source.userData.bodyVertexCount!==bodyGeometry?.attributes.position.count) return null;
+  if(!bindings || !bodyGeometry)return null;
+  const count=bodyGeometry.attributes.position.count,expected=source.userData.bodyVertexCount;
+  // The r2 authoring pipeline appends refinement vertices without reordering
+  // the 16,001 source vertices used by the pinned wardrobe bindings.
+  const retainedPrefix=body.userData.growthtrack?.nativeFamily==='generic-adult-r2' && body.userData.growthtrack?.bindingPrepared && expected===16001 && count>=expected;
+  if(expected!==count && !retainedPrefix)return null;
+  for(let i=0;i<bindings.count;i++)for(let k=0;k<bindings.itemSize;k++)if(bindings.getComponent(i,k)>=expected)return null;
   const geometry=sourceGeometry.clone(),rest=sourceGeometry.attributes.position;
   const bary=geometry.getAttribute('_body_bary'),anchors=geometry.getAttribute('_body_anchor');
   geometry.setAttribute('garmentCoverage',geometry.getAttribute('_garment_coverage'));
+  // Runtime body binding corrects the imported skin weights. Transfer that
+  // same corrected field to the garment, otherwise the two surfaces follow
+  // different skeleton deformation during bends and raised-arm poses.
+  const bodyJoints=bodyGeometry.attributes.skinIndex,bodyWeights=bodyGeometry.attributes.skinWeight;
+  if(bodyJoints && bodyWeights) {
+    const joints=new Uint16Array(bindings.count*4),weights=new Float32Array(bindings.count*4);
+    for(let i=0;i<bindings.count;i++) {
+      const influences=new Map();
+      for(let corner=0;corner<bindings.itemSize;corner++) {
+        const id=bindings.getComponent(i,corner),share=bary.getComponent(i,corner);
+        for(let slot=0;slot<bodyWeights.itemSize;slot++) {
+          const joint=bodyJoints.getComponent(id,slot),weight=bodyWeights.getComponent(id,slot)*share;
+          influences.set(joint,(influences.get(joint)||0)+weight);
+        }
+      }
+      const ranked=[...influences].filter(([,weight])=>weight>0).sort((a,b)=>b[1]-a[1]).slice(0,4),sum=ranked.reduce((total,[,weight])=>total+weight,0);
+      ranked.forEach(([joint,weight],slot)=>{joints[i*4+slot]=joint;weights[i*4+slot]=weight/sum;});
+    }
+    geometry.setAttribute('skinIndex',new BufferAttribute(joints,4));geometry.setAttribute('skinWeight',new BufferAttribute(weights,4));
+  }
   const bounds=new Box3().setFromBufferAttribute(bodyGeometry.attributes.position),height=bounds.max.y-bounds.min.y,scale=1.92/height;
   const coordinates=new Float32Array(rest.count*3);
   for(let i=0;i<rest.count;i++) {coordinates[i*3]=rest.getX(i)*scale;coordinates[i*3+1]=(rest.getY(i)-bounds.min.y)*scale;coordinates[i*3+2]=rest.getZ(i)*scale;}

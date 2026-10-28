@@ -31,8 +31,8 @@ export const FEATURES: readonly FeatureDefinition[] = Object.freeze([
   feature('sip', 'finance', 'sip', 'SIP Calculator', 'analytics', ['inputs', 'projection', 'comparison'], ['planning', 'sip-calculator']),
   feature('shopping', 'finance', 'shopping', 'Shopping', 'record', ['lists', 'planned', 'purchased']),
   feature('financeSync', 'finance', 'sync', 'Sync', 'settings', ['accounts', 'csv', 'history']),
-  feature('finsync', 'finance', 'finsync', 'FinSync', 'immersive', ['dashboard', 'budget', 'cards', 'accounts'], ['fin-sync']),
-  feature('oxfin', 'finance', 'oxfin', 'OxFin', 'immersive', ['wallets', 'cards', 'investments', 'intelligence'], ['ox-fin']),
+  feature('finsync', 'finance', 'finsync', 'FinSync customers', 'record', ['customers', 'activity', 'support'], ['fin-sync'], 'setup-required'),
+  feature('oxfin', 'finance', 'oxfin', 'OxFin customers', 'record', ['customers', 'activity', 'support'], ['ox-fin'], 'setup-required'),
   feature('equity', 'finance', 'equity', 'Equity Lens', 'immersive', ['charts', 'indices', 'options', 'chain'], ['niftylens', 'nifty-lens']),
   feature('overview', 'insights', 'overview', 'Overview', 'command', ['today', 'priorities', 'summary'], ['insights']),
   feature('actions', 'insights', 'actions', 'Action Center', 'record', ['today', 'upcoming', 'snoozed', 'dismissed'], ['action-center']),
@@ -71,6 +71,7 @@ export const FEATURES: readonly FeatureDefinition[] = Object.freeze([
   feature('maps', 'life', 'places', 'Maps & Places', 'record', ['map', 'list', 'timeline', 'privacy'], ['places']),
   feature('family', 'life', 'family', 'Family Connect', 'immersive', ['tree', 'memories', 'vault', 'timeline'], ['family-connect']),
   feature('hub', 'hub', 'overview', 'Overview', 'command'),
+  Object.freeze({ ...feature('customers', 'hub', 'customers', 'All customers', 'record', ['customers', 'activity', 'support'], [], 'setup-required'), canonicalPath: '/customers' }),
   feature('apps', 'hub', 'apps', 'Apps', 'record', ['modules', 'favorites', 'external']),
   feature('companion', 'hub', 'companion', 'Apps Suite', 'immersive', ['all', 'finsync', 'oxfin', 'equity', 'forex', 'family'], ['suite', 'ecosystem', 'integrated', 'matrix']),
   feature('ai', 'hub', 'agents', 'Agents', 'record', ['chat', 'history', 'context', 'settings'], ['agents']),
@@ -101,6 +102,7 @@ export function resolveFeatureRoute(pathname: string, search = '', hash = ''): R
   let fragment = '';
   try { fragment = decodeURIComponent(hash.replace(/^#/, '')).toLowerCase(); } catch { /* malformed legacy fragments are ignored */ }
   let item: FeatureDefinition | undefined = BY_PATH[path];
+  if (!item && /^\/customers\/(finsync|oxfin)$/.test(path)) item = FEATURE_BY_ID[path.split('/').at(-1)!];
   const areaRoot = AREA_ORDER.includes(path.slice(1) as ProductArea);
   if (!item && areaRoot) {
     const area = path.slice(1);

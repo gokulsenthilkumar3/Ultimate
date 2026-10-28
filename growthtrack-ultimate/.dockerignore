@@ -23,3 +23,6 @@
 **/*.p12
 **/*.pfx
 server/private-files
+**/.code-index
+**/.code-index/**
+**/.codeindexignore

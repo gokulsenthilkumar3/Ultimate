@@ -4,6 +4,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { GROUPS, GROUP_ORDER, tabMeta } from '../config/navigation';
 
 const SECTION_COPY = {
+  customers: { description: 'Manage product-scoped customer access and support.', action: 'View customers', destination: 'customers' },
   today: { description: 'Make room for what matters today.', action: 'Plan your day', destination: 'workspace' },
   body: { description: 'Train, fuel, and understand your body.', action: 'Open training', destination: 'training' },
   wellness: { description: 'Build a routine that helps you feel your best.', action: 'View habits', destination: 'habits' },
@@ -14,7 +15,7 @@ const SECTION_COPY = {
   system: { description: 'Your tools, preferences, and support in one place.', action: 'Browse all apps', destination: 'apps' },
 };
 
-export default function SectionNavigation({ activeTab, onNavigate }) {
+export default function SectionNavigation({ activeTab }) {
   const meta = tabMeta(activeTab);
   const group = GROUPS[meta.group];
   if (!group) return null;

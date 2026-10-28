@@ -1,0 +1,2176 @@
+{
+  "schemaVersion": 1,
+  "scope": "Static dependency and ownership analysis for the isolated redesign. Potential impact is conservative at route-family level, not a claim that every branch changed.",
+  "implementationScope": "The import graph below describes the isolated preview. Approved production shell/customer-admin presentation integration is recorded separately in productionUiIntegration; no deployment or database migration.",
+  "productionUiIntegration": {
+    "status": "Approved demo direction applied to production shell and shared primitives; no deployment",
+    "source": "docs/plans/2026-10-28-production-ui.md",
+    "featureRoutes": 61,
+    "authentication": "Existing Ultimate owner session and domain stores retained",
+    "customerAdmin": "Dedicated product-scoped UI; authenticated readiness endpoint returns setup until real restricted adapters exist",
+    "nativeCompanions": "Equity/Family/Forex retain existing integration until parity; no fixture substitution",
+    "sharedSources": [
+      "growthtrack-ultimate/src/design/tokens.ts",
+      "growthtrack-ultimate/src/styles/app-styles.css",
+      "growthtrack-ultimate/src/styles/editorial-shell.css",
+      "growthtrack-ultimate/src/styles/responsive-foundation.css",
+      "growthtrack-ultimate/src/components/PremiumSidebar.jsx",
+      "growthtrack-ultimate/src/components/Header.jsx",
+      "growthtrack-ultimate/src/components/ui/DataTable.tsx",
+      "growthtrack-ultimate/src/domains/customer-admin/CustomerAdminPage.jsx",
+      "growthtrack-ultimate/src/domains/customer-admin/customerAdminClient.js",
+      "growthtrack-ultimate/server/domains/customerAdmin.js"
+    ],
+    "browserVerification": "pending"
+  },
+  "counts": {
+    "pages": 65,
+    "pageViewDestinations": 201,
+    "lazyRouteFamilies": 13,
+    "baseReviewVariants": 4824,
+    "plannedViewportVariants": 24120,
+    "sourceStylesheetsInventoried": 54,
+    "tablePotentialPages": 54,
+    "tablePotentialViews": 177
+  },
+  "viewportMatrix": [
+    {
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "owners": [
+    {
+      "ownerArea": "Customer administration",
+      "pages": [
+        "finsync",
+        "oxfin",
+        "customers"
+      ],
+      "productionGate": "Authenticated product-specific adapters, roles, audit and rendered verification; design direction is approved"
+    },
+    {
+      "ownerArea": "Personal finance and markets",
+      "pages": [
+        "finance",
+        "transactions",
+        "financeAnalytics",
+        "financeTrends",
+        "budgeting",
+        "subscriptions",
+        "portfolio",
+        "sip",
+        "shopping",
+        "financeSync",
+        "equity"
+      ],
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "ownerArea": "Growth and Physique",
+      "pages": [
+        "wellness",
+        "sleep",
+        "lifestyle",
+        "mind",
+        "medical",
+        "health",
+        "habits",
+        "physique",
+        "assessment",
+        "training",
+        "strength",
+        "nutrition",
+        "hydration",
+        "healthSync"
+      ],
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "ownerArea": "Workspace",
+      "pages": [
+        "workspace",
+        "calendar",
+        "documents",
+        "notes",
+        "tasks",
+        "projects",
+        "timesheet",
+        "skills",
+        "goals"
+      ],
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "ownerArea": "Insights",
+      "pages": [
+        "overview",
+        "actions",
+        "current",
+        "analytics",
+        "dashboards",
+        "progress",
+        "forecast",
+        "forex"
+      ],
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "ownerArea": "Family and life",
+      "pages": [
+        "life",
+        "social",
+        "entertainment",
+        "maps",
+        "family"
+      ],
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    },
+    {
+      "ownerArea": "Portal platform",
+      "pages": [
+        "hub",
+        "apps",
+        "companion",
+        "ai",
+        "databases",
+        "profile",
+        "notifications",
+        "help",
+        "logs",
+        "about",
+        "pricing",
+        "welcome",
+        "login",
+        "privacy",
+        "terms"
+      ],
+      "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
+    }
+  ],
+  "changes": [
+    {
+      "surface": "Shell, review and shared styling",
+      "potentialPages": [
+        "finance",
+        "transactions",
+        "financeAnalytics",
+        "financeTrends",
+        "budgeting",
+        "subscriptions",
+        "portfolio",
+        "sip",
+        "shopping",
+        "financeSync",
+        "finsync",
+        "oxfin",
+        "equity",
+        "overview",
+        "actions",
+        "current",
+        "analytics",
+        "dashboards",
+        "progress",
+        "forecast",
+        "forex",
+        "wellness",
+        "sleep",
+        "lifestyle",
+        "mind",
+        "medical",
+        "health",
+        "habits",
+        "physique",
+        "assessment",
+        "training",
+        "strength",
+        "nutrition",
+        "hydration",
+        "healthSync",
+        "workspace",
+        "calendar",
+        "documents",
+        "notes",
+        "tasks",
+        "projects",
+        "timesheet",
+        "skills",
+        "goals",
+        "life",
+        "social",
+        "entertainment",
+        "maps",
+        "family",
+        "hub",
+        "apps",
+        "companion",
+        "ai",
+        "databases",
+        "profile",
+        "notifications",
+        "help",
+        "logs",
+        "about",
+        "pricing",
+        "customers",
+        "welcome",
+        "login",
+        "privacy",
+        "terms"
+      ],
+      "risk": "Incorrect scope could overstate approval; fixed toolbar and long labels need actual viewport inspection.",
+      "control": "v5 exact-scope keys, six preview states, explicit provenance, canonical accessible tokens, linear scoped coverage and frozen feedback target."
+    },
+    {
+      "surface": "Shared RecordsTable",
+      "potentialPages": [
+        "finance",
+        "transactions",
+        "financeAnalytics",
+        "financeTrends",
+        "budgeting",
+        "subscriptions",
+        "portfolio",
+        "sip",
+        "shopping",
+        "financeSync",
+        "finsync",
+        "oxfin",
+        "equity",
+        "actions",
+        "forex",
+        "wellness",
+        "sleep",
+        "lifestyle",
+        "mind",
+        "medical",
+        "health",
+        "habits",
+        "physique",
+        "assessment",
+        "training",
+        "strength",
+        "nutrition",
+        "hydration",
+        "healthSync",
+        "workspace",
+        "documents",
+        "notes",
+        "tasks",
+        "projects",
+        "timesheet",
+        "skills",
+        "goals",
+        "life",
+        "social",
+        "entertainment",
+        "maps",
+        "family",
+        "hub",
+        "apps",
+        "companion",
+        "ai",
+        "databases",
+        "profile",
+        "notifications",
+        "help",
+        "logs",
+        "about",
+        "pricing",
+        "customers"
+      ],
+      "risk": "Unbounded rows, empty pages after filtering, incorrect global sorting.",
+      "control": "25 rows by default, 100 maximum, full-result sorting before slicing, search resets page, clamp after source shrink. This is client pagination, not server pagination."
+    },
+    {
+      "surface": "Physique workspace",
+      "potentialPages": [
+        "physique"
+      ],
+      "risk": "Current/Goal leakage, draft overwrite, stale preview, implying a completed mesh or fit.",
+      "control": "Independent semantic contexts, explicit local snapshot, cancel obsolete outline timer, isolated lazy screen, disabled GLB export."
+    },
+    {
+      "surface": "Customer master/detail",
+      "potentialPages": [
+        "customers",
+        "finsync",
+        "oxfin"
+      ],
+      "risk": "Product leakage, filtered-out selection, duplicate tab identifiers and narrow detail columns.",
+      "control": "Product/status/plan filtering, selection reset, unique tab IDs, focus restoration and stacked detail below 1296px; no real admin writes."
+    },
+    {
+      "surface": "Shared session workflows",
+      "potentialPages": [
+        "actions",
+        "tasks",
+        "workspace",
+        "timesheet",
+        "notes",
+        "notifications",
+        "logs"
+      ],
+      "risk": "Duplicate completion, title-key collisions, state loss between views and invented audit streams.",
+      "control": "Stable task/session IDs, deadline completion deduplication, shell-owned state, distinct read-only sample schemas and current-draft search."
+    },
+    {
+      "surface": "Concept analytics and specialised workflows",
+      "potentialPages": [
+        "current",
+        "analytics",
+        "dashboards",
+        "progress",
+        "forecast",
+        "assessment",
+        "strength",
+        "nutrition",
+        "training",
+        "skills"
+      ],
+      "risk": "Generic repeated charts could be mistaken for implemented analysis or completed calculators.",
+      "control": "Named input/output artifact contracts, explicit setup/preview scope, skill-specific records and labelled local dashboard ordering."
+    }
+  ],
+  "diagramAssessment": [
+    {
+      "stage": "Semantic state and save",
+      "evidence": [
+        "growthtrack-ultimate/src/lib/avatarDocument.js",
+        "growthtrack-ultimate/src/hooks/useParametricAvatar.js"
+      ],
+      "observed": "Versioned semantic documents and an existing per-person serialized save boundary. Demo state stays independent of these production stores."
+    },
+    {
+      "stage": "Identity bake worker",
+      "evidence": [
+        "growthtrack-ultimate/src/components/morphEngine/parametricIdentity.js"
+      ],
+      "observed": "The inspected identity module evaluates on the CPU through synchronous setWeights. The worker box in the supplied diagram is a target, not an established worker in this module."
+    },
+    {
+      "stage": "Garment solver worker",
+      "evidence": [
+        "growthtrack-ultimate/src/components/morphEngine/garmentFitQueue.js",
+        "growthtrack-ultimate/src/components/morphEngine/garmentFit.worker.js"
+      ],
+      "observed": "Existing single-flight, newest-revision queue and worker. Stale results cannot apply; failure and disposal reject waiting exports."
+    },
+    {
+      "stage": "Renderer and portable export",
+      "evidence": [
+        "growthtrack-ultimate/src/components/morphEngine/avatarPackage.js",
+        "growthtrack-ultimate/src/lib/avatarDocument.js"
+      ],
+      "observed": "Production semantic documents and geometry packages have distinct contracts. The review demo exports only clearly labelled sample JSON and does not instantiate the renderer."
+    }
+  ],
+  "scenarioGroups": [
+    {
+      "area": "Shared records",
+      "tests": "growthtrack-ultimate/src/admin-demo/ui-system.test.jsx",
+      "cases": [
+        "10,000 records with 25 mounted rows",
+        "100-row maximum selectable page",
+        "Sort before slicing",
+        "Search and reset while on another page",
+        "Source shrink clamps page",
+        "Last partial page and empty results",
+        "Missing sort values stay last"
+      ]
+    },
+    {
+      "area": "Review workflow",
+      "tests": "growthtrack-ultimate/src/admin-demo/ui-system.test.jsx",
+      "cases": [
+        "24,120 synthetic scoped review records",
+        "Density, theme, state and viewport isolation",
+        "One tab is not a completed page",
+        "Pending view selection and wraparound",
+        "Product and status filters with reset",
+        "Preserve error state during catalog navigation",
+        "Resize while writing feedback",
+        "Malformed and old stored approval rejection"
+      ]
+    },
+    {
+      "area": "Physique controls",
+      "tests": "growthtrack-ultimate/src/admin-demo/ui-system.test.jsx",
+      "cases": [
+        "Current and Goal isolation",
+        "Finite values and control limits",
+        "Rapid changes use the newest outline",
+        "Draft survives tabs and navigation",
+        "Saved history stays separate from draft",
+        "Only explicit saves survive reload",
+        "Storage failure retains draft",
+        "Malformed profile recovery",
+        "No service or model requests",
+        "GLB export unavailable without a connected pipeline"
+      ]
+    },
+    {
+      "area": "Existing product interactions",
+      "tests": "growthtrack-ultimate/src/admin-demo/ui-records.test.jsx and ui-regressions.test.jsx",
+      "cases": [
+        "FinSync and OxFin directory isolation",
+        "Customer notes and keyboard tabs",
+        "Financial totals and status filters",
+        "Family vault ownership and shared events",
+        "Calendar boundaries and leap years",
+        "Timer navigation and delayed ticks",
+        "Dialogs, drawer, focus and empty states"
+      ]
+    },
+    {
+      "area": "Supplied redesign proposal",
+      "tests": "growthtrack-ultimate/src/admin-demo/proposal-redesign.test.jsx",
+      "cases": [
+        "Scope badges and per-panel provenance",
+        "Denied and unavailable previews",
+        "Customer plan/status filters and inline detail focus",
+        "Filtered finance totals, date range recovery and price precision",
+        "Distinct timer/session/analytics artifacts and exactly-once completion off-page",
+        "Snooze/dismiss/restore and stable task identity",
+        "Unread/read transitions and distinct log schemas",
+        "Honest specialised artifact contracts and skill-specific samples",
+        "Local dashboard arrangement",
+        "Global task and edited-note search",
+        "Public shell and account preferences"
+      ]
+    }
+  ],
+  "browserCasesStillRequired": [
+    "Actual layout at all five viewport sizes",
+    "Both themes and densities with zoom and long text",
+    "Native dialog focus, backdrop, scroll lock and drawer",
+    "Range keyboard and pointer interactions",
+    "Reduced-motion and forced-colour appearance",
+    "Real WebGL context loss, device memory and fitted garment rendering after integration"
+  ],
+  "productionGates": [
+    "No shared customer authorization through product login handoff",
+    "Bounded server pagination before real large datasets",
+    "Identity-worker revision and cancellation contract before moving CPU evaluation",
+    "Owned transferable buffers; no detachment of live geometry",
+    "Export only the latest fitted and matching document revision",
+    "Save flush, owner/person change and offline error recovery",
+    "Independent builds for affected applications; no coupled all-product release"
+  ],
+  "routes": [
+    {
+      "id": "finance",
+      "path": "/finance/overview",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "transactions",
+      "path": "/finance/transactions",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "all",
+        "income",
+        "expenses"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "financeAnalytics",
+      "path": "/finance/analytics",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "categories",
+        "income",
+        "comparisons"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "financeTrends",
+      "path": "/finance/trends",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "monthly",
+        "recurring"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "budgeting",
+      "path": "/finance/budgeting",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "current",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "subscriptions",
+      "path": "/finance/subscriptions",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "active",
+        "upcoming",
+        "archived"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "portfolio",
+      "path": "/finance/portfolio",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "holdings",
+        "allocation",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "sip",
+      "path": "/finance/sip",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "inputs",
+        "projection",
+        "comparison"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "shopping",
+      "path": "/finance/shopping",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "lists",
+        "planned",
+        "purchased"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "financeSync",
+      "path": "/finance/sync",
+      "ownerArea": "Personal finance and markets",
+      "family": "finance",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+      "views": [
+        "accounts",
+        "csv",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/financeModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/portfolioModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceRecords.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FinanceScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/PortfolioScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SIPScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "finsync",
+      "path": "/customers/finsync",
+      "ownerArea": "Customer administration",
+      "family": "customers",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/dialogs/CustomerDetail.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "oxfin",
+      "path": "/customers/oxfin",
+      "ownerArea": "Customer administration",
+      "family": "customers",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/dialogs/CustomerDetail.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "equity",
+      "path": "/finance/equity",
+      "ownerArea": "Personal finance and markets",
+      "family": "markets",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/MarketsScreen.jsx",
+      "views": [
+        "charts",
+        "indices",
+        "options",
+        "chain"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/MarketsScreen.jsx"
+      ]
+    },
+    {
+      "id": "overview",
+      "path": "/insights/overview",
+      "ownerArea": "Insights",
+      "family": "overview",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/OverviewScreen.jsx",
+      "views": [
+        "today",
+        "priorities",
+        "summary"
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/OverviewScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "actions",
+      "path": "/insights/actions",
+      "ownerArea": "Insights",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        "today",
+        "upcoming",
+        "snoozed",
+        "dismissed"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "current",
+      "path": "/insights/current",
+      "ownerArea": "Insights",
+      "family": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "views": [
+        "weather",
+        "news",
+        "local"
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx"
+      ]
+    },
+    {
+      "id": "analytics",
+      "path": "/insights/analytics",
+      "ownerArea": "Insights",
+      "family": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "views": [
+        "trends",
+        "correlations",
+        "comparisons"
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx"
+      ]
+    },
+    {
+      "id": "dashboards",
+      "path": "/insights/dashboards",
+      "ownerArea": "Insights",
+      "family": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "views": [
+        "saved",
+        "arrange"
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx"
+      ]
+    },
+    {
+      "id": "progress",
+      "path": "/insights/progress",
+      "ownerArea": "Insights",
+      "family": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "views": [
+        "timeline",
+        "comparisons",
+        "milestones"
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx"
+      ]
+    },
+    {
+      "id": "forecast",
+      "path": "/insights/forecast",
+      "ownerArea": "Insights",
+      "family": "insights",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+      "views": [
+        "trends",
+        "scenarios"
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx"
+      ]
+    },
+    {
+      "id": "forex",
+      "path": "/insights/forex",
+      "ownerArea": "Insights",
+      "family": "markets",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/MarketsScreen.jsx",
+      "views": [
+        "models",
+        "forecast",
+        "analytics",
+        "volatility"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/MarketsScreen.jsx"
+      ]
+    },
+    {
+      "id": "wellness",
+      "path": "/wellness/overview",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "sleep",
+      "path": "/wellness/sleep",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "log",
+        "trends",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "lifestyle",
+      "path": "/wellness/lifestyle",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "routines",
+        "preferences",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "mind",
+      "path": "/wellness/mind",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "checkin",
+        "trends",
+        "journal",
+        "breathe"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "medical",
+      "path": "/wellness/medical",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "vitals",
+        "medications",
+        "records",
+        "timeline"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "health",
+      "path": "/wellness/health",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "senses",
+        "lifestyle",
+        "specialized",
+        "recovery"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "habits",
+      "path": "/wellness/habits",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "today",
+        "matrix",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "physique",
+      "path": "/wellness/physique",
+      "ownerArea": "Growth and Physique",
+      "family": "physique",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PhysiqueScreen.jsx",
+      "views": [
+        "blueprint",
+        "measurements",
+        "targets",
+        "history",
+        "3d"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/physiqueModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/PhysiqueScreen.jsx"
+      ]
+    },
+    {
+      "id": "assessment",
+      "path": "/wellness/assessment",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "questionnaire",
+        "results",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "training",
+      "path": "/wellness/training",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "schedule",
+        "logger",
+        "prs",
+        "overload",
+        "volume",
+        "sessions"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "strength",
+      "path": "/wellness/strength",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "log",
+        "progression",
+        "1rm",
+        "fatigue",
+        "volume"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "nutrition",
+      "path": "/wellness/nutrition",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "daily",
+        "history",
+        "targets",
+        "calculator"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "hydration",
+      "path": "/wellness/hydration",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "today",
+        "history",
+        "targets"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "healthSync",
+      "path": "/wellness/sync",
+      "ownerArea": "Growth and Physique",
+      "family": "growth",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+      "views": [
+        "devices",
+        "imports",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/ArtifactPreview.jsx",
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/growthArtifacts.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/GrowthScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "workspace",
+      "path": "/workspace/overview",
+      "ownerArea": "Workspace",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "calendar",
+      "path": "/workspace/calendar",
+      "ownerArea": "Workspace",
+      "family": "calendar",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/CalendarScreen.jsx",
+      "views": [
+        "month",
+        "week",
+        "agenda",
+        "connections"
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/CalendarScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx"
+      ]
+    },
+    {
+      "id": "documents",
+      "path": "/workspace/files",
+      "ownerArea": "Workspace",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        "vault",
+        "providers",
+        "recent"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "notes",
+      "path": "/workspace/notes",
+      "ownerArea": "Workspace",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        "all",
+        "pinned",
+        "tags",
+        "editor"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "tasks",
+      "path": "/workspace/tasks",
+      "ownerArea": "Workspace",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        "today",
+        "upcoming",
+        "all",
+        "completed",
+        "list",
+        "board"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "projects",
+      "path": "/workspace/projects",
+      "ownerArea": "Workspace",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        "github",
+        "mine",
+        "grid",
+        "list"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "timesheet",
+      "path": "/workspace/timesheet",
+      "ownerArea": "Workspace",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        "timer",
+        "sessions",
+        "analytics"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "skills",
+      "path": "/workspace/skills",
+      "ownerArea": "Workspace",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        "tree",
+        "list",
+        "radar",
+        "history"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "goals",
+      "path": "/workspace/goals",
+      "ownerArea": "Workspace",
+      "family": "work",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx",
+      "views": [
+        "active",
+        "completed",
+        "archived"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/focusModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/noteModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/taskModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActionScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FocusTimer.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/NotesScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SkillsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/TimeScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/WorkScreen.jsx"
+      ]
+    },
+    {
+      "id": "life",
+      "path": "/life/overview",
+      "ownerArea": "Family and life",
+      "family": "life",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx"
+      ]
+    },
+    {
+      "id": "social",
+      "path": "/life/social",
+      "ownerArea": "Family and life",
+      "family": "life",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx",
+      "views": [
+        "profiles",
+        "analytics",
+        "connections"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx"
+      ]
+    },
+    {
+      "id": "entertainment",
+      "path": "/life/entertainment",
+      "ownerArea": "Family and life",
+      "family": "life",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx",
+      "views": [
+        "library",
+        "stats",
+        "sync"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx"
+      ]
+    },
+    {
+      "id": "maps",
+      "path": "/life/places",
+      "ownerArea": "Family and life",
+      "family": "life",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx",
+      "views": [
+        "map",
+        "list",
+        "timeline",
+        "privacy"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/LifeScreen.jsx"
+      ]
+    },
+    {
+      "id": "family",
+      "path": "/life/family",
+      "ownerArea": "Family and life",
+      "family": "family",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/FamilyScreen.jsx",
+      "views": [
+        "tree",
+        "memories",
+        "vault",
+        "timeline"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/calendarModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/familyModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/FamilyScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/FileScreen.jsx"
+      ]
+    },
+    {
+      "id": "hub",
+      "path": "/hub/overview",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "apps",
+      "path": "/hub/apps",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "modules",
+        "favorites",
+        "external"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "companion",
+      "path": "/hub/companion",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "all",
+        "finsync",
+        "oxfin",
+        "equity",
+        "forex",
+        "family"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "ai",
+      "path": "/hub/agents",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "chat",
+        "history",
+        "context",
+        "settings"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "databases",
+      "path": "/hub/databases",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "custom",
+        "application",
+        "imports"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "profile",
+      "path": "/hub/settings",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "personal",
+        "physical",
+        "security",
+        "appearance",
+        "integrations"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "notifications",
+      "path": "/hub/notifications",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "unread",
+        "all",
+        "preferences"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "help",
+      "path": "/hub/help",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "guides",
+        "troubleshooting",
+        "diagnostics"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "logs",
+      "path": "/hub/logs",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "activity",
+        "authentication",
+        "sync"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "about",
+      "path": "/hub/about",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "version",
+        "capabilities",
+        "licenses"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "pricing",
+      "path": "/hub/plans",
+      "ownerArea": "Portal platform",
+      "family": "system",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx",
+      "views": [
+        "capabilities",
+        "billing"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/activityModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/ActivityScreens.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/InsightsScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SetupScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/SystemScreen.jsx"
+      ]
+    },
+    {
+      "id": "customers",
+      "path": "/customers",
+      "ownerArea": "Customer administration",
+      "family": "customers",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "sharedTablePotentialImpact": true,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/dialogs/CustomerDetail.jsx",
+        "growthtrack-ultimate/src/admin-demo/fixtures.js",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/CustomerScreen.jsx",
+        "growthtrack-ultimate/src/admin-demo/screens/screenHelpers.js"
+      ]
+    },
+    {
+      "id": "welcome",
+      "path": "/welcome",
+      "ownerArea": "Portal platform",
+      "family": "public",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx"
+      ]
+    },
+    {
+      "id": "login",
+      "path": "/login",
+      "ownerArea": "Portal platform",
+      "family": "public",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx"
+      ]
+    },
+    {
+      "id": "privacy",
+      "path": "/privacy",
+      "ownerArea": "Portal platform",
+      "family": "public",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx"
+      ]
+    },
+    {
+      "id": "terms",
+      "path": "/terms",
+      "ownerArea": "Portal platform",
+      "family": "public",
+      "entry": "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx",
+      "views": [
+        ""
+      ],
+      "sharedTablePotentialImpact": false,
+      "sourceModules": [
+        "growthtrack-ultimate/src/admin-demo/Scope.jsx",
+        "growthtrack-ultimate/src/admin-demo/components.jsx",
+        "growthtrack-ultimate/src/admin-demo/hooks/useScrollLock.js",
+        "growthtrack-ultimate/src/admin-demo/models/chartModel.js",
+        "growthtrack-ultimate/src/admin-demo/models/tableModel.js",
+        "growthtrack-ultimate/src/admin-demo/screens/PublicScreen.jsx"
+      ]
+    }
+  ]
+}

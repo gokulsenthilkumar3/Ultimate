@@ -8,9 +8,9 @@ describe('model asset registry', () => {
   it('does not grant bundled-only corrective processing to arbitrary saved uploads',()=>{
     expect(resolveModelAsset({avatarAsset:'owner-upload.glb'}).isBundled).toBe(false);
   });
-  it('promotes the articulated male preview at both quality levels while retaining covered and legacy choices',()=> {
-    expect(resolveModelAsset({modelPreset:'male'},'HIGH')).toMatchObject({path:expect.stringMatching(/humanoid-preview-75\.glb$/),version:'v2',anatomySex:'male',source:'default',v2Ready:true});
-    expect(resolveModelAsset({modelPreset:'male'},'LOW').path).toMatch(/humanoid-preview-75-lite\.glb$/);
+  it('promotes the refined human preview at both quality levels while retaining covered and legacy choices',()=> {
+    expect(resolveModelAsset({modelPreset:'male'},'HIGH')).toMatchObject({path:expect.stringMatching(/humanoid-human-r2-hero\.glb$/),version:'human-r2',anatomySex:'male',source:'human-family',v2Ready:true});
+    expect(resolveModelAsset({modelPreset:'male'},'LOW').path).toMatch(/humanoid-human-r2-core\.glb$/);
     expect(resolveModelAsset({modelPreset:'female'}).v2Ready).toBe(false);
     expect(resolveModelAsset({modelPreset:'male',modelVersion:'legacy'}).path).toMatch(/humanoid-base-lite\.glb$/);
     expect(resolveModelAsset({avatarAsset:'humanoid-base.glb',modelPreset:'male'}).source).toBe('profile');

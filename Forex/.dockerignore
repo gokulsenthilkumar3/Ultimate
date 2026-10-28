@@ -47,3 +47,8 @@ mlruns/
 *.docx
 *.pdf
 *.pptx
+
+# Machine-local code retrieval files are not runtime dependencies.
+**/.code-index
+**/.code-index/**
+**/.codeindexignore

@@ -1,30 +1,44 @@
-# Payments Service
+# OxFin payment prototype
 
-The Payments Service is a multi-rail payment orchestration engine. It routes payments based on country defaults or explicit user selection.
+Reference payment-provider workflow handlers.
 
-## 🚀 Features
-- **Multi-Rail Routing:** Supports UPI (India), ACH (US), SEPA (EU), SWIFT (International), and Ox (On-chain/Off-chain).
-- **Automatic Rail Selection:** Defaults to local rails based on the destination country.
-- **Ox Token Integration:** Supports native payments using the Ox token ecosystem.
-- **Persistence:** Full payment history stored in Postgres (optional).
+**Runtime:** TypeScript service prototype.
 
-## 🔌 Endpoints
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Service health check. |
-| POST | `/v1/payments` | Initiates a new payment intent. |
-| GET | `/v1/payments/:id` | Fetches details and status of a specific payment. |
+**Status:** Incomplete dependency manifest; no live payment integration is enabled by the UI work.
 
-## ⚙️ Configuration
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PAYMENTS_PORT` | 3003 | Port for the service. |
-| `PAYMENTS_DB_URL` | (None) | Postgres connection string. |
-| `OX_SERVICE_URL` | `http://localhost:3005` | URL for Ox Service. |
+## Setup
 
-## 🛤 Supported Rails
-- `UPI`, `IMPS`, `NEFT`, `RTGS` (India)
-- `ACH` (USA)
-- `SEPA` (Europe)
-- `SWIFT` (Global)
-- `OX` (Internal Ledger)
+Run these commands from this application directory. Configure required values locally before starting the live application.
+
+This is reference source, not a complete standalone installation. Follow the status and limitations below before attempting execution.
+
+## Run
+
+No supported standalone launch is documented for this reference package.
+
+## Configuration
+
+- Provider credentials are server-only and must be supplied outside source control.
+
+Keep credentials in ignored local environment files or a deployment secret manager. Tracked examples contain empty secret fields. Do not paste passwords, keys, personal records or production connection strings into this README. `NEXT_PUBLIC_`, `VITE_` and `EXPO_PUBLIC_` values are visible to clients.
+
+## Verification
+
+No complete verification command is declared for this reference package.
+
+## Scope and limitations
+
+- Complete dependency declarations and sandbox integration checks before standalone use. The design demo never executes financial transactions.
+
+## Workspace documentation
+
+- [Application directory](../../../../docs/APPLICATIONS.md)
+- [Ownership and independent builds](../../../../docs/BUILD_BOUNDARIES.md)
+- [Desktop redesign and architecture](../../../../docs/plans/2026-10-28-admin-redesign.md)
+- [Complete architecture and UI review handoff](../../../../docs/UI_ARCHITECTURE_HANDOFF.md)
+- [Implemented UI proposal and remaining review gates](../../../../docs/plans/2026-10-28-proposal-implementation.md)
+- [Approved production UI integration](../../../../docs/plans/2026-10-28-production-ui.md)
+- [UI impact and scale checks](../../../../docs/plans/2026-10-28-ui-system-impact.md)
+- [Code retrieval and embedding plan](../../../../docs/plans/2026-10-28-code-retrieval.md)
+
+<!-- Generated from docs/applications.json by scripts/application-docs.mjs. Edit the catalog, then regenerate. -->

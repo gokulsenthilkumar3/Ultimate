@@ -37,7 +37,7 @@ import { cloneHumanoidScene } from './cloneHumanoidScene';
 import use3DStore from '../../store/use3DStore';
 
 import { GEOMETRY_MORPH_TARGETS } from './morphMath';
-import { DEFAULT_ASSETS, resolveModelAsset } from './modelAssetRegistry';
+import { DEFAULT_ASSETS, modelLoadTier, resolveModelAsset } from './modelAssetRegistry';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
@@ -169,11 +169,12 @@ function buildFallbackBounds() {
  * }}
  */
 export function useModelLoader(modelPreference = {}) {
-  const gpuTier = use3DStore((state) => state.gpuTier);
+  const qualityPreference = use3DStore((state) => state.avatarWorkspace.qualityPreference);
+  const assetTier = modelLoadTier(qualityPreference);
   const { avatarAsset, biologicalSex, modelPreset, modelVersion } = modelPreference;
   const modelAsset = useMemo(
-    () => resolveModelAsset({ avatarAsset, biologicalSex, modelPreset, modelVersion }, gpuTier),
-    [avatarAsset, biologicalSex, gpuTier, modelPreset, modelVersion],
+    () => resolveModelAsset({ avatarAsset, biologicalSex, modelPreset, modelVersion }, assetTier),
+    [avatarAsset, biologicalSex, assetTier, modelPreset, modelVersion],
   );
   const modelPath = modelAsset.nativeFamily ? modelAsset.path+'?v='+modelAsset.sha256.slice(0,12) : modelAsset.isBundled ? `${modelAsset.path}?v=${ASSET_REVISION}` : modelAsset.path;
   // useGLTF must be called unconditionally (Rules of Hooks).
