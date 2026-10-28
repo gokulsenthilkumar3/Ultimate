@@ -4,6 +4,7 @@ import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import { PRODUCTS, productById } from '../config/products';
 import '../styles/unified-workspace.css';
 import PageHeader from './ui/PageHeader';
+import { featurePath } from '../config/featureRegistry';
 
 // These destinations use Ultimate-owned records. They are related workflows,
 // not a claim that companion features or data have already been migrated.
@@ -52,6 +53,7 @@ export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) 
     onNavigate?.(id);
   };
   const selected = productById(activeTab);
+  const customerAdmin = selected && ['finsync', 'oxfin'].includes(selected.id);
   const visible = selected ? [selected] : PRODUCTS;
 
   return <section className="unified-workspace" aria-label="Ultimate companion integration">
@@ -66,7 +68,11 @@ export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) 
     </nav>
 
     {healthError && <p className="unified-health-error" role="status">Service status is unavailable. Ultimate routes remain usable.</p>}
-    {selected ? <section className="unified-product-view" aria-label={`${selected.name} workspace`}>
+    {customerAdmin ? <section className="unified-product-view" aria-label={`${selected.name} administration`}>
+      <h2>{selected.name} customer administration</h2>
+      <p>Manage customers in Ultimate. The customer-facing product keeps its own sign-in and records.</p>
+      <div className="unified-native-links"><Link to={featurePath(selected.id)}>Manage {selected.name} customers</Link><a href={selected.uiUrl} target="_blank" rel="noopener noreferrer">Open separate {selected.name} product <ArrowUpRight size={14} aria-hidden="true" /></a></div>
+    </section> : selected ? <section className="unified-product-view" aria-label={`${selected.name} workspace`}>
       <div className="unified-product-toolbar">
         <span className="unified-product-context">Related Ultimate records</span>
         <div className="unified-native-links">{ULTIMATE_DESTINATIONS[selected.id].map(([label, href]) => <Link key={href} to={href}>{label}</Link>)}</div>
@@ -79,11 +85,11 @@ export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) 
         return <article key={product.id} className="unified-matrix-card" style={{ '--card-color': product.color }}>
           <div className="unified-matrix-card-top">
             <span className="unified-matrix-card-icon" aria-hidden="true">{product.icon}</span>
-            <span className={`unified-source-status ${service?.online ? 'is-online' : ''}`}>{service ? service.online ? 'Online' : 'Offline' : 'Checking'}</span>
+            <span className={`unified-source-status ${service?.online ? 'is-online' : ''}`}>{['finsync', 'oxfin'].includes(product.id) ? 'Admin setup' : service ? service.online ? 'Online' : 'Offline' : 'Checking'}</span>
           </div>
           <h2>{product.name}</h2>
-          <p>{product.description}</p>
-          <button type="button" className="unified-action-btn unified-open-product" onClick={() => select(product.id)}>Open {product.name} <ArrowUpRight size={13} /></button>
+          <p>{['finsync', 'oxfin'].includes(product.id) ? 'Product-scoped customer administration in Ultimate; the customer product stays separate.' : product.description}</p>
+          <button type="button" className="unified-action-btn unified-open-product" onClick={() => select(product.id)}>{['finsync', 'oxfin'].includes(product.id) ? `Manage ${product.name} customers` : `Open ${product.name}`} <ArrowUpRight size={13} /></button>
         </article>;
       })}
     </div>}

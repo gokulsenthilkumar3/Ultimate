@@ -165,3 +165,24 @@ it('keeps both sides of UV seams sewn together when applying ease and body morph
     expect(seams).toBeGreaterThan(0);garment.dispose();
   }
 });
+
+it('keeps authored shoulder straps in tank color and shadow coverage',()=>{
+  const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');
+  const cloth=createClothMaterial('GYM',body.geometry,{...wardrobeDefaults('GYM'),variant:'tank'},{mesh:garments[0]});
+  for(const material of [cloth,cloth.userData.depthMaterial,cloth.userData.distanceMaterial]) {
+    const lib=material===cloth?ShaderLib.physical:material===cloth.userData.depthMaterial?ShaderLib.depth:ShaderLib.distance;
+    const shader={vertexShader:lib.vertexShader,fragmentShader:lib.fragmentShader,uniforms:{}};
+    material.onBeforeCompile(shader);
+    expect(shader.fragmentShader).toContain('torsoCloth = torsoBand && vGarmentCoverage.y > .2 && vGarmentCoverage.w < .2 && (tankBody || tankStraps)');
+    expect(shader.fragmentShader).not.toContain('torsoCloth = torsoCloth && (tankBody || tankStraps)');
+  }
+  cloth.dispose();
+});
+
+it('transfers corrected body skin weights to clothing without mutating the source',()=>{
+ const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb'),source=garments[0],before=source.geometry.attributes.skinWeight.array.slice();
+ for(let i=0;i<body.geometry.attributes.skinIndex.count;i++){body.geometry.attributes.skinIndex.setXYZW(i,3,0,0,0);body.geometry.attributes.skinWeight.setXYZW(i,1,0,0,0);}
+ const garment=createAuthoredGarment(body,source,wardrobeDefaults('GYM'));
+ for(let i=0;i<garment.geometry.attributes.skinIndex.count;i++){expect(garment.geometry.attributes.skinIndex.getX(i)).toBe(3);expect(garment.geometry.attributes.skinWeight.getX(i)).toBeCloseTo(1,6);}
+ expect(source.geometry.attributes.skinWeight.array).toEqual(before);garment.dispose();
+});

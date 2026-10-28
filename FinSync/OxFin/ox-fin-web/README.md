@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OxFin Web
 
-## Getting Started
+The independent OxFin customer interface for wallets, cards, bills and investment workflows.
 
-First, run the development server:
+**Runtime:** Next.js, React, NextAuth and PostgreSQL.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Status:** Customer application under development. Shared customer-admin adapters are planned in Ultimate.
+
+## Setup
+
+Run these commands from this application directory. Configure required values locally before starting the live application.
+
+```powershell
+npm install
+Copy-Item .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Configuration
 
-## Learn More
+- Configure DATABASE_URL and NEXTAUTH_SECRET. OAuth, payment and investment integrations require their own server-only environment values.
+- NEXT_PUBLIC_API_BASE and NEXT_PUBLIC_BASE_PATH are public routing configuration. Never put provider secrets in public variables.
 
-To learn more about Next.js, take a look at the following resources:
+Keep credentials in ignored local environment files or a deployment secret manager. Tracked examples contain empty secret fields. Do not paste passwords, keys, personal records or production connection strings into this README. `NEXT_PUBLIC_`, `VITE_` and `EXPO_PUBLIC_` values are visible to clients.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Verification
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```powershell
+npm run build
+npm test
+```
 
-## Deploy on Vercel
+## Scope and limitations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Start database infrastructure separately if required. The workspace launcher uses internal product ports and shared routes.
+- Customer-admin authorisation must use explicit product permissions, not a consumer session or iframe handoff.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Workspace documentation
+
+- [Application directory](../../../docs/APPLICATIONS.md)
+- [Ownership and independent builds](../../../docs/BUILD_BOUNDARIES.md)
+- [Desktop redesign and architecture](../../../docs/plans/2026-10-28-admin-redesign.md)
+- [Complete architecture and UI review handoff](../../../docs/UI_ARCHITECTURE_HANDOFF.md)
+- [Implemented UI proposal and remaining review gates](../../../docs/plans/2026-10-28-proposal-implementation.md)
+- [Approved production UI integration](../../../docs/plans/2026-10-28-production-ui.md)
+- [UI impact and scale checks](../../../docs/plans/2026-10-28-ui-system-impact.md)
+- [Code retrieval and embedding plan](../../../docs/plans/2026-10-28-code-retrieval.md)
+
+<!-- Generated from docs/applications.json by scripts/application-docs.mjs. Edit the catalog, then regenerate. -->

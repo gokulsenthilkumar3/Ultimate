@@ -1,5 +1,9 @@
 # GrowthTrack Ultimate: next implementation plan
 
+Superseded for UI and integration direction by the [28 October desktop portal
+and customer-admin plan](plans/2026-10-28-admin-redesign.md). Keep this document as
+historical backlog context; FinSync and OxFin remain separate customer products.
+
 - Date: 22 October 2026
 - Status: planned
 - Scope: Ultimate and its companion integration workflows, excluding the 3D model

@@ -16,7 +16,7 @@ export default function Header({ activeTab, user, theme, setTheme, onOpenSetting
       </Link>
       <span className="app-header__context" aria-label="Current area">{group?.label || 'Workspace'}</span>
       <button type="button" className="app-header__search" onClick={openCommandPalette} aria-label="Search all modules and records">
-        <Search size={18} aria-hidden="true" /><span>Search GrowthTrack</span><kbd aria-hidden="true"><Command size={12} /> K</kbd>
+        <Search size={18} aria-hidden="true" /><span>Search GrowthTrack</span><kbd aria-hidden="true">{/Mac|iPhone|iPad/.test(globalThis.navigator?.platform || '') ? <Command size={12} /> : 'Ctrl'} K</kbd>
       </button>
       <div className="app-header__controls">
         {serverStatus === 'offline' && <span className="app-header__status is-offline" role="status"><WifiOff size={15} aria-hidden="true" />Offline</span>}

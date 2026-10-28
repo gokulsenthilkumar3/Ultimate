@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { getJwtSecret } from '../config/environment';
 
 const prisma = new PrismaClient();
 
@@ -59,7 +60,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      process.env.JWT_SECRET || 'supersecret_dev_key_do_not_use_in_prod',
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 
@@ -96,7 +97,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      process.env.JWT_SECRET || 'supersecret_dev_key_do_not_use_in_prod',
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 

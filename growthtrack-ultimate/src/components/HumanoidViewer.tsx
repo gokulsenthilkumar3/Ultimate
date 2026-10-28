@@ -19,57 +19,61 @@ import React, {
   useRef, Suspense, lazy,
 } from 'react';
 import TabErrorBoundary from './TabErrorBoundary';
+import PhysiqueRenderer from './PhysiqueRenderer';
+import DeferredTools from './physique/DeferredTools';
+import ViewportToolbar from './physique/ViewportToolbar';
 import MeasurementInput from './ui/MeasurementInput';
 import { progressToward } from '../lib/metricEntry';
 import { displayMetricValue } from '../lib/measurementEntry';
-import AvatarCreationWizard from './AvatarCreationWizard';
+const AvatarCreationWizard = lazy(() => import('./AvatarCreationWizard'));
 import {
   Rotate3D, Eye, Layers, Zap, Shirt, Ruler, Camera, Download,
   ChevronLeft, ChevronRight, X, AlertTriangle, CheckCircle,
   Target, Maximize2, Minimize2, Settings,
   Activity, Heart, Dumbbell, Star,
   Play, Pause, SlidersHorizontal, Palette, Globe,
-  FlaskConical, Share2, MoreHorizontal, Save, ZoomIn, ZoomOut, UserRound, Scissors, Sun, ShieldCheck,
+  FlaskConical, Share2, MoreHorizontal, Save, UserRound, Scissors, Sun, ShieldCheck,
 } from 'lucide-react';
-import SocialShareModal from './SocialShareModal';
-import PhysiqueDataPanel from './PhysiqueDataPanel';
+const SocialShareModal = lazy(() => import('./SocialShareModal'));
+const PhysiqueDataPanel = lazy(() => import('./PhysiqueDataPanel'));
 import use3DStore, { CINEMATIC_PRESETS } from '../store/use3DStore';
 import useStore from '../store/useStore';
 import { BODY_APPEARANCE_FIELDS, BODY_METRIC_GROUPS, BODY_METRIC_MAP, BODY_METRICS, bodyProfileToGoals, bodyProfileToMetrics, calculateGoalProgress, getBaselineMetrics, getInvalidBodyProfileMeasurements, mergeBodyProfileSources, metricLogsToSnapshots, metricsToBodyProfile, publicBodyMetrics } from '../lib/physiqueProfile';
 import { avatarMetricSupport } from '../lib/avatarMetricSupport';
+import { selectMeasurements, measurementEntryVisibility, MEASUREMENT_GROUP_HELP } from './physique/measurementPresentation';
 import { BODY_METRIC_RANGES, validateBodyMetric } from '../lib/bodyMetricContract';
 import { buildRendererQualityGate } from '../lib/rendererQualityGate';
 import { getMetricCompleteness, resolveBodyMetrics } from '../lib/bodyMetricFallbacks';
 import { useToast } from '../hooks/useToast';
 import { useAnatomyEligibility } from './morphEngine/useAnatomyEligibility';
 import { anatomyMorphWeights, resolveAnatomyCm } from './morphEngine/anatomyCalibration';
-import AnatomyCustomizationPanel from './physique/AnatomyCustomizationPanel';
-import BodyPartNavigator from './physique/BodyPartNavigator';
+const AnatomyCustomizationPanel = lazy(() => import('./physique/AnatomyCustomizationPanel'));
+const BodyPartNavigator = lazy(() => import('./physique/BodyPartNavigator'));
 import { BODY_PART_DRAG_TYPE, readDroppedBodyPart, focusInspectionPart } from './physique/bodyPartDrag';
 import { BODY_PART_MAP } from './morphEngine/bodyRegions';
-import MeasurementHelp from './physique/MeasurementHelp';
-import ModelMeasurementCheck from './physique/ModelMeasurementCheck';
+const MeasurementHelp = lazy(() => import('./physique/MeasurementHelp'));
+const ModelMeasurementCheck = lazy(() => import('./physique/ModelMeasurementCheck'));
 import { getBodyMeasurementDefinition } from '../lib/bodyMeasurementDefinitions';
 import { createAnatomyCustomization } from '../lib/anatomyCustomization';
-import { AvatarParameterMatrix, computeHeightScale } from './morphEngine/metricsToBlendshapes';
+import { AvatarParameterMatrix, computeHeightScale, MORPH_RANGES } from './morphEngine/metricsToBlendshapes';
 import { trackEvent } from '../lib/analytics';
-import AvatarEvidence from './physique/AvatarEvidence';
-import AvatarViewOptions from './physique/AvatarViewOptions';
-import WardrobeOptions from './physique/WardrobeOptions';
-import SkinLayerControls from './physique/SkinLayerControls';
-import SurfaceDetailControls from './physique/SurfaceDetailControls';
-import FreckleControls from './physique/FreckleControls';
-import HairDetailControls from './physique/HairDetailControls';
-import EyeAppearanceControls from './physique/EyeAppearanceControls';
-import SpeechControls from './physique/SpeechControls';
-import LikenessControls from './physique/LikenessControls';
-import HeadFeatureControls from './physique/HeadFeatureControls';
+const AvatarEvidence = lazy(() => import('./physique/AvatarEvidence'));
+const AvatarViewOptions = lazy(() => import('./physique/AvatarViewOptions'));
+const WardrobeOptions = lazy(() => import('./physique/WardrobeOptions'));
+const SkinLayerControls = lazy(() => import('./physique/SkinLayerControls'));
+const SurfaceDetailControls = lazy(() => import('./physique/SurfaceDetailControls'));
+const FreckleControls = lazy(() => import('./physique/FreckleControls'));
+const HairDetailControls = lazy(() => import('./physique/HairDetailControls'));
+const EyeAppearanceControls = lazy(() => import('./physique/EyeAppearanceControls'));
+const SpeechControls = lazy(() => import('./physique/SpeechControls'));
+const LikenessControls = lazy(() => import('./physique/LikenessControls'));
+const HeadFeatureControls = lazy(() => import('./physique/HeadFeatureControls'));
 import {HEAD_FEATURES,headExpressionCapability,supportedHeadMorphKeys} from '../lib/headFeatureRegistry';
 import AvatarPeopleWorkspace from './physique/AvatarPeopleWorkspace';
 import AvatarComparisonSummary from './physique/AvatarComparisonSummary';
 import useAvatarRecord from '../hooks/useAvatarRecord';
-import PoseStudioControls from './physique/PoseStudioControls';
-import CameraBookmarkControls from './physique/CameraBookmarkControls';
+const PoseStudioControls = lazy(() => import('./physique/PoseStudioControls'));
+const CameraBookmarkControls = lazy(() => import('./physique/CameraBookmarkControls'));
 import { patchPose,POSE_STUDIO } from '../lib/poseStudio';
 import {HUMAN_SURFACE,microStrength} from '../lib/humanSurface';
 import { inspectAvatarSurfaces } from './morphEngine/captureRuntime';
@@ -83,7 +87,7 @@ import { SKIN_APPEARANCE_PRESETS } from '../lib/skinAppearancePresets';
 import useAvatarPresentationMode from '../hooks/useAvatarPresentationMode';
 import {captureAvatarImage} from './morphEngine/captureRuntime';
 import {safeFilename} from '../lib/avatarCapturePolicy';
-import AnimationPanel from './morphEngine/AnimationPanel';
+const AnimationPanel = lazy(() => import('./morphEngine/AnimationPanel'));
 import { AVATAR_EXPOSURE } from '../lib/avatarPresentation';
 import { buildAvatarEvidence } from '../lib/avatarEvidence';
 import '../styles/avatar-workspace.css';
@@ -91,7 +95,6 @@ import '../styles/parametric-studio.css';
 import { formatDate, formatMeasurement, formatNumber, getMeasurementUnit } from '../utils/userFormatters';
 
 // Lazy load the heavy 3D canvas
-const ChamberCanvas = lazy(() => import('./PhysiqueRenderer'));
 const Sprite3DViewer = lazy(() => import('./Sprite3DViewer'));
 const ParametricAvatarStudio = lazy(() => import('./physique/ParametricAvatarStudio'));
 
@@ -314,10 +317,8 @@ function PersonViewer() {
   const [showMeasurementGuide, setShowMeasurementGuide] = useState(false);
   const [metricGroup, setMetricGroup] = useState('essentials');
   const [metricSearch, setMetricSearch] = useState('');
-  const shownMetrics = (metricSearch.trim() || metricGroup === 'all' ? BODY_METRICS
-    : metricGroup === 'essentials' ? Object.keys(METRIC_LABELS).map(key => BODY_METRIC_MAP[key])
-      : BODY_METRIC_GROUPS.find(group => group.id === metricGroup)?.metrics || [])
-    .filter(metric => `${metric.label} ${metric.key}`.toLowerCase().includes(metricSearch.trim().toLowerCase()));
+  const shownMetrics = selectMeasurements(metricGroup, metricSearch);
+  const entryVisibility = measurementEntryVisibility(avatarWorkspace.avatarContext, avatarWorkspace.workspaceMode);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareImageSrc, setShareImageSrc] = useState(null);
   
@@ -989,8 +990,8 @@ function PersonViewer() {
           <button type="button" className="chamber-pill" aria-pressed={studioOpen} onClick={() => {
             if (studioOpen) { setStudioOpen(false); handleTabChange('measurements'); }
             else { setStudioOpen(true); handleTabChange('face'); }
-          }}>{studioOpen ? 'Body comparison' : 'Appearance studio'}</button>
-          <button className="chamber-pill" aria-expanded={showEditor} aria-controls="avatar-model-inspector" onClick={() => setShowEditor(!showEditor)}>
+          }}>{studioOpen ? 'Measurements' : 'Appearance'}</button>
+          <button className="chamber-pill" aria-expanded={showEditor} aria-controls="avatar-model-inspector" onClick={() => showEditor ? setShowEditor(false) : openModelControls(editorTab)}>
             <SlidersHorizontal size={16} /> {showEditor ? 'Close editor' : 'Edit avatar'}
           </button>
           <button className="chamber-pill chamber-pill--primary" onClick={handleSaveSnapshot} disabled={savingSnapshot} aria-busy={savingSnapshot}>
@@ -1103,33 +1104,16 @@ function PersonViewer() {
                 }}>
                 {renderMode === 'SPRITE'
                   ? <Sprite3DViewer />
-                  : <ChamberCanvas />}
+                  : <PhysiqueRenderer />}
               </div>
             </Suspense>
           </TabErrorBoundary>
 
-          <div className="chamber-overlay-top">
-            <div className="chamber-overlay-row">
-              {/* Camera presets */}
-              <div className="chamber-pill-group">
-                {CAMERA_PRESETS.map((p) => (
-                  <button key={p.id} className={`chamber-pill${cameraPreset === p.id ? ' active' : ''}`}
-                    onClick={() => setCameraPreset(p.id, { preserveFocus: true })}>{p.label}</button>
-                ))}
-              </div>
-              <div className="chamber-pill-group">
-                <button className="chamber-pill" onClick={() => fitCameraToBody()}>
-                  Full Body
-                </button>
-                <button className="chamber-pill" onClick={() => resetCameraZoom()}>
-                  Reset
-                </button>
-                <button className="chamber-pill" onClick={() => { setViewMode('SOLO'); setSelectedPart('head'); }}>Face</button>
-                <button className="chamber-pill chamber-icon-button" aria-label="Zoom in" title="Zoom in" onClick={() => setCameraZoom(cameraZoom / 1.2)}><ZoomIn size={16} /></button>
-                <button className="chamber-pill chamber-icon-button" aria-label="Zoom out" title="Zoom out" onClick={() => setCameraZoom(cameraZoom * 1.2)}><ZoomOut size={16} /></button>
-              </div>
-            </div>
-          </div>
+          <ViewportToolbar presets={CAMERA_PRESETS} preset={cameraPreset}
+            onPreset={(id: string) => setCameraPreset(id, { preserveFocus: true })}
+            onFit={() => fitCameraToBody()} onReset={() => resetCameraZoom()}
+            onFace={() => { setViewMode('SOLO'); setSelectedPart('head'); }}
+            onZoomIn={() => setCameraZoom(cameraZoom / 1.2)} onZoomOut={() => setCameraZoom(cameraZoom * 1.2)} />
 
 
 
@@ -1184,6 +1168,10 @@ function PersonViewer() {
         {/* ── EDITOR SIDEBAR ── */}
         {showEditor && (
           <div className="chamber-editor" id="avatar-model-inspector">
+            <div className="avatar-inspector-heading">
+              <div><span>Avatar controls</span><strong>{studioOpen ? 'Appearance & movement' : 'Measurements'}</strong></div>
+              <button type="button" className="chamber-pill chamber-icon-button" aria-label="Close avatar controls" onClick={() => setShowEditor(false)}><X size={16} /></button>
+            </div>
             {/* Editor tabs */}
             {studioOpen && <div className="chamber-editor__tabs" role="tablist" aria-label="Avatar editor" onKeyDown={event => {
               const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
@@ -1218,6 +1206,7 @@ function PersonViewer() {
             </div>}
 
             <div className="chamber-editor__body" id="avatar-editor-panel" role={studioOpen ? 'tabpanel' : 'region'} aria-label={!studioOpen ? 'Body measurements' : undefined} aria-labelledby={studioOpen ? `avatar-editor-tab-${editorTab}` : undefined} tabIndex={0}>
+              <Suspense fallback={<p className="avatar-panel-loading" role="status">Opening controls…</p>}>
 
               {/* ── METRICS TAB ── */}
               {editorTab === 'measurements' && (
@@ -1225,8 +1214,9 @@ function PersonViewer() {
                   {avatarWorkspace.workspaceMode === 'compare' && <AvatarComparisonSummary current={currentMetrics} goal={goalMetrics} user={user} />}
                   {!hasGoalComparison && <p className="chamber-note" role="status">Add a goal measurement to compare it with Current. Choose Goal, then enter a measurement below.</p>}
                   <h4 className="chamber-editor__heading">
-                    <Ruler size={14} /> Body Metrics
+                    <Ruler size={14} /> Measurements
                   </h4>
+                  <p className="chamber-note">{avatarWorkspace.workspaceMode === 'compare' ? 'Compare what you have recorded with your targets.' : avatarWorkspace.avatarContext === 'goal' ? 'Set the values you want to work toward. Targets are optional.' : 'Record what you measure today. You can add targets separately in Goal.'}</p>
                   <div className="workspace-context-switch" role="group" aria-label="Measurement context">
                     {(['current', 'goal'] as const).map((context) => <button key={context}
                       className={avatarWorkspace.avatarContext === context ? 'active' : ''}
@@ -1235,24 +1225,25 @@ function PersonViewer() {
                       {context === 'current' ? 'Current measurements' : 'Goal measurements'}
                     </button>)}
                   </div>
-                  <label className="workspace-field"><span>Measurement group</span><select aria-label="Measurement group" value={metricGroup} onChange={event => setMetricGroup(event.target.value)}>
-                    <option value="essentials">Essentials</option><option value="all">All measurements ({BODY_METRICS.length})</option>
+                  <label className="workspace-field"><span>Measurement group</span><select aria-label="Measurement group" aria-describedby="avatar-measurement-group-help" value={metricGroup} onChange={event => setMetricGroup(event.target.value)}>
+                    <option value="essentials">Essentials · start here</option><option value="all">All measurements ({BODY_METRICS.length})</option>
                     {BODY_METRIC_GROUPS.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}
                   </select></label>
-                  <label className="workspace-field"><span>Find a measurement</span><input type="search" aria-label="Find a measurement" placeholder="Face, hand, waist…" value={metricSearch} onChange={event => setMetricSearch(event.target.value)} /></label>
-                  <div className="chamber-metric-list">
+                  <p className="chamber-note" id="avatar-measurement-group-help">{metricSearch.trim() ? 'Search covers every group. Clear the search to return to your selected group.' : MEASUREMENT_GROUP_HELP[metricGroup]}</p>
+                  <label className="workspace-field"><span>Find a measurement</span><input type="search" aria-label="Find a measurement" placeholder="Search all measurements…" value={metricSearch} onChange={event => setMetricSearch(event.target.value)} /></label>
+                  <div className="chamber-metric-list" data-entry-context={avatarWorkspace.workspaceMode === 'compare' ? 'compare' : avatarWorkspace.avatarContext}>
                     <p id="avatar-measurement-hint" className="gt-foundation-sr-only">Type a value or include units. Enter or leave the field to apply. Arrow keys adjust; Shift makes a larger step; Escape cancels.</p>
                     {!shownMetrics.length && <p>No matching measurements. Try another name.</p>}
-                    {shownMetrics.map(meta => {
+                    {shownMetrics.map((meta, index) => {
                       const key = meta.key;
                       const currentIsMeasured = currentMetricResolution.suppliedKeys.includes(key);
                       const goalIsMeasured = goalMetricResolution.suppliedKeys.includes(key);
                       const cur = (currentMetricResolution.metrics as any)[key] ?? null;
                       const goal = (goalMetricResolution.metrics as any)[key] ?? cur;
-                      const goalSource = (goalMetricResolution.sourceByKey as any)[key] === 'inherited'
-                        ? 'Current'
-                        : goalIsMeasured ? 'Goal' : goal === null ? 'Not recorded' : 'Estimated';
                       const unit = getMeasurementUnit(meta.unit, user);
+                      const previewRange = MORPH_RANGES[key];
+                      const entered = avatarWorkspace.avatarContext === 'goal' ? (goalIsMeasured ? goal : null) : (currentIsMeasured ? cur : null);
+                      const outsidePreview = previewRange && entered != null && (entered < previewRange.min || entered > previewRange.max);
                       const progress = progressToward({
                         baseline: snapshots.length ? (baselineMetrics as any)[key] : undefined,
                         current: currentIsMeasured ? (currentMetrics as any)[key] : undefined,
@@ -1263,51 +1254,43 @@ function PersonViewer() {
                       const progressLabel = progress.percent === null || progress.done ? progress.label
                         : `${pct}% there · ${displayMetricValue(Math.abs(progress.remaining), unit)} ${unit} to go${progress.wrongWay ? ' (moving away from the goal)' : ''}`;
                       const progressColor = pct >= 75 ? 'var(--chamber-success)' : pct >= 40 ? 'var(--chamber-gold)' : 'var(--chamber-glow)';
+                      const group = BODY_METRIC_GROUPS.find(item => item.metrics.some(metric => metric.key === key));
+                      const previousGroup = index > 0 ? BODY_METRIC_GROUPS.find(item => item.metrics.some(metric => metric.key === shownMetrics[index - 1].key)) : null;
                       return (
-                        <div key={key} className="chamber-metric-row">
-                          <p className="chamber-note">{avatarMetricSupport(key)}</p>
+                        <React.Fragment key={key}>
+                          {(metricGroup === 'all' || metricSearch.trim()) && group?.id !== previousGroup?.id && <h5 className="avatar-measurement-group-title">{group?.label}</h5>}
+                        <div className="chamber-metric-row">
                           <div className="chamber-metric-row__header">
-                            <span className="chamber-metric-row__label">
-                              {meta.label}
-                              <button type="button" className="chamber-pill" aria-label={`How to measure ${meta.label}`} onClick={() => { setGuideMetric(key); setShowMeasurementGuide(true); focusInspectionPart(getBodyMeasurementDefinition(key).region); requestAnimationFrame(() => document.getElementById('avatar-measurement-guide')?.scrollIntoView({ block:'nearest' })); }}>Show me</button>
-                              <small className={`chamber-metric-source${currentIsMeasured ? ' is-measured' : ''}`}>
-                                {currentIsMeasured ? 'Entered' : cur === null ? 'Not recorded' : 'Estimated'}
-                              </small>
-                            </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span className="chamber-metric-row__value">
-                                {cur === null ? 'Not recorded' : meta.unit === 'kg' || meta.unit === 'cm'
-                                  ? formatMeasurement(cur, meta.unit, user)
-                                  : `${cur}${meta.unit}`}
-                              </span>
-                              <span style={{
-                                fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px',
-                                borderRadius: 4, background: progressColor + '22',
-                                color: progressColor,
-                              }}>{progress.percent === null ? 'No goal progress' : `${pct}%`}</span>
-                            </span>
+                            <strong className="chamber-metric-row__label">{meta.label} <small>{unit}</small></strong>
+                            <small className="chamber-metric-source">{(avatarWorkspace.avatarContext === 'goal' ? goalIsMeasured : currentIsMeasured) ? 'Recorded' : 'Optional'}</small>
                           </div>
+                          {outsidePreview && <p className="chamber-note" role="status">Saved value is outside this model’s preview range ({previewRange.min}–{previewRange.max} {meta.unit}). Check the units and whether this is a full circumference. Your record is retained; the preview uses its nearest supported shape.</p>}
+                          {entryVisibility.current && <div className="avatar-measurement-entry">
                           <label className="workspace-field"><span>Current {meta.label} ({unit})</span>
                             <MeasurementInput metricKey={key} unit={unit} value={currentIsMeasured ? cur : null} aria-label={`Current ${meta.label} (${unit})`}
                               placeholder="Not recorded" aria-describedby="avatar-measurement-hint"
                               onFocus={() => { setGuideMetric(key); focusInspectionPart(getBodyMeasurementDefinition(key).region); }}
                               onCommit={value => handleCurrentValue(key, value)} />
                           </label>
-                          {/* GOAL slider */}
-                          <div style={{ fontSize: '0.6rem', color: 'var(--chamber-glow)', marginBottom: 2, marginTop: 4 }}>
-                            GOAL · {goalSource.toUpperCase()} <span style={{ float: 'right' }}>{goal === null ? 'Not recorded' : meta.unit === 'kg' || meta.unit === 'cm'
-                              ? formatMeasurement(goal, meta.unit, user)
-                              : `${goal}${meta.unit}`}</span>
-                          </div>
+                          </div>}
+                          {entryVisibility.goal && <div className="avatar-measurement-entry">
+                          {/* Goal entry */}
                           <label className="workspace-field"><span>Goal {meta.label} ({unit})</span>
                             <MeasurementInput metricKey={key} unit={unit} value={goalIsMeasured ? goal : null} aria-label={`Goal ${meta.label} (${unit})`}
                               placeholder="No goal set" aria-describedby="avatar-measurement-hint"
                               onFocus={() => setGuideMetric(key)} onCommit={value => handleGoalValue(key, value)} />
                           </label>
-                          {/* Progress bar */}
-                          <p className="chamber-note">{progressLabel}</p>
+                          </div>}
+                          {progress.percent !== null && <p className="chamber-note">{progressLabel}</p>}
                           {progress.percent !== null && <progress max={100} value={pct} aria-label={`${meta.label} goal progress`} aria-valuetext={progressLabel} style={{ width: '100%', accentColor: progressColor }}>{pct}%</progress>}
+                          <details className="avatar-measurement-about">
+                            <summary>About this measurement</summary>
+                            <p>{getBodyMeasurementDefinition(key).site}</p>
+                            <p>{avatarMetricSupport(key)}</p>
+                            <button type="button" className="chamber-pill" aria-label={`How to measure ${meta.label}`} onClick={() => { setGuideMetric(key); setShowMeasurementGuide(true); focusInspectionPart(getBodyMeasurementDefinition(key).region); requestAnimationFrame(() => document.getElementById('avatar-measurement-guide')?.scrollIntoView({ block:'nearest' })); }}>Show measurement guide</button>
+                          </details>
                         </div>
+                        </React.Fragment>
                       );
                     })}
                   </div>
@@ -1609,7 +1592,7 @@ function PersonViewer() {
                 <div className="chamber-editor__section">
                   <h4 className="chamber-editor__heading"><UserRound size={14}/> Pose · {avatarWorkspace.avatarContext === 'goal' ? 'Goal' : 'Current'}</h4>
                   <AnimationPanel inline onSelect={beginMotion}/>
-                  <p className="chamber-note">Choose an action to start motion. Enable Use saved pose to drag the hand and foot handles or adjust individual joints.</p>
+                  <p className="chamber-note">Choose a static pose, or select a motion and press Play. Custom pose editing is optional.</p>
                   <PoseStudioControls key={`${user?.id}-${avatarWorkspace.avatarContext}`} value={avatarWorkspace.poseStudio[avatarWorkspace.avatarContext]} saveStatus={presentationPreferences.saveStatus}
                     onJointSelect={selectPoseJoint}
                     available={viewMode === 'SOLO' && renderMode !== 'SPRITE'}
@@ -1632,7 +1615,8 @@ function PersonViewer() {
                   <label className="workspace-field"><span>Quality</span><select aria-label="Model quality" value={avatarWorkspace.qualityPreference} onChange={(e) => {
                     const preference = e.target.value; presentationPreferences.change({ qualityPreference: preference });
                     if (preference !== 'automatic') setQuality({ performance: 'LOW', balanced: 'MED', high: 'HIGH' }[preference]);
-                  }}><option value="automatic">Automatic ({quality})</option><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="high">High</option></select></label>
+                  }}><option value="automatic">Automatic ({quality})</option><option value="performance">Performance</option><option value="balanced">Balanced</option><option value="high">High detail</option></select></label>
+                  <p className="chamber-note">Automatic keeps model loading light and adjusts rendering to your device. Choose High detail to load the full model.</p>
                   <label className="workspace-field"><span>Renderer</span><select value={renderMode} onChange={(e) => setRenderMode(e.target.value)}><option value="WEBGL">Interactive 3D</option><option value="SPRITE">2D fallback</option></select></label>
                   <div className="avatar-motion-options"><p className="chamber-note">Preview poses and motion. Measurement and anatomy editors use a neutral pose. Selecting a motion starts playback.</p>
                     <AnimationPanel inline onSelect={beginMotion}/></div>
@@ -1642,12 +1626,13 @@ function PersonViewer() {
                   <details className="chamber-note"><summary>Model diagnostics</summary><p>{modelEvidence.assetLabel}. {modelEvidence.missingParts.length ? `Features absent from the v2 inventory: ${modelEvidence.missingParts.join(', ')}.` : 'Visual realism requires a separate assessment of the rendered result.'}</p><p>Runtime: {modelDiagnostics?.health || 'Loading'} · {rendererTelemetry?.fps == null ? 'Collecting frame sample' : `${rendererTelemetry.fps} FPS`} · {quality} tier.</p></details>
                 </div>
               )}
+              </Suspense>
             </div>
           </div>
         )}
       </div>
 
-      <details className="avatar-secondary-tools"><summary>Model tools and body regions</summary>
+      <DeferredTools summary="Model tools and body regions">
       <section className="avatar-model-tools" aria-label="Model tools">
         <div className="avatar-model-tools__heading"><strong>Model tools</strong><span>{modelEvidence.assetLabel}</span></div>
         <div className="avatar-model-tools__actions" role="group" aria-label="Open model controls">
@@ -1675,9 +1660,9 @@ function PersonViewer() {
       </section>
       <BodyPartNavigator privateAllowed={sensitiveUnlocked && anatomy.allowed && !captureRedacted} dropTargetRef={modelDropTarget}
         disabled={renderMode === 'SPRITE' || rendererTelemetry.status === 'context-lost'} />
-      </details>
+      </DeferredTools>
 
-      <details className="avatar-secondary-tools"><summary>Model information and readiness</summary><AvatarEvidence metrics={currentMetrics} diagnostics={modelDiagnostics} qualityGate={qualityGate} /></details>
+      <DeferredTools summary="Model information and readiness"><AvatarEvidence metrics={currentMetrics} diagnostics={modelDiagnostics} qualityGate={qualityGate} /></DeferredTools>
 
       {/* ═══ SETTINGS DRAWER ═══ */}
       {showSettings && (
@@ -1860,12 +1845,11 @@ function PersonViewer() {
       )}
 
       {showWizard ? (
-        <AvatarCreationWizard onComplete={() => setShowWizard(false)} onMetric={handleCurrentValue}
-          onAppearance={updateCurrentAppearance} onMorph={setAdvancedMorph} onWardrobe={wardrobeControls.change} />
+        <Suspense fallback={<p role="status">Opening guided setup…</p>}><AvatarCreationWizard onComplete={() => setShowWizard(false)} onMetric={handleCurrentValue}
+          onAppearance={updateCurrentAppearance} onMorph={setAdvancedMorph} onWardrobe={wardrobeControls.change} /></Suspense>
       ) : null}
 
-      <details className="avatar-secondary-tools avatar-history">
-        <summary>History, snapshots and measurements</summary>
+      <DeferredTools className="avatar-history" summary="History, snapshots and measurements">
         {!hasTimelineData && <p className="chamber-note">No snapshots yet. Save a check-in to begin your dated history.</p>}
         <button type="button" className="chamber-pill" disabled={!hasTimelineData} onClick={() => setAvatarWorkspace({ workspaceMode: 'timeline' })}>Open timeline</button>
       <PhysiqueDataPanel
@@ -1879,14 +1863,14 @@ function PersonViewer() {
         onSaveSnapshot={handleSaveSnapshot}
         onToggleMilestone={handleToggleMilestone}
       />
-      </details>
+      </DeferredTools>
 
     </div>
       {showShareModal && (
-        <SocialShareModal 
+        <Suspense fallback={<p role="status">Opening image sharing…</p>}><SocialShareModal
           onClose={() => setShowShareModal(false)}
           imageSrc={shareImageSrc}
-        />
+        /></Suspense>
       )}
     </>
   );

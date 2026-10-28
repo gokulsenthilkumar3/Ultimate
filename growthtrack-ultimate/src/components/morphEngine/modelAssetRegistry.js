@@ -55,6 +55,10 @@ function safeAvatarAsset(value) {
   return null;
 }
 
+/** Rendering tiers may adapt every few seconds; model downloads must not.
+ * Full geometry is an explicit choice, independent of the live GPU governor. */
+export const modelLoadTier = quality => quality === 'high' ? 'HIGH' : quality === 'performance' ? 'LOW' : 'MED';
+
 /** Resolve a DB-backed avatar choice to a same-origin GLB. */
 export function resolveModelAsset(preference = {}, gpuTier = 'MED') {
   const preset = normalizePreset(
@@ -73,7 +77,7 @@ export function resolveModelAsset(preference = {}, gpuTier = 'MED') {
   const liteAsset=configuredAsset===DEFAULT_ASSETS.production?DEFAULT_ASSETS.lite:LEGACY_ASSETS.lite;
   const useLiteDefault = gpuTier !== 'HIGH' && !customAsset && isDefault;
   const path = customAsset || selectedV2 || (useLiteDefault ? liteAsset : configuredAsset);
-  const requestedHuman=preference.modelVersion==='human-r2' && preset==='male' && !customAsset;
+  const requestedHuman=preset==='male' && !customAsset && (preference.modelVersion==='human-r2' || (isDefault && preference.modelVersion!=='legacy' && !selectedV2));
   const humanLod=requestedHuman?(gpuTier==='HIGH'?'hero':'core'):Object.keys(humanManifest.assets).find(key=>path===base+'assets/models/'+humanManifest.assets[key].file);
   if(humanLod){
     const asset=humanManifest.assets[humanLod],humanPath=base+'assets/models/'+asset.file;

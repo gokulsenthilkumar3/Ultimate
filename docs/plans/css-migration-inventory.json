@@ -1,0 +1,331 @@
+{
+  "version": 2,
+  "scope": "All tracked and nonignored source stylesheets; broad design approval is separate from rendered verification.",
+  "count": 54,
+  "files": [
+    {
+      "file": "Equity/NiftyLens/src/app/globals.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "Equity/NiftyLens/src/app/growthtrack-design.css",
+      "disposition": "regenerate through approved shared token source",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "Family Connect/familyconnect/frontend/src/App.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "Family Connect/familyconnect/frontend/src/growthtrack-design.css",
+      "disposition": "regenerate through approved shared token source",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "Family Connect/familyconnect/frontend/src/index.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "FinSync/OxFin/ox-fin-web/src/app/globals.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "FinSync/OxFin/ox-fin-web/src/app/growthtrack-design.css",
+      "disposition": "regenerate through approved shared token source",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "FinSync/apps/web/app/globals.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "FinSync/apps/web/app/growthtrack-design.css",
+      "disposition": "regenerate through approved shared token source",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "Forex/app/growthtrack-design.css",
+      "disposition": "regenerate through approved shared token source",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/docs/ui-review/before-source/src__styles__design-system.css",
+      "disposition": "historical snapshot; keep outside runtime",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/admin-demo/portal.css",
+      "disposition": "isolated fixture-only reference demo",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/admin-demo/styles/physique.css",
+      "disposition": "isolated fixture-only reference demo",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/admin-demo/styles/proposal.css",
+      "disposition": "isolated fixture-only reference demo",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/admin-demo/styles/tokens.css",
+      "disposition": "isolated fixture-only reference demo",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/admin-demo/styles/workspaces.css",
+      "disposition": "isolated fixture-only reference demo",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/components/AiDashboard.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/components/TabErrorBoundary.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/components/finance/finance.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/components/morphEngine/AnimationPanel.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/components/physique/measurement-guides.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/components/sync/syncCenter.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/domains/customer-admin/customer-admin.css",
+      "disposition": "production customer-admin presentation; adapter setup required",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/index.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/pages/public-pages.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/app-hub.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/app-styles.css",
+      "disposition": "approved production shared shell/primitives; rendered verification pending",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/avatar-workspace.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/chamber.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/design-system.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/design-tokens.css",
+      "disposition": "regenerate through approved shared token source",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/desktop-responsive.css",
+      "disposition": "approved production shared shell/primitives; rendered verification pending",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/editorial-components.css",
+      "disposition": "approved production shared shell/primitives; rendered verification pending",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/editorial-overviews.css",
+      "disposition": "approved production shared shell/primitives; rendered verification pending",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/editorial-settings.css",
+      "disposition": "approved production shared shell/primitives; rendered verification pending",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/editorial-shell.css",
+      "disposition": "approved production shared shell/primitives; rendered verification pending",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/empty-state.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/entertainment.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/experience.css",
+      "disposition": "domain compatibility styles; retire only after parity",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/finance.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/ios27.css",
+      "disposition": "domain compatibility styles; retire only after parity",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/logs.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/notes.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/parametric-studio.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/physique-workspace.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/premium.css",
+      "disposition": "domain compatibility styles; retire only after parity",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/responsive-foundation.css",
+      "disposition": "approved production shared shell/primitives; rendered verification pending",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/responsive-sensors.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/ui-components.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/ui-system-v2.css",
+      "disposition": "domain compatibility styles; retire only after parity",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/ui-system-v3.css",
+      "disposition": "domain compatibility styles; retire only after parity",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/ultimate-ui.css",
+      "disposition": "domain compatibility styles; retire only after parity",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/styles/unified-workspace.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/theme-v4.css",
+      "disposition": "domain compatibility styles; retire only after parity",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    }
+  ]
+}

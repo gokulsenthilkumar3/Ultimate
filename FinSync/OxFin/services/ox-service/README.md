@@ -1,26 +1,44 @@
-# Ox Service
+# OxFin OX prototype
 
-The Ox Service manages the Ox token ecosystem, including currency pegging and fee logic.
+Reference OX-related workflow handlers.
 
-## 🚀 Features
-- **CHF Peg:** Ox tokens are pegged 1:1 with the Swiss Franc (CHF).
-- **Token Economy:**
-  - **Buy:** 1% fee (101 CHF = 100 Ox).
-  - **Domestic Transfer:** 1% fee.
-  - **International Transfer:** 2% fee (min 2 Ox).
-- **Internal Ledger:** Maintains balances and transaction history.
-- **Persistence:** Stores wallets and transactions in Postgres (optional).
+**Runtime:** TypeScript service prototype.
 
-## 🔌 Endpoints
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Service health check. |
-| GET | `/v1/ox/wallet` | Returns the user's Ox wallet balance. |
-| POST | `/v1/ox/buy` | Purchases Ox tokens with CHF. |
-| POST | `/v1/ox/transfers` | Transfers Ox tokens to another user. |
+**Status:** Incomplete dependency manifest; retained as reference source.
 
-## ⚙️ Configuration
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OX_PORT` | 3005 | Port for the service. |
-| `OX_DB_URL` | (None) | Postgres connection string. |
+## Setup
+
+Run these commands from this application directory. Configure required values locally before starting the live application.
+
+This is reference source, not a complete standalone installation. Follow the status and limitations below before attempting execution.
+
+## Run
+
+No supported standalone launch is documented for this reference package.
+
+## Configuration
+
+- Configure optional provider/service values outside source control.
+
+Keep credentials in ignored local environment files or a deployment secret manager. Tracked examples contain empty secret fields. Do not paste passwords, keys, personal records or production connection strings into this README. `NEXT_PUBLIC_`, `VITE_` and `EXPO_PUBLIC_` values are visible to clients.
+
+## Verification
+
+No complete verification command is declared for this reference package.
+
+## Scope and limitations
+
+- Complete dependency declarations and product-specific verification before standalone use. It is not a customer-admin authority.
+
+## Workspace documentation
+
+- [Application directory](../../../../docs/APPLICATIONS.md)
+- [Ownership and independent builds](../../../../docs/BUILD_BOUNDARIES.md)
+- [Desktop redesign and architecture](../../../../docs/plans/2026-10-28-admin-redesign.md)
+- [Complete architecture and UI review handoff](../../../../docs/UI_ARCHITECTURE_HANDOFF.md)
+- [Implemented UI proposal and remaining review gates](../../../../docs/plans/2026-10-28-proposal-implementation.md)
+- [Approved production UI integration](../../../../docs/plans/2026-10-28-production-ui.md)
+- [UI impact and scale checks](../../../../docs/plans/2026-10-28-ui-system-impact.md)
+- [Code retrieval and embedding plan](../../../../docs/plans/2026-10-28-code-retrieval.md)
+
+<!-- Generated from docs/applications.json by scripts/application-docs.mjs. Edit the catalog, then regenerate. -->

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds ../../plan-assets/human-preview.js (repo root) from the app's bundled
+// Builds docs/3d-plans/plan-assets/human-preview.js from the app's bundled
 // humanoid GLB so the v4 plan page can show a real 3D human without a server.
 //
 //   node scripts/plan-preview/build-model.mjs [path/to/humanoid-base.glb]
@@ -25,9 +25,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(here, '../..');
 const repoRoot = path.resolve(appRoot, '..');
 const source = path.resolve(process.argv[2] || path.join(appRoot, 'public/assets/models/humanoid-base.glb'));
-const output = path.join(repoRoot, 'plan-assets/human-preview.js');
+const output = path.join(appRoot, 'docs/3d-plans/plan-assets/human-preview.js');
 
-// Shape morphs the plan's measurement fitting can drive (see plan-assets/src/fit.mjs).
+// Shape morphs driven by the plan's docs/3d-plans/plan-assets/src/fit.mjs.
 const MORPHS = [
   'overall_mass', 'gut_volume', 'face_roundness', 'chest_depth', 'pec_thickness', 'ribcage_depth',
   'waist_narrow', 'bicep_peak', 'tricep_horse', 'forearm_girth', 'glute_volume', 'hip_width',

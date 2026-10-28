@@ -1,4 +1,12 @@
 node_modules/
+dist-admin-demo/
+.code-index/
+# Optional machine-local additions to the checked-in code-index exclusion policy.
+.codeindexignore
+# Per-machine agent preferences and generated caches are not application source.
+**/.claude/settings.local.json
+**/.claude/cache/
+**/.claude/projects/
 dist/
 .next/
 .vite/

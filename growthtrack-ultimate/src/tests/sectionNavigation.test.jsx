@@ -14,18 +14,18 @@ afterEach(cleanup);
 function show(ui) { return render(<MemoryRouter initialEntries={['/finance/overview']}>{ui}</MemoryRouter>); }
 
 describe('Section discovery', () => {
-  it('keeps all six command areas reachable and Finance first', () => {
+  it('keeps all seven domain areas reachable and Customers first', () => {
     show(<SectionNavigation activeTab="finance" />);
     const areas = within(screen.getByRole('navigation', { name: 'Life areas' }));
-    expect(areas.getAllByRole('link')).toHaveLength(6);
-    expect(areas.getAllByRole('link')[0]).toHaveTextContent('Finance');
+    expect(areas.getAllByRole('link')).toHaveLength(7);
+    expect(areas.getAllByRole('link')[0]).toHaveTextContent('Customers');
     expect(areas.getByRole('link', { name: 'Life' })).toHaveAttribute('href', '/life/overview');
-    expect(areas.getByRole('link', { name: 'Hub' })).toHaveAttribute('href', '/hub/overview');
+    expect(areas.getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/hub/overview');
     expect(within(screen.getByRole('navigation', { name: 'Finance tools' })).getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page');
   });
   it('highlights the actual module for legacy deep links', () => {
     show(<SectionNavigation activeTab="notes" />);
-    expect(within(screen.getByRole('navigation', { name: 'Workspace tools' })).getByRole('link', { name: 'Notes', exact: true })).toHaveAttribute('aria-current', 'page');
+    expect(within(screen.getByRole('navigation', { name: 'Work tools' })).getByRole('link', { name: 'Notes', exact: true })).toHaveAttribute('aria-current', 'page');
   });
   it('shows context breadcrumbs without another module navigator', () => {
     show(<Breadcrumbs activeTab="finance" />);
@@ -37,9 +37,9 @@ describe('Section discovery', () => {
   it('uses links for all primary destinations in the rail', () => {
     show(<PremiumSidebar activeTab="overview" />);
     const areas = within(screen.getByRole('navigation', { name: 'Product areas' }));
-    expect(areas.getByRole('link', { name: 'Wellness' })).toHaveAttribute('href', '/wellness/overview');
+    expect(areas.getByRole('link', { name: 'Growth' })).toHaveAttribute('href', '/wellness/overview');
     expect(areas.getByRole('link', { name: 'Life' })).toHaveAttribute('href', '/life/overview');
-    expect(areas.getByRole('link', { name: 'Hub' })).toHaveAttribute('href', '/hub/overview');
+    expect(areas.getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/hub/overview');
   });
   it('exposes all modules only for the active area', () => {
     show(<PremiumSidebar activeTab="finance" user={{ name: 'Owner' }} onOpenSettings={() => {}} onLogout={() => {}} />);

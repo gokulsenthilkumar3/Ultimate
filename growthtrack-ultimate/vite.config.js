@@ -73,16 +73,9 @@ export default defineConfig(({ mode }) => {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
-        manualChunks(id) {
-          if (id.includes('node_modules/three') || id.includes('node_modules/@react-three')) {
-            return 'three-vendor';
-          }
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3')) {
-            return 'charts-vendor';
-          }
-          // Let Vite split other dependencies by their actual lazy owners.
-          // A single giant vendor chunk pulled 3D and optional tools into ordinary routes.
-        },
+        // Let the bundler follow the lazy route boundaries. Manual vendor groups
+        // also captured shared React helpers, making the entry import WebGL and
+        // charts before either feature was opened.
       },
     },
   },

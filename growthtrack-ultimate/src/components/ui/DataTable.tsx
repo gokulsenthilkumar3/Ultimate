@@ -28,7 +28,12 @@ export default function DataTable<T>({ caption, rows, columns, rowKey, rowLabel 
       if (right == null) return -1;
       return typeof left === 'number' && typeof right === 'number' ? left - right : String(left).localeCompare(String(right), undefined, { numeric: true });
     });
-    return [...rows].sort((a, b) => compare(a, b) * (sort.direction === 'asc' ? 1 : -1));
+    return [...rows].sort((a, b) => {
+      const left = column.accessor(a), right = column.accessor(b);
+      if (left == null) return right == null ? 0 : 1;
+      if (right == null) return -1;
+      return compare(a, b) * (sort.direction === 'asc' ? 1 : -1);
+    });
   }, [rows, columns, sort, manualSort]);
   const select = (key: string, checked: boolean) => onSelectionChange?.(checked ? [...new Set([...selectedKeys, key])] : selectedKeys.filter(item => item !== key));
   const allSelected = rows.length > 0 && rows.every(row => selectedKeys.includes(rowKey(row)));

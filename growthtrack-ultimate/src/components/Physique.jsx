@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowRight, Box, CalendarDays, CheckCircle2, Ruler, Scale, Target } from 'lucide-react';
 import useHashTab from '../hooks/useHashTab';
 import useStore from '../store/useStore';
@@ -9,14 +9,15 @@ import { formatDate } from '../utils/userFormatters';
 import Button from './ui/Button';
 import Tabs from './ui/Tabs';
 import SelectField from './ui/SelectField';
-import MeasurementWorkbench from './physique/MeasurementWorkbench';
-import TargetWorkbench from './physique/TargetWorkbench';
-import PhysiqueHistory from './physique/PhysiqueHistory';
 import { WORKSPACE_VIEWS, formatBodyValue, physiqueHistory, targetRows } from './physique/physiqueWorkspace';
 import '../styles/physique-workspace.css';
 import use3DStore from '../store/use3DStore';
 
 const ScrollShowcase = lazy(() => import('./ScrollShowcase'));
+const MeasurementWorkbench = lazy(() => import('./physique/MeasurementWorkbench'));
+const TargetWorkbench = lazy(() => import('./physique/TargetWorkbench'));
+const PhysiqueHistory = lazy(() => import('./physique/PhysiqueHistory'));
+const PanelLoading = () => <p className="px-card px-panel-loading" role="status">Opening workspace…</p>;
 const EMPTY_OBJECT = Object.freeze({});
 const VIEW_IDS = WORKSPACE_VIEWS.map(view => view.value);
 const BASIC_KEYS = ['height', 'weight', 'bodyFat', 'waist', 'neck', 'hips', 'chest', 'shoulders', 'arms', 'thighs', 'calves'];
@@ -32,6 +33,10 @@ export default function Physique({ user: suppliedUser }) {
   const saveTargets = useStore(state => state.updatePhysiqueTargets);
   const saveSnapshot = useStore(state => state.saveMetricLog);
   const [view, selectView] = useHashTab(VIEW_IDS, 'blueprint');
+  const [visitedViews, setVisitedViews] = useState(() => new Set([view]));
+  useEffect(() => {
+    setVisitedViews(visited => visited.has(view) ? visited : new Set([...visited, view]));
+  }, [view]);
   const [savingZone, setSavingZone] = useState(null);
   const toast = useToast();
   const profile = useMemo(() => mergeBodyProfileSources(bodyProfile, user), [bodyProfile, user]);
@@ -97,19 +102,19 @@ export default function Physique({ user: suppliedUser }) {
     </section>
 
     <section hidden={view !== 'measurements'} id="physique-panel-measurements" role="tabpanel" aria-labelledby="physique-tab-measurements" tabIndex={0} className="px-panel">
-      <MeasurementWorkbench current={current} user={user} onSaveProfile={saveProfile} onSaveSnapshot={saveSnapshot} onInspect={region => {
+      {(view === 'measurements' || visitedViews.has('measurements')) && <Suspense fallback={<PanelLoading />}><MeasurementWorkbench current={current} user={user} onSaveProfile={saveProfile} onSaveSnapshot={saveSnapshot} onInspect={region => {
         use3DStore.getState().setAvatarWorkspace({ workspaceMode: 'current' });
         use3DStore.getState().setViewMode('SOLO'); use3DStore.getState().setFocusedBodyPart(region === 'body' ? null : region); selectView('3d');
-      }} />
+      }} /></Suspense>}
     </section>
     <section hidden={view !== '3d'} id="physique-panel-3d" role="tabpanel" aria-labelledby="physique-tab-3d" tabIndex={0} className="px-panel px-mirror-panel">
       {view === '3d' && <Suspense fallback={<div className="px-card px-mirror-loading" role="status"><Box size={32} /><h2>Preparing your 3D Mirror</h2><p>Your measurements are getting a new perspective.</p></div>}><ScrollShowcase /></Suspense>}
     </section>
     <section hidden={view !== 'targets'} id="physique-panel-targets" role="tabpanel" aria-labelledby="physique-tab-targets" tabIndex={0} className="px-panel">
-      <TargetWorkbench current={current} goals={goals} saved={saved} baseline={history[0]?.metrics || EMPTY_OBJECT} user={user} onSaveProfile={saveProfile} onSaveTargets={saveTargets} onMeasurements={openMeasurements} />
+      {(view === 'targets' || visitedViews.has('targets')) && <Suspense fallback={<PanelLoading />}><TargetWorkbench current={current} goals={goals} saved={saved} baseline={history[0]?.metrics || EMPTY_OBJECT} user={user} onSaveProfile={saveProfile} onSaveTargets={saveTargets} onMeasurements={openMeasurements} /></Suspense>}
     </section>
     <section hidden={view !== 'history'} id="physique-panel-history" role="tabpanel" aria-labelledby="physique-tab-history" tabIndex={0} className="px-panel">
-      <PhysiqueHistory history={history} user={user} onCheckIn={openMeasurements} />
+      {(view === 'history' || visitedViews.has('history')) && <Suspense fallback={<PanelLoading />}><PhysiqueHistory history={history} user={user} onCheckIn={openMeasurements} /></Suspense>}
     </section>
   </div>;
 }

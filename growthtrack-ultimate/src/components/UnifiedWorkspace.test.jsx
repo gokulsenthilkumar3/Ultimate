@@ -10,17 +10,19 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('companion integration view', () => {
-  it('opens FinSync inside Ultimate on the shared UI origin', async () => {
+  it('links to FinSync administration while keeping the customer product separate', async () => {
     render(<MemoryRouter><UnifiedWorkspace defaultApp="finsync" /></MemoryRouter>);
-    expect(screen.getByRole('heading', { name: /FinSync/ })).toBeVisible();
-    expect(screen.getByRole('link', { name: /Transactions/ })).toHaveAttribute('href', '/finance/transactions');
-    expect(screen.getByTitle('FinSync app')).toHaveAttribute('src', '/Ultimate/products/finsync/');
+    expect(screen.getByRole('heading', { name: 'FinSync', exact: true })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Manage FinSync customers' })).toHaveAttribute('href', '/finance/finsync');
+    expect(screen.getByRole('link', { name: /Open separate FinSync product/ })).toHaveAttribute('href', '/Ultimate/products/finsync/');
+    expect(document.querySelector('iframe')).toBeNull();
     expect(fetch).toHaveBeenCalledWith('/api/gateway/health', { credentials: 'include' });
   });
 
-  it('opens all five products without leaving Ultimate', () => {
+  it('keeps native migration fallbacks and both customer-admin entries reachable', () => {
     render(<MemoryRouter><UnifiedWorkspace defaultApp="matrix" /></MemoryRouter>);
-    expect(screen.getAllByRole('button', { name: /^Open / })).toHaveLength(5);
+    expect(screen.getAllByRole('button', { name: /^Open / })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: /^Manage .* customers/ })).toHaveLength(2);
     expect(document.querySelector('a[target="_blank"]')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Open Family Connect/ }));
     expect(screen.getByRole('link', { name: /Calendar/ })).toHaveAttribute('href', '/workspace/calendar');

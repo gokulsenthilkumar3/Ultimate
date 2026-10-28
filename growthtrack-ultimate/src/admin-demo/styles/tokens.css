@@ -1,0 +1,41 @@
+/* Canonical preview tokens. The supplied palette uses darker text/action variants where needed. */
+.portal {
+  --bg: #f6f8f6; --surface: #ffffff; --surface-2: #eef2ee;
+  --text: #15211b; --text-2: #5a6b61; --text-3: #607165;
+  --muted: var(--text-2); --surface-subtle: var(--surface-2);
+  --border: #e1e7e2; --border-strong: #c9d3cb; --input-border: #7c8d82;
+  --brand: #1f8a5b; --accent: #1c8055; --accent-hover: #176d47; --accent-soft: #eef5ef; --on-accent: #ffffff;
+  --success: #187547; --positive: var(--success); --danger: #c0392b;
+  --warning: #8c5b24; --amber: var(--warning); --amber-soft: #faf3e8;
+  --info: #2b6cb0; --info-soft: #eaf1fb;
+  --sage: #e6efe6; --sage-text: #43705a; --blue: #e8eef7; --blue-text: #4a648a;
+  --peach: #f8eae0; --peach-text: #85583f; --lilac: #eeebf5; --lilac-text: #715a88;
+  --sand: #f0eddf; --sand-text: #716238;
+  --silhouette: #dce6dc; --map-water: #c4dce4;
+  --sidebar: #0f2119; --sidebar-text: #dce8e0; --sidebar-muted: #a4baad; --sidebar-active: #1c3a2b;
+  --radius-control: 8px; --radius-panel: 12px; --radius-dialog: 16px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
+  --row-height: 48px; --cell-y: 12px; --cell-x: 16px; --body-leading: 22px;
+  --motion-micro: 120ms; --motion-layout: 200ms; --motion-dialog: 240ms;
+  --shadow: 0 1px 2px #0f21190f; --dialog-shadow: 0 24px 64px #0f21193d;
+  --focus: var(--accent); --content-width: 1360px; --gutter: 24px;
+  font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 14px; line-height: var(--body-leading);
+  color: var(--text); background: var(--bg); min-height: 100vh; color-scheme: light;
+}
+.portal[data-theme="dark"] {
+  --bg: #0c1410; --surface: #13201a; --surface-2: #1a2a22;
+  --text: #e8f0eb; --text-2: #9db0a6; --text-3: #8eaaa0;
+  --border: #24362c; --border-strong: #34503f; --input-border: #617f6c;
+  --brand: #3ba876; --accent: #3ba876; --accent-hover: #65c394; --accent-soft: #1d3527; --on-accent: #0a120e;
+  --success: #5bc18b; --danger: #e06a5e; --warning: #d9a441; --amber-soft: #3a3326;
+  --info: #80b5e3; --info-soft: #1b3043;
+  --sage: #334b3a; --sage-text: #b3d7b7; --blue: #2e3e50; --blue-text: #adc9ea;
+  --peach: #4a3a2d; --peach-text: #e3bb9b; --lilac: #3d344a; --lilac-text: #cbb9de;
+  --sand: #443f2e; --sand-text: #d1c593;
+  --silhouette: #354b3b; --map-water: #354f5a;
+  --sidebar: #0a120e; --sidebar-text: #dce8e0; --sidebar-muted: #a4baad; --sidebar-active: #1c3a2b;
+  --shadow: none; color-scheme: dark;
+}
+.portal[data-density="compact"] { --row-height: 36px; --cell-y: 8px; --cell-x: 12px; --body-leading: 20px; }
+@media (max-width: 1279px) { .portal { --gutter: 16px; } }
+@media (prefers-reduced-motion: reduce) { .portal { --motion-micro: 0ms; --motion-layout: 0ms; --motion-dialog: 0ms; } }

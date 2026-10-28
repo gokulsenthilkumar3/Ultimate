@@ -25,6 +25,9 @@ import { validateBodyMetric } from '../lib/bodyMetricContract';
 import { formatMeasurement }                 from "../utils/userFormatters";
 import {createGovernor,observe,TIERS} from './morphEngine/qualityGovernor';
 import {registerCaptureScene} from './morphEngine/captureRuntime';
+import DemandRendering from './morphEngine/DemandRendering';
+import ModelLoadStatus from './physique/ModelLoadStatus';
+import ModelReadySignal from './physique/ModelReadySignal';
 
 const policyTier=tier=>tier==='MED'?'BALANCED':tier;
 const runtimeTier=tier=>tier==='BALANCED'?'MED':tier;
@@ -215,13 +218,24 @@ function MeasurementLandmarks() {
   })}</>;
 }
 
-function CanvasScene({ lodConfig, reducedMotion }) {
+function ModelFailure({ onFailure }) {
+  useEffect(onFailure, [onFailure]);
+  return <Html center><div className="avatar-model-error" role="alert">
+    <strong>The 3D model could not load</strong>
+    <p>Reload this view to retry. Your recorded measurements remain available in the Measurements tab.</p>
+  </div></Html>;
+}
+
+function CanvasScene({ lodConfig, reducedMotion, active, onReady, onFailure }) {
   const showStage=use3DStore(state=>state.avatarWorkspace.showStage);
+  const lightingMode=use3DStore(state=>state.avatarWorkspace.lightingMode);
+  const stageReducedMotion = reducedMotion || lightingMode !== 'cinematic';
   const captureState=useThree();
   useEffect(()=>registerCaptureScene(captureState.gl.domElement,captureState),[captureState]);
   return (
     <>
       <AdaptiveEvents />
+      <DemandRendering active={active} reducedMotion={reducedMotion} />
       <RendererTuning lodConfig={lodConfig} />
       <QualityTelemetry reducedMotion={reducedMotion} />
 
@@ -230,10 +244,13 @@ function CanvasScene({ lodConfig, reducedMotion }) {
       </Suspense>
 
       <StudioLighting lodConfig={lodConfig} />
+      {!showStage && lightingMode==='neutral' && <mesh name="neutral-contact-ground" rotation={[-Math.PI/2,0,0]} position={[0,0,0]} receiveShadow>
+        <planeGeometry args={[20,20]}/><shadowMaterial transparent opacity={0.2} depthWrite={false}/>
+      </mesh>}
 
       {showStage && <ChamberVFX
         count={lodConfig.postFx === "NONE" ? 120 : lodConfig.postFx === "PARTIAL" ? 360 : 680}
-        motionEnabled={!reducedMotion}
+        motionEnabled={!stageReducedMotion}
       />}
 
       <Suspense fallback={null}>
@@ -242,7 +259,7 @@ function CanvasScene({ lodConfig, reducedMotion }) {
 
       <CameraRig />
 
-      {showStage && <SpatialGuide reducedMotion={reducedMotion} />}
+      {showStage && <SpatialGuide reducedMotion={stageReducedMotion} />}
       <MeasurementLandmarks />
 
       <PostProcessingStack mode={lodConfig.postFx} reducedMotion={reducedMotion} />
@@ -250,26 +267,10 @@ function CanvasScene({ lodConfig, reducedMotion }) {
       <Suspense fallback={null}>
         <TabErrorBoundary
           tabName="Mirror Chamber Core"
-          fallback={
-            <Html center style={{ pointerEvents: 'none' }}>
-              <div style={{
-                padding: '1rem 1.5rem',
-                background: 'rgba(239,68,68,0.12)',
-                border: '1px solid rgba(239,68,68,0.4)',
-                borderRadius: '12px',
-                color: '#f87171',
-                fontFamily: 'var(--font-display)',
-                fontSize: '0.8rem',
-                textAlign: 'center',
-                maxWidth: '260px',
-              }}>
-                <div style={{ fontWeight: 700, marginBottom: '4px' }}>⚠ Model Unavailable</div>
-                <div style={{ opacity: 0.75 }}>Place humanoid-base.glb in<br/>/public/assets/models/</div>
-              </div>
-            </Html>
-          }
+          fallback={<ModelFailure onFailure={onFailure} />}
         >
           <CloneEngine />
+          <ModelReadySignal onReady={onReady} />
         </TabErrorBoundary>
       </Suspense>
 
@@ -304,8 +305,18 @@ function useGlCreated(setLodConfig) {
   }, [setLodConfig]);
 }
 
-export default function ChamberCanvas({ className = "", style = {} }) {
+export default function ChamberCanvas({ className = "", style = {}, children = null }) {
   const wrapperRef = useRef(null);
+  const [loadStarted] = useState(() => performance.now());
+  const [modelReady, setModelReady] = useState(false);
+  const [modelFailed, setModelFailed] = useState(false);
+  const onModelFailure = useCallback(() => setModelFailed(true), []);
+  const onModelReady = useCallback(() => {
+    const modelLoadMs = Math.round(performance.now() - loadStarted);
+    setModelReady(true);
+    use3DStore.getState().setRendererQualityTelemetry({ modelLoadMs });
+    performance.measure?.('physique:model-ready', { start: loadStarted, end: performance.now() });
+  }, [loadStarted]);
   const qualityStatus = use3DStore((state) => state.rendererQualityTelemetry.status);
   const [lodConfig, setLodConfig] = useState(LOD_CONFIG[GPU_TIERS.MED]);
   const [isIntersecting, setIsIntersecting] = useState(true);
@@ -345,10 +356,10 @@ export default function ChamberCanvas({ className = "", style = {} }) {
   const captureRedacted=use3DStore(s=>s.captureRedacted);
   // Render a protected frame even when offscreen; a preserved canvas must not
   // retain an earlier revealed image during a capture.
-  const shouldRender = (isIntersecting || captureRedacted) && documentVisible;
+  const shouldRender = (!modelReady || isIntersecting || captureRedacted) && documentVisible;
 
   return (
-    <div ref={wrapperRef} className={className} style={{ width: '100%', height: '100%', ...style }} data-rendering={shouldRender ? 'active' : 'paused'} data-quality-status={qualityStatus} role="img" aria-label="Interactive three-dimensional physique model. Drag to rotate and use the mouse wheel or pinch gesture to zoom.">
+    <div ref={wrapperRef} className={`avatar-renderer ${className}`} style={{ width: '100%', height: '100%', ...style }} data-rendering={shouldRender ? 'active' : 'paused'} data-model-ready={modelReady} data-model-error={modelFailed || undefined} data-quality-status={qualityStatus} role="group" aria-label="Interactive three-dimensional physique model. Drag to rotate and use the mouse wheel or pinch gesture to zoom.">
       <Canvas
         gl={{
           powerPreference:      "high-performance",
@@ -361,12 +372,14 @@ export default function ChamberCanvas({ className = "", style = {} }) {
         dpr={lodConfig.dpr}
         camera={{ fov: 30, near: 0.01, far: 100 }}
         shadows={lodConfig.shadowType ? { type: lodConfig.shadowType } : false}
-        frameloop={shouldRender ? "always" : "never"}
+        frameloop={shouldRender ? "demand" : "never"}
         onCreated={onCreated}
         style={{ width: "100%", height: "100%" }}
       >
-        <CanvasScene lodConfig={lodConfig} reducedMotion={reducedMotion} />
+        <CanvasScene lodConfig={lodConfig} reducedMotion={reducedMotion} active={shouldRender} onReady={onModelReady} onFailure={onModelFailure} />
+        {children}
       </Canvas>
+      {!modelFailed && <ModelLoadStatus ready={modelReady} />}
     </div>
   );
 }

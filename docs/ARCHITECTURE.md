@@ -1,5 +1,14 @@
 # Architecture Overview
 
+For the complete current/target flows, feature catalog and agent review work packages, use the [architecture and UI review handoff](UI_ARCHITECTURE_HANDOFF.md) and its [copy-ready reviewer prompt](UI_REVIEW_AGENT_PROMPT.md).
+
+The [approved production UI integration](plans/2026-10-28-production-ui.md) records what is now implemented in the real app and which adapters/migrations remain pending.
+
+This is historical architecture guidance for the existing application. The
+current [desktop portal and customer-admin architecture](plans/2026-10-28-admin-redesign.md)
+defines the new product boundaries and phased implementation. Consult that plan
+before treating older storage or integration examples here as canonical.
+
 ## Data Flow
 
 ```

@@ -1,8 +1,9 @@
 import { Box3,Float32BufferAttribute, Vector3 } from 'three';
 
 export const GARMENT_REGIONS=Object.freeze({torso:0,leg:1,upperArm:2,forearm:3,head:4,hand:5,foot:6,pelvis:7});
-function regionFor(name) {
-  if(/Hand|Finger|Thumb/i.test(name)) return GARMENT_REGIONS.hand;
+function regionFor(bone) {
+  const name=bone.name,group=bone.userData.digitBinding?.group;
+  if(group?.endsWith('Hand') || /Hand|Finger|Thumb|(?:Left|Right)(?:Index|Middle|Ring|Pinky)/i.test(name)) return GARMENT_REGIONS.hand;
   if(/Foot|Toe/i.test(name)) return GARMENT_REGIONS.foot;
   if(/Head|Neck/i.test(name)) return GARMENT_REGIONS.head;
   if(/ForeArm/i.test(name)) return GARMENT_REGIONS.forearm;
@@ -26,7 +27,7 @@ export function prepareGarmentAttributes(body,geometry=body?.geometry,{includeAn
     let dominant=0;
     for(let k=1;k<(weights?.itemSize || 0);k++) if(weights.getComponent(i,k)>weights.getComponent(i,dominant)) dominant=k;
     const bone=body.skeleton?.bones[indices?.getComponent(i,dominant)];
-    regions[i]=bone?regionFor(bone.name):0;
+    regions[i]=bone?regionFor(bone):0;
     const region=regions[i];
     // Interpolate coverage, never categorical IDs. Interpolating torso=0 and
     // pelvis=7 produced unsupported IDs inside triangles and cut holes in cloth.

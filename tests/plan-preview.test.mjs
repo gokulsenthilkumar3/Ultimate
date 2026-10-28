@@ -1,4 +1,4 @@
-// Checks behind the v4 plan page's 3D human (see plan-assets/ and v4Plan_3DModel.html).
+// Checks behind the v4 plan page's 3D human (see growthtrack-ultimate/docs/3d-plans/).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -6,24 +6,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { decodePreview } from '../plan-assets/src/decode.mjs';
-import { buildModel, fitEntries, measureAll, FITTED_KEYS } from '../plan-assets/src/fit.mjs';
-import { applyMorphs, loopExtent, loopLength, pickLoop, planeSection, vertexNormals, weldMap } from '../plan-assets/src/geometry.mjs';
-import { buildEyes, eyeCentres } from '../plan-assets/src/eyelayout.mjs';
-import { createSkinIndex } from '../plan-assets/src/skinindex.mjs';
-import { LM } from '../plan-assets/src/face.mjs';
-import { FACE_DEFAULTS, FACE_PARAMS, bindLid, bindMeasurements, buildFaceChannels, faceWeights, measureFace, solveFaceParam } from '../plan-assets/src/faceparams.mjs';
-import { growBrows, growLashes, growScalpHair, hairWeight, lidMargin, strandPositions } from '../plan-assets/src/hairgrow.mjs';
-import { HAIR_SHADES, HAIR_STYLES, HAIR_TEXTURES, resolveHair } from '../plan-assets/src/hairstyles.mjs';
-import { SKIN_TONES, UNDERTONES } from '../plan-assets/src/palettes.mjs';
-import { bound } from '../plan-assets/src/skinindex.mjs';
+import { decodePreview } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/decode.mjs';
+import { buildModel, fitEntries, measureAll, FITTED_KEYS } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/fit.mjs';
+import { applyMorphs, loopExtent, loopLength, pickLoop, planeSection, vertexNormals, weldMap } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/geometry.mjs';
+import { buildEyes, eyeCentres } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/eyelayout.mjs';
+import { createSkinIndex } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/skinindex.mjs';
+import { LM } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/face.mjs';
+import { FACE_DEFAULTS, FACE_PARAMS, bindLid, bindMeasurements, buildFaceChannels, faceWeights, measureFace, solveFaceParam } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/faceparams.mjs';
+import { growBrows, growLashes, growScalpHair, hairWeight, lidMargin, strandPositions } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/hairgrow.mjs';
+import { HAIR_SHADES, HAIR_STYLES, HAIR_TEXTURES, resolveHair } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/hairstyles.mjs';
+import { SKIN_TONES, UNDERTONES } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/palettes.mjs';
+import { bound } from '../growthtrack-ultimate/docs/3d-plans/plan-assets/src/skinindex.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const glbPath = path.join(root, 'growthtrack-ultimate/public/assets/models/humanoid-base.glb');
 
 function loadPreview() {
   const sandbox = { window: {} };
-  vm.runInNewContext(fs.readFileSync(path.join(root, 'plan-assets/human-preview.js'), 'utf8'), sandbox);
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'growthtrack-ultimate/docs/3d-plans/plan-assets/human-preview.js'), 'utf8'), sandbox);
   return sandbox.window.PLAN_HUMAN_PREVIEW;
 }
 

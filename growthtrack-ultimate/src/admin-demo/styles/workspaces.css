@@ -1,0 +1,30 @@
+/* Shared review/table additions. Colours inherit the portal's theme tokens. */
+.table-pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 20px; border-top: 1px solid var(--border); }
+.table-pagination > label { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; }
+.table-pagination nav { display: flex; align-items: center; gap: 10px; }
+.table-pagination .button { min-height: 36px; }
+.review-scope { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; margin: 18px 23px; padding: 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; }
+.review-scope .eyebrow { flex-basis: 100%; margin: 0; }
+.review-scope > span:last-child { font-size: 12px; color: var(--muted); }
+.coverage-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 0 23px 18px; }
+.coverage-summary > div { display: flex; flex-direction: column; gap: 3px; }
+.coverage-summary strong { font-size: 23px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.coverage-summary span { font-size: 12px; color: var(--muted); }
+.coverage-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 23px 20px; }
+.review-filters { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 23px; }
+.review-filters label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); }
+.review-filters input, .review-filters select { width: 100%; min-height: 38px; padding: 8px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--surface); color: var(--text); font: inherit; }
+.review-workspace .view-links { flex-wrap: wrap; }
+.review-workspace .view-links button { display: flex; align-items: center; gap: 8px; min-height: 35px; text-align: left; }
+.review-workspace .view-links .badge { font-size: 11px; }
+.review-no-results { padding: 20px 0; }
+.review-storage-warning { margin: 18px 23px; padding: 14px; color: var(--text); background: var(--amber-soft); border: 1px solid var(--border-strong); border-radius: 5px; font-size: 12px; }
+@media (max-width: 719px) {
+  .review-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .review-filters > label:first-child { grid-column: 1 / -1; }
+  .review-scope, .coverage-actions { margin-left: 15px; margin-right: 15px; }
+  .coverage-summary, .review-filters { padding-left: 15px; padding-right: 15px; }
+  .coverage-summary { gap: 10px; }
+  .coverage-summary strong { font-size: 19px; }
+  .table-pagination { padding: 14px 17px; }
+}

@@ -21,6 +21,23 @@ beforeEach(() => {
 });
 
 describe('acknowledged UI preference setters', () => {
+  it.each([['bcl', 'dark'], ['gbb', 'light']])('persists %s with its required mode in one request and restores both on failure', async (palette, theme) => {
+    const before = { palette: state().palette, theme: state().theme };
+    apiRequest.mockRejectedValueOnce(new Error('Theme save failed'));
+    await expect(state().setPalette(palette)).rejects.toThrow('Theme save failed');
+    expect({ palette: state().palette, theme: state().theme }).toEqual(before);
+    expect(JSON.parse(apiRequest.mock.calls[0][1].body)).toEqual({ palette, theme });
+    apiRequest.mockResolvedValueOnce({ id: 'prefs', palette, theme });
+    await state().setPalette(palette); expect(state().palette).toBe(palette); expect(state().theme).toBe(theme);
+  });
+  it('rebases a queued mode change after a preset save rather than mixing modes and colours', async () => {
+    const first = deferred(); apiRequest.mockReturnValueOnce(first.promise).mockResolvedValueOnce({ id: 'prefs', theme: 'light', palette: 'forest' });
+    const preset = state().setPalette('bcl'), mode = state().setTheme('light');
+    await settle(); first.resolve({ id: 'prefs', palette: 'bcl', theme: 'dark' });
+    await preset; await mode;
+    expect(JSON.parse(apiRequest.mock.calls[1][1].body)).toEqual({ theme: 'light', palette: 'forest' });
+    expect(state().theme).toBe('light'); expect(state().palette).toBe('forest');
+  });
   it.each([
     ['setSidebarCollapsed', 'sidebarCollapsed', true],
     ['setReducedMotion', 'reducedMotion', true],

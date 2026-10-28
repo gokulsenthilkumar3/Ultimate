@@ -19,6 +19,7 @@ import { createEventLogger } from './server/eventLogger.js';
 import { BODY_METRIC_RANGES, validateBodyMetric } from './src/lib/bodyMetricContract.js';
 import { appleHealthSetupRequired, metricToClient } from './server/domains/providers.js';
 import { registerFinanceRoutes } from './server/domains/finance.js';
+import { registerCustomerAdminRoutes } from './server/domains/customerAdmin.js';
 import { registerFileRoutes } from './server/domains/files.js';
 import { registerWorkoutRoutes } from './server/domains/workouts.js';
 import { saveSocialProfiles } from './server/domains/socialProfiles.js';
@@ -103,9 +104,11 @@ async function cleanupExpiredLogs() {
     ]);
   } catch (error) { logToFile('warning', 'log_retention_cleanup_failed', { error: String(error?.message || error) }); }
 }
-void cleanupExpiredLogs();
-const logCleanupTimer = setInterval(cleanupExpiredLogs, config.logs.cleanupIntervalMs);
-logCleanupTimer.unref?.();
+if (config.logs.cleanupEnabled) {
+  void cleanupExpiredLogs();
+  const logCleanupTimer = setInterval(cleanupExpiredLogs, config.logs.cleanupIntervalMs);
+  logCleanupTimer.unref?.();
+}
 const authMiddleware = security.authenticate;
 // Production requires HANDOFF_SECRET (enforced in config). Locally an ephemeral
 // secret works for one process; say so instead of failing silently later.
@@ -715,19 +718,19 @@ app.put('/api/custom-tables', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/preferences', authMiddleware, async (req, res) => {
-  const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: {}, create: { userId: req.user.id, theme: 'system' } });
+  const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: {}, create: { userId: req.user.id, theme: 'system', palette: 'forest' } });
   res.json({ ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) });
 });
 
 app.put('/api/preferences', authMiddleware, async (req, res) => {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ error: 'Preferences must be an object.' });
-  if (req.body.theme !== undefined && !['light', 'dark', 'system'].includes(req.body.theme)) return res.status(400).json({ error: 'Theme must be light, dark, or system.' });
+  if (req.body.theme !== undefined && !['light', 'dark', 'amoled', 'system'].includes(req.body.theme)) return res.status(400).json({ error: 'Theme must be light, dark, amoled, or system.' });
   const allowed = ['theme', 'palette', 'sidebarCollapsed', 'onboardingComplete', 'reducedMotion'];
   const data = Object.fromEntries(allowed.filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]]));
   if (req.body.density !== undefined) data.density = req.body.density === 'compact' ? 'compact' : 'comfortable';
   if (req.body.navigationOrder !== undefined) data.navigationOrder = JSON.stringify(req.body.navigationOrder);
   if (req.body.navigationTabOrder !== undefined) data.navigationTabOrder = JSON.stringify(req.body.navigationTabOrder);
-  const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: data, create: { userId: req.user.id, theme: 'system', ...data } });
+  const preference = await prisma.userPreference.upsert({ where: { userId: req.user.id }, update: data, create: { userId: req.user.id, theme: 'system', palette: 'forest', ...data } });
   res.json({ ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) });
 });
 
@@ -946,6 +949,7 @@ app.post('/api/hydration/log', authMiddleware, async (req, res) => {
 app.post('/api/health/sync/apple', authMiddleware, appleHealthSetupRequired);
 
 registerFinanceRoutes(app, authMiddleware, { prisma, auditCrud });
+registerCustomerAdminRoutes(app, authMiddleware);
 registerRecordRoutes(app, { authMiddleware, services: recordServices, enabled: recordRowsEnabled });
 const syncEngine = createSyncEngine({ prisma, records: recordRowsEnabled ? recordServices : null, fetchDefaults: config.sync.fetch, connectors: createConnectors(config.sync), sealer: createSealer(config.security.encryptionKey), logEvent: event => eventLogger.write({ source: 'sync-engine', ...event }) });
 registerSyncRoutes(app, authMiddleware, syncEngine);

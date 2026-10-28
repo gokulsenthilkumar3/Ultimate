@@ -5,7 +5,7 @@ describe('canonical module registry', () => {
   it('gives every navigable module a complete public contract', () => {
     for (const module of MODULE_DEFINITIONS) {
       expect(module.id).toBeTruthy();
-      expect(module.canonicalPath).toBe(`/${module.area}/${module.module}`);
+      expect(module.canonicalPath).toBe(module.id === 'customers' ? '/customers' : `/${module.area}/${module.module}`);
       expect(module.label).toBeTruthy();
       expect(module.description).toBeTruthy();
       expect(module.icon).toBeTypeOf('object');

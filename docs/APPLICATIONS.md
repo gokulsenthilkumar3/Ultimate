@@ -1,0 +1,31 @@
+# Application directory
+
+One documentation format for every application and reference package. Product status describes the current source; planned portal integration is not presented as shipped.
+
+| Application | Purpose | Status |
+| --- | --- | --- |
+| [GrowthTrack workspace](../README.md) | A desktop workspace for personal growth, work, family, equity and Forex research, with a dedicated customer-admin area for the separate FinSync and OxFin products. | The existing application runs through a shared local launcher. A new isolated UI demo is ready for review; native module consolidation and real customer-admin adapters are planned. |
+| [GrowthTrack Ultimate](../growthtrack-ultimate/README.md) | The desktop portal for personal growth, work, insights and family/market modules, and the future customer-admin home for FinSync and OxFin. | Existing authenticated application plus a separate interactive redesign demo. Live customer management and native companion migrations remain planned. |
+| [FinSync](../FinSync/README.md) | A separate customer finance application for budgets, spending, account connections and financial planning, with web and mobile source packages. | Customer application under development. Its customer administration belongs in GrowthTrack Ultimate; the customer app is not merged into Ultimate. |
+| [FinSync Web](../FinSync/apps/web/README.md) | The customer-facing FinSync web interface for sign-in, onboarding, spending, budgets and account settings. | Independent customer app. Future administrator pages are owned by Ultimate. |
+| [FinSync Mobile](../FinSync/apps/mobile/README.md) | The Expo mobile application source for the FinSync customer product. | Mobile source retained. Desktop portal redesign is the current priority; this is not a completed mobile feature audit. |
+| [OxFin](../FinSync/OxFin/README.md) | A separate customer product for wallets, cards, bills and investment-related workflows. | Under development. Ultimate is the target for OxFin customer administration; existing service prototypes are not a production admin backend. |
+| [OxFin Web](../FinSync/OxFin/ox-fin-web/README.md) | The independent OxFin customer interface for wallets, cards, bills and investment workflows. | Customer application under development. Shared customer-admin adapters are planned in Ultimate. |
+| [OxFin local infrastructure](../FinSync/OxFin/ox-fin-backend/README.md) | Local PostgreSQL and Redis definitions and SQL initialisation for OxFin. | Development infrastructure. Initialisation scripts run only for new database volumes. |
+| [Equity](../Equity/README.md) | Market-research product area. NiftyLens is the canonical application. | Targeted for native views inside Ultimate. |
+| [Equity / NiftyLens](../Equity/NiftyLens/README.md) | Equity instruments, market charts, watchlists and market-data API source. | Existing application with a planned native portal UI. Provider availability depends on configuration. |
+| [Family Connect](../Family%20Connect/README.md) | Family trees, member profiles, memories, shared events and documents. | Existing application targeted for native portal views. |
+| [Family Connect application](../Family%20Connect/familyconnect/README.md) | Family membership, relationship trees, memories, calendar events and document workflows. | Under development; native portal migration is planned. |
+| [Family Connect Frontend](../Family%20Connect/familyconnect/frontend/README.md) | Family-tree, memory, profile, event and document interfaces. | Current standalone UI. Replacement portal views are at the design-review stage. |
+| [Family Connect Backend](../Family%20Connect/familyconnect/backend/README.md) | Family authentication, trees, relationships, events, documents and notification APIs. | Existing backend. Preserve its per-family permissions during portal migration. |
+| [Forex research and inference](../Forex/README.md) | Currency-data preparation, model research, saved-model inference and a Streamlit research dashboard. | Canonical Forex service source. Native portal views are a design proposal; useful predictions require compatible data and trained model artifacts. |
+| [Forex historical reference](../Forex/Forex-Ensemble-Prediction/README.md) | An earlier copy of Forex research and model code retained for reference. | Historical copy; use the parent Forex/ application for setup and changes. |
+| [Expense Tracker Mobile reference](../FinSync/Expense%20Tracker%20-%20Mobile/expense-tracker-mobile/README.md) | An earlier Expo expense-tracking application, retained separately from the canonical FinSync mobile package. | Reference application. Desktop portal work does not imply its features are merged or mobile-tested. |
+| [OxFin gateway prototype](../FinSync/OxFin/services/api-gateway/README.md) | Reference request routing and JWT checks for experimental OxFin services. | Incomplete dependency manifest; not part of the default workspace launcher and not a production admin gateway. |
+| [OxFin identity prototype](../FinSync/OxFin/services/identity-service/README.md) | Reference token, registration and consent handlers. | Prototype only: login does not verify passwords. It must not authorise real customers or administrators. |
+| [OxFin wallet prototype](../FinSync/OxFin/services/wallet-service/README.md) | Reference wallet workflow handlers. | Incomplete dependency manifest; not a production wallet or admin backend. |
+| [OxFin payment prototype](../FinSync/OxFin/services/payments-service/README.md) | Reference payment-provider workflow handlers. | Incomplete dependency manifest; no live payment integration is enabled by the UI work. |
+| [OxFin bills prototype](../FinSync/OxFin/services/bills-service/README.md) | Reference bill-management handlers. | Incomplete dependency manifest; retained as reference source. |
+| [OxFin OX prototype](../FinSync/OxFin/services/ox-service/README.md) | Reference OX-related workflow handlers. | Incomplete dependency manifest; retained as reference source. |
+
+Generated from `applications.json`. Run `node scripts/application-docs.mjs --check` to detect drift.

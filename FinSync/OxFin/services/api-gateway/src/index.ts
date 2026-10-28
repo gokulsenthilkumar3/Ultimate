@@ -17,7 +17,11 @@ const paymentsServiceUrl = process.env.PAYMENTS_SERVICE_URL || `http://localhost
 const billsServiceUrl = process.env.BILLS_SERVICE_URL || `http://localhost:${process.env.BILLS_PORT || 3004}`;
 const oxServiceUrl = process.env.OX_SERVICE_URL || `http://localhost:${process.env.OX_PORT || 3005}`;
 
-const JWT_SECRET = process.env.AUTH_JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = (() => {
+  const secret = process.env.AUTH_JWT_SECRET;
+  if (!secret?.trim()) throw new Error('AUTH_JWT_SECRET must be configured.');
+  return secret;
+})();
 
 // Simple in-memory rate limiter (for production, use Redis)
 const rateLimits: Record<string, { count: number; resetAt: number }> = {};

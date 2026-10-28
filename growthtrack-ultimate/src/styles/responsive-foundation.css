@@ -9,7 +9,7 @@
     --rf-border: var(--gt-border, var(--v3-border, #dfdcd4));
     --rf-accent: var(--gt-action, var(--v3-accent, #5c67e8));
     --rf-focus: var(--gt-focus, var(--v3-accent, #5260df));
-    --rf-danger: var(--v2-danger, #ba3a3a);
+    --rf-danger: var(--gt-danger, #ba3a3a);
     --rf-safe-start: env(safe-area-inset-left, 0px);
     --rf-safe-end: env(safe-area-inset-right, 0px);
     box-sizing: border-box;
@@ -92,11 +92,11 @@
   .gt-filter-bar__controls > .gt-search-field { flex: 1 1 15rem; }
   .gt-filter-bar__chips { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
   .gt-filter-bar__chips button { padding: .4rem .75rem; background: var(--rf-raised); color: var(--rf-text); border: 1px solid var(--rf-border); border-radius: 2rem; }
-  .gt-data-table__scroll { max-inline-size: 100%; overflow-x: auto; overscroll-behavior-inline: contain; border: 1px solid var(--rf-border); border-radius: .75rem; background: var(--rf-surface); }
+  .gt-data-table__scroll { max-inline-size: 100%; max-block-size: min(68vh, 760px); overflow: auto; overscroll-behavior: contain; border: 1px solid var(--rf-border); border-radius: .75rem; background: var(--rf-surface); }
   .gt-data-table table { inline-size: 100%; border-collapse: collapse; color: var(--rf-text); }
   .gt-data-table caption { padding: .75rem; text-align: start; font-weight: 600; }
-  .gt-data-table :is(td, th) { padding: .5rem .75rem; border-block-start: 1px solid var(--rf-border); text-align: start; vertical-align: middle; }
-  .gt-data-table th { color: var(--rf-muted); font-weight: 600; }
+  .gt-data-table :is(td, th) { height: var(--gt-row-height, 48px); padding: var(--gt-cell-y, 12px) var(--gt-cell-x, 16px); border-block-start: 1px solid var(--rf-border); text-align: start; vertical-align: middle; font-size: 14px; line-height: var(--gt-body-leading, 22px); }
+  .gt-data-table th { position: sticky; inset-block-start: 0; z-index: 1; color: var(--rf-muted); background: var(--rf-surface); font-weight: 600; }
   .gt-data-table th button { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem; color: inherit; background: transparent; border: 0; text-align: inherit; cursor: pointer; }
   .gt-data-table [data-align=end] { text-align: end; font-variant-numeric: tabular-nums; }
   .gt-data-table tr[data-selected=true] { background: var(--rf-raised); }
@@ -148,24 +148,15 @@
    The new shell owns all visual styling in editorial-shell.css. */
 @layer gt-responsive-foundation {
   :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]) {
-    /* Rail only: compact or no panel */
-    --gt-shell-offset: 76px;
+    --gt-shell-offset: 224px;
   }
-  /* Desktop with panel open: rail (76px) + panel (256px) = 332px */
-  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-mode="desktop"]:not([data-collapsed="true"])) {
-    --gt-shell-offset: 332px;
-  }
-  /* Legacy pinned panel (wider threshold) */
-  :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-panel-mode="pinned"] .gt-navigation-panel) {
-    --gt-shell-offset: 332px;
-  }
-  /* Compact mode: rail only */
+  /* Below 960px the entire rail becomes a drawer. */
   :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-mode="compact"]) {
-    --gt-shell-offset: 76px;
+    --gt-shell-offset: 0px;
   }
   /* Collapsed desktop: rail only */
   :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-app-navigation[data-collapsed="true"]) {
-    --gt-shell-offset: 76px;
+    --gt-shell-offset: 64px;
   }
   :is(.app-shell[data-ui-system="editorial"], .app-shell[data-ui-system="v3"]):has(.gt-mobile-navigation) {
     --gt-shell-offset: 0px;

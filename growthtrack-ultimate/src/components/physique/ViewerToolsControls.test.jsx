@@ -6,6 +6,7 @@ afterEach(cleanup);
 it('initializes reach from the rendered endpoint and preserves other joint edits',()=>{
   const onChange=vi.fn();
   render(<PoseStudioControls value={{enabled:true,joints:{head:[0,20,0]},targets:{}}} onChange={onChange} readPose={()=>({limbs:{leftWrist:{normalized:[.4,-.7,.2]}}})} saveStatus="saved"/>);
+  fireEvent.click(screen.getByText('Position hands and feet'));
   fireEvent.click(screen.getByRole('checkbox',{name:'Use reach target'}));
   expect(onChange).toHaveBeenCalledWith({enabled:true,joints:{head:[0,20,0]},targets:{leftWrist:[.4,-.7,.2]}});
 });
@@ -14,6 +15,7 @@ it('retains the draft during save failure and exposes an explicit retry',()=>{
   render(<PoseStudioControls value={{enabled:true,joints:{head:[0,20,0]}}} onChange={onChange} readPose={()=>null} saveStatus="error"/>);
   fireEvent.click(screen.getByRole('button',{name:'Retry pose save'}));
   expect(onChange).toHaveBeenCalledWith({enabled:true,joints:{head:[0,20,0]},targets:{}});
+  fireEvent.click(screen.getByText('Position hands and feet'));
   fireEvent.click(screen.getByRole('checkbox',{name:'Use reach target'}));
   expect(screen.getByText('Wait for the interactive model to finish loading.')).toBeTruthy();
   expect(onChange).toHaveBeenCalledTimes(1);
@@ -28,6 +30,7 @@ it('disables pose edits in comparison and keeps the reset local to this pose',()
 it('does not report an old endpoint as a newly applied target while the preview is paused',()=>{
   render(<PoseStudioControls value={{enabled:true,joints:{},targets:{leftWrist:[.2,-.6,.3]}}} onChange={()=>{}}
     readPose={()=>({targets:{leftWrist:[.4,-.7,.2]},limbs:{leftWrist:{reached:true,error:0,reach:1}}})}/>);
+  fireEvent.click(screen.getByText('Position hands and feet'));
   fireEvent.click(screen.getByRole('button',{name:'Check reach'}));
   expect(screen.getByText('Bring the model into view to update reach, then check again.')).toBeTruthy();
 });
@@ -43,4 +46,20 @@ it('saves the actual camera, and can rename, apply and remove a saved view',()=>
   fireEvent.change(screen.getByRole('textbox',{name:'Name for Oblique'}),{target:{value:'Profile'}});
   fireEvent.click(screen.getByRole('button',{name:'Rename Oblique'}));expect(onChange.mock.lastCall[0][0].name).toBe('Profile');
   fireEvent.click(screen.getByRole('button',{name:'Remove Oblique'}));expect(onChange).toHaveBeenLastCalledWith([]);
+});
+
+it('starting points clear stale hand shapes and undo restores the complete draft',()=>{
+  const onChange=vi.fn(),value={enabled:true,joints:{head:[0,20,0]},targets:{},digits:{leftHand:{shape:'fist',strength:1}}};
+  render(<PoseStudioControls value={value} onChange={onChange} readPose={()=>null}/>);
+  fireEvent.change(screen.getByRole('combobox',{name:'Pose starting point'}),{target:{value:'neutral'}});
+  expect(onChange.mock.lastCall[0]).toMatchObject({enabled:true,joints:{},targets:{}});
+  expect(onChange.mock.lastCall[0].digits?.leftHand?.shape).not.toBe('fist');
+  fireEvent.click(screen.getByRole('button',{name:'Undo pose edit'}));
+  expect(onChange.mock.lastCall[0].digits.leftHand.shape).toBe('fist');
+});
+it('disables joint angles that are controlled by reach targets',()=>{
+  render(<PoseStudioControls value={{enabled:true,joints:{},targets:{leftWrist:[.2,-.6,.3]}}} onChange={()=>{}} readPose={()=>null}/>);
+  fireEvent.click(screen.getByText('Body joints'));
+  fireEvent.change(screen.getByRole('combobox',{name:'Pose joint'}),{target:{value:'leftUpperArm'}});
+  expect(screen.getByRole('slider',{name:'Joint pitch'})).toBeDisabled();
 });

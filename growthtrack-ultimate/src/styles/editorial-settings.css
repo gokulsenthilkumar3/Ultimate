@@ -23,7 +23,7 @@
 .gt-settings-modal__section-label {
   margin: 0 0 var(--gt-space-3);
   color: var(--gt-action);
-  font-size: .69rem;
+  font-size: 12px;
   font-weight: 750;
   letter-spacing: .15em;
   text-transform: uppercase;
@@ -117,7 +117,7 @@
 .gt-editorial-settings__connections li > span:first-child { display: grid; gap: var(--gt-space-1); min-width: 0; }
 .gt-editorial-settings__connections strong { color: var(--gt-text); text-transform: capitalize; }
 .gt-editorial-settings__connections small { color: var(--gt-muted); line-height: 1.4; }
-.gt-editorial-settings__badge { flex: none; padding: var(--gt-space-1) var(--gt-space-2); border: 1px solid var(--gt-border); border-radius: var(--gt-radius-pill); color: var(--gt-muted); font-size: .7rem; }
+.gt-editorial-settings__badge { flex: none; padding: var(--gt-space-1) var(--gt-space-2); border: 1px solid var(--gt-border); border-radius: var(--gt-radius-pill); color: var(--gt-muted); font-size: 12px; }
 .gt-editorial-settings__add-link { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gt-space-4); align-items: end; }
 .gt-editorial-settings__add-link .form-input { width: 100%; }
 .gt-editorial-settings__add-link > button { grid-column: 1 / -1; justify-self: start; }
@@ -240,3 +240,15 @@
   }
 }
 
+
+[data-palette-preview="forest"] { background: #1c8055; }
+.appearance-color-themes h4 { margin: 0 0 8px; font-size: 14px; color: var(--gt-text); }
+.appearance-color-themes > p { margin: 0 0 16px; color: var(--gt-muted); font-size: 13px; }
+.appearance-theme-presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px; }
+.appearance-theme-presets > button { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--gt-input-border); border-radius: 12px; background: var(--gt-surface); color: var(--gt-text); text-align: start; font: inherit; cursor: pointer; }
+.appearance-theme-presets > button[aria-pressed=true] { outline: 2px solid var(--gt-focus); outline-offset: 2px; }
+.appearance-theme-presets > button > span:last-child { font-size: 13px; line-height: 20px; color: var(--gt-muted); }
+.appearance-theme-swatches { display: flex; block-size: 40px; overflow: hidden; border: 1px solid var(--gt-border-strong); border-radius: 8px; }
+.appearance-theme-swatches > span { flex: 1; }
+.appearance-theme-presets > button:disabled { cursor: wait; }
+.appearance-theme-error { color: var(--gt-danger); font-size: 13px; }

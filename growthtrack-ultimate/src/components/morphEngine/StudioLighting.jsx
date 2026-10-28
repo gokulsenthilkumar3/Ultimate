@@ -79,11 +79,11 @@ export default function StudioLighting({ lodConfig }) {
 
   if(mode === 'neutral') return <group name="neutral-inspection-lighting">
     <primitive object={target}/>
-    <ambientLight intensity={.25} color="#ffffff"/>
-    <hemisphereLight color="#ffffff" groundColor="#9c9c9c" intensity={.5}/>
+    <ambientLight intensity={.12} color="#ffffff"/>
+    <hemisphereLight color="#ffffff" groundColor="#9c9c9c" intensity={.35}/>
     <directionalLight position={[-2,3,3]} target={target} color="#ffffff" intensity={1.8} castShadow={Boolean(lodConfig?.shadowMapSize)} shadow-mapSize-width={lodConfig?.shadowMapSize ?? 512} shadow-mapSize-height={lodConfig?.shadowMapSize ?? 512} shadow-normalBias={.002} shadow-bias={-.0001}/>
-    <directionalLight position={[2,1.5,3]} target={target} color="#ffffff" intensity={1.0}/>
-    <directionalLight position={[0,2,-3]} target={target} color="#ffffff" intensity={.65}/>
+    <directionalLight position={[2,1.5,3]} target={target} color="#ffffff" intensity={.45}/>
+    <directionalLight position={[0,2,-3]} target={target} color="#ffffff" intensity={.4}/>
   </group>;
 
   return (

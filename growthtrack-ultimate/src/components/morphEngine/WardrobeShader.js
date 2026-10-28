@@ -181,18 +181,20 @@ export function createClothMaterial(preset = 'GYM', geometry = null, options = {
     uBodyLowerBand:{value:new THREE.Vector2(Math.max(physicalHem,Number.isFinite(lowerHem)?lowerHem:-1),physicalWaist)},
   };
   material.userData={wardrobePreset:preset,options,uniforms};
-  material.customProgramCacheKey = () => 'authored-cloth-v5-' + preset + (authoredCoverage?'-authored':'-shell');
+  material.customProgramCacheKey = () => 'authored-cloth-v7-' + preset + (authoredCoverage?'-authored':'-shell');
   const coverageCode=`
         bool lowerRegion = vGarmentCoverage.x > .2;
         bool torsoRegion = vGarmentCoverage.y > .2 && vGarmentCoverage.z < .2 && vGarmentCoverage.w < .2;
         bool lowerCloth = lowerRegion && vClothPosition.y >= uLowerBand.x && vClothPosition.y <= uLowerBand.y;
-        if(uBriefStyle > .5 && vClothPosition.y < .80 + abs(vClothPosition.x)*.38) lowerCloth=false;
+        if(uBriefStyle > .5 && vClothPosition.y < .90 + abs(vClothPosition.x)*.55) lowerCloth=false;
         bool torsoBand = vClothPosition.y >= uTorsoBand.x && vClothPosition.y <= uTorsoBand.y;
         bool torsoCloth = torsoBand && torsoRegion;
         if (uTankStyle > 0.5) {
           bool tankBody = vClothPosition.y <= 1.43 && abs(vClothPosition.x) < uTorsoWidth;
           bool tankStraps = vClothPosition.y > 1.43 && abs(vClothPosition.x) > 0.155 && abs(vClothPosition.x) < 0.230;
-          torsoCloth = torsoCloth && (tankBody || tankStraps);
+          // Shoulder-weighted vertices carry the straps of the authored tee.
+          // Excluding the upper-arm coverage here turned tanks into strapless tops.
+          torsoCloth = torsoBand && vGarmentCoverage.y > .2 && vGarmentCoverage.w < .2 && (tankBody || tankStraps);
         }
         bool sleeve = (uSleeves > .5 && vGarmentCoverage.z > .2) || (uSleeves > 1.5 && vGarmentCoverage.w > .2);
         torsoCloth = torsoCloth || sleeve;
@@ -217,7 +219,9 @@ export function createClothMaterial(preset = 'GYM', geometry = null, options = {
       shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform vec2 uBodyLowerBand;\nuniform float uWaistRise;');
       const interior=coverageCode.replace('if (!lowerCloth && !torsoCloth) discard;','').replaceAll('uLowerBand','uBodyLowerBand')+`
         bool lowerInterior=lowerCloth && vClothPosition.y>uBodyLowerBand.x+.006 && vClothPosition.y<min(uBodyLowerBand.y,${waistHeight}+uWaistRise)-.006;
-        bool topInterior=torsoCloth && (sleeve || vClothPosition.y<1.52) && (sleeve || vClothPosition.y>max(uTorsoBand.x,uMaskTopHem)+.012);
+        // Sleeve bone regions extend beyond the actual sewn cuff. Keep the
+        // arm surface; the authored sleeve already provides its own coverage.
+        bool topInterior=torsoCloth && !sleeve && vClothPosition.y<1.52 && vClothPosition.y>max(uTorsoBand.x,uMaskTopHem)+.012;
         if(lowerInterior || topInterior) discard;`;
       shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>','#include <alphatest_fragment>\n'+interior);return;
     }
@@ -249,7 +253,7 @@ export function createClothMaterial(preset = 'GYM', geometry = null, options = {
     const previous=skin.onBeforeCompile,previousKey=skin.customProgramCacheKey;
     const key=previousKey.call(skin);
     skin.onBeforeCompile=(shader,renderer)=>{previous.call(skin,shader,renderer);compile(shader,false,true);};
-    skin.customProgramCacheKey=()=>key+'-wardrobe-interior-v2'+(authoredCoverage?'-contour':'-shell');skin.needsUpdate=true;
+    skin.customProgramCacheKey=()=>key+'-wardrobe-interior-v3'+(authoredCoverage?'-contour':'-shell');skin.needsUpdate=true;
     return ()=>{skin.onBeforeCompile=previous;skin.customProgramCacheKey=previousKey;skin.needsUpdate=true;};
   };
   material.addEventListener('dispose',()=>{depthMaterial.dispose();distanceMaterial.dispose();});

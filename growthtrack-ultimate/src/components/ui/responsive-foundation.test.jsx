@@ -79,6 +79,13 @@ describe('functional shared components', () => {
     view.rerender(<DataTable caption="Rows" rows={[]} columns={[]} rowKey={row => row.id} />);
     expect(screen.getByText('No records')).toBeVisible();
   });
+  it('keeps missing numeric values last in both sorting directions', async () => {
+    const rows = [{ id: 'none', amount: null }, { id: 'small', amount: 2 }, { id: 'large', amount: 12 }];
+    render(<DataTable caption="Amounts" rows={rows} columns={[{ id: 'amount', header: 'Amount', accessor: row => row.amount, sortable: true }]} rowKey={row => row.id} />);
+    const ordered = () => within(screen.getByRole('table')).getAllByRole('row').slice(1).map(row => row.textContent);
+    await userEvent.click(screen.getByRole('button', { name: /Amount/ })); expect(ordered()).toEqual(['2', '12', '—']);
+    await userEvent.click(screen.getByRole('button', { name: /Amount/ })); expect(ordered()).toEqual(['12', '2', '—']);
+  });
   it('wires query, active filter removal, and reset actions', async () => {
     const change = vi.fn(), remove = vi.fn(), reset = vi.fn();
     render(<FilterBar query="food" onQueryChange={change} resultCount={4} onReset={reset} activeFilters={[{ id: 'food', label: 'Food', onRemove: remove }]} />);

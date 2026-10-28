@@ -77,6 +77,7 @@ const MODULE_COMPONENTS = {
   notifications: lazy(() => import('./components/NotificationCenter')),
 };
 const Finance = lazy(() => import('./components/Finance'));
+const CustomerAdminPage = lazy(() => import('./domains/customer-admin/CustomerAdminPage'));
 const InsightsHub = lazy(() => import('./components/InsightsHub'));
 const UnifiedWorkspace = lazy(() => import('./components/UnifiedWorkspace'));
 const OnboardingWizard = lazy(() => import('./components/OnboardingWizard'));
@@ -92,7 +93,8 @@ const FINANCE_VIEWS = { finance: 'Overview', transactions: 'Transactions', finan
 function ModulePage({ feature, view, user, theme, setActiveTab, notificationState, onOpenCheckIn, onDismissCheckIn, checkInAvailable }) {
   if (FINANCE_VIEWS[feature.id]) return <Finance initialTab={FINANCE_VIEWS[feature.id]} />;
   if (['analytics', 'dashboards', 'forecast', 'progress'].includes(feature.id)) return <InsightsHub initialTab={feature.id} logs={useStore.getState().metric_logs} />;
-  if (['finsync', 'oxfin', 'equity', 'forex', 'family', 'companion'].includes(feature.id)) {
+  if (['customers', 'finsync', 'oxfin'].includes(feature.id)) return <CustomerAdminPage product={feature.id === 'customers' ? undefined : feature.id} />;
+  if (['equity', 'forex', 'family', 'companion'].includes(feature.id)) {
     return <UnifiedWorkspace defaultApp={feature.id === 'companion' ? 'matrix' : feature.id} onNavigate={setActiveTab} />;
   }
   if (feature.id === 'healthSync') return <section className="module-page"><PageHeader accent="Wellness" title="Health Sync" subtitle="Review supported health sources and connection requirements." /><PageState state="setup" title="Pair a health companion" description="Health imports require an authorized iOS or Android companion. No simulated readings are written. Device pairing is not configured in this deployment." /></section>;
@@ -208,7 +210,8 @@ export default function App() {
     const interval = setInterval(checkServerHealth, TIMING.SERVER_HEALTH_POLL_MS);
     return () => { disposed = true; clearInterval(interval); };
   }, [session, sessionId, publicPage, fetchInitialData, checkServerHealth]);
-  useEffect(() => { document.documentElement.setAttribute('dir', getTextDirection(user)); }, [user?.textDirection]);
+  const textDirection = getTextDirection(user);
+  useEffect(() => { document.documentElement.setAttribute('dir', textDirection); }, [textDirection]);
   useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [activeTab]);
 
   if (publicPage) { const PublicPage = publicPage; return <Suspense fallback={<LoadingSkeleton />}><PublicPage /></Suspense>; }
@@ -233,7 +236,7 @@ export default function App() {
       {showCheckIn && onboardingComplete && <DailyCheckIn onClose={() => setShowCheckIn(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </Suspense>
-    <div className="app-shell" dir={getTextDirection(user)} data-theme={theme} data-palette={palette} data-density={density} data-reduced-motion={String(reducedMotion)} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed} data-ui-system="editorial" data-domain={group}>
+    <div className="app-shell" dir={textDirection} data-theme={theme} data-palette={palette} data-density={density} data-reduced-motion={String(reducedMotion)} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed} data-ui-system="editorial" data-design-revision="approved-portal-v1" data-domain={group}>
       <a className="skip-to-content" href="#main-content">Skip to content</a>
       <div className="main-area">
         <Header activeTab={activeTab} setActiveTab={setActiveTab} user={user} theme={theme} setTheme={useStore.getState().setTheme} serverStatus={serverStatus} unreadCount={notificationState.unreadCount} onOpenSettings={() => setShowSettings(true)} onOpenNotifications={() => setActiveTab('notifications')} />

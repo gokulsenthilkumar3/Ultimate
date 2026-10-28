@@ -1,7 +1,10 @@
 import { expect,it } from 'vitest';
 import { Box3,ShaderLib } from 'three';
 import { glbMeshFixture } from '../../tests/helpers/glbMeshFixture';
-import { createGarmentGeometry,GARMENT_REGIONS } from './garmentGeometry';
+import {readGlb} from '../../../scripts/plan-preview/glb.mjs';
+import {decompressGlb} from '../../../scripts/human-realism/glb-family.mjs';
+import {sceneFromGlb} from '../../../scripts/human75/glb-tools.mjs';
+import { createGarmentGeometry,prepareGarmentAttributes,GARMENT_REGIONS } from './garmentGeometry';
 import { createClothMaterial,switchWardrobePreset } from './WardrobeShader';
 import { sanitizeWardrobePreferences } from '../../lib/wardrobePreferences';
 
@@ -54,6 +57,8 @@ it('only masks the hidden body interior and restores the skin shader when undres
   const shader={vertexShader:ShaderLib.physical.vertexShader,fragmentShader:ShaderLib.physical.fragmentShader,uniforms:{}};
   skin.onBeforeCompile(shader);
   expect(shader.fragmentShader).toContain('if(lowerInterior || topInterior) discard;');
+  expect(shader.fragmentShader).toContain('bool topInterior=torsoCloth && !sleeve');
+  expect(shader.fragmentShader).not.toContain('(sleeve || vClothPosition.y<1.52)');
   expect(shader.fragmentShader).not.toContain('if (!lowerCloth && !torsoCloth) discard;');
   expect(body.geometry.attributes.garmentCoverage.count).toBe(body.geometry.attributes.position.count);
   restore();expect(skin.onBeforeCompile).toBe(original);cloth.dispose();
@@ -70,4 +75,19 @@ it('builds distinct coverage, sleeve and color choices while rejecting persisted
   expect(createClothMaterial('CASUAL',body.geometry,{variant:'sweatshirt'}).userData.uniforms.uSleeves.value).toBe(2);
   expect(sanitizeWardrobePreferences({preset:'ANATOMICAL'}).preset).toBe('UNDERWEAR');
   expect(sanitizeWardrobePreferences({outfits:{GYM:{topColor:'invalid'}}}).outfits.GYM.topColor).toMatch(/^#[\da-f]{6}$/i);
+});
+
+
+it.each(['humanoid-preview-75-lite.glb','humanoid-human-r2-core.glb','humanoid-human-r2-hero.glb'])('never masks articulated fingers as clothed torso in %s',async file=> {
+  const {body}=sceneFromGlb(await decompressGlb(readGlb('public/assets/models/'+file)));
+  prepareGarmentAttributes(body);
+  const g=body.geometry,joints=g.attributes.skinIndex,weights=g.attributes.skinWeight;let checked=0;
+  for(let i=0;i<joints.count;i++) {
+    let slot=0;for(let k=1;k<4;k++)if(weights.getComponent(i,k)>weights.getComponent(i,slot))slot=k;
+    const bone=body.skeleton.bones[joints.getComponent(i,slot)];
+    if(!bone?.userData.digitBinding?.group?.endsWith('Hand'))continue;
+    checked++;expect(g.attributes.garmentRegion.getX(i)).toBe(GARMENT_REGIONS.hand);
+    expect([0,1,2,3].map(k=>g.attributes.garmentCoverage.getComponent(i,k))).toEqual([0,0,0,0]);
+  }
+  expect(checked).toBeGreaterThan(100);
 });

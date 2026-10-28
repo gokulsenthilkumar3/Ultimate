@@ -8,9 +8,12 @@ import { validatePAN, validateDOB, validatePhone, validateIncome, validateFamily
 import ToastManager, { useToastManager } from '@/components/ToastManager';
 import AES from 'crypto-js/aes';
 
-const SECRET_KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || 'finsync-secure-dev-key-1234';
+// Legacy compatibility only: NEXT_PUBLIC_ values are readable by the browser.
+// Replace this path with authenticated server-side encryption before production.
+const SECRET_KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY;
 
 const encryptData = (text: string | number) => {
+  if (!SECRET_KEY) throw new Error('Profile encryption is not configured.');
   return AES.encrypt(String(text), SECRET_KEY).toString();
 };
 
@@ -98,7 +101,7 @@ export default function OnboardingPage() {
   const saveProfile = async () => {
     setLoading(true);
     try {
-      const user = auth.currentUser || { uid: 'mock-user-123' }; // Fallback for mock testing
+      const user = auth.currentUser;
       if (!user) { showToast('Please log in again', 'error'); router.push('/login'); return; }
 
       // Encrypt sensitive Personal Identifiable Information (PII) before storing
@@ -113,21 +116,10 @@ export default function OnboardingPage() {
         createdAt: new Date().toISOString()
       };
 
-      try {
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase timeout')), 3000));
-        const dbPromise = setDoc(doc(db, 'users', user.uid), {
+      await setDoc(doc(db, 'users', user.uid), {
           profile: encryptedProfile,
           budget: { monthly: { income: monthly, needs: budget.needs, wants: budget.wants, savings: budget.savings }, rule: budget.rule },
-        }, { merge: true });
-
-        await Promise.race([dbPromise, timeoutPromise]);
-      } catch (dbErr) {
-        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-          console.warn('Mocking profile save due to Firestore failure or timeout', encryptedProfile);
-        } else {
-          throw dbErr;
-        }
-      }
+      }, { merge: true });
 
       showToast('Profile encrypted & saved!', 'success');
       setStep(3);

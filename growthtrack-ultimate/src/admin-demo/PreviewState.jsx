@@ -1,0 +1,8 @@
+import React from 'react';
+import { Button, CircleAlert, Folder, ShieldCheck } from './components';
+export default function PreviewState({ state, page, onReset, onBack }) {
+  const loading = state === 'loading', denied = state === 'denied', unavailable = state === 'unavailable', error = state === 'error';
+  const title = loading ? 'Loading your workspace' : denied ? 'Access to this view is restricted' : unavailable ? `${page.title} is unavailable` : error ? `${page.title} couldn’t be loaded` : page.area === 'customers' ? 'No customers yet' : 'No records yet';
+  const description = loading ? 'Preview of the loading experience.' : denied ? 'The connected workspace would explain the permission needed here. Return to the overview to continue exploring the demo.' : unavailable ? 'The service would be unavailable in this state. No cached data or last-known timestamp is available in this demo.' : error ? 'The operation could not be completed. Try again to return to the sample workspace.' : 'Add your first record when you are ready, or explore the sample records.';
+  return <section className={`empty-state view-state state-${state}`} data-state={state} aria-busy={loading} role={error ? 'alert' : 'status'}><div className="empty-icon">{denied ? <ShieldCheck /> : error || unavailable ? <CircleAlert /> : <Folder />}</div><h2>{title}</h2><p>{description}</p>{loading ? <div className="skeleton-lines" aria-hidden="true"><i /><i /><i /></div> : <Button variant="primary" onClick={denied ? onBack : onReset}>{denied ? 'Return to overview' : error || unavailable ? 'Try again' : 'Show sample records'}</Button>}<small className="muted">Design state preview · No service is contacted</small></section>;
+}

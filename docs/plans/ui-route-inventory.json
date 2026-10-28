@@ -1,0 +1,927 @@
+{
+  "version": 2,
+  "scope": "Every production feature and view, including customer administration. Demo adds four public pages.",
+  "featureCount": 61,
+  "viewCount": 197,
+  "routes": [
+    {
+      "id": "finance",
+      "currentPath": "/finance/overview",
+      "label": "Overview",
+      "area": "finance",
+      "views": [],
+      "destination": "/finance/overview",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "transactions",
+      "currentPath": "/finance/transactions",
+      "label": "Transactions",
+      "area": "finance",
+      "views": [
+        "all",
+        "income",
+        "expenses"
+      ],
+      "destination": "/finance/transactions",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "financeAnalytics",
+      "currentPath": "/finance/analytics",
+      "label": "Analytics",
+      "area": "finance",
+      "views": [
+        "categories",
+        "income",
+        "comparisons"
+      ],
+      "destination": "/finance/analytics",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "financeTrends",
+      "currentPath": "/finance/trends",
+      "label": "Trends",
+      "area": "finance",
+      "views": [
+        "monthly",
+        "recurring"
+      ],
+      "destination": "/finance/trends",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "budgeting",
+      "currentPath": "/finance/budgeting",
+      "label": "Budgeting",
+      "area": "finance",
+      "views": [
+        "current",
+        "history"
+      ],
+      "destination": "/finance/budgeting",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "subscriptions",
+      "currentPath": "/finance/subscriptions",
+      "label": "Subscriptions",
+      "area": "finance",
+      "views": [
+        "active",
+        "upcoming",
+        "archived"
+      ],
+      "destination": "/finance/subscriptions",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "portfolio",
+      "currentPath": "/finance/portfolio",
+      "label": "Portfolio",
+      "area": "finance",
+      "views": [
+        "holdings",
+        "allocation",
+        "history"
+      ],
+      "destination": "/finance/portfolio",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "sip",
+      "currentPath": "/finance/sip",
+      "label": "SIP Calculator",
+      "area": "finance",
+      "views": [
+        "inputs",
+        "projection",
+        "comparison"
+      ],
+      "destination": "/finance/sip",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "shopping",
+      "currentPath": "/finance/shopping",
+      "label": "Shopping",
+      "area": "finance",
+      "views": [
+        "lists",
+        "planned",
+        "purchased"
+      ],
+      "destination": "/finance/shopping",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "financeSync",
+      "currentPath": "/finance/sync",
+      "label": "Sync",
+      "area": "finance",
+      "views": [
+        "accounts",
+        "csv",
+        "history"
+      ],
+      "destination": "/finance/sync",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "finsync",
+      "currentPath": "/finance/finsync",
+      "label": "FinSync customers",
+      "area": "finance",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "destination": "/finance/finsync",
+      "scope": "production customer-admin UI; adapter setup required",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "oxfin",
+      "currentPath": "/finance/oxfin",
+      "label": "OxFin customers",
+      "area": "finance",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "destination": "/finance/oxfin",
+      "scope": "production customer-admin UI; adapter setup required",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "equity",
+      "currentPath": "/finance/equity",
+      "label": "Equity Lens",
+      "area": "finance",
+      "views": [
+        "charts",
+        "indices",
+        "options",
+        "chain"
+      ],
+      "destination": "/finance/equity",
+      "scope": "approved shell; native portal migration still requires parity",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "overview",
+      "currentPath": "/insights/overview",
+      "label": "Overview",
+      "area": "insights",
+      "views": [
+        "today",
+        "priorities",
+        "summary"
+      ],
+      "destination": "/insights/overview",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "actions",
+      "currentPath": "/insights/actions",
+      "label": "Action Center",
+      "area": "insights",
+      "views": [
+        "today",
+        "upcoming",
+        "snoozed",
+        "dismissed"
+      ],
+      "destination": "/insights/actions",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "current",
+      "currentPath": "/insights/current",
+      "label": "Current",
+      "area": "insights",
+      "views": [
+        "weather",
+        "news",
+        "local"
+      ],
+      "destination": "/insights/current",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "analytics",
+      "currentPath": "/insights/analytics",
+      "label": "Analytics",
+      "area": "insights",
+      "views": [
+        "trends",
+        "correlations",
+        "comparisons"
+      ],
+      "destination": "/insights/analytics",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "dashboards",
+      "currentPath": "/insights/dashboards",
+      "label": "Dashboards",
+      "area": "insights",
+      "views": [
+        "saved",
+        "arrange"
+      ],
+      "destination": "/insights/dashboards",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "progress",
+      "currentPath": "/insights/progress",
+      "label": "Progress",
+      "area": "insights",
+      "views": [
+        "timeline",
+        "comparisons",
+        "milestones"
+      ],
+      "destination": "/insights/progress",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "forecast",
+      "currentPath": "/insights/forecast",
+      "label": "Forecast",
+      "area": "insights",
+      "views": [
+        "trends",
+        "scenarios"
+      ],
+      "destination": "/insights/forecast",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "forex",
+      "currentPath": "/insights/forex",
+      "label": "Forex Forecast",
+      "area": "insights",
+      "views": [
+        "models",
+        "forecast",
+        "analytics",
+        "volatility"
+      ],
+      "destination": "/insights/forex",
+      "scope": "approved shell; native portal migration still requires parity",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "wellness",
+      "currentPath": "/wellness/overview",
+      "label": "Overview",
+      "area": "wellness",
+      "views": [],
+      "destination": "/wellness/overview",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "sleep",
+      "currentPath": "/wellness/sleep",
+      "label": "Sleep",
+      "area": "wellness",
+      "views": [
+        "log",
+        "trends",
+        "history"
+      ],
+      "destination": "/wellness/sleep",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "lifestyle",
+      "currentPath": "/wellness/lifestyle",
+      "label": "Lifestyle",
+      "area": "wellness",
+      "views": [
+        "routines",
+        "preferences",
+        "history"
+      ],
+      "destination": "/wellness/lifestyle",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "mind",
+      "currentPath": "/wellness/mind",
+      "label": "Mind & Wellness",
+      "area": "wellness",
+      "views": [
+        "checkin",
+        "trends",
+        "journal",
+        "breathe"
+      ],
+      "destination": "/wellness/mind",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "medical",
+      "currentPath": "/wellness/medical",
+      "label": "Medical",
+      "area": "wellness",
+      "views": [
+        "vitals",
+        "medications",
+        "records",
+        "timeline"
+      ],
+      "destination": "/wellness/medical",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "health",
+      "currentPath": "/wellness/health",
+      "label": "Health+",
+      "area": "wellness",
+      "views": [
+        "senses",
+        "lifestyle",
+        "specialized",
+        "recovery"
+      ],
+      "destination": "/wellness/health",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "habits",
+      "currentPath": "/wellness/habits",
+      "label": "Habits",
+      "area": "wellness",
+      "views": [
+        "today",
+        "matrix",
+        "history"
+      ],
+      "destination": "/wellness/habits",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "physique",
+      "currentPath": "/wellness/physique",
+      "label": "Physique",
+      "area": "wellness",
+      "views": [
+        "blueprint",
+        "measurements",
+        "targets",
+        "history",
+        "3d"
+      ],
+      "destination": "/wellness/physique",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "assessment",
+      "currentPath": "/wellness/assessment",
+      "label": "Assessment",
+      "area": "wellness",
+      "views": [
+        "questionnaire",
+        "results",
+        "history"
+      ],
+      "destination": "/wellness/assessment",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "training",
+      "currentPath": "/wellness/training",
+      "label": "Training",
+      "area": "wellness",
+      "views": [
+        "schedule",
+        "logger",
+        "prs",
+        "overload",
+        "volume",
+        "sessions"
+      ],
+      "destination": "/wellness/training",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "strength",
+      "currentPath": "/wellness/strength",
+      "label": "Strength",
+      "area": "wellness",
+      "views": [
+        "log",
+        "progression",
+        "1rm",
+        "fatigue",
+        "volume"
+      ],
+      "destination": "/wellness/strength",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "nutrition",
+      "currentPath": "/wellness/nutrition",
+      "label": "Nutrition",
+      "area": "wellness",
+      "views": [
+        "daily",
+        "history",
+        "targets",
+        "calculator"
+      ],
+      "destination": "/wellness/nutrition",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "hydration",
+      "currentPath": "/wellness/hydration",
+      "label": "Hydration",
+      "area": "wellness",
+      "views": [
+        "today",
+        "history",
+        "targets"
+      ],
+      "destination": "/wellness/hydration",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "healthSync",
+      "currentPath": "/wellness/sync",
+      "label": "Health Sync",
+      "area": "wellness",
+      "views": [
+        "devices",
+        "imports",
+        "history"
+      ],
+      "destination": "/wellness/sync",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "workspace",
+      "currentPath": "/workspace/overview",
+      "label": "Overview",
+      "area": "workspace",
+      "views": [],
+      "destination": "/workspace/overview",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "calendar",
+      "currentPath": "/workspace/calendar",
+      "label": "Calendar",
+      "area": "workspace",
+      "views": [
+        "month",
+        "week",
+        "agenda",
+        "connections"
+      ],
+      "destination": "/workspace/calendar",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "documents",
+      "currentPath": "/workspace/files",
+      "label": "My Files",
+      "area": "workspace",
+      "views": [
+        "vault",
+        "providers",
+        "recent"
+      ],
+      "destination": "/workspace/files",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "notes",
+      "currentPath": "/workspace/notes",
+      "label": "Notes",
+      "area": "workspace",
+      "views": [
+        "all",
+        "pinned",
+        "tags",
+        "editor"
+      ],
+      "destination": "/workspace/notes",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "tasks",
+      "currentPath": "/workspace/tasks",
+      "label": "Tasks",
+      "area": "workspace",
+      "views": [
+        "today",
+        "upcoming",
+        "all",
+        "completed",
+        "list",
+        "board"
+      ],
+      "destination": "/workspace/tasks",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "projects",
+      "currentPath": "/workspace/projects",
+      "label": "Projects",
+      "area": "workspace",
+      "views": [
+        "github",
+        "mine",
+        "grid",
+        "list"
+      ],
+      "destination": "/workspace/projects",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "timesheet",
+      "currentPath": "/workspace/timesheet",
+      "label": "Timesheet",
+      "area": "workspace",
+      "views": [
+        "timer",
+        "sessions",
+        "analytics"
+      ],
+      "destination": "/workspace/timesheet",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "skills",
+      "currentPath": "/workspace/skills",
+      "label": "Skills",
+      "area": "workspace",
+      "views": [
+        "tree",
+        "list",
+        "radar",
+        "history"
+      ],
+      "destination": "/workspace/skills",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "goals",
+      "currentPath": "/workspace/goals",
+      "label": "Goals",
+      "area": "workspace",
+      "views": [
+        "active",
+        "completed",
+        "archived"
+      ],
+      "destination": "/workspace/goals",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "life",
+      "currentPath": "/life/overview",
+      "label": "Overview",
+      "area": "life",
+      "views": [],
+      "destination": "/life/overview",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "social",
+      "currentPath": "/life/social",
+      "label": "Social",
+      "area": "life",
+      "views": [
+        "profiles",
+        "analytics",
+        "connections"
+      ],
+      "destination": "/life/social",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "entertainment",
+      "currentPath": "/life/entertainment",
+      "label": "Entertainment",
+      "area": "life",
+      "views": [
+        "library",
+        "stats",
+        "sync"
+      ],
+      "destination": "/life/entertainment",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "maps",
+      "currentPath": "/life/places",
+      "label": "Maps & Places",
+      "area": "life",
+      "views": [
+        "map",
+        "list",
+        "timeline",
+        "privacy"
+      ],
+      "destination": "/life/places",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "family",
+      "currentPath": "/life/family",
+      "label": "Family Connect",
+      "area": "life",
+      "views": [
+        "tree",
+        "memories",
+        "vault",
+        "timeline"
+      ],
+      "destination": "/life/family",
+      "scope": "approved shell; native portal migration still requires parity",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "hub",
+      "currentPath": "/hub/overview",
+      "label": "Overview",
+      "area": "hub",
+      "views": [],
+      "destination": "/hub/overview",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "customers",
+      "currentPath": "/customers",
+      "label": "All customers",
+      "area": "hub",
+      "views": [
+        "customers",
+        "activity",
+        "support"
+      ],
+      "destination": "/customers",
+      "scope": "production customer-admin UI; adapter setup required",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "apps",
+      "currentPath": "/hub/apps",
+      "label": "Apps",
+      "area": "hub",
+      "views": [
+        "modules",
+        "favorites",
+        "external"
+      ],
+      "destination": "/hub/apps",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "companion",
+      "currentPath": "/hub/companion",
+      "label": "Apps Suite",
+      "area": "hub",
+      "views": [
+        "all",
+        "finsync",
+        "oxfin",
+        "equity",
+        "forex",
+        "family"
+      ],
+      "destination": "/hub/companion",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "ai",
+      "currentPath": "/hub/agents",
+      "label": "Agents",
+      "area": "hub",
+      "views": [
+        "chat",
+        "history",
+        "context",
+        "settings"
+      ],
+      "destination": "/hub/agents",
+      "scope": "optional tool; no core dependency",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "databases",
+      "currentPath": "/hub/databases",
+      "label": "Databases",
+      "area": "hub",
+      "views": [
+        "custom",
+        "application",
+        "imports"
+      ],
+      "destination": "/hub/databases",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "profile",
+      "currentPath": "/hub/settings",
+      "label": "Profile & Settings",
+      "area": "hub",
+      "views": [
+        "personal",
+        "physical",
+        "security",
+        "appearance",
+        "integrations"
+      ],
+      "destination": "/hub/settings",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "notifications",
+      "currentPath": "/hub/notifications",
+      "label": "Notifications",
+      "area": "hub",
+      "views": [
+        "unread",
+        "all",
+        "preferences"
+      ],
+      "destination": "/hub/notifications",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "help",
+      "currentPath": "/hub/help",
+      "label": "Helpdesk",
+      "area": "hub",
+      "views": [
+        "guides",
+        "troubleshooting",
+        "diagnostics"
+      ],
+      "destination": "/hub/help",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "logs",
+      "currentPath": "/hub/logs",
+      "label": "Logs",
+      "area": "hub",
+      "views": [
+        "activity",
+        "authentication",
+        "sync"
+      ],
+      "destination": "/hub/logs",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "about",
+      "currentPath": "/hub/about",
+      "label": "About",
+      "area": "hub",
+      "views": [
+        "version",
+        "capabilities",
+        "licenses"
+      ],
+      "destination": "/hub/about",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    },
+    {
+      "id": "pricing",
+      "currentPath": "/hub/plans",
+      "label": "Plans",
+      "area": "hub",
+      "views": [
+        "capabilities",
+        "billing"
+      ],
+      "destination": "/hub/plans",
+      "scope": "approved production shell and shared primitives; domain runtime retained",
+      "designDirectionApproval": "user-approved",
+      "renderedVerification": "pending"
+    }
+  ]
+}

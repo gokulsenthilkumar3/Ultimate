@@ -5,8 +5,8 @@
   "assets": {
     "core": {
       "file": "humanoid-human-r2-core.glb",
-      "sha256": "fe2d25ab242ee10dbb7071af4cb659e2f55f8d8a4452547de01146b7dce4bc0a",
-      "bytes": 1946332,
+      "sha256": "c907a3778396b6f478cf218341b5a610e496ff793d7084e5dce889a472476f70",
+      "bytes": 2066456,
       "privateFile": "humanoid-human-r2-private-core.glb",
       "privateSha256": "62108cf9deba13e17c5d406d18e05e3838ef26e4436b227a64c1aa58fba3c2ab",
       "privateBytes": 1180304,
@@ -14,8 +14,8 @@
     },
     "hero": {
       "file": "humanoid-human-r2-hero.glb",
-      "sha256": "b22c5c6f49acc35446129c7e2a487b21ce1b852a7c490d0fb7a5c5f2044a7faf",
-      "bytes": 4318948,
+      "sha256": "5d0e8d250821aff9d1335e001e749b7abb3132754f4474e1bf74cfa509ec1002",
+      "bytes": 4776532,
       "privateFile": "humanoid-human-r2-private-hero.glb",
       "privateSha256": "53cba1d3cdc91f22e6573083c4e05db67d8473bea506a601e1642b232884b750",
       "privateBytes": 2073924,

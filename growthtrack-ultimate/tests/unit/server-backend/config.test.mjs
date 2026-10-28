@@ -7,6 +7,10 @@ import { createJsonErrorHandler } from '../../../server/domains/errors.js';
 import { renderServerHealthHtml } from '../../../server/serverHealthHtml.js';
 
 const KEY = 'b'.repeat(64);
+test('log cleanup can be disabled explicitly for a data-preserving local startup', () => {
+  assert.equal(loadServerConfig({}).logs.cleanupEnabled, true);
+  assert.equal(loadServerConfig({ LOG_CLEANUP_ENABLED: 'off' }).logs.cleanupEnabled, false);
+});
 
 test('unified workspace handoffs stay on the public Ultimate UI and health uses the API gateway', () => {
   const config = loadServerConfig({ GROWTHTRACK_WORKSPACE: '1', APP_URL: 'http://localhost:5000/Ultimate/', GATEWAY_URL: 'http://localhost:3000' });

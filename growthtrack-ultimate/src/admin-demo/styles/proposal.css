@@ -1,0 +1,63 @@
+/* Shared proposal primitives and adaptive page frames. Domain rules stay in their modules. */
+.scope-badge { display: inline-flex; align-items: center; gap: 9px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-2); white-space: nowrap; max-width: 100%; }
+.scope-badge > span { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .6px; }
+.scope-badge > small { font-size: 12px; line-height: 16px; }
+.scope-demo { color: var(--info); background: var(--info-soft); }
+.scope-setup { color: var(--warning); background: var(--amber-soft); }
+.provenance-chip { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; font-size: 12px; line-height: 16px; white-space: nowrap; }
+.panel-title { min-width: 0; flex: 1; }
+.panel-actions { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.metric-provenance { margin: -12px 0 20px; text-align: right; }
+.page-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 50%; }
+.workspace-navigation .nav-link { font-size: 14px; color: var(--sidebar-text); }
+.workspace-navigation .nav-active { background: var(--sidebar-active) !important; }
+.navigation-area { margin: 4px 0; }
+.area-children { margin: 4px 0 14px 19px; border-left: 1px solid #a4baad45; padding-left: 13px; display: grid; gap: 2px; }
+.area-children a { padding: 7px 8px; border-radius: 6px; font-size: 13px; line-height: 20px; color: var(--sidebar-muted); overflow-wrap: anywhere; }
+.area-children a:hover, .area-children .child-active { background: var(--sidebar-active); color: var(--sidebar-text); }
+.page-segments { gap: 8px; border: 0; padding-bottom: 2px; }
+.page-segments a { border: 1px solid var(--border); border-radius: 999px; background: var(--surface); padding: 7px 14px; font-size: 13px; }
+.page-segments .tab-active { background: var(--accent-soft); border-color: var(--accent); }
+.semantic-help { color: var(--text-2); font-size: 13px; line-height: 20px; margin: -10px 0 20px; }
+.data-number, .money { text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; white-space: nowrap; }
+.data-number > button { justify-content: flex-end; width: 100%; }
+.badge-blue { background: var(--info-soft); color: var(--info); border-color: transparent; }
+.table-summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--border); color: var(--text-2); font-size: 13px; }
+.table-summary strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.typed-filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 0 20px 16px; }
+.typed-filters label { display: grid; gap: 6px; color: var(--text-2); font-size: 13px; min-width: 130px; flex: 1; }
+.typed-filters input, .typed-filters select { min-height: 40px; width: 100%; padding: 8px 10px; color: var(--text); background: var(--surface); border: 1px solid var(--input-border); border-radius: var(--radius-control); font: inherit; }
+.typed-filters .button { min-height: 40px; }
+.master-detail-frame { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 24px; align-items: start; }
+.master-detail-frame > * { min-width: 0; }
+.master-detail-frame .customer-master table { min-width: 650px; }
+.detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.detail-heading h2 { font-size: 18px; }
+.person-preview { padding: 0; border: 0; background: none; text-align: left; display: flex; gap: 10px; align-items: center; }
+.person-preview:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.artifact-contract { padding: 24px; }
+.artifact-contract h3 { font-size: 18px; }
+.artifact-contract dl { margin: 20px 0 0; }
+.artifact-contract dl > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.artifact-contract dt { color: var(--text-2); }
+.artifact-contract dd { margin: 0; overflow-wrap: anywhere; }
+.public-brand-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px var(--gutter); max-width: var(--content-width); margin: 0 auto; }
+.portal-public .sidebar, .portal-public .topbar { display: none; }
+.portal-public .portal-body { margin-left: 0; }
+.portal-public .review-bar { left: 0; }
+.portal-public .page-content { max-width: 1100px; padding-top: 24px; }
+.portal-public .policy-page { max-width: 65ch; margin: auto; }
+.notification-list, .action-list { padding: 0 20px 16px; }
+.notification-row, .action-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.notification-content { flex: 1; min-width: 180px; border: 0; padding: 0; background: none; text-align: left; color: var(--text); }
+.notification-content strong, .notification-content span, .notification-content small { display: block; }
+.notification-content span, .notification-content small { color: var(--text-2); font-size: 13px; line-height: 20px; }
+.action-row .task-title { flex: 1 1 250px; padding: 0; border: 0; background: none; text-align: left; }
+.action-row .button-group { flex-wrap: wrap; }
+.action-row > small { flex-basis: 100%; font-size: 12px; }
+.dashboard-layout-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.skill-radar { display: block; width: min(100%, 360px); margin: auto; }
+.skill-tree { padding: 12px 20px 20px; }
+.skill-tree .workspace-card { width: 100%; margin-top: 12px; text-align: left; }
+@media (max-width: 1295px) { .master-detail-frame { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 719px) { .page-actions { max-width: 100%; justify-content: flex-start; } .scope-badge { white-space: normal; } .typed-filters { padding-left: 17px; padding-right: 17px; } .typed-filters label { flex-basis: 40%; min-width: 0; } .area-children a { min-height: 44px; padding-top: 12px; padding-bottom: 12px; } .artifact-contract dl > div { grid-template-columns: minmax(0, 1fr); gap: 4px; } .metric-value { font-size: 20px; letter-spacing: -.5px; } }

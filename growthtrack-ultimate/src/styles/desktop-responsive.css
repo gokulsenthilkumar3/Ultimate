@@ -12,17 +12,9 @@
   .app-shell :is(.page-header-block__actions, .px-action-row) { flex-wrap: wrap; }
   .app-shell :is(input, select, textarea) { max-inline-size: 100%; }
 
-  @media (min-width: 640px) and (max-width: 1439px) {
+  @media (min-width: 640px) and (max-width: 1279px) {
     .app-shell[data-ui-system="editorial"] .content-area {
-      padding: clamp(1rem, 1.6vw, 1.5rem);
-    }
-    .app-shell[data-ui-system="editorial"] .app-header {
-      gap: .75rem;
-      padding-inline: 1rem;
-    }
-    .app-shell[data-ui-system="editorial"] .app-header__context { display: none; }
-    .app-shell[data-ui-system="editorial"] .content-area h1 {
-      font-size: clamp(1.75rem, 2.5vw, 2.25rem);
+      padding-inline: 16px;
     }
   }
 
