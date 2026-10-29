@@ -88,8 +88,14 @@ export function getAiContextCandidates(state, consent = EMPTY_AI_CONSENT, { incl
   return includeOverviews ? [...createAiOverviewCandidates(candidates, today), ...candidates] : candidates;
 }
 
-export function buildSelectedAiContext(state, selectedKeys = [], consent = EMPTY_AI_CONSENT) {
+// Candidates have already passed ownership, consent, and projection checks.
+export function selectAiContextRecords(candidates, selectedKeys = []) {
   const selected = new Set(selectedKeys);
-  return getAiContextCandidates(state, consent, { includeOverviews: true }).filter(record => selected.has(record.key)).slice(0, 20)
+  return candidates.filter(record => selected.has(record.key)).slice(0, 20)
     .map(({ id, type, domain, label, text }) => ({ id, type, domain, label, text }));
+}
+
+export function buildSelectedAiContext(state, selectedKeys = [], consent = EMPTY_AI_CONSENT) {
+  if (!selectedKeys.length) return [];
+  return selectAiContextRecords(getAiContextCandidates(state, consent, { includeOverviews: true }), selectedKeys);
 }

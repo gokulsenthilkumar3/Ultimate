@@ -17,6 +17,6 @@ const components = {
   table: ({ children }) => <div className="gt-agents__table-scroll"><table>{children}</table></div>,
 };
 
-export default function AgentAnswer({ children }) {
+export default React.memo(function AgentAnswer({ children }) {
   return <div className="gt-agents__answer"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={components}>{children}</ReactMarkdown></div>;
-}
+});

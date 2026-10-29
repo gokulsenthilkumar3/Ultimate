@@ -1,11 +1,10 @@
 import PageHeader from './ui/PageHeader';
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis 
 } from 'recharts';
 import { TrendingUp, Zap, Activity, Heart, Brain, DollarSign, Target, CheckCircle2, Download } from 'lucide-react';
-import html2canvas from 'html2canvas';
 import useStore from '../store/useStore';
 import { formatMeasurement } from '../utils/userFormatters';
 
@@ -60,21 +59,36 @@ const boundedScore = value => {
 };
 
 export default function Dashboards() {
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const pendingExport = useRef(false);
   const user = useStore(state => state.user);
   const logs = useStore(state => state.metric_logs ?? EMPTY_ARRAY);
   const sleepLogs = useStore(s => s.sleep_logs ?? EMPTY_ARRAY);
   const habitLogsByHabit = useStore(s => s.habitLogsByHabit ?? EMPTY_RECORD);
   const habitLogs = Object.values(habitLogsByHabit).flat();
 
-  const handleExport = (id, filename) => {
+  const handleExport = async (id, filename) => {
     const el = document.getElementById(id);
-    if (!el) return;
-    html2canvas(el, { backgroundColor: '#121212' }).then(canvas => {
+    if (!el || pendingExport.current) return;
+    pendingExport.current = true;
+    setExporting(true);
+    setExportError('');
+    try {
+      const { default: html2canvas } = await import('html2canvas');
+      if (!el.isConnected || document.getElementById(id) !== el) return;
+      const canvas = await html2canvas(el, { backgroundColor: '#121212' });
+      if (!el.isConnected || document.getElementById(id) !== el) return;
       const link = document.createElement('a');
       link.download = `${filename}.png`;
       link.href = canvas.toDataURL();
       link.click();
-    });
+    } catch {
+      if (el.isConnected) setExportError('Dashboard export could not be created. Please try again.');
+    } finally {
+      pendingExport.current = false;
+      if (el.isConnected) setExporting(false);
+    }
   };
 
   // ── Derived real KPIs ─────────────────────────────────────────────────────
@@ -165,9 +179,10 @@ export default function Dashboards() {
     <div id="dashboard-overview" className="fade-in module-page" style={{ padding: '1rem 0' }}>
       <PageHeader accent="Insights" title="Dashboards" subtitle={<>
             A cleaner command surface for body, habit, finance, and goal signals.
-          </>} actions={<><button className="btn-primary" onClick={() => handleExport('dashboard-overview', 'growthtrack-dashboard')}>
-           <Download size={18} /> EXPORT DASHBOARD
+          </>} actions={<><button className="btn-primary" disabled={exporting} aria-busy={exporting} onClick={() => void handleExport('dashboard-overview', 'growthtrack-dashboard')}>
+           <Download size={18} /> {exporting ? 'EXPORTING…' : 'EXPORT DASHBOARD'}
         </button></>} />
+      {exportError && <p role="alert">{exportError}</p>}
 
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
         

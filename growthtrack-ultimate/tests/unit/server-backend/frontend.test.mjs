@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import express from 'express';
 import { once } from 'node:events';
+import { gzipSync, brotliCompressSync } from 'node:zlib';
 import { frontendBasePath, registerFrontend } from '../../../server/frontend.js';
 
 test('frontend base follows explicit setting, configured APP_URL path or Ultimate default', () => {
@@ -21,6 +22,12 @@ test('frontend mount serves assets and SPA under base, redirects root and preser
   await fs.mkdir(path.join(directory, 'assets'));
   await fs.writeFile(path.join(directory, 'index.html'), '<!doctype html><title>Ultimate fixture</title>');
   await fs.writeFile(path.join(directory, 'assets', 'app.js'), 'export const loaded = true;');
+  const script = 'export const largeFixture = ' + JSON.stringify('fixture '.repeat(1000)) + ';';
+  const hashed = path.join(directory, 'assets', 'app-test1234.js');
+  await fs.writeFile(hashed, script);
+  await fs.writeFile(hashed + '.gz', gzipSync(script));
+  await fs.writeFile(hashed + '.br', brotliCompressSync(script));
+  await fs.writeFile(path.join(directory, 'assets', 'fallback-test1234.js'), script);
   const app = express();
   app.get('/api/health', (_req, res) => res.json({ status: 'online' }));
   app.get('/auth/callback', (_req, res) => res.json({ auth: true }));
@@ -43,6 +50,31 @@ test('frontend mount serves assets and SPA under base, redirects root and preser
   assert.equal(asset.status, 200);
   assert.match(asset.headers.get('content-type'), /javascript/);
   assert.equal(await asset.text(), 'export const loaded = true;');
+  for (const encoding of ['br', 'gzip']) {
+    const compressed = await fetch(`${base}/Ultimate/assets/app-test1234.js`, { headers: { 'Accept-Encoding': encoding } });
+    assert.equal(compressed.status, 200);
+    assert.equal(compressed.headers.get('content-encoding'), encoding);
+    assert.match(compressed.headers.get('vary'), /Accept-Encoding/i);
+    assert.match(compressed.headers.get('content-type'), /javascript/);
+    assert.equal(await compressed.text(), script);
+    assert(Number(compressed.headers.get('content-length')) < script.length / 2);
+    const head = await fetch(`${base}/Ultimate/assets/app-test1234.js`, { method: 'HEAD', headers: { 'Accept-Encoding': encoding } });
+    assert.equal(head.headers.get('content-encoding'), encoding);
+    assert.equal(await head.text(), '');
+  }
+  const identity = await fetch(`${base}/Ultimate/assets/app-test1234.js`, { headers: { 'Accept-Encoding': 'identity' } });
+  assert.equal(identity.headers.get('content-encoding'), null);
+  assert.equal(await identity.text(), script);
+  const preferred = await fetch(`${base}/Ultimate/assets/app-test1234.js`, { headers: { 'Accept-Encoding': 'br;q=0.1, gzip;q=1' } });
+  assert.equal(preferred.headers.get('content-encoding'), 'gzip');
+  await preferred.text();
+  const partial = await fetch(`${base}/Ultimate/assets/app-test1234.js`, { headers: { Range: 'bytes=0-9', 'Accept-Encoding': 'br' } });
+  assert.equal(partial.status, 206);
+  assert.equal(partial.headers.get('content-encoding'), null);
+  assert.equal(await partial.text(), script.slice(0, 10));
+  const fallback = await fetch(`${base}/Ultimate/assets/fallback-test1234.js`, { headers: { 'Accept-Encoding': 'br, gzip' } });
+  assert.equal(fallback.headers.get('content-encoding'), null);
+  assert.equal(await fallback.text(), script);
   const spa = await fetch(`${base}/Ultimate/settings/profile`);
   assert.equal(spa.status, 200);
   assert.match(await spa.text(), /Ultimate fixture/);

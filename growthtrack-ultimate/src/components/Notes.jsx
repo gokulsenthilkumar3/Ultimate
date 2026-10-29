@@ -12,6 +12,7 @@ import '../styles/notes.css';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9', '#8b5cf6', '#ec4899', '#6b7280'];
 const EMPTY_NOTES = Object.freeze([]);
+const NOTES_PER_PAGE = 25;
 
 function NoteCard({ note, onEdit, onDelete, onToggleStar, onTogglePin, onCopy, isActive, onClick }) {
   const tags = note.tags || [];
@@ -69,6 +70,8 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
   const [tagInput,  setTagInput]  = useState('');
   const [search,    setSearch]    = useState('');
   const [tagFilter, setTagFilter] = useState('');
+  const [listPage, setListPage] = useState(1);
+  const listViewport = useRef(null);
   const [viewMode,  setViewMode]  = useState('preview');
   const [saveStatus, setSaveStatus] = useState('saved');
   const [creating, setCreating] = useState(false);
@@ -133,6 +136,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
     const session = {};
     duplicateSession.current = session;
     duplicatePending.current = null; duplicateLock.current = false;
+    setListPage(1);
     setDuplicating(false); setDuplicateError('');
     return () => { if (duplicateSession.current === session) duplicateSession.current = null; };
   }, [ownerId]);
@@ -249,6 +253,14 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
       return (b.updatedAt || '').localeCompare(a.updatedAt || '');
     });
   }, [workspaceNotes, search, tagFilter, selectedView]);
+
+  const listPageCount = Math.max(1, Math.ceil(filtered.length / NOTES_PER_PAGE));
+  const currentListPage = Math.min(listPage, listPageCount);
+  const visibleNotes = filtered.slice((currentListPage - 1) * NOTES_PER_PAGE, currentListPage * NOTES_PER_PAGE);
+  const changeListPage = next => {
+    setListPage(next);
+    if (listViewport.current) listViewport.current.scrollTop = 0;
+  };
 
   const newNote = async () => {
     if (creating) return;
@@ -416,6 +428,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
 
   const changeView = async next => {
     if (editMode && activeId && saveStatus !== 'saved' && !await saveNote()) return;
+    changeListPage(1);
     if (onViewChange) onViewChange(next); else setLocalView(next);
     if (next === 'editor' && activeNote) { setEditMode(true); setViewMode('edit'); }
   };
@@ -637,7 +650,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
 
         {/* Search */}
         <div className="notes-search-wrapper">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes…" aria-label="Search notes" className="notes-search-input" />
+          <input value={search} onChange={e => { setSearch(e.target.value); changeListPage(1); }} placeholder="Search notes…" aria-label="Search notes" className="notes-search-input" />
           <Search size={12} className="notes-search-icon" />
         </div>
 
@@ -645,7 +658,7 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
         {allTags.length > 0 && (
           <div className="notes-tag-filters">
             {allTags.map((t) => (
-              <button key={t} onClick={() => setTagFilter(tagFilter === t ? '' : t)}
+              <button key={t} onClick={() => { setTagFilter(tagFilter === t ? '' : t); changeListPage(1); }}
                 aria-pressed={tagFilter === t}
                 className="notes-tag-btn"
                 style={{
@@ -671,9 +684,9 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
             <p style={{ fontSize: '0.78rem' }}>{workspaceNotes.length === 0 ? 'Create your first note' : selectedView === 'pinned' && !search && !tagFilter ? 'No pinned notes yet' : 'No notes match'}</p>
           </div>
         ) : (
-          <div className="notes-list-scroll">
+          <div className="notes-list-scroll" ref={listViewport}>
             <ul className="notes-record-list" aria-label="Workspace notes">
-              {filtered.map(n => (
+              {visibleNotes.map(n => (
                   <li key={n.id}>
                     <NoteCard note={n} isActive={activeId === n.id}
                       onClick={() => openNote(n)}
@@ -687,6 +700,11 @@ export default function Notes({ view, onViewChange, draftStore, fileTransfer, re
             </ul>
           </div>
         )}
+        {listPageCount > 1 && <nav className="notes-list-pagination" aria-label="Notes pages">
+          <Button variant="secondary" size="sm" aria-label="Previous notes page" disabled={currentListPage === 1} onClick={() => changeListPage(currentListPage - 1)}>Previous</Button>
+          <span aria-live="polite">Page {currentListPage} of {listPageCount}</span>
+          <Button variant="secondary" size="sm" aria-label="Next notes page" disabled={currentListPage === listPageCount} onClick={() => changeListPage(currentListPage + 1)}>Next</Button>
+        </nav>}
       </div>
 
       {/* Editor / Viewer */}

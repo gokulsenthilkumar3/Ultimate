@@ -1,10 +1,12 @@
 // Server-only transport. Browser requests never supply a key or upstream URL.
+import { AGENT_LIMITS } from '../../src/lib/agentPolicy.js';
+import { boundedChunks, failure, readBoundedJson as readJson } from './transport.js';
+
 const ROOT = 'https://api.groq.com/openai/v1';
-const MAX_FRAME_CHARS = 256 * 1024;
+const MAX_FRAME_CHARS = AGENT_LIMITS.frameChars;
 export const DEFAULT_GROQ_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'];
 const STRUCTURED_MODELS = new Set([...DEFAULT_GROQ_MODELS, 'openai/gpt-oss-20b', 'openai/gpt-oss-safeguard-20b', 'meta-models/muse-spark-open']);
 const validModel = value => typeof value === 'string' && value.length <= 160 && /^[a-zA-Z0-9][a-zA-Z0-9._-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9._-]*)*$/.test(value);
-const failure = (code, message, status = 502) => Object.assign(new Error(message), { code, status, agentsFailure: true });
 
 function modelOptions(model) {
   if (model === 'qwen/qwen3.8-27b') return { temperature: 0.6, top_p: 0.95, reasoning_effort: 'default', reasoning_format: 'hidden' };
@@ -12,80 +14,45 @@ function modelOptions(model) {
   return { temperature: 0.6, top_p: 0.95 };
 }
 
-async function readJson(response, signal) {
-  if (!response.body?.getReader) throw failure('invalid_response', 'Groq did not return a response.');
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  const cancel = () => { void reader.cancel().catch(() => {}); };
-  signal.addEventListener('abort', cancel, { once: true });
-  let text = '';
-  try {
-    while (true) {
-      signal.throwIfAborted();
-      const { value, done } = await reader.read();
-      signal.throwIfAborted();
-      text += done ? decoder.decode() : decoder.decode(value, { stream: true });
-      if (text.length > MAX_FRAME_CHARS) throw failure('invalid_response', 'The Groq response exceeded the size limit.');
-      if (done) break;
-    }
-    try { return JSON.parse(text); }
-    catch { throw failure('invalid_response', 'Groq returned an invalid response.'); }
-  } finally {
-    signal.removeEventListener('abort', cancel);
-    await reader.cancel().catch(() => {});
-    reader.releaseLock();
-  }
-}
-
 /** Normalize Groq SSE into the existing Agents text/done contract. */
 export async function* groqRecords(body, signal) {
-  const reader = body.getReader();
   const decoder = new TextDecoder();
-  const cancel = () => { void reader.cancel().catch(() => {}); };
-  signal.addEventListener('abort', cancel, { once: true });
   let pending = '';
   let finished = false;
-  try {
-    while (true) {
+  let frames = 0;
+  for await (const value of boundedChunks(body, signal)) {
+    pending += decoder.decode(value, { stream: true });
+    let boundary;
+    while ((boundary = /\r?\n\r?\n/.exec(pending))) {
       signal.throwIfAborted();
-      const { value, done } = await reader.read();
-      signal.throwIfAborted();
-      pending += done ? decoder.decode() : decoder.decode(value, { stream: true });
-      let boundary;
-      while ((boundary = /\r?\n\r?\n/.exec(pending))) {
-        const frame = pending.slice(0, boundary.index);
-        pending = pending.slice(boundary.index + boundary[0].length);
-        if (frame.length > MAX_FRAME_CHARS) throw failure('invalid_stream', 'The Groq stream event exceeded the size limit.');
-        const data = frame.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
-        if (!data) continue;
-        if (data === '[DONE]') {
-          if (!finished) throw failure('incomplete_stream', 'Groq ended the response before completing the answer.');
-          yield { done: true };
-          return;
-        }
-        let record;
-        try { record = JSON.parse(data); }
-        catch { throw failure('invalid_stream', 'Groq returned an invalid stream event.'); }
-        if (record?.error || !Array.isArray(record?.choices)) throw failure('invalid_stream', 'Groq could not complete this response.');
-        if (!record.choices.length) continue; // Optional usage-only chunk.
-        const choice = record.choices.find(item => item.index === 0);
-        if (!choice || finished || choice.delta?.tool_calls || choice.delta?.refusal) throw failure('invalid_stream', 'Groq returned an unsupported response.');
-        const content = choice.delta?.content;
-        if (content != null && typeof content !== 'string') throw failure('invalid_stream', 'Groq returned an invalid text chunk.');
-        if (content) yield { message: { content }, done: false };
-        if (choice.finish_reason != null) {
-          if (choice.finish_reason !== 'stop') throw failure('incomplete_stream', 'Groq could not finish the answer within the response limit. Try a shorter request.');
-          finished = true;
-        }
+      const frame = pending.slice(0, boundary.index);
+      pending = pending.slice(boundary.index + boundary[0].length);
+      if (++frames > AGENT_LIMITS.streamRecords || frame.length > MAX_FRAME_CHARS) throw failure('invalid_stream', 'The Groq stream event exceeded the size limit.');
+      const data = frame.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+      if (!data) continue;
+      if (data === '[DONE]') {
+        if (!finished) throw failure('incomplete_stream', 'Groq ended the response before completing the answer.');
+        yield { done: true };
+        return;
       }
-      if (pending.length > MAX_FRAME_CHARS) throw failure('invalid_stream', 'The Groq stream event exceeded the size limit.');
-      if (done) throw failure('incomplete_stream', 'The Groq response stream was interrupted. Try again.');
+      let record;
+      try { record = JSON.parse(data); }
+      catch { throw failure('invalid_stream', 'Groq returned an invalid stream event.'); }
+      if (record?.error || !Array.isArray(record?.choices)) throw failure('invalid_stream', 'Groq could not complete this response.');
+      if (!record.choices.length) continue; // Optional usage-only chunk.
+      const choice = record.choices.find(item => item.index === 0);
+      if (!choice || finished || choice.delta?.tool_calls || choice.delta?.refusal) throw failure('invalid_stream', 'Groq returned an unsupported response.');
+      const content = choice.delta?.content;
+      if (content != null && typeof content !== 'string') throw failure('invalid_stream', 'Groq returned an invalid text chunk.');
+      if (content) yield { message: { content }, done: false };
+      if (choice.finish_reason != null) {
+        if (choice.finish_reason !== 'stop') throw failure('incomplete_stream', 'Groq could not finish the answer within the response limit. Try a shorter request.');
+        finished = true;
+      }
     }
-  } finally {
-    signal.removeEventListener('abort', cancel);
-    await reader.cancel().catch(() => {});
-    reader.releaseLock();
+    if (pending.length > MAX_FRAME_CHARS) throw failure('invalid_stream', 'The Groq stream event exceeded the size limit.');
   }
+  throw failure('incomplete_stream', 'The Groq response stream was interrupted. Try again.');
 }
 
 export function createGroqTransport({ apiKey, modelNames, defaultModel = DEFAULT_GROQ_MODELS[0], fetchImpl = globalThis.fetch } = {}) {
@@ -119,7 +86,7 @@ export function createGroqTransport({ apiKey, modelNames, defaultModel = DEFAULT
 
   function generation(model, messages, stream) {
     if (!permitted.has(model)) throw failure('invalid_model', 'Choose a permitted Groq chat model.', 400);
-    return { model, messages, stream, max_completion_tokens: stream ? 4096 : 2048, ...modelOptions(model) };
+    return { model, messages, stream, max_completion_tokens: stream ? AGENT_LIMITS.chatTokens : AGENT_LIMITS.planTokens, ...modelOptions(model) };
   }
 
   return {

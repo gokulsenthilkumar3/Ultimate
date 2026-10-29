@@ -2,8 +2,19 @@ import { readFile } from 'node:fs/promises';
 import { test, expect, emptyState, OWNER } from './foundation-fixture';
 import type { Page } from '@playwright/test';
 
-async function notesFixture(page: Page, rejectUpdates = false) {
-  const notes = [
+async function tokenColor(page: Page, token: string) {
+  return page.evaluate(name => {
+    const probe = document.createElement('span');
+    probe.style.color = `var(${name})`;
+    document.body.appendChild(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, token);
+}
+
+async function notesFixture(page: Page, rejectUpdates = false, initialNotes?: any[]) {
+  const notes = initialNotes || [
     { id: 'note-1', userId: OWNER.id, title: 'Research', content: 'Original research', tags: ['work'], pinned: true, updatedAt: '2026-10-01T00:00:00.000Z' },
     { id: 'note-2', userId: OWNER.id, title: 'Planning', content: 'Second note', tags: [], pinned: false, updatedAt: '2026-09-30T00:00:00.000Z' },
   ];
@@ -30,6 +41,27 @@ async function notesFixture(page: Page, rejectUpdates = false) {
   });
   return notes;
 }
+
+test('large note libraries page and search all records without losing an open draft', async ({ page }) => {
+  const rows = Array.from({ length: 201 }, (_, index) => ({ id: `large-${index}`, userId: OWNER.id, title: `Synthetic note ${index}`, content: `Synthetic body ${index}`, tags: [], pinned: false, updatedAt: '2026-10-01T00:00:00.000Z' }));
+  await notesFixture(page, false, [...rows, { id: 'journal', userId: OWNER.id, title: 'Private journal', source: 'mind-journal', content: 'Private', tags: [] }]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/workspace/notes');
+  const list = page.getByRole('list', { name: 'Workspace notes' });
+  await expect(list.locator(':scope > li')).toHaveCount(25);
+  await expect(page.getByRole('button', { name: 'Open note: Private journal', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Next notes page' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Page 2 of 9')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit Synthetic note 25', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Note content' }).fill('Draft retained while paging');
+  await page.getByRole('button', { name: 'Previous notes page' }).click();
+  await expect(page.getByRole('textbox', { name: 'Note content' })).toHaveValue('Draft retained while paging');
+  await page.getByRole('textbox', { name: 'Search notes' }).fill('Synthetic note 200');
+  await expect(list.locator(':scope > li')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Open note: Synthetic note 200', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+});
 
 test('Notes knowledge navigation works by keyboard with outline focus and backlinks', async ({ page }) => {
   const notes = await notesFixture(page);
@@ -59,8 +91,8 @@ test('narrow Notes imports with keyboard review, persists, and exports the curre
   await notesFixture(page);
   await page.goto('/workspace/notes');
   await expect(page.getByRole('heading', { name: 'My Notes' })).toBeVisible();
-  await expect(page.locator('.note-card-title').first()).toHaveCSS('color', 'rgb(32, 39, 34)');
-  await expect(page.getByRole('button', { name: 'New', exact: true })).toHaveCSS('background-color', 'rgb(121, 80, 12)');
+  await expect(page.locator('.note-card-title').first()).toHaveCSS('color', await tokenColor(page, '--gt-text'));
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toHaveCSS('background-color', await tokenColor(page, '--gt-action'));
   const importButton = page.getByRole('button', { name: 'Import Markdown', exact: true });
   await importButton.focus();
   await page.getByLabel('Choose Markdown file').setInputFiles({ name: 'Field Notes.md', mimeType: 'text/markdown', buffer: Buffer.from('# Field Notes\n\n## Next\n\nDo the useful work.\n') });

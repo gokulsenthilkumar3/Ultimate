@@ -118,6 +118,7 @@ build/
 !/build/
 /build/*
 !/build/serviceWorkerPlugin.js
+!/build/staticCompressionPlugin.js
 coverage/
 .build_test/
 .vercel/

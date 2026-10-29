@@ -78,4 +78,68 @@ describe('reviewed agent action boundary', () => {
     await expect(s.apply(plan)).rejects.toThrow('record changed');
     expect(s.state.user.tasks.pending[0].title).toBe('Changed by another editor');
   });
+
+  it('rejects changed commands and plans from another runner before writing', async () => {
+    const s = setup();
+    const plan = s.prepare([{ kind: 'task.create', title: 'Reviewed title' }]);
+    plan.actions[0].command.title = 'Unreviewed title';
+    await expect(s.apply(plan)).rejects.toThrow('reviewed plan');
+    expect(s.state.addTask).not.toHaveBeenCalled();
+    const foreign = setup().prepare([{ kind: 'task.create', title: 'Other runner' }]);
+    await expect(s.apply(foreign)).rejects.toThrow('reviewed plan');
+  });
+
+  it('preserves integrity when the UI copies an entry to update its status', async () => {
+    const s = setup();
+    const original = s.prepare([{ kind: 'task.create', title: 'Reviewed title' }]);
+    const plan = { ...original, actions: original.actions.map(entry => ({ ...entry, status: 'applying' })) };
+    await expect(s.apply(plan)).resolves.toMatchObject({ id: 'saved' });
+    await expect(s.apply(original)).rejects.toThrow('already attempted');
+  });
+
+  it('bounds the number of prepared plans and refuses evicted proposals', async () => {
+    const s = setup(), plans = [];
+    for (let index = 0; index < 51; index += 1) plans.push(s.prepare([{ kind: 'task.create', title: `Task ${index}` }]));
+    await expect(s.apply(plans[0])).rejects.toThrow('reviewed plan');
+    expect(s.state.addTask).not.toHaveBeenCalled();
+    await expect(s.apply(plans.at(-1))).resolves.toMatchObject({ id: 'saved' });
+  });
+
+  it('forgets cleared plans and invalidates updates still waiting in a queue', async () => {
+    const s = setup();
+    const cleared = s.prepare([{ kind: 'task.create', title: 'Discarded' }]);
+    s.runner.clear();
+    await expect(s.apply(cleared)).rejects.toThrow('reviewed plan');
+    expect(s.state.addTask).not.toHaveBeenCalled();
+    const queued = s.prepare([{ kind: 'task.update', recordId: 'task-1', title: 'Discarded update' }], context);
+    s.state.updateTask = vi.fn(async (id, patch) => {
+      s.runner.clear();
+      return { id, ...patch(s.state.user.tasks.pending[0]) };
+    });
+    await expect(s.apply(queued)).rejects.toThrow('no longer active');
+  });
+
+  it('expires prepared plans and rechecks session and consent when queued writes start', async () => {
+    const s = setup();
+    let time = 1000;
+    const runner = createAgentActionRunner({ getState: () => s.state, now: () => time });
+    const prepare = () => runner.prepare({ summary: 'Review', actions: [{ kind: 'task.update', recordId: 'task-1', title: 'Reviewed' }] }, context, consent);
+    const expired = prepare();
+    time += 10 * 60 * 1000;
+    await expect(runner.apply(expired, expired.actions[0], expired.scope)).rejects.toThrow('expired');
+    expect(s.state.updateTask).not.toHaveBeenCalled();
+    const queued = prepare();
+    let scope = queued.scope;
+    s.state.updateTask = vi.fn(async (id, patch) => {
+      scope = 'revoked';
+      return { id, ...patch(s.state.user.tasks.pending[0]) };
+    });
+    await expect(runner.apply(queued, queued.actions[0], () => scope)).rejects.toThrow('context changed');
+    const next = prepare();
+    s.state.updateTask = vi.fn(async (id, patch) => {
+      s.state._sessionVersion += 1;
+      return { id, ...patch(s.state.user.tasks.pending[0]) };
+    });
+    await expect(runner.apply(next, next.actions[0], next.scope)).rejects.toThrow('session changed');
+  });
 });

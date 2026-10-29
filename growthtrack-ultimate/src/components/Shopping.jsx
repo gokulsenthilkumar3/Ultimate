@@ -8,10 +8,25 @@ import { formatCurrency, formatDate, getCurrencySymbol } from '../utils/userForm
 import { financeToday } from '../utils/financeModel';
 import { shoppingEstimate } from '../store/libraryActions';
 import { previewShoppingCsv } from '../utils/shoppingImport';
+import Pagination from './ui/Pagination';
+import useCollectionPage from '../hooks/useCollectionPage';
 
 const CATEGORIES = ['Groceries', 'Electronics', 'Clothing', 'Health', 'Books', 'Home', 'Fitness', 'Food', 'Other'];
 const PRIORITIES = ['high', 'medium', 'low'];
 const EMPTY_SHOPPING = Object.freeze([]);
+const ITEMS_PER_PAGE = 25;
+
+function filterShoppingItems(items, { showDone, stageFilter, catFilter, priFilter, search }) {
+  const term = search.trim().toLowerCase();
+  return items.filter(item => {
+    const stage = item.stage || (item.purchased ? 'purchased' : 'future');
+    return (showDone || stage !== 'purchased')
+      && (stageFilter === 'all' || stage === stageFilter)
+      && (catFilter === 'all' || item.category === catFilter)
+      && (priFilter === 'all' || item.priority === priFilter)
+      && (!term || `${item.name} ${item.notes || ''}`.toLowerCase().includes(term));
+  }).sort((a, b) => PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority));
+}
 
 const PRIORITY_COLORS = {
   high:   { bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.35)',   text: '#f87171' },
@@ -29,6 +44,11 @@ const STORE_GUIDES = [
 ];
 
 export default function Shopping() {
+  const ownerId = useStore(s => s.user?.id);
+  return <ShoppingWorkspace key={ownerId || 'signed-out'} />;
+}
+
+function ShoppingWorkspace() {
   const toast = useToast();
   const user           = useStore(s => s.user);
   const shoppingList  = useStore(s => s.shopping?.items) ?? EMPTY_SHOPPING;
@@ -58,6 +78,7 @@ export default function Shopping() {
   const [importPreview, setImportPreview] = useState(null);
   const draftId = useRef(null);
   const savingRef = useRef(false);
+  const listRef = useRef(null);
 
   const runSave = async (operation) => {
     if (savingRef.current) return null;
@@ -107,6 +128,7 @@ export default function Shopping() {
     const history = [...(item?.priceHistory || []), { date: financeToday(user), price: p }];
     const saved = await runSave(() => updateShoppingItem(id, { estimatedCost: p, priceHistory: history }));
     if (!saved) return;
+    revealItem(id);
     setPriceInput(pp => { const n = { ...pp }; delete n[id]; return n; });
     if (item?.targetPrice && p <= item.targetPrice) {
       toast.success(`🎯 Price target hit! ${item.name} is now ${money(p)} (target: ${money(item.targetPrice)})`);
@@ -115,18 +137,21 @@ export default function Shopping() {
     }
   };
 
-  const filtered = useMemo(() => {
-    let list = shoppingList;
-    if (!showDone)        list = list.filter(x => (x.stage || (x.purchased ? 'purchased' : 'future')) !== 'purchased');
-    if (stageFilter !== 'all') list = list.filter(x => (x.stage || (x.purchased ? 'purchased' : 'future')) === stageFilter);
-    if (catFilter !== 'all') list = list.filter(x => x.category === catFilter);
-    if (priFilter !== 'all') list = list.filter(x => x.priority === priFilter);
-    if (search.trim())   list = list.filter(x => x.name.toLowerCase().includes(search.toLowerCase()) || (x.notes || '').toLowerCase().includes(search.toLowerCase()));
-    return [...list].sort((a, b) => {
-      const pi = ['high', 'medium', 'low'];
-      return pi.indexOf(a.priority) - pi.indexOf(b.priority);
-    });
-  }, [shoppingList, showDone, stageFilter, catFilter, priFilter, search]);
+  const filtered = useMemo(() => filterShoppingItems(shoppingList, { showDone, stageFilter, catFilter, priFilter, search }),
+    [shoppingList, showDone, stageFilter, catFilter, priFilter, search]);
+  const { page, pageCount, visibleItems, setPage } = useCollectionPage(
+    filtered, JSON.stringify([showDone, stageFilter, catFilter, priFilter, search]), ITEMS_PER_PAGE,
+  );
+  const changePage = (next) => {
+    setPage(next);
+    listRef.current?.focus();
+    listRef.current?.scrollIntoView?.({ block: 'start' });
+  };
+  const revealItem = (id) => {
+    const latest = filterShoppingItems(useStore.getState().shopping?.items ?? EMPTY_SHOPPING, { showDone, stageFilter, catFilter, priFilter, search });
+    const index = latest.findIndex(item => item.id === id);
+    if (index >= 0) changePage(Math.floor(index / ITEMS_PER_PAGE) + 1);
+  };
 
   const stats = useMemo(() => ({
     total:     shoppingList.length,
@@ -264,7 +289,7 @@ export default function Shopping() {
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: '160px' }}>
           <Search size={12} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="form-input" style={{ paddingLeft: '28px' }} />
+          <input aria-label="Search shopping" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="form-input" style={{ paddingLeft: '28px' }} />
         </div>
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="form-input" style={{ width: 'auto' }}>
           <option value="all">All Categories</option>
@@ -280,11 +305,12 @@ export default function Shopping() {
       </div>
 
       {/* List */}
+      {pageCount > 1 && <Pagination label="Shopping pages" page={page} pageCount={pageCount} pageSize={ITEMS_PER_PAGE} total={filtered.length} onPageChange={changePage} />}
       {filtered.length === 0 ? (
         <EmptyState icon={ShoppingCart} title="Nothing here" description={shoppingList.length === 0 ? 'Start your shopping list.' : 'No items match your filter.'} ctaLabel={shoppingList.length === 0 ? 'Add Item' : null} onAction={shoppingList.length === 0 ? () => setShowAdd(true) : null} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {filtered.map(item => {
+        <div ref={listRef} role="region" aria-label="Shopping results" tabIndex={-1} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {visibleItems.map(item => {
             const pc = PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.low;
             const pdi = getPriceDropInfo(item);
             const isEditing = editId === item.id;
@@ -306,7 +332,7 @@ export default function Shopping() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {isEditing ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <input value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="form-input" style={{ fontSize: '0.85rem' }} />
+                        <input aria-label="Item name" value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="form-input" style={{ fontSize: '0.85rem' }} />
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                           <input type="number" min="1" step="1" aria-label="Quantity" value={editForm.quantity ?? 1} onChange={e => setEditForm(f => ({ ...f, quantity: e.target.value }))} placeholder="Quantity" className="form-input" style={{ width: '100px' }} />
                           <input type="number" min="0" step="any" aria-label="Estimated unit cost" value={editForm.estimatedCost ?? ''} onChange={e => setEditForm(f => ({ ...f, estimatedCost: e.target.value }))} placeholder="Unit cost" className="form-input" style={{ width: '100px' }} />
@@ -323,7 +349,7 @@ export default function Shopping() {
                           <input value={editForm.url || ''} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} placeholder="URL" className="form-input" />
                         </div>
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button disabled={saving} onClick={async () => { const saved = await runSave(() => updateShoppingItem(item.id, editForm)); if (saved) { setEditId(null); toast.success('Updated.'); } }} className="btn-primary" style={{ padding: '3px 10px', fontSize: '0.72rem' }}><Check size={11} /> {saving ? 'Saving…' : 'Save'}</button>
+                          <button disabled={saving} onClick={async () => { const saved = await runSave(() => updateShoppingItem(item.id, editForm)); if (saved) { revealItem(item.id); setEditId(null); toast.success('Updated.'); } }} className="btn-primary" style={{ padding: '3px 10px', fontSize: '0.72rem' }}><Check size={11} /> {saving ? 'Saving…' : 'Save'}</button>
                           <button disabled={saving} onClick={() => setEditId(null)} style={{ padding: '3px 10px', fontSize: '0.72rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
                         </div>
                       </div>
@@ -368,7 +394,7 @@ export default function Shopping() {
                             <label>Payment method<input className="form-input" value={expenseForm.method} onChange={event => setExpenseForm(form => ({ ...form, method: event.target.value }))} /></label>
                             <button className="btn-primary" disabled={saving} onClick={async () => {
                               const saved = await runSave(() => convertShoppingToExpense(item.id, expenseForm, true));
-                              if (saved) { setExpenseForm(null); toast.success('Expense recorded in Finance.'); }
+                              if (saved) { revealItem(item.id); setExpenseForm(null); toast.success('Expense recorded in Finance.'); }
                             }}>{saving ? 'Recording…' : 'Confirm expense'}</button>
                             <button className="btn-ghost" disabled={saving} onClick={() => setExpenseForm(null)}>Cancel</button>
                           </div> : <button className="btn-ghost" disabled={saving} onClick={() => setExpenseForm({ id: item.id, amount: shoppingEstimate(item) ?? '', date: financeToday(user), method: 'Other' })}>Record actual expense</button>

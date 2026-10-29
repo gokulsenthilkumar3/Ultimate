@@ -32,6 +32,37 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Notes persistence feedback', () => {
+  it('bounds a large library while searching all notes and retaining the open editor across pages', async () => {
+    fixture.state.notes = Array.from({ length: 51 }, (_, index) => ({ id: `library-${index}`, title: `Library note ${index}`, content: `Body ${index}`, tags: [], updatedAt: '2026-10-01T00:00:00.000Z' }));
+    fixture.state.notes.push({ id: 'private', title: 'Private journal', content: 'Secret', source: 'mind-journal', tags: [] });
+    render(<Notes />);
+    expect(screen.getByRole('list', { name: 'Workspace notes' }).children).toHaveLength(25);
+    expect(screen.queryByRole('button', { name: 'Open note: Private journal' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next notes page' }));
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Library note 25' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note content' }), { target: { value: 'Unsaved text survives paging' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Previous notes page' }));
+    expect(screen.getByRole('textbox', { name: 'Note content' })).toHaveValue('Unsaved text survives paging');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search notes' }), { target: { value: 'Library note 50' } });
+    expect(screen.getByRole('list', { name: 'Workspace notes' }).children).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Open note: Library note 50' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Notes pages' })).not.toBeInTheDocument();
+    expect(fixture.state.updateNote.mock.calls.every(([id, payload]) => id === 'library-25' && payload.content === 'Unsaved text survives paging')).toBe(true);
+  }, 15_000);
+
+  it('clamps library paging when records are removed', async () => {
+    fixture.state.notes = Array.from({ length: 26 }, (_, index) => ({ id: `library-${index}`, title: `Library note ${index}`, content: 'Body', tags: [] }));
+    const view = render(<Notes />);
+    fireEvent.click(screen.getByRole('button', { name: 'Next notes page' }));
+    expect(screen.getByRole('list', { name: 'Workspace notes' }).children).toHaveLength(1);
+    fixture.state.notes = fixture.state.notes.slice(0, 1);
+    view.rerender(<Notes />);
+    expect(screen.getByRole('button', { name: 'Open note: Library note 0' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Notes pages' })).not.toBeInTheDocument();
+    await waitFor(() => expect(fixture.drafts.list).toHaveBeenCalled());
+  });
+
   it('duplicates through the selected record port and retries an ambiguous write with exactly the same ID and content', async () => {
     const add = vi.fn().mockRejectedValueOnce(new Error('Lost response')).mockImplementation(async note => {
       const saved = { ...note, revision: 1 }; fixture.state.notes.push(saved); return saved;

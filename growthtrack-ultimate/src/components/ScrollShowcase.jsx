@@ -1,5 +1,6 @@
 import React from 'react';
 import HumanoidViewer from './HumanoidViewer';
+import '../styles/chamber-entry.css';
 
 export default function ScrollShowcase() {
   return (

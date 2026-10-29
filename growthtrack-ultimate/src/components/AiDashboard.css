@@ -132,6 +132,10 @@
 .gt-agent-plan__review strong { overflow-wrap: anywhere; }
 .gt-agents :is(button, select, input, a):focus-visible, .gt-agents__message:focus-visible { outline: 3px solid var(--gt-focus); outline-offset: 3px; }
 @media (min-width: 1000px) { .gt-agents__presets { grid-template-columns: repeat(4, minmax(0, 1fr)); } .gt-agents__presets button { min-height: 110px; align-content: start; gap: 12px; padding: 18px; } }
+@media (min-width: 1000px) and (max-height: 800px) {
+  .gt-agents__welcome { gap: 16px; }
+  .gt-agents__presets button { min-height: 88px; gap: 8px; padding: 12px 14px; }
+}
 @media (min-width: 1000px) and (max-height: 700px) {
   .gt-agents { height: calc(100dvh - 92px); gap: 12px; }
   .gt-agents .page-header-block { padding-block: 8px; }

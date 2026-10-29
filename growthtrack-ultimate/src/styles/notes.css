@@ -124,6 +124,8 @@
   max-height: min(480px, 55dvh);
   min-height: 200px;
 }
+
+.notes-list-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; color: var(--gt-muted); font-size: .75rem; }
 .notes-record-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 
 .notes-list-scroll::-webkit-scrollbar {

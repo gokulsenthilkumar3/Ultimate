@@ -4,8 +4,10 @@ import { Send, Bot, User, Trash2, Copy, RefreshCw, Square, ArrowUpRight, Message
 import useStore from '../../store/useStore';
 import { useToast } from '../../hooks/useToast';
 import { selectPreferredChatModel } from '../../lib/aiProviders';
-import { EMPTY_AI_CONSENT, getAiContextCandidates, buildSelectedAiContext } from '../../lib/aiContext';
+import { EMPTY_AI_CONSENT, getAiContextCandidates, buildSelectedAiContext, selectAiContextRecords } from '../../lib/aiContext';
 import { AGENT_PRESETS, agentContextScope } from '../../lib/agentActions';
+import { AGENT_LIMITS } from '../../lib/agentPolicy';
+import { createAgentTextBatcher } from '../../lib/agentTextBatcher';
 import { localDateKey } from '../../lib/metricSeries';
 import { getAgentsReadiness, requestAgentsPlan, streamAgentsChat } from '../../services/aiClient';
 import { createAgentActionRunner } from '../../services/agentActions';
@@ -66,14 +68,18 @@ export default function AgentsWorkspace({ state }) {
   const runner = useMemo(() => createAgentActionRunner({ getState: () => useStore.getState() }), []);
   const preferredModel = state.appConfig?.aiAgent?.model;
   const busy = loading || applying;
-  const candidates = useMemo(() => getAiContextCandidates(state, consent, { includeOverviews: true }), [state, consent]);
-  const context = useMemo(() => buildSelectedAiContext(state, selected, consent), [state, selected, consent]);
-  const scope = agentContextScope(context, consent);
-  const matching = candidates.filter(record => `${record.group} ${record.label} ${record.text}`.toLowerCase().includes(search.toLowerCase()));
+  const needsCandidates = view === 'context' || selected.length > 0;
+  const candidates = useMemo(() => needsCandidates ? getAiContextCandidates(state, consent, { includeOverviews: true }) : [], [state, consent, needsCandidates]);
+  const context = useMemo(() => selectAiContextRecords(candidates, selected), [candidates, selected]);
+  const scope = useMemo(() => agentContextScope(context, consent), [context, consent]);
+  const matching = useMemo(() => {
+    const query = search.toLowerCase();
+    return candidates.filter(record => `${record.group} ${record.label} ${record.text}`.toLowerCase().includes(query));
+  }, [candidates, search]);
   const filtered = matching.slice(0, 100);
   const planReady = Boolean(readiness.capabilities?.reviewedActions?.length);
   const canSend = readiness.ready && Boolean(model && state.user?.id) && !checking && !busy && (mode !== 'plan' || planReady);
-  const inputBytes = new TextEncoder().encode(JSON.stringify({ context, messages: [{ role: 'user', content: input }] })).length;
+  const inputBytes = useMemo(() => new TextEncoder().encode(JSON.stringify({ context, messages: [{ role: 'user', content: input }] })).length, [context, input]);
   const tooLarge = inputBytes > 60 * 1024;
   const questions = messages.filter(message => message.role === 'user');
   const starters = mode === 'plan' ? AGENT_PRESETS.map((preset, index) => ({ ...preset, label: PROMPT_LABELS[index], mode: 'plan' })) : CHAT_STARTERS;
@@ -88,8 +94,8 @@ export default function AgentsWorkspace({ state }) {
 
   useEffect(() => {
     try { sessionStorage.removeItem('gt_ai_cache_v2'); } catch { /* storage may be unavailable */ }
-    return () => { activeRequest.current?.abort(); if (batch.current) batch.current.cancelled = true; };
-  }, []);
+    return () => { activeRequest.current?.abort(); runner.clear(); if (batch.current) batch.current.cancelled = true; };
+  }, [runner]);
 
   useEffect(() => {
     if (!state.user?.id) { setChecking(false); setReadiness({ ready: false, code: 'unauthorized' }); return undefined; }
@@ -134,6 +140,7 @@ export default function AgentsWorkspace({ state }) {
   }
   function clearChat() {
     activeRequest.current?.abort(); activeRequest.current = null;
+    runner.clear();
     setLoading(false); setMessages([]); setInput(''); setSelected([]); setConsent({ ...EMPTY_AI_CONSENT });
   }
   function updateAction(messageId, entryId, patch) {
@@ -145,6 +152,9 @@ export default function AgentsWorkspace({ state }) {
     const currentContext = buildSelectedAiContext(useStore.getState(), selection.selected, selection.consent);
     const currentScope = agentContextScope(currentContext, selection.consent);
     const selectionKey = JSON.stringify(selection);
+    // Approved earlier writes may update their own context records. Validate the
+    // batch's starting snapshot, then recheck selection/consent and each target.
+    const reviewedScope = () => JSON.stringify(selectionRef.current) === selectionKey ? currentScope : null;
     const operation = { cancelled: false }; batch.current = operation; setApplying(true);
     try {
       for (const entry of entries) {
@@ -152,7 +162,7 @@ export default function AgentsWorkspace({ state }) {
         if (JSON.stringify(selectionRef.current) !== selectionKey) { updateAction(messageId, entry.id, { status: 'failed', error: 'Your selected context changed. Generate a fresh plan.' }); break; }
         updateAction(messageId, entry.id, { status: 'applying' });
         try {
-          const result = await runner.apply(plan, entry, currentScope);
+          const result = await runner.apply(plan, entry, reviewedScope);
           if (!operation.cancelled) updateAction(messageId, entry.id, { status: 'applied', result });
         } catch (error) {
           if (!operation.cancelled) updateAction(messageId, entry.id, { status: 'failed', error: error.message || 'This change could not be saved.' });
@@ -170,21 +180,26 @@ export default function AgentsWorkspace({ state }) {
     const completed = new Set(messages.filter(message => message.role === 'assistant' && message.status === 'complete' && !message.plan).map(message => message.turnId));
     let history = messages.filter(message => completed.has(message.turnId) && message.scopeKey === scopeKey && message.content).slice(-14).map(({ role, content }) => ({ role, content: content.slice(0, 8000) }));
     while (history.length && new TextEncoder().encode(JSON.stringify({ context, messages: [...history, { role: 'user', content: prompt }] })).length > 60 * 1024) history = history.slice(2);
-    setMessages(current => [...current, { id: `${requestId}-user`, turnId: requestId, role: 'user', content: prompt, scopeKey, sources: context.map(({ id, type, label }) => ({ id, type, label })), status: 'complete' },
+    setMessages(current => [...current.slice(-(AGENT_LIMITS.transcriptTurns - 1) * 2), { id: `${requestId}-user`, turnId: requestId, role: 'user', content: prompt, scopeKey, sources: context.map(({ id, type, label }) => ({ id, type, label })), status: 'complete' },
       { id: requestId, turnId: requestId, role: 'assistant', content: '', scopeKey, status: 'streaming', planning: mode === 'plan' }]);
     setInput(''); setLoading(true); follow.current = true;
     const update = patch => { if (activeRequest.current === controller) setMessages(current => current.map(message => message.id === requestId ? { ...message, ...patch } : message)); };
+    const deltas = createAgentTextBatcher(delta => {
+      if (activeRequest.current === controller && !controller.signal.aborted) setMessages(current => current.map(message => message.id === requestId ? { ...message, content: message.content + delta } : message));
+    }, { signal: controller.signal });
     try {
       if (mode === 'plan') {
         const result = await requestAgentsPlan({ model, prompt, context, consent, today: localDateKey(), agent, signal: controller.signal });
         if (activeRequest.current === controller && !controller.signal.aborted) update({ plan: runner.prepare(result, context, consent), content: result.summary });
       } else await streamAgentsChat({ model, messages: [...history, { role: 'user', content: prompt }], context, consent, responseStyle, intent: mode === 'insights' ? 'insights' : 'general', today: localDateKey(), signal: controller.signal,
-        onDelta: delta => { if (activeRequest.current === controller && !controller.signal.aborted) setMessages(current => current.map(message => message.id === requestId ? { ...message, content: message.content + delta } : message)); } });
+        onDelta: deltas.push });
+      deltas.flush();
       update({ status: controller.signal.aborted ? 'stopped' : 'complete' });
     } catch (error) {
+      deltas.flush();
       if (controller.signal.aborted) update({ status: 'stopped' });
       else { update({ status: 'error', error: error.message || 'The response could not be completed.' }); if (activeRequest.current === controller) setInput(prompt); }
-    } finally { if (activeRequest.current === controller) { activeRequest.current = null; setLoading(false); } }
+    } finally { deltas.dispose(); if (activeRequest.current === controller) { activeRequest.current = null; setLoading(false); } }
   }
 
   const check = () => setRefresh(value => value + 1);
@@ -229,7 +244,7 @@ export default function AgentsWorkspace({ state }) {
       </div>}
 
       {view === 'history' && <div className="gt-agents__view" role="region" aria-label="Session history"><div className="gt-agents__view-heading"><div><h2>This session</h2><p>{questions.length} {questions.length === 1 ? 'question' : 'questions'} · {appliedCount} {appliedCount === 1 ? 'change' : 'changes'} saved</p></div><Button variant="secondary" disabled={applying} onClick={clearChat}><Trash2 size={15} aria-hidden="true" /> Clear conversation</Button></div>
-        <p className="gt-agents__memory-note">Conversation and plans stay in memory and clear when you leave this page or change accounts. Applied changes remain in their app pages.</p>
+        <p className="gt-agents__memory-note">The latest {AGENT_LIMITS.transcriptTurns} questions and plans stay in memory and clear when you leave this page or change accounts. Plans expire after 10 minutes. Applied changes remain in their app pages.</p>
         {!questions.length ? <div className="gt-agents__empty"><MessageSquare size={28} aria-hidden="true" /><h3>No activity yet</h3><p>Your questions, plans, and action results will appear here.</p><Button variant="secondary" onClick={() => changeView('chat')}>Start a conversation</Button></div> : <ol className="gt-agents__activity" aria-label="Questions in this session">{questions.map((message, index) => {
           const reply = messages.find(item => item.role === 'assistant' && item.turnId === message.turnId);
           return <li key={message.id}><button type="button" onClick={() => { jump.current = message.id; changeView('chat'); }}><span>{String(index + 1).padStart(2, '0')}</span><strong>{message.content}</strong><small>{reply?.status === 'streaming' ? 'In progress' : reply?.status === 'error' ? 'Needs attention' : reply?.plan ? `${reply.plan.actions.filter(entry => entry.status === 'applied').length}/${reply.plan.actions.length} changes saved` : reply?.status === 'stopped' ? 'Stopped' : 'Answered'}</small><ArrowUpRight size={16} aria-hidden="true" /></button></li>;

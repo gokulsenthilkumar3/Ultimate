@@ -8,7 +8,7 @@ import { getAgentsReadiness, streamAgentsChat } from '../../src/services/aiClien
 
 vi.mock('../../src/store/useStore', () => ({ default: { getState: vi.fn() } }));
 vi.mock('../../src/hooks/useToast', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
-vi.mock('../../src/services/agentActions', () => ({ createAgentActionRunner: () => ({}) }));
+vi.mock('../../src/services/agentActions', () => ({ createAgentActionRunner: () => ({ clear: vi.fn() }) }));
 vi.mock('../../src/services/aiClient', () => ({ getAgentsReadiness: vi.fn(), streamAgentsChat: vi.fn(), requestAgentsPlan: vi.fn() }));
 const fixture = { user: { id: 'fixture-owner', tasks: { pending: [], completed: [] } }, _sessionVersion: 1 };
 
