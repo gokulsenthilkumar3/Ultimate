@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { BudgetSchema, TransactionSchema } from '../schemas';
 import type { Budget, Transaction } from '../schemas';
+/** Calendar dates stay in the profile timezone (or the device timezone). */
+export { userDateKey as financeToday } from './calendarDate';
 
 export type MoneyFormatter = (value: number) => string;
 export type FinanceTransaction = Transaction & { updatedAt?: string };
@@ -72,18 +74,6 @@ export function financeModule(initialTab?: string, pathname = ''): FinanceModule
   const raw = (initialTab || pathname.split('/').filter(Boolean).at(-1) || 'Overview').toLowerCase().replace(/[\s_-]+/g, '');
   const modules: Record<string, FinanceModule> = { overview: 'Overview', transactions: 'Transactions', analytics: 'Analytics', trends: 'Trends', budgeting: 'Budgeting', subscriptions: 'Subscriptions', portfolio: 'Portfolio', sip: 'SIP', sipcalculator: 'SIP', planning: 'SIP', shopping: 'Shopping', sync: 'Sync' };
   return modules[raw] || 'Overview';
-}
-
-/** Calendar dates stay in the profile timezone (or the device timezone). */
-export function financeToday(user: FinanceUser = {}, now = new Date()): string {
-  const timeZone = user.timezone || user.timeZone;
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', ...(timeZone ? { timeZone } : {}) }).formatToParts(now);
-    const value = (part: string) => parts.find(item => item.type === part)?.value || '';
-    return `${value('year')}-${value('month')}-${value('day')}`;
-  } catch {
-    return financeToday({}, now);
-  }
 }
 
 export function validFinanceDate(value: string): boolean {

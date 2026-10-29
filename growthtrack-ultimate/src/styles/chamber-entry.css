@@ -1,0 +1,2 @@
+/* Keep the original cascade layer when the owning renderer loads this sheet. */
+@import './chamber.css' layer(legacy);

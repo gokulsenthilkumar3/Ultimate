@@ -9,6 +9,7 @@ import TransactionEditor from './TransactionEditor';
 import TransactionsTab from './TransactionsTab';
 import BudgetingTab from './BudgetingTab';
 import SubscriptionsTab from './SubscriptionsTab';
+import * as financeModel from '../../utils/financeModel';
 
 const mocks = vi.hoisted(() => ({ state: {} as FinanceState, api: vi.fn(), success: vi.fn(), info: vi.fn(), error: vi.fn() }));
 vi.mock('../../store/useStore', () => ({
@@ -29,19 +30,19 @@ beforeEach(() => {
 function route(component: React.ReactNode, initial = '/finance/transactions') { return render(<MemoryRouter initialEntries={[initial]}>{component}</MemoryRouter>); }
 
 describe('Finance canonical module rendering', () => {
-  it('renders Transactions with one page heading and no second module tab strip', () => {
+  it('renders Transactions with one page heading and no second module tab strip', async () => {
     route(<Finance initialTab="Transactions" />);
-    expect(screen.getByRole('region', { name: 'Transactions table' })).toBeVisible();
+    expect(await screen.findByRole('region', { name: 'Transactions table' })).toBeVisible();
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Transactions' })).toBeVisible();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.queryByText('Spending calendar')).not.toBeInTheDocument();
   });
-  it('renders pathname modules and changes when initialTab changes', () => {
+  it('renders pathname modules and changes when initialTab changes', async () => {
     const view = route(<Finance />, '/finance/transactions');
-    expect(screen.getByRole('region', { name: 'Transactions table' })).toBeVisible();
+    expect(await screen.findByRole('region', { name: 'Transactions table' })).toBeVisible();
     view.rerender(<MemoryRouter><Finance initialTab="Overview" /></MemoryRouter>);
-    expect(screen.getByText('Recent activity')).toBeVisible();
+    expect(await screen.findByText('Recent activity', {}, { timeout: 4000 })).toBeVisible();
     expect(screen.queryByRole('region', { name: 'Transactions table' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Transactions' })).toHaveAttribute('href', '/finance/transactions');
   });
@@ -75,6 +76,21 @@ describe('Finance canonical module rendering', () => {
 });
 
 describe('Finance record workflows', () => {
+  it('keeps large-ledger sorting out of selection and editor interactions', () => {
+    const sorting = vi.spyOn(financeModel, 'sortLedger');
+    try {
+      const rows = Array.from({ length: 10000 }, (_, index) => entry(String(index), { amount: index + 1 }));
+      route(<TransactionsTab {...baseProps} transactions={rows} onSave={vi.fn()} onDelete={vi.fn()} />);
+      expect(sorting).toHaveBeenCalledTimes(1);
+      expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(11);
+      fireEvent.click(screen.getByLabelText('Select this page'));
+      fireEvent.click(screen.getByRole('button', { name: 'New transaction' }));
+      expect(sorting).toHaveBeenCalledTimes(1);
+      fireEvent.change(screen.getByLabelText('Sort transactions'), { target: { value: 'amount-desc' } });
+      expect(sorting).toHaveBeenCalledTimes(2);
+      expect(within(screen.getByRole('table')).getAllByRole('row')[1]).toHaveTextContent('₹10000.00');
+    } finally { sorting.mockRestore(); }
+  });
   it('retains a transaction draft after failure and prevents duplicate submission while pending', async () => {
     let rejectSave: (error: Error) => void = () => {};
     const save = vi.fn(() => new Promise<void>((_resolve, reject) => { rejectSave = reject; }));
@@ -94,7 +110,7 @@ describe('Finance record workflows', () => {
   it('uses edit mode without creating a new transaction and reports no success on failure', async () => {
     mocks.api.mockRejectedValue(new Error('Edit rejected'));
     route(<Finance initialTab="Transactions" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Lunch a' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Lunch a' }));
     fireEvent.change(screen.getByLabelText('Amount (₹)'), { target: { value: '25.50' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await screen.findByRole('alert');

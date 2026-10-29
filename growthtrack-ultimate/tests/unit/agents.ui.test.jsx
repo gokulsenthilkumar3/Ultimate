@@ -49,6 +49,17 @@ function openSession() {
 }
 
 describe('Agents UI streaming and privacy', () => {
+  it('avoids scanning workspace collections until sources are needed', async () => {
+    const pending = fixture.state.user.tasks.pending, read = vi.fn(() => pending);
+    Object.defineProperty(fixture.state.user.tasks, 'pending', { get: read });
+    await mount();
+    await send();
+    expect(read).not.toHaveBeenCalled();
+    openContext();
+    expect(read).toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: /Tasks: Review draft/ })).toBeInTheDocument();
+  });
+
   it('keeps a large context list searchable while limiting visible rows', async () => {
     fixture.state.user.tasks.pending = Array.from({ length: 101 }, (_, index) => ({ id: `task-${index}`, title: `Fixture task ${index}`, userId: 'owner' }));
     await mount(); openContext();

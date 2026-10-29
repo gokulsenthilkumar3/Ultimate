@@ -1,5 +1,5 @@
 import PageHeader from './ui/PageHeader';
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import useStore, {
   selectGoals, selectAddGoal, selectDeleteGoal, selectUpdateGoal,
 } from '../store/useStore';
@@ -13,6 +13,9 @@ import { trackEvent } from '../lib/analytics';
 import EmptyState from './ui/EmptyState';
 import { formatNumber } from '../utils/userFormatters';
 import { apiRequest } from '../lib/apiClient';
+import Pagination from './ui/Pagination';
+import useCollectionPage from '../hooks/useCollectionPage';
+import { captureSession } from '../store/persistence';
 
 // ── Confetti helper (canvas-confetti) ────────────────────────────────────
 async function fireConfetti() {
@@ -31,6 +34,9 @@ const PRIORITIES = [
   { key: 'low', label: 'Low', color: '#60a5fa' },
 ];
 const PRIORITY_MAP = Object.fromEntries(PRIORITIES.map(priority => [priority.key, priority]));
+const GOALS_PER_PAGE = 25;
+const ALL_GOALS_SCOPE = JSON.stringify(['all', 'all', '']);
+const PRIORITY_WEIGHT = { high: 3, medium: 2, low: 1 };
 
 const CATEGORY_CONFIG = [
   { key: 'fitness',  label: 'Fitness',  emoji: '💪', color: '#3b82f6' },
@@ -89,9 +95,8 @@ function generateMilestones(goal, user) {
 }
 
 // ── Milestone Sub-tasks ───────────────────────────────────────────────────
-function MilestoneSubtasks({ goal, updateGoal, cat }) {
+function MilestoneSubtasks({ goal, updateGoal, cat, newTask, setNewTask }) {
   const subtasks = goal.subtasks || [];
-  const [newTask, setNewTask] = useState('');
 
   const addSubtask = () => {
     if (!newTask.trim()) return;
@@ -179,6 +184,11 @@ function MilestoneSubtasks({ goal, updateGoal, cat }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function GoalsDashboard() {
+  const ownerId = useStore(s => s.user?.id);
+  return <GoalsWorkspace key={ownerId || 'signed-out'} />;
+}
+
+function GoalsWorkspace() {
   const user = useStore(s => s.user);
   const toast = useToast();
   const goals      = useStore(selectGoals);
@@ -198,9 +208,13 @@ export default function GoalsDashboard() {
     target_value: '', current_value: '', unit: '', deadline: '',
   });
   const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+  const editSaveInFlight = useRef(false);
   const [logForm,    setLogForm]    = useState({});
   const [logHistory, setLogHistory] = useState({});
   const [loadingLog, setLoadingLog] = useState({});
+  const [subtaskDrafts, setSubtaskDrafts] = useState({});
+  const listRef = useRef(null);
 
   const fetchProgressLogs = useCallback(async (goalId) => {
     if (logHistory[goalId]) return;
@@ -256,19 +270,37 @@ export default function GoalsDashboard() {
     fireConfetti();
   }, [updateGoal, toast]);
 
+  const orderedGoals = useMemo(() => [...goals].sort((a, b) =>
+    Number(Boolean(b.is_focus)) - Number(Boolean(a.is_focus))
+    || (PRIORITY_WEIGHT[b.priority] || 2) - (PRIORITY_WEIGHT[a.priority] || 2)
+    || (daysLeft(a.deadline) ?? Infinity) - (daysLeft(b.deadline) ?? Infinity)), [goals]);
   const filtered = useMemo(() => {
-    let list = goals;
+    let list = orderedGoals;
     if (statusFilter !== 'all') list = list.filter(g => g.status === statusFilter);
     if (catFilter    !== 'all') list = list.filter(g => g.category === catFilter);
     if (query.trim()) {
       const term = query.trim().toLowerCase();
       list = list.filter(g => `${g.title || ''} ${g.description || ''}`.toLowerCase().includes(term));
     }
-    const priorityWeight = { high: 3, medium: 2, low: 1 };
-    return [...list].sort((a, b) => Number(Boolean(b.is_focus)) - Number(Boolean(a.is_focus)) || (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2) || (daysLeft(a.deadline) ?? Infinity) - (daysLeft(b.deadline) ?? Infinity));
-  }, [goals, statusFilter, catFilter, query]);
+    return list;
+  }, [orderedGoals, statusFilter, catFilter, query]);
+  const { page, pageCount, visibleItems: visibleGoals, setPage } = useCollectionPage(
+    filtered, JSON.stringify([statusFilter, catFilter, query]), GOALS_PER_PAGE,
+  );
+  const changePage = (next) => {
+    setPage(next);
+    listRef.current?.focus();
+    listRef.current?.scrollIntoView?.({ block: 'start' });
+  };
 
   const focusGoal = useMemo(() => goals.find(g => g.is_focus && g.status === 'active'), [goals]);
+  const openFocusPlan = () => {
+    setStatusFilter('all'); setCatFilter('all'); setQuery('');
+    setPage(Math.floor(orderedGoals.findIndex(goal => goal.id === focusGoal.id) / GOALS_PER_PAGE) + 1, ALL_GOALS_SCOPE);
+    setExpandedId(focusGoal.id);
+    listRef.current?.focus();
+    listRef.current?.scrollIntoView?.({ block: 'start' });
+  };
   const toggleFocus = useCallback(async (goal) => {
     const becomingFocus = !goal.is_focus;
     if (becomingFocus) await Promise.all(goals.filter(g => g.is_focus && g.id !== goal.id).map(g => updateGoal(g.id, { is_focus: false })));
@@ -276,12 +308,20 @@ export default function GoalsDashboard() {
     toast.success(becomingFocus ? `"${goal.title}" is your focus goal.` : 'Focus goal cleared.');
   }, [goals, updateGoal, toast]);
 
-  const handleDelete = useCallback((id) => {
+  const handleDelete = useCallback(async (id) => {
     const goalToRestore = goals.find(g => g.id === id);
-    deleteGoal(id);
-    toast.info('Goal deleted', 5000, {
-      action: { label: 'Undo', onClick: () => { if (goalToRestore) addGoal(goalToRestore); } }
-    });
+    const currentSession = captureSession(useStore.getState);
+    try {
+      await deleteGoal(id);
+      if (!currentSession()) return;
+      toast.info('Goal deleted', 5000, {
+        action: { label: 'Undo', onClick: async () => {
+          if (!currentSession()) { toast.error('The session changed. Refresh before restoring a goal.'); return; }
+          try { if (goalToRestore) await addGoal(goalToRestore); }
+          catch { toast.error('Could not restore the goal.'); }
+        } }
+      });
+    } catch { toast.error('Could not delete the goal.'); }
   }, [goals, deleteGoal, addGoal, toast]);
 
   const stats = useMemo(() => ({
@@ -312,14 +352,21 @@ export default function GoalsDashboard() {
   };
 
   const startEdit = (g) => { setEditId(g.id); setEditForm({ ...g }); };
-  const saveEdit  = () => {
+  const saveEdit  = async () => {
+    if (editSaveInFlight.current) return;
     if (editForm.deadline) {
       const today = new Date().toISOString().split('T')[0];
       if (editForm.deadline < today) { toast.error('Deadline cannot be in the past.'); return; }
     }
-    updateGoal(editId, editForm);
-    setEditId(null);
-    toast.success('Goal updated.');
+    const goalId = editId;
+    editSaveInFlight.current = true;
+    setEditSaving(true);
+    try {
+      await updateGoal(goalId, editForm);
+      setEditId(current => current === goalId ? null : current);
+      toast.success('Goal updated.');
+    } catch { toast.error('Could not update the goal. Your changes are still here.'); }
+    finally { editSaveInFlight.current = false; setEditSaving(false); }
   };
 
   return (
@@ -344,7 +391,7 @@ export default function GoalsDashboard() {
           </div>
         ))}
       </div>
-      {focusGoal && <div className="glass-card" style={{ marginBottom: '1rem', padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--accent)' }}><div><p className="label-caps" style={{ color: 'var(--accent)', marginBottom: 2 }}>Focus goal</p><strong>{focusGoal.title}</strong><span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}> · {getProgress(focusGoal)}% complete</span></div><button type="button" className="btn-sm" onClick={() => setExpandedId(focusGoal.id)}>Open plan</button></div>}
+      {focusGoal && <div className="glass-card" style={{ marginBottom: '1rem', padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--accent)' }}><div><p className="label-caps" style={{ color: 'var(--accent)', marginBottom: 2 }}>Focus goal</p><strong>{focusGoal.title}</strong><span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}> · {getProgress(focusGoal)}% complete</span></div><button type="button" className="btn-sm" onClick={openFocusPlan}>Open plan</button></div>}
 
       {/* Add form */}
       {showAdd && (
@@ -437,7 +484,8 @@ export default function GoalsDashboard() {
       </div>
 
       {/* Goal cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      {pageCount > 1 && <Pagination label="Goal pages" page={page} pageCount={pageCount} pageSize={GOALS_PER_PAGE} total={filtered.length} onPageChange={changePage} />}
+      <div ref={listRef} role="region" aria-label="Goal results" tabIndex={-1} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {filtered.length === 0 && (
           <div style={{ marginTop: '1rem' }}>
             <EmptyState icon={Target} title="No Goals"
@@ -447,7 +495,7 @@ export default function GoalsDashboard() {
           </div>
         )}
 
-        {filtered.map(g => {
+        {visibleGoals.map(g => {
           const prog       = getProgress(g);
           const dl         = daysLeft(g.deadline);
           const isEditing  = editId === g.id;
@@ -477,35 +525,35 @@ export default function GoalsDashboard() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {isEditing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <input aria-label="Goal title" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                      <input disabled={editSaving} aria-label="Goal title" value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
                         className="form-input" style={{ fontSize: '0.88rem' }} />
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <input aria-label="Current value" value={editForm.current_value || ''} placeholder="Current" type="number"
+                        <input disabled={editSaving} aria-label="Current value" value={editForm.current_value || ''} placeholder="Current" type="number"
                           onChange={e => setEditForm(f => ({ ...f, current_value: e.target.value }))}
                           className="form-input" style={{ width: '90px', fontSize: '0.82rem' }} />
-                        <input aria-label="Target value" value={editForm.target_value || ''} placeholder="Target" type="number"
+                        <input disabled={editSaving} aria-label="Target value" value={editForm.target_value || ''} placeholder="Target" type="number"
                           onChange={e => setEditForm(f => ({ ...f, target_value: e.target.value }))}
                           className="form-input" style={{ width: '90px', fontSize: '0.82rem' }} />
-                        <select aria-label="Goal status" value={editForm.status || 'active'} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                        <select disabled={editSaving} aria-label="Goal status" value={editForm.status || 'active'} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
                           className="form-input" style={{ fontSize: '0.82rem' }}>
                           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
-                        <input type="date" aria-label="Goal deadline" value={editForm.deadline || ''} onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
+                        <input disabled={editSaving} type="date" aria-label="Goal deadline" value={editForm.deadline || ''} onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
                           className="form-input" style={{ fontSize: '0.82rem' }} />
-                        <select aria-label="Goal category" value={editForm.category || 'other'} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                        <select disabled={editSaving} aria-label="Goal category" value={editForm.category || 'other'} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
                           className="form-input" style={{ fontSize: '0.82rem' }}>
                           {CATEGORY_CONFIG.map(c => <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}
                         </select>
-                        <select aria-label="Goal priority" value={editForm.priority || 'medium'} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))}
+                        <select disabled={editSaving} aria-label="Goal priority" value={editForm.priority || 'medium'} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))}
                           className="form-input" style={{ fontSize: '0.82rem' }}>
                           {PRIORITIES.map(priority => <option key={priority.key} value={priority.key}>{priority.label} priority</option>)}
                         </select>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button onClick={saveEdit} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.75rem' }}>
-                          <Check size={12} /> Save
+                        <button disabled={editSaving} onClick={saveEdit} className="btn-primary" style={{ padding: '4px 12px', fontSize: '0.75rem' }}>
+                          <Check size={12} /> {editSaving ? 'Saving…' : 'Save'}
                         </button>
-                        <button onClick={() => setEditId(null)} style={{ padding: '4px 12px', fontSize: '0.75rem', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-2)' }}>
+                        <button disabled={editSaving} onClick={() => setEditId(null)} style={{ padding: '4px 12px', fontSize: '0.75rem', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-2)' }}>
                           <X size={12} /> Cancel
                         </button>
                       </div>
@@ -558,7 +606,7 @@ export default function GoalsDashboard() {
                 {!isEditing && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
                     <button type="button" aria-label={`${g.is_focus ? 'Remove' : 'Set'} focus goal: ${g.title}`} title={g.is_focus ? 'Remove focus goal' : 'Set as focus goal'} onClick={() => toggleFocus(g)} style={{ background: 'none', border: 'none', color: g.is_focus ? '#fbbf24' : 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Target size={13} fill={g.is_focus ? 'currentColor' : 'none'} /></button>
-                    <button type="button" aria-label={`Edit ${g.title}`} onClick={() => startEdit(g)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={13} /></button>
+                    <button type="button" disabled={editSaving} aria-label={`Edit ${g.title}`} onClick={() => startEdit(g)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}><Edit3 size={13} /></button>
                     <button type="button" aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${g.title}`} aria-expanded={isExpanded} aria-controls={`goal-details-${g.id}`} onClick={() => setExpandedId(isExpanded ? null : g.id)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '3px' }}>
                       {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     </button>
@@ -625,7 +673,8 @@ export default function GoalsDashboard() {
                   ) : null}
 
                   {/* Milestone sub-tasks */}
-                  <MilestoneSubtasks goal={g} updateGoal={updateGoal} cat={cat} />
+                  <MilestoneSubtasks goal={g} updateGoal={updateGoal} cat={cat}
+                    newTask={subtaskDrafts[g.id] || ''} setNewTask={value => setSubtaskDrafts(drafts => ({ ...drafts, [g.id]: value }))} />
 
                   {/* Milestone timeline */}
                   {g.target_value && (

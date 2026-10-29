@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import lazy from './app/lazyPage';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import useStore from './store/useStore';
 import { useAuth } from './context/AuthContext';
@@ -24,7 +25,7 @@ import useNotifications from './hooks/useNotifications';
 import { useQueryClient } from '@tanstack/react-query';
 import Modal from './components/ui/Modal';
 import { listDrafts, removeOwnerDrafts } from './lib/drafts';
-import { financeToday } from './utils/financeModel';
+import { userDateKey } from './utils/calendarDate';
 
 const MODULE_COMPONENTS = {
   overview: lazy(() => import('./components/Overview')),
@@ -90,6 +91,14 @@ const PUBLIC_PAGES = {
 };
 const FINANCE_VIEWS = { finance: 'Overview', transactions: 'Transactions', financeAnalytics: 'Analytics', financeTrends: 'Trends', budgeting: 'Budgeting', subscriptions: 'Subscriptions', financeSync: 'Sync' };
 
+function preloadFeature(id) {
+  const Page = FINANCE_VIEWS[id] ? Finance
+    : ['analytics', 'dashboards', 'forecast', 'progress'].includes(id) ? InsightsHub
+    : ['customers', 'finsync', 'oxfin'].includes(id) ? CustomerAdminPage
+    : MODULE_COMPONENTS[id];
+  return Page?.preload().then(module => module.default.preloadTab?.(FINANCE_VIEWS[id] || id));
+}
+
 function ModulePage({ feature, view, user, theme, setActiveTab, notificationState, onOpenCheckIn, onDismissCheckIn, checkInAvailable }) {
   if (FINANCE_VIEWS[feature.id]) return <Finance initialTab={FINANCE_VIEWS[feature.id]} />;
   if (['analytics', 'dashboards', 'forecast', 'progress'].includes(feature.id)) return <InsightsHub initialTab={feature.id} logs={useStore.getState().metric_logs} />;
@@ -137,7 +146,7 @@ export default function App() {
   const route = resolveFeatureRoute(location.pathname, location.search, location.hash);
   const activeTab = route.feature?.id || storeActiveTab;
   const publicPage = PUBLIC_PAGES[location.pathname];
-  const todayStr = financeToday(user || {});
+  const todayStr = userDateKey(user || {});
   const requestLogout = async () => {
     setLogoutError('');
     try { const drafts = await listDrafts(sessionId); setLogoutDialog({ count: drafts.length, available: true }); }
@@ -195,6 +204,12 @@ export default function App() {
     try { await fetchInitialData(); setLoadedSessionId(sessionId); }
     catch (error) { setLoadError(error); }
   }, [fetchInitialData, sessionId]);
+  // Load only the selected page while its authenticated workspace request is
+  // pending. Rendering and all page effects still wait for initialDataReady.
+  useEffect(() => {
+    if (!session || publicPage || !route.feature || route.redirect) return;
+    void preloadFeature(route.feature.id)?.catch(() => {});
+  }, [session, publicPage, route.feature, route.redirect]);
   useEffect(() => {
     queryClient.clear();
     resetSessionData();

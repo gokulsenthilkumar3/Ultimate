@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { createPreferenceStorage } from './preferenceStorage';
 import { safeLocalStorage } from '../utils/safeLocalStorage';
 import { createFinanceSlice } from './slices/financeSlice';
 import { createTaskSlice, taskIsDone } from './slices/taskSlice';
@@ -568,7 +569,7 @@ const useStore = create<any>()(
     },
     {
       name: 'growthtrack-ultimate-v4',
-      storage: createJSONStorage(() => safeLocalStorage),
+      storage: createPreferenceStorage(safeLocalStorage),
       version: 4,
       // Persist shell preferences and the portfolio cache locally. Profile
       // and collection records remain server-owned and are hydrated through

@@ -31,7 +31,7 @@ test('registered views preserve a draft and fit laptop, desktop, and narrow widt
       const heading=await page.getByRole('heading',{name:'What would you like to work on?'}).boundingBox();
       expect(heading!.y).toBeGreaterThanOrEqual(frame!.y);
       for(const card of await page.locator('.gt-agents__presets button').all()){
-        const bounds=await card.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(frame!.y+frame!.height);
+        const bounds=await card.boundingBox();expect(bounds!.y+bounds!.height, `Starter at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(frame!.y+frame!.height);
       }
     }
     await page.screenshot({path:test.info().outputPath(`chat-${viewport.width}x${viewport.height}.png`)});
@@ -56,7 +56,7 @@ test('a reviewed task plan saves only confirmed changes and survives a record-pa
     if(route.request().method()==='POST'){const task={...body,id:'task-new',userId:OWNER.id};tasks.push(task);return route.fulfill({json:task});}
     const task=tasks.find(t=>new URL(route.request().url()).pathname.endsWith('/'+t.id));Object.assign(task,body);return route.fulfill({json:{...task}});
   });
-  await page.route('**/api/agents/plan',route=>route.fulfill({json:{requiresReview:true,model,summary:'Create the report task and finish the selected task.',actions:[{kind:'task.create',title:'Prepare fixture report',priority:'p2'},{kind:'task.complete',recordId:'task-old'}]}}));
+  await page.route('**/api/agents/plan',route=>route.fulfill({json:{requiresReview:true,model,summary:'Finish the selected task and create the report task.',actions:[{kind:'task.complete',recordId:'task-old'},{kind:'task.create',title:'Prepare fixture report',priority:'p2'}]}}));
   await page.setViewportSize({width:1280,height:720});await page.goto('/hub/agents?view=context');
   await page.getByRole('checkbox',{name:/Tasks: Existing fixture task/}).check();
   await page.getByRole('tab',{name:'Chat',exact:true}).click();await page.getByRole('button',{name:'Plan & act',exact:true}).click();
@@ -152,4 +152,29 @@ test('keyboard views, forced colors and confirmation focus remain usable',async(
   await expect(page).toHaveURL(/view=settings/);await page.keyboard.press('Escape');await expect(chat).toBeFocused();await expect(chat).toHaveAttribute('aria-selected','true');
   expect(await chat.evaluate(el=>getComputedStyle(el).outlineStyle)).not.toBe('none');
   await page.screenshot({path:test.info().outputPath('forced-colors-390.png')});
+});
+
+test('conversation and activity retain only the latest 50 turns', async ({ page }) => {
+  await available(page);
+  const payloads: any[] = [];
+  await page.route('**/api/agents/chat', route => {
+    payloads.push(route.request().postDataJSON());
+    return route.fulfill({ contentType: 'text/event-stream', body: response('A bounded fixture answer.') });
+  });
+  await page.goto('/hub/agents');
+  const composer = page.getByRole('textbox', { name: 'Message', exact: true });
+  const send = page.getByRole('button', { name: 'Send message', exact: true });
+  for (let index = 0; index < 51; index += 1) {
+    await composer.fill(`Question number ${index}`);
+    await send.click();
+    await expect(composer).toBeEditable();
+    await expect(page.getByRole('article', { name: 'Assistant response' }).last()).toContainText('Answer');
+  }
+  expect(payloads).toHaveLength(51);
+  expect(payloads.every(payload => payload.messages.length <= 15)).toBe(true);
+  await expect(page.getByRole('article', { name: 'Your message', exact: true })).toHaveCount(50);
+  await expect(page.getByText('Question number 0', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Question number 50', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Activity', exact: true }).click();
+  await expect(page.getByText('50 questions · 0 changes saved')).toBeVisible();
 });

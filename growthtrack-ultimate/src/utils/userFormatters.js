@@ -14,6 +14,28 @@ export const DEFAULT_FORMAT_SETTINGS = Object.freeze({
   textDirection: 'LTR (Left to Right)',
 });
 
+// Formatter construction is expensive in long tables. Cache configuration only,
+// never formatted values or user records, and keep the cache bounded.
+const NUMBER_FORMATTER_LIMIT = 64;
+const numberFormatters = new Map();
+function numberFormatter(locale, options) {
+  const entries = Object.entries(options).filter(([key, value]) => key !== 'invalid' && value !== undefined).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  const simple = entries.every(([, value]) => value === null || ['string', 'boolean'].includes(typeof value) || typeof value === 'number' && Number.isFinite(value));
+  const key = simple ? JSON.stringify([locale, entries]) : null;
+  if (key && numberFormatters.has(key)) {
+    const formatter = numberFormatters.get(key);
+    numberFormatters.delete(key);
+    numberFormatters.set(key, formatter);
+    return formatter;
+  }
+  const formatter = new Intl.NumberFormat(locale, options);
+  if (key) {
+    if (numberFormatters.size >= NUMBER_FORMATTER_LIMIT) numberFormatters.delete(numberFormatters.keys().next().value);
+    numberFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 const CURRENCY_META = {
   USD: { code: 'USD', symbol: '$', locale: 'en-US' },
   EUR: { code: 'EUR', symbol: '€', locale: 'de-DE' },
@@ -77,7 +99,7 @@ export function formatNumber(value, user, options = {}) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return options.invalid ?? '—';
   const defaults = { maximumFractionDigits: 2 };
-  return new Intl.NumberFormat(getUserLocale(user), { ...defaults, ...options }).format(numeric);
+  return numberFormatter(getUserLocale(user), { ...defaults, ...options }).format(numeric);
 }
 
 export function formatCurrency(value, user, options = {}) {
@@ -87,7 +109,7 @@ export function formatCurrency(value, user, options = {}) {
   const { invalid: _invalid, ...intlOptions } = options;
   const profile = currentUser(user);
   const explicitDecimalFormat = /(?:[.,]\d{2})/.test(String(profile.numberFormat || ''));
-  return new Intl.NumberFormat(getUserLocale(user), {
+  return numberFormatter(getUserLocale(user), {
     style: 'currency',
     currency: code,
     currencyDisplay: 'symbol',

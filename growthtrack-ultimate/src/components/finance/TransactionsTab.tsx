@@ -23,7 +23,7 @@ const SORT_LABELS = ['Newest first', 'Oldest first', 'Highest amount', 'Lowest a
 export default function TransactionsTab({ transactions, today, user, currencySymbol, formatMoney, onSave, onDelete }: Props) {
   const [params, setParams] = useSearchParams();
   const view = params.get('view');
-  const filters: LedgerFilters = { query: params.get('q') || '', type: params.get('type') || (view === 'income' ? 'Income' : view === 'expenses' ? 'Expense' : ''), category: params.get('category') || '', method: params.get('method') || '', from: params.get('from') || '', to: params.get('to') || '' };
+  const filters: LedgerFilters = useMemo(() => ({ query: params.get('q') || '', type: params.get('type') || (view === 'income' ? 'Income' : view === 'expenses' ? 'Expense' : ''), category: params.get('category') || '', method: params.get('method') || '', from: params.get('from') || '', to: params.get('to') || '' }), [params, view]);
   const rawSort = params.get('sort') as LedgerSort;
   const sort = SORTS.includes(rawSort) ? rawSort : 'date-desc';
   const requestedPage = Math.max(1, Number(params.get('page')) || 1);
@@ -38,8 +38,8 @@ export default function TransactionsTab({ transactions, today, user, currencySym
   const methods = useMemo(() => [...new Set(transactions.map(row => row.method).filter((value): value is string => Boolean(value)))].sort(), [transactions]);
   const invalidRange = Boolean(filters.from && filters.to && filters.from > filters.to);
   const invalidDate = Boolean(filters.from && !validFinanceDate(filters.from) || filters.to && !validFinanceDate(filters.to));
-  const filtered = invalidRange || invalidDate ? [] : sortLedger(filterLedger(transactions, filters), sort);
-  const summary = financeSummary(filtered);
+  const filtered = useMemo(() => invalidRange || invalidDate ? [] : sortLedger(filterLedger(transactions, filters), sort), [invalidRange, invalidDate, transactions, filters, sort]);
+  const summary = useMemo(() => financeSummary(filtered), [filtered]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / 10));
   const page = Math.min(Math.floor(requestedPage), pageCount);
   const rows = filtered.slice((page - 1) * 10, page * 10);

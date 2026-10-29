@@ -3,7 +3,6 @@
 @import './design-tokens.css' layer(tokens);
 @import '../index.css' layer(legacy);
 @import '../theme-v4.css' layer(legacy);
-@import './chamber.css' layer(legacy);
 @import './premium.css' layer(legacy);
 @import './ui-components.css' layer(components);
 @import './ultimate-ui.css' layer(legacy);

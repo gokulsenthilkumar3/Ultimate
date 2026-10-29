@@ -18,6 +18,7 @@ build/
 !growthtrack-ultimate/build/
 growthtrack-ultimate/build/*
 !growthtrack-ultimate/build/serviceWorkerPlugin.js
+!growthtrack-ultimate/build/staticCompressionPlugin.js
 coverage/
 __pycache__/
 .pytest_cache/

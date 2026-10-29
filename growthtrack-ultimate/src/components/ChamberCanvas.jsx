@@ -384,3 +384,4 @@ export default function ChamberCanvas({ className = "", style = {}, children = n
   );
 }
 
+import '../styles/chamber-entry.css';

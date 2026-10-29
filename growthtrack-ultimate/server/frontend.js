@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'node:path';
+import { stat } from 'node:fs/promises';
 
 export function frontendBasePath({ frontendBasePath: configured, appUrl } = {}) {
   const input = configured ?? (appUrl ? new URL(appUrl).pathname : '/Ultimate/');
@@ -17,6 +18,22 @@ export function registerFrontend(app, { distDirectory, frontendBasePath: configu
     if (/^\/(api|auth)(\/|$)/.test(req.path)) return res.status(404).json({ error: 'Endpoint not found.' });
     if (basePath !== '/' && (req.method === 'GET' || req.method === 'HEAD') && (req.path === '/' || req.path === mountPath)) return res.redirect(302, basePath);
     next();
+  });
+  app.use(mountPath, async (req, res, next) => {
+    // Only hashed build code is public and immutable. Leave APIs, HTML, auth,
+    // uploads and range requests on their existing response paths.
+    if (!['GET', 'HEAD'].includes(req.method) || req.headers.range || req.headers.authorization
+      || !/^\/assets\/[^/]+-[\w-]{6,}\.(?:js|css)$/.test(req.path)) return next();
+    res.vary('Accept-Encoding');
+    const encoding = req.acceptsEncodings('br', 'gzip', 'identity');
+    if (!encoding) return res.sendStatus(406);
+    if (encoding === 'identity') return next();
+    const file = path.resolve(distDirectory, '.' + req.path + (encoding === 'br' ? '.br' : '.gz'));
+    try { if (!(await stat(file)).isFile()) return next(); }
+    catch (error) { if (error.code === 'ENOENT') return next(); return next(error); }
+    res.type(path.extname(req.path));
+    res.set('Content-Encoding', encoding);
+    return res.sendFile(file, { dotfiles: 'deny' });
   });
   app.use(mountPath, express.static(distDirectory, { index: 'index.html', dotfiles: 'deny' }));
   app.use((req, res, next) => {

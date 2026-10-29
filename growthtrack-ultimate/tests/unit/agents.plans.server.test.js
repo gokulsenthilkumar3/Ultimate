@@ -18,7 +18,8 @@ describe('Agents reviewable plans',()=>{
     const app=await setup({summary:'One useful next step.',actions:[{kind:'task.create',title:'Review the draft'}]});
     const response=await app.post(request());expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({requiresReview:true,actions:[{kind:'task.create',title:'Review the draft'}]});
-    const sent=JSON.parse(app.fetchImpl.mock.calls[1][1].body);expect(sent).toMatchObject({stream:false,format:{type:'object'},options:{temperature:0}});
+    const sent=JSON.parse(app.fetchImpl.mock.calls[1][1].body);expect(sent).toMatchObject({stream:false,format:{type:'object'},options:{temperature:0,num_predict:2048}});
+    expect(sent.messages.filter(message=>message.role==='system')).toHaveLength(1);
     expect(app.fetchImpl.mock.calls.map(([url])=>url)).toEqual(['http://fixture-model:11434/api/tags','http://fixture-model:11434/api/chat']);
   });
   it.each([

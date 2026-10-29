@@ -1,8 +1,9 @@
 import { getCsrfToken } from '../lib/apiClient';
 import { agentPlanSchema, validatePlanReferences } from '../lib/agentActions';
+import { AGENT_LIMITS } from '../lib/agentPolicy';
 
 const ROOT = '/api/agents';
-const MAX_EVENT_CHARS = 256 * 1024;
+const MAX_EVENT_CHARS = AGENT_LIMITS.frameChars;
 const abortError = () => new DOMException('Response stopped.', 'AbortError');
 
 export class AgentsError extends Error {
@@ -70,7 +71,10 @@ export async function streamAgentsChat({ model, messages, context = [], consent 
   let completed = false;
   let text = '';
   let metadata = {};
+  let bytes = 0, frames = 0;
   function consume(frame) {
+    if (signal?.aborted) throw abortError();
+    if (++frames > AGENT_LIMITS.streamRecords) throw new AgentsError('The response exceeded the stream limit.');
     let event = 'message';
     const lines = [];
     for (const line of frame.split('\n')) {
@@ -85,7 +89,7 @@ export async function streamAgentsChat({ model, messages, context = [], consent 
     if (event === 'delta') {
       if (typeof data.text !== 'string') throw new AgentsError('The Agents backend returned an invalid text chunk.');
       text += data.text;
-      if (text.length > 2 * 1024 * 1024) throw new AgentsError('The response exceeded the stream limit.');
+      if (text.length > AGENT_LIMITS.responseChars) throw new AgentsError('The response exceeded the stream limit.');
       onDelta?.(data.text);
     }
     if (event === 'done') {
@@ -98,6 +102,8 @@ export async function streamAgentsChat({ model, messages, context = [], consent 
       if (signal?.aborted) throw abortError();
       const { value, done } = await reader.read();
       if (signal?.aborted) throw abortError();
+      bytes += value?.byteLength || 0;
+      if (bytes > AGENT_LIMITS.streamBytes) throw new AgentsError('The response exceeded the stream limit.');
       pending += done ? decoder.decode() : decoder.decode(value, { stream: true });
       let boundary;
       while ((boundary = /\r?\n\r?\n/.exec(pending))) {

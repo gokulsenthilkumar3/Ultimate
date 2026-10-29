@@ -21,6 +21,18 @@ beforeEach(() => {
 });
 
 describe('acknowledged UI preference setters', () => {
+  it('does not serialize an unchanged 10,000-holding cache during unrelated store updates', () => {
+    const serialized = vi.fn(() => ({ id: 'holding-0', name: 'Synthetic holding', units: 1, buyPrice: 1 }));
+    const portfolio = Array.from({ length: 10000 }, (_, id) => ({ id: String(id), name: 'Synthetic holding', units: 1, buyPrice: 1 }));
+    portfolio[0].toJSON = serialized;
+    useStore.setState({ portfolio });
+    serialized.mockClear();
+    for (let index = 0; index < 25; index++) useStore.setState({ serverStatus: index % 2 ? 'online' : 'unknown' });
+    expect(serialized).not.toHaveBeenCalled();
+    useStore.setState({ theme: 'dark' });
+    expect(serialized).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem('growthtrack-ultimate-v4')).state.portfolio).toHaveLength(10000);
+  });
   it.each([['bcl', 'dark'], ['gbb', 'light']])('persists %s with its required mode in one request and restores both on failure', async (palette, theme) => {
     const before = { palette: state().palette, theme: state().theme };
     apiRequest.mockRejectedValueOnce(new Error('Theme save failed'));

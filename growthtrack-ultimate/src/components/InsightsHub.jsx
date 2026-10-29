@@ -1,10 +1,10 @@
 import PageHeader from './ui/PageHeader';
-import React, { Suspense, lazy, useMemo, useState } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
+import lazy from '../app/lazyPage';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Brain, Sparkles } from 'lucide-react';
 import useStore from '../store/useStore';
-import { askLocalGrowthcast } from '../lib/growthcast';
 import { buildGrowthcastSummary } from '../utils/growthcast';
 import useHashTab from '../hooks/useHashTab';
 import { formatDate } from '../utils/userFormatters';
@@ -60,7 +60,10 @@ function InsightsCommand({ logs, setActiveTab }) {
   const summary = useMemo(() => buildGrowthcastSummary(state), [state]);
   const [prompt, setPrompt] = useState('');
   const askMutation = useMutation({
-    mutationFn: question => askLocalGrowthcast(question, state.appConfig?.aiAgent),
+    mutationFn: async question => {
+      const { askLocalGrowthcast } = await import('../lib/growthcast');
+      return askLocalGrowthcast(question, state.appConfig?.aiAgent);
+    },
   });
   if (tab !== 'overview') return <OwningModule tab={tab} logs={logs} setActiveTab={setActiveTab} />;
   const ask = () => askMutation.mutate(
@@ -105,3 +108,5 @@ export default function InsightsHub({ initialTab, logs, setActiveTab }) {
     ? <OwningModule tab={initialTab} logs={logs} setActiveTab={setActiveTab} />
     : <InsightsCommand logs={logs} setActiveTab={setActiveTab} />;
 }
+
+InsightsHub.preloadTab = tab => ({ analytics: Analytics, dashboards: Dashboards, forecast: TransformationPredictor, overview: Overview, current: Current, actions: ActionCenter })[tab]?.preload();

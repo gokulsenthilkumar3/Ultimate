@@ -4,6 +4,7 @@ import { TextEncoder, TextDecoder } from 'node:util';
 import { getAgentsReadiness, streamAgentsChat } from '../../src/services/aiClient';
 import { buildSelectedAiContext, getAiContextCandidates } from '../../src/lib/aiContext';
 import { setCsrfToken } from '../../src/lib/apiClient';
+import { AGENT_LIMITS } from '../../src/lib/agentPolicy';
 
 const frame = (event, data) => `event: ${event}\r\ndata: ${JSON.stringify(data)}\r\n\r\n`;
 const stream = text => new Response(text, { headers: { 'Content-Type': 'text/event-stream' } });
@@ -16,6 +17,24 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('same-origin Agents client', () => {
+  it.each([
+    frame('delta', { text: 'x'.repeat(AGENT_LIMITS.responseChars + 1) }),
+    ': ignored\n\n'.repeat(AGENT_LIMITS.streamRecords + 1),
+    ' '.repeat(AGENT_LIMITS.streamBytes + 1),
+  ])('rejects oversized text, frames, and raw bytes without releasing output', async text => {
+    vi.stubGlobal('fetch', vi.fn(async () => stream(text)));
+    const onDelta = vi.fn();
+    await expect(streamAgentsChat(request({ onDelta }))).rejects.toThrow('stream limit');
+    expect(onDelta).not.toHaveBeenCalled();
+  });
+
+  it('stops parsing buffered frames immediately when a callback aborts the request', async () => {
+    const controller = new AbortController(), onDelta = vi.fn();
+    vi.stubGlobal('fetch', vi.fn(async () => stream(frame('meta', { model: 'gemma3:1b' }) + frame('delta', { text: 'Must not arrive after abort' }) + frame('done', { done: true }))));
+    await expect(streamAgentsChat(request({ signal: controller.signal, onMeta: () => controller.abort(), onDelta }))).rejects.toMatchObject({ name: 'AbortError' });
+    expect(onDelta).not.toHaveBeenCalled();
+  });
+
   it('reports the provider selected by the authenticated backend', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => stream(frame('meta', { model: 'openai/gpt-oss-120b', provider: 'groq' }) + frame('delta', { text: 'Ready' }) + frame('done', { done: true }))));
     expect(await streamAgentsChat(request({ model: 'openai/gpt-oss-120b' }))).toMatchObject({ provider: 'groq', model: 'openai/gpt-oss-120b', text: 'Ready', done: true });

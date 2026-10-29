@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import serviceWorkerPlugin from './build/serviceWorkerPlugin.js';
+import staticCompressionPlugin from './build/staticCompressionPlugin.js';
 import { createUiProxies } from '../scripts/workspace-proxy.mjs';
 
 // https://vite.dev/config/
@@ -22,6 +23,7 @@ export default defineConfig(({ mode }) => {
       project: env.SENTRY_PROJECT,
       authToken: env.SENTRY_AUTH_TOKEN,
     }),
+    staticCompressionPlugin(),
   ].filter(Boolean),
   server: {
     port: Number(env.VITE_PORT || 5000),

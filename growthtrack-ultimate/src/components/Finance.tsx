@@ -1,4 +1,5 @@
-import { Suspense, lazy, useCallback, useMemo } from 'react';
+import { Suspense, useCallback, useMemo } from 'react';
+import lazy from '../app/lazyPage';
 import PageHeader from './ui/PageHeader';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
@@ -9,17 +10,18 @@ import { FinanceBudgetSchema, financeBudget, financeBreakdown, financeError, fin
 import { saveFinanceBudget, saveFinanceSubscription, saveFinanceTransaction, deleteFinanceBudget, deleteFinanceSubscription, deleteFinanceTransaction } from '../utils/financeApi';
 import { fmtINR } from '../utils/finance';
 import { getCurrencySymbol } from '../utils/userFormatters';
-import OverviewTab from './finance/OverviewTab';
-import TransactionsTab from './finance/TransactionsTab';
-import BudgetingTab from './finance/BudgetingTab';
-import SubscriptionsTab from './finance/SubscriptionsTab';
-import SyncTab from './finance/SyncTab';
 import LoadingSkeleton from './ui/LoadingSkeleton';
 import '../styles/finance.css';
 import './finance/finance.css';
 
 const AnalyticsTab = lazy(() => import('./finance/AnalyticsTab'));
 const TrendsTab = lazy(() => import('./finance/TrendsTab'));
+const OverviewTab = lazy(() => import('./finance/OverviewTab'));
+const TransactionsTab = lazy(() => import('./finance/TransactionsTab'));
+const BudgetingTab = lazy(() => import('./finance/BudgetingTab'));
+const SubscriptionsTab = lazy(() => import('./finance/SubscriptionsTab'));
+const SyncTab = lazy(() => import('./finance/SyncTab'));
+const TAB_COMPONENTS = { Overview: OverviewTab, Transactions: TransactionsTab, Analytics: AnalyticsTab, Trends: TrendsTab, Budgeting: BudgetingTab, Subscriptions: SubscriptionsTab, Sync: SyncTab };
 
 const FINANCE_COPY: Record<string, string> = {
   Overview: 'A clear view of recorded cash flow, budgets, and upcoming commitments.',
@@ -63,18 +65,18 @@ export default function Finance({ initialTab }: FinanceProps) {
     const parsed = FinanceBudgetSchema.safeParse({ ...raw, month: raw.month || undefined });
     return parsed.success && Number.isFinite(parsed.data.limit_amount) && parsed.data.limit_amount >= 0 ? [parsed.data] : [];
   }), [finance?.budgets]);
-  const monthRows = transactions.filter(row => row.date.startsWith(month + '-') && (!category || row.category === category) && (!method || row.method === method));
-  const activeBudgets = budgets.filter(row => !row.month || row.month === month);
+  const monthRows = useMemo(() => transactions.filter(row => row.date.startsWith(month + '-') && (!category || row.category === category) && (!method || row.method === method)), [transactions, month, category, method]);
+  const activeBudgets = useMemo(() => budgets.filter(row => !row.month || row.month === month), [budgets, month]);
   const previousMonth = financeMonths(2, month + '-01')[0];
-  const previousRows = transactions.filter(row => row.date.startsWith(previousMonth + '-') && (!category || row.category === category) && (!method || row.method === method));
-  const expenseCategories = financeBreakdown(monthRows, 'category');
-  const alerts = activeBudgets.flatMap(budget => {
+  const previousRows = useMemo(() => transactions.filter(row => row.date.startsWith(previousMonth + '-') && (!category || row.category === category) && (!method || row.method === method)), [transactions, previousMonth, category, method]);
+  const expenseCategories = useMemo(() => financeBreakdown(monthRows, 'category'), [monthRows]);
+  const alerts = useMemo(() => activeBudgets.flatMap(budget => {
     const actual = expenseCategories.find(row => row.name === budget.category)?.value || 0;
     const status = financeBudget(actual, budget.limit_amount);
     return status.over || status.near ? [{ ...budget, actual, status }] : [];
-  });
-  const knownMonths = [...new Set([...financeMonths(12, today), ...transactions.map(row => row.date.slice(0, 7)), ...budgets.map(row => row.month || '').filter(Boolean), month])].sort().reverse();
-  const subs: Subscription[] = subscriptions.filter(row => row && typeof row.name === 'string' && Number.isFinite(row.cost) && row.cost >= 0);
+  }), [activeBudgets, expenseCategories]);
+  const knownMonths = useMemo(() => [...new Set([...financeMonths(12, today), ...transactions.map(row => row.date.slice(0, 7)), ...budgets.map(row => row.month || '').filter(Boolean), month])].sort().reverse(), [transactions, budgets, today, month]);
+  const subs: Subscription[] = useMemo(() => subscriptions.filter(row => row && typeof row.name === 'string' && Number.isFinite(row.cost) && row.cost >= 0), [subscriptions]);
   const invalidRecords = parsedTransactions.invalid + Object.values(finance?.budgets || {}).length - budgets.length + subscriptions.length - subs.length;
   const periodModule = ['Overview', 'Analytics', 'Budgeting'].includes(activeTab);
 
@@ -112,14 +114,17 @@ export default function Finance({ initialTab }: FinanceProps) {
       </>}
     </div>}
     {(activeTab === 'Overview' || activeTab === 'Budgeting') && alerts.length > 0 && <div className="finance-alerts-container">{alerts.map(budget => <p key={budget.id} role="status" className={'finance-alert ' + (budget.status.over ? 'finance-alert-danger' : 'finance-alert-warning')}><AlertTriangle size={18} aria-hidden="true" /><span>{budget.category}: {formatMoney(budget.actual)} / {formatMoney(budget.limit_amount)} · {budget.status.zero ? 'Zero limit exceeded' : budget.status.over ? 'Budget exceeded' : 'Near the limit'}</span></p>)}</div>}
-    {activeTab === 'Overview' && <OverviewTab transactions={monthRows} budgets={activeBudgets} subscriptions={subs} {...{ month, today, user, currencySymbol, formatMoney }} onSave={saveTransaction} />}
-    {activeTab === 'Transactions' && <TransactionsTab {...{ transactions, today, user, currencySymbol, formatMoney }} onSave={saveTransaction} onDelete={removeTransaction} />}
     <Suspense fallback={<LoadingSkeleton variant="finance" />}>
+      {activeTab === 'Overview' && <OverviewTab transactions={monthRows} budgets={activeBudgets} subscriptions={subs} {...{ month, today, user, currencySymbol, formatMoney }} onSave={saveTransaction} />}
+      {activeTab === 'Transactions' && <TransactionsTab {...{ transactions, today, user, currencySymbol, formatMoney }} onSave={saveTransaction} onDelete={removeTransaction} />}
       {activeTab === 'Analytics' && <AnalyticsTab transactions={monthRows} previousTransactions={previousRows} {...{ month, previousMonth, today, method, formatMoney }} />}
       {activeTab === 'Trends' && <TrendsTab {...{ transactions, today, formatMoney }} />}
+      {activeTab === 'Budgeting' && <BudgetingTab {...{ budgets, transactions, month, currencySymbol, formatMoney }} onSave={saveBudget} onDelete={removeBudget} />}
+      {activeTab === 'Subscriptions' && <SubscriptionsTab subs={subs} {...{ transactions, today, user, currencySymbol, formatMoney }} onSave={saveSubscription} onDelete={removeSubscription} />}
+      {activeTab === 'Sync' && <SyncTab formatMoney={formatMoney} />}
     </Suspense>
-    {activeTab === 'Budgeting' && <BudgetingTab {...{ budgets, transactions, month, currencySymbol, formatMoney }} onSave={saveBudget} onDelete={removeBudget} />}
-    {activeTab === 'Subscriptions' && <SubscriptionsTab subs={subs} {...{ transactions, today, user, currencySymbol, formatMoney }} onSave={saveSubscription} onDelete={removeSubscription} />}
-    {activeTab === 'Sync' && <SyncTab formatMoney={formatMoney} />}
   </div>;
 }
+
+// The route starts the active tab import alongside the workspace-data request.
+Finance.preloadTab = (tab: keyof typeof TAB_COMPONENTS) => TAB_COMPONENTS[tab]?.preload();
