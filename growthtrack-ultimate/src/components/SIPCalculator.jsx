@@ -1,9 +1,7 @@
 import PageHeader from './ui/PageHeader';
 import React, { useMemo, useState } from 'react';
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
-  ReferenceLine,
-} from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { TrendingUp, DollarSign, PiggyBank, Info } from 'lucide-react';
 import { formatCurrency } from '../utils/userFormatters';
 import useStore from '../store/useStore';
@@ -224,10 +222,10 @@ export default function SIPCalculator() {
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => money(v)} width={68} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name) => [money(v), name]} />
                 <Legend wrapperStyle={{ fontSize: '0.72rem', paddingTop: '8px' }} />
-                <Area type="monotone" dataKey="corpus"   name="Corpus"    stroke="var(--accent)" fill="url(#gCorpus)"   strokeWidth={2} />
-                <Area type="monotone" dataKey="invested" name="Invested"  stroke="#10b981"       fill="url(#gInvested)" strokeWidth={2} />
-                {showReal  && <Area type="monotone" dataKey="realValue" name="Real Value (inf-adj)" stroke="#f59e0b" fill="url(#gReal)" strokeWidth={1.5} strokeDasharray="5 3" />}
-                {lumpOnlyFinal && <Area type="monotone" dataKey="lumpsum"  name="Lump Sum Only"  stroke="#8b5cf6" fill="none" strokeWidth={1.5} strokeDasharray="4 2" />}
+                <Area type="monotone" dataKey="corpus"   name="Corpus"    stroke="var(--accent)" fill="url(#gCorpus)"   strokeWidth={2} isAnimationActive={false} />
+                <Area type="monotone" dataKey="invested" name="Invested"  stroke="#10b981"       fill="url(#gInvested)" strokeWidth={2} isAnimationActive={false} />
+                {showReal  && <Area type="monotone" dataKey="realValue" name="Real Value (inf-adj)" stroke="#f59e0b" fill="url(#gReal)" strokeWidth={1.5} strokeDasharray="5 3" isAnimationActive={false} />}
+                {lumpOnlyFinal && <Area type="monotone" dataKey="lumpsum"  name="Lump Sum Only"  stroke="#8b5cf6" fill="none" strokeWidth={1.5} strokeDasharray="4 2" isAnimationActive={false} />}
               </AreaChart>
             </ResponsiveContainer>
           </div>

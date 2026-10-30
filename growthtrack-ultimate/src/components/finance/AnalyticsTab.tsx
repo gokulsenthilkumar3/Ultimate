@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import ResponsiveContainer from '../ui/VisibleResponsiveContainer';
 import type { Transaction } from '../../schemas';
 import { featurePath } from '../../config/featureRegistry';
 import type { MoneyFormatter } from '../../utils/financeModel';

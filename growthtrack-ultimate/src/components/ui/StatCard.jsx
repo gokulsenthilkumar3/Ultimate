@@ -1,4 +1,5 @@
 import React from 'react';
+import AnimatedNumber from './AnimatedNumber';
 
 /**
  * StatCard — reusable metric card with icon, label, value, and optional color.
@@ -18,7 +19,7 @@ export default function StatCard({ icon: Icon, label, value, color = 'var(--acce
         <span className="label-caps">{label}</span>
       </div>
       <p className="stat-card__value">
-        {value}
+        {typeof value === 'number' ? <AnimatedNumber value={value} /> : value}
       </p>
       {(trend || hint) && <div className="stat-card__meta">{trend && <span>{trend}</span>}{hint && <small>{hint}</small>}</div>}
     </div>

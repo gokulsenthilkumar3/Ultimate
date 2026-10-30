@@ -1,9 +1,7 @@
 import PageHeader from './ui/PageHeader';
 import React, { useRef, useState } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  LineChart, Line, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis 
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { TrendingUp, Zap, Activity, Heart, Brain, DollarSign, Target, CheckCircle2, Download } from 'lucide-react';
 import useStore from '../store/useStore';
 import { formatMeasurement } from '../utils/userFormatters';
@@ -204,7 +202,7 @@ export default function Dashboards() {
                     dataKey="A"
                     stroke="var(--accent)"
                     fill="var(--accent)"
-                    fillOpacity={0.34}
+                    fillOpacity={0.34} isAnimationActive={false}
                   />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </RadarChart>
@@ -235,8 +233,8 @@ export default function Dashboards() {
                   <XAxis dataKey="date" stroke="var(--text-3)" fontSize={10} tickFormatter={(v) => v.slice(5)} />
                   <YAxis stroke="var(--text-3)" fontSize={10} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Area type="monotone" dataKey="sleep" stroke="var(--accent)" fillOpacity={1} fill="url(#colorSleep)" strokeWidth={3} name="Sleep (Hrs)" />
-                  <Line type="monotone" dataKey="stress" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} name="Stress Index" />
+                  <Area type="monotone" dataKey="sleep" stroke="var(--accent)" fillOpacity={1} fill="url(#colorSleep)" strokeWidth={3} name="Sleep (Hrs)" isAnimationActive={false} />
+                  <Line type="monotone" dataKey="stress" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4 }} name="Stress Index" isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
            </div> : <ChartEmpty>Log sleep and stress on at least two matching days to reveal their relationship.</ChartEmpty>}
@@ -259,8 +257,8 @@ export default function Dashboards() {
                   <XAxis dataKey="month" stroke="var(--text-3)" fontSize={10} />
                   <YAxis stroke="var(--text-3)" fontSize={10} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="income" fill="var(--success)" radius={[6, 6, 0, 0]} name="Income" />
-                  <Bar dataKey="expense" fill="var(--danger)" radius={[6, 6, 0, 0]} name="Expense" />
+                  <Bar dataKey="income" fill="var(--success)" radius={[6, 6, 0, 0]} name="Income" isAnimationActive={false} />
+                  <Bar dataKey="expense" fill="var(--danger)" radius={[6, 6, 0, 0]} name="Expense" isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
            </div> : <ChartEmpty>Add an income or expense to see monthly cash flow.</ChartEmpty>}
@@ -286,7 +284,7 @@ export default function Dashboards() {
                   <XAxis dataKey="date" stroke="var(--text-3)" fontSize={10} tickFormatter={(v) => v.slice(5)} />
                   <YAxis stroke="var(--text-3)" fontSize={10} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Area type="monotone" dataKey="completed" stroke="var(--info)" fillOpacity={1} fill="url(#colorHabit)" strokeWidth={3} name="Completed Habits" />
+                  <Area type="monotone" dataKey="completed" stroke="var(--info)" fillOpacity={1} fill="url(#colorHabit)" strokeWidth={3} name="Completed Habits" isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
            </div> : <ChartEmpty>Complete a habit to start the consistency chart.</ChartEmpty>}
@@ -306,7 +304,7 @@ export default function Dashboards() {
                   <XAxis dataKey="date" stroke="var(--text-3)" fontSize={10} tickFormatter={(v) => v.slice(5)} />
                   <YAxis stroke="var(--text-3)" fontSize={10} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Line type="monotone" dataKey="progress" stroke="var(--warning)" strokeWidth={3} dot={{ r: 4 }} name="Avg Progress Added" />
+                  <Line type="monotone" dataKey="progress" stroke="var(--warning)" strokeWidth={3} dot={{ r: 4 }} name="Avg Progress Added" isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
            </div> : <ChartEmpty>Update a goal to begin tracking progress velocity.</ChartEmpty>}

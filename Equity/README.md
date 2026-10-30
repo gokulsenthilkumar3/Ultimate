@@ -4,7 +4,7 @@ Market-research product area. NiftyLens is the canonical application.
 
 **Runtime:** See NiftyLens/package.json.
 
-**Status:** Targeted for native views inside Ultimate.
+**Status:** Native market watch in Ultimate; independent Next.js source and market pipeline retained. Quote availability depends on the configured provider.
 
 ## Setup
 
@@ -35,7 +35,7 @@ npm --prefix NiftyLens run typecheck
 
 ## Scope and limitations
 
-- The portal demo includes sample charts, indices, options and watchlists. Live migration is planned.
+- Ultimate /finance/equity renders real price-cache quotes and explicit source/setup states. Options/index provider features are not fabricated.
 
 ## Workspace documentation
 

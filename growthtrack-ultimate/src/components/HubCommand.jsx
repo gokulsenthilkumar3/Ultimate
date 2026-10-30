@@ -1,10 +1,13 @@
 import React from 'react';
+import { OverviewCompanion } from './motion/CharacterScene';
+import usePlayfulMotion from '../hooks/usePlayfulMotion';
 import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { featurePath } from '../config/featureRegistry';
 import { formatDate, formatNumber } from '../utils/userFormatters';
 
 export default function HubCommand({ notificationState }) {
+  const { canAnimate } = usePlayfulMotion();
   const user = useStore(state => state.user);
   const serverStatus = useStore(state => state.serverStatus);
   const hasFeed = Boolean(notificationState?.hasLoaded && !notificationState?.error);
@@ -30,10 +33,11 @@ export default function HubCommand({ notificationState }) {
     label: 'Find a module', href: featurePath('apps', 'modules'),
   };
 
-  return <section className="module-page editorial-overview editorial-overview--hub" aria-labelledby="hub-title">
+  return <section className="module-page editorial-overview editorial-overview--hub playful-overview" data-playful-motion={String(canAnimate)} aria-labelledby="hub-title">
     <header className="editorial-overview__masthead">
       <div><p className="editorial-overview__eyebrow">Hub / Overview</p><h1 id="hub-title">Your operating center</h1>
         <p className="editorial-overview__subtitle">Connection status, reminders, and the tools that own them.</p></div>
+      <OverviewCompanion kind="siren" />
       <p className="editorial-overview__asof">Current workspace</p>
     </header>
     <section className="editorial-overview__lead" aria-labelledby="hub-next-title">

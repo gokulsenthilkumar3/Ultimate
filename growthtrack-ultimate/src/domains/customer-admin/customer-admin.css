@@ -1,8 +1,8 @@
 @layer components {
   .customer-admin { min-inline-size: 0; }
-  .customer-admin-views { display: flex; flex-wrap: wrap; gap: 8px; margin-block-end: 24px; border-block-end: 1px solid var(--gt-border); }
-  .customer-admin-views a { display: inline-flex; align-items: center; min-block-size: 40px; padding: 8px 16px; color: var(--gt-muted); text-decoration: none; border-block-end: 2px solid transparent; }
-  .customer-admin-views a[aria-current=page] { color: var(--gt-action); border-color: var(--gt-action); font-weight: 600; }
+  .customer-admin-views { display: flex; flex-wrap: wrap; gap: 6px; margin-block-end: 24px; padding: 6px; border: 1px solid var(--gt-border); border-radius: 17px; background: var(--gt-surface-raised); }
+  .customer-admin-views a { display: inline-flex; align-items: center; min-block-size: 44px; padding: 9px 17px; border: 1px solid transparent; border-radius: 12px; color: var(--gt-muted); text-decoration: none; }
+  .customer-admin-views a[aria-current=page] { background: var(--gt-surface); color: var(--gt-text); border-color: var(--gt-border-strong); box-shadow: 0 3px 0 color-mix(in srgb, var(--gt-text) 9%, transparent); font-weight: 650; }
   .customer-admin-filters { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; padding: 16px; border: 1px solid var(--gt-border); border-radius: 12px; background: var(--gt-surface); }
   .customer-admin-filters label, .customer-admin-pagination label { display: grid; gap: 6px; min-inline-size: 110px; color: var(--gt-muted); font-size: 13px; }
   .customer-admin-filters input, .customer-admin-filters select, .customer-admin-pagination select { inline-size: 100%; min-block-size: 40px; padding: 8px 12px; border: 1px solid var(--gt-input-border); border-radius: 8px; background: var(--gt-surface); color: var(--gt-text); font: inherit; }

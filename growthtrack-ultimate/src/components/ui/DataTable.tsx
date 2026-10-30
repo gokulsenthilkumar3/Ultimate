@@ -1,8 +1,10 @@
-import React, { useId, useMemo, useState, type ReactNode } from 'react';
+import React, { startTransition, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import PageState from './PageState';
+import useVirtualTableRows from '../../hooks/useVirtualTableRows';
 
 export interface DataColumn<T> {
-  id: string; header: string; accessor: (row: T) => string | number | null | undefined;
+  id: string; header: ReactNode; accessor: (row: T) => string | number | null | undefined;
+  sort?: React.AriaAttributes['aria-sort'];
   render?: (row: T) => ReactNode; sortable?: boolean; compare?: (a: T, b: T) => number;
   align?: 'start' | 'end';
 }
@@ -35,28 +37,30 @@ export default function DataTable<T>({ caption, rows, columns, rowKey, rowLabel 
       return compare(a, b) * (sort.direction === 'asc' ? 1 : -1);
     });
   }, [rows, columns, sort, manualSort]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtual = useVirtualTableRows(sortedRows, rowKey, scrollRef, state === 'ready');
   const select = (key: string, checked: boolean) => onSelectionChange?.(checked ? [...new Set([...selectedKeys, key])] : selectedKeys.filter(item => item !== key));
   const allSelected = rows.length > 0 && rows.every(row => selectedKeys.includes(rowKey(row)));
   const partlySelected = !allSelected && rows.some(row => selectedKeys.includes(rowKey(row)));
   return <section className="gt-data-table" data-responsive-foundation data-state={state}>
     {state !== 'ready' && <PageState state={state} onRetry={state === 'loading' ? undefined : onRetry} />}
     {state === 'ready' && !rows.length && <PageState state="empty" title="No records" description={emptyMessage} />}
-    {state === 'ready' && rows.length > 0 && <div className="gt-data-table__scroll" role="region" aria-labelledby={`${id}-caption`} tabIndex={0}>
-      <table><caption id={`${id}-caption`}>{caption}</caption><thead><tr>
+    {state === 'ready' && rows.length > 0 && <div ref={scrollRef} className="gt-data-table__scroll" role="region" aria-labelledby={`${id}-caption`} tabIndex={0} style={virtual.active ? { maxHeight: 560, overflow: 'auto' } : undefined}>
+      <table aria-rowcount={virtual.active ? rows.length + 1 : undefined}><caption id={`${id}-caption`}>{caption}</caption><thead><tr aria-rowindex={virtual.active ? 1 : undefined}>
         {onSelectionChange && <th scope="col"><input type="checkbox" aria-label="Select all visible rows" checked={allSelected} ref={node => { if (node) node.indeterminate = partlySelected; }} onChange={event => {
           const visible = rows.map(rowKey);
           onSelectionChange(event.target.checked ? [...new Set([...selectedKeys, ...visible])] : selectedKeys.filter(key => !visible.includes(key)));
         }} /></th>}
-        {columns.map(column => <th key={column.id} scope="col" data-align={column.align} aria-sort={column.sortable ? sort?.column === column.id ? sort.direction === 'asc' ? 'ascending' : 'descending' : 'none' : undefined}>
+        {columns.map(column => <th key={column.id} scope="col" data-align={column.align} aria-sort={column.sort || (column.sortable ? sort?.column === column.id ? sort.direction === 'asc' ? 'ascending' : 'descending' : 'none' : undefined)}>
           {column.sortable ? <button type="button" onClick={() => {
             const next: TableSort = { column: column.id, direction: sort?.column === column.id && sort.direction === 'asc' ? 'desc' : 'asc' };
-            if (controlledSort === undefined) setLocalSort(next);
+            if (controlledSort === undefined) startTransition(() => setLocalSort(next));
             onSortChange?.(next);
           }}>{column.header}<span aria-hidden="true"> {sort?.column === column.id ? sort.direction === 'asc' ? '↑' : '↓' : '↕'}</span></button> : column.header}
         </th>)}
-      </tr></thead><tbody>{sortedRows.map(row => <tr key={rowKey(row)} data-selected={selectedKeys.includes(rowKey(row))}>
-        {onSelectionChange && <td><input type="checkbox" checked={selectedKeys.includes(rowKey(row))} aria-label={`Select ${rowLabel(row)}`} onChange={event => select(rowKey(row), event.target.checked)} /></td>}
-        {columns.map(column => <td key={column.id} data-align={column.align}>{column.render ? column.render(row) : column.accessor(row) ?? '—'}</td>)}
+      </tr></thead><tbody>{virtual.segments.map(segment => segment.kind === 'spacer' ? <tr key={segment.key} aria-hidden="true"><td colSpan={columns.length + (onSelectionChange ? 1 : 0)} style={{ height: segment.height, padding: 0, border: 0, lineHeight: 0 }} /></tr> : <tr key={`row-${segment.key}`} data-virtual-key={segment.key} aria-rowindex={virtual.active ? segment.index + 2 : undefined} data-selected={selectedKeys.includes(segment.key)}>
+        {onSelectionChange && <td><input type="checkbox" checked={selectedKeys.includes(segment.key)} aria-label={`Select ${rowLabel(segment.row)}`} onChange={event => select(segment.key, event.target.checked)} /></td>}
+        {columns.map(column => <td key={column.id} data-align={column.align}>{column.render ? column.render(segment.row) : column.accessor(segment.row) ?? '—'}</td>)}
       </tr>)}</tbody></table>
     </div>}
   </section>;

@@ -7,7 +7,8 @@ import {
   Plus, Trash2, Edit3, Check, X, ChevronDown, ChevronUp,
   Target, Calendar, BarChart2, Sparkles,
 } from 'lucide-react';
-import { LineChart, Line, Tooltip, ResponsiveContainer, XAxis } from 'recharts';
+import { LineChart, Line, Tooltip, XAxis } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { useToast } from '../hooks/useToast';
 import { trackEvent } from '../lib/analytics';
 import EmptyState from './ui/EmptyState';
@@ -662,7 +663,7 @@ function GoalsWorkspace() {
                       <ResponsiveContainer width="100%" height={60}>
                         <LineChart data={chartData}>
                           <XAxis dataKey="date" tick={{ fontSize: '0.52rem', fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                          <Line type="monotone" dataKey="v" stroke={cat.color} strokeWidth={2} dot={{ r: 3, fill: cat.color }} />
+                          <Line type="monotone" dataKey="v" stroke={cat.color} strokeWidth={2} dot={{ r: 3, fill: cat.color }} isAnimationActive={false} />
                           <Tooltip formatter={v => [`${formatNumber(v, user)} ${g.unit || ''}`, 'Value']}
                             contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.68rem' }} />
                         </LineChart>

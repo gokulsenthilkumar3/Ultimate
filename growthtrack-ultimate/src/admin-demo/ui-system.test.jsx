@@ -147,7 +147,8 @@ describe('Review coverage across themes, densities, states and viewports', () =>
     fireEvent.click(screen.getByRole('button', { name: 'Approve this view' }));
     fireEvent.click(screen.getByRole('button', { name: /All pages & review/ }));
     expect(within(screen.getByRole('dialog')).getByRole('alert').textContent).toContain('Export your review before closing');
-    expect(within(screen.getByRole('dialog')).getByText('1 / 201')).toBeTruthy();
+    const scopeViews = reviewTargets().filter(target => target.theme === 'light' && target.state === 'populated' && target.density === 'comfortable').length;
+    expect(within(screen.getByRole('dialog')).getByText(`1 / ${scopeViews}`)).toBeTruthy();
   });
   it('ignores malformed compact records and obsolete storage revisions', () => {
     expect(restoreReviews({ format: 'growthtrack-ui-review-store', version: REVIEW_VERSION, entries: [null, 3, ['wrong'], ['customers:customers:light:populated:sepia:1440x900', 'approved', '', '2026-10-28T08:00:00Z']] })).toEqual({});

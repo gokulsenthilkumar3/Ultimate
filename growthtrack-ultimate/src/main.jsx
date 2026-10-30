@@ -1,9 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource/inter/400.css'
-import '@fontsource/inter/500.css'
-import '@fontsource/inter/600.css'
-import '@fontsource/inter/700.css'
+import './styles/fonts.css'
+import KineticProvider from './components/motion/KineticProvider';
 import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -52,7 +50,7 @@ createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <AuthProvider>
-          <App /><ConsentBanner />
+          <KineticProvider><App /><ConsentBanner /></KineticProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

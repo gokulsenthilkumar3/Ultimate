@@ -9,6 +9,7 @@ import { GenerateBioModal } from '../components/profile/GenerateBioModal';
 import { Sparkles } from 'lucide-react';
 import apiClient from '../api/client';
 import type { Member, FamilyDocument } from '../types/family';
+import { PrivateImage } from '../components/common/PrivateImage';
 
 export const ProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -182,7 +183,7 @@ export const ProfilePage: React.FC = () => {
               {memberDocs.map((doc: FamilyDocument) => (
                 <div key={doc.id} className="relative group rounded-lg overflow-hidden border border-gray-200">
                   {doc.type === 'photo' ? (
-                    <img 
+                    <PrivateImage
                       src={`${import.meta.env.VITE_API_BASE || 'http://localhost:3000'}${doc.fileUrl}`}
                       alt={doc.fileName}
                       className="w-full h-32 object-cover"

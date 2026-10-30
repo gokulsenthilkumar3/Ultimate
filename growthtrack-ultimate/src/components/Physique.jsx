@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowRight, Box, CalendarDays, CheckCircle2, Ruler, Scale, Target } from 'lucide-react';
 import useHashTab from '../hooks/useHashTab';
+import '../styles/physique-compat.css';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import { EMPTY_LIST } from '../lib/emptyValues';

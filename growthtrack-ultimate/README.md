@@ -4,7 +4,7 @@ The desktop portal for personal growth, work, insights and family/market modules
 
 **Runtime:** React, Vite, Express, Prisma/SQLite; optional Electron desktop packaging and Three.js physique tools.
 
-**Status:** Existing authenticated application plus a separate interactive redesign demo. Live customer management and native companion migrations remain planned.
+**Status:** Authenticated desktop portal with native NiftyLens, Family Connect and Forex pages, shared motion/loading states and a separate fictional review demo. FinSync/OxFin customer adapters still require configuration.
 
 ## Setup
 
@@ -18,7 +18,7 @@ Copy-Item .env.example .env
 ## Run
 
 ```powershell
-npm run dev:design
+npm run dev
 ```
 
 ## Configuration
@@ -45,6 +45,7 @@ npm test
 
 ## Workspace documentation
 
+- [Complete UI workflow and style guide](../docs/UI_WORKFLOW_AND_STYLE_GUIDE.md)
 - [Application directory](../docs/APPLICATIONS.md)
 - [Ownership and independent builds](../docs/BUILD_BOUNDARIES.md)
 - [Desktop redesign and architecture](../docs/plans/2026-10-28-admin-redesign.md)

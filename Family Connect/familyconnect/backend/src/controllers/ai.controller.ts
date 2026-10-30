@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { authorizeTree } from '../services/treeAccess';
 
 const prisma = new PrismaClient();
 
@@ -35,6 +36,8 @@ export const generateBio = async (req: AuthRequest, res: Response): Promise<void
       res.status(404).json({ error: 'Member not found' });
       return;
     }
+    if (!await authorizeTree(req, res, member.treeId, true)) return;
+    if (bulletPoints.length > 20 || bulletPoints.some(point => typeof point !== 'string' || point.length > 1000)) { res.status(400).json({ error: 'Use up to 20 short biographical notes.' }); return; }
 
     // Prepare context for Gemini
     const context = `

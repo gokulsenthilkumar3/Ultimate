@@ -35,6 +35,7 @@ import pandas as pd
 
 from src.features.engineer import add_features, load_config
 from src.features.cross_currency import add_cross_currency_features
+from src.features.inference_contract import saved_feature_frame, predict_saved_models
 
 log = logging.getLogger(__name__)
 
@@ -222,21 +223,11 @@ class ForexPredictor:
         # all its rows would have 0 in every OHE column, making idxmax() wrong.
         df["_currency_code_orig"] = df["currency_code"]
 
-        df = pd.get_dummies(df, columns=["currency_code"], drop_first=True)
-        bool_cols = df.select_dtypes("bool").columns
-        if len(bool_cols):
-            df[bool_cols] = df[bool_cols].astype(int)
+        df, feature_cols = saved_feature_frame(df, self.per_currency_scalers)
 
         # Restore original row order (sort_values above re-ordered rows)
         df = df.sort_values("_orig_idx").reset_index(drop=True)
 
-        feature_cols = [
-            c for c in df.columns
-            if c not in (
-                "date", "exchange_rate", "target",
-                "_orig_idx", "_currency_code_orig",
-            )
-        ]
         X = df[feature_cols].values.astype(np.float32)
         return X, df
 
@@ -287,8 +278,7 @@ class ForexPredictor:
         X, df_proc = self._preprocess(df_raw)
         log.info(f"Inference input shape: {X.shape}  model={model_name}")
 
-        model        = self._models[model_name]
-        preds_scaled = np.asarray(model.predict(X)).reshape(-1, 1)
+        preds_scaled = predict_saved_models(self._models, model_name, df_proc, self.per_currency_scalers).reshape(-1, 1)
         import inspect
         sig = inspect.signature(self.scaler_y.inverse_transform)
         if "currencies" in sig.parameters:

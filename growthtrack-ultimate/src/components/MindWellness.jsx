@@ -7,9 +7,8 @@ import {
   Brain, TrendingUp, Zap, Wind, Plus, Activity,
   BookOpen, BarChart2, Heart, ChevronDown, ChevronUp, Trash2,
 } from 'lucide-react';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { useToast } from '../hooks/useToast';
 import useHashTab from '../hooks/useHashTab';
 import { formatDate, formatTime, formatNumber, getUserLocale } from '../utils/userFormatters';
@@ -441,8 +440,8 @@ function MoodTrends({ moodLogs, sleepLogs, user }) {
               <XAxis dataKey="date" stroke="var(--text-3)" tick={{ fontSize: 10 }} />
               <YAxis domain={[0, 5]} stroke="var(--text-3)" tick={{ fontSize: 10 }} tickCount={6} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="mood"   stroke="#a78bfa" fill="url(#moodGrad)"   strokeWidth={2.5} dot={{ r: 3, fill: '#a78bfa'  }} name="Mood"   connectNulls={false} />
-              <Area type="monotone" dataKey="energy" stroke="#facc15" fill="url(#energyGrad)" strokeWidth={2}   dot={{ r: 2, fill: '#facc15'  }} name="Energy" connectNulls={false} />
+              <Area type="monotone" dataKey="mood"   stroke="#a78bfa" fill="url(#moodGrad)"   strokeWidth={2.5} dot={{ r: 3, fill: '#a78bfa'  }} name="Mood"   connectNulls={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="energy" stroke="#facc15" fill="url(#energyGrad)" strokeWidth={2}   dot={{ r: 2, fill: '#facc15'  }} name="Energy" connectNulls={false} isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
         )}

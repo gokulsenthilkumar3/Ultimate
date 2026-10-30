@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
     return { error: null };
   };
 
-  return <AuthContext.Provider value={{ user, session, loading, signIn, signOut, refreshSession: fetchSession }}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, session, loading, signIn, signOut, refreshSession: fetchSession }}>{children}</AuthContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

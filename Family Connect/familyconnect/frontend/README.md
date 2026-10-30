@@ -4,7 +4,7 @@ Family-tree, memory, profile, event and document interfaces.
 
 **Runtime:** React, TypeScript, Vite and React Flow.
 
-**Status:** Current standalone UI. Replacement portal views are at the design-review stage.
+**Status:** Independent legacy UI retained for compatibility. Ultimate now owns native family views; private media uses authenticated downloads in both interfaces.
 
 ## Setup
 

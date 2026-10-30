@@ -4,5 +4,6 @@ export interface TabsProps {
   label: string; tabs: readonly TabItem[]; value: string; onChange: (value: string) => void;
   className?: string; idPrefix?: string; onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
   orientation?: 'horizontal' | 'vertical'; dir?: 'ltr' | 'rtl'; activation?: 'automatic' | 'manual';
+  variant?: 'segments' | 'underline';
 }
 export default function Tabs(props: TabsProps): ReactElement;

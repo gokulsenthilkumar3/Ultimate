@@ -1,6 +1,7 @@
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { Plus, Trash2, Edit3, DollarSign, RefreshCw } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
@@ -245,7 +246,7 @@ export default function Portfolio() {
     {tab === 'allocation' && <div id="portfolio-allocation-panel" role="tabpanel" aria-labelledby="portfolio-tab-allocation" className="glass-card">
       <h3>Allocation by dated value</h3>
       {totalValue === null || !allocation.length ? <p>Every holding needs a dated price to show allocation.</p> : <ResponsiveContainer width="100%" height={260}>
-        <PieChart><Pie data={allocation} dataKey="value" nameKey="name" outerRadius={90} label={({ name, percent }) => name + ' ' + (percent * 100).toFixed(0) + '%'}>
+        <PieChart><Pie data={allocation} dataKey="value" nameKey="name" outerRadius={90} label={({ name, percent }) => name + ' ' + (percent * 100).toFixed(0) + '%'} isAnimationActive={false}>
           {allocation.map(entry => <Cell key={entry.name} fill={ASSET_COLORS[entry.name] || '#6366f1'} />)}
         </Pie><Tooltip formatter={money} /></PieChart>
       </ResponsiveContainer>}

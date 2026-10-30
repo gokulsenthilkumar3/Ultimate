@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import CharacterScene from '../motion/CharacterScene';
+import useSceneMotion from '../../hooks/useSceneMotion';
 
 /** One announced loading state; decorative placeholders stay out of the accessibility tree. */
 export default function LoadingSkeleton({ variant = 'workspace' }) {
+  const ref = useRef(null);
+  const active = useSceneMotion(ref, { priority: 2 });
+  const [sleep, setSleep] = useState(false);
+  useEffect(() => { const timer = setTimeout(() => setSleep(true), 2000); return () => clearTimeout(timer); }, []);
   const isCommand = ['wellness', 'insights', 'workspace', 'life', 'hub'].includes(variant);
   const label = `Loading ${isCommand ? `${variant} command` : 'your workspace'}`;
-  return <div className="fade-in module-page app-loading-skeleton" data-responsive-foundation role="status" aria-label={label}>
+  return <div ref={ref} className="fade-in module-page app-loading-skeleton" data-animate={String(active)} data-responsive-foundation role="status" aria-label={label}>
     <span className="gt-foundation-sr-only">{label}</span>
     <div className="app-loading-skeleton__visual" aria-hidden="true">
       <div className="app-loading-skeleton__heading">
@@ -13,7 +19,7 @@ export default function LoadingSkeleton({ variant = 'workspace' }) {
           <span className="skeleton-pulse app-loading-skeleton__line app-loading-skeleton__line--title" />
           <span className="skeleton-pulse app-loading-skeleton__line app-loading-skeleton__line--subtitle" />
         </div>
-        <span className="skeleton-pulse app-loading-skeleton__heading-aside" />
+        <div className="app-loading-skeleton__heading-aside app-loading-skeleton__companion"><CharacterScene kind="nova" state={sleep ? 'sleep' : 'idle'} /></div>
       </div>
       {isCommand && <div className="app-loading-skeleton__tabs">{[1, 2, 3, 4, 5].map(item => <span className="skeleton-pulse" key={item} />)}</div>}
       <div className="app-loading-skeleton__cards">

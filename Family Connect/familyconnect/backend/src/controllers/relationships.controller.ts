@@ -1,6 +1,7 @@
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, RelationshipType } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { authorizeTree, membersBelongToTree } from '../services/treeAccess';
 
 const prisma = new PrismaClient();
 
@@ -22,10 +23,13 @@ export const createRelationship = async (req: AuthRequest, res: Response): Promi
       }
     });
 
-    if (!access) {
+    if (!access || !await authorizeTree(req, res, treeId, true)) {
+      if (res.headersSent) return;
       res.status(403).json({ error: 'Access denied to this family tree' });
       return;
     }
+    if (member1Id === member2Id || !await membersBelongToTree(treeId, [member1Id, member2Id])) { res.status(400).json({ error: 'Choose two different members from this tree.' }); return; }
+    if (!Object.values(RelationshipType).includes(type) || [marriageDate, divorceDate].some(date => date && !Number.isFinite(Date.parse(date))) || (customLabel && (typeof customLabel !== 'string' || customLabel.length > 160))) { res.status(400).json({ error: 'Review the relationship type, label and dates.' }); return; }
 
     const relationship = await prisma.relationship.create({
       data: {

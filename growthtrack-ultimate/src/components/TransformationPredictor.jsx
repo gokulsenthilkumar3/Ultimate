@@ -1,7 +1,8 @@
 import PageHeader from './ui/PageHeader';
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import useStore from '../store/useStore';
 import { buildMetricForecasts } from '../utils/growthcast';
 import { formatDate, formatMeasurement, formatNumber } from '../utils/userFormatters';
@@ -58,8 +59,8 @@ export default React.memo(function TransformationPredictor({ logs }) {
                     <Tooltip formatter={value => measure(value, prediction.unit)} />
                     <Legend />
                     <ReferenceLine y={prediction.target} stroke="var(--accent)" strokeDasharray="3 3" />
-                    <Line type="linear" dataKey="actual" name="Observed" stroke="var(--accent)" connectNulls={false} />
-                    <Line type="linear" dataKey="projected" name="Linear estimate" stroke="#a78bfa" strokeDasharray="4 3" connectNulls={false} />
+                    <Line type="linear" dataKey="actual" name="Observed" stroke="var(--accent)" connectNulls={false} isAnimationActive={false} />
+                    <Line type="linear" dataKey="projected" name="Linear estimate" stroke="#a78bfa" strokeDasharray="4 3" connectNulls={false} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>}
               </>}

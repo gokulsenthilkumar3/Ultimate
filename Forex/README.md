@@ -4,7 +4,7 @@ Currency-data preparation, model research, saved-model inference and a Streamlit
 
 **Runtime:** Python, Streamlit and FastAPI, with model dependencies in requirements.txt.
 
-**Status:** Canonical Forex service source. Native portal views are a design proposal; useful predictions require compatible data and trained model artifacts.
+**Status:** Native Forex Studio in Ultimate uses cached, bounded Python history endpoints and existing saved artifacts. The independent Streamlit dashboard remains available.
 
 ## Setup
 
@@ -39,6 +39,7 @@ Keep credentials in ignored local environment files or a deployment secret manag
 - For the API, run .venv\Scripts\python.exe -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000.
 - Use a Python version compatible with the pinned dependencies; installation can be substantial and is not performed for the UI demo.
 - Forex-Ensemble-Prediction/ is historical reference source, not a second default application. The preview does not certify model quality or provide investment advice.
+- Native workspace endpoints do not call external AI or train models. Historical fitted outputs are not held-out accuracy or live prices.
 
 ## Workspace documentation
 

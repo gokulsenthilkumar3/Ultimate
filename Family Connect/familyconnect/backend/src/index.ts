@@ -13,7 +13,8 @@ import notificationsRoutes from './routes/notifications.routes';
 import aiRoutes from './routes/ai.routes';
 import { startCronJobs } from './services/cron.service';
 import { globalLimiter, authLimiter } from './middlewares/rateLimiter.middleware';
-import path from 'path';
+import { requireAuth } from './middlewares/auth.middleware';
+import { downloadDocument } from './controllers/documents.controller';
 import { getJwtSecret } from './config/environment';
 
 dotenv.config();
@@ -30,7 +31,7 @@ app.use(express.json({ limit: '2mb' }));   // cap request body size
 app.use(globalLimiter);                    // 200 req/15 min per IP
 
 // Static files
-app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+app.get('/uploads/:filename', requireAuth, downloadDocument);
 
 // Routes
 app.use('/api/v1/auth',          authLimiter, authRoutes);   // stricter limit on auth

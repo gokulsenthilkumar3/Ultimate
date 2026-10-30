@@ -28,6 +28,7 @@ import {registerCaptureScene} from './morphEngine/captureRuntime';
 import DemandRendering from './morphEngine/DemandRendering';
 import ModelLoadStatus from './physique/ModelLoadStatus';
 import ModelReadySignal from './physique/ModelReadySignal';
+import { useKinetic } from './motion/KineticContext';
 
 const policyTier=tier=>tier==='MED'?'BALANCED':tier;
 const runtimeTier=tier=>tier==='BALANCED'?'MED':tier;
@@ -77,6 +78,7 @@ function applyRendererTuning(renderer, lodConfig, exposure) {
 }
 
 function RendererTuning({ lodConfig }) {
+  const kinetic = useKinetic();
   const gl = useThree((state) => state.gl);
   const exposure = use3DStore((state) => state.cinematicState.exposure);
   const setDpr=useThree(state=>state.setDpr);
@@ -84,11 +86,11 @@ function RendererTuning({ lodConfig }) {
   useEffect(() => {
     applyRendererTuning(gl, lodConfig, exposure);
     const policy=TIERS[policyTier(lodConfig.tier)];
-    setDpr(Math.min(window.devicePixelRatio || 1,policy.dprCap));
+    setDpr(Math.min(window.devicePixelRatio || 1, policy.dprCap, kinetic.enabled ? [1, 1.5, 2][kinetic.tier] : 2));
     gl.domElement.setAttribute('data-quality-tier',lodConfig.tier);
     gl.domElement.setAttribute('data-quality-dpr',String(gl.getPixelRatio()));
     gl.domElement.setAttribute('data-quality-shadow-map',String(lodConfig.shadowMapSize || 0));
-  }, [exposure, gl, lodConfig,setDpr]);
+  }, [exposure, gl, lodConfig,setDpr,kinetic.enabled,kinetic.tier]);
 
   return null;
 }
@@ -306,6 +308,7 @@ function useGlCreated(setLodConfig) {
 }
 
 export default function ChamberCanvas({ className = "", style = {}, children = null }) {
+  const kinetic = useKinetic();
   const wrapperRef = useRef(null);
   const [loadStarted] = useState(() => performance.now());
   const [modelReady, setModelReady] = useState(false);
@@ -319,6 +322,10 @@ export default function ChamberCanvas({ className = "", style = {}, children = n
   }, [loadStarted]);
   const qualityStatus = use3DStore((state) => state.rendererQualityTelemetry.status);
   const [lodConfig, setLodConfig] = useState(LOD_CONFIG[GPU_TIERS.MED]);
+  const requestedTier = lodConfig.tier === GPU_TIERS.LOW ? 0 : lodConfig.tier === GPU_TIERS.MED ? 1 : 2;
+  const effectiveTier = Math.min(requestedTier, kinetic.tier);
+  const admitted = LOD_CONFIG[[GPU_TIERS.LOW, GPU_TIERS.MED, GPU_TIERS.HIGH][effectiveTier]];
+  const quality = kinetic.enabled ? { ...admitted, shadowMapSize: effectiveTier < 2 ? null : admitted.shadowMapSize, shadowType: effectiveTier < 2 ? null : admitted.shadowType } : lodConfig;
   const [isIntersecting, setIsIntersecting] = useState(true);
   const [documentVisible, setDocumentVisible] = useState(() => document.visibilityState !== 'hidden');
   const profileReducedMotion = useStore((state) => state.reducedMotion);
@@ -369,14 +376,14 @@ export default function ChamberCanvas({ className = "", style = {}, children = n
           depth:                true,
           preserveDrawingBuffer: true,
         }}
-        dpr={lodConfig.dpr}
+        dpr={quality.dpr}
         camera={{ fov: 30, near: 0.01, far: 100 }}
-        shadows={lodConfig.shadowType ? { type: lodConfig.shadowType } : false}
+        shadows={quality.shadowType ? { type: quality.shadowType } : false}
         frameloop={shouldRender ? "demand" : "never"}
         onCreated={onCreated}
         style={{ width: "100%", height: "100%" }}
       >
-        <CanvasScene lodConfig={lodConfig} reducedMotion={reducedMotion} active={shouldRender} onReady={onModelReady} onFailure={onModelFailure} />
+        <CanvasScene lodConfig={quality} reducedMotion={reducedMotion || (kinetic.enabled && !kinetic.canAnimate)} active={shouldRender} onReady={onModelReady} onFailure={onModelFailure} />
         {children}
       </Canvas>
       {!modelFailed && <ModelLoadStatus ready={modelReady} />}

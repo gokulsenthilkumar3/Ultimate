@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { CheckCircle, AlertCircle, Info, X, AlertTriangle, Trash2, Pencil } from 'lucide-react';
+import { m } from 'framer-motion';
+import { useKinetic } from '../components/motion/KineticContext';
+import { emitCelebration } from '../components/motion/ConfettiHost';
 
 const ToastContext = createContext(null);
 
@@ -16,58 +19,36 @@ const ACTION_ICONS = {
   delete: Trash2,
 };
 
-const COLORS = {
-  success: { bg: 'rgba(79,209,165,0.12)', border: 'rgba(79,209,165,0.3)', icon: '#4FD1A5' },
-  error:   { bg: 'rgba(240,97,107,0.12)', border: 'rgba(240,97,107,0.34)', icon: '#F0616B' },
-  warning: { bg: 'rgba(245,184,76,0.12)', border: 'rgba(245,184,76,0.3)', icon: '#F5B84C' },
-  info:    { bg: 'rgba(90,169,230,0.12)', border: 'rgba(90,169,230,0.3)', icon: '#5AA9E6' },
-};
-
 let toastId = 0;
 
 function ToastItem({ item, dismiss }) {
+  const { enabled, canAnimate, tier } = useKinetic();
+  const Surface = enabled ? m.div : 'div';
   const DefaultIcon = ICONS[item.type] || Info;
   const Icon = item.kind === 'crud' ? (ACTION_ICONS[item.actionType] || DefaultIcon) : DefaultIcon;
-  const colors = COLORS[item.type] || COLORS.info;
-  const accent = item.kind === 'crud' && item.domainAccent ? item.domainAccent : colors.icon;
 
   return (
-    <div
+    <Surface
+      {...(enabled ? { initial: canAnimate && tier > 0 ? { opacity: 0, y: 12 } : false, animate: { opacity: 1, y: 0 }, transition: { duration: canAnimate && tier > 0 ? .32 : 0, ease: [.22, 1, .36, 1] } } : {})}
       className="app-toast"
       data-kind={item.kind}
+      data-tone={item.type}
       role={item.type === 'error' ? 'alert' : 'status'}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '0.6rem',
-        padding: item.kind === 'error' ? '0.9rem 1.1rem' : '0.75rem 1rem',
-        background: colors.bg, border: `1px solid ${colors.border}`,
-        borderLeft: `3px solid ${accent}`, borderRadius: '12px',
-        backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
-        maxWidth: 'min(380px, calc(100vw - 48px))',
-        minWidth: 'min(260px, calc(100vw - 48px))',
-        pointerEvents: 'auto', animation: 'toastIn 0.3s cubic-bezier(0.16,1,0.3,1) both',
-      }}
+      style={{ pointerEvents: 'auto', ...(item.kind === 'crud' && item.domainAccent ? { '--toast-domain-accent': item.domainAccent } : {}) }}
     >
-      <Icon size={16} color={accent} style={{ flexShrink: 0 }} />
-      <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-1)', fontFamily: 'var(--font-body)', lineHeight: 1.4 }}>
+      <span className="app-toast__icon"><Icon size={19} aria-hidden="true" /></span>
+      <span className="app-toast__message">
         {item.message}
       </span>
       {item.action && (
-        <button type="button" onClick={() => { item.action.onClick(); dismiss(item.id); }} style={{
-          background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-1)',
-          padding: '2px 8px', minHeight: '44px', minWidth: '44px', borderRadius: '6px',
-          fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0,
-        }}>
+        <button type="button" className="app-toast__action" onClick={() => { item.action.onClick(); dismiss(item.id); }}>
           {item.action.label}
         </button>
       )}
-      <button type="button" onClick={() => dismiss(item.id)} style={{
-        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)',
-        padding: '2px', minWidth: '44px', minHeight: '44px', alignItems: 'center',
-        justifyContent: 'center', display: 'flex', flexShrink: 0,
-      }} aria-label="Dismiss">
-        <X size={14} />
+      <button type="button" className="app-toast__dismiss" onClick={() => dismiss(item.id)} aria-label="Dismiss">
+        <X size={15} aria-hidden="true" />
       </button>
-    </div>
+    </Surface>
   );
 }
 
@@ -93,6 +74,7 @@ export function ToastProvider({ children }) {
     if (existingId) return existingId;
     const id = ++toastId;
     const item = { id, message, type, kind, ...options };
+    if (type === 'success') emitCelebration();
     activeToastKeys.current.set(key, id);
     toastKeysById.current.set(id, key);
     setToasts((previous) => [...previous.slice(-2), item]);

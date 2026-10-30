@@ -4,7 +4,7 @@ Equity instruments, market charts, watchlists and market-data API source.
 
 **Runtime:** Next.js, React, Firebase/Supabase integrations and a separate pipeline folder.
 
-**Status:** Existing application with a planned native portal UI. Provider availability depends on configuration.
+**Status:** Native market watch in Ultimate; independent Next.js source and market pipeline retained. Quote availability depends on the configured provider.
 
 ## Setup
 

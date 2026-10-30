@@ -6,6 +6,8 @@ import LandingPage from './LandingPage';
 import LoginPage from './LoginPage';
 import PrivacyPage from './PrivacyPage';
 import TermsPage from './TermsPage';
+import useStore from '../store/useStore';
+import { setPlayfulMotionPaused } from '../hooks/usePlayfulMotion';
 
 const { signIn } = vi.hoisted(() => ({ signIn: vi.fn() }));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ signIn }) }));
@@ -27,9 +29,42 @@ function renderLogin(from) {
   );
 }
 
-beforeEach(() => { signIn.mockReset(); });
+beforeEach(() => { signIn.mockReset(); setPlayfulMotionPaused(false); useStore.setState({ reducedMotion: false }); });
 
 describe('public pages', () => {
+  it('reacts to password focus, preserves entered fields on reveal, and keeps pause separate from sign in', async () => {
+    const user = userEvent.setup();
+    renderLogin({ pathname: '/finance/overview' });
+    await user.type(screen.getByRole('textbox', { name: 'Email address' }), 'owner@example.com');
+    const password = screen.getByLabelText('Password', { exact: false, selector: 'input' });
+    await user.type(password, 'fictional-password');
+    expect(document.querySelectorAll('.login-crew .character-art[data-eyes-closed="true"]')).toHaveLength(3);
+    expect(screen.getByText('A little privacy. We’ll look away.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(password).toHaveAttribute('type', 'text');
+    expect(password).toHaveValue('fictional-password');
+    await user.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(password).toHaveAttribute('type', 'password');
+    await user.click(screen.getByRole('button', { name: 'Pause motion' }));
+    expect(document.querySelector('.gt-public--login')).toHaveAttribute('data-playful-motion', 'false');
+    expect(document.querySelectorAll('.animated-logo[data-animate="true"], .character-scene[data-animate="true"]')).toHaveLength(0);
+    expect(screen.getByRole('textbox', { name: 'Email address' })).toHaveValue('owner@example.com');
+    expect(password).toHaveValue('fictional-password');
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it('keeps sign in available and the crew responsive when reduced motion is enabled', async () => {
+    useStore.setState({ reducedMotion: true });
+    signIn.mockResolvedValue({ error: null });
+    renderLogin({ pathname: '/finance/overview' });
+    expect(screen.getByRole('button', { name: 'Reduced motion is on' })).toBeDisabled();
+    await userEvent.type(screen.getByRole('textbox', { name: 'Email address' }), 'owner@example.com');
+    await userEvent.type(screen.getByLabelText(/Password/), 'fictional-password');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByTestId('destination')).toHaveTextContent('/finance/overview');
+    expect(signIn).toHaveBeenCalledTimes(1);
+  });
+
   it('restores the complete protected destination after owner sign in', async () => {
     signIn.mockResolvedValue({ error: null });
     renderLogin({ pathname: '/finance/transactions', search: '?category=Food', hash: '#record' });
@@ -75,7 +110,7 @@ describe('public pages', () => {
 
   it('provides owner-only entry and readable legal destinations', () => {
     const { rerender } = render(<MemoryRouter><LandingPage /></MemoryRouter>);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Make room for what matters.');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Less noise.More you.');
     expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('href', '#public-content');
     expect(document.getElementById('public-content')).toHaveAttribute('tabindex', '-1');
     expect(screen.getAllByRole('link', { name: /Owner sign in/i }).length).toBeGreaterThan(0);

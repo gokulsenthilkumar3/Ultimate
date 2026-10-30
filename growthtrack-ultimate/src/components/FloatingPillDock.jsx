@@ -6,6 +6,7 @@ import useDialogFocus from '../hooks/useDialogFocus';
 import SearchField from './ui/SearchField';
 import useNavigationFoundation, { useNavigationMode } from './ui/useNavigationFoundation';
 import useNavigationOverlay from './ui/useNavigationOverlay';
+import SelectionHighlight from './motion/SelectionHighlight';
 
 /** Four saved-order destinations plus searchable access to all six areas. */
 export default function FloatingPillDock({ activeTab }) {
@@ -27,9 +28,9 @@ export default function FloatingPillDock({ activeTab }) {
   return <div className="gt-mobile-navigation" data-responsive-foundation>
     <nav className="gt-mobile-dock" aria-label="Quick navigation" data-testid="bottom-nav">
       {quickAreas.map(area => { const Icon = area.icon; return <Link key={area.id} to={area.path}
-        className={`gt-mobile-destination${activeGroup === area.id ? ' is-active' : ''}`} aria-label={area.label}
+        className={`gt-mobile-destination${activeGroup === area.id ? ' is-active' : ''}`} data-area={area.id} aria-label={area.label}
         aria-current={activeGroup === area.id ? 'location' : null}>
-        <Icon size={21} aria-hidden="true" /><span>{area.label}</span>
+        <SelectionHighlight id={`${id}-dock`} active={activeGroup === area.id} /><Icon size={21} aria-hidden="true" /><span>{area.label}</span>
       </Link>; })}
       <button type="button" className={!quickAreas.some(area => area.id === activeGroup) ? 'is-active' : ''}
         onClick={() => { setQuery(''); setMenuOpen(true); }} aria-label="More" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? `${id}-menu` : undefined}>

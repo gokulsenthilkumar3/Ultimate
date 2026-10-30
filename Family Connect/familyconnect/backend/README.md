@@ -4,7 +4,7 @@ Family authentication, trees, relationships, events, documents and notification 
 
 **Runtime:** Express, TypeScript, Prisma and PostgreSQL; optional Redis and AI integration.
 
-**Status:** Existing backend. Preserve its per-family permissions during portal migration.
+**Status:** Existing Family API powers native Ultimate views. Live tree roles guard member edits, relationships, events and private document access. No schema migration is part of native UI consolidation.
 
 ## Setup
 

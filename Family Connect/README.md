@@ -4,7 +4,7 @@ Family trees, member profiles, memories, shared events and documents.
 
 **Runtime:** Frontend and backend packages in familyconnect/.
 
-**Status:** Existing application targeted for native portal views.
+**Status:** Native Ultimate family views use the existing Family API, account connection, permissions and PostgreSQL records. Standalone builds remain available.
 
 ## Setup
 

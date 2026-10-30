@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import useStore from '../store/useStore';
+import useKineticPreferences from './useKineticPreferences';
 
 export function resolveAppearance(mode, darkSystem) {
   return ['light', 'dark', 'amoled'].includes(mode) ? mode : darkSystem ? 'dark' : 'light';
 }
 
 export default function useDesignPreferences() {
+  const presentation = useKineticPreferences();
   const preference = useStore(state => state.theme);
   const palette = useStore(state => state.palette);
   const motionPreference = useStore(state => state.reducedMotion);
@@ -22,8 +24,9 @@ export default function useDesignPreferences() {
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = theme; root.dataset.palette = palette; root.dataset.reducedMotion = String(reducedMotion);
+    root.dataset.uiStyle = presentation.style;
     root.style.colorScheme = theme === 'light' ? 'light' : 'dark';
     root.style.backgroundColor = '';
-  }, [theme, palette, reducedMotion]);
-  return { theme, reducedMotion };
+  }, [theme, palette, reducedMotion, presentation.style]);
+  return { theme, reducedMotion, uiStyle: presentation.style };
 }

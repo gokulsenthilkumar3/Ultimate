@@ -29,16 +29,16 @@ The demo's previously combined screen file is split into `growthtrack-ultimate/s
 - Reusable controls, tables, dialogs and chart primitives stay shared in `components.jsx`; application rules, data permissions and service connections belong to their owning domains.
 - FinSync and OxFin reuse customer-admin presentation while product identity and scoping remain explicit. Their customer-facing applications retain separate builds.
 
-The [approved production rollout](plans/2026-10-28-production-ui.md) now applies the shared design in Ultimate and adds a dedicated customer-admin domain. Existing runtime workflows are retained; native companion and restricted customer adapters still need their own integrations. For subsequent migration, use `src/domains/{growth,equity,forex,family,customer-admin}` with local route components, query/view models, domain styles and API clients. Keep page-specific CSS with its domain and common tokens/primitives in the shared UI layer. Enforce dependencies toward shared contracts and primitives; avoid sibling-domain implementation imports and circular dependencies. Do not introduce a new service solely to split source files.
+The [approved production rollout](plans/2026-10-28-production-ui.md) applies the shared design in Ultimate and adds a dedicated customer-admin domain. The [native modules implementation](plans/2026-10-30-native-modules.md) now loads NiftyLens, Family Connect and Forex from `src/domains/{equity,family,forex}`. Their frames, motion, paged tables and lightweight SVG charts share `src/domains/native`; none imports fictional demo data. Market-provider configuration, Family identity/roles/files and Python models remain with their owners. Restricted FinSync/OxFin customer adapters remain separate work. Keep page-specific rules with their domain and common tokens/primitives in the shared UI layer. Enforce dependencies toward shared contracts and primitives; avoid sibling-domain implementation imports and circular dependencies.
 
 ## Runtime and release ownership
 
 | Owner | Portal responsibility | Separate runtime responsibility |
 | --- | --- | --- |
 | Ultimate | Shell, owner session, work/growth views, admin BFF, desktop host | Existing Ultimate API and persistence |
-| Equity | Native market views after approval | Market feed/pipeline adapters and provider configuration |
-| Family | Native tree, memory, event and document views after approval | Family permissions, document access and persistence |
-| Forex | Native research and model/evaluation views after approval | Python inference, evaluation and training |
+| Equity | Native market watch, movers, quote details and source status | Public price-cache adapter, pipeline and provider configuration |
+| Family | Native tree, people, memories, events, vault and access views | Existing account/JWT, live tree permissions, private files and persistence |
+| Forex | Native model, recent/history, comparison and volatility views | Cached Python inference, saved artifacts and historical dataset; training is separate |
 | FinSync | FinSync customer-admin views | Customer web/mobile, product identity, finance data |
 | OxFin | OxFin customer-admin views | Customer web, product identity, wallet/payment/investment APIs |
 

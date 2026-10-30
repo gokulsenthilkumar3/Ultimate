@@ -4,7 +4,7 @@ A desktop workspace for personal growth, work, family, equity and Forex research
 
 **Runtime:** Node.js/npm workspace; Ultimate uses React, Vite and Express. Companion services retain their current frameworks.
 
-**Status:** The existing application runs through a shared local launcher. A new isolated UI demo is ready for review; native module consolidation and real customer-admin adapters are planned.
+**Status:** NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; restricted customer-admin adapters remain separate work.
 
 ## Setup
 
@@ -18,7 +18,7 @@ Copy-Item growthtrack-ultimate/.env.example growthtrack-ultimate/.env
 ## Run
 
 ```powershell
-npm run dev:design
+npm run dev
 ```
 
 ## Configuration
@@ -41,13 +41,14 @@ node --test tests/code-context.test.mjs
 ## Scope and limitations
 
 - Design demo: http://127.0.0.1:5410/admin-demo.html. Use All pages & review to inspect every page, tab, theme and UI state.
-- Current live workspace: npm run dev:core, then http://127.0.0.1:5000/Ultimate/. The existing full launcher is npm run dev.
+- Live workspace: npm run dev, then http://127.0.0.1:5000/Ultimate/. This starts Ultimate, the gateway, database console, Family API and Forex API. npm run dev:all also runs the standalone customer and legacy UIs.
 - Customer applications remain separate. The demo's customer records are fictional, with no product APIs connected.
 - Local code retrieval: npm run context:index, then npm run context:search -- "question or symbol". Embeddings are optional planned work.
 - Tested Node runtime for this change: 24.12.0. Python and external data services are required only for their respective applications.
 
 ## Workspace documentation
 
+- [Complete UI workflow and style guide](docs/UI_WORKFLOW_AND_STYLE_GUIDE.md)
 - [Application directory](docs/APPLICATIONS.md)
 - [Ownership and independent builds](docs/BUILD_BOUNDARIES.md)
 - [Desktop redesign and architecture](docs/plans/2026-10-28-admin-redesign.md)

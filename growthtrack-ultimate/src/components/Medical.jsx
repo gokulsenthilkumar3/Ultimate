@@ -11,10 +11,8 @@ import useStore, {
 import { AlertCircle, Activity, Droplets, Stethoscope, Plus, Trash2, Printer, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { EMPTY_LIST } from '../lib/emptyValues';
-import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip,
-  CartesianGrid, ReferenceLine,
-} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { formatDate, formatMeasurement, formatNumber, formatTemperature } from '../utils/userFormatters';
 
 const VITAL_TYPES = ['Blood Pressure', 'Heart Rate', 'Blood Sugar', 'SpO2', 'Temperature', 'Weight'];
@@ -152,7 +150,7 @@ function VitalsTimeline({ vitalsLogs, user }) {
               )}
               <Line type="monotone" dataKey="value" stroke={meta.color} strokeWidth={2.5}
                     dot={{ r: 4, fill: meta.color, strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: meta.color }} />
+                    activeDot={{ r: 6, fill: meta.color }} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
