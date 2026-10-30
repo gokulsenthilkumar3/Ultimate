@@ -245,8 +245,8 @@ function ShoppingWorkspace() {
           { label: 'Purchased', val: stats.purchased, color: '#10b981' },
           { label: 'High priority', val: stats.highPri, color: '#f87171' },
           { label: 'Price drops', val: stats.priceDrop, color: '#fbbf24' },
-        ].map(s => (
-          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} size="1.5rem" labelSize="0.62rem" padding="0.85rem" labelGap="3px" />
+        ].map((s, index) => (
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} size="1.5rem" labelSize="0.62rem" padding="0.85rem" labelGap="3px" lead={index === 0} />
         ))}
       </div>
 

@@ -395,13 +395,13 @@ export default React.memo(function HabitsMatrix() {
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total Habits', val: habits.length, color: 'var(--accent)' },
           { label: 'Done Today',   val: totalActiveToday, color: '#10b981' },
+          { label: 'Total Habits', val: habits.length, color: 'var(--accent)' },
           { label: '28-day Avg',
             val: habits.length > 0 ? Math.round(habits.reduce((s, h) => s + completionRate(h.id), 0) / habits.length) + '%' : '0%',
             color: '#0ea5e9' },
-        ].map(s => (
-          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} />
+        ].map((s, index) => (
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} lead={index === 0} />
         ))}
       </div>
 

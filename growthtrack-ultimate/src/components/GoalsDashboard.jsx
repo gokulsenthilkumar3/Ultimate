@@ -381,13 +381,13 @@ function GoalsWorkspace() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
         {[
-          { label: 'Total',     val: stats.total,              color: 'var(--text-1)' },
           { label: 'Active',    val: stats.active,             color: '#34d399' },
+          { label: 'Total',     val: stats.total,              color: 'var(--text-1)' },
           { label: 'Done',      val: stats.completed,          color: '#60a5fa' },
           { label: 'Avg %',     val: `${stats.avgProgress}%`,  color: '#fbbf24' },
           { label: 'Due this week', val: stats.dueSoon,         color: '#fb923c' },
-        ].map(s => (
-          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} labelSize="0.68rem" />
+        ].map((s, index) => (
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} labelSize="0.68rem" lead={index === 0} />
         ))}
       </div>
       {focusGoal && <div className="glass-card" style={{ marginBottom: '1rem', padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--accent)' }}><div><p className="label-caps" style={{ color: 'var(--accent)', marginBottom: 2 }}>Focus goal</p><strong>{focusGoal.title}</strong><span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}> · {getProgress(focusGoal)}% complete</span></div><button type="button" className="btn-sm" onClick={openFocusPlan}>Open plan</button></div>}
