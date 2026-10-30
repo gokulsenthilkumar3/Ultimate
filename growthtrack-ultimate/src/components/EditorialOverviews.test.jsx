@@ -5,6 +5,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { localDateKey } from '../lib/metricSeries';
 import useStore from '../store/useStore';
 import Overview from './Overview';
+import KineticProvider from './motion/KineticProvider';
+import { setKineticPreferences } from '../hooks/useKineticPreferences';
 import WellnessCommand from './WellnessCommand';
 import WorkspaceHub from './WorkspaceHub';
 import LifeCommand from './LifeCommand';
@@ -31,6 +33,43 @@ describe('editorial overviews', () => {
     expect(screen.getByRole('link', { name: /Open tasks/ })).toHaveAttribute('href', '/workspace/tasks');
     expect(within(screen.getByText('Open tasks', { selector: 'dt' }).parentElement).getByText('1')).toBeVisible();
     expect(screen.queryByText(/digital twin score|health score/i)).toBeNull();
+  });
+
+  describe('kinetic headline figure', () => {
+    afterEach(() => setKineticPreferences({ style: 'kinetic', lite: false }));
+    const dueToday = count => {
+      const today = localDateKey(new Date());
+      useStore.setState({ user: { id: 'owner', dateFormat: 'YYYY-MM-DD', tasks: { pending: Array.from({ length: count }, (_, id) => ({ id, title: 'Task ' + id, dueDate: today })), completed: [] } } });
+    };
+
+    it('groups the label with a grouped figure and leaves the pause control to the header', () => {
+      setKineticPreferences({ style: 'kinetic', lite: false });
+      dueToday(1234);
+      show(<KineticProvider><Overview /></KineticProvider>);
+      const hero = screen.getByRole('group', { name: 'Tasks due or overdue' });
+      expect(within(hero).getAllByText('1,234').length).toBeGreaterThan(0);
+      expect(hero).toHaveStyle({ '--hero-chars': '5' });
+      expect(within(hero).queryByRole('button')).toBeNull();
+      expect(screen.queryByText(/clear view of saved work/i)).toBeNull();
+      expect(screen.queryByText(/tasks? due or overdue$/)).toBeNull();
+    });
+
+    it('keeps the playful fallback copy, count line and motion control', () => {
+      setKineticPreferences({ style: 'playful', lite: false });
+      dueToday(2);
+      show(<KineticProvider><Overview /></KineticProvider>);
+      expect(screen.queryByRole('group', { name: 'Tasks due or overdue' })).toBeNull();
+      expect(screen.getByText('A clear view of saved work and wellness records.')).toBeVisible();
+      expect(screen.getByText('2 tasks due or overdue')).toBeVisible();
+      expect(screen.getByRole('button', { name: /pause motion|play motion|reduced motion/i })).toBeVisible();
+    });
+
+    it('says so when there are no habits instead of reporting 0 of 0', () => {
+      setKineticPreferences({ style: 'kinetic', lite: false });
+      show(<KineticProvider><Overview /></KineticProvider>);
+      expect(screen.getByText('No habits tracked yet')).toBeVisible();
+      expect(screen.queryByText(/0 of 0 habits/)).toBeNull();
+    });
   });
 
   it('counts manual projects and notes from their owning collections', () => {

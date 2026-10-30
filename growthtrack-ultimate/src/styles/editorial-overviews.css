@@ -257,10 +257,14 @@
 .editorial-overview__activity li:hover { background: color-mix(in srgb, var(--gt-action) 4%, var(--gt-surface)); }
 .editorial-overview__activity a {
   min-inline-size: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gt-space-2);
   color: var(--gt-text);
   font-weight: 590;
   overflow-wrap: anywhere;
 }
+.editorial-overview__activity a > svg { flex: none; color: var(--gt-action); }
 .editorial-overview__activity :is(time, span) {
   flex: none;
   color: var(--gt-muted);
@@ -276,6 +280,7 @@
   font-size: .88rem;
   line-height: 1.5;
 }
+.editorial-overview__empty > p { margin: 0; }
 .editorial-overview__links { margin-block-start: var(--gt-space-3) !important; }
 .editorial-overview__links li { border-block-start: 1px solid var(--gt-border); }
 .editorial-overview__links a {

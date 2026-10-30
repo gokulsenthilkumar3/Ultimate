@@ -255,7 +255,7 @@ try {
           await profiler.detach();
         }
         const rendered = pageInfo.public || metrics.shell === pageInfo.id;
-        if (run === 0 && args.includes('--screenshots')) await page.screenshot({ path: path.join(output, 'screenshots', label, `${pageInfo.id}.png`) });
+        if (run === 0 && args.includes('--screenshots')) await page.screenshot({ path: path.join(output, 'screenshots', label, `${pageInfo.id}.png`), fullPage: args.includes('--full-page') });
         samples.push({ ...metrics, interactions, memorySoak, maxCompositedLayers: maxLayers, ...(layerDetails ? { peakLayerDetails: await peakLayerDetails } : {}), browserConfig: { width, cpuThrottle, motion, presentation, appearance, palette, lite, network, settleMs }, stateRequests, childDocuments, pendingRequests: [...pending].map(request => ({ path: new URL(request.url()).pathname, method: request.method(), type: request.resourceType() })), failure: failure || (metrics.componentError ? 'Component error boundary rendered' : !rendered ? 'Unexpected route or authentication wall' : metrics.horizontalOverflow ? 'Page horizontal overflow' : metrics.activeAnimations > metrics.animationLimit ? 'Decorative animation budget exceeded' : null), errors });
         const sample = samples.at(-1);
         if (sample.failure || errors.length) console.warn(JSON.stringify({ page: pageInfo.id, run: run + 1, failure: sample.failure, errors, pendingRequests: sample.pendingRequests }));

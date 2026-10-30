@@ -798,20 +798,20 @@ This is a static literal-import inventory. Computed imports, runtime DOM constru
 | Link | Your space | {tabMeta('overview').canonicalPath} | [components/motion/WorkspaceChapter.jsx:24](../growthtrack-ultimate/src/components/motion/WorkspaceChapter.jsx#L24) |
 | a | {props.children} | {props.href} | [components/Notes.jsx:829](../growthtrack-ultimate/src/components/Notes.jsx#L829) |
 | Link | Open source: {item.source.label} | {item.href} | [components/NotificationCenter.jsx:82](../growthtrack-ultimate/src/components/NotificationCenter.jsx#L82) |
-| Link | Review tasks ↗ | {featurePath('tasks')} | [components/Overview.jsx:88](../growthtrack-ultimate/src/components/Overview.jsx#L88) |
-| Link | {focus.label} → | {focus.href} | [components/Overview.jsx:91](../growthtrack-ultimate/src/components/Overview.jsx#L91) |
-| Link | Explore analytics | {featurePath('analytics')} | [components/Overview.jsx:105](../growthtrack-ultimate/src/components/Overview.jsx#L105) |
-| Link | {item.title} | {item.href} | [components/Overview.jsx:106](../growthtrack-ultimate/src/components/Overview.jsx#L106) |
-| Link | Action Center ↗ | {featurePath('actions')} | [components/Overview.jsx:112](../growthtrack-ultimate/src/components/Overview.jsx#L112) |
-| Link | Tasks ↗ | {featurePath('tasks')} | [components/Overview.jsx:113](../growthtrack-ultimate/src/components/Overview.jsx#L113) |
-| Link | Habits ↗ | {featurePath('habits', 'today')} | [components/Overview.jsx:114](../growthtrack-ultimate/src/components/Overview.jsx#L114) |
-| Link | Goals ↗ | {featurePath('goals', 'active')} | [components/Overview.jsx:115](../growthtrack-ultimate/src/components/Overview.jsx#L115) |
-| Link | Training ↗ | {featurePath('training', 'logger')} | [components/Overview.jsx:116](../growthtrack-ultimate/src/components/Overview.jsx#L116) |
-| Link | Body model ↗ | {featurePath('physique', '3d')} | [components/Overview.jsx:117](../growthtrack-ultimate/src/components/Overview.jsx#L117) |
-| Link | Finance ↗ | {featurePath('finance')} | [components/Overview.jsx:118](../growthtrack-ultimate/src/components/Overview.jsx#L118) |
-| Link | Portfolio ↗ | {featurePath('portfolio')} | [components/Overview.jsx:119](../growthtrack-ultimate/src/components/Overview.jsx#L119) |
-| Link | Profile ↗ | {featurePath('profile')} | [components/Overview.jsx:120](../growthtrack-ultimate/src/components/Overview.jsx#L120) |
-| Link | Agents ↗ | {featurePath('ai')} | [components/Overview.jsx:121](../growthtrack-ultimate/src/components/Overview.jsx#L121) |
+| Link | Review tasks ↗ | {featurePath('tasks')} | [components/Overview.jsx:89](../growthtrack-ultimate/src/components/Overview.jsx#L89) |
+| Link | {focus.label} → | {focus.href} | [components/Overview.jsx:92](../growthtrack-ultimate/src/components/Overview.jsx#L92) |
+| Link | Explore analytics | {featurePath('analytics')} | [components/Overview.jsx:106](../growthtrack-ultimate/src/components/Overview.jsx#L106) |
+| Link | {item.title} | {item.href} | [components/Overview.jsx:107](../growthtrack-ultimate/src/components/Overview.jsx#L107) |
+| Link | Action Center ↗ | {featurePath('actions')} | [components/Overview.jsx:113](../growthtrack-ultimate/src/components/Overview.jsx#L113) |
+| Link | Tasks ↗ | {featurePath('tasks')} | [components/Overview.jsx:114](../growthtrack-ultimate/src/components/Overview.jsx#L114) |
+| Link | Habits ↗ | {featurePath('habits', 'today')} | [components/Overview.jsx:115](../growthtrack-ultimate/src/components/Overview.jsx#L115) |
+| Link | Goals ↗ | {featurePath('goals', 'active')} | [components/Overview.jsx:116](../growthtrack-ultimate/src/components/Overview.jsx#L116) |
+| Link | Training ↗ | {featurePath('training', 'logger')} | [components/Overview.jsx:117](../growthtrack-ultimate/src/components/Overview.jsx#L117) |
+| Link | Body model ↗ | {featurePath('physique', '3d')} | [components/Overview.jsx:118](../growthtrack-ultimate/src/components/Overview.jsx#L118) |
+| Link | Finance ↗ | {featurePath('finance')} | [components/Overview.jsx:119](../growthtrack-ultimate/src/components/Overview.jsx#L119) |
+| Link | Portfolio ↗ | {featurePath('portfolio')} | [components/Overview.jsx:120](../growthtrack-ultimate/src/components/Overview.jsx#L120) |
+| Link | Profile ↗ | {featurePath('profile')} | [components/Overview.jsx:121](../growthtrack-ultimate/src/components/Overview.jsx#L121) |
+| Link | Agents ↗ | {featurePath('ai')} | [components/Overview.jsx:122](../growthtrack-ultimate/src/components/Overview.jsx#L122) |
 | Link | GrowthTrack Home | {tabMeta('overview').canonicalPath} | [components/PremiumSidebar.jsx:48](../growthtrack-ultimate/src/components/PremiumSidebar.jsx#L48) |
 | Link | Workspace overview | {tabMeta('overview').canonicalPath} | [components/PremiumSidebar.jsx:54](../growthtrack-ultimate/src/components/PremiumSidebar.jsx#L54) |
 | Link | {area.label} | {area.path} | [components/PremiumSidebar.jsx:57](../growthtrack-ultimate/src/components/PremiumSidebar.jsx#L57) |
@@ -1057,7 +1057,7 @@ This is a static literal-import inventory. Computed imports, runtime DOM constru
 | textarea | What's on your mind today? | textarea | {e =&gt; { setNote(e.target.value); setSaved(false); }} | [components/MindWellness.jsx:712](../growthtrack-ultimate/src/components/MindWellness.jsx#L712) |
 | select | Animation speed | select | {event=&gt;setAnimationSpeed(Number(event.target.value))} | [components/morphEngine/AnimationPanel.jsx:37](../growthtrack-ultimate/src/components/morphEngine/AnimationPanel.jsx#L37) |
 | input | Advanced animation speed | range | {event=&gt;setAnimationSpeed(SPEED_STEPS[Number(event.target.value)])} | [components/morphEngine/AnimationPanel.jsx:38](../growthtrack-ultimate/src/components/morphEngine/AnimationPanel.jsx#L38) |
-| MotionToggle | (label/legend supplied by parent) | MotionToggle | (native form or component props) | [components/motion/CharacterScene.jsx:54](../growthtrack-ultimate/src/components/motion/CharacterScene.jsx#L54) |
+| MotionToggle | (label/legend supplied by parent) | MotionToggle | (native form or component props) | [components/motion/CharacterScene.jsx:55](../growthtrack-ultimate/src/components/motion/CharacterScene.jsx#L55) |
 | input | Choose Markdown file | file | {previewImport} | [components/Notes.jsx:642](../growthtrack-ultimate/src/components/Notes.jsx#L642) |
 | input | Search notes | input | {e =&gt; { setSearch(e.target.value); changeListPage(1); }} | [components/Notes.jsx:653](../growthtrack-ultimate/src/components/Notes.jsx#L653) |
 | input | Note title | input | {e =&gt; setDraft(d =&gt; ({ ...d, title: e.target.value }))} | [components/Notes.jsx:769](../growthtrack-ultimate/src/components/Notes.jsx#L769) |
@@ -2354,7 +2354,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgb(15 33 25 / .24) | [styles/design-tokens.css:26](../growthtrack-ultimate/src/styles/design-tokens.css#L26), [design/tokens.ts:10](../growthtrack-ultimate/src/design/tokens.ts#L10) |
 | rgb(18 32 24 / .12) | [styles/editorial-components.css:381](../growthtrack-ultimate/src/styles/editorial-components.css#L381) |
 | rgb(18 32 24 / .42) | [styles/editorial-components.css:415](../growthtrack-ultimate/src/styles/editorial-components.css#L415) |
-| rgb(5 16 10 / .62) | [styles/kinetic-layout.css:97](../growthtrack-ultimate/src/styles/kinetic-layout.css#L97) |
+| rgb(5 16 10 / .62) | [styles/kinetic-layout.css:106](../growthtrack-ultimate/src/styles/kinetic-layout.css#L106) |
 | rgb(5 16 10 / .65) | [styles/kinetic-layout.css:34](../growthtrack-ultimate/src/styles/kinetic-layout.css#L34) |
 | rgba(0, 0, 0, .18) | [styles/ultimate-ui.css:19](../growthtrack-ultimate/src/styles/ultimate-ui.css#L19) |
 | rgba(0, 0, 0, .3) | [styles/ultimate-ui.css:19](../growthtrack-ultimate/src/styles/ultimate-ui.css#L19) |
