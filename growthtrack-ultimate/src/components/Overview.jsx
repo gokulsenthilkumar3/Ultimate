@@ -8,7 +8,7 @@ import { localDateKey } from '../lib/metricSeries';
 import { formatDate, formatNumber } from '../utils/userFormatters';
 import AnimatedNumber from './ui/AnimatedNumber';
 import { useKinetic } from './motion/KineticContext';
-import { Activity, CheckSquare, Target } from 'lucide-react';
+import { Activity, CheckSquare, Moon, Target } from 'lucide-react';
 
 const EMPTY = Object.freeze([]);
 const asList = value => Array.isArray(value) ? value : EMPTY;
@@ -41,6 +41,7 @@ export default function Overview() {
   const activeGoals = goals.filter(goal => String(goal?.status).toLowerCase() === 'active');
   const nextHabit = habits.find(habit => !(habit.completed_dates || []).includes(today)
     && !(habitLogs[habit.id] || []).some(log => dateKey(log.date) === today && log.completed !== false));
+  const dueText = formatNumber(due.length, user, { maximumFractionDigits: 0 });
   const focus = due[0] ? {
     title: due[0].title || due[0].name || 'Untitled task',
     description: taskDate(due[0]) < today ? 'This task is overdue.' : 'This task is due today.',
@@ -65,33 +66,33 @@ export default function Overview() {
   const activity = [
     ...tasks.filter(isDone).map(task => ({
       key: 'task-' + task.id, title: 'Completed ' + (task.title || task.name || 'a task'),
-      date: completedDate(task), href: featurePath('tasks'),
+      date: completedDate(task), href: featurePath('tasks'), Icon: CheckSquare,
     })),
     ...metrics.map((log, index) => ({
       key: 'metric-' + (log.id ?? index), title: 'Measurement dated',
-      date: log.date, href: featurePath('physique', 'history'),
+      date: log.date, href: featurePath('physique', 'history'), Icon: Activity,
     })),
     ...sleep.map((log, index) => ({
       key: 'sleep-' + (log.id ?? index), title: 'Sleep entry dated',
-      date: log.date, href: featurePath('sleep', 'history'),
+      date: log.date, href: featurePath('sleep', 'history'), Icon: Moon,
     })),
   ].filter(item => dateKey(item.date)).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 4);
 
   return <section className="module-page editorial-overview editorial-overview--insights playful-overview" data-playful-motion={String(canAnimate)} aria-labelledby="insights-overview-title">
     <header className="editorial-overview__masthead">
       <div><p className="editorial-overview__eyebrow">Insights / Overview</p><h1 id="insights-overview-title">Your day, in focus</h1>
-        <p className="editorial-overview__subtitle">A clear view of saved work and wellness records.</p></div>
+        {!enabled && <p className="editorial-overview__subtitle">A clear view of saved work and wellness records.</p>}</div>
       {!enabled && <OverviewCompanion kind="siren" />}
       <p className="editorial-overview__asof">As of {formatDate(today, user, { style: 'long', weekday: true })}</p>
     </header>
     <div className="kinetic-overview-focus">
-    {enabled && <div className="kinetic-hero-metric"><span className="kinetic-hero-metric__label">Tasks due or overdue</span><strong className="kinetic-hero-metric__value"><AnimatedNumber value={due.length} format={value => formatNumber(Math.round(value), user, { maximumFractionDigits: 0 })} /></strong><Link to={featurePath('tasks')}>Review tasks <span aria-hidden="true">↗</span></Link><OverviewCompanion kind="blip" /></div>}
+    {enabled && <div className="kinetic-hero-metric" role="group" aria-labelledby="insights-due-label" style={{ '--hero-chars': dueText.length }}><span id="insights-due-label" className="kinetic-hero-metric__label">Tasks due or overdue</span><strong className="kinetic-hero-metric__value"><AnimatedNumber value={due.length} format={value => formatNumber(Math.round(value), user, { maximumFractionDigits: 0 })} /></strong><Link to={featurePath('tasks')}>Review tasks <span aria-hidden="true">↗</span></Link><OverviewCompanion kind="blip" toggle={false} /></div>}
     <section className="editorial-overview__lead" aria-labelledby="insights-next-title">
       <div><p className="editorial-overview__eyebrow">Next useful action</p><h2 id="insights-next-title">{focus.title}</h2><p>{focus.description}</p>
         <Link className="editorial-overview__primary" to={focus.href}>{focus.label}<span aria-hidden="true"> →</span></Link></div>
       <div className="editorial-overview__lead-note"><span className="editorial-overview__note-label">On the record</span>
-        <p>{due.length ? formatNumber(due.length, user, { maximumFractionDigits: 0 }) + ' task' + (due.length === 1 ? '' : 's') + ' due or overdue' : 'No tasks due or overdue today'}</p>
-        <p>{formatNumber(checked, user, { maximumFractionDigits: 0 })} of {formatNumber(habits.length, user, { maximumFractionDigits: 0 })} habits checked today</p></div>
+        {!enabled && <p>{due.length ? dueText + ' task' + (due.length === 1 ? '' : 's') + ' due or overdue' : 'No tasks due or overdue today'}</p>}
+        <p>{habits.length ? formatNumber(checked, user, { maximumFractionDigits: 0 }) + ' of ' + formatNumber(habits.length, user, { maximumFractionDigits: 0 }) + ' habits checked today' : 'No habits tracked yet'}</p></div>
     </section>
     </div>
     <dl className="editorial-overview__facts" aria-label="Saved record summary">
@@ -103,8 +104,8 @@ export default function Overview() {
       <section className="editorial-overview__section" aria-labelledby="insights-activity-title">
         <div className="editorial-overview__section-heading"><div><p className="editorial-overview__eyebrow">Your recent activity</p><h2 id="insights-activity-title">Latest dated activity</h2></div>
           <Link to={featurePath('analytics')}>Explore analytics</Link></div>
-        {activity.length ? <ol className="editorial-overview__activity">{activity.map(item => <li key={item.key}><Link to={item.href}>{item.title}</Link><time dateTime={item.date}>{formatDate(item.date, user)}</time></li>)}</ol>
-          : <p className="editorial-overview__empty">No dated completions or wellness entries yet. Records appear here after you save them.</p>}
+        {activity.length ? <ol className="editorial-overview__activity">{activity.map(item => <li key={item.key}><Link to={item.href}><item.Icon size={16} aria-hidden="true" />{item.title}</Link><time dateTime={item.date}>{formatDate(item.date, user)}</time></li>)}</ol>
+          : <div className="editorial-overview__empty">{enabled && <OverviewCompanion kind="nova" toggle={false} />}<p>No dated completions or wellness entries yet. Records appear here after you save them.</p></div>}
       </section>
       <nav className="editorial-overview__section" aria-label="Insight destinations">
         <p className="editorial-overview__eyebrow">Your workspace</p><h2>Jump back in</h2>

@@ -4,7 +4,7 @@ import { Pencil, Trash2, Download } from 'lucide-react';
 import type { FinanceTransaction as Transaction } from '../../utils/financeModel';
 import type { FinanceUser, LedgerFilters, LedgerSort, MoneyFormatter } from '../../utils/financeModel';
 import { downloadLedger, filterLedger, financeError, financeSummary, sortLedger, validFinanceDate } from '../../utils/financeModel';
-import { formatDate } from '../../utils/userFormatters';
+import { formatDate, formatNumber } from '../../utils/userFormatters';
 import EmptyState from '../ui/EmptyState';
 import TransactionEditor from './TransactionEditor';
 
@@ -80,7 +80,7 @@ export default function TransactionsTab({ transactions, today, user, currencySym
   return <>
     <div className="finance-controls">
       <button type="button" className="btn-primary" onClick={() => { setEditor('new'); setError(''); }} disabled={deleting}>New transaction</button>
-      <button type="button" className="btn-sm" onClick={exportFiltered} disabled={!filtered.length}><Download size={16} aria-hidden="true" /> Export filtered CSV ({filtered.length})</button>
+      <button type="button" className="btn-sm" onClick={exportFiltered} disabled={!filtered.length}><Download size={16} aria-hidden="true" /> Export filtered CSV ({formatNumber(filtered.length, undefined, { maximumFractionDigits: 0 })})</button>
     </div>
     {editor && <TransactionEditor key={editor === 'new' ? 'new' : editor.id} {...{ today, currencySymbol, formatMoney, categories, methods, onSave }} transaction={editor === 'new' ? undefined : editor} onSaved={() => setEditor(null)} onCancel={() => setEditor(null)} />}
     <section className="glass-card" aria-label="Transaction ledger">
@@ -107,7 +107,7 @@ export default function TransactionsTab({ transactions, today, user, currencySym
       {confirmDelete && <div role="group" aria-label="Confirm transaction deletion" className="finance-error"><p>Delete {confirmDelete.length} transaction{confirmDelete.length === 1 ? '' : 's'} from the ledger?</p><button type="button" className="btn-sm" disabled={deleting} onClick={() => void remove()}>{deleting ? 'Deleting…' : 'Confirm delete'}</button> <button type="button" className="btn-sm" disabled={deleting} onClick={() => setConfirmDelete(null)}>Cancel deletion</button></div>}
       {error && <p role="alert" className="finance-error">{error}</p>}
       {!filtered.length ? <EmptyState icon="DollarSign" title="No transactions found" description="Add a transaction or change the filters to see existing records." /> : <div className="finance-table-scroll" tabIndex={0} role="region" aria-label="Transactions table"><table className="finance-record-table">
-        <caption>{filtered.length} matching transactions · page {page} of {pageCount}</caption>
+        <caption>{formatNumber(filtered.length, undefined, { maximumFractionDigits: 0 })} matching transactions · page {formatNumber(page, undefined, { maximumFractionDigits: 0 })} of {formatNumber(pageCount, undefined, { maximumFractionDigits: 0 })}</caption>
         <thead><tr><th><input type="checkbox" className="finance-check" aria-label="Select this page" checked={allPageSelected} disabled={deleting} onChange={() => setSelected(previous => { const next = new Set(previous); for (const row of rows) { if (allPageSelected) next.delete(row.id); else next.add(row.id); } return next; })} /></th><th scope="col">Date</th><th scope="col">Transaction</th><th scope="col">Payment method</th><th scope="col">Amount</th><th scope="col">Actions</th></tr></thead>
         <tbody>{rows.map(row => <tr key={row.id}><td><input type="checkbox" className="finance-check" aria-label={`Select ${row.note || row.category} ${row.date}`} checked={selected.has(row.id)} disabled={deleting} onChange={() => toggle(row.id)} /></td><td>{formatDate(row.date, user)}</td><td><strong>{row.category}</strong><small>{row.type} · {row.note || 'No description'}</small></td><td>{row.method || 'Unknown'}</td><td className={`finance-money ${row.type === 'Income' ? 'finance-text-income' : 'finance-text-expense'}`}>{row.type === 'Income' ? '+' : '−'}{formatMoney(row.amount)}</td><td><div className="finance-row-actions"><button type="button" className="btn-sm" aria-label={`Edit ${row.note || row.category}`} disabled={deleting} onClick={() => setEditor(row)}><Pencil size={16} /></button><button type="button" className="btn-sm" aria-label={`Delete ${row.note || row.category}`} disabled={deleting} onClick={() => setConfirmDelete([row.id])}><Trash2 size={16} /></button></div></td></tr>)}</tbody>
       </table></div>}

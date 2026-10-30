@@ -1,5 +1,6 @@
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useRef } from 'react';
+import StatTile from './ui/StatTile';
 import { ShoppingCart, Plus, Trash2, Check, Tag, Star, AlertTriangle, ArrowDown, Search, Pencil, PackageCheck, Truck, Clock3, Upload, Link2, TrendingUp, Info } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
@@ -245,10 +246,7 @@ function ShoppingWorkspace() {
           { label: 'High priority', val: stats.highPri, color: '#f87171' },
           { label: 'Price drops', val: stats.priceDrop, color: '#fbbf24' },
         ].map(s => (
-          <div key={s.label} className="glass-card" style={{ textAlign: 'center', padding: '0.85rem' }}>
-            <p style={{ fontSize: '1.5rem', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</p>
-            <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '3px' }}>{s.label}</p>
-          </div>
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} size="1.5rem" labelSize="0.62rem" padding="0.85rem" labelGap="3px" />
         ))}
       </div>
 

@@ -56,7 +56,7 @@ export default function DataTable<T>({ caption, rows, columns, rowKey, rowLabel 
             const next: TableSort = { column: column.id, direction: sort?.column === column.id && sort.direction === 'asc' ? 'desc' : 'asc' };
             if (controlledSort === undefined) startTransition(() => setLocalSort(next));
             onSortChange?.(next);
-          }}>{column.header}<span aria-hidden="true"> {sort?.column === column.id ? sort.direction === 'asc' ? '↑' : '↓' : '↕'}</span></button> : column.header}
+          }}>{column.header}<span key={sort?.column === column.id ? sort.direction : 'none'} className="gt-sort" aria-hidden="true"> {sort?.column === column.id ? sort.direction === 'asc' ? '↑' : '↓' : '↕'}</span></button> : column.header}
         </th>)}
       </tr></thead><tbody>{virtual.segments.map(segment => segment.kind === 'spacer' ? <tr key={segment.key} aria-hidden="true"><td colSpan={columns.length + (onSelectionChange ? 1 : 0)} style={{ height: segment.height, padding: 0, border: 0, lineHeight: 0 }} /></tr> : <tr key={`row-${segment.key}`} data-virtual-key={segment.key} aria-rowindex={virtual.active ? segment.index + 2 : undefined} data-selected={selectedKeys.includes(segment.key)}>
         {onSelectionChange && <td><input type="checkbox" checked={selectedKeys.includes(segment.key)} aria-label={`Select ${rowLabel(segment.row)}`} onChange={event => select(segment.key, event.target.checked)} /></td>}

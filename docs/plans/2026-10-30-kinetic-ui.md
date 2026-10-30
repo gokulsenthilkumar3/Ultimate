@@ -14,11 +14,46 @@ This records local implementation, not deployment, a data migration, full nested
 - One preloaded, self-hosted Inter Variable Latin WOFF2 covers normal weights 100–900, with `swap` and a size-adjusted local fallback. No external font request is introduced. Its licence accompanies the asset.
 - Shared content caps at 1440px; generous desktop padding reduces at narrow breakpoints. Cards use 16–24px radii, outlined edges and small hard shadows. Controls have 44px minimum targets and clear keyboard focus.
 - **Overview:** the real due/overdue count sits beside the next useful action, then three smaller cards show open tasks, active goals and saved measurements. Latest dated activity and links remain below. Empty records stay empty; there is no invented score. At narrow widths the main cards stack.
+- **Overview refinement (30 October 2026, second pass):**
+  - The headline figure now uses the kinetic `AnimatedNumber.tsx`. A legacy `ui/AnimatedNumber.jsx` shadowed it, because extensionless imports resolve `.jsx` before `.tsx`. That file ignored `format`, so the figure showed `1600` beside `1,600`, and it set React state every frame with no tier, reduced-motion or cleanup handling. The legacy file is removed (its only importer, `StatCard`, receives pre-formatted strings), and `AnimatedNumber` reads the newest `format` through a ref so a parent re-render cannot restart the count.
+  - The figure is sized to its card from the formatted character count (container query, capped at the brief's 120px) and sits in a labelled `group`. Blip moved to the card's free top-right corner.
+  - The in-card Pause button was removed in Kinetic: it overlapped the art and duplicated the header control. Playful keeps it.
+  - Copy is reduced in Kinetic: no page subtitle, and no repeat of the headline count in "On the record". With no habits, the page says "No habits tracked yet" instead of "0 of 0".
+  - Activity rows carry a type icon. The activity and link cards size to their own content, so an empty activity card no longer stretches to the link list. The empty state shows Nova beside its message. "Jump back in" is two columns.
+  - At 540px and below, the three figures become label-and-number rows. At 480px and below, activity rows stay left-aligned.
+  - Regression tests cover the grouped figure, its accessible group name, the absent in-card control, the Playful fallback and the no-habits message. The grouped-figure test was confirmed to fail against the legacy component.
 - **Quick Settings:** a 208px section rail, larger heading, actual account identity, four outlined destination cards with coloured icon tiles, a small Nova companion and a quiet billing availability panel. Profile / Referrals / Audit / System, restart setup, billing destination, close/Escape/focus restoration and profile deep links keep their existing handlers. Mobile uses a locally scrollable section strip and stacked cards.
 - Kinetic removes legacy frosted-card blur and implicit whole-card hover transforms. The search dialog uses flat surfaces and existing navigation SVGs rather than first-opening a colour emoji font.
 - The mobile drawer is raised above the floating dock while open, keeping Settings and Sign out reachable. Its existing focus and cancellation behaviour is preserved.
 
 The larger headline-number treatment is applied to meaningful existing numeric summaries, including Overview and native module metrics. Form-only, legal, unavailable-data and provider-setup pages do not receive invented headline numbers. Existing domain explanatory content is retained where removing it could hide a workflow or required context.
+
+## Workspace-wide refinement (30 October 2026, third pass)
+
+Method: every registered page plus Welcome, Login, Privacy and Terms (65 pages) rendered at 1440 and 390 against the fictional loopback fixture, with an in-browser probe for overflow, ungrouped numbers, undersized or unpadded controls, duplicate motion controls, clipped text and page errors. Before and after runs are comparable; neither had page errors or horizontal overflow.
+
+Root cause of the most visible defect: `ultimate-ui.css` is imported only through `playful-legacy.css`, which loads only when Kinetic is off. Under Kinetic the shared legacy `btn-*` classes kept their pill shape but lost their layout (`display: block`, no padding, no gap), so labels touched the edge of every pill on Habits, Goals, Skills, Strength, Assessment, Shopping, Portfolio, Files and others. Legacy helpers such as `.form-stack`, `.flex-row` and `.dual-grid` had no layout either, so Nutrition's fields touched. `kinetic-layout.css` now supplies these primitives, as the brief asks, instead of a new override sheet. Buttons are scoped normally; helpers and domain segmented controls use `:where()` so a page's own rule still wins.
+
+| Measure (1440, populated fixture) | Before | After |
+| --- | --- | --- |
+| Boxed buttons with under 8px side padding | about 150 across 20+ pages | 3 |
+| Bare inputs with no padding or radius | 7 | 1 |
+| Pages with a second, in-page Pause button | 10 | 2 (Welcome and Login keep theirs, as the brief specifies) |
+| Pages with an ungrouped count in their own UI | Tasks, Actions, Transactions, Nutrition | 0 (remaining hits are fixture record names) |
+
+- **Counts** follow the owner's number format on Tasks, Action Center, Transactions and the Nutrition history and log.
+- **`StatTile`** replaces four copies of the same inline tile on Habits, Goals, Skills and Shopping. Kinetic renders the figure at the brief's secondary-metric scale (40-56px, tabular, ink) and keeps the data colour as an accent bar, because several figures were pale hues on cream. Playful keeps each page's original inline scale.
+- **Page titles:** Tasks Command was 28.8px under an inline style; Kinetic's 32-40px title rule now applies.
+- **Empty states** show Nova in Kinetic (`EmptyState`, shared by every page that uses it); success, error and neutral `PageState` already used Mochi, Ziggy and Nova.
+- **Section reveal** (`useSectionReveal.ts`, mounted in `PageTransition`): the page's top-level sections rise with a 40ms stagger over 320ms, at most eight, with a masked 420ms entry on the first section at Tier 2 only. It animates children, never the region Framer or the page entrance owns, asks the shared motion budget for a slot, and is skipped for Lite, reduced motion, a hidden tab and the first paint of a session, so it cannot delay LCP.
+- **Micro-animations** added from the catalogue, all one-shot and tied to a user action: field-error shake (350ms), checkbox and radio pop (300ms), menu reveal (200ms), sort-glyph flip (200ms), secondary and ghost button lift with border brighten (160ms), icon-button rotate, table-row hover fill and activity-row lift (140ms).
+
+Not done, and why:
+- **Hero figure on every page.** The brief wants a 72-120px primary metric on each workspace page. 61 of 65 pages still have no figure that large. Overview, the native modules and, at secondary scale, the four stat strips above are covered. The remainder need a page owner to choose which real value leads; none were invented.
+- **44px targets.** 1014 of 3055 measured interactive elements are under 40px, mostly repeated record controls (Portfolio rows, the Habits matrix, Goals). Enlarging dense matrices would change their layout, so only unpadded buttons and chips were fixed.
+- **Pagination number pop and row-removal exit.** Eight existing tests match the exact `Page N of M` text, and an exit animation needs per-list presence handling. Neither was changed.
+- **Three.js** stays confined to Physique, per the brief. No new 3D was added.
+- Legacy domain content still contains emoji (Mind, Habits, Nutrition, Current).
 
 ## Motion ownership
 
@@ -90,6 +125,7 @@ The local build and route evidence is updated below after the final checks. No s
 - Critical desktop interaction checks: snip/replay, fictional check/reset, password privacy/reveal, command palette/Escape, sign-out cancellation, Settings Audit/System/Profile and its Display destination, pause/resume passed. Observed landing/account flows stayed below 30 layers after legacy blur and SVG overlap were removed.
 - Static budget audit: passed; final byte totals are recorded with the final validation below.
 - **Open performance gates:** the measured cold 4G + 4× CPU run exceeded 2.5s on critical routes, and the first search interaction exceeded the 200ms target. These are reported as failures against the brief, not relabelled as passes because functionality worked. Adaptive motion cannot remove all startup JavaScript or network delay.
+- **Overview rendered check (headless Chromium, fictional loopback fixture, not the owner's backend):** populated and empty states at 1440 light; populated at 1440 dark and AMOLED, 1280, 1024, 1920 (light and dark) and 390. No page errors were reported. A Tier 2 sample showed the count-up passing through grouped values and ending on the exact figure. 1280 and 1920 were checked for overlap and overflow only. Reduced-motion, forced-colors, zoom, keyboard traversal and the Playful fallback were not re-reviewed in a browser, and none of this is the user's page approval.
 - **Not certified:** 30-minute total-tab working set below 250MB, WebGL/GPU resource behaviour for a long Physique session, sustained 60/120fps on physical target devices, field INP, every nested page state, and the complete 1024/1280/1440/1920 × appearance × fallback visual approval matrix. The reproducible commands remain available; no deployment sign-off is inferred.
 - The required historical 3D plan check reports **15/16 passing**: its embedded preview hash differs from the existing `humanoid-base.glb`. Neither that GLB nor its preview was changed by this UI work. Regenerating historical model geometry is left outside the presentation change; the failed assertion is retained.
 

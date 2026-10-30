@@ -41,6 +41,13 @@
 [data-ui-style='kinetic'] .kinetic-display-settings { display: grid; gap: 20px; }
 [data-ui-style='kinetic'] [data-palette-preview='coral'] { background: #FF5A3C; }
 [data-ui-style='kinetic'] .gt-page-state__companion { inline-size: 80px; block-size: 80px; flex: none; }
+/* Stat tiles: secondary-metric scale from the brief (40-56px, tabular, ink); the data colour stays as an accent bar. */
+[data-ui-style='kinetic'] .stat-tile { display: grid; justify-items: center; gap: 10px; padding: 18px 14px; }
+[data-ui-style='kinetic'] .stat-tile::before { content: ''; inline-size: 28px; block-size: 4px; border-radius: 2px; background: var(--stat-tile-color, var(--gt-action)); }
+[data-ui-style='kinetic'] .stat-tile__value { margin: 0; font-size: clamp(40px, 4vw, 56px); font-weight: 800; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--gt-text); }
+[data-ui-style='kinetic'] .stat-tile__label { margin: 0; font-size: 12px; font-weight: 600; color: var(--gt-muted); }
+[data-ui-style='kinetic'] .empty-state__companion { display: grid; place-items: center; inline-size: 88px; block-size: 88px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--gt-character-lilac) 26%, var(--gt-surface)); }
+[data-ui-style='kinetic'] .empty-state__companion .character-scene { inline-size: 76px; block-size: 76px; }
 .glow-sprites { position: absolute; inline-size: 0; block-size: 0; overflow: hidden; pointer-events: none; }
 .kinetic-magnetic { display: inline-flex; }
 .kinetic-chart-viewport { position: relative; }
@@ -71,6 +78,30 @@
 [data-ui-style='kinetic'] .gt-public-login__story h1 { font-weight: 800; }
 [data-ui-style='kinetic'] .gt-public-login__story > p { max-inline-size: 38ch; }
 [data-ui-style='kinetic'] .native-hero { border-width: 1.5px; box-shadow: var(--gt-shadow-card); }
+/* Legacy page primitives. ultimate-ui.css ships only with Playful, so legacy pages lost the layout of their shared buttons and
+   helpers under Kinetic: pills rendered as display:block with no padding and forms had no spacing. Buttons are scoped normally to
+   beat the partial base rules; helpers use :where() so any page's own rule still wins. */
+[data-ui-style='kinetic'] :is(.btn, .btn-primary, .btn-secondary, .btn-ghost, .btn-sm) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding-inline: 18px; white-space: nowrap; cursor: pointer; text-decoration: none; }
+[data-ui-style='kinetic'] .btn-sm { min-block-size: 36px; padding-inline: 14px; border-radius: 999px; font-size: 13px; font-weight: 650; }
+[data-ui-style='kinetic'] .btn-icon { display: inline-grid; place-items: center; min-inline-size: 40px; min-block-size: 40px; padding: 0; border-radius: 999px; }
+[data-ui-style='kinetic'] .btn-full { inline-size: 100%; }
+[data-ui-style='kinetic'] .btn-sm:is(.active, [aria-pressed='true'], [aria-selected='true']) { border-color: var(--gt-action); background: color-mix(in srgb, var(--gt-action) 14%, var(--gt-surface)); color: var(--gt-action-ink); }
+[data-ui-style='kinetic'] .helpdesk-article__toggle { padding-inline: 16px; }
+:where([data-ui-style='kinetic']) .flex-row { display: flex; align-items: center; gap: 12px; }
+:where([data-ui-style='kinetic']) .flex-row > :is(input, select, .form-input) { flex: 1 1 0; min-inline-size: 0; }
+:where([data-ui-style='kinetic']) .flex-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+:where([data-ui-style='kinetic']) .form-stack { display: grid; gap: 14px; }
+:where([data-ui-style='kinetic']) .dual-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+:where([data-ui-style='kinetic']) .card-title { font-size: 16px; font-weight: 650; letter-spacing: -.01em; color: var(--gt-text); }
+:where([data-ui-style='kinetic']) .gap-sm { gap: 8px; }
+:where([data-ui-style='kinetic']) .mt-sm { margin-block-start: 12px; }
+:where([data-ui-style='kinetic']) .mb-sm { margin-block-end: 12px; }
+:where([data-ui-style='kinetic']) .mb-lg { margin-block-end: 24px; }
+/* Domain segmented controls with no Kinetic styling of their own. */
+:where([data-ui-style='kinetic']) :is(.shopping-stage-tabs, .notes-view-controls) { display: flex; flex-wrap: wrap; gap: 8px; }
+:where([data-ui-style='kinetic']) :is(.shopping-stage-tabs, .notes-view-controls) > button { min-block-size: 40px; padding-inline: 16px; border: 1.5px solid var(--gt-border-strong); border-radius: 999px; background: var(--gt-surface); color: var(--gt-text); font-size: 13px; font-weight: 650; }
+:where([data-ui-style='kinetic']) :is(.shopping-stage-tabs, .notes-view-controls) > :is([aria-selected='true'], .active) { border-color: var(--gt-action); background: var(--gt-action); color: var(--gt-on-action); }
+:where([data-ui-style='kinetic']) #main-content :is(input:not([class], [type='checkbox'], [type='radio'], [type='range'], [type='hidden'], [type='file']), select:not([class])) { min-block-size: 44px; padding-inline: 14px; border: 1.5px solid var(--gt-border-strong); border-radius: 12px; background: var(--gt-surface); color: var(--gt-text); }
 /* Overview: one honest headline number beside the next action, then three quieter facts. */
 .kinetic-overview-focus { display: contents; }
 [data-ui-style='kinetic'] .editorial-overview--insights { max-inline-size: 1440px; gap: 24px; }
@@ -78,10 +109,12 @@
 [data-ui-style='kinetic'] .kinetic-overview-focus { display: grid; grid-template-columns: minmax(250px, .85fr) minmax(0, 1.65fr); gap: 24px; }
 [data-ui-style='kinetic'] .kinetic-overview-focus .kinetic-hero-metric { position: relative; display: grid; align-content: start; gap: 16px; margin: 0; padding: 28px; border: 1.5px solid var(--gt-border-strong); border-radius: 24px; background: color-mix(in srgb, var(--gt-character-mint) 13%, var(--gt-surface)); box-shadow: var(--gt-shadow-card); contain: layout paint style; }
 [data-ui-style='kinetic'] .kinetic-overview-focus .kinetic-hero-metric__label { max-inline-size: 16ch; color: var(--gt-text); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; line-height: 1.5; }
-[data-ui-style='kinetic'] .kinetic-overview-focus .kinetic-hero-metric__value { font-size: clamp(72px, 8vw, 120px); }
+[data-ui-style='kinetic'] .kinetic-overview-focus .kinetic-hero-metric { container-type: inline-size; }
+/* Fit the figure to its card by character count (set from the formatted value), never past the brief's 120px. */
+[data-ui-style='kinetic'] .kinetic-overview-focus .kinetic-hero-metric__value { font-size: clamp(72px, 8vw, 120px); font-size: clamp(48px, calc(100cqi / (var(--hero-chars, 4) * .6)), 120px); }
 [data-ui-style='kinetic'] .kinetic-hero-metric > a { display: inline-flex; align-items: center; justify-self: start; gap: 16px; min-block-size: 44px; color: var(--gt-text); font-size: 13px; font-weight: 650; text-underline-offset: 4px; }
-[data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion { position: absolute; inset-inline-end: 16px; inset-block-end: 24px; inline-size: 88px; block-size: 80px; }
-[data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion .character-scene { inline-size: 80px; block-size: 80px; }
+[data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion { position: absolute; inset-inline-end: 16px; inset-block-start: 14px; inline-size: 68px; block-size: 64px; }
+[data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion .character-scene { inline-size: 64px; block-size: 64px; }
 [data-ui-style='kinetic'] .kinetic-overview-focus .editorial-overview__lead { display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 24px; padding: 28px; border: 1.5px solid var(--gt-border-strong); border-radius: 24px; }
 [data-ui-style='kinetic'] .kinetic-overview-focus .editorial-overview__lead-note { display: flex; flex-wrap: wrap; gap: 8px 20px; border: 0; border-block-start: 1px solid var(--gt-border); padding: 16px 0 0; }
 [data-ui-style='kinetic'] .kinetic-overview-focus .editorial-overview__note-label { flex-basis: 100%; }
@@ -93,6 +126,13 @@
 [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts dt svg { color: var(--gt-action-ink); }
 [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts dd { font-size: clamp(36px, 4vw, 52px); }
 [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__lower > .editorial-overview__section { padding: 24px; border: 1.5px solid var(--gt-border); border-radius: 20px; background: var(--gt-surface); }
+/* Lower row sizes to its own content, so a short or empty activity card never stretches to match the link list. */
+[data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__lower { grid-template-columns: minmax(0, 1.2fr) minmax(20rem, .8fr); align-items: start; }
+[data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
+[data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__activity a > svg { color: var(--gt-action-ink); }
+[data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__empty { display: flex; align-items: center; gap: 16px; }
+[data-ui-style='kinetic'] .editorial-overview__empty .overview-companion { position: static; flex: none; inline-size: 72px; block-size: 72px; margin: 0; }
+[data-ui-style='kinetic'] .editorial-overview__empty .overview-companion .character-scene { inline-size: 64px; block-size: 64px; }
 /* Quick settings and full Display use the same typography, target size and surfaces. */
 [data-ui-style='kinetic'] .gt-settings-modal { padding: 24px; background: rgb(5 16 10 / .62); }
 [data-ui-style='kinetic'] .gt-settings-modal .settings-modal-card { width: min(100%, 1000px); max-width: 1000px !important; grid-template-columns: 208px minmax(0, 1fr); height: min(760px, calc(100dvh - 48px)) !important; border: 2px solid var(--gt-border-strong) !important; border-radius: 24px; box-shadow: 4px 4px 0 var(--gt-border-strong) !important; }
@@ -132,7 +172,11 @@
 [data-ui-style='kinetic'] .gt-settings-modal__billing strong { font-size: 13px; }
 [data-ui-style='kinetic'] .gt-settings-modal__billing p { font-size: 12px; line-height: 1.5; }
 @media (max-width: 1100px) { [data-ui-style='kinetic'] .kinetic-overview-focus { grid-template-columns: 1fr 1.5fr; } [data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion { display: none; } }
-@media (max-width: 760px) { [data-ui-style='kinetic'] .kinetic-overview-focus { grid-template-columns: 1fr; } [data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion { display: block; inset-inline-end: 28px; } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts { gap: 12px; } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts > div { padding: 16px; } }
+@media (max-width: 760px) { [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__lower { grid-template-columns: minmax(0, 1fr); } [data-ui-style='kinetic'] .kinetic-overview-focus { grid-template-columns: 1fr; } [data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion { display: block; inset-inline-end: 28px; } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts { gap: 12px; } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts > div { padding: 16px; } }
+@media (max-width: 760px) { :where([data-ui-style='kinetic']) .dual-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 481px) { [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__activity li { align-items: center; } }
+/* Three figures no longer fit side by side: each becomes a label-and-number row. */
+@media (max-width: 540px) { [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts { grid-template-columns: minmax(0, 1fr); } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts dd { font-size: 32px; white-space: nowrap; } }
 @media (max-width: 640px) { [data-ui-style='kinetic'] .gt-settings-modal { padding: 12px; align-items: center; } [data-ui-style='kinetic'] .gt-settings-modal .settings-modal-card { height: min(900px, calc(100dvh - 24px)) !important; border-radius: 20px !important; } [data-ui-style='kinetic'] .gt-settings-modal .settings-modal-card__sidebar { padding: 12px !important; gap: 4px; flex-wrap: nowrap; overflow-x: auto; } [data-ui-style='kinetic'] .gt-settings-modal__nav-item { flex: none; width: auto; gap: 6px; padding: 0 10px; } [data-ui-style='kinetic'] .gt-settings-modal__nav-icon { display: none; } [data-ui-style='kinetic'] .gt-settings-modal__sidebar-footer { flex: none; } [data-ui-style='kinetic'] .gt-settings-modal .settings-modal-card__header, [data-ui-style='kinetic'] .gt-settings-modal .settings-modal-card__body { padding: 20px !important; } [data-ui-style='kinetic'] .gt-settings-modal__companion { display: none; } [data-ui-style='kinetic'] .gt-settings-modal__links button { min-block-size: 96px; } [data-ui-style='kinetic'] .gt-settings-modal__billing { flex-wrap: wrap; } }
 @media (max-width: 1279px) { [data-ui-style='kinetic'] .app-shell .content-area { padding-inline: 24px; } }
 @media (max-width: 959px) { [data-ui-style='kinetic'] .app-shell .content-area { padding: 24px 20px 112px; } [data-ui-style='kinetic'] .playful-hero { min-block-size: auto; } [data-ui-style='kinetic'] .playful-crew__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
