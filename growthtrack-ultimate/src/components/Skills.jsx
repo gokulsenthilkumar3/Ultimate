@@ -232,8 +232,8 @@ export default function Skills() {
           { label: 'Max Level',  val: maxLevel,                  color: '#f59e0b'      },
           { label: 'Skills',     val: skills.length,             color: '#10b981'      },
           { label: 'Practiced today', val: practicedToday,        color: '#a78bfa'      },
-        ].map(s => (
-          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} size="1.5rem" labelSize="0.65rem" />
+        ].map((s, index) => (
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} size="1.5rem" labelSize="0.65rem" lead={index === 0} />
         ))}
       </div>
 

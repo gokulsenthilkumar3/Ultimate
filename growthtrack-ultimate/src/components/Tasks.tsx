@@ -15,6 +15,7 @@ import { FixedSizeList as List } from '../lib/FixedSizeList';
 import { consumePendingUiAction } from '../lib/pendingUiAction';
 import { formatNumber } from '../utils/userFormatters';
 import { useKinetic } from './motion/KineticContext';
+import HeroMetric from './ui/HeroMetric';
 
 // ── P1-P4 priority config ─────────────────────────────────────────────────────────────
 const PRIORITIES = [
@@ -631,11 +632,11 @@ export default function Tasks() {
                     gap: '1rem', marginBottom: '1.75rem' }}>
         <div>
           <h1 style={kinetic ? { margin: 0 } : { fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>Tasks Command</h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>
+          {!kinetic && <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>
             {count(pending.length)} pending
             {overdueCt > 0 && <span style={{ color: '#ef4444', marginLeft: '8px' }}>· {count(overdueCt)} overdue</span>}
             {todayCt  > 0 && <span style={{ color: '#f97316', marginLeft: '8px' }}>· {count(todayCt)} due today</span>}
-          </p>
+          </p>}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button onClick={fetchTasks} title="Refresh from DB"
@@ -707,6 +708,8 @@ export default function Tasks() {
           </button>
         </div>
       </div>
+
+      <HeroMetric label="Pending tasks" value={pending.length} note={`${count(overdueCt)} overdue · ${count(todayCt)} due today`} tone="mint" user={user} />
 
       {/* Slide-over Drawer for Task Form */}
       {showForm && (

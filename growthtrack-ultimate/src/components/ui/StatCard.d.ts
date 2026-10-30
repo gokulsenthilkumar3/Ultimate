@@ -8,6 +8,8 @@ export type StatCardProps = {
   style?: CSSProperties;
   trend?: React.ReactNode;
   hint?: React.ReactNode;
+  /** The strip's headline figure; Kinetic renders it at hero scale. */
+  lead?: boolean;
 };
 
 export default function StatCard(props: StatCardProps): React.JSX.Element;

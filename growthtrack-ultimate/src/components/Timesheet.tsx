@@ -1,5 +1,6 @@
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import StatTile from './ui/StatTile';
 import { Clock, Play, Pause, Square, Plus, Trash2, Download, DollarSign, BarChart2, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import ResponsiveContainer from './ui/VisibleResponsiveContainer';
@@ -296,16 +297,13 @@ export default function Timesheet() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Today',        val: formatHours(stats.todaySeconds),  color: 'var(--accent)' },
           { label: 'This Week',    val: formatHours(stats.weekSeconds),   color: '#10b981' },
+          { label: 'Today',        val: formatHours(stats.todaySeconds),  color: 'var(--accent)' },
           { label: 'Total',        val: formatHours(stats.totalSeconds),  color: '#0ea5e9' },
           { label: 'Wk Earnings',  val: money(stats.weekEarnings), color: '#fbbf24' },
           { label: 'Total Earned', val: money(stats.totalEarnings), color: '#f59e0b' },
-        ].map(s => (
-          <div key={s.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
-            <p style={{ fontSize: '1.4rem', fontWeight: 900, color: s.color, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>{s.val}</p>
-            <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '4px' }}>{s.label}</p>
-          </div>
+        ].map((s, index) => (
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} size="1.4rem" labelSize="0.62rem" fontFamily="var(--font-mono, monospace)" lead={index === 0} />
         ))}
       </div>
 

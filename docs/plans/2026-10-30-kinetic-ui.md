@@ -69,11 +69,40 @@ All runs use the repository's browser harness against the fictional fixture at 4
 - The cost of this pass is about 0.5 KB of gzip JS and 2.2 KB of gzip critical CSS. Not measured here: 120 Hz hardware, a 30-minute memory soak, field INP and a 4G-throttled cold load; the earlier open gates on cold 4G + 4x CPU load still apply.
 
 Not done, and why:
-- **Hero figure on every page.** The brief wants a 72-120px primary metric on each workspace page. Overview, the native modules and the lead tile of the Habits (done today), Goals (active) and Shopping (pending) strips now have one; at the audit, 61 of 65 pages had none. The remainder need a page owner to choose which real value leads; none were invented.
+- **Hero figure on every page.** Covered by the large-number rollout below; the pages without one, and why, are listed there.
 - **44px targets.** 1014 of 3055 measured interactive elements are under 40px, mostly repeated record controls (Portfolio rows, the Habits matrix, Goals). Enlarging dense matrices would change their layout, so only unpadded buttons and chips were fixed.
 - **Pagination number pop and row-removal exit.** Eight existing tests match the exact `Page N of M` text, and an exit animation needs per-list presence handling. Neither was changed.
 - **Three.js** stays confined to Physique, per the brief. No new 3D was added.
 - Legacy domain content still contains emoji (Mind, Habits, Nutrition, Current).
+
+## Large-number rollout (fourth pass)
+
+The brief wants one 72-120px headline figure per workspace page. At the start of this pass 6 of 65 pages had one. It is now 29 by an in-browser probe of the largest numeric figure on each page (fictional fixture, 1440px), with no clipped figure at 1440, 1024 or 390 and no page errors or horizontal overflow. Every figure is a value the page already holds; none were invented, and a missing value renders nothing rather than a zero.
+
+How it is built, so a new page costs one line:
+- **`HeroMetric`** is a Kinetic-only band (Playful is unchanged): a whole number counts up grouped in the owner's number format, a ready string (currency, hours) is shown as given. The figure is sized from its character count so it never clips and never exceeds 120px. `PageHeader` takes an optional `metric` prop, and `PageTemplate` passes it through.
+- **`lead` on `StatTile` and `StatCard`** promotes the first figure of an existing strip to hero scale instead of adding a band above a strip that repeats it. Both fit each figure to its own tile, and Kinetic renders the figure in ink with the data colour on an accent bar or icon, since several figures were pale yellows and ambers on cream.
+
+| Treatment | Pages |
+| --- | --- |
+| Hero band | Tasks (pending), Transactions (filtered balance), Finance analytics (expenses), Budgeting (defined limits), Portfolio (recorded cost), Calendar (saved events), Projects (personal projects), Nutrition (calories today), Strength (sets logged), Assessment (records), Logs (entries), My Files (stored files), Action Center (actions waiting), Notifications (unread, only once loaded) |
+| Replaces a figure already in the header | Mind and Lifestyle (streak), Hydration (rolling 24-hour total, now at hero scale) |
+| Lead tile in an existing strip | Habits (done today), Goals (active), Shopping (pending), Skills (total XP), Timesheet (hours this week), Training (weekly volume), Sleep (average), SIP (projected corpus, spanning the strip), Entertainment (total), Finance overview (net balance) |
+| Already had one | Overview and the Work, Growth and Life overviews, and the native Equity, Forex and Family modules when their data is live |
+
+Pages that deliberately have none:
+- **Setup, adapter or unavailable-data pages:** Finance Sync, FinSync and OxFin customers, Health Sync, Current (live provider), Social (manual figures), and Hydration and Notifications in the fixture, whose services are unavailable (their figure appears when data loads).
+- **Contract pages with no measured data:** Analytics, Dashboards, Progress, Forecast, Finance Trends and Subscriptions (no total is shown on the page, and none was added).
+- **Work surfaces where vertical space is the product:** Notes, Physique, Databases, Agents and Maps.
+- **No single headline:** Medical, Health+, Profile, Helpdesk, Apps, Companion, About, Plans, Welcome, Login, Privacy and Terms.
+
+Defects found and fixed on the way, all visible in renders:
+- **Forecast header collapsed at 1024px** to a one-character-wide title column, stacking "Forecast" and its description as a vertical column of letters. A long `status` sentence sized the grid's `auto` column to its full width. It was already broken on `main`. The shared header grid now uses `fit-content(55%)`, so the title always keeps at least 45%.
+- **`page-hero`** (Action Center, Insights) shipped only in the Playful stylesheet, the same root cause as the unpadded buttons above, so its header card had no padding. It is defined in the Kinetic CSS now.
+- **Stat-card figures** use ink in Kinetic, with the accent kept on the icon.
+- **First-load JS budget:** the first build of this work added about 21 KB gzip to initial JS (195,070 B against the 180,000 B limit) because `PageHeader` is in the eager bundle and `HeroMetric` pulled framer-motion's `animate` in through `AnimatedNumber`. The count-up now uses a small `requestAnimationFrame` tween with the same 600ms ease-out, and all five budget gates pass again.
+
+Performance for this pass: PERF_PLACEHOLDER
 
 ## Motion ownership
 

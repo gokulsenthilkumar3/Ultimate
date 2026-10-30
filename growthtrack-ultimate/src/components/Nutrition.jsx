@@ -332,7 +332,7 @@ export default function Nutrition({ user }) {
 
   return (
     <div className="fade-in module-page nutrition-page">
-      <PageHeader accent="Nutrition" icon={<Apple size={24} />}
+      <PageHeader metric={{ label: 'Calories today', value: consumed.calories, unit: 'kcal', note: `${formatNumber(macroTargets.calories, user, { maximumFractionDigits: 0 })} kcal target`, tone: 'coral', user }} accent="Nutrition" icon={<Apple size={24} />}
         title="Nutrition" subtitle="Log meals and review today’s recorded intake." />
 
       {/* ── Log Meal + Today's Log ─────────────────────────────────────── */}

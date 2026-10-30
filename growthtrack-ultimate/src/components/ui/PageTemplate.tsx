@@ -1,4 +1,4 @@
-import React, { useId, type ReactNode } from 'react';
+import React, { useId, type ComponentProps, type ReactNode } from 'react';
 import PageHeader from './PageHeader';
 
 export type PageTemplateType = 'command' | 'record' | 'analytics' | 'detail' | 'settings' | 'immersive';
@@ -6,6 +6,7 @@ export interface PageTemplateProps {
   type: PageTemplateType;
   title: string;
   subtitle?: string;
+  metric?: ComponentProps<typeof PageHeader>['metric'];
   accent?: string;
   icon?: ReactNode;
   actions?: ReactNode;
@@ -19,10 +20,10 @@ export interface PageTemplateProps {
 }
 
 /** Layout slots, not a second main landmark. Modules own data, routing, and mutations. */
-export default function PageTemplate({ type, title, subtitle, accent, icon, actions, status, toolbar, summary, aside, children, className = '', headingLevel = 1 }: PageTemplateProps) {
+export default function PageTemplate({ type, title, subtitle, accent, icon, actions, status, toolbar, summary, aside, children, className = '', headingLevel = 1, metric }: PageTemplateProps) {
   const id = useId();
   return <section className={`gt-page-template gt-page-template--${type} ${className}`.trim()} data-responsive-foundation data-template={type} aria-label={title}>
-    <PageHeader title={title} subtitle={subtitle} accent={accent} icon={icon} actions={actions} status={status} headingLevel={headingLevel} />
+    <PageHeader title={title} subtitle={subtitle} accent={accent} icon={icon} actions={actions} status={status} headingLevel={headingLevel} metric={metric} />
     {summary && <div className="gt-page-template__summary" aria-label={`${title} summary`}>{summary}</div>}
     {toolbar && <div className="gt-page-template__toolbar">{toolbar}</div>}
     <div className="gt-page-template__layout" data-has-aside={Boolean(aside)}>

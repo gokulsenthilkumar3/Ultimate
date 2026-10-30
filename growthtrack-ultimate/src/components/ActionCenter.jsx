@@ -5,6 +5,7 @@ import useStore from '../store/useStore';
 import { formatNumber } from '../utils/userFormatters';
 import Card from './ui/Card';
 import Button from './ui/Button';
+import HeroMetric from './ui/HeroMetric';
 
 const EMPTY_LIST = Object.freeze([]);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -74,6 +75,7 @@ export default function ActionCenter() {
   const snooze = id => update(previous => ({ ...previous, snoozed: { ...(previous.snoozed || {}), [id]: Date.now() + 24 * 60 * 60 * 1000 } }));
   return <section className="module-page action-center" aria-labelledby="action-center-title">
     <Card className="page-hero"><span className="eyebrow">GrowthTrack · Daily guidance</span><h1 id="action-center-title" className="text-display">Your next best actions.</h1><p className="text-secondary">A focused list built from your real tasks, habits, goals, recovery, and check-ins.</p></Card>
+    <HeroMetric label="Actions waiting" value={visible.length} note="From your tasks, habits, goals and check-ins" tone="yellow" />
     {saveError && <p role="alert">{saveError}</p>}
     <div className="action-center__summary" role="status"><strong>{visible.length}</strong><span>{visible.length === 1 ? 'priority to review' : 'priorities to review'}</span><span className="action-center__confidence">Local data only · no invented recommendations</span></div>
     {visible.length ? <div className="action-center__list">{visible.map(action => <ActionCard key={action.id} action={action} saving={saving || !state.user?.id} onDismiss={() => dismiss(action.id)} onSnooze={() => snooze(action.id)} onOpen={() => navigate(`/${action.tab}`)} />)}</div> : <Card><div className="action-center__empty"><CheckCircle2 size={28} /><h2>You’re caught up.</h2><p>Keep logging real progress and this space will surface the next useful step.</p><Button onClick={() => navigate('/insights')}>Review Insights</Button></div></Card>}

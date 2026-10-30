@@ -1,5 +1,6 @@
 import PageHeader from './ui/PageHeader';
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import StatTile from './ui/StatTile';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Cell, ReferenceLine } from 'recharts';
 import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import {
@@ -506,12 +507,8 @@ export default function Training() {
           { label: 'Current Streak',       value: `${streak} days`,             icon: <Flame size={18} color="var(--warning)" />,  color: 'var(--warning)' },
           { label: 'Best Streak',          value: `${longestStreak} days`,       icon: <Trophy size={18} color="var(--warning)" />, color: 'var(--warning)' },
           { label: '7-Day Logged Volume',  value: formatMeasurement(last7LoggedVolume, 'kg', user), icon: <Dumbbell size={18} color="var(--info)" />, color: 'var(--info)' },
-        ].map(s => (
-          <div key={s.label} className="glass-card" style={{ padding: '1.15rem', textAlign: 'center' }}>
-            <div style={{ marginBottom: '0.4rem' }}>{s.icon}</div>
-            <p style={{ fontSize: '1.35rem', fontWeight: 800, color: s.color, fontFamily: 'var(--font-display)' }}>{s.value}</p>
-            <p className="label-caps" style={{ marginTop: '0.2rem' }}>{s.label}</p>
-          </div>
+        ].map((s, index) => (
+          <StatTile key={s.label} value={s.value} label={s.label} color={s.color} icon={s.icon} size="1.35rem" padding="1.15rem" labelGap="0.2rem" caps fontFamily="var(--font-display)" lead={index === 0} />
         ))}
       </div>
 

@@ -5,6 +5,7 @@ import type { FinanceBudget as Budget } from '../../utils/financeModel';
 import type { MoneyFormatter } from '../../utils/financeModel';
 import { CATEGORIES, financeAmount, financeBreakdown, financeBudget, financeError, totalMoney } from '../../utils/financeModel';
 import EmptyState from '../ui/EmptyState';
+import HeroMetric from '../ui/HeroMetric';
 
 interface Props {
   budgets: Budget[]; transactions: Transaction[]; month: string; currencySymbol: string; formatMoney: MoneyFormatter;
@@ -54,6 +55,7 @@ export default function BudgetingTab({ budgets, transactions, month, currencySym
     finally { pending.current = false; setSaving(false); }
   }
   return <>
+    {!history && <HeroMetric label="Defined limits" value={formatMoney(totalLimits)} note={`${visible.length} ${visible.length === 1 ? 'category' : 'categories'} budgeted`} tone="mint" />}
     <div className="finance-controls"><label className="finance-field">Budget view<select className="form-input" value={history ? 'history' : 'current'} disabled={saving} onChange={event => { const next = new URLSearchParams(params); next.set('view', event.target.value); setParams(next); setEditing(null); setForm({ category: '', limit: '' }); }}><option value="current">Current budgets</option><option value="history">Budget history</option></select></label></div>
     {!history && <details className="finance-budget-editor" open={Boolean(editing) || createOpen} onToggle={event => setCreateOpen(event.currentTarget.open)}><summary>{editing ? 'Edit category budget' : 'Create a category budget'}</summary><section className="glass-card"><div className="finance-card-heading"><h2>{editing ? 'Edit budget' : 'Budget details'}</h2></div><p className="finance-note">Limits apply to {month}. A zero limit allows no spending in that category.</p>
       <form onSubmit={submit}><fieldset disabled={saving} style={{ border: 0, margin: 0, padding: 0 }}><div className="finance-fields">
@@ -64,7 +66,7 @@ export default function BudgetingTab({ budgets, transactions, month, currencySym
     {error && <p role="alert" className="finance-error">{error}</p>}
     {confirmDelete && <div role="group" aria-label="Confirm budget deletion" className="finance-error"><p>Delete this category budget?</p><button type="button" className="btn-sm" disabled={saving} onClick={() => void remove()}>{saving ? 'Deleting…' : 'Confirm delete budget'}</button> <button type="button" className="btn-sm" disabled={saving} onClick={() => setConfirmDelete(null)}>Cancel deletion</button></div>}
     <section className="glass-card"><div className="finance-card-heading"><h2>{history ? 'Budget history' : 'Category budgets'}</h2></div>
-      {!history && <dl className="finance-summary"><div><dt>Defined limits</dt><dd>{formatMoney(totalLimits)}</dd></div><div><dt>Spending in budgeted categories</dt><dd>{formatMoney(budgetedSpend)}</dd></div><div><dt>Remaining in budgeted categories</dt><dd>{formatMoney(financeBudget(budgetedSpend, totalLimits).remaining)}</dd></div></dl>}
+      {!history && <dl className="finance-summary"><div className="finance-summary__covered"><dt>Defined limits</dt><dd>{formatMoney(totalLimits)}</dd></div><div><dt>Spending in budgeted categories</dt><dd>{formatMoney(budgetedSpend)}</dd></div><div><dt>Remaining in budgeted categories</dt><dd>{formatMoney(financeBudget(budgetedSpend, totalLimits).remaining)}</dd></div></dl>}
       {!visible.length ? <EmptyState icon="DollarSign" title="No budgets found" description={history ? 'Budgets from other months will appear here.' : 'Choose a category and limit to start tracking.'} /> : visible.map(row => {
         const actual = history ? totalMoney(transactions.filter(tx => tx.type === 'Expense' && tx.category === row.category && tx.date.startsWith((row.month || month) + '-')).map(tx => tx.amount)) : breakdown.find(item => item.name === row.category)?.value || 0;
         const status = financeBudget(actual, row.limit_amount);

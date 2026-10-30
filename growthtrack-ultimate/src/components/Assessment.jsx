@@ -95,7 +95,7 @@ export default function Assessment() {
   return (
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
       {/* Page Header */}
-      <PageHeader accent="Wellness" title="Assessment" subtitle={<>Diagnostic rounds · {assessmentQA.length} record{assessmentQA.length !== 1 ? 's' : ''} saved.</>} icon={<ClipboardList size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />} actions={<><div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+      <PageHeader metric={{ label: 'Assessment records', value: assessmentQA.length, note: 'Diagnostic rounds saved', tone: 'coral' }} accent="Wellness" title="Assessment" subtitle={<>Diagnostic rounds · {assessmentQA.length} record{assessmentQA.length !== 1 ? 's' : ''} saved.</>} icon={<ClipboardList size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.3rem' }} />} actions={<><div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           {view === 'history' && (
             <>
               <div style={{ position: 'relative' }}>

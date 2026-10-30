@@ -209,7 +209,7 @@ export default function Calendar() {
 
   return <section className="gt-calendar" ref={root} data-responsive-foundation data-calendar-view={view}>
     <style>{style}</style>
-    <PageTemplate type="record" title="Calendar" accent="Workspace" subtitle={`${events.length} saved events · Display timezone: ${zone}`} actions={<>
+    <PageTemplate type="record" metric={{ label: 'Saved events', value: events.length, note: `Display timezone ${zone}`, tone: 'mint' }} title="Calendar" accent="Workspace" subtitle={`${events.length} saved events · Display timezone: ${zone}`} actions={<>
       <Button variant="secondary" disabled={busy} icon={<Upload size={18} />} onClick={() => setTransfer({ kind: 'select' })}>Import .ics</Button>
       <Button variant="secondary" disabled={busy} icon={<Download size={18} />} onClick={prepareExport}>Export .ics</Button>
       <Button disabled={busy} icon={<Plus size={18} />} onClick={() => startNew(selectedDay || today)}>Add event</Button>

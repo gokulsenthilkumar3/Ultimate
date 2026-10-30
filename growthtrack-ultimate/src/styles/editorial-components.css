@@ -31,7 +31,8 @@
 
 .page-header-block.gt-editorial-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* fit-content, not auto: a long status sentence otherwise sizes the second column to its full width and squeezes the title to 0px. */
+  grid-template-columns: minmax(0, 1fr) fit-content(55%);
   align-items: center;
   gap: var(--gt-space-3) var(--gt-space-5);
   min-inline-size: 0;

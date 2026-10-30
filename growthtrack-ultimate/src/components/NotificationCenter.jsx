@@ -5,6 +5,7 @@ import { useToast } from '../hooks/useToast';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import PageState from './ui/PageState';
+import HeroMetric from './ui/HeroMetric';
 
 const CATEGORIES = [
   ['tasks', 'Tasks'], ['goals', 'Goals'], ['habits', 'Habits'],
@@ -46,6 +47,7 @@ export default function NotificationCenter({ notificationState }) {
         <Button variant="secondary" disabled={disabled || !notifications.length} onClick={() => perform(state.clearAll, 'Current reminders dismissed.')}>Dismiss current reminders</Button>
       </div>
     </div>
+    <HeroMetric label="Unread reminders" value={loading || error ? undefined : unreadCount} note="Stored source records only" tone="lilac" />
     {(actionError || mutationError) && <p role="alert">{actionError || mutationError.message}</p>}
     {error && <PageState state="error" title="Notifications could not be loaded" description={error.message} onRetry={() => perform(state.refresh)} />}
     {loading && <PageState state="loading" title="Loading reminders" />}
