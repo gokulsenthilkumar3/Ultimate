@@ -281,7 +281,7 @@ export default function Documents() {
       />
 
       {/* Header */}
-      <PageHeader accent="Workspace" title="My Files" subtitle={<>{usage.files} stored files · {storagePercent}% storage used{legacyCount ? ` · ${legacyCount} legacy records without file bytes` : ''}</>} icon={<Folder size={30} color="var(--accent)" />} actions={<><div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <PageHeader metric={{ label: 'Stored files', value: usage.files, note: `${storagePercent}% storage used`, tone: 'mint' }} accent="Workspace" title="My Files" subtitle={<>{usage.files} stored files · {storagePercent}% storage used{legacyCount ? ` · ${legacyCount} legacy records without file bytes` : ''}</>} icon={<Folder size={30} color="var(--accent)" />} actions={<><div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {documentProviders.filter(item => item.enabled !== false).map(item => (
             <button key={item.id} className="btn-ghost" onClick={() => toggleSync(item.label)} title={`Setup required for ${item.label}`}>
               <Cloud size={16} /> Setup {item.label}

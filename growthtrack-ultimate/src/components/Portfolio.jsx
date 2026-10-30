@@ -209,10 +209,10 @@ export default function Portfolio() {
   }
 
   return <div className="module-page" style={{ padding: '0.5rem 0' }}>
-    <PageHeader accent="Finance" title="Portfolio" subtitle={<>Prices come from connected sources (dated and attributed) or your own dated snapshots. Undated prices cannot establish gains or returns.</>} actions={<><button className="btn-secondary" onClick={refreshPrices} disabled={refreshing || saving} aria-busy={refreshing}><RefreshCw size={14} /> {refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
+    <PageHeader metric={{ label: 'Recorded cost', value: totalCost == null ? undefined : money(totalCost), note: 'Dated prices only; undated values are not counted', tone: 'mint' }} accent="Finance" title="Portfolio" subtitle={<>Prices come from connected sources (dated and attributed) or your own dated snapshots. Undated prices cannot establish gains or returns.</>} actions={<><button className="btn-secondary" onClick={refreshPrices} disabled={refreshing || saving} aria-busy={refreshing}><RefreshCw size={14} /> {refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
 <button className="btn-primary" onClick={() => setShowAdd(open => !open)} aria-expanded={showAdd} aria-controls="portfolio-add-form" disabled={saving}><Plus size={14} /> Add Holding</button></>} />
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', margin: '1rem 0' }}>
-      {[['Recorded cost', totalCost], ['Dated value', totalValue], ['Unrealized difference', totalDifference]].map(([label, value]) => <div key={label} className="glass-card"><p>{label}</p><strong>{money(value)}</strong></div>)}
+      {[['Recorded cost', totalCost], ['Dated value', totalValue], ['Unrealized difference', totalDifference]].map(([label, value]) => <div key={label} className={label === 'Recorded cost' ? 'glass-card portfolio-metric--covered' : 'glass-card'}><p>{label}</p><strong>{money(value)}</strong></div>)}
     </div>
     {totalValue === null && <p className="text-secondary">Totals appear once every holding has a dated price — connect a source below or enter a dated price.</p>}
     <div role="tablist" aria-label="Portfolio views" onKeyDown={event => handleTabKeyDown(event, { tabs: PORTFOLIO_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'portfolio-tab' })} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>

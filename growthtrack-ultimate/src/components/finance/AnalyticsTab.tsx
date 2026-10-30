@@ -6,6 +6,7 @@ import { featurePath } from '../../config/featureRegistry';
 import type { MoneyFormatter } from '../../utils/financeModel';
 import { CHART_COLORS, financeBreakdown, financeMinor, financeSummary } from '../../utils/financeModel';
 import EmptyState from '../ui/EmptyState';
+import HeroMetric from '../ui/HeroMetric';
 
 interface Props { transactions: Transaction[]; previousTransactions: Transaction[]; month: string; previousMonth: string; today: string; method: string; formatMoney: MoneyFormatter }
 export default function AnalyticsTab({ transactions, previousTransactions, month, previousMonth, today, method, formatMoney }: Props) {
@@ -21,8 +22,9 @@ export default function AnalyticsTab({ transactions, previousTransactions, month
   const [year, monthNumber] = month.split('-').map(Number);
   const lastDay = month + '-' + new Date(year, monthNumber, 0).getDate();
   return <>
+    <HeroMetric label="Total expenses" value={formatMoney(summary.expenses)} note={`Income ${formatMoney(summary.income)}`} tone="mint" />
     <div className="finance-controls"><label className="finance-field">Analysis<select className="form-input" value={view} onChange={event => { const next = new URLSearchParams(params); next.set('view', event.target.value); setParams(next); }}><option value="categories">Expense categories</option><option value="income">Income sources</option><option value="comparisons">Period comparisons</option></select></label></div>
-    <dl className="finance-summary"><div><dt>Income</dt><dd>{formatMoney(summary.income)}</dd></div><div><dt>Expenses</dt><dd>{formatMoney(summary.expenses)}</dd></div><div><dt>Recorded transactions</dt><dd>{transactions.length}</dd></div></dl>
+    <dl className="finance-summary"><div><dt>Income</dt><dd>{formatMoney(summary.income)}</dd></div><div className="finance-summary__covered"><dt>Expenses</dt><dd>{formatMoney(summary.expenses)}</dd></div><div><dt>Recorded transactions</dt><dd>{transactions.length}</dd></div></dl>
     {view === 'comparisons' ? <section className="glass-card"><div className="finance-card-heading"><h2>Compare recorded periods</h2></div>
       {!transactions.length || !previousTransactions.length ? <p className="finance-note">Both periods need records before a comparison can be calculated. Missing records do not establish zero spending.</p> : <p>Expenses changed by {formatMoney(change)}{previous.expenses > 0 ? ' (' + (change / previous.expenses * 100).toFixed(1) + '%)' : ''} from {previousMonth} to {month}.</p>}
       <div className="finance-table-scroll"><table className="finance-record-table"><caption>Identical category and payment-method filters apply to both periods. {month === today.slice(0, 7) ? 'The current month is partial.' : 'Totals cover recorded transactions only.'}</caption><thead><tr><th>Period</th><th>Records</th><th>Income</th><th>Expenses</th><th>Balance</th></tr></thead><tbody>{[{ month: previousMonth, summary: previous, count: previousTransactions.length }, { month, summary, count: transactions.length }].map(row => <tr key={row.month}><th scope="row">{row.month}</th><td>{row.count}</td><td>{row.count ? formatMoney(row.summary.income) : 'No records'}</td><td>{row.count ? formatMoney(row.summary.expenses) : 'No records'}</td><td>{row.count ? formatMoney(row.summary.balance) : 'No records'}</td></tr>)}</tbody></table></div>

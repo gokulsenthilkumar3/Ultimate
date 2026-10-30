@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import StatCard from './ui/StatCard';
 import {
   Film, Tv, Star, Plus, Trash2, Search, ChevronLeft, ChevronRight,
   X, Filter, BarChart2, Clock, Trophy, SortAsc, SortDesc, Eye
@@ -342,14 +343,8 @@ export default function Entertainment() {
           { label: 'Completed', value: stats.completed, icon: Trophy, color: 'var(--success)' },
           { label: 'Backlog', value: stats.backlog, icon: Clock, color: 'var(--warning)' },
           { label: 'Avg Rating', value: stats.avgRating, icon: Star, color: '#e5a50a' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="glass-card stat-card card-shine-wrap" style={{ '--stat-accent': color }}>
-            <div className="stat-card__header">
-              <Icon size={16} />
-              <span className="label-caps">{label}</span>
-            </div>
-            <p className="stat-card__value">{value}</p>
-          </div>
+        ].map(({ label, value, icon, color }, index) => (
+          <StatCard key={label} icon={icon} label={label} value={value} color={color} lead={index === 0} />
         ))}
       </div>
 

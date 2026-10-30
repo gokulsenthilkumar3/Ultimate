@@ -1,6 +1,7 @@
 import PageHeader from './ui/PageHeader';
 import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useCallback, useMemo } from 'react';
+import StatTile from './ui/StatTile';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, CartesianGrid, Tooltip, RadialBarChart, RadialBar, Legend } from 'recharts';
 import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { Moon, Sun, Zap, Clock, TrendingUp, AlertCircle, CheckCircle, Plus, Trash2, BatteryCharging, Minus } from 'lucide-react';
@@ -181,15 +182,8 @@ export default function SleepDashboard() {
           { label: 'Deep', value: latest.deep ? `${latest.deep}h` : '—', sub: 'last night', color: '#6366f1', icon: TrendingUp },
           { label: 'REM', value: latest.rem ? `${latest.rem}h` : '—', sub: 'last night', color: '#22d3ee', icon: Sun },
           { label: 'Debt', value: sleepDebt ? `${sleepDebt}h` : '0h', sub: '14d rolling', color: sleepDebt > 5 ? 'var(--danger)' : sleepDebt > 0 ? 'var(--warning)' : 'var(--success)', icon: Minus },
-        ].map(({ label, value, sub, color, icon: Icon }) => (
-          <div key={label} className="glass-card card-shine-wrap" style={{ padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span className="label-caps">{label}</span>
-              <Icon size={15} color={color} />
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color, marginTop: '0.3rem', lineHeight: 1 }}>{value}</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '0.2rem' }}>{sub}</div>
-          </div>
+        ].map(({ label, value, sub, color, icon: Icon }, index) => (
+          <StatTile key={label} value={value} label={label} sub={sub} color={color} icon={<Icon size={15} color={color} />} size="1.5rem" caps fontFamily="var(--font-display)" lead={index === 0} />
         ))}
       </div>
 

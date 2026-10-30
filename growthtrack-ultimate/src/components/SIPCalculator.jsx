@@ -5,6 +5,7 @@ import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { TrendingUp, DollarSign, PiggyBank, Info } from 'lucide-react';
 import { formatCurrency } from '../utils/userFormatters';
 import useStore from '../store/useStore';
+import StatTile from './ui/StatTile';
 
 const TOOLTIP_STYLE = {
   background: 'var(--bg-glass)', border: '1px solid var(--border)',
@@ -165,12 +166,8 @@ export default function SIPCalculator() {
               { label: 'Total Invested',      val: money(totalInvested),    icon: <PiggyBank  size={16} color="#10b981" />,         color: '#10b981'       },
               { label: 'Estimated Gains',     val: money(realGain),         icon: <DollarSign size={16} color="#f59e0b" />,         color: '#f59e0b'       },
               { label: `Real Value (${inflation}% inf.)`, val: money(realValue), icon: <Info size={16} color="#f97316" />,          color: '#f97316'       },
-            ].map(m => (
-              <div key={m.label} className="glass-card" style={{ padding: '1rem', textAlign: 'center' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.35rem' }}>{m.icon}</div>
-                <p style={{ fontSize: '1.35rem', fontWeight: 900, color: m.color, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>{m.val}</p>
-                <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>{m.label}</p>
-              </div>
+            ].map((m, index) => (
+              <StatTile key={m.label} value={m.val} label={m.label} color={m.color} icon={m.icon} size="1.35rem" labelSize="0.65rem" fontFamily="var(--font-mono, monospace)" lead={index === 0} wide={index === 0} />
             ))}
           </div>
 

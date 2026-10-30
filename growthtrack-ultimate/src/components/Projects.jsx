@@ -276,6 +276,7 @@ export default function Projects() {
   return (
     <div className="fade-in module-page">
       <PageHeader
+        metric={{ label: 'Personal projects', value: manualProjects.length, note: `${repos.length} ${repos.length === 1 ? 'repository' : 'repositories'} connected`, tone: 'mint' }}
         accent="Engineering"
         icon={<GitBranch size={24} />}
         title="Projects Hub"

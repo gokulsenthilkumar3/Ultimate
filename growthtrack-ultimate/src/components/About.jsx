@@ -4,23 +4,23 @@ import { FEATURES } from '../config/featureRegistry';
 import React, { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { apiRequest } from '../lib/apiClient';
-import { Server, Globe, Clock, GitBranch, Zap, CheckCircle, AlertCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Server, Globe, Clock, GitBranch, Zap, CheckCircle, AlertCircle, Loader2, ChevronDown, ChevronUp, Rocket, Wrench, Sparkles } from 'lucide-react';
 import { fetchIpInfo } from '../hooks/useGeolocation';
+import './about.css';
 
-
-
-const TYPE_COLORS = {
-  major:   { bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.3)', text: '#818cf8', badge: 'rgba(99,102,241,0.2)' },
-  minor:   { bg: 'rgba(16,185,129,0.05)',  border: 'rgba(16,185,129,0.2)',  text: '#34d399', badge: 'rgba(16,185,129,0.15)' },
-  patch:   { bg: 'rgba(245,158,11,0.05)',  border: 'rgba(245,158,11,0.2)', text: '#fbbf24', badge: 'rgba(245,158,11,0.15)' },
-  initial: { bg: 'rgba(168,85,247,0.05)',  border: 'rgba(168,85,247,0.2)',  text: '#c084fc', badge: 'rgba(168,85,247,0.15)' },
-};
+const TYPE_ICON = { major: Rocket, patch: Wrench, minor: Sparkles, initial: Sparkles };
+const TECH = [
+  { label: 'React 19', color: '#61dafb' }, { label: 'Vite 8', color: '#646cff' }, { label: 'Zustand 5', color: '#a78bfa' },
+  { label: 'Recharts', color: '#22d3ee' }, { label: 'Three.js / Drei', color: '#10b981' }, { label: 'Node.js', color: '#86efac' },
+  { label: 'PostgreSQL', color: '#4299e1' }, { label: 'Lucide Icons', color: '#f97316' }, { label: 'GSAP Animations', color: '#84cc16' },
+  { label: 'Gemini API', color: '#34d399' }, { label: 'Firebase', color: '#fbbf24' },
+];
 
 function StatusBadge({ ok, loading, label }) {
-  if (loading) return <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-3)' }}><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />{label}</span>;
+  if (loading) return <span className="about-status" data-state="loading"><Loader2 size={12} aria-hidden="true" style={{ animation: 'spin 1s linear infinite' }} />{label}</span>;
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 800, color: ok ? '#10b981' : '#f87171' }}>
-      {ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+    <span className="about-status" data-state={ok ? 'online' : 'offline'}>
+      {ok ? <CheckCircle size={14} aria-hidden="true" /> : <AlertCircle size={14} aria-hidden="true" />}
       {label}: {ok ? 'Online' : 'Offline'}
     </span>
   );
@@ -64,13 +64,11 @@ export default function About() {
             const isFeat = title.toLowerCase().includes('feat');
             const isFix = title.toLowerCase().includes('fix');
             const type = isFeat ? 'major' : isFix ? 'patch' : 'minor';
-            const emoji = isFeat ? '🚀' : isFix ? '🔧' : '✨';
             
             return {
               version: sha,
               date: new Date(commitData.commit.author.date).toISOString().slice(0, 10),
               type,
-              emoji,
               title: title.length > 60 ? title.substring(0, 60) + '...' : title,
               items: items.length > 0 ? items : [commitData.commit.message], // fallback to full message if no detailed items
               url: commitData.html_url
@@ -101,242 +99,97 @@ export default function About() {
 
   const visibleChangelog = showAll ? changelog : changelog.slice(0, 5);
 
-  const cardStyle = {
-    padding: '1.5rem',
-    display: 'flex', alignItems: 'center', gap: '1rem',
-    background: 'rgba(255,255,255,0.02)',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '16px',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    cursor: 'default',
-    boxShadow: 'none',
-  };
-
   return (
-    <div style={{ padding: '0.5rem 0 4rem 0', maxWidth: '1000px', margin: '0 auto' }}>
-      
-      <style>
-        {`
-          @keyframes glowPulse {
-            0% { opacity: 0.1; transform: scale(1); }
-            50% { opacity: 0.25; transform: scale(1.1); }
-            100% { opacity: 0.1; transform: scale(1); }
-          }
-          @keyframes slideUpFade {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .about-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            background: rgba(255,255,255,0.04) !important;
-            border-color: rgba(255,255,255,0.15) !important;
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3) !important;
-          }
-          .timeline-spine {
-            position: absolute;
-            left: 19px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: linear-gradient(to bottom, var(--accent) 0%, #8b5cf6 50%, transparent 100%);
-            border-radius: 99px;
-            opacity: 0.5;
-          }
-        `}
-      </style>
-
-      {/* Hero Header */}
+    <div className="about-page">
       <PageHeader accent="Hub" title="About GrowthTrack" subtitle="Your private workspace for wellness, work, money and life." status={<>Version {appPackage.version} · {FEATURES.length} tools</>} />
 
-      {/* Status Matrix */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '3rem', animation: 'slideUpFade 0.7s ease-out 0.1s both' }}>
-        <div className="about-card" style={cardStyle}>
-          <div style={{ background: 'rgba(99,102,241,0.1)', padding: '12px', borderRadius: '12px' }}><Server size={24} color="#818cf8" /></div>
+      <div className="about-matrix">
+        <div className="about-card about-card--server">
+          <div className="about-card__icon"><Server size={24} aria-hidden="true" /></div>
           <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>API Server</p>
+            <p className="about-card__label">API Server</p>
             <StatusBadge ok={serverOk} loading={loading} label="Backend" />
-            {serverMs && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>{serverMs}ms ping response</p>}
+            {serverMs && <p className="about-card__note">{serverMs}ms ping response</p>}
           </div>
         </div>
 
-        <div className="about-card" style={cardStyle}>
-          <div style={{ background: 'rgba(14,165,233,0.1)', padding: '12px', borderRadius: '12px' }}><Globe size={24} color="#38bdf8" /></div>
+        <div className="about-card about-card--network">
+          <div className="about-card__icon"><Globe size={24} aria-hidden="true" /></div>
           <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Network</p>
-            {loading ? <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontWeight: 600 }}>Detecting location…</p> : (
-              ipInfo ? (
-                <p style={{ fontSize: '0.85rem', fontWeight: 800, color: '#38bdf8' }}>{ipInfo.city}, {ipInfo.country_name}</p>
-              ) : <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', fontWeight: 600 }}>Unavailable</p>
+            <p className="about-card__label">Network</p>
+            {loading ? <p className="about-card__note">Detecting location…</p> : (
+              ipInfo ? <p className="about-card__value">{ipInfo.city}, {ipInfo.country_name}</p> : <p className="about-card__note">Unavailable</p>
             )}
-            {ipInfo?.ip && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontFamily: 'monospace', marginTop: '4px' }}>{ipInfo.ip}</p>}
+            {ipInfo?.ip && <p className="about-card__note">{ipInfo.ip}</p>}
           </div>
         </div>
 
-        <div className="about-card" style={cardStyle}>
-          <div style={{ background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '12px' }}><Zap size={24} color="#fbbf24" /></div>
+        <div className="about-card about-card--stack">
+          <div className="about-card__icon"><Zap size={24} aria-hidden="true" /></div>
           <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Stack Engine</p>
-            <p style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fbbf24' }}>React 19 + Vite 8</p>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>Zustand · Recharts · Three.js</p>
+            <p className="about-card__label">Stack Engine</p>
+            <p className="about-card__value">React 19 + Vite 8</p>
+            <p className="about-card__note">Zustand · Recharts · Three.js</p>
           </div>
         </div>
 
-        <div className="about-card" style={cardStyle}>
-          <div style={{ background: 'rgba(139,92,246,0.1)', padding: '12px', borderRadius: '12px' }}><GitBranch size={24} color="#a78bfa" /></div>
+        <div className="about-card about-card--version">
+          <div className="about-card__icon"><GitBranch size={24} aria-hidden="true" /></div>
           <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Core Version</p>
-            <p style={{ fontSize: '0.85rem', fontWeight: 800, color: '#a78bfa' }}>v{appPackage.version}</p>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>{FEATURES.length} modules · current installation</p>
+            <p className="about-card__label">Core Version</p>
+            <p className="about-card__value">v{appPackage.version}</p>
+            <p className="about-card__note">{FEATURES.length} modules · current installation</p>
           </div>
         </div>
       </div>
 
-      {/* Tech stack */}
-      <div style={{ marginBottom: '4rem', animation: 'slideUpFade 0.8s ease-out 0.2s both' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Zap size={20} color="var(--accent)" /> Under the Hood
-        </h3>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-          {[
-            { label: 'React 19',       color: '#61dafb' },
-            { label: 'Vite 8',         color: '#646cff' },
-            { label: 'Zustand 5',      color: '#a78bfa' },
-            { label: 'Recharts',       color: '#22d3ee' },
-            { label: 'Three.js / Drei',color: '#10b981' },
-            { label: 'Node.js',        color: '#86efac' },
-            { label: 'PostgreSQL',     color: '#4299e1' },
-            { label: 'Lucide Icons',   color: '#f97316' },
-            { label: 'GSAP Animations',color: '#84cc16' },
-            { label: 'Gemini API',     color: '#34d399' },
-            { label: 'Firebase',       color: '#fbbf24' },
-          ].map((t, idx) => (
-            <span key={t.label} style={{ 
-              padding: '8px 16px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800, 
-              background: `linear-gradient(135deg, ${t.color}15 0%, ${t.color}05 100%)`, 
-              color: t.color, border: `1px solid ${t.color}30`,
-              boxShadow: `0 4px 12px ${t.color}10`,
-              animation: `slideUpFade 0.5s ease-out ${0.3 + (idx * 0.05)}s both`,
-              transition: 'transform 0.2s ease, filter 0.2s ease',
-              cursor: 'default',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.filter = `drop-shadow(0 0 8px ${t.color}50)`; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.filter = 'none'; }}
-            >
-              {t.label}
-            </span>
-          ))}
+      <section aria-labelledby="about-stack-title">
+        <h2 id="about-stack-title" className="about-heading"><Zap size={20} aria-hidden="true" /> Under the Hood</h2>
+        <div className="about-stack">
+          {TECH.map(t => <span key={t.label} className="about-chip" style={{ '--chip': t.color }}>{t.label}</span>)}
         </div>
-      </div>
+      </section>
 
-      {/* Changelog timeline */}
-      <div style={{ animation: 'slideUpFade 0.9s ease-out 0.4s both' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <GitBranch size={20} color="var(--accent)" /> Release History
-          </h3>
-          <button onClick={() => setShowAll(v => !v)} style={{ 
-            background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-1)', 
-            cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, padding: '6px 12px', borderRadius: '8px',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-input)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
-          >
-            {showAll ? 'Collapse History' : 'View Full History'}
-          </button>
+      <section aria-labelledby="about-history-title">
+        <div className="about-heading-row">
+          <h2 id="about-history-title" className="about-heading"><GitBranch size={20} aria-hidden="true" /> Release History</h2>
+          <button type="button" className="btn-sm" onClick={() => setShowAll(v => !v)}>{showAll ? 'Collapse History' : 'View Full History'}</button>
         </div>
 
-        <div style={{ position: 'relative', paddingTop: '0.5rem' }}>
-          <div className="timeline-spine" />
-          
-          {gitError && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Error loading commits: {gitError}</p>}
-          {changelog.length === 0 && !gitError && <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}><Loader2 size={12} style={{ animation: 'spin 1s linear infinite', display: 'inline-block', marginRight: '6px' }} /> Loading release history…</p>}
+        <div className="about-timeline">
+          {gitError && <p className="about-note">Error loading commits: {gitError}</p>}
+          {changelog.length === 0 && !gitError && <p className="about-note"><Loader2 size={12} aria-hidden="true" style={{ animation: 'spin 1s linear infinite', display: 'inline-block', marginInlineEnd: '6px' }} /> Loading release history…</p>}
 
-          {visibleChangelog.map((entry, idx) => {
-            const tc = TYPE_COLORS[entry.type] || TYPE_COLORS.minor;
-            const isOpen = expanded[entry.version];
+          {visibleChangelog.map(entry => {
+            const Icon = TYPE_ICON[entry.type] || Sparkles;
+            const isOpen = Boolean(expanded[entry.version]);
+            const panelId = `about-entry-${entry.version}`;
             return (
-              <div key={entry.version} style={{
-                marginBottom: '1.5rem', paddingLeft: '52px', position: 'relative',
-                animation: `slideUpFade 0.6s ease ${0.5 + (idx * 0.1)}s both`,
-              }}>
-                {/* Timeline dot */}
-                <div style={{
-                  position: 'absolute', left: '8px', top: '16px',
-                  width: '24px', height: '24px', borderRadius: '50%',
-                  background: tc.bg, border: `2px solid ${tc.text}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.9rem', zIndex: 1,
-                  boxShadow: `0 0 15px ${tc.text}40`
-                }}>{entry.emoji}</div>
-
-                {/* Card */}
-                <div className="about-card" style={{ 
-                  background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(10px)',
-                  border: `1px solid ${tc.border}`, borderRadius: '16px', overflow: 'hidden',
-                  transition: 'all 0.3s ease'
-                }}>
-                  <button onClick={() => setExpanded(e => ({ ...e, [entry.version]: !isOpen }))}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.2rem', background: isOpen ? 'rgba(255,255,255,0.02)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.3s ease' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
-                        <a href={entry.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '1.1rem', fontWeight: 900, color: tc.text, fontFamily: 'monospace', letterSpacing: '-0.02em', textDecoration: 'none' }} onClick={e => e.stopPropagation()}>
-                          #{entry.version}
-                        </a>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '3px 10px', borderRadius: '99px', background: tc.badge, color: tc.text, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{entry.type}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-                          <Clock size={12} /> {entry.date}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-1)', margin: 0 }}>{entry.title}</p>
-                    </div>
-                    <div style={{ 
-                      width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-input)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)',
-                      transition: 'transform 0.3s ease'
-                    }}>
-                      {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </div>
-                  </button>
-
-                  <div style={{ 
-                    maxHeight: isOpen ? '1000px' : '0', overflow: 'hidden', 
-                    transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
-                    opacity: isOpen ? 1 : 0
-                  }}>
-                    <ul style={{ padding: '0 1.5rem 1.5rem 2.5rem', margin: 0, listStyle: 'disc' }}>
-                      {entry.items.map((item, i) => (
-                        <li key={i} style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginBottom: '8px', lineHeight: 1.6, fontWeight: 500, whiteSpace: 'pre-wrap' }}>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
+              <div key={entry.version} className={`about-entry about-entry--${entry.type}`}>
+                <span className="about-entry__dot" aria-hidden="true"><Icon size={12} /></span>
+                <div className="about-entry__card">
+                  <div className="about-entry__meta">
+                    <a className="about-entry__hash" href={entry.url} target="_blank" rel="noopener noreferrer">#{entry.version}</a>
+                    <span className="about-entry__badge">{entry.type}</span>
+                    <span className="about-entry__date"><Clock size={12} aria-hidden="true" /> {entry.date}</span>
                   </div>
+                  <button type="button" className="about-entry__toggle" aria-expanded={isOpen} aria-controls={panelId}
+                    onClick={() => setExpanded(e => ({ ...e, [entry.version]: !isOpen }))}>
+                    <span className="about-entry__title">{entry.title}</span>
+                    <span className="about-entry__chevron" aria-hidden="true">{isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
+                  </button>
+                  {isOpen && <ul id={panelId} className="about-entry__items">{entry.items.map((item, i) => <li key={i}>{item}</li>)}</ul>}
                 </div>
               </div>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      {/* Credits Footer */}
-      <div style={{ 
-        marginTop: '5rem', textAlign: 'center', padding: '3rem', 
-        background: 'linear-gradient(to top, rgba(255,255,255,0.02), transparent)',
-        borderRadius: '24px', borderTop: '1px solid rgba(255,255,255,0.05)',
-        animation: 'slideUpFade 1s ease-out 0.6s both'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px var(--accent)' }}>
-            <Zap size={20} color="#fff" />
-          </div>
-        </div>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-2)', lineHeight: 1.8, fontWeight: 500 }}>
-          Designed and engineered as a master control panel for life.<br />
-          Built with precision. Forged in Code.
-        </p>
-        {user?.name || user?.firstName ? <p style={{ fontSize: '0.85rem', color: 'var(--accent)', marginTop: '1rem', fontWeight: 800, letterSpacing: '0.05em' }}>Welcome back, {user.name || user.firstName}.</p> : null}
+      <div className="about-credits">
+        <span className="about-credits__mark"><Zap size={20} aria-hidden="true" /></span>
+        <p>Designed and engineered as a master control panel for life.<br />Built with precision. Forged in Code.</p>
+        {user?.name || user?.firstName ? <p className="about-credits__welcome">Welcome back, {user.name || user.firstName}.</p> : null}
       </div>
     </div>
   );

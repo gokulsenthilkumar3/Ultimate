@@ -296,7 +296,7 @@ export default function StrengthMetrics() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <PageHeader accent="Wellness" title="Strength" subtitle={<>{strengthLogs.length} logs · {Object.keys(PRs).length} exercises tracked</>} actions={<><button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Log Set</button></>} />
+      <PageHeader metric={{ label: 'Sets logged', value: strengthLogs.length, note: `${Object.keys(PRs).length} exercises tracked`, tone: 'coral' }} accent="Wellness" title="Strength" subtitle={<>{strengthLogs.length} logs · {Object.keys(PRs).length} exercises tracked</>} actions={<><button onClick={() => setShowAdd(s => !s)} className="btn-primary"><Plus size={14} /> Log Set</button></>} />
 
       {/* PR Summary */}
       {Object.keys(PRs).length > 0 && (

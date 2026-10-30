@@ -8,6 +8,7 @@ import useStore, {
   selectHabits, selectAddHabit, selectDeleteHabit, selectUpdateHabit
 } from '../store/useStore';
 import { formatNumber, getUserLocale } from '../utils/userFormatters';
+import { useKinetic } from './motion/KineticContext';
 
 const EMOJIS = ['🏃','💤','🧘','📚','🌳','💧','🍎','🧠','🏋️','☀️','🎵','🚴','🚿','🥑','🚶','🏊','✍️','🎯','🧊','🌿'];
 
@@ -125,6 +126,7 @@ function AnalyticsPanel({ habits }) {
 }
 
 export default function Lifestyle() {
+  const { enabled: kinetic } = useKinetic();
   const user              = useStore(s => s.user);
   const habits           = useStore(selectHabits);
   const addHabitAction   = useStore(selectAddHabit);
@@ -187,7 +189,7 @@ export default function Lifestyle() {
       />
 
       {/* ── Header ── */}
-      <PageHeader accent="Wellness" title="Lifestyle & routines" subtitle={<>Track atomic consistency and neurological patterns.</>} actions={<><div style={{ display: 'flex', align: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+      <PageHeader metric={{ label: 'Best streak', value: bestStreak, unit: bestStreak === 1 ? 'day' : 'days', note: `${habits.length} active ${habits.length === 1 ? 'habit' : 'habits'}`, tone: 'coral' }} accent="Wellness" title="Lifestyle & routines" subtitle={<>Track atomic consistency and neurological patterns.</>} actions={kinetic ? undefined : <><div style={{ display: 'flex', align: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <div className="glass-card" style={{ padding: '0.65rem 1.25rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Trophy size={18} color="var(--accent)" />
             <div>

@@ -48,7 +48,10 @@ export default function CharacterScene({ kind = 'crew', happy = false, eyesClose
   </div>;
 }
 
-/** Kinetic keeps one visible motion control, in the header; an in-page copy overlaps the art. Playful keeps it. */
+/**
+ * Kinetic keeps one visible motion control, in the header; an in-page copy overlaps the art. Playful keeps it.
+ * @param {{ kind?: string, toggle?: boolean }} props
+ */
 export function OverviewCompanion({ kind = 'siren', toggle }) {
   const { enabled } = useKinetic();
   return <div className={`overview-companion overview-companion--${kind}`}>

@@ -10,6 +10,17 @@
 [data-ui-style='kinetic'] .app-shell .content-area h2 { font-weight: 700; letter-spacing: -.035em; }
 [data-ui-style='kinetic'] .app-shell :is(.glass-card, .gt-card, .stat-card, .native-card, .native-metric, .insight-card) { border: 1.5px solid var(--gt-border-strong); border-radius: 20px; box-shadow: var(--gt-shadow-card); background: var(--gt-surface); }
 [data-ui-style='kinetic'] .app-shell :is(.stat-card__value, .native-metric strong, .metric-value) { font-size: clamp(32px, 4vw, 56px); font-weight: 750; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+/* Stat-card figures are ink; the data colour stays on the icon, so pale hues never carry the number. */
+[data-ui-style='kinetic'] .app-shell .stat-card .stat-card__value { color: var(--gt-text); }
+/* page-hero shipped only in the Playful stylesheet, so Action Center's and Insights' header cards lost their layout. */
+[data-ui-style='kinetic'] .page-hero { display: grid; gap: 10px; padding: 24px 28px; border: 1.5px solid var(--gt-border-strong); border-radius: 24px; background: var(--gt-surface); box-shadow: var(--gt-shadow-card); }
+[data-ui-style='kinetic'] .page-hero .eyebrow { color: var(--gt-action-ink); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+[data-ui-style='kinetic'] .page-hero .text-display { margin: 0; font-size: clamp(32px, 3.2vw, 40px); font-weight: 700; letter-spacing: -.045em; line-height: 1.12; }
+[data-ui-style='kinetic'] .page-hero .text-secondary { margin: 0; max-inline-size: 62ch; color: var(--gt-muted); font-size: 14px; line-height: 1.6; }
+[data-ui-style='kinetic'] .app-shell .stat-card { container-type: inline-size; }
+[data-ui-style='kinetic'] .app-shell .stat-card__value { font-size: clamp(28px, calc(100cqi / (var(--stat-chars, 4) * .62)), 56px); }
+[data-ui-style='kinetic'] .app-shell .stat-card--lead { border-color: var(--gt-text); background: color-mix(in srgb, var(--gt-character-mint) 16%, var(--gt-surface)); }
+[data-ui-style='kinetic'] .app-shell .stat-card--lead .stat-card__value { font-size: clamp(32px, calc(100cqi / (var(--stat-chars, 4) * .62)), 88px); font-weight: 800; }
 [data-ui-style='kinetic'] .kinetic-hero-metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 24px; margin-block: 0 32px; padding-block-end: 24px; border-block-end: 2px solid var(--gt-border); }
 [data-ui-style='kinetic'] .kinetic-hero-metric__value { font-size: clamp(64px, 8vw, 120px); font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 [data-ui-style='kinetic'] .kinetic-hero-metric__label { font-size: 12px; font-weight: 600; color: var(--gt-muted); }
@@ -41,10 +52,31 @@
 [data-ui-style='kinetic'] .kinetic-display-settings { display: grid; gap: 20px; }
 [data-ui-style='kinetic'] [data-palette-preview='coral'] { background: #FF5A3C; }
 [data-ui-style='kinetic'] .gt-page-state__companion { inline-size: 80px; block-size: 80px; flex: none; }
+/* Hero metric: the page's one headline figure (72-120px, 800, tabular, ink), fitted to the band by character count. */
+[data-ui-style='kinetic'] .hero-metric { --hero-tint: var(--gt-character-mint); container-type: inline-size; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'value label' 'value note' 'value action'; align-items: center; column-gap: 28px; row-gap: 4px; margin-block: 0 24px; padding: 18px 28px; border: 1.5px solid var(--gt-border-strong); border-radius: 24px; background: color-mix(in srgb, var(--hero-tint) 14%, var(--gt-surface)); box-shadow: var(--gt-shadow-card); }
+[data-ui-style='kinetic'] .hero-metric[data-tone='coral'] { --hero-tint: var(--gt-character-coral); }
+[data-ui-style='kinetic'] .hero-metric[data-tone='yellow'] { --hero-tint: var(--gt-character-yellow); }
+[data-ui-style='kinetic'] .hero-metric[data-tone='lilac'] { --hero-tint: var(--gt-character-lilac); }
+[data-ui-style='kinetic'] .hero-metric__label { grid-area: label; align-self: end; margin: 0; color: var(--gt-text); font-size: 12px; font-weight: 600; letter-spacing: .04em; line-height: 1.5; text-transform: uppercase; }
+[data-ui-style='kinetic'] .hero-metric__value { grid-area: value; margin: 0; color: var(--gt-text); font-size: clamp(64px, 8vw, 120px); font-size: clamp(48px, calc(60cqi / (var(--hero-chars, 4) * .6)), 120px); font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+[data-ui-style='kinetic'] .hero-metric__unit { margin-inline-start: .12em; color: var(--gt-muted); font-size: .36em; font-weight: 700; letter-spacing: 0; }
+[data-ui-style='kinetic'] .hero-metric__note { grid-area: note; align-self: start; margin: 0; color: var(--gt-muted); font-size: 14px; line-height: 1.5; }
+[data-ui-style='kinetic'] .hero-metric__action { grid-area: action; margin-block-start: 8px; }
+[data-ui-style='kinetic'] .finance-summary__covered, [data-ui-style='kinetic'] .portfolio-metric--covered { display: none; }
+[data-ui-style='kinetic'] .hydration-figure { margin: 0; color: var(--gt-text); font-size: clamp(56px, 6vw, 96px); font-weight: 800; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+[data-ui-style='kinetic'] .hydration-figure__unit { color: var(--gt-muted); font-size: .3em; font-weight: 700; letter-spacing: 0; }
 /* Stat tiles: secondary-metric scale from the brief (40-56px, tabular, ink); the data colour stays as an accent bar. */
-[data-ui-style='kinetic'] .stat-tile { display: grid; justify-items: center; gap: 10px; padding: 18px 14px; }
+[data-ui-style='kinetic'] .stat-tile { container-type: inline-size; display: grid; justify-items: center; gap: 10px; padding: 18px 14px; --stat-max: 56px; }
 [data-ui-style='kinetic'] .stat-tile::before { content: ''; inline-size: 28px; block-size: 4px; border-radius: 2px; background: var(--stat-tile-color, var(--gt-action)); }
-[data-ui-style='kinetic'] .stat-tile__value { margin: 0; font-size: clamp(40px, 4vw, 56px); font-weight: 800; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--gt-text); }
+/* Each figure fits its own tile by character count, so a long value never clips; --stat-max is the brief's 56px (88px for the lead). */
+[data-ui-style='kinetic'] .stat-tile__value { margin: 0; font-size: clamp(40px, 4vw, 56px); font-size: clamp(28px, calc(100cqi / (var(--stat-chars, 3) * .62)), var(--stat-max)); font-weight: 800; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--gt-text); }
+[data-ui-style='kinetic'] .stat-tile--lead { border-color: var(--gt-text); background: color-mix(in srgb, var(--gt-character-mint) 16%, var(--gt-surface)); }
+[data-ui-style='kinetic'] .stat-tile--lead { --stat-max: 88px; }
+[data-ui-style='kinetic'] .stat-tile--wide { grid-column: 1 / -1; }
+[data-ui-style='kinetic'] .stat-tile__icon { display: grid; place-items: center; color: var(--stat-tile-color); }
+[data-ui-style='kinetic'] .stat-tile:has(.stat-tile__icon)::before { display: none; }
+[data-ui-style='kinetic'] .stat-tile__sub { margin: 0; color: var(--gt-muted); font-size: 12px; }
+[data-ui-style='kinetic'] .stat-tile--lead .stat-tile__value { font-size: clamp(56px, 6vw, 88px); font-size: clamp(32px, calc(100cqi / (var(--stat-chars, 3) * .62)), var(--stat-max)); font-weight: 800; }
 [data-ui-style='kinetic'] .stat-tile__label { margin: 0; font-size: 12px; font-weight: 600; color: var(--gt-muted); }
 [data-ui-style='kinetic'] .empty-state__companion { display: grid; place-items: center; inline-size: 88px; block-size: 88px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--gt-character-lilac) 26%, var(--gt-surface)); }
 [data-ui-style='kinetic'] .empty-state__companion .character-scene { inline-size: 76px; block-size: 76px; }
@@ -174,6 +206,8 @@
 @media (max-width: 1100px) { [data-ui-style='kinetic'] .kinetic-overview-focus { grid-template-columns: 1fr 1.5fr; } [data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion { display: none; } }
 @media (max-width: 760px) { [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__lower { grid-template-columns: minmax(0, 1fr); } [data-ui-style='kinetic'] .kinetic-overview-focus { grid-template-columns: 1fr; } [data-ui-style='kinetic'] .kinetic-hero-metric .overview-companion { display: block; inset-inline-end: 28px; } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts { gap: 12px; } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts > div { padding: 16px; } }
 @media (max-width: 760px) { :where([data-ui-style='kinetic']) .dual-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { [data-ui-style='kinetic'] .hero-metric { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'label' 'value' 'note' 'action'; padding: 18px 20px; } [data-ui-style='kinetic'] .hero-metric__value { font-size: clamp(48px, calc(100cqi / (var(--hero-chars, 4) * .6)), 96px); } }
+@media (forced-colors: active) { [data-ui-style='kinetic'] .hero-metric { border-color: CanvasText; box-shadow: none; } }
 @media (min-width: 481px) { [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__activity li { align-items: center; } }
 /* Three figures no longer fit side by side: each becomes a label-and-number row. */
 @media (max-width: 540px) { [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts { grid-template-columns: minmax(0, 1fr); } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; } [data-ui-style='kinetic'] .editorial-overview--insights .editorial-overview__facts dd { font-size: 32px; white-space: nowrap; } }

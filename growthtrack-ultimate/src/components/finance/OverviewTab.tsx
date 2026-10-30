@@ -37,7 +37,7 @@ export default function OverviewTab({ transactions, budgets, subscriptions, mont
   return <>
     <div className="finance-controls finance-overview-actions"><button type="button" className="btn-primary" onClick={() => setShowEntry(true)}>Add a transaction</button><Link to={featurePath('transactions')}>Open Transactions</Link></div>
     {showEntry && <TransactionEditor {...{ today, currencySymbol, formatMoney, onSave }} onSaved={() => setShowEntry(false)} onCancel={() => setShowEntry(false)} />}
-    <div className="stats-grid finance-kpi-grid">{cards.map(card => <StatCard key={card.label} {...card} />)}</div>
+    <div className="stats-grid finance-kpi-grid">{cards.map((card, index) => <StatCard key={card.label} {...card} lead={index === 0} />)}</div>
     <p className="finance-note">{summary.savingsRate === null ? 'Savings rate needs recorded income.' : 'Savings rate: ' + summary.savingsRate.toFixed(1) + '% of income after expenses.'} Totals use recorded transactions for {month}.</p>
     <div className="finance-card-grid">
       <section className="glass-card"><div className="finance-card-heading"><h2>Spending by method</h2></div>

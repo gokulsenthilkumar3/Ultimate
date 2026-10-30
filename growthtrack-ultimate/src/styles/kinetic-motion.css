@@ -25,6 +25,15 @@
 [data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.gt-settings-modal__links button, .gt-settings-modal__close, .editorial-overview__primary) { transition: transform 180ms cubic-bezier(.22,1,.36,1); }
 @media (hover: hover) and (pointer: fine) { [data-ui-style='kinetic'][data-kinetic-motion='true'] .gt-settings-modal__links button:hover { transform: translateY(-2px); } [data-ui-style='kinetic'][data-kinetic-motion='true'] .gt-settings-modal__links button:hover > svg { transform: translate(2px, -2px); } }
 [data-ui-style='kinetic'][data-kinetic-motion='true'] .gt-settings-modal__links button:active { transform: scale(.98); transition-duration: 120ms; }
+/* App Hub: 45 cards each ran an entrance at card-index x 35ms, so all 45 were composited and hidden at once (61 layers against the
+   30-layer budget, with the last card invisible for 1.6s). Only the first dozen, the ones in view, animate, 40ms apart; the rest paint at once. */
+[data-ui-style='kinetic'] .app-hub-card { animation-duration: 320ms; animation-timing-function: cubic-bezier(.22,1,.36,1); animation-delay: calc(min(var(--card-i, 0), 11) * 40ms); }
+[data-ui-style='kinetic'] .app-hub-card:nth-child(n + 13) { animation: none; }
+[data-ui-style='kinetic'][data-motion-tier='0'] .app-hub-card { animation: none; }
+@media (hover: hover) and (pointer: fine) {
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.about-card, .about-entry__card) { transition: transform 180ms cubic-bezier(.22,1,.36,1); }
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.about-card, .about-entry__card):hover { transform: translateY(-2px); }
+}
 /* One-shot feedback from the micro-animation catalogue. Each is tied to a user action, runs at most 350ms and is inert under reduced motion. */
 @keyframes kinetic-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } }
 @keyframes kinetic-pop { 0% { transform: scale(.8); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }

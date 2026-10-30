@@ -12,6 +12,7 @@ import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { useToast } from '../hooks/useToast';
 import useHashTab from '../hooks/useHashTab';
 import { formatDate, formatTime, formatNumber, getUserLocale } from '../utils/userFormatters';
+import { useKinetic } from './motion/KineticContext';
 
 const MOODS = [
   { value: 5, label: 'Excellent', icon: '😄', color: '#22c55e',  bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.3)' },
@@ -539,6 +540,7 @@ function MoodTrends({ moodLogs, sleepLogs, user }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function MindWellness() {
+  const { enabled: kinetic } = useKinetic();
   const user        = useStore(s => s.user);
   const moodLogs    = useStore(selectMoodLogs);
   const addMoodLog  = useStore(selectAddMoodLog);
@@ -592,7 +594,7 @@ export default function MindWellness() {
     <div className="fade-in" style={{ padding: '0.5rem 0' }}>
       {saveError && <p role="alert">{saveError}</p>}
       {/* ── Header ── */}
-      <PageHeader accent="Wellness" title="Mind & wellness" subtitle={<>Daily mood · energy · breathwork · journaling</>} icon={<Brain size={24} color="#a78bfa" />} actions={<><div style={{ textAlign: 'right' }}>
+      <PageHeader metric={{ label: 'Check-in streak', value: streak, unit: streak === 1 ? 'day' : 'days', note: 'Consecutive days with a mood check-in', tone: 'coral' }} accent="Wellness" title="Mind & wellness" subtitle={<>Daily mood · energy · breathwork · journaling</>} icon={<Brain size={24} color="#a78bfa" />} actions={kinetic ? undefined : <><div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '2rem', fontWeight: 900, color: '#a78bfa', fontFamily: 'var(--font-display)' }}>
             {streak > 0 ? `${streak}🔥` : '—'}
           </div>

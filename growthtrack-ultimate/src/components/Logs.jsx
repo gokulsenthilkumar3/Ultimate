@@ -216,7 +216,7 @@ export default function Logs() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <PageHeader accent="Hub" title="Logs" subtitle={<>{enriched.length} total · {filtered.length} shown</>} actions={<><div style={{ display: 'flex', gap: '0.5rem' }}>
+      <PageHeader metric={{ label: 'Log entries', value: enriched.length, note: `${filtered.length} shown`, tone: 'lilac', user }} accent="Hub" title="Logs" subtitle={<>{enriched.length} total · {filtered.length} shown</>} actions={<><div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={fetchLogs} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
             <RefreshCw size={12} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} /> Refresh
           </button>
