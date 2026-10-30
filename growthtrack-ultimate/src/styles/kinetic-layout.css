@@ -42,11 +42,13 @@
 [data-ui-style='kinetic'] [data-palette-preview='coral'] { background: #FF5A3C; }
 [data-ui-style='kinetic'] .gt-page-state__companion { inline-size: 80px; block-size: 80px; flex: none; }
 /* Stat tiles: secondary-metric scale from the brief (40-56px, tabular, ink); the data colour stays as an accent bar. */
-[data-ui-style='kinetic'] .stat-tile { display: grid; justify-items: center; gap: 10px; padding: 18px 14px; }
+[data-ui-style='kinetic'] .stat-tile { container-type: inline-size; display: grid; justify-items: center; gap: 10px; padding: 18px 14px; --stat-max: 56px; }
 [data-ui-style='kinetic'] .stat-tile::before { content: ''; inline-size: 28px; block-size: 4px; border-radius: 2px; background: var(--stat-tile-color, var(--gt-action)); }
-[data-ui-style='kinetic'] .stat-tile__value { margin: 0; font-size: clamp(40px, 4vw, 56px); font-weight: 800; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--gt-text); }
+/* Each figure fits its own tile by character count, so a long value never clips; --stat-max is the brief's 56px (88px for the lead). */
+[data-ui-style='kinetic'] .stat-tile__value { margin: 0; font-size: clamp(40px, 4vw, 56px); font-size: clamp(28px, calc(100cqi / (var(--stat-chars, 3) * .62)), var(--stat-max)); font-weight: 800; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--gt-text); }
 [data-ui-style='kinetic'] .stat-tile--lead { border-color: var(--gt-text); background: color-mix(in srgb, var(--gt-character-mint) 16%, var(--gt-surface)); }
-[data-ui-style='kinetic'] .stat-tile--lead .stat-tile__value { font-size: clamp(56px, 6vw, 88px); font-weight: 800; }
+[data-ui-style='kinetic'] .stat-tile--lead { --stat-max: 88px; }
+[data-ui-style='kinetic'] .stat-tile--lead .stat-tile__value { font-size: clamp(56px, 6vw, 88px); font-size: clamp(32px, calc(100cqi / (var(--stat-chars, 3) * .62)), var(--stat-max)); font-weight: 800; }
 [data-ui-style='kinetic'] .stat-tile__label { margin: 0; font-size: 12px; font-weight: 600; color: var(--gt-muted); }
 [data-ui-style='kinetic'] .empty-state__companion { display: grid; place-items: center; inline-size: 88px; block-size: 88px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--gt-character-lilac) 26%, var(--gt-surface)); }
 [data-ui-style='kinetic'] .empty-state__companion .character-scene { inline-size: 76px; block-size: 76px; }

@@ -179,7 +179,7 @@ This is a static literal-import inventory. Computed imports, runtime DOM constru
 | button | Cancel | {onCancel} | [components/finance/TransactionEditor.tsx:54](../growthtrack-ultimate/src/components/finance/TransactionEditor.tsx#L54) |
 | button | {saving ? 'Saving…' : transaction ? 'Save changes' : 'Add transaction'} | {submit} | [components/finance/TransactionEditor.tsx:65](../growthtrack-ultimate/src/components/finance/TransactionEditor.tsx#L65) |
 | button | New transaction | {() =&gt; { setEditor('new'); setError(''); }} | [components/finance/TransactionsTab.tsx:82](../growthtrack-ultimate/src/components/finance/TransactionsTab.tsx#L82) |
-| button | Export filtered CSV ( {formatNumber(filtered.length, undefined, { maximumFractionDigits: 0 })} ) | {exportFiltered} | [components/finance/TransactionsTab.tsx:83](../growthtrack-ultimate/src/components/finance/TransactionsTab.tsx#L83) |
+| button | Export filtered CSV ( {formatNumber(filtered.length, user, { maximumFractionDigits: 0 })} ) | {exportFiltered} | [components/finance/TransactionsTab.tsx:83](../growthtrack-ultimate/src/components/finance/TransactionsTab.tsx#L83) |
 | button | Clear filters | {() =&gt; { setParams({}); setSelected(new Set()); setConfirmDelete(null); setAdvancedOpen(false); }} | [components/finance/TransactionsTab.tsx:91](../growthtrack-ultimate/src/components/finance/TransactionsTab.tsx#L91) |
 | button | {&#96;Remove ${label.toLowerCase()} filter: ${value}&#96;} | {() =&gt; changeFilter(key,'')} | [components/finance/TransactionsTab.tsx:102](../growthtrack-ultimate/src/components/finance/TransactionsTab.tsx#L102) |
 | button | Delete selected | {() =&gt; setConfirmDelete(selectedVisible.map(row =&gt; row.id))} | [components/finance/TransactionsTab.tsx:106](../growthtrack-ultimate/src/components/finance/TransactionsTab.tsx#L106) |
@@ -617,30 +617,30 @@ This is a static literal-import inventory. Computed imports, runtime DOM constru
 | Button | Disconnect | {() =&gt; setConfirming(true)} | [components/sync/SyncCenter.jsx:128](../growthtrack-ultimate/src/components/sync/SyncCenter.jsx#L128) |
 | Button | Try again | {() =&gt; query.refetch()} | [components/sync/SyncCenter.jsx:165](../growthtrack-ultimate/src/components/sync/SyncCenter.jsx#L165) |
 | button | Retry page | {this.handleRetry} | [components/TabErrorBoundary.jsx:39](../growthtrack-ultimate/src/components/TabErrorBoundary.jsx#L39) |
-| button | {sub.done &amp;&amp; &lt;Check size={9} color="#10b981" /&gt;} | {() =&gt; onToggle(sub.id)} | [components/Tasks.tsx:57](../growthtrack-ultimate/src/components/Tasks.tsx#L57) |
-| button | (label supplied through component props or an icon) | {() =&gt; onDelete(sub.id)} | [components/Tasks.tsx:76](../growthtrack-ultimate/src/components/Tasks.tsx#L76) |
-| button | Mark complete | {() =&gt; onComplete(task.id)} | [components/Tasks.tsx:127](../growthtrack-ultimate/src/components/Tasks.tsx#L127) |
-| button | {expanded ? &lt;ChevronDown size={12} /&gt; : &lt;ChevronRight size={12} /&gt;} {subs.length ? &#96;Sub-tasks ${doneSubs}/${subs.length}&#96; : 'Add sub-tasks'} | {() =&gt; setExpanded(v =&gt; !v)} | [components/Tasks.tsx:202](../growthtrack-ultimate/src/components/Tasks.tsx#L202) |
-| button | Add | {addSub} | [components/Tasks.tsx:256](../growthtrack-ultimate/src/components/Tasks.tsx#L256) |
-| button | Edit | {() =&gt; onEdit(task)} | [components/Tasks.tsx:274](../growthtrack-ultimate/src/components/Tasks.tsx#L274) |
-| button | Delete | {() =&gt; onDelete(task.id, 'pending')} | [components/Tasks.tsx:304](../growthtrack-ultimate/src/components/Tasks.tsx#L304) |
-| button | Refresh from DB | {fetchTasks} | [components/Tasks.tsx:640](../growthtrack-ultimate/src/components/Tasks.tsx#L640) |
-| button | {showForm ? &lt;X size={14} /&gt; : &lt;Plus size={14} /&gt;} {showForm ? 'Cancel' : 'Add Task'} | {() =&gt; { setShowForm(v =&gt; !v); if (editId) resetForm(); }} | [components/Tasks.tsx:670](../growthtrack-ultimate/src/components/Tasks.tsx#L670) |
-| button | Close task form | {resetForm} | [components/Tasks.tsx:746](../growthtrack-ultimate/src/components/Tasks.tsx#L746) |
-| button | Cancel | {resetForm} | [components/Tasks.tsx:812](../growthtrack-ultimate/src/components/Tasks.tsx#L812) |
-| button | {saving ? (editId ? 'Saving changes…' : 'Adding task…') : (editId ? 'Save Changes' : 'Initialize Task')} | {handleSubmit} | [components/Tasks.tsx:813](../growthtrack-ultimate/src/components/Tasks.tsx#L813) |
-| button | {id === 'pending' ? &lt;ListTodo size={15} /&gt; : &lt;Archive size={15} /&gt;} {lbl} | {() =&gt; setTab(id)} | [components/Tasks.tsx:841](../growthtrack-ultimate/src/components/Tasks.tsx#L841) |
-| button | Clear task search | {() =&gt; setQuery('')} | [components/Tasks.tsx:887](../growthtrack-ultimate/src/components/Tasks.tsx#L887) |
-| button | {l} | {() =&gt; setFilter(v)} | [components/Tasks.tsx:894](../growthtrack-ultimate/src/components/Tasks.tsx#L894) |
-| button | {c} ( {catCounts[c]} ) | {() =&gt; setFilter(f =&gt; f === c ? 'all' : c)} | [components/Tasks.tsx:929](../growthtrack-ultimate/src/components/Tasks.tsx#L929) |
-| button | {l} | {() =&gt; setSortBy(v)} | [components/Tasks.tsx:964](../growthtrack-ultimate/src/components/Tasks.tsx#L964) |
-| button | List view | {() =&gt; setViewMode('list')} | [components/Tasks.tsx:988](../growthtrack-ultimate/src/components/Tasks.tsx#L988) |
-| button | Priority matrix view | {() =&gt; setViewMode('matrix')} | [components/Tasks.tsx:998](../growthtrack-ultimate/src/components/Tasks.tsx#L998) |
-| button | ✓ Mark Complete | {handleBulkComplete} | [components/Tasks.tsx:1016](../growthtrack-ultimate/src/components/Tasks.tsx#L1016) |
-| button | 🗑 Delete Selected | {handleBulkDelete} | [components/Tasks.tsx:1019](../growthtrack-ultimate/src/components/Tasks.tsx#L1019) |
-| button | Clear | {() =&gt; setSelected(new Set())} | [components/Tasks.tsx:1022](../growthtrack-ultimate/src/components/Tasks.tsx#L1022) |
-| button | Reopen | {() =&gt; handleReopen(task.id)} | [components/Tasks.tsx:1195](../growthtrack-ultimate/src/components/Tasks.tsx#L1195) |
-| button | Delete Forever | {() =&gt; handleDelete(task.id, 'completed')} | [components/Tasks.tsx:1224](../growthtrack-ultimate/src/components/Tasks.tsx#L1224) |
+| button | {sub.done &amp;&amp; &lt;Check size={9} color="#10b981" /&gt;} | {() =&gt; onToggle(sub.id)} | [components/Tasks.tsx:55](../growthtrack-ultimate/src/components/Tasks.tsx#L55) |
+| button | (label supplied through component props or an icon) | {() =&gt; onDelete(sub.id)} | [components/Tasks.tsx:74](../growthtrack-ultimate/src/components/Tasks.tsx#L74) |
+| button | Mark complete | {() =&gt; onComplete(task.id)} | [components/Tasks.tsx:125](../growthtrack-ultimate/src/components/Tasks.tsx#L125) |
+| button | {expanded ? &lt;ChevronDown size={12} /&gt; : &lt;ChevronRight size={12} /&gt;} {subs.length ? &#96;Sub-tasks ${doneSubs}/${subs.length}&#96; : 'Add sub-tasks'} | {() =&gt; setExpanded(v =&gt; !v)} | [components/Tasks.tsx:200](../growthtrack-ultimate/src/components/Tasks.tsx#L200) |
+| button | Add | {addSub} | [components/Tasks.tsx:254](../growthtrack-ultimate/src/components/Tasks.tsx#L254) |
+| button | Edit | {() =&gt; onEdit(task)} | [components/Tasks.tsx:272](../growthtrack-ultimate/src/components/Tasks.tsx#L272) |
+| button | Delete | {() =&gt; onDelete(task.id, 'pending')} | [components/Tasks.tsx:302](../growthtrack-ultimate/src/components/Tasks.tsx#L302) |
+| button | Refresh from DB | {fetchTasks} | [components/Tasks.tsx:641](../growthtrack-ultimate/src/components/Tasks.tsx#L641) |
+| button | {showForm ? &lt;X size={14} /&gt; : &lt;Plus size={14} /&gt;} {showForm ? 'Cancel' : 'Add Task'} | {() =&gt; { setShowForm(v =&gt; !v); if (editId) resetForm(); }} | [components/Tasks.tsx:671](../growthtrack-ultimate/src/components/Tasks.tsx#L671) |
+| button | Close task form | {resetForm} | [components/Tasks.tsx:747](../growthtrack-ultimate/src/components/Tasks.tsx#L747) |
+| button | Cancel | {resetForm} | [components/Tasks.tsx:813](../growthtrack-ultimate/src/components/Tasks.tsx#L813) |
+| button | {saving ? (editId ? 'Saving changes…' : 'Adding task…') : (editId ? 'Save Changes' : 'Initialize Task')} | {handleSubmit} | [components/Tasks.tsx:814](../growthtrack-ultimate/src/components/Tasks.tsx#L814) |
+| button | {id === 'pending' ? &lt;ListTodo size={15} /&gt; : &lt;Archive size={15} /&gt;} {lbl} | {() =&gt; setTab(id)} | [components/Tasks.tsx:842](../growthtrack-ultimate/src/components/Tasks.tsx#L842) |
+| button | Clear task search | {() =&gt; setQuery('')} | [components/Tasks.tsx:888](../growthtrack-ultimate/src/components/Tasks.tsx#L888) |
+| button | {l} | {() =&gt; setFilter(v)} | [components/Tasks.tsx:895](../growthtrack-ultimate/src/components/Tasks.tsx#L895) |
+| button | {c} ( {catCounts[c]} ) | {() =&gt; setFilter(f =&gt; f === c ? 'all' : c)} | [components/Tasks.tsx:930](../growthtrack-ultimate/src/components/Tasks.tsx#L930) |
+| button | {l} | {() =&gt; setSortBy(v)} | [components/Tasks.tsx:965](../growthtrack-ultimate/src/components/Tasks.tsx#L965) |
+| button | List view | {() =&gt; setViewMode('list')} | [components/Tasks.tsx:989](../growthtrack-ultimate/src/components/Tasks.tsx#L989) |
+| button | Priority matrix view | {() =&gt; setViewMode('matrix')} | [components/Tasks.tsx:999](../growthtrack-ultimate/src/components/Tasks.tsx#L999) |
+| button | ✓ Mark Complete | {handleBulkComplete} | [components/Tasks.tsx:1017](../growthtrack-ultimate/src/components/Tasks.tsx#L1017) |
+| button | 🗑 Delete Selected | {handleBulkDelete} | [components/Tasks.tsx:1020](../growthtrack-ultimate/src/components/Tasks.tsx#L1020) |
+| button | Clear | {() =&gt; setSelected(new Set())} | [components/Tasks.tsx:1023](../growthtrack-ultimate/src/components/Tasks.tsx#L1023) |
+| button | Reopen | {() =&gt; handleReopen(task.id)} | [components/Tasks.tsx:1196](../growthtrack-ultimate/src/components/Tasks.tsx#L1196) |
+| button | Delete Forever | {() =&gt; handleDelete(task.id, 'completed')} | [components/Tasks.tsx:1225](../growthtrack-ultimate/src/components/Tasks.tsx#L1225) |
 | button | Export | {exportCSV} | [components/Timesheet.tsx:289](../growthtrack-ultimate/src/components/Timesheet.tsx#L289) |
 | button | Retry load | {fetchEntries} | [components/Timesheet.tsx:294](../growthtrack-ultimate/src/components/Timesheet.tsx#L294) |
 | button | {id} | {() =&gt; setTab(id)} | [components/Timesheet.tsx:317](../growthtrack-ultimate/src/components/Timesheet.tsx#L317) |
@@ -1057,7 +1057,7 @@ This is a static literal-import inventory. Computed imports, runtime DOM constru
 | textarea | What's on your mind today? | textarea | {e =&gt; { setNote(e.target.value); setSaved(false); }} | [components/MindWellness.jsx:712](../growthtrack-ultimate/src/components/MindWellness.jsx#L712) |
 | select | Animation speed | select | {event=&gt;setAnimationSpeed(Number(event.target.value))} | [components/morphEngine/AnimationPanel.jsx:37](../growthtrack-ultimate/src/components/morphEngine/AnimationPanel.jsx#L37) |
 | input | Advanced animation speed | range | {event=&gt;setAnimationSpeed(SPEED_STEPS[Number(event.target.value)])} | [components/morphEngine/AnimationPanel.jsx:38](../growthtrack-ultimate/src/components/morphEngine/AnimationPanel.jsx#L38) |
-| MotionToggle | (label/legend supplied by parent) | MotionToggle | (native form or component props) | [components/motion/CharacterScene.jsx:56](../growthtrack-ultimate/src/components/motion/CharacterScene.jsx#L56) |
+| MotionToggle | (label/legend supplied by parent) | MotionToggle | (native form or component props) | [components/motion/CharacterScene.jsx:59](../growthtrack-ultimate/src/components/motion/CharacterScene.jsx#L59) |
 | input | Choose Markdown file | file | {previewImport} | [components/Notes.jsx:642](../growthtrack-ultimate/src/components/Notes.jsx#L642) |
 | input | Search notes | input | {e =&gt; { setSearch(e.target.value); changeListPage(1); }} | [components/Notes.jsx:653](../growthtrack-ultimate/src/components/Notes.jsx#L653) |
 | input | Note title | input | {e =&gt; setDraft(d =&gt; ({ ...d, title: e.target.value }))} | [components/Notes.jsx:769](../growthtrack-ultimate/src/components/Notes.jsx#L769) |
@@ -1377,20 +1377,20 @@ This is a static literal-import inventory. Computed imports, runtime DOM constru
 | TextField | {field.label} | {field.type === 'secret' ? 'password' : field.type === 'color' ? 'color' : 'text'} | {event =&gt; setValues(current =&gt; ({ ...current, [field.name]: event.target.value }))} | [components/sync/SyncCenter.jsx:110](../growthtrack-ultimate/src/components/sync/SyncCenter.jsx#L110) |
 | Switch | Sync automatically | Switch | {toggleAuto} | [components/sync/SyncCenter.jsx:132](../growthtrack-ultimate/src/components/sync/SyncCenter.jsx#L132) |
 | input | (label/legend supplied by parent) | checkbox | {event =&gt; setRemoveData(event.target.checked)} | [components/sync/SyncCenter.jsx:138](../growthtrack-ultimate/src/components/sync/SyncCenter.jsx#L138) |
-| input | + Add sub-task… | text | {e =&gt; setSubInput(e.target.value)} | [components/Tasks.tsx:242](../growthtrack-ultimate/src/components/Tasks.tsx#L242) |
-| input | task-title | text | {e =&gt; setForm(f =&gt; ({ ...f, title: e.target.value }))} | [components/Tasks.tsx:756](../growthtrack-ultimate/src/components/Tasks.tsx#L756) |
-| textarea | task-description | textarea | {e =&gt; setForm(f =&gt; ({ ...f, description: e.target.value }))} | [components/Tasks.tsx:763](../growthtrack-ultimate/src/components/Tasks.tsx#L763) |
-| select | task-priority | select | {e =&gt; setForm(f =&gt; ({ ...f, priority: e.target.value }))} | [components/Tasks.tsx:771](../growthtrack-ultimate/src/components/Tasks.tsx#L771) |
-| select | task-category | select | {e =&gt; setForm(f =&gt; ({ ...f, category: e.target.value }))} | [components/Tasks.tsx:777](../growthtrack-ultimate/src/components/Tasks.tsx#L777) |
-| input | task-project | input | {e =&gt; setForm(f =&gt; ({ ...f, project: e.target.value }))} | [components/Tasks.tsx:784](../growthtrack-ultimate/src/components/Tasks.tsx#L784) |
-| input | task-section | input | {e =&gt; setForm(f =&gt; ({ ...f, section: e.target.value }))} | [components/Tasks.tsx:785](../growthtrack-ultimate/src/components/Tasks.tsx#L785) |
-| input | task-tags | input | {e =&gt; setForm(f =&gt; ({ ...f, tags: e.target.value }))} | [components/Tasks.tsx:787](../growthtrack-ultimate/src/components/Tasks.tsx#L787) |
-| input | task-due-date | date | {e =&gt; setForm(f =&gt; ({ ...f, dueDate: e.target.value }))} | [components/Tasks.tsx:791](../growthtrack-ultimate/src/components/Tasks.tsx#L791) |
-| input | task-reminder | datetime-local | {e =&gt; setForm(f =&gt; ({ ...f, reminderAt: e.target.value }))} | [components/Tasks.tsx:796](../growthtrack-ultimate/src/components/Tasks.tsx#L796) |
-| select | task-recurrence | select | {e =&gt; setForm(f =&gt; ({ ...f, recurrence: e.target.value }))} | [components/Tasks.tsx:797](../growthtrack-ultimate/src/components/Tasks.tsx#L797) |
-| select | task-parent | select | {e =&gt; setForm(f =&gt; ({ ...f, parent_task_id: e.target.value }))} | [components/Tasks.tsx:802](../growthtrack-ultimate/src/components/Tasks.tsx#L802) |
-| input | Search tasks | input | {e =&gt; setQuery(e.target.value)} | [components/Tasks.tsx:880](../growthtrack-ultimate/src/components/Tasks.tsx#L880) |
-| input | (label/legend supplied by parent) | checkbox | {(e: any) =&gt; setSelected(prev =&gt; { const next = new Set(prev); e.target.checked ? next.add(task.id) : next.delete(task.id); return next; })} | [components/Tasks.tsx:1040](../growthtrack-ultimate/src/components/Tasks.tsx#L1040) |
+| input | + Add sub-task… | text | {e =&gt; setSubInput(e.target.value)} | [components/Tasks.tsx:240](../growthtrack-ultimate/src/components/Tasks.tsx#L240) |
+| input | task-title | text | {e =&gt; setForm(f =&gt; ({ ...f, title: e.target.value }))} | [components/Tasks.tsx:757](../growthtrack-ultimate/src/components/Tasks.tsx#L757) |
+| textarea | task-description | textarea | {e =&gt; setForm(f =&gt; ({ ...f, description: e.target.value }))} | [components/Tasks.tsx:764](../growthtrack-ultimate/src/components/Tasks.tsx#L764) |
+| select | task-priority | select | {e =&gt; setForm(f =&gt; ({ ...f, priority: e.target.value }))} | [components/Tasks.tsx:772](../growthtrack-ultimate/src/components/Tasks.tsx#L772) |
+| select | task-category | select | {e =&gt; setForm(f =&gt; ({ ...f, category: e.target.value }))} | [components/Tasks.tsx:778](../growthtrack-ultimate/src/components/Tasks.tsx#L778) |
+| input | task-project | input | {e =&gt; setForm(f =&gt; ({ ...f, project: e.target.value }))} | [components/Tasks.tsx:785](../growthtrack-ultimate/src/components/Tasks.tsx#L785) |
+| input | task-section | input | {e =&gt; setForm(f =&gt; ({ ...f, section: e.target.value }))} | [components/Tasks.tsx:786](../growthtrack-ultimate/src/components/Tasks.tsx#L786) |
+| input | task-tags | input | {e =&gt; setForm(f =&gt; ({ ...f, tags: e.target.value }))} | [components/Tasks.tsx:788](../growthtrack-ultimate/src/components/Tasks.tsx#L788) |
+| input | task-due-date | date | {e =&gt; setForm(f =&gt; ({ ...f, dueDate: e.target.value }))} | [components/Tasks.tsx:792](../growthtrack-ultimate/src/components/Tasks.tsx#L792) |
+| input | task-reminder | datetime-local | {e =&gt; setForm(f =&gt; ({ ...f, reminderAt: e.target.value }))} | [components/Tasks.tsx:797](../growthtrack-ultimate/src/components/Tasks.tsx#L797) |
+| select | task-recurrence | select | {e =&gt; setForm(f =&gt; ({ ...f, recurrence: e.target.value }))} | [components/Tasks.tsx:798](../growthtrack-ultimate/src/components/Tasks.tsx#L798) |
+| select | task-parent | select | {e =&gt; setForm(f =&gt; ({ ...f, parent_task_id: e.target.value }))} | [components/Tasks.tsx:803](../growthtrack-ultimate/src/components/Tasks.tsx#L803) |
+| input | Search tasks | input | {e =&gt; setQuery(e.target.value)} | [components/Tasks.tsx:881](../growthtrack-ultimate/src/components/Tasks.tsx#L881) |
+| input | (label/legend supplied by parent) | checkbox | {(e: any) =&gt; setSelected(prev =&gt; { const next = new Set(prev); e.target.checked ? next.add(task.id) : next.delete(task.id); return next; })} | [components/Tasks.tsx:1041](../growthtrack-ultimate/src/components/Tasks.tsx#L1041) |
 | select | timesheet-project | select | {e =&gt; setProject(e.target.value)} | [components/Timesheet.tsx:371](../growthtrack-ultimate/src/components/Timesheet.tsx#L371) |
 | input | timesheet-task | input | {e =&gt; setTask(e.target.value)} | [components/Timesheet.tsx:377](../growthtrack-ultimate/src/components/Timesheet.tsx#L377) |
 | input | timesheet-rate | number | {e =&gt; setRate(Number(e.target.value))} | [components/Timesheet.tsx:381](../growthtrack-ultimate/src/components/Timesheet.tsx#L381) |
@@ -1523,7 +1523,7 @@ This is a static literal-import inventory. Computed imports, runtime DOM constru
 | portfolio-add-form | {event =&gt; { event.preventDefault(); handleAdd(); }} | [components/Portfolio.jsx:221](../growthtrack-ultimate/src/components/Portfolio.jsx#L221) |
 | (page-owned form) | {event =&gt; { event.preventDefault(); saveEdit(); }} | [components/Portfolio.jsx:232](../growthtrack-ultimate/src/components/Portfolio.jsx#L232) |
 | {&#96;${connector.label} settings&#96;} | {submit} | [components/sync/SyncCenter.jsx:109](../growthtrack-ultimate/src/components/sync/SyncCenter.jsx#L109) |
-| (page-owned form) | {handleSubmit} | [components/Tasks.tsx:722](../growthtrack-ultimate/src/components/Tasks.tsx#L722) |
+| (page-owned form) | {handleSubmit} | [components/Tasks.tsx:723](../growthtrack-ultimate/src/components/Tasks.tsx#L723) |
 | Customer filters | {event =&gt; event.preventDefault()} | [domains/customer-admin/CustomerAdminPage.jsx:49](../growthtrack-ultimate/src/domains/customer-admin/CustomerAdminPage.jsx#L49) |
 | (page-owned form) | {submit} | [domains/family/FamilyPage.jsx:29](../growthtrack-ultimate/src/domains/family/FamilyPage.jsx#L29) |
 | (page-owned form) | {submit} | [domains/family/FamilyPage.jsx:99](../growthtrack-ultimate/src/domains/family/FamilyPage.jsx#L99) |
@@ -1593,7 +1593,7 @@ These include clickable cards/rows/headers, drop areas, custom component callbac
 | div | Share your avatar {imageSrc &amp;&amp; &lt;img className="avatar-share-preview" src={imageSrc} alt="Protected avatar view ready to share"/&gt;} Private anatomy is covered. Your measurements are excluded. Save image {sharing ? 'Sharing | onClick: {onClose} | [components/SocialShareModal.jsx:41](../growthtrack-ultimate/src/components/SocialShareModal.jsx#L41) |
 | div | Share your avatar {imageSrc &amp;&amp; &lt;img className="avatar-share-preview" src={imageSrc} alt="Protected avatar view ready to share"/&gt;} Private anatomy is covered. Your measurements are excluded. Save image {sharing ? 'Sharing | onClick: {event =&gt; event.stopPropagation()} | [components/SocialShareModal.jsx:42](../growthtrack-ultimate/src/components/SocialShareModal.jsx#L42) |
 | div | Interactive two-dimensional physique fallback. Drag horizontally to rotate and use the mouse wheel to zoom. | onDoubleClick: {handleDoubleClick}; onPointerDown: {handlePointerDown} | [components/Sprite3DViewer.jsx:314](../growthtrack-ultimate/src/components/Sprite3DViewer.jsx#L314) |
-| div | {editId ? &lt;Edit3 size={18} color="var(--accent)" /&gt; : &lt;Plus size={18} color="var(--accent)" /&gt;} {editId ? 'Edit Task Spec' : 'Deploy New Task'} {saveError &amp;&amp; &lt;p role="alert"&gt;{saveError}&lt;/p&gt;} Title * Description Priority | onClick: {() =&gt; { if (!saving) resetForm(); }} | [components/Tasks.tsx:712](../growthtrack-ultimate/src/components/Tasks.tsx#L712) |
+| div | {editId ? &lt;Edit3 size={18} color="var(--accent)" /&gt; : &lt;Plus size={18} color="var(--accent)" /&gt;} {editId ? 'Edit Task Spec' : 'Deploy New Task'} {saveError &amp;&amp; &lt;p role="alert"&gt;{saveError}&lt;/p&gt;} Title * Description Priority | onClick: {() =&gt; { if (!saving) resetForm(); }} | [components/Tasks.tsx:713](../growthtrack-ultimate/src/components/Tasks.tsx#L713) |
 | div | Timesheet views | onKeyDown: {event =&gt; handleTabKeyDown(event, { tabs: TIMESHEET_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'timesheet-tab' })} | [components/Timesheet.tsx:313](../growthtrack-ultimate/src/components/Timesheet.tsx#L313) |
 | section | {label} {hint &#124;&#124; 'Select files or drop them here.'} {Math.ceil(maxSizeBytes / 1024)} KB maximum per file. {error} {pending ? 'Processing selected files…' : selected.length ? &#96;${selected.length} file${selected.length === | onDrop: {event =&gt; { event.preventDefault(); void choose(Array.from(event.dataTransfer.files)); }} | [components/ui/FileUploader.tsx:32](../growthtrack-ultimate/src/components/ui/FileUploader.tsx#L32) |
 | div | {label} | onKeyDown: {handleKey} | [components/ui/Tabs.jsx:51](../growthtrack-ultimate/src/components/ui/Tabs.jsx#L51) |
@@ -1785,7 +1785,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | #10141d | [styles/chamber.css:725](../growthtrack-ultimate/src/styles/chamber.css#L725) |
 | #101621 | [styles/design-tokens.css:326](../growthtrack-ultimate/src/styles/design-tokens.css#L326), [design/tokens.ts:82](../growthtrack-ultimate/src/design/tokens.ts#L82) |
 | #10231c | [components/motion/GlowCrew.tsx:24](../growthtrack-ultimate/src/components/motion/GlowCrew.tsx#L24), [styles/design-tokens.css:178](../growthtrack-ultimate/src/styles/design-tokens.css#L178); 26 sites total |
-| #10231c26 | [styles/kinetic-layout.css:61](../growthtrack-ultimate/src/styles/kinetic-layout.css#L61) |
+| #10231c26 | [styles/kinetic-layout.css:63](../growthtrack-ultimate/src/styles/kinetic-layout.css#L63) |
 | #10b981 | [components/Assessment.jsx:185](../growthtrack-ultimate/src/components/Assessment.jsx#L185), [components/Assessment.jsx:199](../growthtrack-ultimate/src/components/Assessment.jsx#L199); 110 sites total |
 | #10b98108 | [styles/finance.css:126](../growthtrack-ultimate/src/styles/finance.css#L126) |
 | #10b98133 | [styles/finance.css:126](../growthtrack-ultimate/src/styles/finance.css#L126) |
@@ -1867,7 +1867,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | #24362c | [styles/design-tokens.css:78](../growthtrack-ultimate/src/styles/design-tokens.css#L78), [styles/design-tokens.css:102](../growthtrack-ultimate/src/styles/design-tokens.css#L102); 4 sites total |
 | #243c27 | [styles/design-tokens.css:259](../growthtrack-ultimate/src/styles/design-tokens.css#L259), [design/tokens.ts:51](../growthtrack-ultimate/src/design/tokens.ts#L51) |
 | #253a50 | [lib/wardrobePreferences.js:7](../growthtrack-ultimate/src/lib/wardrobePreferences.js#L7) |
-| #2563eb | [styles/design-tokens.css:219](../growthtrack-ultimate/src/styles/design-tokens.css#L219), [styles/kinetic-layout.css:63](../growthtrack-ultimate/src/styles/kinetic-layout.css#L63); 3 sites total |
+| #2563eb | [styles/design-tokens.css:219](../growthtrack-ultimate/src/styles/design-tokens.css#L219), [styles/kinetic-layout.css:65](../growthtrack-ultimate/src/styles/kinetic-layout.css#L65); 3 sites total |
 | #25d366 | [components/SocialMedia.jsx:21](../growthtrack-ultimate/src/components/SocialMedia.jsx#L21) |
 | #263247 | [lib/avatarPresentation.js:8](../growthtrack-ultimate/src/lib/avatarPresentation.js#L8), [lib/wardrobePreferences.js:4](../growthtrack-ultimate/src/lib/wardrobePreferences.js#L4); 3 sites total |
 | #263c23 | [styles/design-tokens.css:174](../growthtrack-ultimate/src/styles/design-tokens.css#L174), [design/tokens.ts:39](../growthtrack-ultimate/src/design/tokens.ts#L39) |
@@ -1922,7 +1922,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | #4a2912 | [components/morphEngine/ProceduralHumanoid.jsx:26](../growthtrack-ultimate/src/components/morphEngine/ProceduralHumanoid.jsx#L26) |
 | #4aa9d8 | [styles/ultimate-ui.css:568](../growthtrack-ultimate/src/styles/ultimate-ui.css#L568) |
 | #4ade80 | [components/MindWellness.jsx:18](../growthtrack-ultimate/src/components/MindWellness.jsx#L18), [components/MindWellness.jsx:32](../growthtrack-ultimate/src/components/MindWellness.jsx#L32) |
-| #4b5563 | [components/Tasks.tsx:50](../growthtrack-ultimate/src/components/Tasks.tsx#L50) |
+| #4b5563 | [components/Tasks.tsx:48](../growthtrack-ultimate/src/components/Tasks.tsx#L48) |
 | #4b5567 | [styles/chamber.css:885](../growthtrack-ultimate/src/styles/chamber.css#L885) |
 | #51382c | [lib/skinAppearancePresets.js:10](../growthtrack-ultimate/src/lib/skinAppearancePresets.js#L10) |
 | #515154 | [styles/ultimate-ui.css:557](../growthtrack-ultimate/src/styles/ultimate-ui.css#L557), [styles/ultimate-ui.css:1002](../growthtrack-ultimate/src/styles/ultimate-ui.css#L1002) |
@@ -1955,7 +1955,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | #61dafb | [components/Projects.jsx:22](../growthtrack-ultimate/src/components/Projects.jsx#L22), [components/About.jsx:13](../growthtrack-ultimate/src/components/About.jsx#L13) |
 | #625f5f | [styles/design-tokens.css:358](../growthtrack-ultimate/src/styles/design-tokens.css#L358), [design/tokens.ts:94](../growthtrack-ultimate/src/design/tokens.ts#L94) |
 | #627a9b | [styles/design-tokens.css:334](../growthtrack-ultimate/src/styles/design-tokens.css#L334), [design/tokens.ts:83](../growthtrack-ultimate/src/design/tokens.ts#L83) |
-| #6366f1 | [components/GoalsDashboard.jsx:61](../growthtrack-ultimate/src/components/GoalsDashboard.jsx#L61), [components/Tasks.tsx:178](../growthtrack-ultimate/src/components/Tasks.tsx#L178); 21 sites total |
+| #6366f1 | [components/GoalsDashboard.jsx:61](../growthtrack-ultimate/src/components/GoalsDashboard.jsx#L61), [components/Tasks.tsx:176](../growthtrack-ultimate/src/components/Tasks.tsx#L176); 21 sites total |
 | #646cff | [components/About.jsx:13](../growthtrack-ultimate/src/components/About.jsx#L13) |
 | #64748b | [styles/premium.css:1174](../growthtrack-ultimate/src/styles/premium.css#L1174), [styles/chamber.css:478](../growthtrack-ultimate/src/styles/chamber.css#L478) |
 | #64765f | [styles/design-tokens.css:152](../growthtrack-ultimate/src/styles/design-tokens.css#L152), [styles/design-tokens.css:169](../growthtrack-ultimate/src/styles/design-tokens.css#L169); 4 sites total |
@@ -2141,7 +2141,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | #c8a04a | [components/HumanoidViewer.tsx:1490](../growthtrack-ultimate/src/components/HumanoidViewer.tsx#L1490), [components/morphEngine/ProceduralHumanoid.jsx:32](../growthtrack-ultimate/src/components/morphEngine/ProceduralHumanoid.jsx#L32) |
 | #c8bcf4 | [domains/native/native-modules.css:4](../growthtrack-ultimate/src/domains/native/native-modules.css#L4) |
 | #c9972b | [styles/ultimate-ui.css:567](../growthtrack-ultimate/src/styles/ultimate-ui.css#L567) |
-| #c9cfba | [styles/design-tokens.css:207](../growthtrack-ultimate/src/styles/design-tokens.css#L207), [styles/kinetic-layout.css:63](../growthtrack-ultimate/src/styles/kinetic-layout.css#L63); 3 sites total |
+| #c9cfba | [styles/design-tokens.css:207](../growthtrack-ultimate/src/styles/design-tokens.css#L207), [styles/kinetic-layout.css:65](../growthtrack-ultimate/src/styles/kinetic-layout.css#L65); 3 sites total |
 | #c9d3cb | [styles/design-tokens.css:55](../growthtrack-ultimate/src/styles/design-tokens.css#L55), [design/tokens.ts:57](../growthtrack-ultimate/src/design/tokens.ts#L57) |
 | #c9d4be | [styles/design-tokens.css:228](../growthtrack-ultimate/src/styles/design-tokens.css#L228), [styles/design-tokens.css:235](../growthtrack-ultimate/src/styles/design-tokens.css#L235); 8 sites total |
 | #c9eafa | [styles/design-tokens.css:109](../growthtrack-ultimate/src/styles/design-tokens.css#L109), [design/tokens.ts:72](../growthtrack-ultimate/src/design/tokens.ts#L72) |
@@ -2336,7 +2336,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | #fff8f2 | [components/morphEngine/parametricEyes.js:126](../growthtrack-ultimate/src/components/morphEngine/parametricEyes.js#L126) |
 | #fff9ef | [styles/design-tokens.css:354](../growthtrack-ultimate/src/styles/design-tokens.css#L354), [styles/design-tokens.css:374](../growthtrack-ultimate/src/styles/design-tokens.css#L374); 6 sites total |
 | #fffbed | [styles/design-tokens.css:36](../growthtrack-ultimate/src/styles/design-tokens.css#L36), [styles/design-tokens.css:127](../growthtrack-ultimate/src/styles/design-tokens.css#L127); 8 sites total |
-| #fffdf6 | [styles/design-tokens.css:201](../growthtrack-ultimate/src/styles/design-tokens.css#L201), [styles/kinetic-layout.css:63](../growthtrack-ultimate/src/styles/kinetic-layout.css#L63); 7 sites total |
+| #fffdf6 | [styles/design-tokens.css:201](../growthtrack-ultimate/src/styles/design-tokens.css#L201), [styles/kinetic-layout.css:65](../growthtrack-ultimate/src/styles/kinetic-layout.css#L65); 7 sites total |
 | #fffdf7 | [styles/design-tokens.css:128](../growthtrack-ultimate/src/styles/design-tokens.css#L128), [design/tokens.ts:27](../growthtrack-ultimate/src/design/tokens.ts#L27) |
 | #fffdf9 | [styles/responsive-foundation.css:5](../growthtrack-ultimate/src/styles/responsive-foundation.css#L5) |
 | #ffffff | [styles/design-tokens.css:48](../growthtrack-ultimate/src/styles/design-tokens.css#L48), [styles/design-tokens.css:67](../growthtrack-ultimate/src/styles/design-tokens.css#L67); 42 sites total |
@@ -2354,7 +2354,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgb(15 33 25 / .24) | [styles/design-tokens.css:26](../growthtrack-ultimate/src/styles/design-tokens.css#L26), [design/tokens.ts:10](../growthtrack-ultimate/src/design/tokens.ts#L10) |
 | rgb(18 32 24 / .12) | [styles/editorial-components.css:381](../growthtrack-ultimate/src/styles/editorial-components.css#L381) |
 | rgb(18 32 24 / .42) | [styles/editorial-components.css:415](../growthtrack-ultimate/src/styles/editorial-components.css#L415) |
-| rgb(5 16 10 / .62) | [styles/kinetic-layout.css:139](../growthtrack-ultimate/src/styles/kinetic-layout.css#L139) |
+| rgb(5 16 10 / .62) | [styles/kinetic-layout.css:141](../growthtrack-ultimate/src/styles/kinetic-layout.css#L141) |
 | rgb(5 16 10 / .65) | [styles/kinetic-layout.css:34](../growthtrack-ultimate/src/styles/kinetic-layout.css#L34) |
 | rgba(0, 0, 0, .18) | [styles/ultimate-ui.css:19](../growthtrack-ultimate/src/styles/ultimate-ui.css#L19) |
 | rgba(0, 0, 0, .3) | [styles/ultimate-ui.css:19](../growthtrack-ultimate/src/styles/ultimate-ui.css#L19) |
@@ -2367,12 +2367,12 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(0, 0, 0, 0.08) | [styles/notes.css:401](../growthtrack-ultimate/src/styles/notes.css#L401), [styles/notes.css:703](../growthtrack-ultimate/src/styles/notes.css#L703); 6 sites total |
 | rgba(0, 0, 0, 0.1) | [index.css:127](../growthtrack-ultimate/src/index.css#L127) |
 | rgba(0, 0, 0, 0.12) | [styles/ui-components.css:128](../growthtrack-ultimate/src/styles/ui-components.css#L128) |
-| rgba(0, 0, 0, 0.15) | [components/Tasks.tsx:1074](../growthtrack-ultimate/src/components/Tasks.tsx#L1074), [components/Tasks.tsx:1097](../growthtrack-ultimate/src/components/Tasks.tsx#L1097); 7 sites total |
+| rgba(0, 0, 0, 0.15) | [components/Tasks.tsx:1075](../growthtrack-ultimate/src/components/Tasks.tsx#L1075), [components/Tasks.tsx:1098](../growthtrack-ultimate/src/components/Tasks.tsx#L1098); 7 sites total |
 | rgba(0, 0, 0, 0.2) | [styles/ui-components.css:131](../growthtrack-ultimate/src/styles/ui-components.css#L131) |
-| rgba(0, 0, 0, 0.25) | [components/Tasks.tsx:624](../growthtrack-ultimate/src/components/Tasks.tsx#L624), [styles/premium.css:1094](../growthtrack-ultimate/src/styles/premium.css#L1094) |
+| rgba(0, 0, 0, 0.25) | [components/Tasks.tsx:625](../growthtrack-ultimate/src/components/Tasks.tsx#L625), [styles/premium.css:1094](../growthtrack-ultimate/src/styles/premium.css#L1094) |
 | rgba(0, 0, 0, 0.4) | [index.css:130](../growthtrack-ultimate/src/index.css#L130), [styles/premium.css:69](../growthtrack-ultimate/src/styles/premium.css#L69) |
 | rgba(0, 0, 0, 0.5) | [components/ProfileEditor.jsx:1418](../growthtrack-ultimate/src/components/ProfileEditor.jsx#L1418), [components/ProfileEditor.jsx:1431](../growthtrack-ultimate/src/components/ProfileEditor.jsx#L1431); 3 sites total |
-| rgba(0, 0, 0, 0.6) | [components/Tasks.tsx:715](../growthtrack-ultimate/src/components/Tasks.tsx#L715), [styles/chamber.css:81](../growthtrack-ultimate/src/styles/chamber.css#L81) |
+| rgba(0, 0, 0, 0.6) | [components/Tasks.tsx:716](../growthtrack-ultimate/src/components/Tasks.tsx#L716), [styles/chamber.css:81](../growthtrack-ultimate/src/styles/chamber.css#L81) |
 | rgba(0, 0, 0, 0.72) | [styles/chamber.css:51](../growthtrack-ultimate/src/styles/chamber.css#L51) |
 | rgba(0, 113, 227, .10) | [styles/ultimate-ui.css:554](../growthtrack-ultimate/src/styles/ultimate-ui.css#L554), [styles/ultimate-ui.css:1000](../growthtrack-ultimate/src/styles/ultimate-ui.css#L1000) |
 | rgba(0, 113, 227, .22) | [styles/ultimate-ui.css:555](../growthtrack-ultimate/src/styles/ultimate-ui.css#L555) |
@@ -2401,10 +2401,10 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(0,0,0,0.04) | [components/NotFound.jsx:94](../growthtrack-ultimate/src/components/NotFound.jsx#L94), [components/NotFound.jsx:94](../growthtrack-ultimate/src/components/NotFound.jsx#L94); 9 sites total |
 | rgba(0,0,0,0.06) | [index.css:89](../growthtrack-ultimate/src/index.css#L89), [index.css:95](../growthtrack-ultimate/src/index.css#L95); 3 sites total |
 | rgba(0,0,0,0.07) | [index.css:87](../growthtrack-ultimate/src/index.css#L87), [styles/ui-components.css:418](../growthtrack-ultimate/src/styles/ui-components.css#L418); 4 sites total |
-| rgba(0,0,0,0.1) | [components/Tasks.tsx:111](../growthtrack-ultimate/src/components/Tasks.tsx#L111), [components/Tasks.tsx:122](../growthtrack-ultimate/src/components/Tasks.tsx#L122); 6 sites total |
+| rgba(0,0,0,0.1) | [components/Tasks.tsx:109](../growthtrack-ultimate/src/components/Tasks.tsx#L109), [components/Tasks.tsx:120](../growthtrack-ultimate/src/components/Tasks.tsx#L120); 6 sites total |
 | rgba(0,0,0,0.12) | [index.css:88](../growthtrack-ultimate/src/index.css#L88), [styles/ui-components.css:417](../growthtrack-ultimate/src/styles/ui-components.css#L417); 4 sites total |
-| rgba(0,0,0,0.15) | [components/Tasks.tsx:117](../growthtrack-ultimate/src/components/Tasks.tsx#L117), [index.css:348](../growthtrack-ultimate/src/index.css#L348); 3 sites total |
-| rgba(0,0,0,0.2) | [components/Lifestyle.jsx:396](../growthtrack-ultimate/src/components/Lifestyle.jsx#L396), [components/Tasks.tsx:250](../growthtrack-ultimate/src/components/Tasks.tsx#L250); 8 sites total |
+| rgba(0,0,0,0.15) | [components/Tasks.tsx:115](../growthtrack-ultimate/src/components/Tasks.tsx#L115), [index.css:348](../growthtrack-ultimate/src/index.css#L348); 3 sites total |
+| rgba(0,0,0,0.2) | [components/Lifestyle.jsx:396](../growthtrack-ultimate/src/components/Lifestyle.jsx#L396), [components/Tasks.tsx:248](../growthtrack-ultimate/src/components/Tasks.tsx#L248); 8 sites total |
 | rgba(0,0,0,0.3) | [index.css:29](../growthtrack-ultimate/src/index.css#L29), [index.css:898](../growthtrack-ultimate/src/index.css#L898); 6 sites total |
 | rgba(0,0,0,0.34) | [index.css:790](../growthtrack-ultimate/src/index.css#L790) |
 | rgba(0,0,0,0.35) | [index.css:22](../growthtrack-ultimate/src/index.css#L22), [index.css:27](../growthtrack-ultimate/src/index.css#L27) |
@@ -2423,7 +2423,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(0,0,0,0.92) | [theme-v4.css:157](../growthtrack-ultimate/src/theme-v4.css#L157) |
 | rgba(0,0,0,0.96) | [theme-v4.css:157](../growthtrack-ultimate/src/theme-v4.css#L157) |
 | rgba(0,0,0,0.97) | [theme-v4.css:153](../growthtrack-ultimate/src/theme-v4.css#L153) |
-| rgba(0,0,0,0) | [components/Tasks.tsx:1073](../growthtrack-ultimate/src/components/Tasks.tsx#L1073), [components/Tasks.tsx:1096](../growthtrack-ultimate/src/components/Tasks.tsx#L1096); 6 sites total |
+| rgba(0,0,0,0) | [components/Tasks.tsx:1074](../growthtrack-ultimate/src/components/Tasks.tsx#L1074), [components/Tasks.tsx:1097](../growthtrack-ultimate/src/components/Tasks.tsx#L1097); 6 sites total |
 | rgba(10, 132, 255, .1) | [styles/logs.css:21](../growthtrack-ultimate/src/styles/logs.css#L21) |
 | rgba(10, 132, 255, .12) | [styles/logs.css:12](../growthtrack-ultimate/src/styles/logs.css#L12) |
 | rgba(10, 132, 255, .14) | [styles/ultimate-ui.css:970](../growthtrack-ultimate/src/styles/ultimate-ui.css#L970) |
@@ -2437,11 +2437,11 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(103,232,249,.25) | [styles/chamber.css:254](../growthtrack-ultimate/src/styles/chamber.css#L254) |
 | rgba(103,232,249,.65) | [styles/chamber.css:259](../growthtrack-ultimate/src/styles/chamber.css#L259) |
 | rgba(107, 92, 255, .14) | [styles/ultimate-ui.css:76](../growthtrack-ultimate/src/styles/ultimate-ui.css#L76) |
-| rgba(107,114,128,0.03) | [components/Tasks.tsx:1142](../growthtrack-ultimate/src/components/Tasks.tsx#L1142) |
+| rgba(107,114,128,0.03) | [components/Tasks.tsx:1143](../growthtrack-ultimate/src/components/Tasks.tsx#L1143) |
 | rgba(107,114,128,0.08) | [components/StrengthMetrics.jsx:163](../growthtrack-ultimate/src/components/StrengthMetrics.jsx#L163) |
-| rgba(107,114,128,0.1) | [components/Tasks.tsx:49](../growthtrack-ultimate/src/components/Tasks.tsx#L49) |
+| rgba(107,114,128,0.1) | [components/Tasks.tsx:47](../growthtrack-ultimate/src/components/Tasks.tsx#L47) |
 | rgba(107,114,128,0.12) | [components/Shopping.jsx:35](../growthtrack-ultimate/src/components/Shopping.jsx#L35), [components/Tasks.tsx:24](../growthtrack-ultimate/src/components/Tasks.tsx#L24); 3 sites total |
-| rgba(107,114,128,0.2) | [components/Tasks.tsx:49](../growthtrack-ultimate/src/components/Tasks.tsx#L49) |
+| rgba(107,114,128,0.2) | [components/Tasks.tsx:47](../growthtrack-ultimate/src/components/Tasks.tsx#L47) |
 | rgba(107,114,128,0.25) | [components/Tasks.tsx:24](../growthtrack-ultimate/src/components/Tasks.tsx#L24) |
 | rgba(107,114,128,0.3) | [components/Shopping.jsx:35](../growthtrack-ultimate/src/components/Shopping.jsx#L35) |
 | rgba(11, 12, 22, 0.72) | [theme-v4.css:11](../growthtrack-ultimate/src/theme-v4.css#L11) |
@@ -2470,17 +2470,17 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(139,92,246,0.04) | [theme-v4.css:444](../growthtrack-ultimate/src/theme-v4.css#L444) |
 | rgba(139,92,246,0.06) | [index.css:171](../growthtrack-ultimate/src/index.css#L171), [theme-v4.css:435](../growthtrack-ultimate/src/theme-v4.css#L435) |
 | rgba(139,92,246,0.14) | [index.css:117](../growthtrack-ultimate/src/index.css#L117) |
-| rgba(14, 165, 233, 0.15) | [components/Tasks.tsx:1212](../growthtrack-ultimate/src/components/Tasks.tsx#L1212) |
+| rgba(14, 165, 233, 0.15) | [components/Tasks.tsx:1213](../growthtrack-ultimate/src/components/Tasks.tsx#L1213) |
 | rgba(14, 165, 233, 0.32) | [styles/premium.css:978](../growthtrack-ultimate/src/styles/premium.css#L978) |
-| rgba(14, 165, 233, 0.4) | [components/Tasks.tsx:1214](../growthtrack-ultimate/src/components/Tasks.tsx#L1214) |
+| rgba(14, 165, 233, 0.4) | [components/Tasks.tsx:1215](../growthtrack-ultimate/src/components/Tasks.tsx#L1215) |
 | rgba(14,165,233,0.04) | [theme-v4.css:443](../growthtrack-ultimate/src/theme-v4.css#L443) |
 | rgba(14,165,233,0.06) | [components/Training.jsx:284](../growthtrack-ultimate/src/components/Training.jsx#L284), [theme-v4.css:434](../growthtrack-ultimate/src/theme-v4.css#L434); 3 sites total |
-| rgba(14,165,233,0.12) | [components/Nutrition.jsx:68](../growthtrack-ultimate/src/components/Nutrition.jsx#L68), [components/Tasks.tsx:179](../growthtrack-ultimate/src/components/Tasks.tsx#L179) |
+| rgba(14,165,233,0.12) | [components/Nutrition.jsx:68](../growthtrack-ultimate/src/components/Nutrition.jsx#L68), [components/Tasks.tsx:177](../growthtrack-ultimate/src/components/Tasks.tsx#L177) |
 | rgba(14,165,233,0.14) | [index.css:115](../growthtrack-ultimate/src/index.css#L115) |
 | rgba(14,165,233,0.15) | [components/Training.jsx:284](../growthtrack-ultimate/src/components/Training.jsx#L284) |
 | rgba(14,165,233,0.2) | [styles/premium.css:151](../growthtrack-ultimate/src/styles/premium.css#L151) |
 | rgba(14,165,233,0.25) | [components/HydrationTracker.jsx:154](../growthtrack-ultimate/src/components/HydrationTracker.jsx#L154) |
-| rgba(14,165,233,0.3) | [components/Tasks.tsx:179](../growthtrack-ultimate/src/components/Tasks.tsx#L179) |
+| rgba(14,165,233,0.3) | [components/Tasks.tsx:177](../growthtrack-ultimate/src/components/Tasks.tsx#L177) |
 | rgba(14,165,233,0.35) | [styles/premium.css:160](../growthtrack-ultimate/src/styles/premium.css#L160) |
 | rgba(14,165,233,0.4) | [components/HydrationTracker.jsx:137](../growthtrack-ultimate/src/components/HydrationTracker.jsx#L137), [styles/premium.css:966](../growthtrack-ultimate/src/styles/premium.css#L966) |
 | rgba(14,165,233,0.5) | [styles/premium.css:166](../growthtrack-ultimate/src/styles/premium.css#L166) |
@@ -2509,16 +2509,16 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(16,185,129,0.03) | [theme-v4.css:445](../growthtrack-ultimate/src/theme-v4.css#L445) |
 | rgba(16,185,129,0.04) | [components/Lifestyle.jsx:384](../growthtrack-ultimate/src/components/Lifestyle.jsx#L384), [theme-v4.css:436](../growthtrack-ultimate/src/theme-v4.css#L436) |
 | rgba(16,185,129,0.05) | [components/Training.jsx:618](../growthtrack-ultimate/src/components/Training.jsx#L618) |
-| rgba(16,185,129,0.1) | [components/Medical.jsx:396](../growthtrack-ultimate/src/components/Medical.jsx#L396), [components/Tasks.tsx:139](../growthtrack-ultimate/src/components/Tasks.tsx#L139); 6 sites total |
+| rgba(16,185,129,0.1) | [components/Medical.jsx:396](../growthtrack-ultimate/src/components/Medical.jsx#L396), [components/Tasks.tsx:137](../growthtrack-ultimate/src/components/Tasks.tsx#L137); 6 sites total |
 | rgba(16,185,129,0.12) | [components/Nutrition.jsx:67](../growthtrack-ultimate/src/components/Nutrition.jsx#L67), [components/StrengthMetrics.jsx:162](../growthtrack-ultimate/src/components/StrengthMetrics.jsx#L162); 3 sites total |
 | rgba(16,185,129,0.14) | [index.css:116](../growthtrack-ultimate/src/index.css#L116), [theme-v4.css:162](../growthtrack-ultimate/src/theme-v4.css#L162) |
 | rgba(16,185,129,0.15) | [components/Training.jsx:495](../growthtrack-ultimate/src/components/Training.jsx#L495), [components/Lifestyle.jsx:396](../growthtrack-ultimate/src/components/Lifestyle.jsx#L396); 7 sites total |
-| rgba(16,185,129,0.18) | [components/Tasks.tsx:1182](../growthtrack-ultimate/src/components/Tasks.tsx#L1182) |
+| rgba(16,185,129,0.18) | [components/Tasks.tsx:1183](../growthtrack-ultimate/src/components/Tasks.tsx#L1183) |
 | rgba(16,185,129,0.2) | [components/Training.jsx:671](../growthtrack-ultimate/src/components/Training.jsx#L671), [components/Lifestyle.jsx:384](../growthtrack-ultimate/src/components/Lifestyle.jsx#L384); 3 sites total |
-| rgba(16,185,129,0.25) | [components/Tasks.tsx:1016](../growthtrack-ultimate/src/components/Tasks.tsx#L1016) |
-| rgba(16,185,129,0.3) | [components/Training.jsx:618](../growthtrack-ultimate/src/components/Training.jsx#L618), [components/Tasks.tsx:1016](../growthtrack-ultimate/src/components/Tasks.tsx#L1016); 4 sites total |
+| rgba(16,185,129,0.25) | [components/Tasks.tsx:1017](../growthtrack-ultimate/src/components/Tasks.tsx#L1017) |
+| rgba(16,185,129,0.3) | [components/Training.jsx:618](../growthtrack-ultimate/src/components/Training.jsx#L618), [components/Tasks.tsx:1017](../growthtrack-ultimate/src/components/Tasks.tsx#L1017); 4 sites total |
 | rgba(16,185,129,0.4) | [components/Training.jsx:495](../growthtrack-ultimate/src/components/Training.jsx#L495), [components/Training.jsx:647](../growthtrack-ultimate/src/components/Training.jsx#L647); 5 sites total |
-| rgba(16,185,129,0.5) | [components/Tasks.tsx:1182](../growthtrack-ultimate/src/components/Tasks.tsx#L1182) |
+| rgba(16,185,129,0.5) | [components/Tasks.tsx:1183](../growthtrack-ultimate/src/components/Tasks.tsx#L1183) |
 | rgba(16,185,129,0.7) | [components/Assessment.jsx:132](../growthtrack-ultimate/src/components/Assessment.jsx#L132) |
 | rgba(165,243,252,.8) | [styles/chamber.css:325](../growthtrack-ultimate/src/styles/chamber.css#L325) |
 | rgba(167,139,250,0.06) | [components/MindWellness.jsx:757](../growthtrack-ultimate/src/components/MindWellness.jsx#L757) |
@@ -2563,20 +2563,20 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(234,179,8,0.12) | [constants/index.js:99](../growthtrack-ultimate/src/constants/index.js#L99) |
 | rgba(234,179,8,0.35) | [constants/index.js:100](../growthtrack-ultimate/src/constants/index.js#L100) |
 | rgba(239, 68, 68, 0.1) | [styles/premium.css:1043](../growthtrack-ultimate/src/styles/premium.css#L1043) |
-| rgba(239, 68, 68, 0.15) | [components/Tasks.tsx:321](../growthtrack-ultimate/src/components/Tasks.tsx#L321), [components/Tasks.tsx:1241](../growthtrack-ultimate/src/components/Tasks.tsx#L1241) |
+| rgba(239, 68, 68, 0.15) | [components/Tasks.tsx:319](../growthtrack-ultimate/src/components/Tasks.tsx#L319), [components/Tasks.tsx:1242](../growthtrack-ultimate/src/components/Tasks.tsx#L1242) |
 | rgba(239, 68, 68, 0.3) | [styles/premium.css:1044](../growthtrack-ultimate/src/styles/premium.css#L1044) |
-| rgba(239, 68, 68, 0.4) | [components/Tasks.tsx:323](../growthtrack-ultimate/src/components/Tasks.tsx#L323), [components/Tasks.tsx:1243](../growthtrack-ultimate/src/components/Tasks.tsx#L1243) |
-| rgba(239,68,68,0.03) | [components/Tasks.tsx:1073](../growthtrack-ultimate/src/components/Tasks.tsx#L1073) |
-| rgba(239,68,68,0.04) | [components/Tasks.tsx:106](../growthtrack-ultimate/src/components/Tasks.tsx#L106) |
+| rgba(239, 68, 68, 0.4) | [components/Tasks.tsx:321](../growthtrack-ultimate/src/components/Tasks.tsx#L321), [components/Tasks.tsx:1244](../growthtrack-ultimate/src/components/Tasks.tsx#L1244) |
+| rgba(239,68,68,0.03) | [components/Tasks.tsx:1074](../growthtrack-ultimate/src/components/Tasks.tsx#L1074) |
+| rgba(239,68,68,0.04) | [components/Tasks.tsx:104](../growthtrack-ultimate/src/components/Tasks.tsx#L104) |
 | rgba(239,68,68,0.08) | [styles/premium.css:547](../growthtrack-ultimate/src/styles/premium.css#L547) |
 | rgba(239,68,68,0.1) | [components/Medical.jsx:396](../growthtrack-ultimate/src/components/Medical.jsx#L396), [components/MindWellness.jsx:21](../growthtrack-ultimate/src/components/MindWellness.jsx#L21); 3 sites total |
 | rgba(239,68,68,0.12) | [components/Shopping.jsx:33](../growthtrack-ultimate/src/components/Shopping.jsx#L33), [components/Tasks.tsx:21](../growthtrack-ultimate/src/components/Tasks.tsx#L21); 7 sites total |
 | rgba(239,68,68,0.15) | [components/Databases.jsx:125](../growthtrack-ultimate/src/components/Databases.jsx#L125) |
-| rgba(239,68,68,0.2) | [components/Tasks.tsx:1019](../growthtrack-ultimate/src/components/Tasks.tsx#L1019) |
-| rgba(239,68,68,0.3) | [components/MindWellness.jsx:21](../growthtrack-ultimate/src/components/MindWellness.jsx#L21), [components/Tasks.tsx:45](../growthtrack-ultimate/src/components/Tasks.tsx#L45); 8 sites total |
+| rgba(239,68,68,0.2) | [components/Tasks.tsx:1020](../growthtrack-ultimate/src/components/Tasks.tsx#L1020) |
+| rgba(239,68,68,0.3) | [components/MindWellness.jsx:21](../growthtrack-ultimate/src/components/MindWellness.jsx#L21), [components/Tasks.tsx:43](../growthtrack-ultimate/src/components/Tasks.tsx#L43); 8 sites total |
 | rgba(239,68,68,0.35) | [components/Shopping.jsx:33](../growthtrack-ultimate/src/components/Shopping.jsx#L33), [components/Tasks.tsx:21](../growthtrack-ultimate/src/components/Tasks.tsx#L21) |
 | rgba(239,68,68,0.4) | [components/Databases.jsx:125](../growthtrack-ultimate/src/components/Databases.jsx#L125), [styles/premium.css:546](../growthtrack-ultimate/src/styles/premium.css#L546) |
-| rgba(239,68,68,0.5) | [components/Tasks.tsx:115](../growthtrack-ultimate/src/components/Tasks.tsx#L115), [components/Tasks.tsx:1077](../growthtrack-ultimate/src/components/Tasks.tsx#L1077) |
+| rgba(239,68,68,0.5) | [components/Tasks.tsx:113](../growthtrack-ultimate/src/components/Tasks.tsx#L113), [components/Tasks.tsx:1078](../growthtrack-ultimate/src/components/Tasks.tsx#L1078) |
 | rgba(239,68,68,0.6) | [constants/index.js:96](../growthtrack-ultimate/src/constants/index.js#L96) |
 | rgba(24, 24, 27, .84) | [styles/ultimate-ui.css:516](../growthtrack-ultimate/src/styles/ultimate-ui.css#L516) |
 | rgba(24,119,242,0.08) | [components/SocialMedia.jsx:17](../growthtrack-ultimate/src/components/SocialMedia.jsx#L17) |
@@ -2598,7 +2598,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(245, 158, 11, 0.1) | [styles/premium.css:1038](../growthtrack-ultimate/src/styles/premium.css#L1038) |
 | rgba(245, 158, 11, 0.2) | [styles/notes.css:505](../growthtrack-ultimate/src/styles/notes.css#L505) |
 | rgba(245, 158, 11, 0.3) | [styles/premium.css:1039](../growthtrack-ultimate/src/styles/premium.css#L1039) |
-| rgba(245,158,11,0.03) | [components/Tasks.tsx:1119](../growthtrack-ultimate/src/components/Tasks.tsx#L1119) |
+| rgba(245,158,11,0.03) | [components/Tasks.tsx:1120](../growthtrack-ultimate/src/components/Tasks.tsx#L1120) |
 | rgba(245,158,11,0.06) | [components/Medical.jsx:413](../growthtrack-ultimate/src/components/Medical.jsx#L413) |
 | rgba(245,158,11,0.07) | [styles/ui-components.css:1116](../growthtrack-ultimate/src/styles/ui-components.css#L1116) |
 | rgba(245,158,11,0.08) | [styles/premium.css:551](../growthtrack-ultimate/src/styles/premium.css#L551) |
@@ -2609,11 +2609,11 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(245,158,11,0.15) | [components/Medical.jsx:413](../growthtrack-ultimate/src/components/Medical.jsx#L413), [components/Training.jsx:629](../growthtrack-ultimate/src/components/Training.jsx#L629); 4 sites total |
 | rgba(245,158,11,0.18) | [theme-v4.css:238](../growthtrack-ultimate/src/theme-v4.css#L238) |
 | rgba(245,158,11,0.22) | [index.css:387](../growthtrack-ultimate/src/index.css#L387) |
-| rgba(245,158,11,0.3) | [components/Tasks.tsx:48](../growthtrack-ultimate/src/components/Tasks.tsx#L48), [components/Documents.jsx:445](../growthtrack-ultimate/src/components/Documents.jsx#L445); 5 sites total |
+| rgba(245,158,11,0.3) | [components/Tasks.tsx:46](../growthtrack-ultimate/src/components/Tasks.tsx#L46), [components/Documents.jsx:445](../growthtrack-ultimate/src/components/Documents.jsx#L445); 5 sites total |
 | rgba(245,158,11,0.35) | [components/Shopping.jsx:34](../growthtrack-ultimate/src/components/Shopping.jsx#L34), [components/Tasks.tsx:23](../growthtrack-ultimate/src/components/Tasks.tsx#L23); 4 sites total |
 | rgba(245,158,11,0.38) | [theme-v4.css:40](../growthtrack-ultimate/src/theme-v4.css#L40) |
 | rgba(245,158,11,0.4) | [components/Training.jsx:629](../growthtrack-ultimate/src/components/Training.jsx#L629), [components/Training.jsx:699](../growthtrack-ultimate/src/components/Training.jsx#L699); 5 sites total |
-| rgba(245,158,11,0.5) | [components/Tasks.tsx:1123](../growthtrack-ultimate/src/components/Tasks.tsx#L1123) |
+| rgba(245,158,11,0.5) | [components/Tasks.tsx:1124](../growthtrack-ultimate/src/components/Tasks.tsx#L1124) |
 | rgba(248, 113, 113, 0.12) | [styles/ui-components.css:334](../growthtrack-ultimate/src/styles/ui-components.css#L334), [styles/ui-components.css:472](../growthtrack-ultimate/src/styles/ui-components.css#L472) |
 | rgba(248, 113, 113, 0.18) | [styles/ui-components.css:117](../growthtrack-ultimate/src/styles/ui-components.css#L117) |
 | rgba(248, 113, 113, 0.2) | [styles/ui-components.css:340](../growthtrack-ultimate/src/styles/ui-components.css#L340) |
@@ -2631,10 +2631,10 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(248,113,113,0.6) | [components/GoalsDashboard.jsx:612](../growthtrack-ultimate/src/components/GoalsDashboard.jsx#L612), [components/Databases.jsx:126](../growthtrack-ultimate/src/components/Databases.jsx#L126); 3 sites total |
 | rgba(248,113,113,0.65) | [components/Skills.jsx:326](../growthtrack-ultimate/src/components/Skills.jsx#L326) |
 | rgba(249,115,22,0.1) | [components/DailyCheckIn.jsx:235](../growthtrack-ultimate/src/components/DailyCheckIn.jsx#L235) |
-| rgba(249,115,22,0.12) | [components/Tasks.tsx:22](../growthtrack-ultimate/src/components/Tasks.tsx#L22), [components/Tasks.tsx:46](../growthtrack-ultimate/src/components/Tasks.tsx#L46) |
-| rgba(249,115,22,0.3) | [components/Tasks.tsx:46](../growthtrack-ultimate/src/components/Tasks.tsx#L46), [components/Tasks.tsx:107](../growthtrack-ultimate/src/components/Tasks.tsx#L107); 4 sites total |
+| rgba(249,115,22,0.12) | [components/Tasks.tsx:22](../growthtrack-ultimate/src/components/Tasks.tsx#L22), [components/Tasks.tsx:44](../growthtrack-ultimate/src/components/Tasks.tsx#L44) |
+| rgba(249,115,22,0.3) | [components/Tasks.tsx:44](../growthtrack-ultimate/src/components/Tasks.tsx#L44), [components/Tasks.tsx:105](../growthtrack-ultimate/src/components/Tasks.tsx#L105); 4 sites total |
 | rgba(249,115,22,0.35) | [components/Tasks.tsx:22](../growthtrack-ultimate/src/components/Tasks.tsx#L22) |
-| rgba(249,115,22,0.5) | [components/Tasks.tsx:115](../growthtrack-ultimate/src/components/Tasks.tsx#L115) |
+| rgba(249,115,22,0.5) | [components/Tasks.tsx:113](../growthtrack-ultimate/src/components/Tasks.tsx#L113) |
 | rgba(25, 28, 38, 0.92) | [styles/ultimate-ui.css:14](../growthtrack-ultimate/src/styles/ultimate-ui.css#L14) |
 | rgba(25,25,28,.65) | [styles/chamber.css:946](../growthtrack-ultimate/src/styles/chamber.css#L946) |
 | rgba(25,25,28,.78) | [styles/chamber.css:1336](../growthtrack-ultimate/src/styles/chamber.css#L1336) |
@@ -2725,7 +2725,7 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(255,255,255,.86) | [styles/chamber.css:1193](../growthtrack-ultimate/src/styles/chamber.css#L1193), [styles/chamber.css:1229](../growthtrack-ultimate/src/styles/chamber.css#L1229) |
 | rgba(255,255,255,.88) | [styles/chamber.css:1247](../growthtrack-ultimate/src/styles/chamber.css#L1247) |
 | rgba(255,255,255,.9) | [styles/chamber.css:962](../growthtrack-ultimate/src/styles/chamber.css#L962) |
-| rgba(255,255,255,0.01) | [components/Tasks.tsx:133](../growthtrack-ultimate/src/components/Tasks.tsx#L133), [components/Tasks.tsx:143](../growthtrack-ultimate/src/components/Tasks.tsx#L143); 3 sites total |
+| rgba(255,255,255,0.01) | [components/Tasks.tsx:131](../growthtrack-ultimate/src/components/Tasks.tsx#L131), [components/Tasks.tsx:141](../growthtrack-ultimate/src/components/Tasks.tsx#L141); 3 sites total |
 | rgba(255,255,255,0.018) | [styles/ui-components.css:953](../growthtrack-ultimate/src/styles/ui-components.css#L953) |
 | rgba(255,255,255,0.02) | [components/NotFound.jsx:51](../growthtrack-ultimate/src/components/NotFound.jsx#L51), [components/NotFound.jsx:52](../growthtrack-ultimate/src/components/NotFound.jsx#L52); 12 sites total |
 | rgba(255,255,255,0.025) | [theme-v4.css:154](../growthtrack-ultimate/src/theme-v4.css#L154), [theme-v4.css:191](../growthtrack-ultimate/src/theme-v4.css#L191) |
@@ -2740,10 +2740,10 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(255,255,255,0.1) | [components/Medical.jsx:86](../growthtrack-ultimate/src/components/Medical.jsx#L86), [components/GoalsDashboard.jsx:171](../growthtrack-ultimate/src/components/GoalsDashboard.jsx#L171); 19 sites total |
 | rgba(255,255,255,0.11) | [theme-v4.css:17](../growthtrack-ultimate/src/theme-v4.css#L17) |
 | rgba(255,255,255,0.12) | [components/SocialMedia.jsx:20](../growthtrack-ultimate/src/components/SocialMedia.jsx#L20), [index.css:15](../growthtrack-ultimate/src/index.css#L15) |
-| rgba(255,255,255,0.15) | [components/Tasks.tsx:133](../growthtrack-ultimate/src/components/Tasks.tsx#L133), [components/Tasks.tsx:142](../growthtrack-ultimate/src/components/Tasks.tsx#L142); 4 sites total |
+| rgba(255,255,255,0.15) | [components/Tasks.tsx:131](../growthtrack-ultimate/src/components/Tasks.tsx#L131), [components/Tasks.tsx:140](../growthtrack-ultimate/src/components/Tasks.tsx#L140); 4 sites total |
 | rgba(255,255,255,0.18) | [index.css:16](../growthtrack-ultimate/src/index.css#L16), [styles/ui-components.css:297](../growthtrack-ultimate/src/styles/ui-components.css#L297) |
 | rgba(255,255,255,0.2) | [components/GoalsDashboard.jsx:137](../growthtrack-ultimate/src/components/GoalsDashboard.jsx#L137), [components/GoalsDashboard.jsx:691](../growthtrack-ultimate/src/components/GoalsDashboard.jsx#L691); 7 sites total |
-| rgba(255,255,255,0.25) | [components/Tasks.tsx:61](../growthtrack-ultimate/src/components/Tasks.tsx#L61), [styles/ui-components.css:1094](../growthtrack-ultimate/src/styles/ui-components.css#L1094) |
+| rgba(255,255,255,0.25) | [components/Tasks.tsx:59](../growthtrack-ultimate/src/components/Tasks.tsx#L59), [styles/ui-components.css:1094](../growthtrack-ultimate/src/styles/ui-components.css#L1094) |
 | rgba(255,255,255,0.3) | [components/ProfileEditor.jsx:898](../growthtrack-ultimate/src/components/ProfileEditor.jsx#L898), [styles/ui-components.css:407](../growthtrack-ultimate/src/styles/ui-components.css#L407); 3 sites total |
 | rgba(255,255,255,0.4) | [theme-v4.css:446](../growthtrack-ultimate/src/theme-v4.css#L446) |
 | rgba(255,255,255,0.5) | [components/Projects.jsx:815](../growthtrack-ultimate/src/components/Projects.jsx#L815), [components/Projects.jsx:816](../growthtrack-ultimate/src/components/Projects.jsx#L816) |
@@ -2828,10 +2828,10 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(56,189,248,0.3) | [styles/premium.css:166](../growthtrack-ultimate/src/styles/premium.css#L166) |
 | rgba(59, 130, 246, 0.1) | [components/HealthExtras.jsx:150](../growthtrack-ultimate/src/components/HealthExtras.jsx#L150) |
 | rgba(59, 130, 246, 0.2) | [components/HealthExtras.jsx:150](../growthtrack-ultimate/src/components/HealthExtras.jsx#L150) |
-| rgba(59,130,246,0.03) | [components/Tasks.tsx:1096](../growthtrack-ultimate/src/components/Tasks.tsx#L1096) |
+| rgba(59,130,246,0.03) | [components/Tasks.tsx:1097](../growthtrack-ultimate/src/components/Tasks.tsx#L1097) |
 | rgba(59,130,246,0.08) | [styles/premium.css:549](../growthtrack-ultimate/src/styles/premium.css#L549) |
 | rgba(59,130,246,0.4) | [styles/premium.css:548](../growthtrack-ultimate/src/styles/premium.css#L548) |
-| rgba(59,130,246,0.5) | [components/Tasks.tsx:1100](../growthtrack-ultimate/src/components/Tasks.tsx#L1100) |
+| rgba(59,130,246,0.5) | [components/Tasks.tsx:1101](../growthtrack-ultimate/src/components/Tasks.tsx#L1101) |
 | rgba(6,182,212,0.04) | [theme-v4.css:199](../growthtrack-ultimate/src/theme-v4.css#L199), [theme-v4.css:229](../growthtrack-ultimate/src/theme-v4.css#L229) |
 | rgba(6,182,212,0.07) | [theme-v4.css:227](../growthtrack-ultimate/src/theme-v4.css#L227) |
 | rgba(6,182,212,0.1) | [theme-v4.css:419](../growthtrack-ultimate/src/theme-v4.css#L419) |
@@ -2855,8 +2855,8 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(74,169,216,.24) | [styles/ultimate-ui.css:568](../growthtrack-ultimate/src/styles/ultimate-ui.css#L568) |
 | rgba(74,222,128,0.1) | [components/MindWellness.jsx:18](../growthtrack-ultimate/src/components/MindWellness.jsx#L18) |
 | rgba(74,222,128,0.3) | [components/MindWellness.jsx:18](../growthtrack-ultimate/src/components/MindWellness.jsx#L18) |
-| rgba(75,85,99,0.08) | [components/Tasks.tsx:50](../growthtrack-ultimate/src/components/Tasks.tsx#L50) |
-| rgba(75,85,99,0.15) | [components/Tasks.tsx:50](../growthtrack-ultimate/src/components/Tasks.tsx#L50) |
+| rgba(75,85,99,0.08) | [components/Tasks.tsx:48](../growthtrack-ultimate/src/components/Tasks.tsx#L48) |
+| rgba(75,85,99,0.15) | [components/Tasks.tsx:48](../growthtrack-ultimate/src/components/Tasks.tsx#L48) |
 | rgba(79,195,247,.42) | [styles/chamber.css:1257](../growthtrack-ultimate/src/styles/chamber.css#L1257) |
 | rgba(8, 12, 18, 0.78) | [components/Sprite3DViewer.jsx:103](../growthtrack-ultimate/src/components/Sprite3DViewer.jsx#L103) |
 | rgba(8, 9, 18, 0.88) | [theme-v4.css:12](../growthtrack-ultimate/src/theme-v4.css#L12) |
@@ -2882,12 +2882,12 @@ Shared theme/accent palettes are explained in the main guide. This table also ca
 | rgba(99,102,241,0.08) | [components/Databases.jsx:279](../growthtrack-ultimate/src/components/Databases.jsx#L279), [components/Databases.jsx:493](../growthtrack-ultimate/src/components/Databases.jsx#L493) |
 | rgba(99,102,241,0.1) | [components/Projects.jsx:355](../growthtrack-ultimate/src/components/Projects.jsx#L355), [components/Projects.jsx:357](../growthtrack-ultimate/src/components/Projects.jsx#L357); 5 sites total |
 | rgba(99,102,241,0.10) | [index.css:373](../growthtrack-ultimate/src/index.css#L373) |
-| rgba(99,102,241,0.12) | [components/CommandPalette.jsx:367](../growthtrack-ultimate/src/components/CommandPalette.jsx#L367), [components/Tasks.tsx:178](../growthtrack-ultimate/src/components/Tasks.tsx#L178) |
+| rgba(99,102,241,0.12) | [components/CommandPalette.jsx:367](../growthtrack-ultimate/src/components/CommandPalette.jsx#L367), [components/Tasks.tsx:176](../growthtrack-ultimate/src/components/Tasks.tsx#L176) |
 | rgba(99,102,241,0.15) | [components/Training.jsx:840](../growthtrack-ultimate/src/components/Training.jsx#L840), [components/StrengthMetrics.jsx:102](../growthtrack-ultimate/src/components/StrengthMetrics.jsx#L102); 6 sites total |
 | rgba(99,102,241,0.18) | [index.css:388](../growthtrack-ultimate/src/index.css#L388) |
 | rgba(99,102,241,0.2) | [components/CommandPalette.jsx:311](../growthtrack-ultimate/src/components/CommandPalette.jsx#L311), [components/Databases.jsx:279](../growthtrack-ultimate/src/components/Databases.jsx#L279); 4 sites total |
 | rgba(99,102,241,0.25) | [components/Databases.jsx:130](../growthtrack-ultimate/src/components/Databases.jsx#L130), [components/Databases.jsx:252](../growthtrack-ultimate/src/components/Databases.jsx#L252); 4 sites total |
-| rgba(99,102,241,0.3) | [components/Training.jsx:840](../growthtrack-ultimate/src/components/Training.jsx#L840), [components/Tasks.tsx:178](../growthtrack-ultimate/src/components/Tasks.tsx#L178) |
+| rgba(99,102,241,0.3) | [components/Training.jsx:840](../growthtrack-ultimate/src/components/Training.jsx#L840), [components/Tasks.tsx:176](../growthtrack-ultimate/src/components/Tasks.tsx#L176) |
 | rgba(99,102,241,0.35) | [components/CommandPalette.jsx:58](../growthtrack-ultimate/src/components/CommandPalette.jsx#L58) |
 | rgba(99,102,241,0.4) | [components/StrengthMetrics.jsx:102](../growthtrack-ultimate/src/components/StrengthMetrics.jsx#L102) |
 | rgba(99,102,241,0.5) | [components/Projects.jsx:808](../growthtrack-ultimate/src/components/Projects.jsx#L808) |

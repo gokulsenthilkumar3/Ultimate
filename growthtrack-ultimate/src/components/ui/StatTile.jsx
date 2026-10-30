@@ -8,7 +8,7 @@ import { useKinetic } from '../motion/KineticContext';
  */
 export default function StatTile({ value, label, color, size = '1.75rem', labelSize = '.7rem', padding = '1rem', labelGap = '4px', lead = false }) {
   const { enabled } = useKinetic();
-  return <div className={`glass-card stat-tile${lead ? ' stat-tile--lead' : ''}`} style={{ textAlign: 'center', padding, '--stat-tile-color': color }}>
+  return <div className={`glass-card stat-tile${lead ? ' stat-tile--lead' : ''}`} style={{ textAlign: 'center', padding, '--stat-tile-color': color, '--stat-chars': String(value ?? '').length || 1 }}>
     <p className="stat-tile__value" style={enabled ? undefined : { fontSize: size, fontWeight: 900, color, lineHeight: 1 }}>{value}</p>
     <p className="stat-tile__label" style={enabled ? undefined : { fontSize: labelSize, color: 'var(--text-3)', marginTop: labelGap }}>{label}</p>
   </div>;

@@ -44,12 +44,32 @@ Root cause of the most visible defect: `ultimate-ui.css` is imported only throug
 - **Counts** follow the owner's number format on Tasks, Action Center, Transactions and the Nutrition history and log.
 - **`StatTile`** replaces four copies of the same inline tile on Habits, Goals, Skills and Shopping. Kinetic renders the figure at the brief's secondary-metric scale (40-56px, tabular, ink) and keeps the data colour as an accent bar, because several figures were pale hues on cream. Playful keeps each page's original inline scale.
 - **Page titles:** Tasks Command was 28.8px under an inline style; Kinetic's 32-40px title rule now applies.
+- **App Hub and About** were the two pages over the layer budget; see Performance, measured.
 - **Empty states** show Nova in Kinetic (`EmptyState`, shared by every page that uses it); success, error and neutral `PageState` already used Mochi, Ziggy and Nova.
 - **Section reveal** (`useSectionReveal.ts`, mounted in `PageTransition`): the page's top-level sections rise with a 40ms stagger over 320ms, at most eight, with a masked 420ms entry on the first section at Tier 2 only. It animates children, never the region Framer or the page entrance owns, asks the shared motion budget for a slot, and is skipped for Lite, reduced motion, a hidden tab and the first paint of a session, so it cannot delay LCP.
 - **Micro-animations** added from the catalogue, all one-shot and tied to a user action: field-error shake (350ms), checkbox and radio pop (300ms), menu reveal (200ms), sort-glyph flip (200ms), secondary and ghost button lift with border brighten (160ms), icon-button rotate, table-row hover fill and activity-row lift (140ms).
 
+### Performance, measured
+
+All runs use the repository's browser harness against the fictional fixture at 4x CPU throttle, serving a production build; the baseline is the build of the commit before this work, run the same way. They are local, headless, single-machine numbers, not field data.
+
+| Measure | Baseline | Now |
+| --- | --- | --- |
+| Pages measured without a failure | 65 | 65 |
+| LCP, median across pages (one run each) | 1500 ms | 1452 ms |
+| Main-thread blocking, median (one run each) | 454 ms | 407 ms |
+| CLS, median / worst page | 0.0003 / 0.0213 | 0.0003 / 0.0213 |
+| Pages over 2.5 s LCP or 0.05 CLS | 0 | 0 |
+| Initial JS, gzip (limit 180,000 B) | 173,122 B | 173,588 B |
+| Critical CSS, gzip (limit 45,000 B) | 38,056 B | 40,279 B |
+| Pages at or over the 30-layer gate | 2 (`/hub/apps` 61, `/hub/about` 33) | 0 (16 and 14) |
+
+- Six pages looked slower in the single-run comparison (up to +470 ms LCP). Three repeat runs of each on an idle machine showed the current build equal or faster on all six (for example Hydration 1632 to 1452 ms LCP, Companion 1732 to 1492 ms); the single-run gap was noise from tests running at the same time. Run-to-run spread on this setup is roughly 100-200 ms, so differences smaller than that are not claims.
+- The 30-layer failure was in the baseline too. App Hub ran a per-card entrance at card index x 35 ms, so 45 cards were composited and hidden together and the last stayed invisible for 1.6 s; only the first dozen now animate, 40 ms apart, and Tier 0 skips it. About used backdrop blur and per-element entrance delays on every card; it is rebuilt on tokens in `about.css`.
+- The cost of this pass is about 0.5 KB of gzip JS and 2.2 KB of gzip critical CSS. Not measured here: 120 Hz hardware, a 30-minute memory soak, field INP and a 4G-throttled cold load; the earlier open gates on cold 4G + 4x CPU load still apply.
+
 Not done, and why:
-- **Hero figure on every page.** The brief wants a 72-120px primary metric on each workspace page. 61 of 65 pages still have no figure that large. Overview, the native modules and, at secondary scale, the four stat strips above are covered. The remainder need a page owner to choose which real value leads; none were invented.
+- **Hero figure on every page.** The brief wants a 72-120px primary metric on each workspace page. Overview, the native modules and the lead tile of the Habits (done today), Goals (active) and Shopping (pending) strips now have one; at the audit, 61 of 65 pages had none. The remainder need a page owner to choose which real value leads; none were invented.
 - **44px targets.** 1014 of 3055 measured interactive elements are under 40px, mostly repeated record controls (Portfolio rows, the Habits matrix, Goals). Enlarging dense matrices would change their layout, so only unpadded buttons and chips were fixed.
 - **Pagination number pop and row-removal exit.** Eight existing tests match the exact `Page N of M` text, and an exit animation needs per-list presence handling. Neither was changed.
 - **Three.js** stays confined to Physique, per the brief. No new 3D was added.

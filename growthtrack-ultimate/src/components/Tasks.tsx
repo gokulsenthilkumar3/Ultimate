@@ -26,8 +26,6 @@ const PRIORITIES = [
 const PMAP = Object.fromEntries(PRIORITIES.map(p => [p.value, p]));
 
 // legacy priority values upgrade
-/** Counts follow the owner's number format, like every other figure in the workspace. */
-const count = (value: number) => formatNumber(value, undefined, { maximumFractionDigits: 0 });
 const normPriority = (v: any) => {
   if (!v) return 'p3';
   if (v === 'high')   return 'p1';
@@ -350,6 +348,9 @@ export default function Tasks() {
   const [operationError, setOperationError] = useState('');
   const storeFetchTasks = useStore(s => s.fetchTasks);
   const storeTasks = useStore(s => s.user?.tasks);
+  const user = useStore(s => s.user);
+  // Counts follow the owner's number format, like every other figure in the workspace.
+  const count = (value: number) => formatNumber(value, user, { maximumFractionDigits: 0 });
 
   const fetchTasks = useCallback(async () => {
     setSyncing(true);

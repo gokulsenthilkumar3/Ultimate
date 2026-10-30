@@ -49,7 +49,7 @@ export default function ActionCenter() {
     const now = today();
     const activeTasks = tasks.filter(t => !isDone(t));
     const overdue = activeTasks.filter(t => (t.due_date || t.dueDate || '') < now && (t.due_date || t.dueDate));
-    if (overdue.length) result.push({ id: 'overdue-tasks', priority: 'high', urgency: 'Needs attention', source: 'Tasks', icon: AlertTriangle, title: `Clear ${formatNumber(overdue.length, undefined, { maximumFractionDigits: 0 })} overdue task${overdue.length === 1 ? '' : 's'}`, reason: 'A small cleanup pass will restore momentum and make your current priorities visible.', cta: 'Open tasks', tab: 'tasks' });
+    if (overdue.length) result.push({ id: 'overdue-tasks', priority: 'high', urgency: 'Needs attention', source: 'Tasks', icon: AlertTriangle, title: `Clear ${formatNumber(overdue.length, state.user, { maximumFractionDigits: 0 })} overdue task${overdue.length === 1 ? '' : 's'}`, reason: 'A small cleanup pass will restore momentum and make your current priorities visible.', cta: 'Open tasks', tab: 'tasks' });
     const latestSleep = [...sleepLogs].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
     const sleepHours = Number(latestSleep?.duration ?? latestSleep?.hours);
     if (sleepHours > 0 && sleepHours < 7) result.push({ id: 'low-sleep', priority: 'medium', urgency: 'Recovery signal', source: 'Sleep', icon: Moon, title: 'Protect tonight’s recovery', reason: `Your latest sleep entry was ${sleepHours} hours. Plan an earlier wind-down before pushing harder.`, cta: 'Open sleep', tab: 'sleep' });
@@ -60,7 +60,7 @@ export default function ActionCenter() {
     if (!hydration.length) result.push({ id: 'hydration-data', priority: 'low', urgency: 'Missing data', source: 'Hydration', icon: Droplets, title: 'Log your first hydration entry', reason: 'One real entry unlocks hydration trends and makes recovery recommendations more useful.', cta: 'Open hydration', tab: 'hydration' });
     if (!checkInDate || checkInDate.slice(0, 10) !== now) result.push({ id: 'daily-checkin', priority: 'medium', urgency: 'Missing data', source: 'Daily check-in', icon: Clock3, title: 'Complete today’s check-in', reason: 'A quick check-in gives Insights current mood, energy, and readiness context.', cta: 'Start check-in', tab: 'overview' });
     return result.slice(0, 5);
-  }, [tasks, habits, goals, sleepLogs, hydration, checkInDate, state.habitLogsByHabit, nowMs]);
+  }, [tasks, habits, goals, sleepLogs, hydration, checkInDate, state.habitLogsByHabit, state.user, nowMs]);
   const dismissed = Array.isArray(saved.dismissed) ? saved.dismissed : [];
   const visible = actions.filter(action => !dismissed.includes(action.id) && (!saved.snoozed?.[action.id] || saved.snoozed[action.id] <= nowMs));
   const update = async updater => {
