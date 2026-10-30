@@ -1,4 +1,6 @@
 import React from 'react';
+import { OverviewCompanion } from './motion/CharacterScene';
+import usePlayfulMotion from '../hooks/usePlayfulMotion';
 import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { featurePath } from '../config/featureRegistry';
@@ -12,6 +14,7 @@ const dateKey = value => {
 };
 
 export default function LifeCommand() {
+  const { canAnimate } = usePlayfulMotion();
   const user = useStore(state => state.user);
   const media = asList(useStore(state => state.entertainment?.media));
   const profiles = asList(useStore(state => state.socialProfiles));
@@ -39,10 +42,11 @@ export default function LifeCommand() {
     })),
   ].filter(item => dateKey(item.date)).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 4);
 
-  return <section className="module-page editorial-overview editorial-overview--life" aria-labelledby="life-title">
+  return <section className="module-page editorial-overview editorial-overview--life playful-overview" data-playful-motion={String(canAnimate)} aria-labelledby="life-title">
     <header className="editorial-overview__masthead">
       <div><p className="editorial-overview__eyebrow">Life / Overview</p><h1 id="life-title">Room for the rest of life</h1>
         <p className="editorial-overview__subtitle">Your library and profile records, with a path to places.</p></div>
+      <OverviewCompanion kind="sunny" />
       <p className="editorial-overview__asof">Personal records</p>
     </header>
     <section className="editorial-overview__lead" aria-labelledby="life-next-title">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { PieChart, Pie } from 'recharts';
 import { Droplets, Plus, Minus, Award, Clock, RefreshCw } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
@@ -205,7 +206,7 @@ export default function HydrationTracker() {
           <span className="card-title" style={{ alignSelf: 'flex-start' }}>Progress Summary</span>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={pieData} innerRadius={55} outerRadius={72} paddingAngle={4} dataKey="value">
+              <Pie data={pieData} innerRadius={55} outerRadius={72} paddingAngle={4} dataKey="value" isAnimationActive={false}>
                 {pieData.map((_, i) => (
                   <Cell key={`cell-${i}`} fill={DONUT_COLORS[i]} />
                 ))}
@@ -240,7 +241,7 @@ export default function HydrationTracker() {
                 contentStyle={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}
                 formatter={v => [`${v} ml`, 'Intake']}
               />
-              <Bar dataKey="ml" fill="var(--accent)" radius={[3, 3, 0, 0]} opacity={0.85} />
+              <Bar dataKey="ml" fill="var(--accent)" radius={[3, 3, 0, 0]} opacity={0.85} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         )}

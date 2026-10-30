@@ -10,7 +10,12 @@ import { TAB_GROUP_MAP } from './config/navigation';
 import { featurePath, resolveFeatureRoute } from './config/featureRegistry';
 import { getTextDirection } from './utils/userFormatters';
 import useDesignPreferences from './hooks/useDesignPreferences';
-import LoginPage from './pages/LoginPage';
+import usePlayfulMotion from './hooks/usePlayfulMotion';
+import PageTransition from './components/motion/PageTransition';
+import { useKinetic } from './components/motion/KineticContext';
+import WorkspaceChapter from './components/motion/WorkspaceChapter';
+import WorkspaceSubnav from './components/WorkspaceSubnav';
+import SignOutDialog from './components/SignOutDialog';
 import CommandPalette from './components/CommandPalette';
 import FloatingPillDock from './components/FloatingPillDock';
 import PremiumSidebar from './components/PremiumSidebar';
@@ -23,7 +28,6 @@ import { TIMING } from './constants';
 import { logPageView } from './lib/logger';
 import useNotifications from './hooks/useNotifications';
 import { useQueryClient } from '@tanstack/react-query';
-import Modal from './components/ui/Modal';
 import { listDrafts, removeOwnerDrafts } from './lib/drafts';
 import { userDateKey } from './utils/calendarDate';
 
@@ -65,9 +69,9 @@ const MODULE_COMPONENTS = {
   apps: lazy(() => import('./components/AppLauncher')),
   finsync: lazy(() => import('./components/UnifiedWorkspace')),
   oxfin: lazy(() => import('./components/UnifiedWorkspace')),
-  equity: lazy(() => import('./components/UnifiedWorkspace')),
-  forex: lazy(() => import('./components/UnifiedWorkspace')),
-  family: lazy(() => import('./components/UnifiedWorkspace')),
+  equity: lazy(() => import('./domains/equity/EquityPage')),
+  forex: lazy(() => import('./domains/forex/ForexPage')),
+  family: lazy(() => import('./domains/family/FamilyPage')),
   companion: lazy(() => import('./components/UnifiedWorkspace')),
   about: lazy(() => import('./components/About')),
   sip: lazy(() => import('./components/SIPCalculator')),
@@ -78,6 +82,10 @@ const MODULE_COMPONENTS = {
   notifications: lazy(() => import('./components/NotificationCenter')),
 };
 const Finance = lazy(() => import('./components/Finance'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+function LoginEntry(props) { return <Suspense fallback={<LoadingSkeleton />}><LoginPage {...props} /></Suspense>; }
+const LegacyWorkspaceStyles = lazy(() => import('./app/LegacyWorkspaceStyles'));
+const CLASSIC_TOOLS = new Set(['sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'assessment', 'training', 'strength', 'nutrition', 'hydration', 'skills', 'goals', 'portfolio', 'shopping', 'tasks', 'projects', 'social', 'entertainment', 'databases', 'logs', 'profile', 'timesheet', 'documents', 'current']);
 const CustomerAdminPage = lazy(() => import('./domains/customer-admin/CustomerAdminPage'));
 const InsightsHub = lazy(() => import('./components/InsightsHub'));
 const UnifiedWorkspace = lazy(() => import('./components/UnifiedWorkspace'));
@@ -103,16 +111,24 @@ function ModulePage({ feature, view, user, theme, setActiveTab, notificationStat
   if (FINANCE_VIEWS[feature.id]) return <Finance initialTab={FINANCE_VIEWS[feature.id]} />;
   if (['analytics', 'dashboards', 'forecast', 'progress'].includes(feature.id)) return <InsightsHub initialTab={feature.id} logs={useStore.getState().metric_logs} />;
   if (['customers', 'finsync', 'oxfin'].includes(feature.id)) return <CustomerAdminPage product={feature.id === 'customers' ? undefined : feature.id} />;
-  if (['equity', 'forex', 'family', 'companion'].includes(feature.id)) {
-    return <UnifiedWorkspace defaultApp={feature.id === 'companion' ? 'matrix' : feature.id} onNavigate={setActiveTab} />;
+  if (['equity', 'forex', 'family'].includes(feature.id)) {
+    const NativePage = MODULE_COMPONENTS[feature.id];
+    return <NativePage view={view || undefined} onViewChange={next => setActiveTab(feature.id, next)} />;
+  }
+  if (feature.id === 'companion') {
+    if (['equity', 'forex', 'family'].includes(view)) return <Navigate to={featurePath(view)} replace />;
+    return <UnifiedWorkspace defaultApp={['finsync', 'oxfin'].includes(view) ? view : 'matrix'} onNavigate={setActiveTab} />;
   }
   if (feature.id === 'healthSync') return <section className="module-page"><PageHeader accent="Wellness" title="Health Sync" subtitle="Review supported health sources and connection requirements." /><PageState state="setup" title="Pair a health companion" description="Health imports require an authorized iOS or Android companion. No simulated readings are written. Device pairing is not configured in this deployment." /></section>;
   const Component = MODULE_COMPONENTS[feature.id];
-  return Component ? <Component {...(feature.id === 'notes' ? { view: view || 'all', onViewChange: next => setActiveTab('notes', next) } : {})} user={user} setUser={useStore.getState().setUser} theme={theme} setTheme={useStore.getState().setTheme} setActiveTab={setActiveTab} onNavigate={setActiveTab} notificationState={notificationState} onOpenCheckIn={onOpenCheckIn} onDismissCheckIn={onDismissCheckIn} checkInAvailable={checkInAvailable} /> : <NotFound />;
+  const page = Component ? <Component {...(feature.id === 'notes' ? { view: view || 'all', onViewChange: next => setActiveTab('notes', next) } : {})} user={user} setUser={useStore.getState().setUser} theme={theme} setTheme={useStore.getState().setTheme} setActiveTab={setActiveTab} onNavigate={setActiveTab} notificationState={notificationState} onOpenCheckIn={onOpenCheckIn} onDismissCheckIn={onDismissCheckIn} checkInAvailable={checkInAvailable} /> : <NotFound />;
+  return CLASSIC_TOOLS.has(feature.id) ? <LegacyWorkspaceStyles>{page}</LegacyWorkspaceStyles> : page;
 }
 
 export default function App() {
-  const { session, signOut, user: authenticatedUser } = useAuth();
+  const pageRef = useRef(null);
+  const { canAnimate } = usePlayfulMotion();
+  const { session, loading: authLoading, signOut, user: authenticatedUser } = useAuth();
   const user = useStore(state => state.user);
   const palette = useStore(state => state.palette);
   const storeActiveTab = useStore(state => state.activeTab);
@@ -129,7 +145,20 @@ export default function App() {
   const lastCheckIn = useStore(state => state.lastCheckIn);
   const checkInAlertDismissedDate = useStore(state => state.checkInAlertDismissedDate);
   const setCheckInAlertDismissedDate = useStore(state => state.setCheckInAlertDismissedDate);
-  const { theme, reducedMotion } = useDesignPreferences();
+  const { theme, reducedMotion, uiStyle = 'kinetic' } = useDesignPreferences();
+  const kinetic = useKinetic();
+  const warmedRoutes = useRef(new Set());
+  const warmLink = event => {
+    if (kinetic.tier === 0) return;
+    const link = event.target.closest?.('a[href]');
+    if (!link) return;
+    const url = new URL(link.href, window.location.origin);
+    if (url.origin !== window.location.origin) return;
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    const pathname = url.pathname.startsWith(base + '/') ? url.pathname.slice(base.length) : url.pathname;
+    const target = resolveFeatureRoute(pathname, url.search, url.hash).feature;
+    if (target && !warmedRoutes.current.has(target.id)) { warmedRoutes.current.add(target.id); void preloadFeature(target.id)?.catch(() => warmedRoutes.current.delete(target.id)); }
+  };
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [loadedSessionId, setLoadedSessionId] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -137,8 +166,11 @@ export default function App() {
   const [logoutDialog, setLogoutDialog] = useState(null);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutError, setLogoutError] = useState('');
+  const [signOutOutcome, setSignOutOutcome] = useState(null);
+  const logoutLock = useRef(false);
   const queryClient = useQueryClient();
   const sessionId = authenticatedUser?.id || authenticatedUser?.email || session?.expiresAt || null;
+  useEffect(() => { window.dispatchEvent(new CustomEvent('growthtrack:session-changed', { detail: { owner: sessionId } })); }, [sessionId]);
   const initialDataReady = Boolean(sessionId && loadedSessionId === sessionId && !loadError && !initialLoadError);
   const notificationState = useNotifications({ enabled: Boolean(session && initialDataReady && user?.notifications !== false) });
   const navigate = useNavigate();
@@ -146,6 +178,7 @@ export default function App() {
   const route = resolveFeatureRoute(location.pathname, location.search, location.hash);
   const activeTab = route.feature?.id || storeActiveTab;
   const publicPage = PUBLIC_PAGES[location.pathname];
+  useEffect(() => { document.documentElement.dataset.playfulMotion = String(canAnimate); }, [canAnimate]);
   const todayStr = userDateKey(user || {});
   const requestLogout = async () => {
     setLogoutError('');
@@ -153,17 +186,27 @@ export default function App() {
     catch { setLogoutDialog({ count: 0, available: false }); }
   };
   const confirmLogout = async (removeLocal) => {
-    if (logoutBusy) return;
+    if (logoutLock.current) return;
+    logoutLock.current = true;
     setLogoutBusy(true); setLogoutError('');
     const ownerId = sessionId;
-    const result = await signOut();
-    if (result?.error) { setLogoutError('Logout was not acknowledged. You are still signed in; your drafts are unchanged.'); setLogoutBusy(false); return; }
-    queryClient.clear();
-    if (removeLocal) {
-      try { await removeOwnerDrafts(ownerId); }
-      catch { setLogoutError('Signed out, but local draft removal failed. Sign in again to review this browser’s drafts.'); }
+    try {
+      const result = await signOut();
+      if (result?.error) throw result.error;
+      queryClient.clear();
+      let outcome = 'kept';
+      if (removeLocal && logoutDialog?.available && logoutDialog.count > 0) {
+        try { await removeOwnerDrafts(ownerId); outcome = 'removed'; }
+        catch { outcome = 'cleanup-failed'; }
+      }
+      setSignOutOutcome({ kind: outcome, from: location });
+      setLogoutDialog(null);
+    } catch {
+      setLogoutError('Sign-out could not be completed. You’re still signed in and your drafts are unchanged. Try again.');
+    } finally {
+      logoutLock.current = false;
+      setLogoutBusy(false);
     }
-    setLogoutBusy(false); setLogoutDialog(null);
   };
   const setActiveTab = useCallback((id, view) => {
     storeSetActiveTab(id);
@@ -211,10 +254,17 @@ export default function App() {
     void preloadFeature(route.feature.id)?.catch(() => {});
   }, [session, publicPage, route.feature, route.redirect]);
   useEffect(() => {
+    if (!session || publicPage || !initialDataReady || kinetic.tier === 0) return;
+    const warm = () => { for (const id of ['overview', 'actions', 'tasks']) { if (!warmedRoutes.current.has(id)) { warmedRoutes.current.add(id); void preloadFeature(id)?.catch(() => warmedRoutes.current.delete(id)); } } };
+    const idle = window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 4000 }) : setTimeout(warm, 1800);
+    return () => { if (window.cancelIdleCallback) window.cancelIdleCallback(idle); else clearTimeout(idle); };
+  }, [session, publicPage, initialDataReady, kinetic.tier]);
+  useEffect(() => {
     queryClient.clear();
     resetSessionData();
     setLoadedSessionId(null);
     setLoadError(null);
+    if (sessionId) setSignOutOutcome(null);
   }, [sessionId, resetSessionData, queryClient]);
   useEffect(() => {
     if (!session || publicPage) return undefined;
@@ -230,35 +280,34 @@ export default function App() {
   useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [activeTab]);
 
   if (publicPage) { const PublicPage = publicPage; return <Suspense fallback={<LoadingSkeleton />}><PublicPage /></Suspense>; }
-  if (!session) return location.pathname === '/login' ? <LoginPage /> : <Navigate to="/login" replace state={{ from: location }} />;
+  // Public pages can paint while session verification is pending. Protected
+  // routes and their data effects still require the verified session above.
+  if (authLoading) return location.pathname === '/login' ? <LoginEntry theme={theme} palette={palette} signingOut={logoutBusy} /> : <LoadingSkeleton />;
+  if (!session && location.pathname === '/') return <Navigate to="/welcome" replace />;
+  if (!session && logoutBusy) return <LoginEntry theme={theme} palette={palette} signingOut />;
+  if (!session) return location.pathname === '/login' ? <LoginEntry theme={theme} palette={palette} signOutNotice={signOutOutcome?.kind} /> : <Navigate to="/login" replace state={{ from: signOutOutcome?.from || location, signedOut: signOutOutcome?.kind }} />;
   if (location.pathname === '/login' || location.pathname === '/') return <Navigate to={featurePath('overview')} replace />;
   if (route.redirect) return <Navigate to={route.redirect} replace />;
 
   const group = TAB_GROUP_MAP[activeTab] || 'system';
   return <ErrorBoundary resetKey="root"><ToastProvider>
-    <Modal open={Boolean(logoutDialog)} title="Sign out and manage local drafts" onClose={() => { if (!logoutBusy) setLogoutDialog(null); }} actions={<>
-      <button type="button" disabled={logoutBusy} onClick={() => setLogoutDialog(null)}>Stay signed in</button>
-      <button type="button" disabled={logoutBusy} onClick={() => confirmLogout(false)}>Sign out, keep drafts</button>
-      <button type="button" disabled={logoutBusy || !logoutDialog?.available} onClick={() => confirmLogout(true)}>Sign out and remove drafts</button>
-    </>}>
-      <p>{logoutDialog?.available ? `${logoutDialog.count} recoverable draft(s) are stored for your account in this browser.` : 'Local draft storage could not be inspected.'} They are not automatically submitted. Anyone with access to this browser profile may access local drafts; keeping them is best on a private device.</p>
-      <p>Removing drafts permanently discards unfinished local entries, not saved server records.</p>
-      {logoutError && <p role="alert">{logoutError}</p>}
-    </Modal>
+    <SignOutDialog open={Boolean(logoutDialog)} drafts={logoutDialog} busy={logoutBusy} error={logoutError} onCancel={() => { if (!logoutBusy) setLogoutDialog(null); }} onConfirm={confirmLogout} />
     <CommandPalette />
     <Suspense fallback={null}>
       {initialDataReady && !isLoading && !onboardingComplete && <OnboardingWizard />}
       {showCheckIn && onboardingComplete && <DailyCheckIn onClose={() => setShowCheckIn(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </Suspense>
-    <div className="app-shell" dir={textDirection} data-theme={theme} data-palette={palette} data-density={density} data-reduced-motion={String(reducedMotion)} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed} data-ui-system="editorial" data-design-revision="approved-portal-v1" data-domain={group}>
+    <div className="app-shell" dir={textDirection} data-theme={theme} data-palette={palette} data-density={density} data-reduced-motion={String(reducedMotion)} data-playful-motion={String(canAnimate)} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed} data-ui-system="editorial" data-ui-style={uiStyle} data-design-revision={uiStyle === 'kinetic' ? 'kinetic-workspace-v4' : 'character-workspace-v3'} data-domain={group}>
       <a className="skip-to-content" href="#main-content">Skip to content</a>
-      <div className="main-area">
+      <div className="main-area" onPointerOver={warmLink} onFocusCapture={warmLink}>
         <Header activeTab={activeTab} setActiveTab={setActiveTab} user={user} theme={theme} setTheme={useStore.getState().setTheme} serverStatus={serverStatus} unreadCount={notificationState.unreadCount} onOpenSettings={() => setShowSettings(true)} onOpenNotifications={() => setActiveTab('notifications')} />
-        <main id="main-content" className="content-area" tabIndex={-1} aria-busy={isLoading} data-page-template={route.feature?.template}>
+        <main ref={pageRef} id="main-content" className="content-area" tabIndex={-1} aria-busy={isLoading} data-page-template={route.feature?.template}>
+          <WorkspaceChapter activeTab={activeTab} />
+          <WorkspaceSubnav activeTab={activeTab} />
           {serverStatus === 'offline' && <PageState state="offline" title="Server unavailable" description="Previously loaded records may be visible. Saving requires a connection; unfinished entries are not automatically submitted." onRetry={checkServerHealth} />}
           <ErrorBoundary resetKey={activeTab}><Suspense fallback={<LoadingSkeleton variant={group} />}>
-            {!route.feature ? <NotFound /> : loadError || initialLoadError ? <PageState state="error" title="Your records could not be loaded" description="This is a connection or server error, not an empty account. Retry before making changes." onRetry={retryInitialLoad} /> : isLoading || !initialDataReady ? <LoadingSkeleton variant={group} /> : <ModulePage key={activeTab} feature={route.feature} view={route.view} user={user} theme={theme} setActiveTab={setActiveTab} notificationState={notificationState} onOpenCheckIn={() => setShowCheckIn(true)} onDismissCheckIn={() => setCheckInAlertDismissedDate(todayStr)} checkInAvailable={onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr} />}
+            {!route.feature ? <NotFound /> : loadError || initialLoadError ? <PageState state="error" title="Your records could not be loaded" description="This is a connection or server error, not an empty account. Retry before making changes." onRetry={retryInitialLoad} /> : isLoading || !initialDataReady ? <LoadingSkeleton variant={group} /> : <PageTransition pageKey={activeTab}><ModulePage key={activeTab} feature={route.feature} view={route.view} user={user} theme={theme} setActiveTab={setActiveTab} notificationState={notificationState} onOpenCheckIn={() => setShowCheckIn(true)} onDismissCheckIn={() => setCheckInAlertDismissedDate(todayStr)} checkInAvailable={onboardingComplete && lastCheckIn !== todayStr && checkInAlertDismissedDate !== todayStr} /></PageTransition>}
           </Suspense></ErrorBoundary>
         </main>
         <PremiumSidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} onOpenSettings={() => setShowSettings(true)} onLogout={requestLogout} />

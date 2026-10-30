@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import serviceWorkerPlugin from './build/serviceWorkerPlugin.js';
 import staticCompressionPlugin from './build/staticCompressionPlugin.js';
+import nativeEntriesPlugin from './scripts/nativeEntriesPlugin.js';
+import kineticGraphPlugin from './scripts/kineticGraphPlugin.js';
 import { createUiProxies } from '../scripts/workspace-proxy.mjs';
 
 // https://vite.dev/config/
@@ -17,6 +19,7 @@ export default defineConfig(({ mode }) => {
   optimizeDeps: { entries: ['index.html'] },
   plugins: [
     react(),
+    nativeEntriesPlugin(),
     serviceWorkerPlugin(),
     sentryEnabled && sentryVitePlugin({
       org: env.SENTRY_ORG,
@@ -24,6 +27,7 @@ export default defineConfig(({ mode }) => {
       authToken: env.SENTRY_AUTH_TOKEN,
     }),
     staticCompressionPlugin(),
+    kineticGraphPlugin(),
   ].filter(Boolean),
   server: {
     port: Number(env.VITE_PORT || 5000),

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AreaChart, Area, BarChart, Bar, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, Cell, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'recharts';
+import ResponsiveContainer from '../ui/VisibleResponsiveContainer';
 import type { Transaction } from '../../schemas';
 import type { MoneyFormatter } from '../../utils/financeModel';
 import { financeMinor, financeMonths, financeTrends } from '../../utils/financeModel';

@@ -1,10 +1,8 @@
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Dumbbell, Plus, Trash2, TrendingUp, TrendingDown, Minus, Award, Activity } from 'lucide-react';
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
-  BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, Radar,
-} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine, BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
@@ -403,7 +401,7 @@ export default function StrengthMetrics() {
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} unit={getMeasurementUnit('kg', user)} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${formatNumber(v, user)} ${getMeasurementUnit('kg', user)}`, 'Max Weight']} />
-                  <Line type="monotone" dataKey="weight" name="Max Weight" stroke="var(--accent)" strokeWidth={2.5} dot={{ r: 5, fill: 'var(--accent)' }} />
+                  <Line type="monotone" dataKey="weight" name="Max Weight" stroke="var(--accent)" strokeWidth={2.5} dot={{ r: 5, fill: 'var(--accent)' }} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -431,7 +429,7 @@ export default function StrengthMetrics() {
                 <XAxis type="number" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                 <YAxis type="category" dataKey="muscle" tick={{ fontSize: 11, fill: 'var(--text-2)' }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatMeasurement(v, 'kg', user), 'Volume']} />
-                <Bar dataKey="volume" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="volume" radius={[0, 4, 4, 0]} isAnimationActive={false}>
                   {weeklyVolume.map((entry, idx) => (
                     <React.Fragment key={entry.muscle}>
                       <rect fill={MUSCLE_COLORS[entry.muscle] || 'var(--accent)'} />

@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import AnimatedLogo from '../components/motion/AnimatedLogo';
 import './public-pages.css';
 
 const sections = [
@@ -56,7 +57,7 @@ export default function PrivacyPage() {
       <a className="gt-public__skip" href="#public-content" tabIndex={0}>Skip to main content</a>
       <div className="gt-public__wrap">
         <header className="gt-public__header">
-          <Link className="gt-public__brand" to="/welcome" aria-label="GrowthTrack home"><span className="gt-public__brand-mark" aria-hidden="true">G<span>.</span></span><span>GrowthTrack</span></Link>
+          <Link className="gt-public__brand" to="/welcome" aria-label="GrowthTrack home"><AnimatedLogo /><span>GrowthTrack</span></Link>
           <Link className="gt-public__back" to="/welcome"><ArrowLeft size={16} aria-hidden="true" /> Back to the overview</Link>
         </header>
 

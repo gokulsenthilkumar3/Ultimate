@@ -23,16 +23,19 @@
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"GrowthTrack Ultimate","applicationCategory":"ProductivityApplication","operatingSystem":"Web, Windows","description":"A private personal operations workspace for health, habits, work, money, and progress."}</script>
     <title>Ultimate — Digital Twin Engine</title>
     <!-- Inter is self-hosted by the build; system fonts remain the fallback. -->
+    <link rel="preload" href="/src/assets/inter-latin-variable.woff2" as="font" type="font/woff2" crossorigin />
     <!-- FOUC Prevention: Apply theme before React hydrates to avoid flash -->
     <script>
       (function() {
         try {
+          var presentation = JSON.parse(localStorage.getItem('growthtrack.presentation.v5') || '{}');
+          document.documentElement.setAttribute('data-ui-style', presentation.style === 'playful' ? 'playful' : 'kinetic');
           var stored = localStorage.getItem('growthtrack-ultimate-v4');
           if (stored) {
             var state = JSON.parse(stored);
             var mode = state?.state?.theme || 'system';
             var theme = ['light', 'dark', 'amoled'].includes(mode) ? mode : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            var palette = state?.state?.palette || 'gold';
+            var palette = state?.state?.palette || 'coral';
             document.documentElement.setAttribute('data-theme', theme);
             document.documentElement.setAttribute('data-palette', palette);
             if (theme === 'amoled' || theme === 'dark') {
@@ -41,7 +44,7 @@
           } else {
             var systemTheme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             document.documentElement.setAttribute('data-theme', systemTheme);
-            document.documentElement.setAttribute('data-palette', 'gold');
+            document.documentElement.setAttribute('data-palette', 'coral');
             document.documentElement.style.backgroundColor = systemTheme === 'dark' ? '#0f172a' : '#F5F5F7';
           }
         } catch(e) {}

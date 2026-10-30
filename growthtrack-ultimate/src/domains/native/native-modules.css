@@ -1,0 +1,104 @@
+@layer components {
+  .native-module { --native-ink: var(--gt-action); --native-paper: color-mix(in srgb, #8fd7bb 15%, var(--gt-surface)); min-inline-size: 0; }
+  .native-module--equity { --native-paper: color-mix(in srgb, #ffb899 17%, var(--gt-surface)); }
+  .native-module--forex { --native-paper: color-mix(in srgb, #c8bcf4 19%, var(--gt-surface)); }
+  .native-module :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--gt-action); outline-offset: 3px; }
+  .native-hero { display: grid; grid-template-columns: minmax(0, 1fr) 210px; position: relative; overflow: hidden; align-items: center; gap: 20px; padding: 28px 32px; margin-block: 8px 24px; background: var(--native-paper); border: 1px solid var(--gt-border); border-radius: 20px; isolation: isolate; }
+  .native-eyebrow { color: var(--gt-muted); font-size: 11px; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; }
+  .native-hero h2 { margin-block: 10px 8px; font-size: clamp(23px, 2.5vw, 34px); letter-spacing: -.045em; font-weight: 550; color: var(--gt-text); }
+  .native-hero p { color: var(--gt-muted); font-size: 14px; max-inline-size: 52ch; }
+  .native-hero__stamp { display: inline-flex; gap: 16px; align-items: center; margin-block-start: 24px; font-size: 10px; font-weight: 700; letter-spacing: .14em; color: var(--gt-text); }
+  .native-hero__stamp > span { font-size: 23px; font-weight: 400; }
+  .native-hero__art { position: relative; inline-size: 190px; block-size: 170px; display: grid; place-items: center; }
+  .native-hero__art .character-scene { inline-size: 155px; block-size: 155px; position: relative; }
+  .native-hero__orbit { position: absolute; inline-size: 168px; block-size: 168px; border: 1px dashed color-mix(in srgb, var(--gt-text) 35%, transparent); border-radius: 50%; transform: rotate(-15deg) scaleX(1.2); }
+  .native-hero__spark { position: absolute; inset-block-start: -4px; inset-inline-end: 0; color: var(--gt-text); font-size: 37px; transform: rotate(12deg); }
+  .native-content { display: grid; gap: 20px; padding-block-start: 20px; min-inline-size: 0; }
+  .native-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .native-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 44px; padding: 9px 16px; border: 1px solid var(--gt-action); border-radius: 9px; background: var(--gt-action); color: var(--gt-on-action); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .native-button--quiet { background: var(--gt-surface); border-color: var(--gt-border); color: var(--gt-text); }
+  .native-button:disabled { opacity: .5; cursor: default; }
+  .native-module[data-motion=true] .native-button { transition: transform 160ms cubic-bezier(.2,.8,.2,1), box-shadow 160ms ease; }
+  @media (hover:hover) { .native-module[data-motion=true] .native-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--gt-shadow-control); } }
+  .native-module[data-motion=true] .native-button:active:not(:disabled) { transform: scale(.96); }
+  .native-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .native-metric { display: grid; align-content: start; gap: 8px; padding: 20px; border: 1px solid var(--gt-border); border-radius: 14px; background: var(--gt-surface); }
+  .native-metric > span { color: var(--gt-muted); font-size: 12px; }
+  .native-metric > strong { color: var(--gt-text); font-size: 27px; font-weight: 550; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+  .native-metric > small { color: var(--gt-muted); font-size: 11px; line-height: 1.6; }
+  .native-card { min-inline-size: 0; background: var(--gt-surface); border: 1px solid var(--gt-border); border-radius: 16px; overflow: clip; }
+  .native-card > header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding: 20px; }
+  .native-card h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--gt-text); }
+  .native-card > header p { margin-block: 6px 0; color: var(--gt-muted); font-size: 12px; max-inline-size: 75ch; line-height: 1.6; }
+  .native-card__body { padding: 0 20px 20px; }
+  .native-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 18px 20px; border-block: 1px solid var(--gt-border); }
+  .native-toolbar > .native-field:first-child { flex: 1 1 220px; }
+  .native-field { display: grid; gap: 7px; min-inline-size: 0; color: var(--gt-muted); font-size: 12px; }
+  .native-field :is(input, select, textarea) { inline-size: 100%; min-block-size: 44px; padding: 10px 12px; border: 1px solid var(--gt-input-border); border-radius: 9px; background: var(--gt-surface); color: var(--gt-text); font: inherit; font-size: 14px; }
+  .native-field textarea { min-block-size: 120px; resize: vertical; }
+  .native-field > small { font-size: 11px; line-height: 1.6; }
+  .native-form { display: grid; gap: 16px; }
+  .native-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .native-form-error { color: var(--gt-danger, #b83b32); padding: 12px; border: 1px solid currentColor; border-radius: 8px; font-size: 13px; }
+  .native-notice { margin: 0; padding: 12px 16px; border: 1px solid var(--gt-border); border-radius: 10px; color: var(--gt-muted); background: var(--gt-surface); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+  .native-status { display: inline-flex; gap: 7px; align-items: center; color: var(--gt-muted); font-size: 12px; }
+  .native-status::before { content: ''; inline-size: 6px; block-size: 6px; border-radius: 50%; background: currentColor; }
+  .native-table-scroll { max-inline-size: 100%; overflow: auto; }
+  .native-table { inline-size: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .native-table :is(th,td) { padding: 14px 20px; text-align: start; border-block-start: 1px solid var(--gt-border); white-space: nowrap; }
+  .native-table th { color: var(--gt-muted); font-size: 11px; font-weight: 500; }
+  .native-table td { color: var(--gt-text); }
+  .native-table tbody tr:hover { background: var(--gt-surface-raised); }
+  .native-link { color: var(--gt-action); padding: 8px 0; border: 0; background: transparent; text-align: start; cursor: pointer; font: inherit; font-weight: 600; text-underline-offset: 3px; }
+  .native-link:hover { text-decoration: underline; }
+  .native-change--up { color: var(--gt-success, #23805c); }
+  .native-change--down { color: var(--gt-danger, #b83b32); }
+  .native-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 14px 20px; color: var(--gt-muted); border-block-start: 1px solid var(--gt-border); font-size: 12px; }
+  .native-pagination > span:first-child { margin-inline-end: auto; }
+  .native-chart { margin: 0; padding: 0 12px 20px; }
+  .native-chart svg { display: block; inline-size: 100%; min-block-size: 190px; overflow: visible; }
+  .native-chart text { fill: var(--gt-muted); font-family: inherit; font-size: 11px; }
+  .native-chart__grid { stroke: var(--gt-border); stroke-width: 1; }
+  .native-chart figcaption { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px 20px; padding: 8px; font-size: 11px; color: var(--gt-muted); }
+  .native-chart figcaption > span { display: inline-flex; align-items: center; gap: 7px; }
+  .native-chart figcaption i { inline-size: 15px; block-size: 3px; border-radius: 3px; }
+  .native-skeleton { display: grid; gap: 20px; }
+  .native-skeleton .native-metrics > span { block-size: 116px; border-radius: 14px; background: var(--gt-surface-raised); }
+  .native-skeleton__body { display: grid; gap: 18px; padding: 22px; border: 1px solid var(--gt-border); border-radius: 14px; }
+  .native-skeleton__body > span { block-size: 34px; background: var(--gt-surface-raised); border-radius: 5px; }
+  .native-module[data-motion=true] .native-skeleton { animation: native-breathe 1.8s ease-in-out infinite alternate; }
+  @keyframes native-breathe { from { opacity: .65; } to { opacity: 1; } }
+  .native-detail-list { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 20px; }
+  .native-detail-list dt { margin-block-end: 7px; font-size: 12px; color: var(--gt-muted); }
+  .native-detail-list dd { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+  .native-range { padding-block: 24px; }
+  .native-range__track { block-size: 7px; border-radius: 8px; background: var(--gt-border); position: relative; margin-block: 16px; }
+  .native-range__dot { position: absolute; inset-block-start: -4px; inline-size: 15px; block-size: 15px; border: 3px solid var(--gt-surface); border-radius: 50%; background: var(--gt-action); }
+  .native-family-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; padding: 0 20px 20px; }
+  .native-person { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 18px; border: 1px solid var(--gt-border); border-radius: 12px; color: var(--gt-text); background: var(--gt-surface); text-align: start; cursor: pointer; }
+  .native-person > span:first-child { display: grid; place-items: center; inline-size: 42px; block-size: 42px; background: var(--native-paper); border-radius: 50%; font-size: 16px; font-weight: 600; }
+  .native-person strong { font-size: 14px; overflow-wrap: anywhere; }
+  .native-person small { color: var(--gt-muted); font-size: 11px; }
+  .native-module[data-motion=true] .native-person { transition: transform 220ms cubic-bezier(.18,.8,.22,1); }
+  .native-module[data-motion=true] .native-person:hover { transform: translateY(-3px); }
+  .native-tree { overflow: auto; padding: 20px; background: radial-gradient(var(--gt-border) 1px, transparent 1px) 0 0 / 20px 20px; }
+  .native-tree svg { display: block; max-inline-size: none; }
+  .native-tree path { stroke: var(--gt-muted); stroke-width: 1.2; fill: none; opacity: .5; }
+  .native-tree rect { fill: var(--gt-surface); stroke: var(--gt-border); rx: 12; }
+  .native-tree text { fill: var(--gt-text); font-size: 12px; }
+  .native-tree g[role=button] { cursor: pointer; }
+  .native-tree g[role=button]:focus-visible { outline: none; }
+  .native-tree g[role=button]:focus-visible rect { stroke: var(--gt-action); stroke-width: 3; }
+  .native-events { list-style: none; margin: 0; padding: 0 20px; }
+  .native-events > li { display: grid; grid-template-columns: 90px minmax(0,1fr); gap: 20px; padding-block: 20px; border-block-start: 1px solid var(--gt-border); }
+  .native-events time { font-size: 12px; color: var(--gt-muted); }
+  .native-events h3 { margin: 0 0 6px; font-size: 14px; }
+  .native-events p { font-size: 12px; color: var(--gt-muted); line-height: 1.7; white-space: pre-wrap; }
+  .native-photo { inline-size: 100%; max-block-size: 65vh; object-fit: contain; border-radius: 10px; }
+  .native-connected { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
+  .native-currency-picker { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 20px; }
+  .native-currency-picker button { min-inline-size: 64px; }
+  .native-currency-picker button[aria-pressed=true] { background: var(--native-paper); border-color: var(--gt-action); color: var(--gt-text); }
+  @media (max-width: 719px) { .native-hero { grid-template-columns: minmax(0,1fr) 100px; padding: 20px; gap: 8px; } .native-hero__art { inline-size: 100px; block-size: 130px; } .native-hero__art .character-scene { inline-size: 110px; block-size: 110px; } .native-hero__orbit { inline-size: 95px; block-size: 110px; } .native-hero__spark { font-size: 24px; } .native-hero__stamp { margin-block-start: 16px; } .native-metrics { grid-template-columns: 1fr; gap: 8px; } .native-metric { grid-template-columns: minmax(0,1fr) auto; align-items: center; padding: 14px 16px; } .native-metric > small { grid-column: 1 / -1; } .native-metric > strong { font-size: 22px; } .native-form-grid { grid-template-columns: 1fr; } .native-table :is(th,td) { padding: 12px 16px; } .native-chart svg { min-inline-size: 0; min-block-size: 140px; } }
+  @media (prefers-reduced-motion: reduce) { .native-module *, .native-module *::before, .native-module *::after { animation: none !important; transition: none !important; } }
+}

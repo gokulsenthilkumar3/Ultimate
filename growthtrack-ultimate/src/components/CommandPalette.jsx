@@ -11,6 +11,7 @@ import { queuePendingUiAction } from '../lib/pendingUiAction';
 import { parseQuickCapture, QUICK_CAPTURE_EXAMPLES } from '../lib/quickCapture';
 import { apiRequest } from '../lib/apiClient';
 import { useToast } from '../hooks/useToast';
+import { useKinetic } from './motion/KineticContext';
 
 // ── Module icon map ───────────────────────────────────────────────────────────
 const MODULE_ICONS = {
@@ -90,7 +91,14 @@ const QUICK_ACTIONS = [
   { id: 'qa-sleep',   type: 'action', label: 'Open sleep log', icon: '😴', tab: 'sleep',    detail: 'Review sleep history' },
 ];
 
+function KineticResultIcon({ item }) {
+  // Reuse the navigation SVGs instead of loading a colour emoji font on first open.
+  const Icon = TABS[item.tab]?.icon || ({ task: CheckSquare, goal: Target, note: FileText, habit: Flame, skill: Star, capture: Sparkles })[item.type] || Layout;
+  return <Icon size={18} aria-hidden="true" />;
+}
+
 export default function CommandPalette() {
+  const { enabled: kineticEnabled } = useKinetic();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery]   = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -361,7 +369,7 @@ export default function CommandPalette() {
                       transition: 'background 0.1s',
                     }}
                   >
-                    <span style={{ fontSize: '1rem', flexShrink: 0, width: '22px', textAlign: 'center' }}>{item.icon}</span>
+                    <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', fontSize: '1rem', flexShrink: 0, width: '22px', textAlign: 'center' }}>{kineticEnabled ? <KineticResultIcon item={item} /> : item.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.85rem', fontWeight: idx === selectedIdx ? 700 : 600, color: idx === selectedIdx ? 'var(--accent)' : 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         <Highlight text={item.label} query={query} />
@@ -384,7 +392,7 @@ export default function CommandPalette() {
         <div style={{ display: 'flex', gap: '1rem', padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: '0.62rem', color: 'var(--text-3)' }}>
           <span>↑↓ navigate</span>
           <span>↵ {results[selectedIdx]?.type === 'capture' ? (capturing ? 'saving…' : 'save') : 'open'}</span>
-          {!query.trim() && <span title={QUICK_CAPTURE_EXAMPLES.join(' · ')}>✨ Try “{QUICK_CAPTURE_EXAMPLES[selectedIdx % QUICK_CAPTURE_EXAMPLES.length]}”</span>}
+          {!query.trim() && <span title={QUICK_CAPTURE_EXAMPLES.join(' · ')}>{!kineticEnabled && '✨ '}Try “{QUICK_CAPTURE_EXAMPLES[selectedIdx % QUICK_CAPTURE_EXAMPLES.length]}”</span>}
           <span style={{ marginLeft: 'auto' }}>{results.length} result{results.length !== 1 ? 's' : ''}</span>
         </div>
       </div>

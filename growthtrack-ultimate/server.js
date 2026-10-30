@@ -20,6 +20,8 @@ import { BODY_METRIC_RANGES, validateBodyMetric } from './src/lib/bodyMetricCont
 import { appleHealthSetupRequired, metricToClient } from './server/domains/providers.js';
 import { registerFinanceRoutes } from './server/domains/finance.js';
 import { registerCustomerAdminRoutes } from './server/domains/customerAdmin.js';
+import { registerNativeModuleRoutes } from './server/domains/nativeModules.js';
+import { nativeEntryDestination } from './src/config/nativeEntries.js';
 import { registerFileRoutes } from './server/domains/files.js';
 import { registerWorkoutRoutes } from './server/domains/workouts.js';
 import { saveSocialProfiles } from './server/domains/socialProfiles.js';
@@ -128,6 +130,11 @@ const verifyHandoff = token => {
 app.disable('x-powered-by');
 app.set('trust proxy', config.server.trustProxy ? 1 : false);
 app.use(security.headers);
+app.use((req, res, next) => {
+  const destination = req.method === 'GET' ? nativeEntryDestination(req.path) : null;
+  if (destination) return res.redirect(302, destination);
+  next();
+});
 app.use((req, res, next) => {
   req.requestId = String(req.headers['x-request-id'] || crypto.randomUUID());
   res.setHeader('X-Request-Id', req.requestId);
@@ -950,6 +957,7 @@ app.post('/api/health/sync/apple', authMiddleware, appleHealthSetupRequired);
 
 registerFinanceRoutes(app, authMiddleware, { prisma, auditCrud });
 registerCustomerAdminRoutes(app, authMiddleware);
+registerNativeModuleRoutes(app, authMiddleware);
 registerRecordRoutes(app, { authMiddleware, services: recordServices, enabled: recordRowsEnabled });
 const syncEngine = createSyncEngine({ prisma, records: recordRowsEnabled ? recordServices : null, fetchDefaults: config.sync.fetch, connectors: createConnectors(config.sync), sealer: createSealer(config.security.encryptionKey), logEvent: event => eventLogger.write({ source: 'sync-engine', ...event }) });
 registerSyncRoutes(app, authMiddleware, syncEngine);

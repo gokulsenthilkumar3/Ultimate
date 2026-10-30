@@ -1,4 +1,6 @@
 import React from 'react';
+import { OverviewCompanion } from './motion/CharacterScene';
+import usePlayfulMotion from '../hooks/usePlayfulMotion';
 import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { featurePath } from '../config/featureRegistry';
@@ -14,6 +16,7 @@ const dateKey = value => {
 };
 
 export default function WorkspaceHub() {
+  const { canAnimate } = usePlayfulMotion();
   const user = useStore(state => state.user);
   const notes = asList(useStore(state => state.notes));
   const taskSource = user?.tasks;
@@ -55,10 +58,11 @@ export default function WorkspaceHub() {
     })),
   ].filter(item => dateKey(item.date)).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 4);
 
-  return <section className="module-page editorial-overview editorial-overview--workspace" aria-labelledby="workspace-title">
+  return <section className="module-page editorial-overview editorial-overview--workspace playful-overview" data-playful-motion={String(canAnimate)} aria-labelledby="workspace-title">
     <header className="editorial-overview__masthead">
       <div><p className="editorial-overview__eyebrow">Workspace / Overview</p><h1 id="workspace-title">Work, made clear</h1>
         <p className="editorial-overview__subtitle">The next task, your saved projects, and recent edits.</p></div>
+      <OverviewCompanion kind="snip" />
       <p className="editorial-overview__asof">As of {formatDate(today, user, { style: 'long', weekday: true })}</p>
     </header>
     <section className="editorial-overview__lead" aria-labelledby="workspace-next-title">

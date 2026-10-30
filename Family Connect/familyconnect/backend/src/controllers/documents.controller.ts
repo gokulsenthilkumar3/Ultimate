@@ -2,103 +2,75 @@ import { Request, Response } from 'express';
 import { PrismaClient, DocumentType } from '@prisma/client';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs/promises';
+import { randomUUID } from 'crypto';
+import { authorizeTree, membersBelongToTree } from '../services/treeAccess';
+import { cacheInvalidate } from '../services/cache.service';
 
 const prisma = new PrismaClient();
+const uploadDir = path.resolve(__dirname, '../../uploads');
+const legacyUploadDir = path.resolve(__dirname, '../../../uploads');
+export const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 5 } });
+const documentTypes = ['birth_certificate', 'marriage_certificate', 'passport', 'property_deed', 'photo', 'other'];
+const extensions = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.txt', '.doc', '.docx']);
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-export const upload = multer({ 
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
-});
-
-// Get all documents for a tree
 export const getDocumentsByTree = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { treeId } = req.params;
+    const treeId = req.params.treeId as string;
+    if (!await authorizeTree(req, res, treeId)) return;
+    res.set('Cache-Control', 'private, no-store');
+    if (req.query.page !== undefined) {
+      const page = Math.max(0, Math.min(100000, Math.floor(Number(req.query.page) || 0))), limit = 25;
+      const where = { treeId, ...(req.query.type === 'photo' ? { type: 'photo' as DocumentType } : {}) };
+      const [rows, total] = await prisma.$transaction([prisma.document.findMany({ where, orderBy: [{ uploadedAt: 'desc' }, { id: 'asc' }], skip: page * limit, take: limit, include: { member: { select: { id: true, name: true } } } }), prisma.document.count({ where })]);
+      res.json({ rows, total, page, limit }); return;
+    }
+    res.json(await prisma.document.findMany({ where: { treeId }, orderBy: { uploadedAt: 'desc' }, include: { member: { select: { id: true, name: true, photoUrl: true } } } }));
+  } catch { res.status(500).json({ error: 'Failed to fetch documents.' }); }
+};
 
-    const documents = await prisma.document.findMany({
-      where: { treeId: treeId as string },
-      orderBy: { uploadedAt: 'desc' },
-      include: {
-        member: {
-          select: { id: true, name: true, photoUrl: true }
-        }
-      }
+export const uploadDocument = async (req: Request, res: Response): Promise<void> => {
+  let createdPath: string | null = null;
+  try {
+    const { treeId, memberId, type } = req.body;
+    if (!await authorizeTree(req, res, treeId, true)) return;
+    if (!req.file || !documentTypes.includes(type) || !await membersBelongToTree(treeId, [memberId])) { res.status(400).json({ error: 'Choose a supported file, type and member in this tree.' }); return; }
+    const extension = path.extname(req.file.originalname).toLowerCase();
+    if (!extensions.has(extension) || (type === 'photo' && !['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(extension))) { res.status(400).json({ error: 'Use a PDF, image, text or Word document. Photos must be a supported image.' }); return; }
+    await fs.mkdir(uploadDir, { recursive: true });
+    const filename = randomUUID() + extension;
+    createdPath = path.join(uploadDir, filename);
+    await fs.writeFile(createdPath, req.file.buffer, { flag: 'wx' });
+    const fileUrl = '/uploads/' + filename;
+    const document = await prisma.$transaction(async tx => {
+      const record = await tx.document.create({ data: { treeId, memberId: memberId || null, type: type as DocumentType, fileUrl, fileName: path.basename(req.file!.originalname).slice(0, 240) }, include: { member: { select: { id: true, name: true } } } });
+      if (type === 'photo' && memberId) await tx.member.update({ where: { id: memberId }, data: { photoUrl: fileUrl } });
+      return record;
     });
-
-    res.status(200).json(documents);
-  } catch (error) {
-    console.error('Error fetching documents:', error);
-    res.status(500).json({ error: 'Failed to fetch documents' });
+    createdPath = null;
+    await cacheInvalidate('members:' + treeId);
+    res.status(201).json(document);
+  } catch {
+    // Only an uncommitted file created by this request is eligible for cleanup.
+    if (createdPath) await fs.unlink(createdPath).catch(() => {});
+    res.status(500).json({ error: 'Failed to upload document.' });
   }
 };
 
-// Upload a document
-export const uploadDocument = async (req: Request, res: Response): Promise<void> => {
+export const downloadDocument = async (req: Request, res: Response): Promise<void> => {
   try {
-    const file = req.file;
-    const { treeId, memberId, type } = req.body;
-
-    if (!file) {
-      res.status(400).json({ error: 'No file uploaded' });
-      return;
-    }
-
-    if (!treeId || !type) {
-      // Clean up the uploaded file since validation failed
-      fs.unlinkSync(file.path);
-      res.status(400).json({ error: 'Missing required fields (treeId, type)' });
-      return;
-    }
-
-    // Determine the public URL path
-    const fileUrl = `/uploads/${file.filename}`;
-    const fileName = file.originalname;
-
-    const document = await prisma.document.create({
-      data: {
-        treeId,
-        memberId: memberId || null,
-        type: type as DocumentType,
-        fileUrl,
-        fileName,
-      },
-      include: {
-        member: {
-          select: { id: true, name: true, photoUrl: true }
-        }
-      }
-    });
-
-    // If it's a profile photo, we might also want to update the member's photoUrl
-    if (type === 'photo' && memberId) {
-      await prisma.member.update({
-        where: { id: memberId },
-        data: { photoUrl: fileUrl }
-      });
-    }
-
-    res.status(201).json(document);
-  } catch (error) {
-    console.error('Error uploading document:', error);
-    if (req.file) fs.unlinkSync(req.file.path); // Cleanup on error
-    res.status(500).json({ error: 'Failed to upload document' });
-  }
+    const document = req.params.documentId
+      ? await prisma.document.findUnique({ where: { id: req.params.documentId as string } })
+      : await prisma.document.findFirst({ where: { fileUrl: '/uploads/' + req.params.filename } });
+    if (!document) { res.status(404).json({ error: 'Document not found.' }); return; }
+    if (!await authorizeTree(req, res, document.treeId)) return;
+    const filename = path.basename(document.fileUrl);
+    if (document.fileUrl !== '/uploads/' + filename || !/^[a-zA-Z0-9_.-]+$/.test(filename)) { res.status(404).json({ error: 'Document not available.' }); return; }
+    const candidates = [path.join(uploadDir, filename), path.join(legacyUploadDir, filename)];
+    let target: string | null = null;
+    for (const candidate of candidates) { try { await fs.access(candidate); target = candidate; break; } catch { /* keep legacy files in place */ } }
+    if (!target) { res.status(404).json({ error: 'The stored file is unavailable.' }); return; }
+    res.set('Cache-Control', 'private, no-store');
+    res.download(target, document.fileName, error => { if (error && !res.headersSent) res.status(404).json({ error: 'The stored file is unavailable.' }); });
+  } catch { if (!res.headersSent) res.status(500).json({ error: 'Failed to download document.' }); }
 };

@@ -77,6 +77,10 @@
     "test:e2e:ui": "playwright test --ui",
     "analyze": "vite build --mode analyze",
     "performance:pages": "node scripts/page-performance.mjs",
+    "performance:kinetic": "node scripts/page-performance.mjs --browser=chrome --pages=welcome,login,overview --motion=no-preference --interact --settle-ms=1800",
+    "performance:kinetic:soak": "node scripts/page-performance.mjs --browser=chrome --pages=overview --motion=no-preference --soak-minutes=30 --label=kinetic-soak",
+    "check:kinetic-budgets": "node scripts/kinetic-budgets.mjs --check",
+    "test:kinetic": "vitest run src/components/motion/KineticMotion.test.tsx src/design/kinetic.test.ts src/components/ui/DataTable.virtual.test.tsx src/components/ui/VisibleResponsiveContainer.test.tsx src/App.entry.test.jsx src/App.signout.test.jsx",
     "performance:check": "node scripts/check-page-performance.mjs",
     "validate:glb": "node scripts/validate-glb.js && node scripts/validate-glb.js public/assets/models/humanoid-adult-v2-lite.glb && node scripts/validate-glb.js public/assets/models/humanoid-base.glb && node scripts/validate-glb.js public/assets/models/humanoid-base-lite.glb && node scripts/validate-glb.js public/assets/models/humanoid-preview-75.glb && node scripts/validate-glb.js public/assets/models/humanoid-preview-75-lite.glb && node scripts/validate-glb-format.mjs && node scripts/validate-human-family.mjs",
     "validate:glb-format": "node scripts/validate-glb-format.mjs",
@@ -104,6 +108,7 @@
     "test:container": "node scripts/test-container.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
     "@libsql/client": "^0.17.4",
     "@prisma/adapter-libsql": "^7.9.1",
@@ -123,6 +128,7 @@
     "detect-gpu": "^5.0.70",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "framer-motion": "^14.8.0",
     "gsap": "3.15.0",
     "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.3",

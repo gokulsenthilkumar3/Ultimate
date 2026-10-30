@@ -47,6 +47,7 @@ from src.api.schemas import (
     SentimentResponse,
 )
 from src.api.predictor import ForexPredictor
+from src.api.workspace import WorkspaceDashboard
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
@@ -60,6 +61,7 @@ _API_TITLE   = "Forex Ensemble Prediction API"
 _API_VERSION = "2.0.0"
 
 predictor: Optional[ForexPredictor] = None
+workspace_dashboard = WorkspaceDashboard()
 
 
 @asynccontextmanager
@@ -203,6 +205,26 @@ def _build_prediction_row(
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
+
+@app.get("/workspace/metadata", tags=["Workspace"])
+def workspace_metadata():
+    return workspace_dashboard.metadata(predictor)
+
+
+@app.get("/workspace/history", tags=["Workspace"])
+def workspace_history(
+    model: str = Query(default="lgb", pattern="^(lgb|xgb|stacking)$"),
+    currencies: str = Query(default="USD", max_length=160),
+    window: int = Query(default=30, ge=10, le=365),
+    period: str = Query(default="recent", pattern="^(recent|history)$"),
+):
+    try:
+        return workspace_dashboard.history(predictor, model, currencies.split(","), window, period)
+    except HTTPException:
+        raise
+    except Exception:
+        log.exception("Historical dashboard calculation failed")
+        raise HTTPException(status_code=503, detail="Historical model outputs are unavailable.")
 
 @app.get("/health", response_model=HealthResponse, tags=["Ops"])
 async def health():

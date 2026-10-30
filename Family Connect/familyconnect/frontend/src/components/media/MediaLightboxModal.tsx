@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { X, FileText, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PrivateImage, privateFileEndpoint } from '../common/PrivateImage';
+import apiClient from '../../api/client';
 
 interface MediaLightboxModalProps {
   isOpen: boolean;
@@ -34,13 +36,20 @@ export const MediaLightboxModal: React.FC<MediaLightboxModalProps> = ({
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    const endpoint = privateFileEndpoint(mediaUrl);
+    let objectUrl: string | undefined;
+    if (endpoint) {
+      try { const response = await apiClient.get(endpoint, { responseType: 'blob' }); objectUrl = URL.createObjectURL(response.data); }
+      catch { return; }
+    }
     const link = document.createElement('a');
-    link.href = mediaUrl;
+    link.href = objectUrl || mediaUrl;
     link.download = mediaName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl!), 1000);
   };
 
   return (
@@ -83,7 +92,7 @@ export const MediaLightboxModal: React.FC<MediaLightboxModalProps> = ({
             {/* Media Content */}
             <div className="w-full max-h-[85vh] flex items-center justify-center overflow-hidden pointer-events-auto">
               {mediaType === 'photo' ? (
-                <img 
+                <PrivateImage
                   src={mediaUrl} 
                   alt={mediaName} 
                   className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"

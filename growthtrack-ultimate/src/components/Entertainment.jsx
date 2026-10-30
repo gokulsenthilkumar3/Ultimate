@@ -11,6 +11,7 @@ import useStore, {
 } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
+import '../styles/entertainment-route.css';
 
 const TYPES    = ['Anime', 'Series', 'Movie', 'Documentary'];
 const STATUSES = ['Watching', 'Plan to Watch', 'Completed', 'Dropped'];

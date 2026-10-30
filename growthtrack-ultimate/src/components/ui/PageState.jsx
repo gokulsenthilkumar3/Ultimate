@@ -1,9 +1,12 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, CloudOff, Inbox, LoaderCircle, LockKeyhole, Plug, RefreshCw, WifiOff } from 'lucide-react';
 import Button from './Button';
+import CharacterScene from '../motion/CharacterScene';
+import { useKinetic } from '../motion/KineticContext';
 
 /** Consistent recovery surface for offline, error, and slow-loading views. */
 export default function PageState({ state = 'error', title = undefined, description = undefined, onRetry = undefined }) {
+  const { enabled } = useKinetic();
   const icons = { setup: Plug, denied: LockKeyhole, error: AlertCircle, offline: WifiOff, empty: Inbox, loading: LoaderCircle, unauthorized: LockKeyhole, unavailable: CloudOff, 'database-failure': CloudOff, success: CheckCircle2 };
   const Icon = icons[state] || icons.error;
   const defaults = {
@@ -21,6 +24,7 @@ export default function PageState({ state = 'error', title = undefined, descript
   const [defaultTitle, defaultDescription] = defaults[state] || defaults.error;
   return <section className="gt-page-state" data-responsive-foundation data-state={state} role={['error', 'unauthorized', 'denied', 'unavailable', 'database-failure'].includes(state) ? 'alert' : 'status'}>
     <span className="gt-page-state__icon" aria-hidden="true"><Icon size={22} /></span>
+    {enabled && <div className="gt-page-state__companion"><CharacterScene kind={state === 'success' ? 'mochi' : ['error', 'unavailable', 'offline'].includes(state) ? 'ziggy' : 'nova'} state={state === 'success' ? 'celebrate' : state === 'error' ? 'oops' : state === 'loading' ? 'sleep' : 'idle'} /></div>}
     <div className="gt-page-state__copy"><h2>{title ?? defaultTitle}</h2><p>{description ?? defaultDescription}</p></div>
     {onRetry && state !== 'loading' && <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={onRetry}>Try again</Button>}
   </section>;

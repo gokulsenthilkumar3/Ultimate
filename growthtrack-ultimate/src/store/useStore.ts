@@ -139,7 +139,7 @@ const useStore = create<any>()(
 
       // Saved preferences win; new workspaces follow the operating system.
       theme: 'system',
-      palette: 'forest',
+      palette: 'coral',
       activeTab: 'overview',
       pinnedTabs: ['overview', 'humanoid', 'physique', 'health', 'tasks', 'finance', 'dashboards', 'logs'],
       navigationOrder: ['customers', 'money', 'wellness', 'work', 'life', 'insights', 'system'],
@@ -371,7 +371,7 @@ const useStore = create<any>()(
             initialLoadError: null,
             _dataRevision: get()._dataRevision + 1,
             user: { ...(stored.user || {}), tasks: { pending, completed } },
-            theme: preference.theme || get().theme || 'system', palette: preference.palette || 'forest',
+            theme: preference.theme || get().theme || 'system', palette: preference.palette || 'coral',
             sidebarCollapsed: Boolean(preference.sidebarCollapsed), onboardingComplete: Boolean(preference.onboardingComplete),
             reducedMotion: Boolean(preference.reducedMotion),
             density: preference.density === 'compact' ? 'compact' : 'comfortable',

@@ -12,8 +12,13 @@ import useDialogFocus from '../hooks/useDialogFocus';
 import { fetchIpInfo } from '../hooks/useGeolocation';
 import ReferralDashboard from './ReferralDashboard';
 import { formatTime } from '../utils/userFormatters';
+import { m } from 'framer-motion';
+import { useKinetic } from './motion/KineticContext';
+import SelectionHighlight from './motion/SelectionHighlight';
+import CharacterScene from './motion/CharacterScene';
 
 export default function SettingsModal({ onClose }) {
+  const kinetic = useKinetic();
   const navigate = useNavigate();
   const dialogRef = useDialogFocus(true, onClose);
   const [activeTab, setActiveTab] = useState('Profile');
@@ -119,7 +124,7 @@ export default function SettingsModal({ onClose }) {
         onConfirm={doReset}
         onCancel={() => setConfirmReset(false)}
       />
-      <div className="settings-modal-card fade-in">
+      <m.div className="settings-modal-card fade-in" initial={kinetic.enabled && kinetic.canAnimate && kinetic.tier > 0 ? { opacity: 0, y: 8, scale: .98 } : false} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: kinetic.canAnimate && kinetic.tier > 0 ? .24 : 0, ease: [.22, 1, .36, 1] }}>
         
         {/* Sidebar */}
         <nav className="settings-modal-card__sidebar" aria-label="Settings sections">
@@ -136,7 +141,8 @@ export default function SettingsModal({ onClose }) {
               className="gt-settings-modal__nav-item"
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
-              <tab.icon size={16} aria-hidden="true" />
+              <SelectionHighlight id="settings-section" active={activeTab === tab.id} />
+              <span className="gt-settings-modal__nav-icon"><tab.icon size={17} aria-hidden="true" /></span>
               {tab.id}
             </button>
           ))}
@@ -155,7 +161,8 @@ export default function SettingsModal({ onClose }) {
         {/* Content Area */}
         <div className="settings-modal-card__content">
           <header className="settings-modal-card__header">
-            <div><p className="gt-settings-modal__eyebrow">YOUR WORKSPACE</p><h3>{activeTab === 'Profile' ? 'Your account, at a glance.' : activeTab}</h3></div>
+            <div><p className="gt-settings-modal__eyebrow">YOUR WORKSPACE</p><h3>{activeTab === 'Profile' ? 'Your space, your way.' : activeTab}</h3>{activeTab === 'Profile' && <p className="gt-settings-modal__header-copy">The details that make this space yours.</p>}</div>
+            {kinetic.enabled && activeTab === 'Profile' && <CharacterScene kind="nova" className="gt-settings-modal__companion" />}
             <button type="button" onClick={onClose} aria-label="Close settings" className="gt-settings-modal__close">
               <X size={20} />
             </button>
@@ -166,7 +173,7 @@ export default function SettingsModal({ onClose }) {
               <div className="gt-settings-modal__overview">
                 <div className="gt-settings-modal__identity">
                   <div className="gt-settings-modal__monogram" aria-hidden="true">{user?.name?.[0]?.toUpperCase() || 'U'}</div>
-                  <div>
+                  <div><span className="gt-settings-modal__account-label">YOUR ACCOUNT</span>
                     <h4>{user?.name || 'Your account'}</h4>
                     <p>{user?.email || 'Email unavailable'}</p>
                   </div>
@@ -174,12 +181,13 @@ export default function SettingsModal({ onClose }) {
 
                 <p className="gt-settings-modal__section-label">GO DIRECTLY TO</p>
                 <div className="gt-settings-modal__links">
-                  <button type="button" onClick={() => openProfile('personal')}><User size={20} aria-hidden="true" /><span><strong>Account details</strong><small>Name, contact and profile</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
-                  <button type="button" onClick={() => openProfile('security')}><Shield size={20} aria-hidden="true" /><span><strong>Privacy & security</strong><small>Password, sessions, AI and drafts</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
-                  <button type="button" onClick={() => openProfile('integrations')}><Server size={20} aria-hidden="true" /><span><strong>Connections</strong><small>Service availability and social links</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
-                  <button type="button" onClick={() => openProfile('appearance')}><Settings size={20} aria-hidden="true" /><span><strong>Display preferences</strong><small>Theme, units and accessibility</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
+                  <button type="button" data-tone="mint" onClick={() => openProfile('personal')}><span className="gt-settings-modal__link-icon"><User size={20} aria-hidden="true" /></span><span className="gt-settings-modal__link-copy"><strong>Account details</strong><small>Name, contact and profile</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
+                  <button type="button" data-tone="lilac" onClick={() => openProfile('security')}><span className="gt-settings-modal__link-icon"><Shield size={20} aria-hidden="true" /></span><span className="gt-settings-modal__link-copy"><strong>Privacy & security</strong><small>Password, sessions, AI and drafts</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
+                  <button type="button" data-tone="yellow" onClick={() => openProfile('integrations')}><span className="gt-settings-modal__link-icon"><Server size={20} aria-hidden="true" /></span><span className="gt-settings-modal__link-copy"><strong>Connections</strong><small>Services and social links</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
+                  <button type="button" data-tone="coral" onClick={() => openProfile('appearance')}><span className="gt-settings-modal__link-icon"><Settings size={20} aria-hidden="true" /></span><span className="gt-settings-modal__link-copy"><strong>Display preferences</strong><small>Theme, motion and accessibility</small></span><ArrowUpRight size={18} aria-hidden="true" /></button>
                 </div>
                 <div className="gt-settings-modal__billing">
+                  <CreditCard size={20} aria-hidden="true" />
                   <div><strong>Billing</strong><p>{billingPortalUrl ? 'Manage your account in the billing portal.' : 'A billing portal is not configured.'}</p></div>
                   {billingPortalUrl && <a href={billingPortalUrl} target="_blank" rel="noopener noreferrer" className="gt-settings-modal__quiet-button"><CreditCard size={16} aria-hidden="true" /> Open billing <ArrowUpRight size={16} aria-hidden="true" /></a>}
                 </div>
@@ -236,7 +244,7 @@ export default function SettingsModal({ onClose }) {
             )}
           </div>
         </div>
-      </div>
+      </m.div>
     </div>
   );
 }

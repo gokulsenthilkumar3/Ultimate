@@ -2,10 +2,8 @@ import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { finiteObservation, observationDate } from '../utils/projectGoal';
-import {
-  ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  LineChart, Line, AreaChart, Area, Legend, ReferenceLine,
-} from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, AreaChart, Area, Legend, ReferenceLine } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { TrendingUp, BarChart2, Zap, Brain, Moon, Activity, Shield, Target } from 'lucide-react';
 import useStore from '../store/useStore';
 import { EMPTY_LIST, EMPTY_RECORD } from '../lib/emptyValues';
@@ -93,7 +91,7 @@ function CorrelationPanel({ title, xLabel, yLabel, color, data, r, user }) {
               <XAxis dataKey="x" name={xLabel} tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} label={{ value: xLabel, position: 'insideBottom', offset: -6, fontSize: 10, fill: 'var(--text-3)' }} />
               <YAxis dataKey="y" name={yLabel} tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, n) => [formatNumber(v, user, { maximumFractionDigits: 2 }), n]} />
-              <Scatter data={data} fill={color} opacity={0.75} />
+              <Scatter data={data} fill={color} opacity={0.75} isAnimationActive={false} />
             </ScatterChart>
           </ResponsiveContainer>
           <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px', textAlign: 'center' }}>
@@ -159,10 +157,10 @@ function CrossDomainTrend({ metrics, sleepLogs, user }) {
           <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
           <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => formatNumber(v, user, { maximumFractionDigits: 2 })} />
           <Legend wrapperStyle={{ fontSize: '0.7rem' }} />
-          {chartData.some(d => d.sleep != null) && <Area type="monotone" dataKey="sleep"   name="Sleep (hrs)"  stroke="#0ea5e9" fillOpacity={1} fill="url(#colorSleep)" strokeWidth={2} dot={false} />}
-          {chartData.some(d => d.mood != null)  && <Area type="monotone" dataKey="mood"    name="Mood (1-10)"  stroke="#ec4899" fillOpacity={1} fill="url(#colorMood)" strokeWidth={2} dot={false} />}
-          {chartData.some(d => d.energy != null)&& <Area type="monotone" dataKey="energy"  name="Energy (1-10)"stroke="#f59e0b" fillOpacity={1} fill="url(#colorEnergy)" strokeWidth={2} dot={false} />}
-          {chartData.some(d => d.workout != null)&& <Area type="monotone" dataKey="workout" name="Workout"      stroke="#10b981" fillOpacity={1} fill="url(#colorWorkout)" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />}
+          {chartData.some(d => d.sleep != null) && <Area type="monotone" dataKey="sleep"   name="Sleep (hrs)"  stroke="#0ea5e9" fillOpacity={1} fill="url(#colorSleep)" strokeWidth={2} dot={false} isAnimationActive={false} />}
+          {chartData.some(d => d.mood != null)  && <Area type="monotone" dataKey="mood"    name="Mood (1-10)"  stroke="#ec4899" fillOpacity={1} fill="url(#colorMood)" strokeWidth={2} dot={false} isAnimationActive={false} />}
+          {chartData.some(d => d.energy != null)&& <Area type="monotone" dataKey="energy"  name="Energy (1-10)"stroke="#f59e0b" fillOpacity={1} fill="url(#colorEnergy)" strokeWidth={2} dot={false} isAnimationActive={false} />}
+          {chartData.some(d => d.workout != null)&& <Area type="monotone" dataKey="workout" name="Workout"      stroke="#10b981" fillOpacity={1} fill="url(#colorWorkout)" strokeWidth={1.5} dot={false} strokeDasharray="5 3" isAnimationActive={false} />}
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -332,7 +330,7 @@ export default function Analytics() {
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={6} />
                   <YAxis tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} domain={[0, 100]} unit="%" />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${formatNumber(v, user, { maximumFractionDigits: 0 })}%`, 'Completion']} />
-                  <Area type="monotone" dataKey="rate" name="Completion" stroke="#10b981" fill="url(#gTask)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="rate" name="Completion" stroke="#10b981" fill="url(#gTask)" strokeWidth={2} isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             )}

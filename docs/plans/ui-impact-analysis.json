@@ -25,13 +25,13 @@
   },
   "counts": {
     "pages": 65,
-    "pageViewDestinations": 201,
+    "pageViewDestinations": 205,
     "lazyRouteFamilies": 13,
-    "baseReviewVariants": 4824,
-    "plannedViewportVariants": 24120,
+    "baseReviewVariants": 4920,
+    "plannedViewportVariants": 24600,
     "sourceStylesheetsInventoried": 55,
     "tablePotentialPages": 54,
-    "tablePotentialViews": 177
+    "tablePotentialViews": 181
   },
   "viewportMatrix": [
     {
@@ -399,7 +399,7 @@
       "area": "Review workflow",
       "tests": "growthtrack-ultimate/src/admin-demo/ui-system.test.jsx",
       "cases": [
-        "24,120 synthetic scoped review records",
+        "24,600 synthetic scoped review records",
         "Density, theme, state and viewport isolation",
         "One tab is not a completed page",
         "Pending view selection and wraparound",
@@ -836,6 +836,8 @@
       "entry": "growthtrack-ultimate/src/admin-demo/screens/MarketsScreen.jsx",
       "views": [
         "charts",
+        "movers",
+        "connection",
         "indices",
         "options",
         "chain"
@@ -1765,9 +1767,11 @@
       "entry": "growthtrack-ultimate/src/admin-demo/screens/FamilyScreen.jsx",
       "views": [
         "tree",
+        "people",
         "memories",
         "vault",
-        "timeline"
+        "timeline",
+        "access"
       ],
       "sharedTablePotentialImpact": true,
       "sourceModules": [

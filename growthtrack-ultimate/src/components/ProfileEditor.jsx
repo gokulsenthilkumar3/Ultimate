@@ -2,6 +2,7 @@ import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useRef, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useHashTab from '../hooks/useHashTab';
+import useKineticPreferences, { setKineticPreferences } from '../hooks/useKineticPreferences';
 import { featurePath } from '../config/featureRegistry';
 import {
   User, Camera, Save, X, Upload, CheckCircle,
@@ -254,6 +255,7 @@ export default function ProfileEditor() {
   const setTheme = useStore(s => s.setTheme);
   const setPalette = useStore(s => s.setPalette);
   const reducedMotion = useStore(s => s.reducedMotion);
+  const kineticPreference = useKineticPreferences();
   const setReducedMotion = useStore(s => s.setReducedMotion);
   const density = useStore(s => s.density || 'comfortable');
   const setDensity = useStore(s => s.setDensity);
@@ -1323,6 +1325,7 @@ export default function ProfileEditor() {
 
             {activeTab === 'appearance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div className="kinetic-display-settings"><h3>Workspace presentation</h3><SegmentedControl label="Workspace presentation" value={kineticPreference.style} onChange={style => setKineticPreferences({ style })} options={[{ value: 'kinetic', label: 'Kinetic' }, { value: 'playful', label: 'Playful' }]} /><Switch label="Lite motion" description="Keep decoration light on this device. Every tool and action stays available." checked={kineticPreference.lite} onChange={lite => setKineticPreferences({ lite })} /></div>
                 <AppearanceThemePresets value={palette} onChange={setPalette} />
                 <div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Theme</h4>
@@ -1331,7 +1334,7 @@ export default function ProfileEditor() {
                   </div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', margin: '1.5rem 0 1rem' }}>Accent</h4>
                   <div className="appearance-options appearance-options--palette">
-                    {['forest', 'gold', 'violet', 'ocean', 'mint', 'rose'].map(option => <button key={option} className={palette === option ? 'is-active' : ''} onClick={() => setPalette(option)}><span data-palette-preview={option} />{option}</button>)}
+                    {['coral', 'forest', 'gold', 'violet', 'ocean', 'mint', 'rose'].map(option => <button key={option} className={palette === option ? 'is-active' : ''} onClick={() => setPalette(option)}><span data-palette-preview={option} />{option}</button>)}
                   </div>
                 </div>
                 <div>

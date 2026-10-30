@@ -1,5 +1,6 @@
 import React from 'react';
 import { User } from 'lucide-react';
+import { PrivateImage } from './PrivateImage';
 
 interface AvatarProps {
   src?: string;
@@ -42,7 +43,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         title={name}
       >
         {src ? (
-          <img 
+          <PrivateImage
             src={src} 
             alt={name} 
             className={`w-full h-full object-cover ${!isAlive ? 'grayscale' : ''}`}

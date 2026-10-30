@@ -1,0 +1,2 @@
+/* Domain compatibility rules load with classic workspace tools, never public entry or home. */
+@import './premium.css' layer(legacy);

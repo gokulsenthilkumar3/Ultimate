@@ -1,7 +1,11 @@
 import { Router } from 'express';
-import { getDocumentsByTree, uploadDocument, upload } from '../controllers/documents.controller';
+import { getDocumentsByTree, uploadDocument, upload, downloadDocument } from '../controllers/documents.controller';
+import { requireAuth } from '../middlewares/auth.middleware';
 
 const router = Router();
+router.use(requireAuth);
+router.get('/upload/:filename', downloadDocument);
+router.get('/file/:documentId', downloadDocument);
 
 router.get('/:treeId', getDocumentsByTree);
 

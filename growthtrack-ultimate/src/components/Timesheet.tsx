@@ -1,7 +1,8 @@
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Clock, Play, Pause, Square, Plus, Trash2, Download, DollarSign, BarChart2, Calendar } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
@@ -515,7 +516,7 @@ export default function Timesheet() {
                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} unit="h" />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Bar dataKey="hours" fill="var(--accent)" radius={[4, 4, 0, 0]} name="Hours" />
+                <Bar dataKey="hours" fill="var(--accent)" radius={[4, 4, 0, 0]} name="Hours" isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -527,7 +528,7 @@ export default function Timesheet() {
                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => formatCurrency(v, user)} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatCurrency(v, user), 'Earnings']} />
-                <Bar dataKey="earnings" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="earnings" fill="#fbbf24" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -22,6 +22,7 @@ for (const app of apps) {
     '## Verification', app.checks.length ? block(app.checks) : '\nNo complete verification command is declared for this reference package.\n',
     '## Scope and limitations', '', ...app.notes.map(text => `- ${text}`), '',
     '## Workspace documentation', '',
+    ...(app.documentation || []).map(document => `- [${document.title}](${link(app.path, document.path)})`),
     `- [Application directory](${link(app.path, 'docs/APPLICATIONS.md')})`,
     `- [Ownership and independent builds](${link(app.path, 'docs/BUILD_BOUNDARIES.md')})`,
     `- [Desktop redesign and architecture](${link(app.path, 'docs/plans/2026-10-28-admin-redesign.md')})`,

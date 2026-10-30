@@ -1,10 +1,8 @@
 import PageHeader from './ui/PageHeader';
 import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useCallback, useMemo } from 'react';
-import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell,
-  CartesianGrid, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Legend
-} from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, CartesianGrid, Tooltip, RadialBarChart, RadialBar, Legend } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { Moon, Sun, Zap, Clock, TrendingUp, AlertCircle, CheckCircle, Plus, Trash2, BatteryCharging, Minus } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import useStore, { selectSleepLogs, selectSaveSleepLog, apiSync } from '../store/useStore';
@@ -228,8 +226,8 @@ export default function SleepDashboard() {
                     <YAxis domain={[0, 10]} stroke="var(--text-3)" tick={{ fontSize: 11 }} unit="h" />
                     <Tooltip content={<CustomTooltip />} />
                     {/* 8h target reference line rendered as constant data */}
-                    <Area type="monotone" dataKey="hours" stroke="#6366f1" fill="url(#sleepGrad)" strokeWidth={2.5} dot={{ r: 3, fill: '#6366f1' }} name="Total" unit="h" />
-                    <Area type="monotone" dataKey="deep" stroke="#22d3ee" fill="url(#deepGrad)" strokeWidth={1.5} dot={false} name="Deep" unit="h" />
+                    <Area type="monotone" dataKey="hours" stroke="#6366f1" fill="url(#sleepGrad)" strokeWidth={2.5} dot={{ r: 3, fill: '#6366f1' }} name="Total" unit="h" isAnimationActive={false} />
+                    <Area type="monotone" dataKey="deep" stroke="#22d3ee" fill="url(#deepGrad)" strokeWidth={1.5} dot={false} name="Deep" unit="h" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
 
@@ -267,7 +265,7 @@ export default function SleepDashboard() {
               <>
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
-                    <Pie data={stageData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} dataKey="value">
+                    <Pie data={stageData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={4} dataKey="value" isAnimationActive={false}>
                       {stageData.map((entry, i) => (
                         <Cell key={i} fill={entry.fill} />
                       ))}
@@ -300,7 +298,7 @@ export default function SleepDashboard() {
                   <XAxis dataKey="day" stroke="var(--text-3)" tick={{ fontSize: 10 }} />
                   <YAxis domain={[0, 100]} stroke="var(--text-3)" tick={{ fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip user={user} />} />
-                  <Bar dataKey="score" fill="#6366f1" radius={[4, 4, 0, 0]} name="Score" />
+                  <Bar dataKey="score" fill="#6366f1" radius={[4, 4, 0, 0]} name="Score" isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             )}

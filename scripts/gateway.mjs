@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { PRODUCTS, PRODUCT_UI_ROOT } from '../growthtrack-ultimate/src/config/products.js';
+import { nativeEntryDestination } from '../growthtrack-ultimate/src/config/nativeEntries.js';
 import { NEXT_PRODUCTS, resolveApiRoute, proxyHttp } from './workspace-proxy.mjs';
 
 export const PORT = Number(process.env.GATEWAY_PORT || 5300);
@@ -546,6 +547,8 @@ export function createGateway(options = {}) {
     res.setHeader('vary', 'Origin');
     if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
     const url = new URL(req.url, 'http://gateway.local');
+    const nativeEntry = req.method === 'GET' ? nativeEntryDestination(url.pathname) : null;
+    if (nativeEntry) { res.writeHead(302, { location: `http://127.0.0.1:5000${nativeEntry}`, 'cache-control': 'no-store' }); return res.end(); }
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health' || url.pathname === '/api/gateway/health')) {
       const services = await Promise.all(Object.entries(serviceTargets).map(([id, target]) => probe(id, target)));
       const payload = {

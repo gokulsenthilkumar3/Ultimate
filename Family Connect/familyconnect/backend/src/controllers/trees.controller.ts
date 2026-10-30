@@ -9,16 +9,17 @@ export const createTree = async (req: AuthRequest, res: Response): Promise<void>
   try {
     const userId = req.user!.id;
     const { name, isPublic } = req.body;
-    if (!name) { res.status(400).json({ error: 'Tree name is required' }); return; }
+    if (typeof name !== 'string' || !name.trim() || name.length > 160) { res.status(400).json({ error: 'A tree name of up to 160 characters is required.' }); return; }
 
     const tree = await prisma.familyTree.create({
       data: {
-        name,
+        name: name.trim(),
         ownerId: userId,
         isPublic: isPublic || false,
         accessControl: { create: { userId, role: 'admin' } },
       },
     });
+    await cacheInvalidate(`trees:user:${userId}`);
     res.status(201).json(tree);
   } catch (error) {
     console.error('Create tree error:', error);
@@ -53,25 +54,25 @@ export const getTreeById = async (req: AuthRequest, res: Response): Promise<void
     const userId = req.user!.id;
     const id = req.params.id as string;   // cast: Express params are string at runtime
     const cacheKey = `tree:${id}:user:${userId}`;
-    const cached = await cacheGet(cacheKey);
-    if (cached) { res.status(200).json(cached); return; }
-
     const tree = await prisma.familyTree.findFirst({
       where: { id, accessControl: { some: { userId } } },
       include: {
         members: {
+          ...(req.query.native === '1' ? { take: 120, orderBy: { createdAt: 'asc' as const } } : {}),
           select: {
             id: true, name: true, gender: true,
             birthDate: true, deathDate: true, photoUrl: true,
           },
         },
         relationships: {
+          ...(req.query.native === '1' ? { take: 600, orderBy: { createdAt: 'asc' as const } } : {}),
           select: {
             id: true, member1Id: true, member2Id: true,
             type: true, customLabel: true, marriageDate: true,
           },
         },
         accessControl: true,
+        _count: { select: { members: true, relationships: true, events: true, documents: true } },
       },
     });
 
@@ -92,6 +93,7 @@ export const inviteUserToTree = async (req: AuthRequest, res: Response): Promise
     const userId = req.user!.id;
     const treeId = req.params.id as string;  // cast
     const { email, role } = req.body;
+    if (typeof email !== 'string' || !['viewer', 'editor', 'admin', 'family_head'].includes(role)) { res.status(400).json({ error: 'A registered email and valid role are required.' }); return; }
 
     const requesterAccess = await prisma.accessControl.findFirst({
       where: { treeId, userId, role: 'admin' },
@@ -100,6 +102,8 @@ export const inviteUserToTree = async (req: AuthRequest, res: Response): Promise
 
     const invitedUser = await prisma.user.findUnique({ where: { email } });
     if (!invitedUser) { res.status(404).json({ error: 'User not found in the system' }); return; }
+    const treeOwner = await prisma.familyTree.findUnique({ where: { id: treeId }, select: { ownerId: true } });
+    if (treeOwner?.ownerId === invitedUser.id && role !== 'admin') { res.status(400).json({ error: 'The tree owner must remain an admin.' }); return; }
 
     const access = await prisma.accessControl.upsert({
       where: { treeId_userId: { treeId, userId: invitedUser.id } },

@@ -24,7 +24,7 @@ beforeEach(() => {
   vi.stubGlobal('innerWidth', width);
   model.state = { navigationOrder: [], navigationTabOrder: {}, sidebarCollapsed: false, setSidebarCollapsed: model.setCollapsed };
   model.setCollapsed.mockReset().mockImplementation(value => { model.state = { ...model.state, sidebarCollapsed: value }; model.listeners.forEach(listener => listener()); });
-  vi.stubGlobal('matchMedia', query => ({ media: query, get matches() { return width <= Number(query.match(/\d+/)[0]); }, addEventListener: (_event, listener) => viewportListeners.add(listener), removeEventListener: (_event, listener) => viewportListeners.delete(listener) }));
+  vi.stubGlobal('matchMedia', query => ({ media: query, get matches() { const breakpoint = query.match(/max-width:\s*(\d+)/); return Boolean(breakpoint && width <= Number(breakpoint[1])); }, addEventListener: (_event, listener) => viewportListeners.add(listener), removeEventListener: (_event, listener) => viewportListeners.delete(listener) }));
 });
 afterEach(() => { cleanup(); viewportListeners.clear(); model.listeners.clear(); vi.unstubAllGlobals(); });
 

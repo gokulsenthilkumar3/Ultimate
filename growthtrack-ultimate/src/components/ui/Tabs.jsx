@@ -1,8 +1,29 @@
-import React, { useId } from 'react';
+import React, { useId, useLayoutEffect, useRef, useState } from 'react';
+import { m } from 'framer-motion';
+import { useKinetic } from '../motion/KineticContext';
 
 /** Keyboard-native tabs for small, mutually exclusive views. */
-export default function Tabs({ label, tabs, value, onChange, className = '', idPrefix = undefined, onKeyDown = undefined, orientation = 'horizontal', dir = undefined, activation = 'automatic' }) {
+export default function Tabs({ label, tabs, value, onChange, className = '', idPrefix = undefined, onKeyDown = undefined, orientation = 'horizontal', dir = undefined, activation = 'automatic', variant = 'segments' }) {
   const id = useId();
+  const { enabled: kineticEnabled, canAnimate, tier } = useKinetic();
+  const ref = useRef(null);
+  const [indicator, setIndicator] = useState(null);
+  useLayoutEffect(() => {
+    const root = ref.current;
+    const selected = root?.querySelector('[role="tab"][aria-selected="true"]');
+    const measure = () => {
+      const next = selected?.offsetWidth ? { x: selected.offsetLeft, y: selected.offsetTop, width: selected.offsetWidth, height: selected.offsetHeight } : null;
+      setIndicator(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
+    };
+    measure();
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    if (root) {
+      observer?.observe(root);
+      root.querySelectorAll('[role="tab"]').forEach(tab => observer?.observe(tab));
+    }
+    window.addEventListener('resize', measure);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
+  }, [value, tabs, orientation]);
   const enabled = tabs.filter(tab => !tab.disabled);
   const stop = enabled.some(tab => tab.value === value) ? value : enabled[0]?.value;
   const handleKey = event => {
@@ -26,8 +47,10 @@ export default function Tabs({ label, tabs, value, onChange, className = '', idP
     if (activation === 'automatic') onChange(enabled[index].value);
     else buttons.forEach((button, buttonIndex) => { button.tabIndex = buttonIndex === index ? 0 : -1; });
   };
-  return <div className={`gt-tabs ${className}`.trim()} data-responsive-foundation role="tablist" aria-label={label} aria-orientation={orientation} dir={dir} onKeyDown={handleKey}>
-    {tabs.map((tab) => <button
+  const tones = ['mint', 'lilac', 'coral', 'yellow'];
+  return <div ref={ref} className={`gt-tabs ${className}`.trim()} data-responsive-foundation data-variant={variant} data-has-indicator={Boolean(indicator)} role="tablist" aria-label={label} aria-orientation={orientation} dir={dir} onKeyDown={handleKey}>
+    {indicator && (kineticEnabled ? <m.span layoutId={`${id}-indicator`} className="gt-tabs__indicator" aria-hidden="true" style={{ width: indicator.width, height: indicator.height, left: indicator.x, top: indicator.y }} transition={canAnimate && tier > 0 ? { type: 'spring', stiffness: 500, damping: 34, mass: .8 } : { duration: 0 }} /> : <span className="gt-tabs__indicator" aria-hidden="true" style={{ width: indicator.width, height: indicator.height, transform: `translate(${indicator.x}px, ${indicator.y}px)` }} />)}
+    {tabs.map((tab, index) => <button
       key={tab.value}
       id={`${idPrefix || id}-${tab.value}`}
       type="button"
@@ -35,8 +58,9 @@ export default function Tabs({ label, tabs, value, onChange, className = '', idP
       aria-selected={value === tab.value}
       aria-controls={tab.panelId}
       disabled={tab.disabled}
+      data-tone={tones[index % tones.length]}
       tabIndex={!tab.disabled && stop === tab.value ? 0 : -1}
       onClick={() => onChange(tab.value)}
-    >{tab.description ? <><strong>{tab.label}</strong><small>{tab.description}</small></> : tab.label}</button>)}
+    ><span className="gt-tab__index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><span className="gt-tab__copy">{tab.description ? <><strong>{tab.label}</strong><small>{tab.description}</small></> : tab.label}</span></button>)}
   </div>;
 }

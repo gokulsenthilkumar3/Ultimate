@@ -4,7 +4,7 @@
   "purpose": "Portable planning/source manifest for independent UI review. Initial statuses are untested planning values, not imported user approvals or browser observations.",
   "counts": {
     "pages": 65,
-    "pageViewDestinations": 201,
+    "pageViewDestinations": 205,
     "lazyRouteFamilies": 13,
     "screenComponents": 24,
     "sourceStylesheetsInventoried": 55,
@@ -12,8 +12,8 @@
     "applicationPackages": 23,
     "workPackages": 30,
     "reviewStates": 6,
-    "baseReviewVariants": 4824,
-    "plannedViewportVariants": 24120
+    "baseReviewVariants": 4920,
+    "plannedViewportVariants": 24600
   },
   "sourceOfTruth": [
     "AGENTS.md",
@@ -162,7 +162,7 @@
         "financeSync",
         "equity"
       ],
-      "destinations": 30,
+      "destinations": 32,
       "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
     },
     {
@@ -230,7 +230,7 @@
         "maps",
         "family"
       ],
-      "destinations": 15,
+      "destinations": 17,
       "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
     },
     {
@@ -514,6 +514,8 @@
       "ownerArea": "Personal finance and markets",
       "views": [
         "charts",
+        "movers",
+        "connection",
         "indices",
         "options",
         "chain"
@@ -1285,9 +1287,11 @@
       "ownerArea": "Family and life",
       "views": [
         "tree",
+        "people",
         "memories",
         "vault",
-        "timeline"
+        "timeline",
+        "access"
       ],
       "featureIntent": "Tree/members, memories, family vault and timeline/events.",
       "previewLevel": "working-demo",
@@ -1828,6 +1832,18 @@
       "pageId": "equity",
       "view": "charts",
       "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/equity?view=charts",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "equity",
+      "view": "movers",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/equity?view=movers",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "equity",
+      "view": "connection",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/finance/equity?view=connection",
       "initialReviewStatus": "not-tested"
     },
     {
@@ -2564,6 +2580,12 @@
     },
     {
       "pageId": "family",
+      "view": "people",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=people",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "family",
       "view": "memories",
       "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=memories",
       "initialReviewStatus": "not-tested"
@@ -2578,6 +2600,12 @@
       "pageId": "family",
       "view": "timeline",
       "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=timeline",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "family",
+      "view": "access",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=access",
       "initialReviewStatus": "not-tested"
     },
     {
@@ -2845,7 +2873,7 @@
       "title": "GrowthTrack workspace",
       "purpose": "A desktop workspace for personal growth, work, family, equity and Forex research, with a dedicated customer-admin area for the separate FinSync and OxFin products.",
       "runtime": "Node.js/npm workspace; Ultimate uses React, Vite and Express. Companion services retain their current frameworks.",
-      "recordedStatus": "The existing application runs through a shared local launcher. A new isolated UI demo is ready for review; native module consolidation and real customer-admin adapters are planned.",
+      "recordedStatus": "NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; restricted customer-admin adapters remain separate work.",
       "readme": "README.md"
     },
     {
@@ -2853,7 +2881,7 @@
       "title": "GrowthTrack Ultimate",
       "purpose": "The desktop portal for personal growth, work, insights and family/market modules, and the future customer-admin home for FinSync and OxFin.",
       "runtime": "React, Vite, Express, Prisma/SQLite; optional Electron desktop packaging and Three.js physique tools.",
-      "recordedStatus": "Existing authenticated application plus a separate interactive redesign demo. Live customer management and native companion migrations remain planned.",
+      "recordedStatus": "Authenticated desktop portal with native NiftyLens, Family Connect and Forex pages, shared motion/loading states and a separate fictional review demo. FinSync/OxFin customer adapters still require configuration.",
       "readme": "growthtrack-ultimate/README.md"
     },
     {
@@ -2909,7 +2937,7 @@
       "title": "Equity",
       "purpose": "Market-research product area. NiftyLens is the canonical application.",
       "runtime": "See NiftyLens/package.json.",
-      "recordedStatus": "Targeted for native views inside Ultimate.",
+      "recordedStatus": "Native market watch in Ultimate; independent Next.js source and market pipeline retained. Quote availability depends on the configured provider.",
       "readme": "Equity/README.md"
     },
     {
@@ -2917,7 +2945,7 @@
       "title": "Equity / NiftyLens",
       "purpose": "Equity instruments, market charts, watchlists and market-data API source.",
       "runtime": "Next.js, React, Firebase/Supabase integrations and a separate pipeline folder.",
-      "recordedStatus": "Existing application with a planned native portal UI. Provider availability depends on configuration.",
+      "recordedStatus": "Native market watch in Ultimate; independent Next.js source and market pipeline retained. Quote availability depends on the configured provider.",
       "readme": "Equity/NiftyLens/README.md"
     },
     {
@@ -2925,7 +2953,7 @@
       "title": "Family Connect",
       "purpose": "Family trees, member profiles, memories, shared events and documents.",
       "runtime": "Frontend and backend packages in familyconnect/.",
-      "recordedStatus": "Existing application targeted for native portal views.",
+      "recordedStatus": "Native Ultimate family views use the existing Family API, account connection, permissions and PostgreSQL records. Standalone builds remain available.",
       "readme": "Family Connect/README.md"
     },
     {
@@ -2933,7 +2961,7 @@
       "title": "Family Connect application",
       "purpose": "Family membership, relationship trees, memories, calendar events and document workflows.",
       "runtime": "React/Vite frontend and Express/Prisma/PostgreSQL backend.",
-      "recordedStatus": "Under development; native portal migration is planned.",
+      "recordedStatus": "Native Ultimate family views use the existing Family API, account connection, permissions and PostgreSQL records. Standalone builds remain available.",
       "readme": "Family Connect/familyconnect/README.md"
     },
     {
@@ -2941,7 +2969,7 @@
       "title": "Family Connect Frontend",
       "purpose": "Family-tree, memory, profile, event and document interfaces.",
       "runtime": "React, TypeScript, Vite and React Flow.",
-      "recordedStatus": "Current standalone UI. Replacement portal views are at the design-review stage.",
+      "recordedStatus": "Independent legacy UI retained for compatibility. Ultimate now owns native family views; private media uses authenticated downloads in both interfaces.",
       "readme": "Family Connect/familyconnect/frontend/README.md"
     },
     {
@@ -2949,7 +2977,7 @@
       "title": "Family Connect Backend",
       "purpose": "Family authentication, trees, relationships, events, documents and notification APIs.",
       "runtime": "Express, TypeScript, Prisma and PostgreSQL; optional Redis and AI integration.",
-      "recordedStatus": "Existing backend. Preserve its per-family permissions during portal migration.",
+      "recordedStatus": "Existing Family API powers native Ultimate views. Live tree roles guard member edits, relationships, events and private document access. No schema migration is part of native UI consolidation.",
       "readme": "Family Connect/familyconnect/backend/README.md"
     },
     {
@@ -2957,7 +2985,7 @@
       "title": "Forex research and inference",
       "purpose": "Currency-data preparation, model research, saved-model inference and a Streamlit research dashboard.",
       "runtime": "Python, Streamlit and FastAPI, with model dependencies in requirements.txt.",
-      "recordedStatus": "Canonical Forex service source. Native portal views are a design proposal; useful predictions require compatible data and trained model artifacts.",
+      "recordedStatus": "Native Forex Studio in Ultimate uses cached, bounded Python history endpoints and existing saved artifacts. The independent Streamlit dashboard remains available.",
       "readme": "Forex/README.md"
     },
     {
@@ -3305,7 +3333,7 @@
   "baselineEvidence": {
     "status": "last recorded local verification; see source for the current run and preserved separate baseline results",
     "uiChecksPassed": 989,
-    "routeThemeDensityRenderChecks": 804,
+    "routeThemeDensityRenderChecks": 820,
     "separateAvatarContractChecksPassed": 22,
     "browserVisualSignoff": "pending",
     "source": "docs/plans/2026-10-28-verification.md"

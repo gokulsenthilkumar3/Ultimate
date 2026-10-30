@@ -17,6 +17,7 @@ export const PRODUCTS = Object.freeze([
   },
   {
     id: 'forex', name: 'Forex', icon: '📈', color: '#BF5AF2',
+    nativePath: '/insights/forex',
     description: 'Exchange-rate forecasting, model analytics, and prediction APIs.',
     uiUrl: `${PRODUCT_UI_ROOT}/forex/`, apiPrefix: '/api/forex',
     healthUrl: '/api/forex/health', command: 'npm run dev:forex',
@@ -24,6 +25,7 @@ export const PRODUCTS = Object.freeze([
   },
   {
     id: 'family', name: 'Family Connect', icon: '🌳', color: '#FF9F0A',
+    nativePath: '/life/family',
     description: 'Family trees, shared memories, events, and private documents.',
     uiUrl: `${PRODUCT_UI_ROOT}/family/`, apiPrefix: '/api/family',
     healthUrl: '/api/family/health', command: 'npm run dev:family',
@@ -31,7 +33,8 @@ export const PRODUCTS = Object.freeze([
   },
   {
     id: 'equity', name: 'Equity / NiftyLens', icon: '📊', color: '#FF375F',
-    description: 'Indian market charts, indicators, option chains, and alerts.',
+    nativePath: '/finance/equity',
+    description: 'Market watch, price-cache quotes, movement and source freshness.',
     uiUrl: `${PRODUCT_UI_ROOT}/equity/`, apiPrefix: '/api/equity',
     healthUrl: '/api/equity/health', command: 'npm run dev:equity',
     callbackUrl: `${PRODUCT_UI_ROOT}/equity/auth/ultimate/callback`, capabilities: ['web', 'markets', 'analytics'],

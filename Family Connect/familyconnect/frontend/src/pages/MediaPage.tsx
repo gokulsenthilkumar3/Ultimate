@@ -6,6 +6,7 @@ import { UploadMediaModal } from '../components/media/UploadMediaModal';
 import { MediaLightboxModal } from '../components/media/MediaLightboxModal';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { PrivateImage } from '../components/common/PrivateImage';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -142,7 +143,7 @@ export const MediaPage: React.FC = () => {
             >
               {doc.type === 'photo' ? (
                 <div className="relative">
-                  <img 
+                  <PrivateImage
                     src={getImageUrl(doc.fileUrl)} 
                     alt={doc.fileName} 
                     className="w-full h-auto object-cover"

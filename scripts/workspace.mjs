@@ -117,7 +117,7 @@ const COMMANDS = {
     cwd: path.join(root, 'Forex'),
     command: process.platform === 'win32' ? path.join(root, 'Forex/.venv/Scripts/python.exe') : path.join(root, 'Forex/.venv/bin/python'),
     args: ['-m', 'uvicorn', 'src.api.app:app', '--host', '127.0.0.1', '--port', '8000', '--root-path', '/api/forex'],
-    env: { PYTHONPATH: path.join(root, 'Forex'), MODEL_DIR: 'outputs' },
+    env: { PYTHONPATH: path.join(root, 'Forex'), MODEL_DIR: 'outputs', DATA_PATH: 'Dataset/Forex_Data.csv' },
     apiUrl: 'http://127.0.0.1:5300/api/forex/docs',
     ports: [8000], healthUrls: ['http://127.0.0.1:8000/health'],
   },
@@ -159,7 +159,7 @@ async function serviceHealthy(url) {
 
 // ── Parse targets ─────────────────────────────────────────────────────────────
 const names = process.argv.slice(2).map(n => n.toLowerCase());
-const selected = [...new Set((names.length ? names : ['gateway', 'ultimate', 'studio']).flatMap(name => name === 'family' ? ['family-api', name] : name === 'forex' ? ['forex-api', name] : [name]))];
+const selected = [...new Set((names.length ? names : ['gateway', 'ultimate', 'studio', 'family-api', 'forex-api']).flatMap(name => name === 'family' ? ['family-api', name] : name === 'forex' ? ['forex-api', name] : [name]))];
 
 const unknown = selected.filter(n => !COMMANDS[n]);
 if (unknown.length) {

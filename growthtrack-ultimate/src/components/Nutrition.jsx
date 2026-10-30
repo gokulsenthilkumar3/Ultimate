@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Apple, Plus, Trash2, Calculator, RefreshCw, TrendingUp, TrendingDown, Minus, Flame, Zap, Dumbbell } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area,
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { useToast } from '../hooks/useToast';
 import PageHeader from './ui/PageHeader';
 import useStore, {
@@ -413,7 +411,7 @@ export default function Nutrition({ user }) {
                 <XAxis dataKey="name" stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="var(--text-3)" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={tooltipStyle} formatter={v => [`${v} kcal`, 'Calories']} />
-                <Bar dataKey="calories" fill="var(--accent)" radius={[6, 6, 0, 0]} barSize={36} />
+                <Bar dataKey="calories" fill="var(--accent)" radius={[6, 6, 0, 0]} barSize={36} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -603,7 +601,7 @@ export default function Nutrition({ user }) {
               <XAxis dataKey="date" stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} />
               <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} formatter={v => [`${v} kcal`, 'Calories']} />
-              <Area type="monotone" dataKey="calories" stroke="var(--accent)" fill="url(#calGrad)" strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="calories" stroke="var(--accent)" fill="url(#calGrad)" strokeWidth={2} dot={false} isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

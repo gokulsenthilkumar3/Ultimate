@@ -1,4 +1,6 @@
 import React from 'react';
+import { OverviewCompanion } from './motion/CharacterScene';
+import usePlayfulMotion from '../hooks/usePlayfulMotion';
 import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { featurePath } from '../config/featureRegistry';
@@ -16,6 +18,7 @@ const SHORTCUTS = [
 ];
 
 export default function WellnessCommand({ user: suppliedUser, onOpenCheckIn, onDismissCheckIn, checkInAvailable = false }) {
+  const { canAnimate } = usePlayfulMotion();
   const storedUser = useStore(state => state.user);
   const user = suppliedUser || storedUser;
   const habits = useStore(state => state.habits) || EMPTY;
@@ -60,10 +63,11 @@ export default function WellnessCommand({ user: suppliedUser, onOpenCheckIn, onD
   ].filter(item => typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(item.date) && Number.isFinite(Date.parse(item.date)))
     .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
-  return <section className="module-page editorial-overview editorial-overview--wellness" aria-labelledby="wellness-title">
+  return <section className="module-page editorial-overview editorial-overview--wellness playful-overview" data-playful-motion={String(canAnimate)} aria-labelledby="wellness-title">
     <header className="editorial-overview__masthead">
       <div><p className="editorial-overview__eyebrow">Wellness / Overview</p><h1 id="wellness-title">Wellness, on the record</h1>
         <p className="editorial-overview__subtitle">Sleep, mood, and habits from your saved entries.</p></div>
+      <OverviewCompanion kind="sunny" />
       <p className="editorial-overview__asof">Today · {formatDate(today, user)}</p>
     </header>
     <section className="editorial-overview__lead" aria-labelledby="wellness-next-title">

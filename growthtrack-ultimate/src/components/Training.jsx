@@ -1,9 +1,7 @@
 import PageHeader from './ui/PageHeader';
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  BarChart, Bar, Cell, ReferenceLine,
-} from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Cell, ReferenceLine } from 'recharts';
+import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import {
   Dumbbell, Plus, Trash2, Trophy, Flame, ChevronDown, ChevronUp,
   Play, CheckCircle, Clock, TrendingUp, TrendingDown, Minus, ArrowRight,
@@ -273,7 +271,7 @@ function ProgressiveOverloadTab({ schedule, sessions, user }) {
                 )}
                 <Line type="monotone" dataKey="weight" stroke="var(--accent)" strokeWidth={2.5}
                   dot={{ r: 5, fill: 'var(--accent)', strokeWidth: 0 }}
-                  activeDot={{ r: 7, fill: 'var(--accent)' }} />
+                  activeDot={{ r: 7, fill: 'var(--accent)' }} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -733,7 +731,7 @@ export default function Training() {
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-3)' }} />
                   <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} unit={getMeasurementUnit('kg', user)} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [`${v} ${getMeasurementUnit('kg', user)}`, 'PR']} />
-                  <Line type="monotone" dataKey="weight" stroke="var(--warning)" strokeWidth={2.5} dot={{ r: 5, fill: 'var(--warning)' }} />
+                  <Line type="monotone" dataKey="weight" stroke="var(--warning)" strokeWidth={2.5} dot={{ r: 5, fill: 'var(--warning)' }} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -781,7 +779,7 @@ export default function Training() {
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} interval={4} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} tickLine={false} axisLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [formatMeasurement(v, 'kg', user), 'Volume']} />
-                <Bar dataKey="volume" radius={[3, 3, 0, 0]}>
+                <Bar dataKey="volume" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                   {volumeHistory.map((d, idx) => (
                     <Cell key={idx} fill={d.volume === 0 ? 'var(--bg-elevated)' : d.volume / maxVolume > 0.7 ? '#10b981' : d.volume / maxVolume > 0.3 ? '#0ea5e9' : '#8b5cf6'} />
                   ))}

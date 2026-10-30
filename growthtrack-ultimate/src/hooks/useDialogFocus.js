@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 
 const openDialogs = [];
+const dialogListeners = new Set();
+export const getActiveDialog = () => openDialogs.at(-1)?.element || null;
+export const subscribeDialogs = listener => { dialogListeners.add(listener); return () => dialogListeners.delete(listener); };
+const notifyDialogs = () => dialogListeners.forEach(listener => listener());
 let originalOverflow = '';
 
 /** Keep keyboard focus inside an open overlay and restore its trigger on close. */
@@ -13,8 +17,9 @@ export default function useDialogFocus(isOpen, onClose) {
     if (!isOpen) return undefined;
     const trigger = document.activeElement;
     if (!openDialogs.length) originalOverflow = document.body.style.overflow;
-    const token = {};
+    const token = { element: dialogRef.current };
     openDialogs.push(token);
+    notifyDialogs();
     document.body.style.overflow = 'hidden';
     const focusable = () => [...(dialogRef.current?.querySelectorAll(
       'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
@@ -45,6 +50,7 @@ export default function useDialogFocus(isOpen, onClose) {
     return () => {
       const wasTop = openDialogs.at(-1) === token;
       openDialogs.splice(openDialogs.indexOf(token), 1);
+      notifyDialogs();
       if (!openDialogs.length) document.body.style.overflow = originalOverflow;
       document.removeEventListener('keydown', handleKey);
       if (wasTop && trigger?.isConnected) trigger.focus({ preventScroll: true });

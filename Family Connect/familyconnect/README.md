@@ -4,7 +4,7 @@ Family membership, relationship trees, memories, calendar events and document wo
 
 **Runtime:** React/Vite frontend and Express/Prisma/PostgreSQL backend.
 
-**Status:** Under development; native portal migration is planned.
+**Status:** Native Ultimate family views use the existing Family API, account connection, permissions and PostgreSQL records. Standalone builds remain available.
 
 ## Setup
 
