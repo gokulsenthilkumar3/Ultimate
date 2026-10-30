@@ -28,6 +28,33 @@ This records local implementation, not deployment, a data migration, full nested
 
 The larger headline-number treatment is applied to meaningful existing numeric summaries, including Overview and native module metrics. Form-only, legal, unavailable-data and provider-setup pages do not receive invented headline numbers. Existing domain explanatory content is retained where removing it could hide a workflow or required context.
 
+## Workspace-wide refinement (30 October 2026, third pass)
+
+Method: every registered page plus Welcome, Login, Privacy and Terms (65 pages) rendered at 1440 and 390 against the fictional loopback fixture, with an in-browser probe for overflow, ungrouped numbers, undersized or unpadded controls, duplicate motion controls, clipped text and page errors. Before and after runs are comparable; neither had page errors or horizontal overflow.
+
+Root cause of the most visible defect: `ultimate-ui.css` is imported only through `playful-legacy.css`, which loads only when Kinetic is off. Under Kinetic the shared legacy `btn-*` classes kept their pill shape but lost their layout (`display: block`, no padding, no gap), so labels touched the edge of every pill on Habits, Goals, Skills, Strength, Assessment, Shopping, Portfolio, Files and others. Legacy helpers such as `.form-stack`, `.flex-row` and `.dual-grid` had no layout either, so Nutrition's fields touched. `kinetic-layout.css` now supplies these primitives, as the brief asks, instead of a new override sheet. Buttons are scoped normally; helpers and domain segmented controls use `:where()` so a page's own rule still wins.
+
+| Measure (1440, populated fixture) | Before | After |
+| --- | --- | --- |
+| Boxed buttons with under 8px side padding | about 150 across 20+ pages | 3 |
+| Bare inputs with no padding or radius | 7 | 1 |
+| Pages with a second, in-page Pause button | 10 | 2 (Welcome and Login keep theirs, as the brief specifies) |
+| Pages with an ungrouped count in their own UI | Tasks, Actions, Transactions, Nutrition | 0 (remaining hits are fixture record names) |
+
+- **Counts** follow the owner's number format on Tasks, Action Center, Transactions and the Nutrition history and log.
+- **`StatTile`** replaces four copies of the same inline tile on Habits, Goals, Skills and Shopping. Kinetic renders the figure at the brief's secondary-metric scale (40-56px, tabular, ink) and keeps the data colour as an accent bar, because several figures were pale hues on cream. Playful keeps each page's original inline scale.
+- **Page titles:** Tasks Command was 28.8px under an inline style; Kinetic's 32-40px title rule now applies.
+- **Empty states** show Nova in Kinetic (`EmptyState`, shared by every page that uses it); success, error and neutral `PageState` already used Mochi, Ziggy and Nova.
+- **Section reveal** (`useSectionReveal.ts`, mounted in `PageTransition`): the page's top-level sections rise with a 40ms stagger over 320ms, at most eight, with a masked 420ms entry on the first section at Tier 2 only. It animates children, never the region Framer or the page entrance owns, asks the shared motion budget for a slot, and is skipped for Lite, reduced motion, a hidden tab and the first paint of a session, so it cannot delay LCP.
+- **Micro-animations** added from the catalogue, all one-shot and tied to a user action: field-error shake (350ms), checkbox and radio pop (300ms), menu reveal (200ms), sort-glyph flip (200ms), secondary and ghost button lift with border brighten (160ms), icon-button rotate, table-row hover fill and activity-row lift (140ms).
+
+Not done, and why:
+- **Hero figure on every page.** The brief wants a 72-120px primary metric on each workspace page. 61 of 65 pages still have no figure that large. Overview, the native modules and, at secondary scale, the four stat strips above are covered. The remainder need a page owner to choose which real value leads; none were invented.
+- **44px targets.** 1014 of 3055 measured interactive elements are under 40px, mostly repeated record controls (Portfolio rows, the Habits matrix, Goals). Enlarging dense matrices would change their layout, so only unpadded buttons and chips were fixed.
+- **Pagination number pop and row-removal exit.** Eight existing tests match the exact `Page N of M` text, and an exit animation needs per-list presence handling. Neither was changed.
+- **Three.js** stays confined to Physique, per the brief. No new 3D was added.
+- Legacy domain content still contains emoji (Mind, Habits, Nutrition, Current).
+
 ## Motion ownership
 
 | Concern | Source and implementation |

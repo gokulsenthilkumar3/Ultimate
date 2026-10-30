@@ -1,5 +1,6 @@
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import StatTile from './ui/StatTile';
 import useStore, {
   selectGoals, selectAddGoal, selectDeleteGoal, selectUpdateGoal,
 } from '../store/useStore';
@@ -386,10 +387,7 @@ function GoalsWorkspace() {
           { label: 'Avg %',     val: `${stats.avgProgress}%`,  color: '#fbbf24' },
           { label: 'Due this week', val: stats.dueSoon,         color: '#fb923c' },
         ].map(s => (
-          <div key={s.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
-            <p style={{ fontSize: '1.75rem', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</p>
-            <p style={{ fontSize: '0.68rem', color: 'var(--text-3)', marginTop: '4px' }}>{s.label}</p>
-          </div>
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} labelSize="0.68rem" />
         ))}
       </div>
       {focusGoal && <div className="glass-card" style={{ marginBottom: '1rem', padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid var(--accent)' }}><div><p className="label-caps" style={{ color: 'var(--accent)', marginBottom: 2 }}>Focus goal</p><strong>{focusGoal.title}</strong><span style={{ color: 'var(--text-3)', fontSize: '0.75rem' }}> · {getProgress(focusGoal)}% complete</span></div><button type="button" className="btn-sm" onClick={openFocusPlan}>Open plan</button></div>}

@@ -386,7 +386,7 @@ export default function Nutrition({ user }) {
                   <div>
                     <p className="list-row__title">{l.name}</p>
                     <p className="list-row__sub">
-                      {l.meal} · {l.calories} kcal · P:{l.protein_g||0}g C:{l.carbs_g||0}g F:{l.fat_g||0}g
+                      {l.meal} · {formatNumber(l.calories, user, { maximumFractionDigits: 0 })} kcal · P:{l.protein_g||0}g C:{l.carbs_g||0}g F:{l.fat_g||0}g
                     </p>
                   </div>
                   <button onClick={() => removeLog(l.id, l.name)}
@@ -630,7 +630,7 @@ export default function Nutrition({ user }) {
                   <tr key={row.date} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: noData ? 0.4 : 1 }}>
                     <td style={{ padding: '0.45rem 0.6rem', fontWeight: 600 }}>{formatDate(row.date, user)}</td>
                     <td style={{ padding: '0.45rem 0.6rem', color: 'var(--text-3)' }}>{row.count}</td>
-                    <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', fontWeight: 700 }}>{row.calories || '—'}</td>
+                    <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', fontWeight: 700 }}>{row.calories ? formatNumber(row.calories, user, { maximumFractionDigits: 0 }) : '—'}</td>
                     <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', color: MACRO_COLORS.protein }}>{row.protein ? `${row.protein}g` : '—'}</td>
                     <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', color: MACRO_COLORS.carbs }}>{row.carbs ? `${row.carbs}g` : '—'}</td>
                     <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', color: MACRO_COLORS.fat }}>{row.fat ? `${row.fat}g` : '—'}</td>

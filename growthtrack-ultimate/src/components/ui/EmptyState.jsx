@@ -1,16 +1,20 @@
 import React, { useId } from 'react';
 import { CheckSquare, CircleHelp, Clock3, DollarSign, FileText, FolderOpen, Heart, Pill, ShoppingCart, Target } from 'lucide-react';
 import Button from './Button';
+import CharacterScene from '../motion/CharacterScene';
+import { useKinetic } from '../motion/KineticContext';
 
 const ICONS = { CheckSquare, Heart, Target, FileText, DollarSign, ShoppingCart, Clock: Clock3, Pill, Folder: FolderOpen };
 
 /** A human recovery surface. It never claims data is missing until loading has completed. */
 export default function EmptyState({ icon = 'CircleHelp', title, description, actionLabel, ctaLabel, onAction, className = '' }) {
   const id = useId();
+  const { enabled } = useKinetic();
   const Icon = typeof icon === 'string' ? (ICONS[icon] || CircleHelp) : icon;
   const action = actionLabel || ctaLabel;
   return <section className={`empty-state gt-empty-state ${className}`.trim()} data-responsive-foundation role="status" aria-labelledby={`${id}-title`}>
-    <span className="empty-state__icon" aria-hidden="true"><Icon size={26} strokeWidth={1.6} /></span>
+    {enabled ? <span className="empty-state__companion" aria-hidden="true"><CharacterScene kind="nova" /></span>
+      : <span className="empty-state__icon" aria-hidden="true"><Icon size={26} strokeWidth={1.6} /></span>}
     <h2 id={`${id}-title`} className="empty-state__title">{title}</h2>
     {description && <p className="empty-state__desc">{description}</p>}
     {action && onAction && <Button onClick={onAction}>{action}</Button>}

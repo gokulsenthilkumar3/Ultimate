@@ -1,5 +1,6 @@
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import StatTile from './ui/StatTile';
 import { Zap, Plus, Trash2, ChevronUp, Lock, Star, TrendingUp, Award, Edit3, X } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
@@ -232,10 +233,7 @@ export default function Skills() {
           { label: 'Skills',     val: skills.length,             color: '#10b981'      },
           { label: 'Practiced today', val: practicedToday,        color: '#a78bfa'      },
         ].map(s => (
-          <div key={s.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
-            <p style={{ fontSize: '1.5rem', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</p>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '4px' }}>{s.label}</p>
-          </div>
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} size="1.5rem" labelSize="0.65rem" />
         ))}
       </div>
 

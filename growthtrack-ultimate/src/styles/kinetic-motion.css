@@ -25,6 +25,26 @@
 [data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.gt-settings-modal__links button, .gt-settings-modal__close, .editorial-overview__primary) { transition: transform 180ms cubic-bezier(.22,1,.36,1); }
 @media (hover: hover) and (pointer: fine) { [data-ui-style='kinetic'][data-kinetic-motion='true'] .gt-settings-modal__links button:hover { transform: translateY(-2px); } [data-ui-style='kinetic'][data-kinetic-motion='true'] .gt-settings-modal__links button:hover > svg { transform: translate(2px, -2px); } }
 [data-ui-style='kinetic'][data-kinetic-motion='true'] .gt-settings-modal__links button:active { transform: scale(.98); transition-duration: 120ms; }
+/* One-shot feedback from the micro-animation catalogue. Each is tied to a user action, runs at most 350ms and is inert under reduced motion. */
+@keyframes kinetic-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } }
+@keyframes kinetic-pop { 0% { transform: scale(.8); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes kinetic-flip { from { transform: rotate(-180deg); opacity: .3; } to { transform: rotate(0); opacity: 1; } }
+@keyframes kinetic-menu { from { opacity: 0; transform: translateY(-4px) scale(.98); clip-path: inset(0 0 100% 0); } to { opacity: 1; transform: none; clip-path: inset(-12px); } }
+[data-ui-style='kinetic'][data-kinetic-motion='true'] :is(input, select, textarea)[aria-invalid='true'] { animation: kinetic-shake 350ms ease-in-out; }
+[data-ui-style='kinetic'][data-kinetic-motion='true'] :is(input[type='checkbox'], input[type='radio']):checked { animation: kinetic-pop 300ms cubic-bezier(.22,1,.36,1); }
+[data-ui-style='kinetic'][data-kinetic-motion='true'] [role='menu'] { animation: kinetic-menu 200ms cubic-bezier(.22,1,.36,1); }
+[data-ui-style='kinetic'][data-kinetic-motion='true'] :is([aria-sort='ascending'], [aria-sort='descending']) .gt-sort { display: inline-block; animation: kinetic-flip 200ms cubic-bezier(.22,1,.36,1); }
+[data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.btn-secondary, .btn-ghost, .btn-sm, .btn-icon) { transition: transform 160ms cubic-bezier(.22,1,.36,1), border-color 160ms ease, background-color 160ms ease; }
+[data-ui-style='kinetic'][data-kinetic-motion='true'] .btn-icon > svg { transition: transform 140ms cubic-bezier(.22,1,.36,1); }
+@media (hover: hover) and (pointer: fine) {
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.btn-secondary, .btn-ghost, .btn-sm):hover:not(:disabled) { transform: translateY(-1px); border-color: var(--gt-text); }
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] .btn-icon:hover:not(:disabled) > svg { transform: rotate(6deg); }
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] #main-content table tbody tr { transition: background-color 140ms ease; }
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] #main-content table tbody tr:hover > td { background-color: color-mix(in srgb, var(--gt-action) 6%, transparent); }
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] .editorial-overview__activity li { transition: background-color 140ms ease, transform 140ms cubic-bezier(.22,1,.36,1); }
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] .editorial-overview__activity li:hover { transform: translateY(-1px); }
+}
+[data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.btn-secondary, .btn-ghost, .btn-sm, .btn-icon):active:not(:disabled) { transform: scale(.98); transition-duration: 120ms; }
 [data-ui-style='kinetic'] .gt-tabs__indicator { transition: none; }
 [data-ui-style='kinetic'] .siren-snip__confetti { display: none; }
 .kinetic-confetti { position: fixed; inset: 0; z-index: 121; inline-size: 100%; block-size: 100%; pointer-events: none; }

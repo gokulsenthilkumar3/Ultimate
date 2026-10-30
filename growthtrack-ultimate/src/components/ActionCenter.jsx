@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock3, Droplets, Moon, Target, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
+import { formatNumber } from '../utils/userFormatters';
 import Card from './ui/Card';
 import Button from './ui/Button';
 
@@ -48,7 +49,7 @@ export default function ActionCenter() {
     const now = today();
     const activeTasks = tasks.filter(t => !isDone(t));
     const overdue = activeTasks.filter(t => (t.due_date || t.dueDate || '') < now && (t.due_date || t.dueDate));
-    if (overdue.length) result.push({ id: 'overdue-tasks', priority: 'high', urgency: 'Needs attention', source: 'Tasks', icon: AlertTriangle, title: `Clear ${overdue.length} overdue task${overdue.length === 1 ? '' : 's'}`, reason: 'A small cleanup pass will restore momentum and make your current priorities visible.', cta: 'Open tasks', tab: 'tasks' });
+    if (overdue.length) result.push({ id: 'overdue-tasks', priority: 'high', urgency: 'Needs attention', source: 'Tasks', icon: AlertTriangle, title: `Clear ${formatNumber(overdue.length, undefined, { maximumFractionDigits: 0 })} overdue task${overdue.length === 1 ? '' : 's'}`, reason: 'A small cleanup pass will restore momentum and make your current priorities visible.', cta: 'Open tasks', tab: 'tasks' });
     const latestSleep = [...sleepLogs].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
     const sleepHours = Number(latestSleep?.duration ?? latestSleep?.hours);
     if (sleepHours > 0 && sleepHours < 7) result.push({ id: 'low-sleep', priority: 'medium', urgency: 'Recovery signal', source: 'Sleep', icon: Moon, title: 'Protect tonight’s recovery', reason: `Your latest sleep entry was ${sleepHours} hours. Plan an earlier wind-down before pushing harder.`, cta: 'Open sleep', tab: 'sleep' });

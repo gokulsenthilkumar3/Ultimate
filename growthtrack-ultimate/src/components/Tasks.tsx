@@ -13,6 +13,8 @@ import { taskIsDone } from '../store/slices/taskSlice';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
 import { consumePendingUiAction } from '../lib/pendingUiAction';
+import { formatNumber } from '../utils/userFormatters';
+import { useKinetic } from './motion/KineticContext';
 
 // ── P1-P4 priority config ─────────────────────────────────────────────────────────────
 const PRIORITIES = [
@@ -24,6 +26,8 @@ const PRIORITIES = [
 const PMAP = Object.fromEntries(PRIORITIES.map(p => [p.value, p]));
 
 // legacy priority values upgrade
+/** Counts follow the owner's number format, like every other figure in the workspace. */
+const count = (value: number) => formatNumber(value, undefined, { maximumFractionDigits: 0 });
 const normPriority = (v: any) => {
   if (!v) return 'p3';
   if (v === 'high')   return 'p1';
@@ -334,6 +338,7 @@ function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete
 
 // ── Main component ────────────────────────────────────────────────────────────────
 export default function Tasks() {
+  const { enabled: kinetic } = useKinetic();
   const storeAddTask      = useStore(selectAddTask);
   const storeCompleteTask = useStore(selectCompleteTask);
   const storeDeleteTask   = useStore(selectDeleteTask);
@@ -624,11 +629,11 @@ export default function Tasks() {
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start',
                     gap: '1rem', marginBottom: '1.75rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>Tasks Command</h1>
+          <h1 style={kinetic ? { margin: 0 } : { fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>Tasks Command</h1>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-3)', marginTop: '4px', fontWeight: 600 }}>
-            {pending.length} pending
-            {overdueCt > 0 && <span style={{ color: '#ef4444', marginLeft: '8px' }}>· {overdueCt} overdue</span>}
-            {todayCt  > 0 && <span style={{ color: '#f97316', marginLeft: '8px' }}>· {todayCt} due today</span>}
+            {count(pending.length)} pending
+            {overdueCt > 0 && <span style={{ color: '#ef4444', marginLeft: '8px' }}>· {count(overdueCt)} overdue</span>}
+            {todayCt  > 0 && <span style={{ color: '#f97316', marginLeft: '8px' }}>· {count(todayCt)} due today</span>}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -830,7 +835,7 @@ export default function Tasks() {
         marginBottom: '1.75rem',
         position: 'relative'
       }}>
-        {[['pending', `Pending Tasks (${pending.length})`], ['completed', `Completed Archive (${completed.length})`]].map(([id, lbl]) => {
+        {[['pending', `Pending Tasks (${count(pending.length)})`], ['completed', `Completed Archive (${count(completed.length)})`]].map(([id, lbl]) => {
           const isActive = tab === id;
           return (
             <button 
@@ -881,7 +886,7 @@ export default function Tasks() {
             />
             {query && <button aria-label="Clear task search" onClick={() => setQuery('')} style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', border: 0, background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', fontSize: '1rem' }}>×</button>}
           </div>
-          {[['all','All'],['overdue',`Overdue${overdueCt ? ` (${overdueCt})` : ''}`],
+          {[['all','All'],['overdue',`Overdue${overdueCt ? ` (${count(overdueCt)})` : ''}`],
             ['today',`Today${todayCt ? ` (${todayCt})` : ''}`],
             ['p1','P1 Critical'],['p2','P2 High']].map(([v, l]) => {
             const isActive = filter === v;

@@ -1,5 +1,6 @@
 import PageHeader from './ui/PageHeader';
 import React, { useEffect, useState, useMemo } from 'react';
+import StatTile from './ui/StatTile';
 import useStore, {
   selectHabits, selectAddHabit, selectDeleteHabit, selectUpdateHabit,
   selectHabitLogsByHabit, selectFetchHabitLogsForHabit, selectToggleHabitForDate,
@@ -400,10 +401,7 @@ export default React.memo(function HabitsMatrix() {
             val: habits.length > 0 ? Math.round(habits.reduce((s, h) => s + completionRate(h.id), 0) / habits.length) + '%' : '0%',
             color: '#0ea5e9' },
         ].map(s => (
-          <div key={s.label} className="glass-card" style={{ textAlign: 'center', padding: '1rem' }}>
-            <p style={{ fontSize: '1.75rem', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</p>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: '4px' }}>{s.label}</p>
-          </div>
+          <StatTile key={s.label} value={s.val} label={s.label} color={s.color} />
         ))}
       </div>
 

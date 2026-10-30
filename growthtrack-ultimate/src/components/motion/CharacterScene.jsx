@@ -48,10 +48,11 @@ export default function CharacterScene({ kind = 'crew', happy = false, eyesClose
   </div>;
 }
 
-/** `toggle={false}` where the header's motion control already covers the page and the button would overlap the art. */
-export function OverviewCompanion({ kind = 'siren', toggle = true }) {
+/** Kinetic keeps one visible motion control, in the header; an in-page copy overlaps the art. Playful keeps it. */
+export function OverviewCompanion({ kind = 'siren', toggle }) {
+  const { enabled } = useKinetic();
   return <div className={`overview-companion overview-companion--${kind}`}>
     <CharacterScene kind={kind} />
-    {toggle && <MotionToggle compact />}
+    {(toggle ?? !enabled) && <MotionToggle compact />}
   </div>;
 }
