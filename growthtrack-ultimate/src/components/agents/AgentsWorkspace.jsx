@@ -204,7 +204,7 @@ export default function AgentsWorkspace({ state }) {
 
   const check = () => setRefresh(value => value + 1);
   return <section className="gt-agents" aria-label="Agents workspace">
-    <PageHeader title="Agents" subtitle="Ask questions, explore insights, and review actions." actions={<Button variant="secondary" aria-label="Check connection" disabled={busy || checking || !state.user?.id} onClick={check}><RefreshCw size={15} aria-hidden="true" /><span className="gt-agents__refresh-label">Check connection</span></Button>} />
+    <PageHeader title="Agents" subtitle="Ask questions, explore insights, and review actions." actions={<Button variant="secondary" aria-label="Check connection" disabled={busy || checking || !state.user?.id} onClick={check}><RefreshCw size={15} className={checking ? 'gt-agents__spin' : ''} aria-hidden="true" /><span className="gt-agents__refresh-label">Check connection</span></Button>} />
     <div className="gt-agents__navigation"><Tabs label="Agents views" idPrefix={id} tabs={VIEWS.map(item => ({ ...item, panelId: `${id}-${item.value}-panel` }))} value={view} onChange={changeView} />
       <div className="gt-agents__status" role="status"><span data-ready={readiness.ready && Boolean(state.user?.id)} aria-hidden="true" />{statusText}</div></div>
     <section id={`${id}-${view}-panel`} role="tabpanel" aria-labelledby={`${id}-${view}`} className="gt-agents__content">
@@ -217,7 +217,11 @@ export default function AgentsWorkspace({ state }) {
         <div ref={thread} className="gt-agents__thread" role="log" aria-label="Conversation" aria-live="polite" aria-busy={loading} onScroll={event => { const node = event.currentTarget; follow.current = node.scrollHeight - node.clientHeight - node.scrollTop < 90; }}>
           {!messages.length && <div className="gt-agents__welcome">
             {!readiness.ready && state.user?.id ? <ConnectionGuide readiness={readiness} checking={checking} refresh={check} openSettings={() => changeView('settings')} /> : <div className="gt-agents__welcome-copy"><h2>What would you like to work on?</h2><p>{!state.user?.id ? 'Sign in to ask a question. You can still draft a message below.' : 'Ask a question or start with a plan. You review every change before saving.'}</p></div>}
-            {readiness.ready && <div className="gt-agents__presets" aria-label="Suggested questions">{starters.map(preset => <button key={preset.label} type="button" disabled={!canSend} onClick={() => { setAgent(preset.id || 'custom'); setMode(preset.mode); setInput(preset.prompt); composer.current?.focus(); }}><strong>{preset.label}<ArrowUpRight size={15} aria-hidden="true" /></strong><span>{preset.description}</span></button>)}</div>}
+            {readiness.ready && <div className="gt-agents__presets" aria-label="Suggested questions">{starters.map((preset, index) => {
+              const tones = ['yellow', 'mint', 'lilac', 'coral'];
+              const tone = tones[index % tones.length];
+              return <button key={preset.label} type="button" data-tone={tone} disabled={!canSend} onClick={() => { setAgent(preset.id || 'custom'); setMode(preset.mode); setInput(preset.prompt); composer.current?.focus(); }}><strong>{preset.label}<ArrowUpRight size={15} aria-hidden="true" /></strong><span>{preset.description}</span></button>;
+            })}</div>}
           </div>}
           {messages.map(message => <article id={`gt-ai-message-${message.id}`} tabIndex={-1} className={`gt-agents__message gt-agents__message--${message.role}`} key={message.id} aria-label={message.role === 'user' ? 'Your message' : 'Assistant response'}>
             <div className="gt-agents__message-label">{message.role === 'user' ? <User size={15} aria-hidden="true" /> : <Bot size={15} aria-hidden="true" />}<strong>{message.role === 'user' ? 'You' : 'GrowthTrack AI'}</strong>{message.role === 'assistant' && <small>{message.status === 'streaming' ? message.planning ? 'Preparing a plan…' : 'Responding…' : message.status === 'stopped' ? 'Stopped' : message.status === 'error' ? 'Could not finish' : message.plan ? 'Action plan' : 'Answer'}</small>}</div>
