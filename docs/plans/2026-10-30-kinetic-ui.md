@@ -102,7 +102,22 @@ Defects found and fixed on the way, all visible in renders:
 - **Stat-card figures** use ink in Kinetic, with the accent kept on the icon.
 - **First-load JS budget:** the first build of this work added about 21 KB gzip to initial JS (195,070 B against the 180,000 B limit) because `PageHeader` is in the eager bundle and `HeroMetric` pulled framer-motion's `animate` in through `AnimatedNumber`. The count-up now uses a small `requestAnimationFrame` tween with the same 600ms ease-out, and all five budget gates pass again.
 
-Performance for this pass: PERF_PLACEHOLDER
+Performance for this pass, measured the same way as above (repository harness, fictional fixture, 4x CPU throttle, one run per page), `origin/main` against this branch.
+
+| Measure | `main` | This branch |
+| --- | --- | --- |
+| Pages measured without a failure | 65 | 65 |
+| LCP, median across pages | 1476 ms | 1340 ms |
+| Main-thread blocking, median | 442 ms | 356 ms |
+| CLS, median / worst page | 0.0003 / 0.0213 | 0.0003 / 0.0213 |
+| Pages over 2.5 s LCP or 0.05 CLS | 0 | 0 |
+| Pages at or over the 30-layer gate | 2 (`/hub/apps` 61, `/hub/about` 33) | 0 (worst 21, `/hub/profile`) |
+| Initial JS, gzip (limit 180,000 B) | 173,606 B | 174,434 B |
+| Critical CSS, gzip (limit 45,000 B) | 40,076 B | 39,893 B |
+
+- **LCP on three finance tabs.** Three-run medians show Transactions +176 ms, Budgeting +96 ms and Finance analytics +84 ms (all still at or under 1.41 s), with blocking time flat or lower. The cause is what LCP measures, not slower rendering: on `main` the LCP element is the page heading (11,466 px painted at about 380 ms); with the hero band it is the headline figure (65,026 px painted at about 660 ms), a much larger element that waits for the ledger data the heading does not. Hydration, Customers and About were equal or faster in the same repeat runs.
+- Single-run differences under roughly 100-200 ms are inside this setup's run-to-run spread and are not claims.
+- Not measured here: 120 Hz hardware, a 30-minute memory soak, field INP and cold 4G loads.
 
 ## Motion ownership
 
