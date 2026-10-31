@@ -5,6 +5,8 @@ import useStore, { selectPinnedTabs, selectTogglePinnedTab } from '../store/useS
 import { GROUPS, NAVIGABLE_MODULES, TABS, tabMeta } from '../config/navigation';
 import { PRODUCTS } from '../config/products';
 import UnifiedWorkspace from './UnifiedWorkspace';
+import PageArtwork from './motion/PageArtwork';
+import OverflowRail from './ui/OverflowRail';
 import '../styles/app-hub.css';
 
 const DOCK_APP_IDS = ['overview', 'physique', 'tasks', 'finance', 'insights', 'habits', 'workspace'];
@@ -140,7 +142,7 @@ export default function AppLauncher({ setActiveTab }) {
           <h1 className="text-display">App Hub<span className="app-hub-title-dot">.</span></h1>
           <p className="app-hub-copy" style={{ marginTop: '.4rem' }}>Explore {allApps.length} tools for your day. Pin your favorites to make them easier to find.</p>
         </div>
-        <div className="app-hub-hero__meta"><span><strong>{allApps.length}</strong> tools</span><span><strong>{groupOrder.length}</strong> areas</span><span><strong>{pinnedApps.length}</strong> pinned</span></div>
+        <div className="app-hub-hero__meta"><PageArtwork /><span><strong>{allApps.length}</strong> tools</span><span><strong>{groupOrder.length}</strong> areas</span><span><strong>{pinnedApps.length}</strong> pinned</span></div>
       </div>
       <div className="app-hub-library-heading"><h2>Explore your tools</h2><p>Find a familiar favorite or something new.</p></div>
       <div className="app-hub-toolbar">
@@ -149,7 +151,7 @@ export default function AppLauncher({ setActiveTab }) {
         <div className="app-hub-view-switch" role="group" aria-label="App display">
           {[['grid', Grid], ['list', List]].map(([mode, Icon]) => <button key={mode} onClick={() => changeView(mode)} aria-label={`${mode === 'grid' ? 'Grid' : 'List'} view`} aria-pressed={viewMode === mode}>{React.createElement(Icon, { size: 18 })}</button>)}
         </div>
-        <div className="app-hub-filters" role="group" aria-label="Filter apps by group">{['all', ...groupOrder].map(group => <button key={group} onClick={() => setGroupFilter(group)} aria-pressed={groupFilter === group}>{group === 'all' ? 'All modules' : group}</button>)}</div>
+        <OverflowRail label="app groups" className="app-hub-filters" frameClassName="app-hub-filter-rail" role="group" aria-label="Filter apps by group">{['all', ...groupOrder].map(group => <button key={group} onClick={() => setGroupFilter(group)} aria-pressed={groupFilter === group}>{group === 'all' ? 'All modules' : group}</button>)}</OverflowRail>
       </div>
       <section className="app-hub-panel" aria-label="Quick launch" hidden={Boolean(search.trim()) || groupFilter !== 'all' || pinnedOnly}>
         <h2 className="app-hub-label"><Pin size={15} />{pinnedApps.length ? 'Pinned for you' : 'Start here'}</h2>
@@ -193,7 +195,7 @@ export default function AppLauncher({ setActiveTab }) {
           <span className="product-launcher__gateway" aria-busy={serviceState.loading}><Circle size={9} fill={serviceState.loading ? 'currentColor' : '#30d158'} /> {serviceState.loading ? 'Checking services' : `${PRODUCTS.filter(product => serviceState.services[product.id]?.online).length} of ${PRODUCTS.length} online`}</span>
         </div>
         <div className="product-launcher__grid">
-          {PRODUCTS.map((product, idx) => {
+          {PRODUCTS.map(product => {
             const online = Boolean(serviceState.services[product.id]?.online);
             const isOffline = !serviceState.loading && !online;
             return <article className="product-card" key={product.id} style={{ '--product-color': product.color }} data-offline={String(isOffline)}>

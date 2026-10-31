@@ -10,6 +10,8 @@ import { registerFrontend } from '../server/frontend.js';
 import { FEATURES } from '../src/config/featureRegistry.ts';
 import { OWNER } from '../tests/e2e/foundation-fixture.ts';
 import { performanceFixture } from './performance-fixture.mjs';
+import { checkTabOverflow } from './check-tab-overflow.mjs';
+import { checkTabDirection } from './check-tab-direction.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -37,6 +39,9 @@ const viewParam = option('view', '');
 const network = option('network', 'local');
 const soakMinutes = Number(option('soak-minutes', '0'));
 const interact = args.includes('--interact');
+const checkTabs = args.includes('--check-tabs');
+const checkDirection = args.includes('--check-direction');
+const checkCompanion = args.includes('--check-companion');
 const layerDetails = args.includes('--layer-details');
 if (!Number.isFinite(settleMs) || settleMs < 0 || settleMs > 5000 || !Number.isFinite(soakMinutes) || soakMinutes < 0 || soakMinutes > 30 || !['local', '4g'].includes(network)) throw new Error('Invalid settling, network or soak options.');
 if (!Number.isFinite(width) || width < 320 || width > 2560 || !Number.isFinite(cpuThrottle) || cpuThrottle < 1 || cpuThrottle > 6 || !['reduce', 'no-preference'].includes(motion) || !['kinetic', 'playful'].includes(presentation) || !['light', 'dark', 'amoled'].includes(appearance) || !['coral', 'forest', 'gold', 'ocean', 'mint', 'violet', 'rose', 'bcl', 'gbb'].includes(palette)) throw new Error('Invalid browser measurement configuration.');
@@ -103,8 +108,9 @@ try {
       const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: motion, serviceWorkers: 'block', extraHTTPHeaders: pageInfo.public ? { 'x-performance-anonymous': '1' } : {} });
       try {
         await context.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
-        await context.addInitScript(({ countFormatters, presentation, appearance, palette, lite }) => {
-          localStorage.setItem('growthtrack.presentation.v5', JSON.stringify({ style: presentation, lite }));
+        await context.addInitScript(({ countFormatters, presentation, appearance, palette, lite, checkCompanion }) => {
+          if (!checkCompanion || !localStorage.getItem('growthtrack.presentation.v5')) localStorage.setItem('growthtrack.presentation.v5', JSON.stringify({ style: presentation, lite }));
+          if (checkCompanion) window.__floatingCompanionFixture = { origin: location.origin, owner: 'isolated-test-owner' };
           localStorage.setItem('growthtrack-ultimate-v4', JSON.stringify({ state: { theme: appearance, palette }, version: 4 }));
           localStorage.setItem('growthtrack-analytics-consent', 'denied');
           window.__pagePerf = { lcp: null, cls: 0, blocking: 0, ready: null, numberFormats: 0, dateFormats: 0, initStarted: performance.now(), events: [] };
@@ -126,7 +132,7 @@ try {
           new MutationObserver(() => {
             if (window.__pagePerf.ready == null && document.querySelector('#main-content h1, #main-content h2, .gt-public h1')) window.__pagePerf.ready = performance.now();
           }).observe(document, { childList: true, subtree: true });
-        }, { countFormatters, presentation, appearance, palette, lite });
+        }, { countFormatters, presentation, appearance, palette, lite, checkCompanion });
         const page = await context.newPage();
         page.setDefaultTimeout(10000);
         page.setDefaultNavigationTimeout(20000);
@@ -163,6 +169,8 @@ try {
         const finished = request => { if (pending.delete(request)) lastRequestChange = Date.now(); };
         page.on('requestfinished', finished); page.on('requestfailed', finished);
         const errors = [];
+        const personalAtlasRequests = [];
+        page.on('request', request => { if (/\/personal-companion(?:-small)?-v\d+\.(?:webp|png)$/.test(new URL(request.url()).pathname)) personalAtlasRequests.push(new URL(request.url()).pathname); });
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(origin + '/Ultimate' + pageInfo.path + (viewParam ? `?view=${encodeURIComponent(viewParam)}` : ''), { waitUntil: 'load', timeout: 20000 });
         let failure = null;
@@ -177,13 +185,66 @@ try {
         await page.waitForTimeout(settleMs);
         if (args.includes('--screenshots') && run === 0) await page.screenshot({ path: path.join(output, 'screenshots', label, `${pageInfo.id}-initial.png`) });
         const interactions = [];
-        if (interact) {
-          const check = async (name, action) => { console.log(`${pageInfo.id}: checking ${name}`); try { await action(); interactions.push({ name, passed: true }); } catch (error) { interactions.push({ name, passed: false, error: error.message.slice(0, 250) }); failure ||= `Interaction failed: ${name}`; } };
+        let tabOverflow = [];
+        if (interact || checkTabs || checkDirection) {
+          const check = async (name, action) => { console.log(`${pageInfo.id}: checking ${name}`); try { const details = await action(); interactions.push({ name, passed: true, ...(details ? { details } : {}) }); } catch (error) { interactions.push({ name, passed: false, error: error.message.slice(0, 250), ...(error.details ? { details: error.details } : {}) }); failure ||= `Interaction failed: ${name}`; } };
+          if (checkTabs) await check('horizontal subtabs: buttons, mouse wheel and page-scroll release', async () => { tabOverflow = await checkTabOverflow(page); });
+          if (checkDirection) await check('live inherited RTL: arrows and selection indicator', async () => { await checkTabDirection(page); });
           if (pageInfo.id === 'welcome') {
+            await check('personal companion poses, keyboard controls and full atlas', async () => {
+              const figure = page.locator('.welcome-companion'), art = figure.locator('.personal-companion');
+              const controls = page.getByRole('group', { name: 'Choose a companion pose', exact: true });
+              const image = art.locator('.personal-companion__sprite');
+              const poses = [['At ease', 'idle'], ['Say hello', 'greet'], ['Listen', 'listen'], ['Celebrate', 'celebrate']];
+              const originalPose = await figure.getAttribute('data-state');
+              const originalScroll = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
+              const requests = [], sources = new Set(), states = [];
+              const unexpected = request => {
+                const url = new URL(request.url());
+                if (/^\/api\/(?:agents?|ai|chat|models?)(?:\/|$)/.test(url.pathname) || url.pathname.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) requests.push({ path: url.pathname, method: request.method() });
+              };
+              page.on('request', unexpected);
+              try {
+                await figure.scrollIntoViewIfNeeded();
+                await page.waitForFunction(element => element.complete && element.naturalWidth === 1280 && element.naturalHeight === 1280, await image.elementHandle());
+                for (const [index, [poseLabel, pose]] of poses.entries()) {
+                  const button = controls.getByRole('button', { name: poseLabel, exact: true });
+                  await button.focus(); await page.keyboard.press(index % 2 ? 'Space' : 'Enter');
+                  await page.waitForFunction(pose => {
+                    const figure = document.querySelector('.welcome-companion');
+                    return figure?.getAttribute('data-state') === pose && figure.querySelector('.personal-companion')?.getAttribute('data-pose') === pose;
+                  }, pose);
+                  if (!await button.evaluate(element => element === document.activeElement) || await button.getAttribute('aria-pressed') !== 'true' || await controls.locator('[aria-pressed="true"]').count() !== 1) throw new Error(`${poseLabel} is not keyboard operable with a single pressed state.`);
+                  const atlas = await image.evaluate(element => {
+                    const frame = element.closest('.personal-companion__frame');
+                    return { src: new URL(element.currentSrc || element.src).pathname, naturalWidth: element.naturalWidth, naturalHeight: element.naturalHeight, frameWidth: frame.clientWidth, frameHeight: frame.clientHeight };
+                  });
+                  if (!atlas.src.endsWith('/personal-companion-v1.webp') || atlas.naturalWidth !== 1280 || atlas.naturalHeight !== 1280 || atlas.frameWidth <= 0 || Math.abs(atlas.frameWidth - atlas.frameHeight) > 1) throw new Error(`${poseLabel} does not render the square 1280px full atlas.`);
+                  sources.add(atlas.src);
+                  states.push({ label: poseLabel, pose, keyboard: index % 2 ? 'Space' : 'Enter', atlas });
+                  if (args.includes('--screenshots') && run === 0) await page.screenshot({ path: path.join(output, 'screenshots', label, `welcome-pose-${pose}.png`), animations: 'disabled' });
+                }
+                if (sources.size !== 1 || new Set(personalAtlasRequests).size !== 1 || personalAtlasRequests.some(source => !sources.has(source))) throw new Error('Welcome poses requested more than the single full personal atlas.');
+                if (requests.length) { const error = new Error('Welcome pose controls attempted a model request or API mutation.'); error.details = { requests }; throw error; }
+                return { poses: states, atlasSources: [...sources], modelRequests: 0, recordMutations: 0 };
+              } finally {
+                page.off('request', unexpected);
+                const original = poses.find(([, pose]) => pose === originalPose);
+                if (original) await controls.getByRole('button', { name: original[0], exact: true }).click();
+                await page.evaluate(({ x, y }) => window.scrollTo({ left: x, top: y, behavior: 'instant' }), originalScroll);
+              }
+            });
             await check('snip and replay', async () => { await page.getByRole('button', { name: 'Snip the noise' }).click(); await page.getByRole('button', { name: 'Play it again' }).waitFor(); await page.getByRole('button', { name: 'Play it again' }).click(); });
             await check('fictional day mode and checkbox', async () => { await page.locator('#playground').scrollIntoViewIfNeeded(); await page.getByRole('button', { name: 'Feel a little better' }).click(); await page.getByText('Take a five-minute stretch', { exact: true }).click(); if (!await page.getByRole('checkbox', { name: 'Take a five-minute stretch' }).isChecked()) throw new Error('Demo checkbox did not update'); await page.getByRole('button', { name: 'Reset this day' }).click(); });
           }
-          if (pageInfo.id === 'login') await check('password focus and reveal', async () => { const password = page.locator('input[name="password"]'); await password.fill('fictional-ui-test'); await page.waitForFunction(() => document.querySelector('.login-crew .character-art')?.getAttribute('data-eyes-closed') === 'true'); await page.getByRole('button', { name: 'Show password' }).click(); if (await password.getAttribute('type') !== 'text') throw new Error('Password reveal did not update'); });
+          if (pageInfo.id === 'login') {
+            await check('password focus and reveal', async () => { const password = page.locator('input[name="password"]'); await password.fill('fictional-ui-test'); await page.waitForFunction(() => document.querySelector('.login-crew .character-art')?.getAttribute('data-eyes-closed') === 'true'); await page.getByRole('button', { name: 'Show password' }).click(); if (await password.getAttribute('type') !== 'text') throw new Error('Password reveal did not update'); });
+            await check('login keeps personal companion art and its atlas absent', async () => {
+              if (await page.locator('.personal-companion').count()) throw new Error('PersonalCompanionArt rendered on the login page.');
+              const resources = await page.evaluate(() => performance.getEntriesByType('resource').filter(entry => /\/personal-companion(?:-small)?-v\d+\.(?:webp|png)$/.test(new URL(entry.name).pathname)).map(entry => new URL(entry.name).pathname));
+              if (personalAtlasRequests.length || resources.length) { const error = new Error('Login requested a personal companion atlas.'); error.details = { requests: personalAtlasRequests, resources }; throw error; }
+            });
+          }
           if (pageInfo.id === 'overview') {
             await check('command palette keyboard flow', async () => { await page.getByRole('button', { name: 'Search all modules and records' }).click(); await page.getByRole('dialog').waitFor(); await page.keyboard.press('Escape'); });
             await check('sign-out cancellation', async () => { if (width < 960) await page.getByRole('button', { name: 'Open module navigation', exact: true }).click(); await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await page.getByRole('button', { name: 'Stay signed in' }).click(); if (!await page.locator('.app-shell').count()) throw new Error('Cancellation lost the workspace'); if (width < 960) await page.keyboard.press('Escape'); });
@@ -247,6 +308,7 @@ try {
             measuredInputEvents: window.__pagePerf.events,
           };
         }, { countFormatters });
+        metrics.tabOverflow = tabOverflow;
         const moduleFile = pageInfo.module && path.basename(manifest[pageInfo.module].file);
         metrics.moduleStart = metrics.resources.find(resource => resource.file === moduleFile)?.start ?? null;
         if (profiler) {
@@ -256,6 +318,27 @@ try {
         }
         const rendered = pageInfo.public || metrics.shell === pageInfo.id;
         if (run === 0 && args.includes('--screenshots')) await page.screenshot({ path: path.join(output, 'screenshots', label, `${pageInfo.id}.png`), fullPage: args.includes('--full-page') });
+        // Functional navigation/reload checks get a separate fixture page after measurement.
+        // The optional helper is never imported during an ordinary benchmark run.
+        if (checkCompanion) {
+          metrics.companionChecks = pageInfo.public ? { status: 'skipped', reason: 'Signed-out public route' } : null;
+          if (!pageInfo.public) {
+            const companionPage = await context.newPage();
+            companionPage.setDefaultTimeout(10000); companionPage.setDefaultNavigationTimeout(20000);
+            try {
+              console.log(`${pageInfo.id}: checking floating companion`);
+              await companionPage.goto(origin + '/Ultimate/finance/overview', { waitUntil: 'load' });
+              await companionPage.waitForSelector('.app-shell');
+              const { checkFloatingCompanion } = await import('./check-floating-companion.mjs');
+              metrics.companionChecks = await checkFloatingCompanion(companionPage, { origin });
+              interactions.push({ name: 'floating companion functional flow', passed: true });
+            } catch (error) {
+              metrics.companionChecks = { status: 'failed', error: error.message, ...(error.details ? { details: error.details } : {}) };
+              interactions.push({ name: 'floating companion functional flow', passed: false, error: error.message.slice(0, 250) });
+              failure ||= 'Interaction failed: floating companion functional flow';
+            } finally { await companionPage.close(); }
+          }
+        }
         samples.push({ ...metrics, interactions, memorySoak, maxCompositedLayers: maxLayers, ...(layerDetails ? { peakLayerDetails: await peakLayerDetails } : {}), browserConfig: { width, cpuThrottle, motion, presentation, appearance, palette, lite, network, settleMs }, stateRequests, childDocuments, pendingRequests: [...pending].map(request => ({ path: new URL(request.url()).pathname, method: request.method(), type: request.resourceType() })), failure: failure || (metrics.componentError ? 'Component error boundary rendered' : !rendered ? 'Unexpected route or authentication wall' : metrics.horizontalOverflow ? 'Page horizontal overflow' : metrics.activeAnimations > metrics.animationLimit ? 'Decorative animation budget exceeded' : null), errors });
         const sample = samples.at(-1);
         if (sample.failure || errors.length) console.warn(JSON.stringify({ page: pageInfo.id, run: run + 1, failure: sample.failure, errors, pendingRequests: sample.pendingRequests }));

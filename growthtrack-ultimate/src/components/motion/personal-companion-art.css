@@ -1,0 +1,17 @@
+.personal-companion { display: inline-block; inline-size: 100%; aspect-ratio: 1; vertical-align: middle; pointer-events: none; }
+.personal-companion__frame { display: block; position: relative; inline-size: 100%; block-size: 100%; aspect-ratio: 1; overflow: hidden; transform-origin: 50% 85%; }
+.personal-companion__sprite { position: absolute; inset: 0 auto auto 0; display: block; inline-size: 200%; block-size: 200%; max-inline-size: none; object-fit: contain; transform: translate(var(--personal-x, 0%), var(--personal-y, 0%)); user-select: none; }
+.personal-companion[data-pose='greet'] { --personal-x: -50%; }
+.personal-companion[data-pose='listen'] { --personal-y: -50%; }
+.personal-companion[data-pose='celebrate'] { --personal-x: -50%; --personal-y: -50%; }
+.personal-companion[data-animate='true'] .personal-companion__frame { animation: personal-companion-breathe 5.5s ease-in-out infinite; }
+.personal-companion[data-animate='true'][data-pose='greet'] .personal-companion__frame { animation: personal-companion-greet 1.1s cubic-bezier(.16,1,.3,1) 1; }
+.personal-companion[data-animate='true'][data-pose='listen'] .personal-companion__frame { animation: personal-companion-listen 650ms cubic-bezier(.16,1,.3,1) 1; }
+.personal-companion[data-animate='true'][data-pose='celebrate'] .personal-companion__frame { animation: personal-companion-cheer 850ms cubic-bezier(.16,1,.3,1) 1; }
+@keyframes personal-companion-breathe { 0%,100% { transform: translateY(0) rotate(-.4deg); } 50% { transform: translateY(-4px) rotate(.5deg); } }
+@keyframes personal-companion-greet { 0%,100% { transform: none; } 25% { transform: translateY(-5px) rotate(-4deg); } 55% { transform: rotate(3deg); } 78% { transform: rotate(-1.5deg); } }
+@keyframes personal-companion-listen { 0% { transform: rotate(-3deg) scale(.97); } 75% { transform: rotate(1deg); } 100% { transform: none; } }
+@keyframes personal-companion-cheer { 0%,100% { transform: none; } 28% { transform: translateY(-10px) rotate(-4deg); } 56% { transform: translateY(1px) scale(1.025,.98); } 77% { transform: translateY(-3px) rotate(2deg); } }
+@media (prefers-reduced-motion: reduce) { .personal-companion .personal-companion__frame { animation: none !important; } }
+[data-reduced-motion='true'] .personal-companion .personal-companion__frame { animation: none !important; }
+@media (forced-colors: active) { .personal-companion { forced-color-adjust: none; } }

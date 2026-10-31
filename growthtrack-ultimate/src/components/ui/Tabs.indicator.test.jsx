@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, it, vi } from 'vitest';
 import Tabs from './Tabs';
@@ -27,4 +27,35 @@ it('moves a decorative indicator without replacing the focused tab and disposes 
   expect(screen.getAllByRole('tab')).toHaveLength(3);
   view.unmount();
   expect(observers.every(observer => observer.disconnect.mock.calls.length > 0)).toBe(true);
+});
+
+it('reuses its measurements when a timer or query recreates an otherwise unchanged tab list', () => {
+  const created = vi.fn();
+  class Observer { constructor() { created(); } observe() {} disconnect() {} }
+  vi.stubGlobal('ResizeObserver', Observer);
+  const view = render(<Tabs label="Views" tabs={items} value="a" onChange={vi.fn()} />);
+  const initial = created.mock.calls.length;
+  view.rerender(<Tabs label="Views" tabs={items.map(item => ({ ...item }))} value="a" onChange={vi.fn()} />);
+  expect(created).toHaveBeenCalledTimes(initial);
+  expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
+});
+
+it('remeasures the selected indicator after inherited direction changes with unchanged tab sizes', async () => {
+  const actualStyle = window.getComputedStyle.bind(window);
+  vi.spyOn(window, 'getComputedStyle').mockImplementation(element => {
+    const style = actualStyle(element);
+    return new Proxy(style, { get(target, key) {
+      if (key === 'direction') return element.closest('[dir]')?.getAttribute('dir') || 'ltr';
+      const value = Reflect.get(target, key, target); return typeof value === 'function' ? value.bind(target) : value;
+    } });
+  });
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(120);
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(44);
+  vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function () { return this.closest('[dir]')?.getAttribute('dir') === 'rtl' ? 140 : 0; });
+  const view = render(<div dir="ltr"><Example /></div>);
+  expect(document.querySelector('.gt-tabs__indicator').style.transform).toBe('translate(0px, 0px)');
+  const alpha = screen.getByRole('tab', { name: 'Alpha' }); alpha.focus();
+  view.rerender(<div dir="rtl"><Example /></div>);
+  await waitFor(() => expect(document.querySelector('.gt-tabs__indicator').style.transform).toBe('translate(140px, 0px)'));
+  expect(screen.getByRole('tab', { name: 'Alpha' })).toBe(alpha); expect(alpha).toHaveFocus();
 });

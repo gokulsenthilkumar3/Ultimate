@@ -7,6 +7,7 @@ import { KineticContext } from './KineticContext';
 import { MotionBudget } from './motionBudget';
 import { GlowSprites } from './GlowCrew';
 import ConfettiHost from './ConfettiHost';
+import SurfaceLight from './SurfaceLight';
 import { getActiveDialog, subscribeDialogs } from '../../hooks/useDialogFocus';
 
 const features = () => import('./motionFeatures').then(module => module.default);
@@ -75,5 +76,5 @@ export default function KineticProvider({ children }: { children: ReactNode }) {
     observer.observe({ type: 'longtask', buffered: true });
     return () => observer.disconnect();
   }, []);
-  return <KineticContext.Provider value={value}><MotionConfig reducedMotion={reduced || !canAnimate || tier === 0 ? 'always' : 'never'} transition={{ type: 'spring', stiffness: 500, damping: 34, mass: .8 }}><LazyMotion features={featureGate.load} strict>{enabled && <GlowSprites />}{children}<ConfettiHost /></LazyMotion></MotionConfig></KineticContext.Provider>;
+  return <KineticContext.Provider value={value}><MotionConfig reducedMotion={reduced || !canAnimate || tier === 0 ? 'always' : 'never'} transition={{ type: 'spring', stiffness: 500, damping: 34, mass: .8 }}><LazyMotion features={featureGate.load} strict>{enabled && <GlowSprites />}{children}<SurfaceLight /><ConfettiHost /></LazyMotion></MotionConfig></KineticContext.Provider>;
 }

@@ -58,7 +58,6 @@
 .nutrition-calculator[open] > .text-secondary { margin:12px 0 20px; font-size:.875rem; line-height:1.6; }
 .nutrition-diary input, .nutrition-diary select { min-width:0; min-height:44px; }
 .nutrition-diary .flex-row > * { flex:1; width:0; }
-.current-context { padding:20px; margin-bottom:20px; border:1px solid var(--gt-border); border-radius:var(--gt-radius-md); background:var(--gt-surface); color:var(--gt-text); }
 .notification-preferences { border-block:1px solid var(--gt-border); }
 .notification-preferences > summary { min-height:44px; padding:10px 0; color:var(--gt-muted); cursor:pointer; }
 .gt-editorial-header__intro { grid-column: 1; min-inline-size: 0; }

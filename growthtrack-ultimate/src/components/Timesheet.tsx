@@ -8,7 +8,7 @@ import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { FixedSizeList as List } from '../lib/FixedSizeList';
-import useHashTab, { handleTabKeyDown } from '../hooks/useHashTab';
+import useHashTab from '../hooks/useHashTab';
 import Tabs from './ui/Tabs';
 import { readDraft, saveDraft, removeDraft } from '../lib/drafts';
 import { timerSeconds } from '../lib/timer';
@@ -308,15 +308,7 @@ export default function Timesheet() {
       </div>
 
       {/* Tabs */}
-      <div role="tablist" aria-label="Timesheet views"
-        onKeyDown={event => handleTabKeyDown(event, { tabs: TIMESHEET_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'timesheet-tab' })}
-        style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem' }}>
-        {TIMESHEET_TABS.map(({ id }) => (
-          <button key={id} type="button" role="tab" id={`timesheet-tab-${id}`}
-            aria-selected={tab === id} aria-controls={`timesheet-panel-${id}`} tabIndex={tab === id ? 0 : -1}
-            onClick={() => setTab(id)} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: tab === id ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: tab === id ? '#000' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{id}</button>
-        ))}
-      </div>
+      <Tabs label="Timesheet views" idPrefix="timesheet-tab" tabs={TIMESHEET_TABS.map(({ id }) => ({ value: id, label: id[0].toUpperCase() + id.slice(1), panelId: 'timesheet-panel-' + id }))} value={tab} onChange={setTab} />
 
       {/* Timer tab */}
       {tab === 'timer' && (

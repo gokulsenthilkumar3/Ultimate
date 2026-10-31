@@ -9,6 +9,8 @@ import useStore from '../store/useStore';
 import { EMPTY_LIST, EMPTY_RECORD } from '../lib/emptyValues';
 import { currentStreak, localDateKey } from '../lib/metricSeries';
 import { formatNumber } from '../utils/userFormatters';
+import Tabs from './ui/Tabs';
+import SignalArt from './motion/SignalArt';
 
 const TOOLTIP_STYLE = {
   background: 'var(--gt-surface)',
@@ -68,7 +70,7 @@ function meanMap(map) {
 function CorrelationPanel({ title, xLabel, yLabel, color, data, r, user }) {
   const cs = corrStrength(r);
   return (
-    <div className="glass-card">
+    <div className="glass-card insights-chart-card" data-insight="plot">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <span className="card-title" style={{ margin: 0 }}>{title}</span>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -122,14 +124,14 @@ function CrossDomainTrend({ metrics, sleepLogs, user }) {
   })), [dates, sleepMap, moodMap, energyMap, workoutMap]);
 
   if (chartData.length < 3) return (
-    <div className="glass-card">
+    <div className="glass-card insights-chart-card" data-insight="plot">
       <span className="card-title">Cross-Domain Trend</span>
       <p style={{ color: 'var(--text-3)', fontSize: '0.78rem', marginTop: '0.75rem' }}>Log sleep, mood, and energy across several days to see trends.</p>
     </div>
   );
 
   return (
-    <div className="glass-card">
+    <div className="glass-card insights-chart-card" data-insight="plot">
       <span className="card-title">Cross-Domain Trend</span>
       <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '1rem' }}>Sleep, mood, and energy across time — spot patterns and correlations.</p>
       <ResponsiveContainer width="100%" height={240}>
@@ -249,11 +251,11 @@ export default function Analytics() {
   [goals]);
 
   return (
-    <div className="fade-in module-page" style={{ padding: '0.5rem 0' }}>
+    <div className="module-page insights-analytics" data-insight-view={view}>
       {/* Header */}
-      <PageHeader accent="Insights" title="Analytics" subtitle={<>Cross-domain correlations · Audit logs · Growth forecast</>} />
+      <PageHeader accent="Insights" title="Analytics" subtitle={<>Cross-domain correlations · Audit logs · Growth forecast</>} actions={<SignalArt kind="plot" />} />
 
-      <nav aria-label="Related insight modules" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+      <nav aria-label="Related insight modules" className="insights-related">
         <Link to="/hub/logs">Audit Logs</Link>
         <Link to="/insights/forecast">Growth Forecast</Link>
       </nav>
@@ -273,15 +275,11 @@ export default function Analytics() {
       </div>
 
       {/* View tabs */}
-      <div role="tablist" aria-label="Correlation views" style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        {['correlations', 'trends', 'habits', 'goals'].map(t => (
-          <button type="button" role="tab" aria-selected={view === t} aria-controls={`correlation-view-${t}`} key={t} onClick={() => setView(t)} style={{ padding: '5px 14px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', background: view === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: view === t ? 'var(--bg-base)' : 'var(--text-3)', border: 'none', textTransform: 'capitalize' }}>{t}</button>
-        ))}
-      </div>
+      <Tabs label="Correlation views" className="insights-view-tabs" idPrefix="correlation-tab" value={view} onChange={setView} tabs={['correlations', 'trends', 'habits', 'goals'].map(value => ({ value, label: value[0].toUpperCase() + value.slice(1), panelId: `correlation-view-${value}` }))} />
 
       {/* Correlations */}
       {view === 'correlations' && (
-        <div id="correlation-view-correlations" role="tabpanel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div id="correlation-view-correlations" role="tabpanel" aria-labelledby="correlation-tab-correlations" className="insights-analysis-panel">
           <CorrelationPanel title="Sleep → Mood" xLabel="Sleep (hrs)" yLabel="Mood (1-10)" color="#0ea5e9" data={sleepMoodData} r={rSleepMood} user={user} />
           <CorrelationPanel title="Sleep → Energy" xLabel="Sleep (hrs)" yLabel="Energy (1-10)" color="#f59e0b" data={sleepEnergyData} r={rSleepEnergy} user={user} />
           <CorrelationPanel title="Energy → Mood" xLabel="Energy (1-10)" yLabel="Mood (1-10)" color="#ec4899" data={energyMoodData} r={rEnergyMood} user={user} />
@@ -310,9 +308,9 @@ export default function Analytics() {
 
       {/* Trends */}
       {view === 'trends' && (
-        <div id="correlation-view-trends" role="tabpanel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div id="correlation-view-trends" role="tabpanel" aria-labelledby="correlation-tab-trends" className="insights-analysis-panel">
           <CrossDomainTrend metrics={metrics} sleepLogs={sleepLogs} user={user} />
-          <div className="glass-card">
+          <div className="glass-card insights-chart-card" data-insight="plot">
             <span className="card-title">Task Completion Rate — 30 Days</span>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginBottom: '0.75rem' }}>% of due tasks completed each day</p>
             {taskCompletionRate.filter(d => d.rate != null).length < 3 ? (
@@ -340,14 +338,14 @@ export default function Analytics() {
 
       {/* Habits */}
       {view === 'habits' && (
-        <div id="correlation-view-habits" role="tabpanel" className="glass-card">
+        <div id="correlation-view-habits" role="tabpanel" aria-labelledby="correlation-tab-habits" className="glass-card insights-chart-card" data-insight="plot">
           <span className="card-title">Habit Streak Leaderboard</span>
           {habitStreakData.length === 0 ? (
             <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginTop: '0.75rem' }}>No habits tracked yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
               {habitStreakData.map((h, i) => (
-                <div key={h.name} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: i === 0 ? 'rgba(251,191,36,0.06)' : 'rgba(255,255,255,0.02)' }}>
+                <div key={h.name} data-insight="story" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: i === 0 ? 'rgba(251,191,36,0.06)' : 'rgba(255,255,255,0.02)' }}>
                   <span style={{ width: '20px', fontWeight: 900, fontSize: '0.8rem', color: i === 0 ? '#fbbf24' : i === 1 ? '#9ca3af' : i === 2 ? '#fb923c' : 'var(--text-3)', textAlign: 'center' }}>{i+1}</span>
                   <span style={{ flex: 1, fontSize: '0.85rem', fontWeight: 700 }}>{h.name}</span>
                   <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#f97316' }}>{h.streak > 0 ? `🔥 ${h.streak}` : '—'}</span>
@@ -360,7 +358,7 @@ export default function Analytics() {
 
       {/* Goals */}
       {view === 'goals' && (
-        <div id="correlation-view-goals" role="tabpanel" className="glass-card">
+        <div id="correlation-view-goals" role="tabpanel" aria-labelledby="correlation-tab-goals" className="glass-card insights-chart-card" data-insight="plot">
           <span className="card-title">Goal Progress Distribution</span>
           {goalProgressData.length === 0 ? (
             <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', marginTop: '0.75rem' }}>No goals tracked yet.</p>
@@ -373,7 +371,7 @@ export default function Analytics() {
                     <span style={{ fontSize: '0.72rem', color: g.pct >= 100 ? '#10b981' : 'var(--text-3)' }}>{g.pct === null ? 'Progress unavailable' : g.pct + '%'}</span>
                   </div>
                   {g.pct !== null && <div style={{ height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px' }}>
-                    <div style={{ height: '100%', width: `${g.pct}%`, background: g.pct >= 100 ? '#10b981' : g.pct >= 60 ? '#f59e0b' : 'var(--accent)', borderRadius: '99px', transition: 'width 0.5s' }} />
+                    <div data-insight="fill" style={{ height: '100%', width: `${g.pct}%`, background: g.pct >= 100 ? '#10b981' : g.pct >= 60 ? '#f59e0b' : 'var(--accent)', borderRadius: '99px' }} />
                   </div>}
                 </div>
               ))}

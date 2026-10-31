@@ -1,6 +1,6 @@
 import PageHeader from './ui/PageHeader';
 import { EMPTY_RECORD } from '../lib/emptyValues';
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Cloud, Sun, Droplets, Wind, Eye, Thermometer, Newspaper, RefreshCw, MapPin, AlertTriangle } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
@@ -9,6 +9,9 @@ import { formatDate, formatTime, formatTemperature, formatDistance, formatSpeed 
 import Button from './ui/Button';
 import Card from './ui/Card';
 import EmptyState from './ui/EmptyState';
+import SignalArt from './motion/SignalArt';
+import { currentSources, loadWeather } from '../domains/insights/currentWeather';
+import '../domains/insights/insights.css';
 
 // Time-of-day gradient based on current hour
 function getTimeGradient(hour) {
@@ -29,15 +32,17 @@ function timeAgo(ms) {
 export default function Current() {
   const toast = useToast();
   const user = useStore(s => s.user);
-  const sources = useStore(s => s.appConfig?.currentSources ?? EMPTY_RECORD);
+  const config = useStore(s => s.appConfig ?? EMPTY_RECORD);
+  const sources = currentSources(config);
   const weatherCodes = sources.weatherCodes || {};
   const newsSource = (sources.newsSources || []).find(source => source.enabled !== false);
 
-  const [lastUpdated,  setLastUpdated]  = useState(null);
+  const weatherSource = typeof sources.weatherUrl === 'string' ? sources.weatherUrl.trim() : '';
 
   const now     = new Date();
   const hour    = now.getHours();
   const tg      = getTimeGradient(hour);
+  const dayProgress = (hour * 60 + now.getMinutes()) / 1440;
 
   // ── Geolocation + weather ──────────────────────────────────────────────
   const { data: location, refetch: requestLocation, isFetching: locating } = useQuery({
@@ -61,23 +66,10 @@ export default function Current() {
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 
-  const { data: weather, isLoading: weatherLoading, error: weatherError, refetch: fetchWeather } = useQuery({
-    queryKey: ['current-weather', location?.lat, location?.lon],
-    enabled: !!location,
-    queryFn: async ({ signal }) => {
-      const params = [
-        'temperature_2m', 'weathercode', 'relativehumidity_2m', 'windspeed_10m',
-        'apparent_temperature', 'visibility', 'precipitation_probability',
-        'uv_index', 'is_day',
-      ].join(',');
-      if (!sources.weatherUrl) throw new Error('Weather source is not configured');
-      const url = `${sources.weatherUrl}?latitude=${location.lat}&longitude=${location.lon}&current_weather=true&current=${params}&hourly=temperature_2m&timezone=auto&forecast_days=1`;
-      const res = await fetch(url, { signal });
-      if (!res.ok) throw new Error('Weather fetch failed');
-      const data = await res.json();
-      setLastUpdated(Date.now());
-      return data;
-    },
+  const { data: weather, isFetching: weatherLoading, error: weatherError, refetch: fetchWeather, dataUpdatedAt: lastUpdated } = useQuery({
+    queryKey: ['current-weather', weatherSource, location?.lat, location?.lon],
+    enabled: Boolean(location && weatherSource),
+    queryFn: ({ signal }) => loadWeather(weatherSource, location, signal),
     staleTime: 1000 * 60 * 15,
   });
 
@@ -122,22 +114,22 @@ export default function Current() {
 
   // ── Derived weather values ──────────────────────────────────────────────
   const cur = weather?.current;
-  const configuredWmo = weatherCodes[String(cur?.weathercode)];
-  const wmo = configuredWmo ? { label: configuredWmo[0], icon: configuredWmo[1] } : { label: 'Unknown', icon: '🌡️' };
+  const configuredWmo = weatherCodes[String(cur?.weather_code)];
+  const wmo = configuredWmo ? { label: configuredWmo[0], icon: configuredWmo[1] } : { label: 'Conditions not reported', icon: '🌡️' };
 
   const weatherCards = cur ? [
-    { label: 'Feels Like',  val: formatTemperature(cur.apparent_temperature, user), icon: <Thermometer size={16} color="#f43f5e" /> },
-    { label: 'Humidity',    val: `${cur.relativehumidity_2m}%`,               icon: <Droplets size={16} color="#0ea5e9" /> },
-    { label: 'Wind',        val: formatSpeed(cur.windspeed_10m, 'km/h', user),     icon: <Wind size={16} color="#8b5cf6" /> },
-    { label: 'Visibility',  val: formatDistance((cur.visibility || 0) / 1000, 'km', user), icon: <Eye size={16} color="#10b981" /> },
-    { label: 'UV Index',    val: String(cur.uv_index || '—'),                 icon: <Sun size={16} color="#f59e0b" /> },
-    { label: 'Rain Prob.',  val: `${cur.precipitation_probability || 0}%`,    icon: <Cloud size={16} color="#60a5fa" /> },
+    { label: 'Feels Like',  val: cur.apparent_temperature == null ? '—' : formatTemperature(cur.apparent_temperature, user), icon: <Thermometer size={16} color="#f43f5e" /> },
+    { label: 'Humidity',    val: cur.relative_humidity_2m == null ? '—' : `${cur.relative_humidity_2m}%`, icon: <Droplets size={16} color="#0ea5e9" /> },
+    { label: 'Wind',        val: cur.wind_speed_10m == null ? '—' : formatSpeed(cur.wind_speed_10m, 'km/h', user), icon: <Wind size={16} color="#8b5cf6" /> },
+    { label: 'Visibility',  val: cur.visibility == null ? '—' : formatDistance(cur.visibility / 1000, 'km', user), icon: <Eye size={16} color="#10b981" /> },
+    { label: 'UV Index',    val: String(cur.uv_index ?? '—'), icon: <Sun size={16} color="#f59e0b" /> },
+    { label: 'Rain Prob.',  val: cur.precipitation_probability == null ? '—' : `${cur.precipitation_probability}%`, icon: <Cloud size={16} color="#60a5fa" /> },
   ] : [];
 
   return (
-    <div style={{ padding: '0.5rem 0' }}>
+    <div className="module-page insights-current">
       {/* Hero: Time-of-day gradient */}
-      <PageHeader accent="Insights" title="Current" subtitle="Local conditions and current information. Location is optional." /><section className="current-context">
+      <PageHeader accent="Insights" title="Current" subtitle="Local conditions and current information. Location is optional." actions={<SignalArt kind="day" progress={dayProgress} />} /><section className="current-context" data-insight="scene">
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
@@ -155,14 +147,12 @@ export default function Current() {
             </div>
 
             {/* Weather summary */}
-            {weatherLoading && location ? (
-              <div style={{ color: 'var(--gt-muted)', fontSize: '0.82rem' }}>Loading weather…</div>
-            ) : weatherError ? (
-              <div style={{ color: 'rgba(255,100,100,0.9)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <AlertTriangle size={14} /> Weather is unavailable right now. Try again when you are ready.
-              </div>
-            ) : !location ? (
+            {!location ? (
               <Button variant="secondary" onClick={() => requestLocation()} loading={locating}>Use my location</Button>
+            ) : !weatherSource ? (
+              <p className="current-weather__notice">Weather source not configured. Choose a weather source in workspace settings.</p>
+            ) : weatherLoading && !cur ? (
+              <p className="current-weather__notice" role="status">Loading weather…</p>
             ) : cur && (
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '3rem', lineHeight: 1 }}>{wmo.icon}</p>
@@ -172,25 +162,31 @@ export default function Current() {
             )}
           </div>
 
+          {weatherError && <div className="current-weather__recovery" role="status">
+            <AlertTriangle size={16} aria-hidden="true" />
+            <p>{cur ? 'Could not refresh weather. Your last reading is shown.' : 'Could not reach the weather provider.'}</p>
+            <Button variant="secondary" onClick={() => fetchWeather()} loading={weatherLoading} loadingLabel="Retrying weather…">Retry weather</Button>
+          </div>}
+
           {/* Hour progress bar */}
           <div style={{ marginTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
               <span style={{ fontSize: '0.6rem', color: 'var(--gt-muted)' }}>00:00</span>
-              <span style={{ fontSize: '0.6rem', color: 'var(--gt-muted)' }}>Day {Math.round((hour / 24) * 100)}%</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--gt-muted)' }}>Day {Math.round(dayProgress * 100)}%</span>
               <span style={{ fontSize: '0.6rem', color: 'var(--gt-muted)' }}>24:00</span>
             </div>
-            <div style={{ height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '99px' }}>
-              <div style={{ height: '100%', width: `${(hour / 24) * 100}%`, background: 'rgba(255,255,255,0.7)', borderRadius: '99px', transition: 'width 1s ease' }} />
+            <div className="insights-current__track">
+              <div className="insights-current__fill" data-insight="fill" style={{ width: `${dayProgress * 100}%` }} />
             </div>
           </div>
         </div>
       </section>
 
       {/* Weather detail cards */}
-      {!weatherLoading && !weatherError && weatherCards.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.65rem', marginBottom: '1.5rem' }}>
+      {weatherCards.length > 0 && (
+        <div className="insights-current__metrics">
           {weatherCards.map(w => (
-            <div key={w.label} className="glass-card" style={{ textAlign: 'center', padding: '0.85rem' }}>
+            <div key={w.label} className="glass-card" data-insight="metric" style={{ textAlign: 'center', padding: '0.85rem' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.3rem' }}>{w.icon}</div>
               <p style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-1)', lineHeight: 1 }}>{w.val}</p>
               <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginTop: '3px' }}>{w.label}</p>
@@ -203,11 +199,12 @@ export default function Current() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
           <p className="label-caps" style={{ color: 'var(--accent)' }}>Live Feed</p>
-          {lastUpdated && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Weather updated {timeAgo(lastUpdated)}</p>}
+          {lastUpdated > 0 && <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Weather updated {timeAgo(lastUpdated)} · Details for {cur?.time?.slice(11, 16) || 'the reported hour'}</p>}
+          {weatherSource.startsWith('https://api.open-meteo.com/') && <a className="current-weather__credit" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather by Open-Meteo</a>}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={() => fetchWeather()} loading={weatherLoading} loadingLabel="Refreshing weather…">Weather</Button>
-          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={fetchNews} loading={newsLoading} loadingLabel="Refreshing news…">News</Button>
+          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={() => fetchWeather()} disabled={!location || !weatherSource} loading={weatherLoading} loadingLabel="Refreshing weather…">Weather</Button>
+          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={fetchNews} disabled={!newsSource?.url} loading={newsLoading} loadingLabel="Refreshing news…">News</Button>
         </div>
       </div>
 
@@ -219,21 +216,18 @@ export default function Current() {
           {newsLoading && <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginLeft: 'auto' }}>Loading…</span>}
         </div>
 
-        {news.length === 0 && !newsLoading && <EmptyState icon="FileText" title="No stories right now." description="Try refreshing when you are ready." actionLabel="Refresh news" onAction={fetchNews} />}
+        {news.length === 0 && !newsLoading && <EmptyState icon="FileText" title={newsSource?.url ? 'No stories right now.' : 'News source not configured'} description={newsSource?.url ? 'Try refreshing when you are ready.' : 'Choose a news source in your workspace settings to load stories.'} actionLabel={newsSource?.url ? 'Refresh news' : undefined} onAction={newsSource?.url ? fetchNews : undefined} />}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <div className="insights-current__feed">
           {news.map((story, idx) => (
-            <a key={story.id} href={story.url || `https://news.ycombinator.com/item?id=${story.id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-              <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem 0.85rem', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', transition: 'background 0.12s', alignItems: 'flex-start' }}
-                className="hover-lift">
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 800, width: '20px', flexShrink: 0, paddingTop: '2px' }}>{idx + 1}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.4, marginBottom: '3px' }}>{story.title}</p>
-                  <p style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>
+            <a className="insights-story" key={story.id} href={story.url || `https://news.ycombinator.com/item?id=${story.id}`} target="_blank" rel="noopener noreferrer">
+                <span className="insights-story__number" data-insight="story">{String(idx + 1).padStart(2, '0')}</span>
+                <div className="insights-story__copy">
+                  <p>{story.title}</p>
+                  <p>
                     ▲ {story.score} · {story.comments} comments · by {story.by} · {timeAgo(story.time)}
                   </p>
                 </div>
-              </div>
             </a>
           ))}
         </div>

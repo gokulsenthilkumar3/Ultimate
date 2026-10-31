@@ -1,3 +1,4 @@
+import Tabs from './ui/Tabs';
 import PageHeader from './ui/PageHeader';
 import safeLocalStorage from '../utils/safeLocalStorage';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -620,18 +621,8 @@ export default function MindWellness() {
       </div>
 
       {/* ── Tabs ── */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} className={`btn-sm${activeTab === id ? ' active' : ''}`}
-            onClick={() => setActiveTab(id)}
-            style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-          >
-            <Icon size={13} /> {label}
-          </button>
-        ))}
-      </div>
+      <Tabs label="Mind views" tabs={TABS.map(({ id, label, icon }) => ({ value: id, label: <>{React.createElement(icon, { size: 14, 'aria-hidden': true })} {label}</> }))} value={activeTab} onChange={setActiveTab} />
 
-      {/* ── CHECK-IN TAB ── */}
       {activeTab === 'checkin' && (
         <div className="glass-card" style={{ padding: '1.75rem', borderTop: '3px solid #a78bfa' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>

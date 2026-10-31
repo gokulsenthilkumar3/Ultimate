@@ -1,3 +1,4 @@
+import Tabs from './ui/Tabs';
 import PageHeader from './ui/PageHeader';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Filter, Download, Plus, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Shield, Database, Activity, Cpu, User, Hash, Server } from 'lucide-react';
@@ -126,6 +127,12 @@ export default function Logs() {
     _details: l.details || l.description || l.failure_reason || 'No additional details recorded.',
   })), [logs]);
 
+  const categoryTabs = useMemo(() => {
+    const counts = new Map();
+    for (const log of enriched) counts.set(log.category, (counts.get(log.category) || 0) + 1);
+    return CATEGORIES.map(value => ({ value, label: (value === 'all' ? 'All logs' : value[0].toUpperCase() + value.slice(1)) + ' (' + (value === 'all' ? enriched.length : counts.get(value) || 0) + ')' }));
+  }, [enriched]);
+
   const filtered = useMemo(() => {
     let list = enriched;
     if (categoryF !== 'all') list = list.filter(l => (l.category || '') === categoryF);
@@ -237,33 +244,7 @@ export default function Logs() {
         {diagnostics.error && <span style={{ color: 'var(--danger)' }}>{diagnostics.error}</span>}
       </div>}
 
-      {/* Category tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        {CATEGORIES.map(cat => {
-          const isActive = categoryF === cat;
-          const icon = cat === 'auth' ? <Shield size={12} /> : 
-                     cat === 'audit' ? <Database size={12} /> :
-                     cat === 'session' ? <Activity size={12} /> :
-                     cat === 'system' ? <Cpu size={12} /> : null;
-          const count = cat === 'all' ? enriched.length : enriched.filter(l => (l.category || '') === cat).length;
-          const color = cat === 'auth' ? '#8b5cf6' :
-                      cat === 'audit' ? '#10b981' :
-                      cat === 'session' ? '#0ea5e9' :
-                      cat === 'system' ? '#f59e0b' : '#6b7280';
-          return (
-            <button key={cat} onClick={() => setCategoryF(cat)} style={{
-              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '10px',
-              background: isActive ? `${color}20` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${isActive ? color : 'rgba(255,255,255,0.08)'}`,
-              color: isActive ? color : 'var(--text-2)', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem',
-              transition: 'all 0.2s',
-            }}>
-              {icon} {cat === 'all' ? 'All Logs' : cat.charAt(0).toUpperCase() + cat.slice(1)}
-              <span style={{ background: `${color}30`, padding: '2px 8px', borderRadius: '99px', fontSize: '0.65rem', color }}>{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      <Tabs label="Log categories" tabs={categoryTabs} value={categoryF} onChange={setCategoryF} />
 
       {/* Sentiment summary */}
       <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>

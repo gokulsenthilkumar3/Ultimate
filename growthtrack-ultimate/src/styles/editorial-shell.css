@@ -30,7 +30,7 @@ body { color: var(--gt-text); }
 .workspace-subnav { display: flex; align-items: center; gap: 16px; min-inline-size: 0; max-inline-size: 100%; margin-block: -4px 28px; padding: 10px 14px; border: 1px solid var(--gt-border); border-radius: 18px; background: var(--gt-surface); box-shadow: 0 3px 0 color-mix(in srgb, var(--gt-text) 5%, transparent); }
 .workspace-subnav__label { display: flex; align-items: center; gap: 8px; flex: none; padding-inline: 2px 8px; color: var(--gt-muted); font-size: 10px; font-weight: 650; }
 .workspace-subnav__label > span { color: var(--gt-text); font-size: 23px; font-weight: 400; }
-.workspace-subnav__links { display: flex; align-items: stretch; flex: 1; min-inline-size: 0; gap: 5px; padding: 3px 2px 7px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--gt-border-strong) transparent; overscroll-behavior-inline: contain; }
+.workspace-subnav__links { display: flex; align-items: stretch; flex: 1; min-inline-size: 0; gap: 5px; padding: 3px 2px 7px; overflow-x: auto; overscroll-behavior-inline: contain; }
 .workspace-subnav__links > a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none; min-block-size: 44px; padding: 7px 11px; border: 1px solid transparent; border-radius: 12px; color: var(--gt-muted); font-size: 12px; font-weight: 500; text-decoration: none; white-space: nowrap; }
 .workspace-subnav__links > a:hover { color: var(--gt-text); background: var(--gt-surface-raised); }
 .workspace-subnav__links > a[aria-current='page'] { border-color: var(--gt-border-strong); background: var(--gt-canvas); color: var(--gt-text); font-weight: 650; box-shadow: 0 2px 0 color-mix(in srgb, var(--gt-text) 10%, transparent); }
@@ -144,7 +144,7 @@ body { color: var(--gt-text); }
 }
 @media (max-width: 719px) {
   .workspace-subnav { gap: 6px; padding: 7px 8px; margin-block-end: 22px; }
-  .workspace-subnav__label { padding-inline-end: 4px; font-size: 9px; gap: 5px; }
+  .workspace-subnav__label { display: none; }
   .workspace-subnav__links > a { font-size: 11px; padding-inline: 8px; }
   .app-shell[data-ui-system="editorial"] .app-header { gap: 4px; }
   .app-shell[data-ui-system="editorial"] .app-header__search { flex: 0 0 40px; inline-size: 40px; padding: 8px; border: 0; background: transparent; }

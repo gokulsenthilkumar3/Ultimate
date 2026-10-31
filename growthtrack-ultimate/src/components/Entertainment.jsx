@@ -1,3 +1,4 @@
+import Tabs from './ui/Tabs';
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import StatCard from './ui/StatCard';
 import {
@@ -333,6 +334,7 @@ export default function Entertainment() {
           </h1>
           <p className="gt-editorial-header__subtitle">Track your Anime, Series, Movies and Documentaries.</p>
         </div>
+        <PageArtwork />
       </header>
 
       {/* KPI row */}
@@ -349,15 +351,7 @@ export default function Entertainment() {
       </div>
 
       {/* Tabs */}
-      <div className="gt-tabs" data-responsive-foundation style={{ marginBottom: '1.5rem' }}>
-        <div role="tablist">
-          {TABS.map(tab => (
-            <button key={tab} role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)}>
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs label="Entertainment views" tabs={TABS.map(tab => ({ value: tab, label: tab }))} value={activeTab} onChange={setActiveTab} />
 
       {/* LIBRARY TAB */}
       {activeTab === 'Library' && (
@@ -601,3 +595,4 @@ export default function Entertainment() {
     </div>
   );
 }
+import PageArtwork from './motion/PageArtwork';

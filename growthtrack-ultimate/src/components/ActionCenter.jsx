@@ -6,6 +6,8 @@ import { formatNumber } from '../utils/userFormatters';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import HeroMetric from './ui/HeroMetric';
+import SignalArt from './motion/SignalArt';
+import '../domains/insights/insights.css';
 
 const EMPTY_LIST = Object.freeze([]);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -14,7 +16,7 @@ const isDone = item => Boolean(item?.completed || item?.done || ['done', 'comple
 function ActionCard({ action, onDismiss, onSnooze, onOpen, saving }) {
   const Icon = action.icon || Zap;
   return (
-    <article className="glass-card action-center__item" data-priority={action.priority}>
+    <article className="glass-card action-center__item" data-priority={action.priority} data-insight="queue" data-insight-key={action.id}>
       <div className="action-center__icon" aria-hidden="true"><Icon size={18} /></div>
       <div className="action-center__body">
         <div className="action-center__meta"><span>{action.urgency}</span><span>{action.source}</span></div>
@@ -74,7 +76,7 @@ export default function ActionCenter() {
   const dismiss = id => update(previous => ({ ...previous, dismissed: [...new Set([...(Array.isArray(previous.dismissed) ? previous.dismissed : []), id])] }));
   const snooze = id => update(previous => ({ ...previous, snoozed: { ...(previous.snoozed || {}), [id]: Date.now() + 24 * 60 * 60 * 1000 } }));
   return <section className="module-page action-center" aria-labelledby="action-center-title">
-    <Card className="page-hero"><span className="eyebrow">GrowthTrack · Daily guidance</span><h1 id="action-center-title" className="text-display">Your next best actions.</h1><p className="text-secondary">A focused list built from your real tasks, habits, goals, recovery, and check-ins.</p></Card>
+    <Card className="page-hero insights-actions__hero"><div><span className="eyebrow">GrowthTrack · Daily guidance</span><h1 id="action-center-title" className="text-display">Your next best actions.</h1><p className="text-secondary">A focused list built from your real tasks, habits, goals, recovery, and check-ins.</p></div><SignalArt kind="stack" /></Card>
     <HeroMetric label="Actions waiting" value={visible.length} note="From your tasks, habits, goals and check-ins" tone="yellow" />
     {saveError && <p role="alert">{saveError}</p>}
     <div className="action-center__summary" role="status"><strong>{visible.length}</strong><span>{visible.length === 1 ? 'priority to review' : 'priorities to review'}</span><span className="action-center__confidence">Local data only · no invented recommendations</span></div>

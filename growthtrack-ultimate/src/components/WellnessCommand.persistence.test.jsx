@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import WellnessCommand from './WellnessCommand';
 import useStore from '../store/useStore';
@@ -43,5 +43,23 @@ describe('WellnessCommand domain and route contracts', () => {
     expect(screen.getByText('No dated sleep entries.')).toBeVisible();
     expect(screen.getByText('No dated mood check-ins.')).toBeVisible();
     expect(screen.queryByText(/wellness score/i)).toBeNull();
+  });
+  it('keeps the available daily check-in and dismissal connected to their supplied actions', () => {
+    const onOpenCheckIn = vi.fn();
+    const onDismissCheckIn = vi.fn();
+    render(<MemoryRouter><WellnessCommand checkInAvailable onOpenCheckIn={onOpenCheckIn} onDismissCheckIn={onDismissCheckIn} /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Open daily check-in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Not today' }));
+    expect(onOpenCheckIn).toHaveBeenCalledTimes(1);
+    expect(onDismissCheckIn).toHaveBeenCalledTimes(1);
+  });
+  it('offers an owning-module setup route when no habits exist without exposing an unavailable daily check-in', () => {
+    useStore.setState({ habits: [] });
+    const onOpenCheckIn = vi.fn();
+    render(<MemoryRouter><WellnessCommand onOpenCheckIn={onOpenCheckIn} /></MemoryRouter>);
+    expect(screen.getByRole('link', { name: 'Set up your first habit' })).toHaveAttribute('href', '/wellness/habits?view=today');
+    expect(screen.getByText('Your record starts here')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Open daily check-in' })).toBeNull();
+    expect(onOpenCheckIn).not.toHaveBeenCalled();
   });
 });

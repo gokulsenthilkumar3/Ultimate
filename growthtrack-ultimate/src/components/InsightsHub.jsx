@@ -7,11 +7,13 @@ import { Brain, Sparkles } from 'lucide-react';
 import useStore from '../store/useStore';
 import { buildGrowthcastSummary } from '../utils/growthcast';
 import useHashTab from '../hooks/useHashTab';
-import { formatDate } from '../utils/userFormatters';
+import { formatDate, formatNumber } from '../utils/userFormatters';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import LoadingSkeleton from './ui/LoadingSkeleton';
 import { uiMessages } from '../lib/uiMessages';
+import SignalArt from './motion/SignalArt';
+import '../domains/insights/insights.css';
 
 const Analytics = lazy(() => import('./Analytics'));
 const Dashboards = lazy(() => import('./Dashboards'));
@@ -24,18 +26,19 @@ const TAB_IDS = ['actions', 'overview', 'current', 'analytics', 'dashboards', 'p
 function ReadOnlyProgressSummary() {
   const state = useStore();
   const summary = useMemo(() => buildGrowthcastSummary(state), [state]);
+  const count = value => formatNumber(value, state.user, { maximumFractionDigits: 0 });
+  const facts = [
+    ['Saved measurement records', count(summary.measurementCount)], ['Distinct dated entries', count(summary.observedDates)],
+    ['Completed goals', `${count(summary.completedGoals)} of ${count(summary.goalCount)}`], ['Pending tasks', count(summary.pendingTasks)],
+    ['Tracked habits', count(summary.habitCount)], ['Saved sleep records', count(summary.sleepCount)],
+  ];
   return <Card className="insights-summary" aria-label="Read-only progress summary">
     <h2>Progress at a glance</h2>
     <p className="text-secondary">A read-only summary across measurements, goals, tasks, habits, and sleep.</p>
     <dl className="insights-summary__stats">
-      <dt>Saved measurement records</dt><dd>{summary.measurementCount}</dd>
-      <dt>Distinct dated entries</dt><dd>{summary.observedDates}</dd>
-      <dt>Completed goals</dt><dd>{summary.completedGoals} of {summary.goalCount}</dd>
-      <dt>Pending tasks</dt><dd>{summary.pendingTasks}</dd>
-      <dt>Tracked habits</dt><dd>{summary.habitCount}</dd>
-      <dt>Saved sleep records</dt><dd>{summary.sleepCount}</dd>
+      {facts.map(([label, value]) => <div key={label} className="insights-summary__stat" data-insight="metric"><dt>{label}</dt><dd>{value}</dd></div>)}
     </dl>
-    <p className="text-secondary">Latest measurement date: {summary.latestDate ? formatDate(summary.latestDate, state.user) : 'Not recorded'}</p>
+    <p className="insights-progress__latest" data-insight="trail">Latest measurement date: {summary.latestDate ? formatDate(summary.latestDate, state.user) : 'Not recorded'}</p>
     <Link to="/wellness/physique?view=history">Open measurement history</Link>
     {' · '}<Link to="/hub/logs">Open canonical logs</Link>
   </Card>;
@@ -49,7 +52,7 @@ function OwningModule({ tab, logs, setActiveTab }) {
     {tab === 'current' && <Current />}
     {tab === 'analytics' && <Analytics />}
     {tab === 'dashboards' && <Dashboards />}
-    {tab === 'progress' && <section className="module-page"><PageHeader accent="Insights" title="Progress" subtitle="Review changes in your dated records." /><ReadOnlyProgressSummary /></section>}
+    {tab === 'progress' && <section className="module-page insights-progress"><PageHeader accent="Insights" title="Progress" subtitle="Review changes in your dated records." actions={<SignalArt kind="trail" />} /><ReadOnlyProgressSummary /></section>}
     {tab === 'forecast' && <TransformationPredictor logs={storeLogs ?? logs} />}
   </Suspense>;
 }

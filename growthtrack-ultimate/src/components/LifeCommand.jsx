@@ -1,5 +1,6 @@
 import React from 'react';
-import { OverviewCompanion } from './motion/CharacterScene';
+import PageArtwork from './motion/PageArtwork';
+import WorkspaceArt from './motion/WorkspaceArt';
 import usePlayfulMotion from '../hooks/usePlayfulMotion';
 import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
@@ -46,7 +47,7 @@ export default function LifeCommand() {
     <header className="editorial-overview__masthead">
       <div><p className="editorial-overview__eyebrow">Life / Overview</p><h1 id="life-title">Room for the rest of life</h1>
         <p className="editorial-overview__subtitle">Your library and profile records, with a path to places.</p></div>
-      <OverviewCompanion kind="sunny" />
+      <PageArtwork />
       <p className="editorial-overview__asof">Personal records</p>
     </header>
     <section className="editorial-overview__lead" aria-labelledby="life-next-title">
@@ -70,10 +71,15 @@ export default function LifeCommand() {
       </section>
       <nav className="editorial-overview__section" aria-label="Life destinations">
         <p className="editorial-overview__eyebrow">Continue in</p><h2>Your life modules</h2>
-        <ul className="editorial-overview__links">
-          <li><Link to={featurePath('entertainment', 'library')}>Entertainment <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('social', 'profiles')}>Social profiles <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('maps', 'list')}>Saved places <span aria-hidden="true">↗</span></Link></li>
+        <ul className="life-destinations">
+          {[
+            ['entertainment', 'library', 'Entertainment', 'A little time for your next watch.', 'reel'],
+            ['social', 'profiles', 'Social profiles', 'Your people and saved connections.', 'thread'],
+            ['maps', 'list', 'Saved places', 'Places to keep close.', 'places'],
+            ['family', 'tree', 'Family Connect', 'Generations, memories and milestones.', 'family'],
+          ].map(([id, view, label, description, kind]) => <li key={id} data-area-motion="postcard"><Link to={featurePath(id, view)} aria-label={label} aria-describedby={`life-door-${id}`}>
+            <WorkspaceArt kind={kind} /><span><strong>{label}</strong><small id={`life-door-${id}`}>{description}</small></span><span className="life-destination__arrow" aria-hidden="true">↗</span>
+          </Link></li>)}
         </ul>
         <p className="editorial-overview__footnote">Location capture begins only when you choose it in Maps &amp; Places.</p>
       </nav>

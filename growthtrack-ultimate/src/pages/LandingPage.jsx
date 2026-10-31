@@ -1,5 +1,5 @@
-﻿import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, Check, LockKeyhole, RotateCcw, Scissors } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ArrowDown, ArrowRight, Check, Ear, Hand, LockKeyhole, RotateCcw, Scissors, Smile, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CharacterScene, { MotionToggle } from '../components/motion/CharacterScene';
 import usePlayfulMotion from '../hooks/usePlayfulMotion';
@@ -8,8 +8,11 @@ import AnimatedLogo from '../components/motion/AnimatedLogo';
 import { useKinetic } from '../components/motion/KineticContext';
 import useLandingMotion from '../hooks/useLandingMotion';
 import { emitCelebration } from '../components/motion/ConfettiHost';
+import PersonalCompanionArt from '../components/motion/PersonalCompanionArt';
+import useSceneMotion from '../hooks/useSceneMotion';
 import './public-pages.css';
 import './playful-landing.css';
+import './welcome-companion.css';
 
 const crew = [
   { kind: 'siren', name: 'Siren', title: 'Hello, focus.', number: '01', copy: 'A friendly nudge toward the thing that matters. Big bell energy. Absolutely no alarm required.' },
@@ -28,25 +31,38 @@ const modes = [
   { id: 'life', label: 'Make room for life', kind: 'sunny', eyebrow: 'LIFE / MORE OF THE GOOD STUFF', title: 'Leave a little room for joy.', tasks: ['Save an idea for the weekend', 'Send a little hello', 'Make time for a favourite thing'] },
 ];
 
-function useDecorativeParallax(ref, enabled) {
-  useEffect(() => {
-    if (!enabled) return undefined;
-    const layers = [...ref.current.querySelectorAll('[data-parallax]')];
-    let frame = null;
-    const update = () => {
-      frame = null;
-      const distance = Math.min(Math.max(window.scrollY, 0), 600);
-      layers.forEach((layer, index) => layer.style.setProperty('--parallax-y', `${distance * (index % 2 ? -.025 : .035)}px`));
-    };
-    const onScroll = () => { if (frame === null) frame = requestAnimationFrame(update); };
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      if (frame !== null) cancelAnimationFrame(frame);
-      layers.forEach(layer => layer.style.removeProperty('--parallax-y'));
-    };
-  }, [enabled, ref]);
+const companionPoses = [
+  { id: 'idle', label: 'At ease', Icon: Smile, caption: 'A little backup. Entirely at your pace.' },
+  { id: 'greet', label: 'Say hello', Icon: Hand, caption: 'Hello, you. There’s room for you here.' },
+  { id: 'listen', label: 'Listen', Icon: Ear, caption: 'A thoughtful moment. No rush at all.' },
+  { id: 'celebrate', label: 'Celebrate', Icon: Sparkles, caption: 'A small win? That absolutely counts.' },
+];
+
+function WelcomeCompanion() {
+  const ref = useRef(null);
+  const [poseId, setPoseId] = useState('idle');
+  const { tier } = useKinetic();
+  const animate = useSceneMotion(ref, { cost: 2, priority: 2, enabled: tier > 0 });
+  const pose = companionPoses.find(item => item.id === poseId);
+  return <figure ref={ref} className="welcome-companion" data-state={poseId} data-animate={String(animate)} aria-labelledby="welcome-companion-caption">
+    <div className="welcome-companion__stage" id="welcome-companion-stage" aria-hidden="true">
+      <div className="welcome-companion__entrance"><div className="welcome-companion__diorama">
+        <span className="welcome-companion__back-paper" />
+        <span className="welcome-companion__arch" />
+        <svg className="welcome-companion__doodles" viewBox="0 0 500 500" fill="none" focusable="false"><path d="m406 68 5 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2 5-15ZM58 176l9 2m-13 11 8-3m-5-25 8 7m320 236 10 4m-5-19 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M76 79c17-22 43-22 64-11m-4-9 6 11-12 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><path d="M431 272c-30 17-9 52 9 29s-15-40-31-27" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 5" /></svg>
+        <span className="welcome-companion__hello">a familiar face,<br /><b>a fresh little world.</b></span>
+        <div className="welcome-companion__actor"><PersonalCompanionArt state={poseId} motion={false} className="welcome-companion__art" /></div>
+        <span className="welcome-companion__note"><span>Today’s plan</span><strong>Make room<br />for you.</strong><span className="welcome-companion__note-line" /><span className="welcome-companion__note-line" /></span>
+        <svg className="welcome-companion__leaf" viewBox="0 0 90 140" fill="none" focusable="false"><path d="M43 132V39m0 27C12 64 8 40 13 26c29 0 35 25 30 40Zm0 32c31-1 40-26 34-42-29 2-37 25-34 42Z" fill="var(--playful-mint)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M40 42C25 18 41 7 48 7c20 15 11 31-8 35Z" fill="var(--playful-yellow)" stroke="currentColor" strokeWidth="1.5" /></svg>
+        <span className="welcome-companion__floor" />
+        <span className="welcome-companion__seal"><Sparkles size={13} />small steps, big possibility</span>
+      </div></div>
+    </div>
+    <figcaption className="welcome-companion__caption" id="welcome-companion-caption"><span>YOU, WITH A LITTLE MORE CHARACTER</span><p aria-live="polite" aria-atomic="true">{pose.caption}</p></figcaption>
+    <div className="welcome-companion__controls" role="group" aria-label="Choose a companion pose">
+      {companionPoses.map(({ id, label, Icon }) => <button key={id} type="button" aria-pressed={poseId === id} aria-controls="welcome-companion-stage" onClick={() => setPoseId(id)}><Icon size={16} aria-hidden="true" /><span>{label}</span></button>)}
+    </div>
+  </figure>;
 }
 
 function TinyDay() {
@@ -111,8 +127,7 @@ export default function LandingPage() {
   const ref = useRef(null);
   const { canAnimate, reduced } = usePlayfulMotion();
   const { enabled } = useKinetic();
-  useDecorativeParallax(ref, canAnimate && !enabled);
-  useLandingMotion(ref, { parallax: true });
+  useLandingMotion(ref);
   const cast = enabled ? glowCrew : crew;
 
   return <main ref={ref} className="gt-public playful-landing" data-playful-motion={String(canAnimate)} data-reduced-motion={String(reduced)}>
@@ -125,16 +140,14 @@ export default function LandingPage() {
 
       <section className="playful-hero" id="public-content" tabIndex={-1} aria-labelledby="public-hero-title">
         <div className="playful-hero__copy playful-enter" data-hero-enter>
-          <p className="playful-kicker"><span className="playful-kicker__spark" aria-hidden="true">✳</span> FICTIONAL FRIENDS. BRIGHTER DAYS.</p>
+          <p className="playful-kicker"><span className="playful-kicker__spark" aria-hidden="true">✳</span> A FAMILIAR FACE. A FRESH LITTLE WORLD.</p>
           <h1 id="public-hero-title">Less noise.<br />More <span className="playful-hero__you">you.<svg viewBox="0 0 220 22" fill="none" aria-hidden="true"><path d="M5 13C64 1 132 1 213 10M18 20c68-9 114-8 175-3" stroke="currentColor" strokeWidth="5" strokeLinecap="round" /></svg></span></h1>
-          <p className="playful-hero__lead">{enabled ? 'Find your focus. Build a little momentum. Make room for the wonderfully human bits.' : 'Siren finds your focus. Snip cuts through the clutter. Meet a bright little crew making room for work, wellness, and the wonderfully human bits in between.'}</p>
+          <p className="playful-hero__lead">Find your focus. Build a little momentum. Meet a familiar face making room for work, wellness and the wonderfully human bits in between.</p>
           <div className="playful-hero__actions"><a className="playful-button" href="#playground">Try the tiny demo <ArrowRight size={19} aria-hidden="true" /></a><a className="playful-text-link" href="#crew">Meet your little crew <ArrowDown size={17} aria-hidden="true" /></a></div>
           <div className="playful-hero__note"><span className="playful-mini-faces" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><i>•ᴗ•</i></span><p>Small wins welcome.<br /><strong>Perfect days not required.</strong></p></div>
         </div>
         <div className="playful-hero__art" data-hero-enter>
-          <span className="playful-hero__blob" data-parallax aria-hidden="true" />
-          <span className="playful-hero__orbit" data-parallax aria-hidden="true" />
-          <SirenSnipScene />
+          <WelcomeCompanion />
           <div className="playful-hero__motion"><span>GOOD VIBES, AT YOUR PACE</span><MotionToggle /></div>
         </div>
       </section>
@@ -151,6 +164,8 @@ export default function LandingPage() {
           <h3>{character.title}</h3><p>{character.copy}</p>
         </article>)}</div>
       </section>
+
+      <section className="welcome-space" aria-labelledby="welcome-space-title"><div className="playful-section-heading"><p className="playful-kicker">A LITTLE LESS NOISE</p><h2 id="welcome-space-title">Keep the good.<br /><span>Snip the rest.</span></h2><p>Siren and Snip are here, too. Try their little reset, then take a fictional day for a spin.</p></div><SirenSnipScene /></section>
 
       <TinyDay />
 

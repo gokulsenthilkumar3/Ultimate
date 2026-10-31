@@ -1,13 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, Command, Moon, Search, Sun, UserRound, WifiOff } from 'lucide-react';
+import { Bell, Command, Moon, PawPrint, Search, Sun, UserRound, WifiOff } from 'lucide-react';
 import { GROUPS, tabMeta } from '../config/navigation';
 import AnimatedLogo from './motion/AnimatedLogo';
 import { MotionToggle } from './motion/CharacterScene';
+import useKineticPreferences, { setKineticPreferences } from '../hooks/useKineticPreferences';
 
 export default function Header({ activeTab, user, theme, setTheme, onOpenSettings, unreadCount = 0, onOpenNotifications, serverStatus }) {
   const meta = tabMeta(activeTab);
   const group = GROUPS[meta.group];
+  const { companion } = useKineticPreferences();
   const openCommandPalette = () => window.dispatchEvent(new CustomEvent('open-command-palette'));
 
   return (
@@ -21,6 +23,9 @@ export default function Header({ activeTab, user, theme, setTheme, onOpenSetting
         <Search size={18} aria-hidden="true" /><span>Search GrowthTrack</span><kbd aria-hidden="true">{/Mac|iPhone|iPad/.test(globalThis.navigator?.platform || '') ? <Command size={12} /> : 'Ctrl'} K</kbd>
       </button>
       <div className="app-header__controls">
+        <button type="button" className="header-control" data-companion-toggle aria-pressed={companion} aria-label={companion ? 'Hide floating companion' : 'Show floating companion'} title={companion ? 'Hide floating companion' : 'Show floating companion'} onClick={() => setKineticPreferences({ companion: !companion })}>
+          <PawPrint size={18} aria-hidden="true" />
+        </button>
         <MotionToggle compact />
         {serverStatus === 'offline' && <span className="app-header__status is-offline" role="status"><WifiOff size={15} aria-hidden="true" />Offline</span>}
         <button type="button" className="header-control header-control--theme" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>

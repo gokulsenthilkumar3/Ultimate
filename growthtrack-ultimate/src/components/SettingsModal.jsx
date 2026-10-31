@@ -13,9 +13,12 @@ import { fetchIpInfo } from '../hooks/useGeolocation';
 import ReferralDashboard from './ReferralDashboard';
 import { formatTime } from '../utils/userFormatters';
 import { m } from 'framer-motion';
+import { DIALOG_SPRING } from './motion/motionLanguage';
 import { useKinetic } from './motion/KineticContext';
 import SelectionHighlight from './motion/SelectionHighlight';
 import CharacterScene from './motion/CharacterScene';
+
+const SettingsSurface = m.div;
 
 export default function SettingsModal({ onClose }) {
   const kinetic = useKinetic();
@@ -124,7 +127,7 @@ export default function SettingsModal({ onClose }) {
         onConfirm={doReset}
         onCancel={() => setConfirmReset(false)}
       />
-      <m.div className="settings-modal-card fade-in" initial={kinetic.enabled && kinetic.canAnimate && kinetic.tier > 0 ? { opacity: 0, y: 8, scale: .98 } : false} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: kinetic.canAnimate && kinetic.tier > 0 ? .24 : 0, ease: [.22, 1, .36, 1] }}>
+      <SettingsSurface className="settings-modal-card fade-in" initial={kinetic.enabled && kinetic.canAnimate && kinetic.tier > 0 ? { opacity: .4, y: 20, scale: .985 } : false} animate={{ opacity: 1, y: 0, scale: 1 }} transition={kinetic.enabled && kinetic.canAnimate && kinetic.tier > 0 ? { ...DIALOG_SPRING, opacity: { duration: .16 } } : { duration: 0 }}>
         
         {/* Sidebar */}
         <nav className="settings-modal-card__sidebar" aria-label="Settings sections">
@@ -244,7 +247,7 @@ export default function SettingsModal({ onClose }) {
             )}
           </div>
         </div>
-      </m.div>
+      </SettingsSurface>
     </div>
   );
 }

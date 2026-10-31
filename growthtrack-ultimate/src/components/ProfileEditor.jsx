@@ -1,4 +1,6 @@
 import safeLocalStorage from '../utils/safeLocalStorage';
+import PageArtwork from './motion/PageArtwork';
+import OverflowRail from './ui/OverflowRail';
 import React, { useState, useRef, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useHashTab from '../hooks/useHashTab';
@@ -843,6 +845,7 @@ export default function ProfileEditor() {
           <p className="gt-editorial-settings__intro">Review your identity, privacy, connections and display preferences.</p>
         </div>
         <div className="gt-editorial-settings__save">
+          <PageArtwork />
           {hasChanges && (
             <button type="button" onClick={handleSave} disabled={saveState.status === 'saving'} className="gt-editorial-settings__primary" aria-busy={saveState.status === 'saving'}>
               <Save size={16} aria-hidden="true" /> {saveState.status === 'saving' ? 'Saving…' : 'Save changes'}
@@ -853,7 +856,7 @@ export default function ProfileEditor() {
       </header>
 
       <div className="gt-editorial-settings__layout">
-        <nav className="gt-editorial-settings__nav" aria-label="Account settings sections">
+        <OverflowRail as="nav" label="Account settings sections" className="gt-editorial-settings__nav" frameClassName="profile-section-nav" horizontalAt="(max-width: 850px)" aria-label="Account settings sections">
           {TABS.map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -869,7 +872,7 @@ export default function ProfileEditor() {
               </button>
             );
           })}
-        </nav>
+        </OverflowRail>
 
         <div className="gt-editorial-settings__content">
           
@@ -1325,7 +1328,7 @@ export default function ProfileEditor() {
 
             {activeTab === 'appearance' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <div className="kinetic-display-settings"><h3>Workspace presentation</h3><SegmentedControl label="Workspace presentation" value={kineticPreference.style} onChange={style => setKineticPreferences({ style })} options={[{ value: 'kinetic', label: 'Kinetic' }, { value: 'playful', label: 'Playful' }]} /><Switch label="Lite motion" description="Keep decoration light on this device. Every tool and action stays available." checked={kineticPreference.lite} onChange={lite => setKineticPreferences({ lite })} /></div>
+                <div className="kinetic-display-settings"><h3>Workspace presentation</h3><SegmentedControl label="Workspace presentation" value={kineticPreference.style} onChange={style => setKineticPreferences({ style })} options={[{ value: 'kinetic', label: 'Kinetic' }, { value: 'playful', label: 'Playful' }]} /><Switch label="Lite motion" description="Keep decoration light on this device. Every tool and action stays available." checked={kineticPreference.lite} onChange={lite => setKineticPreferences({ lite })} /><Switch label="Floating companion" description="Keep a small creature nearby for quick access to Agents. Saved on this device." checked={kineticPreference.companion} onChange={companion => setKineticPreferences({ companion })} /></div>
                 <AppearanceThemePresets value={palette} onChange={setPalette} />
                 <div>
                   <h4 style={{ fontSize: '0.8rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Theme</h4>

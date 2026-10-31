@@ -1,10 +1,26 @@
 import React from 'react';
-import { OverviewCompanion } from './motion/CharacterScene';
+import { AppWindow, Bot, Bell, Cable, Database, HelpCircle, History, Layers, Settings, ShieldCheck, Users } from 'lucide-react';
+import PageArtwork from './motion/PageArtwork';
 import usePlayfulMotion from '../hooks/usePlayfulMotion';
 import { Link } from 'react-router-dom';
 import useStore from '../store/useStore';
 import { featurePath } from '../config/featureRegistry';
 import { formatDate, formatNumber } from '../utils/userFormatters';
+
+const DESTINATIONS = [
+  ['apps', 'modules', 'All modules', 'Find and pin your everyday tools.', AppWindow],
+  ['companion', 'all', 'Companion apps', 'Open your connected products.', Layers],
+  ['profile', 'integrations', 'Connections', 'Review providers and permissions.', Cable],
+  ['notifications', undefined, 'Notifications', 'Read reminders from your modules.', Bell],
+  ['ai', undefined, 'Agents', 'Continue with your configured assistant.', Bot],
+  ['databases', undefined, 'Databases', 'Explore records and custom tables.', Database],
+  ['profile', 'personal', 'Account settings', 'Personal details and appearance.', Settings],
+  ['help', undefined, 'Helpdesk', 'Guides and connection diagnostics.', HelpCircle],
+  ['logs', 'activity', 'Activity logs', 'Review recorded workspace events.', History],
+  ['customers', undefined, 'Customer administration', 'Open supported product admin views.', Users],
+  ['about', undefined, 'About', 'Version and workspace capabilities.', ShieldCheck],
+  ['pricing', undefined, 'Plans', 'Your deployment and billing availability.', Layers],
+];
 
 export default function HubCommand({ notificationState }) {
   const { canAnimate } = usePlayfulMotion();
@@ -37,15 +53,16 @@ export default function HubCommand({ notificationState }) {
     <header className="editorial-overview__masthead">
       <div><p className="editorial-overview__eyebrow">Hub / Overview</p><h1 id="hub-title">Your operating center</h1>
         <p className="editorial-overview__subtitle">Connection status, reminders, and the tools that own them.</p></div>
-      <OverviewCompanion kind="siren" />
+      <PageArtwork />
       <p className="editorial-overview__asof">Current workspace</p>
     </header>
     <section className="editorial-overview__lead" aria-labelledby="hub-next-title">
       <div><p className="editorial-overview__eyebrow">Next useful action</p><h2 id="hub-next-title">{focus.title}</h2><p>{focus.description}</p>
         <Link className="editorial-overview__primary" to={focus.href}>{focus.label}<span aria-hidden="true"> →</span></Link></div>
-      <div className="editorial-overview__lead-note"><span className="editorial-overview__note-label">Service state</span>
-        <p>Application server · <strong>{connectionLabel}</strong></p>
-        <p>Reminders · <strong>{feedLabel}</strong></p></div>
+      <div className="editorial-overview__lead-note hub-service-note"><span className="editorial-overview__note-label">Workspace signals</span>
+        <p><span>Application server</span><strong data-service-state={serverStatus}>{connectionLabel}</strong></p>
+        <p><span>Reminders</span><strong>{feedLabel}</strong></p>
+        <Link to={featurePath('help', 'diagnostics')}>View diagnostics <span aria-hidden="true">↗</span></Link></div>
     </section>
     <dl className="editorial-overview__facts" aria-label="Hub status summary">
       <div><dt>Application server</dt><dd>{connectionLabel}</dd></div>
@@ -67,16 +84,11 @@ export default function HubCommand({ notificationState }) {
       </section>
       <nav className="editorial-overview__section" aria-label="Hub destinations">
         <p className="editorial-overview__eyebrow">Continue in</p><h2>Tools &amp; settings</h2>
-        <ul className="editorial-overview__links">
-          <li><Link to={featurePath('apps', 'modules')}>All modules <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('profile', 'integrations')}>Connections <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('notifications')}>Notifications <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('ai')}>Agents <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('databases')}>Databases <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('help')}>Helpdesk <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('logs', 'activity')}>Activity logs <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('about')}>About <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('pricing')}>Plans <span aria-hidden="true">↗</span></Link></li>
+        <ul className="hub-destinations">
+          {DESTINATIONS.map(([id, view, label, description, Icon], index) => <li key={id + ':' + (view || '')} data-area-motion="launcher"><Link to={featurePath(id, view)} aria-label={label} aria-describedby={`hub-door-${id}-${view || ''}`}>
+            <span className="hub-destination__icon" data-tone={index % 4}>{React.createElement(Icon, { size: 19, 'aria-hidden': true })}</span>
+            <span><strong>{label}</strong><small id={`hub-door-${id}-${view || ''}`}>{description}</small></span><span className="hub-destination__arrow" aria-hidden="true">↗</span>
+          </Link></li>)}
         </ul>
       </nav>
     </div>

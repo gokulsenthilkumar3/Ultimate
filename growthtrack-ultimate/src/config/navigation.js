@@ -79,7 +79,7 @@ export const GROUPS = {
   wellness: { label: 'Growth', icon: HeartPulse, tabs: ['wellness', 'sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration', 'healthSync'] },
   work: { label: 'Work', icon: BriefcaseBusiness, tabs: ['workspace', 'calendar', 'documents', 'notes', 'tasks', 'projects', 'timesheet', 'skills', 'goals'] },
   life: { label: 'Life', icon: Users, tabs: ['life', 'family', 'social', 'entertainment', 'maps'] },
-  system: { label: 'Platform', icon: LayoutDashboard, tabs: ['hub', 'companion', 'apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
+  system: { label: 'Hub', icon: LayoutDashboard, tabs: ['hub', 'companion', 'apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
 };
 
 export const GROUP_ORDER = ['customers', 'money', 'wellness', 'work', 'life', 'insights', 'system'];
@@ -113,7 +113,7 @@ export function navigationGroups(configured = []) {
     const custom = Array.isArray(configured) ? configured.find(item => item?.id === id) : null;
     return [id, {
       ...group,
-      label: typeof custom?.label === 'string' && custom.label.trim() ? custom.label : group.label,
+      label: ['money', 'system'].includes(id) ? group.label : typeof custom?.label === 'string' && custom.label.trim() ? custom.label : group.label,
       // Configuration may reorder modules, but must never hide built-in destinations.
       tabs: normalizeTabOrder(custom?.tabs, group.tabs),
     }];

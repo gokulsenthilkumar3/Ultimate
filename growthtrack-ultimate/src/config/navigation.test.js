@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalModule, GROUP_ORDER, GROUPS, MODULE_DEFINITIONS, normalizeGroupOrder, ROUTE_ALIASES, TABS } from './navigation';
+import { canonicalModule, GROUP_ORDER, GROUPS, MODULE_DEFINITIONS, navigationGroups, normalizeGroupOrder, ROUTE_ALIASES, TABS } from './navigation';
 
 describe('canonical module registry', () => {
+  it('keeps Finance and Hub names when older configuration supplies the previous labels', () => {
+    const groups = navigationGroups([{ id: 'money', label: 'Money', tabs: ['transactions'] }, { id: 'system', label: 'More' }]);
+    expect(groups.money.label).toBe('Finance');
+    expect(groups.system.label).toBe('Hub');
+    expect(groups.money.tabs[0]).toBe('transactions');
+    expect(groups.money.tabs).toContain('finance');
+  });
   it('gives every navigable module a complete public contract', () => {
     for (const module of MODULE_DEFINITIONS) {
       expect(module.id).toBeTruthy();

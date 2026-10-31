@@ -1,0 +1,14 @@
+.workspace-art { display: block; flex: none; inline-size: clamp(104px, 12vw, 152px); block-size: auto; max-inline-size: 100%; overflow: visible; color: var(--gt-text); pointer-events: none; }
+.workspace-art [data-signal-part='shape'] { transform-box: fill-box; transform-origin: 50% 65%; }
+.hub-frame, .life-frame { min-inline-size: 0; max-inline-size: 100%; }
+:is(.hub-frame, .life-frame) .page-header-block__actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 16px; }
+/* The domain owns entrances, including legacy pages that otherwise fade the entire region. */
+:is(.hub-frame, .life-frame)[data-area-kinetic='true'] :is(.fade-in, .card-enter, .stagger-item) { animation: none; }
+@media (max-width: 600px) {
+  .workspace-art { inline-size: 98px; }
+  :is(.hub-frame, .life-frame) .page-header-block__actions { justify-content: flex-start; gap: 10px; }
+}
+@media (forced-colors: active) {
+  .workspace-art { color: CanvasText; }
+  .workspace-art [fill^='var('] { fill: Canvas; }
+}

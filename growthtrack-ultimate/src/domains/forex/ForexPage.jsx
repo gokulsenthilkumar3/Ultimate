@@ -6,6 +6,7 @@ import { apiClient } from '../../lib/apiClient';
 import PageState from '../../components/ui/PageState';
 import { Card, Field, LineChart, Metric, ModuleFrame, ModuleSkeleton, NativeTable, Pagination, QueryMessage, RefreshButton } from '../native/ModuleUI';
 import { dateLabel, downloadText, number, percentage } from '../native/format';
+import SignalArt from '../../components/motion/SignalArt';
 
 const TABS = [{ value: 'models', label: 'Models' }, { value: 'forecast', label: 'Recent & future' }, { value: 'analytics', label: 'Historical' }, { value: 'volatility', label: 'Volatility' }];
 import { MODELS, buildForexSeries, forexCSV } from './forexModel';
@@ -29,7 +30,7 @@ export default function ForexPage({ view = 'models', onViewChange }) {
   const boundedPage = Math.min(page, Math.max(0, Math.ceil(tableRows.length / 25) - 1));
   const selectModel = value => { setChosenModel(value); setPage(0); };
   const selectCurrency = code => { setChosenCurrencies(previous => { const list = previous.length ? previous : selected; return list.includes(code) ? list.length > 1 ? list.filter(item => item !== code) : list : list.length < 6 ? [...list, code] : list; }); setPage(0); };
-  return <ModuleFrame domain="forex" title="Forex Studio" subtitle="Currency research, with room to explore." kind="sunny" view={view} tabs={TABS} onViewChange={next => { setPage(0); onViewChange?.(next); }} actions={<RefreshButton query={view === 'models' ? metadata : history} />}>
+  return <ModuleFrame domain="forex" title="Forex Studio" subtitle="Currency research, with room to explore." kind="sunny" view={view} tabs={TABS} onViewChange={next => { setPage(0); onViewChange?.(next); }} artwork={<SignalArt kind="exchange" />} actions={<RefreshButton query={view === 'models' ? metadata : history} />}>
     <QueryMessage query={metadata} />
     {metadata.isPending ? <ModuleSkeleton label="Loading Forex models and currencies" /> : metadata.data && <>
       <div className="native-metrics"><Metric label="Saved models" value={models.length} detail="Loaded in the Forex service" /><Metric label="Currencies in the dataset" value={available.length} detail={`${number(metadata.data.rows, 0)} historical rows`} /><Metric label="Dataset through" value={dateLabel(metadata.data.dateTo)} detail={`Starts ${dateLabel(metadata.data.dateFrom)}`} /></div>

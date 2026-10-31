@@ -33,8 +33,8 @@ export default function FloatingPillDock({ activeTab }) {
         <SelectionHighlight id={`${id}-dock`} active={activeGroup === area.id} /><Icon size={21} aria-hidden="true" /><span>{area.label}</span>
       </Link>; })}
       <button type="button" className={!quickAreas.some(area => area.id === activeGroup) ? 'is-active' : ''}
-        onClick={() => { setQuery(''); setMenuOpen(true); }} aria-label="More" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? `${id}-menu` : undefined}>
-        <Ellipsis size={21} aria-hidden="true" /><span>More</span>
+        onClick={() => { setQuery(''); setMenuOpen(true); }} aria-label="Hub" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? `${id}-menu` : undefined}>
+        <Ellipsis size={21} aria-hidden="true" /><span>Hub</span>
       </button>
     </nav>
     {open && <div className="gt-mobile-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setMenuOpen(false); }}>

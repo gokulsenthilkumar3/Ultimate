@@ -2,7 +2,7 @@
 .app-hub-shell > * { min-width: 0; }
 .app-hub-shell button, .app-hub-shell input { font: inherit; }
 .app-hub-shell button { cursor: pointer; }
-.app-hub-shell .app-hub-hero { padding: clamp(24px, 4vw, 44px); align-items: center; gap: 28px; background: radial-gradient(ellipse at top right, var(--accent-soft), transparent 65%), var(--ui-panel-solid) !important; }
+.app-hub-shell .app-hub-hero { padding: clamp(24px, 4vw, 44px); align-items: center; gap: 28px; border-block-start: 3px solid var(--gt-character-lilac); background: var(--ui-panel-solid) !important; }
 .app-hub-hero h1 { font-size: clamp(2.4rem, 4vw, 3.4rem); margin: 8px 0 12px; letter-spacing: -.055em; line-height: 1.1; }
 .app-hub-title-dot { color: var(--accent); }
 .app-hub-hero .app-hub-copy { max-width: 440px; color: var(--text-2); }

@@ -2,7 +2,7 @@
   "version": 2,
   "scope": "Every production feature and view, including customer administration. Demo adds four public pages.",
   "featureCount": 61,
-  "viewCount": 197,
+  "viewCount": 201,
   "routes": [
     {
       "id": "finance",
@@ -181,10 +181,12 @@
     {
       "id": "equity",
       "currentPath": "/finance/equity",
-      "label": "Equity Lens",
+      "label": "NiftyLens",
       "area": "finance",
       "views": [
         "charts",
+        "movers",
+        "connection",
         "indices",
         "options",
         "chain"
@@ -733,9 +735,11 @@
       "area": "life",
       "views": [
         "tree",
+        "people",
         "memories",
         "vault",
-        "timeline"
+        "timeline",
+        "access"
       ],
       "destination": "/life/family",
       "scope": "approved shell; native portal migration still requires parity",

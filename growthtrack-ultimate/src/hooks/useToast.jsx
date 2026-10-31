@@ -3,8 +3,10 @@ import { CheckCircle, AlertCircle, Info, X, AlertTriangle, Trash2, Pencil } from
 import { m } from 'framer-motion';
 import { useKinetic } from '../components/motion/KineticContext';
 import { emitCelebration } from '../components/motion/ConfettiHost';
+import { FEEDBACK_SPRING } from '../components/motion/motionLanguage';
 
 const ToastContext = createContext(null);
+const Surface = m.div;
 
 const ICONS = {
   success: CheckCircle,
@@ -23,13 +25,14 @@ let toastId = 0;
 
 function ToastItem({ item, dismiss }) {
   const { enabled, canAnimate, tier } = useKinetic();
-  const Surface = enabled ? m.div : 'div';
   const DefaultIcon = ICONS[item.type] || Info;
   const Icon = item.kind === 'crud' ? (ACTION_ICONS[item.actionType] || DefaultIcon) : DefaultIcon;
 
   return (
     <Surface
-      {...(enabled ? { initial: canAnimate && tier > 0 ? { opacity: 0, y: 12 } : false, animate: { opacity: 1, y: 0 }, transition: { duration: canAnimate && tier > 0 ? .32 : 0, ease: [.22, 1, .36, 1] } } : {})}
+      initial={enabled && canAnimate && tier > 0 ? { opacity: .45, x: item.kind === 'error' ? 0 : 12, y: item.kind === 'error' ? -10 : item.kind === 'notification' ? 0 : 14, rotate: item.kind === 'crud' ? 1 : 0, scale: .98 } : false}
+      animate={{ opacity: 1, x: 0, y: 0, rotate: 0, scale: 1 }}
+      transition={enabled && canAnimate && tier > 0 ? { ...FEEDBACK_SPRING, opacity: { duration: .16 } } : { duration: 0 }}
       className="app-toast"
       data-kind={item.kind}
       data-tone={item.type}

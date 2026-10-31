@@ -1,3 +1,4 @@
+import Tabs from './ui/Tabs';
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useRef } from 'react';
 import StatTile from './ui/StatTile';
@@ -283,7 +284,7 @@ function ShoppingWorkspace() {
       )}
 
       {/* Filters */}
-      <div className="shopping-stage-tabs" role="tablist" aria-label="Purchase timeline">{['future','ordered','arriving','purchased','all'].map(stage => <button key={stage} role="tab" aria-selected={stageFilter === stage} className={stageFilter === stage ? 'active' : ''} onClick={() => { setStageFilter(stage); if (stage === 'purchased') setShowDone(true); }}>{stage === 'future' ? 'Need later' : stage.charAt(0).toUpperCase() + stage.slice(1)}</button>)}</div>
+      <Tabs label="Purchase timeline" tabs={['future', 'ordered', 'arriving', 'purchased', 'all'].map(value => ({ value, label: value === 'future' ? 'Need later' : value[0].toUpperCase() + value.slice(1) }))} value={stageFilter} onChange={stage => { setStageFilter(stage); if (stage === 'purchased') setShowDone(true); }} />
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: '160px' }}>
           <Search size={12} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />

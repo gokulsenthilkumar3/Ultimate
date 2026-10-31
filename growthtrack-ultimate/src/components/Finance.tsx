@@ -2,7 +2,7 @@ import { Suspense, useCallback, useMemo } from 'react';
 import lazy from '../app/lazyPage';
 import PageHeader from './ui/PageHeader';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CalendarDays } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import type { FinanceBudget as Budget, FinanceTransaction as Transaction, FinanceState, Subscription } from '../utils/financeModel';
@@ -11,7 +11,6 @@ import { saveFinanceBudget, saveFinanceSubscription, saveFinanceTransaction, del
 import { fmtINR } from '../utils/finance';
 import { getCurrencySymbol } from '../utils/userFormatters';
 import LoadingSkeleton from './ui/LoadingSkeleton';
-import { OverviewCompanion } from './motion/CharacterScene';
 import usePlayfulMotion from '../hooks/usePlayfulMotion';
 import '../styles/finance.css';
 import './finance/finance.css';
@@ -107,9 +106,10 @@ export default function Finance({ initialTab }: FinanceProps) {
   if (loadError) return <div className="finance-workspace"><div role="alert" className="finance-error"><p>Finance records could not be loaded. {financeError(loadError)}</p><button type="button" className="btn-primary" onClick={() => void fetchInitialData?.().catch(error => toast.error(financeError(error)))}>Retry loading records</button></div></div>;
 
   return <div className={'module-page finance-container finance-workspace' + (activeTab === 'Overview' ? ' playful-finance' : '')} data-finance-module={activeTab} data-playful-motion={String(canAnimate)}>
-    <PageHeader accent="Finance" title={activeTab === 'Overview' ? 'Your money, in focus' : activeTab === 'Analytics' ? 'Finance analytics' : activeTab === 'Trends' ? 'Finance trends' : activeTab === 'Sync' ? 'Finance sync' : activeTab} subtitle={FINANCE_COPY[activeTab]} actions={activeTab === 'Overview' ? <OverviewCompanion kind="snip" /> : undefined} />
+    <PageHeader accent="Finance" title={activeTab === 'Overview' ? 'Your money, in focus' : activeTab === 'Analytics' ? 'Finance analytics' : activeTab === 'Trends' ? 'Finance trends' : activeTab === 'Sync' ? 'Finance sync' : activeTab} subtitle={FINANCE_COPY[activeTab]} />
     {invalidRecords > 0 && <p role="alert" className="finance-error">{invalidRecords} finance records have invalid fields and are excluded from calculations. Review the source records before relying on totals.</p>}
-    {periodModule && <div className="finance-controls">
+    {periodModule && <div className="finance-controls finance-period-toolbar">
+      <div className="finance-period-context"><span className="finance-period-icon" aria-hidden="true"><CalendarDays size={19} /></span><span><strong>{monthLabel(month)}</strong><small>{month === currentMonth ? 'Current month · recorded activity' : month > currentMonth ? 'Future period · recorded entries' : 'Past period · recorded entries'}</small></span></div>
       <label className="finance-field">Period<select className="form-input" value={month} onChange={event => query('month', event.target.value)}>{knownMonths.map(value => <option key={value} value={value}>{monthLabel(value)}</option>)}</select></label>
       {activeTab === 'Analytics' && <>
         <label className="finance-field">Analysis category<select className="form-input" value={category} onChange={event => query('category', event.target.value)}><option value="">All categories</option>{[...new Set(transactions.map(row => row.category))].sort().map(value => <option key={value}>{value}</option>)}</select></label>

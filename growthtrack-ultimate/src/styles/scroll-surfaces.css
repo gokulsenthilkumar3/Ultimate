@@ -1,0 +1,32 @@
+/* Hide both browser rails throughout the portal. Overflow, focus and native input stay native. */
+html[data-ui-style], [data-ui-style] body, [data-ui-style] body * { scrollbar-width: none; scrollbar-gutter: auto; -ms-overflow-style: none; }
+html[data-ui-style]::-webkit-scrollbar, [data-ui-style] body::-webkit-scrollbar, [data-ui-style] body *::-webkit-scrollbar { display: none; inline-size: 0; block-size: 0; width: 0; height: 0; }
+
+.gt-scroll-cues { position: relative; min-inline-size: 0; max-inline-size: 100%; }
+.gt-scroll-cues::before, .gt-scroll-cues::after { content: ''; position: absolute; z-index: 3; top: 4px; bottom: 4px; inline-size: 18px; pointer-events: none; opacity: 0; }
+.gt-scroll-cues::before { left: 0; border-radius: 12px 0 0 12px; background: linear-gradient(90deg, color-mix(in srgb, var(--gt-text) 16%, transparent), transparent); }
+.gt-scroll-cues::after { right: 0; border-radius: 0 12px 12px 0; background: linear-gradient(-90deg, color-mix(in srgb, var(--gt-text) 16%, transparent), transparent); }
+.gt-scroll-cues[data-scroll-left='true']::before, .gt-scroll-cues[data-scroll-right='true']::after { opacity: 1; }
+.workspace-subnav__scroll { flex: 1; }
+.gt-overflow-rail { display: flex; align-items: center; gap: 6px; min-inline-size: 0; max-inline-size: 100%; }
+.gt-overflow-rail__items { flex: 1; min-inline-size: 0; max-inline-size: 100%; }
+.gt-overflow-rail [data-overflow-items] { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; overscroll-behavior-inline: contain; scroll-padding-inline: 10px; }
+.gt-overflow-rail__control { display: grid; place-items: center; flex: none; inline-size: 44px; min-block-size: 44px; padding: 0; border: 1px solid var(--gt-border-strong); border-radius: 12px; background: var(--gt-surface); color: var(--gt-text); cursor: pointer; box-shadow: 0 2px 0 color-mix(in srgb, var(--gt-text) 8%, transparent); }
+.gt-overflow-rail__control[hidden] { display: none; }
+.gt-overflow-rail__control:disabled { opacity: .35; cursor: default; box-shadow: none; }
+.gt-overflow-rail__control > span { font: 400 28px/1 system-ui; margin-block-start: -2px; }
+.gt-overflow-rail__control:hover:not(:disabled) { background: var(--gt-surface-raised); border-color: var(--gt-text); }
+.gt-overflow-rail__control:focus-visible { outline: 3px solid var(--gt-focus); outline-offset: 2px; }
+.gt-tabs-scroll { margin-block-end: var(--gt-space-4); }
+.gt-tabs-scroll .gt-tabs[data-responsive-foundation] { margin-block-end: 0; flex-wrap: nowrap; }
+.gt-overflow-rail__items > [role='tab'], .gt-overflow-rail__items > a, .gt-overflow-rail__items > button { flex-shrink: 0; }
+.gt-tabs-scroll .gt-tab__copy { text-transform: none; }
+.gt-overflow-rail[data-horizontal='false'] { align-items: stretch; }
+.app-hub-filter-rail { flex-basis: 100%; }
+.gt-overflow-rail > .unified-tabs { flex-wrap: nowrap; margin-block-end: 0; }
+.gt-data-table.gt-scroll-cues::before, .gt-data-table.gt-scroll-cues::after { top: 0; bottom: 0; }
+@media (forced-colors: active) {
+  .gt-scroll-cues::before, .gt-scroll-cues::after { inline-size: 3px; border-radius: 0; background: CanvasText; }
+  .gt-overflow-rail__control { border-color: ButtonText; color: ButtonText; background: ButtonFace; box-shadow: none; }
+  .gt-overflow-rail__control:disabled { color: GrayText; border-color: GrayText; opacity: 1; }
+}

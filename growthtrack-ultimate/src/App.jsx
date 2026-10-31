@@ -7,7 +7,8 @@ import { ToastProvider } from './hooks/useToast';
 import ErrorBoundary from './components/ErrorBoundary';
 import './styles/app-styles.css';
 import { TAB_GROUP_MAP } from './config/navigation';
-import { featurePath, resolveFeatureRoute } from './config/featureRegistry';
+import { FEATURE_BY_ID, featurePath, resolveFeatureRoute } from './config/featureRegistry';
+import useRoutePreload from './app/useRoutePreload';
 import { getTextDirection } from './utils/userFormatters';
 import useDesignPreferences from './hooks/useDesignPreferences';
 import usePlayfulMotion from './hooks/usePlayfulMotion';
@@ -88,6 +89,12 @@ const LegacyWorkspaceStyles = lazy(() => import('./app/LegacyWorkspaceStyles'));
 const CLASSIC_TOOLS = new Set(['sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'assessment', 'training', 'strength', 'nutrition', 'hydration', 'skills', 'goals', 'portfolio', 'shopping', 'tasks', 'projects', 'social', 'entertainment', 'databases', 'logs', 'profile', 'timesheet', 'documents', 'current']);
 const CustomerAdminPage = lazy(() => import('./domains/customer-admin/CustomerAdminPage'));
 const InsightsHub = lazy(() => import('./components/InsightsHub'));
+const InsightsMotion = lazy(() => import('./domains/insights/InsightsMotion'));
+const HubPresentation = lazy(() => import('./domains/hub/HubPresentation'));
+const LifePresentation = lazy(() => import('./domains/life/LifePresentation'));
+const ModulePresentation = lazy(() => import('./components/motion/ModulePresentation'));
+const FloatingCompanion = lazy(() => import('./components/motion/FloatingCompanion'));
+const PRESENTATIONS = { insights: InsightsMotion, hub: HubPresentation, life: LifePresentation, finance: ModulePresentation, wellness: ModulePresentation, workspace: ModulePresentation };
 const UnifiedWorkspace = lazy(() => import('./components/UnifiedWorkspace'));
 const OnboardingWizard = lazy(() => import('./components/OnboardingWizard'));
 const SettingsModal = lazy(() => import('./components/SettingsModal'));
@@ -104,10 +111,20 @@ function preloadFeature(id) {
     : ['analytics', 'dashboards', 'forecast', 'progress'].includes(id) ? InsightsHub
     : ['customers', 'finsync', 'oxfin'].includes(id) ? CustomerAdminPage
     : MODULE_COMPONENTS[id];
-  return Page?.preload().then(module => module.default.preloadTab?.(FINANCE_VIEWS[id] || id));
+  return Promise.all([
+    Page?.preload().then(module => module.default.preloadTab?.(FINANCE_VIEWS[id] || id)),
+    PRESENTATIONS[FEATURE_BY_ID[id]?.area]?.preload(),
+    CLASSIC_TOOLS.has(id) ? LegacyWorkspaceStyles.preload() : undefined,
+  ]);
 }
 
-function ModulePage({ feature, view, user, theme, setActiveTab, notificationState, onOpenCheckIn, onDismissCheckIn, checkInAvailable }) {
+function ModulePage(props) {
+  const page = <ModuleContent {...props} />;
+  const Presentation = PRESENTATIONS[props.feature.area];
+  return Presentation ? <Presentation area={props.feature.area} page={props.feature.id} view={props.view}>{page}</Presentation> : page;
+}
+
+function ModuleContent({ feature, view, user, theme, setActiveTab, notificationState, onOpenCheckIn, onDismissCheckIn, checkInAvailable }) {
   if (FINANCE_VIEWS[feature.id]) return <Finance initialTab={FINANCE_VIEWS[feature.id]} />;
   if (['analytics', 'dashboards', 'forecast', 'progress'].includes(feature.id)) return <InsightsHub initialTab={feature.id} logs={useStore.getState().metric_logs} />;
   if (['customers', 'finsync', 'oxfin'].includes(feature.id)) return <CustomerAdminPage product={feature.id === 'customers' ? undefined : feature.id} />;
@@ -145,20 +162,8 @@ export default function App() {
   const lastCheckIn = useStore(state => state.lastCheckIn);
   const checkInAlertDismissedDate = useStore(state => state.checkInAlertDismissedDate);
   const setCheckInAlertDismissedDate = useStore(state => state.setCheckInAlertDismissedDate);
-  const { theme, reducedMotion, uiStyle = 'kinetic' } = useDesignPreferences();
+  const { theme, reducedMotion, uiStyle = 'kinetic', companionEnabled = true } = useDesignPreferences();
   const kinetic = useKinetic();
-  const warmedRoutes = useRef(new Set());
-  const warmLink = event => {
-    if (kinetic.tier === 0) return;
-    const link = event.target.closest?.('a[href]');
-    if (!link) return;
-    const url = new URL(link.href, window.location.origin);
-    if (url.origin !== window.location.origin) return;
-    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-    const pathname = url.pathname.startsWith(base + '/') ? url.pathname.slice(base.length) : url.pathname;
-    const target = resolveFeatureRoute(pathname, url.search, url.hash).feature;
-    if (target && !warmedRoutes.current.has(target.id)) { warmedRoutes.current.add(target.id); void preloadFeature(target.id)?.catch(() => warmedRoutes.current.delete(target.id)); }
-  };
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [loadedSessionId, setLoadedSessionId] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -178,6 +183,7 @@ export default function App() {
   const route = resolveFeatureRoute(location.pathname, location.search, location.hash);
   const activeTab = route.feature?.id || storeActiveTab;
   const publicPage = PUBLIC_PAGES[location.pathname];
+  const preloadEvents = useRoutePreload({ ready: Boolean(session && !publicPage && initialDataReady), tier: kinetic.tier, preload: preloadFeature });
   useEffect(() => { document.documentElement.dataset.playfulMotion = String(canAnimate); }, [canAnimate]);
   const todayStr = userDateKey(user || {});
   const requestLogout = async () => {
@@ -254,12 +260,6 @@ export default function App() {
     void preloadFeature(route.feature.id)?.catch(() => {});
   }, [session, publicPage, route.feature, route.redirect]);
   useEffect(() => {
-    if (!session || publicPage || !initialDataReady || kinetic.tier === 0) return;
-    const warm = () => { for (const id of ['overview', 'actions', 'tasks']) { if (!warmedRoutes.current.has(id)) { warmedRoutes.current.add(id); void preloadFeature(id)?.catch(() => warmedRoutes.current.delete(id)); } } };
-    const idle = window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 4000 }) : setTimeout(warm, 1800);
-    return () => { if (window.cancelIdleCallback) window.cancelIdleCallback(idle); else clearTimeout(idle); };
-  }, [session, publicPage, initialDataReady, kinetic.tier]);
-  useEffect(() => {
     queryClient.clear();
     resetSessionData();
     setLoadedSessionId(null);
@@ -269,11 +269,16 @@ export default function App() {
   useEffect(() => {
     if (!session || publicPage) return undefined;
     let disposed = false;
+    let readyTimer;
     setLoadError(null);
-    fetchInitialData().then(() => { if (!disposed) setLoadedSessionId(sessionId); }).catch(error => { if (!disposed) setLoadError(error); });
+    fetchInitialData().then(() => {
+      // Give the snapshot's shell update its own task before committing the selected page.
+      // This keeps one large startup commit from blocking input; no fixed loading delay is added.
+      if (!disposed) readyTimer = setTimeout(() => { if (!disposed) setLoadedSessionId(sessionId); }, 0);
+    }).catch(error => { if (!disposed) setLoadError(error); });
     void checkServerHealth();
     const interval = setInterval(checkServerHealth, TIMING.SERVER_HEALTH_POLL_MS);
-    return () => { disposed = true; clearInterval(interval); };
+    return () => { disposed = true; clearTimeout(readyTimer); clearInterval(interval); };
   }, [session, sessionId, publicPage, fetchInitialData, checkServerHealth]);
   const textDirection = getTextDirection(user);
   useEffect(() => { document.documentElement.setAttribute('dir', textDirection); }, [textDirection]);
@@ -300,7 +305,7 @@ export default function App() {
     </Suspense>
     <div className="app-shell" dir={textDirection} data-theme={theme} data-palette={palette} data-density={density} data-reduced-motion={String(reducedMotion)} data-playful-motion={String(canAnimate)} data-active-tab={activeTab} data-sidebar-collapsed={sidebarCollapsed} data-ui-system="editorial" data-ui-style={uiStyle} data-design-revision={uiStyle === 'kinetic' ? 'kinetic-workspace-v4' : 'character-workspace-v3'} data-domain={group}>
       <a className="skip-to-content" href="#main-content">Skip to content</a>
-      <div className="main-area" onPointerOver={warmLink} onFocusCapture={warmLink}>
+      <div className="main-area" {...preloadEvents}>
         <Header activeTab={activeTab} setActiveTab={setActiveTab} user={user} theme={theme} setTheme={useStore.getState().setTheme} serverStatus={serverStatus} unreadCount={notificationState.unreadCount} onOpenSettings={() => setShowSettings(true)} onOpenNotifications={() => setActiveTab('notifications')} />
         <main ref={pageRef} id="main-content" className="content-area" tabIndex={-1} aria-busy={isLoading} data-page-template={route.feature?.template}>
           <WorkspaceChapter activeTab={activeTab} />
@@ -312,6 +317,7 @@ export default function App() {
         </main>
         <PremiumSidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} onOpenSettings={() => setShowSettings(true)} onLogout={requestLogout} />
         <FloatingPillDock activeTab={activeTab} onTabChange={setActiveTab} />
+        {initialDataReady && companionEnabled && <ErrorBoundary resetKey={activeTab} fallback={<></>}><Suspense fallback={null}><FloatingCompanion /></Suspense></ErrorBoundary>}
       </div>
     </div>
   </ToastProvider></ErrorBoundary>;

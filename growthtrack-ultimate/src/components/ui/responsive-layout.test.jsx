@@ -35,7 +35,7 @@ const content = renderToStaticMarkup(<PageTemplate type="record" title="Transact
 // cover the actual navigation components separately, without requiring the app/backend.
 function shell(dir = 'ltr', collapsed = false, width = 1280) {
   const navigation = width < 640
-    ? `<div class="gt-mobile-navigation" data-responsive-foundation><nav class="gt-mobile-dock">${['Finance', 'Insights', 'Wellness', 'Workspace'].map(label => `<a href="#"><span>${label}</span></a>`).join('')}<button>More</button></nav></div>`
+    ? `<div class="gt-mobile-navigation" data-responsive-foundation><nav class="gt-mobile-dock">${['Finance', 'Insights', 'Wellness', 'Workspace'].map(label => `<a href="#"><span>${label}</span></a>`).join('')}<button>Hub</button></nav></div>`
     : `<aside class="gt-app-navigation" data-mode="${width < 1440 ? 'compact' : 'desktop'}" data-responsive-foundation data-collapsed="${collapsed}"><div class="gt-navigation-rail"><a href="#">Finance</a><button>Modules</button></div></aside>`;
   return `<style>html,body{margin:0;font-family:Arial,sans-serif}button{font:inherit}</style><style>${css}</style>
   <div class="app-shell" dir="${dir}" data-ui-system="v3"><div class="main-area"><header class="app-header">Header</header><nav class="command-subnav">Legacy strip</nav><main class="content-area">${content}</main></div>

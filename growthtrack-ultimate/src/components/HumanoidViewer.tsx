@@ -1,3 +1,4 @@
+import OverflowRail from './ui/OverflowRail';
 /**
  * HumanoidViewer.tsx — Mirror Chamber v3.0
  *
@@ -1173,7 +1174,7 @@ function PersonViewer() {
               <button type="button" className="chamber-pill chamber-icon-button" aria-label="Close avatar controls" onClick={() => setShowEditor(false)}><X size={16} /></button>
             </div>
             {/* Editor tabs */}
-            {studioOpen && <div className="chamber-editor__tabs" role="tablist" aria-label="Avatar editor" onKeyDown={event => {
+            {studioOpen && <OverflowRail label="Avatar editor" className="chamber-editor__tabs" role="tablist" aria-label="Avatar editor" onKeyDown={(event: React.KeyboardEvent<HTMLElement>) => {
               const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
               const index = buttons.indexOf(event.target as HTMLButtonElement);
               if (index < 0 || !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
@@ -1203,7 +1204,7 @@ function PersonViewer() {
                   <span>{tab.label}</span>
                 </button>
               ))}
-            </div>}
+            </OverflowRail>}
 
             <div className="chamber-editor__body" id="avatar-editor-panel" role={studioOpen ? 'tabpanel' : 'region'} aria-label={!studioOpen ? 'Body measurements' : undefined} aria-labelledby={studioOpen ? `avatar-editor-tab-${editorTab}` : undefined} tabIndex={0}>
               <Suspense fallback={<p className="avatar-panel-loading" role="status">Opening controls…</p>}>

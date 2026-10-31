@@ -4,6 +4,7 @@ import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import { PRODUCTS, productById } from '../config/products';
 import '../styles/unified-workspace.css';
 import PageHeader from './ui/PageHeader';
+import OverflowRail from './ui/OverflowRail';
 import { featurePath } from '../config/featureRegistry';
 
 export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) {
@@ -49,13 +50,13 @@ export default function UnifiedWorkspace({ defaultApp = 'matrix', onNavigate }) 
   return <section className="unified-workspace" aria-label="Ultimate companion integration">
     <PageHeader accent="Apps Suite" title={selected ? selected.name : 'Apps Suite'} subtitle={selected ? selected.description : 'NiftyLens, Family Connect and Forex now live in Ultimate. Customer products keep their own applications.'} actions={<button type="button" className="unified-action-btn" onClick={refreshHealth}><RefreshCw size={14} /> Refresh status</button>} />
 
-    <nav className="unified-tabs" aria-label="Companion products">
+    <OverflowRail as="nav" label="Companion products" className="unified-tabs" aria-label="Companion products">
       <button type="button" className={`unified-tab-btn ${!selected ? 'is-active' : ''}`} aria-current={!selected ? 'page' : undefined} onClick={() => select('matrix')}>All products</button>
       {PRODUCTS.map(product => <button type="button" key={product.id}
         className={`unified-tab-btn ${activeTab === product.id ? 'is-active' : ''}`}
         aria-current={activeTab === product.id ? 'page' : undefined}
         onClick={() => select(product.id)}>{product.icon} {product.name}</button>)}
-    </nav>
+    </OverflowRail>
 
     {healthError && <p className="unified-health-error" role="status">Service status is unavailable. Ultimate routes remain usable.</p>}
     {customerAdmin ? <section className="unified-product-view" aria-label={`${selected.name} administration`}>

@@ -1,15 +1,15 @@
 import { useSyncExternalStore } from 'react';
 
 export const KINETIC_PREFERENCE_KEY = 'growthtrack.presentation.v5';
-type Preferences = { style: 'kinetic' | 'playful'; lite: boolean };
-const defaults: Preferences = { style: 'kinetic', lite: false };
+type Preferences = { style: 'kinetic' | 'playful'; lite: boolean; companion: boolean };
+const defaults: Preferences = { style: 'kinetic', lite: false, companion: true };
 let cached: Preferences | undefined;
 const listeners = new Set<() => void>();
 function read(): Preferences {
   if (cached) return cached;
   try {
     const saved = JSON.parse(localStorage.getItem(KINETIC_PREFERENCE_KEY) || '{}');
-    cached = { style: saved.style === 'playful' ? 'playful' : 'kinetic', lite: saved.lite === true };
+    cached = { style: saved?.style === 'playful' ? 'playful' : 'kinetic', lite: saved?.lite === true, companion: saved?.companion !== false };
   } catch { cached = defaults; }
   return cached!;
 }

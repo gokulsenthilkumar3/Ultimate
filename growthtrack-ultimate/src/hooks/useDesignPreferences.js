@@ -28,5 +28,5 @@ export default function useDesignPreferences() {
     root.style.colorScheme = theme === 'light' ? 'light' : 'dark';
     root.style.backgroundColor = '';
   }, [theme, palette, reducedMotion, presentation.style]);
-  return { theme, reducedMotion, uiStyle: presentation.style };
+  return { theme, reducedMotion, uiStyle: presentation.style, companionEnabled: presentation.companion };
 }

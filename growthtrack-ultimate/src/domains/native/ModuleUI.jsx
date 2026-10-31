@@ -11,13 +11,13 @@ import usePlayfulMotion from '../../hooks/usePlayfulMotion';
 import './native-modules.css';
 import { number, dateLabel } from './format';
 
-export function ModuleFrame({ domain, title, subtitle, kind, view, tabs, onViewChange, children, actions }) {
+export function ModuleFrame({ domain, title, subtitle, kind, view, tabs, onViewChange, children, actions, artwork = null }) {
   const ref = useRef(null), id = useId();
   const { canAnimate } = usePlayfulMotion();
   const { enabled } = useKinetic();
   usePageEntrance(ref, view);
-  return <section ref={ref} className={`module-page native-module native-module--${domain}`} data-motion={String(canAnimate)} data-playful-motion={String(canAnimate)}>
-    <PageHeader accent={domain === 'family' ? 'Life · Family Connect' : domain === 'equity' ? 'Finance · NiftyLens' : 'Finance · Forex'} title={title} subtitle={subtitle} actions={<div className="native-actions">{actions}{!enabled && <MotionToggle compact />}</div>} />
+  return <section ref={ref} className={`module-page native-module native-module--${domain}`} data-insight-view={domain === 'forex' ? view : undefined} data-motion={String(canAnimate)} data-playful-motion={String(canAnimate)}>
+    <PageHeader accent={domain === 'family' ? 'Life · Family Connect' : domain === 'equity' ? 'Finance · NiftyLens' : 'Finance · Forex'} title={title} subtitle={subtitle} actions={<div className="native-actions">{artwork}{actions}{!enabled && <MotionToggle compact />}</div>} />
     <div className="native-hero" data-native-enter>
       <div><span className="native-eyebrow">{domain === 'family' ? 'A little closer, every day' : domain === 'equity' ? 'A clearer view of the market' : 'Follow the signal'}</span><h2>{domain === 'family' ? 'Your people. Your story.' : domain === 'equity' ? 'Less noise. More perspective.' : 'Make room for a wider view.'}</h2><p>{domain === 'family' ? 'Keep generations, milestones and memories together.' : domain === 'equity' ? 'Explore your market snapshot, one thoughtful detail at a time.' : 'Explore saved models and currency history in your workspace.'}</p><span className="native-hero__stamp">{domain === 'family' ? 'GROW TOGETHER' : domain === 'equity' ? 'STAY CURIOUS' : 'LOOK A LITTLE CLOSER'} <span aria-hidden="true">↗</span></span></div>
       <div className="native-hero__art"><span className="native-hero__orbit" /><span className="native-hero__spark" aria-hidden="true">✳</span><CharacterScene kind={kind} /></div>

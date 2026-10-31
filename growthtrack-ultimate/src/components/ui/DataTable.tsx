@@ -1,6 +1,7 @@
 import React, { startTransition, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import PageState from './PageState';
 import useVirtualTableRows from '../../hooks/useVirtualTableRows';
+import useScrollEdges from '../../hooks/useScrollEdges';
 
 export interface DataColumn<T> {
   id: string; header: ReactNode; accessor: (row: T) => string | number | null | undefined;
@@ -38,11 +39,13 @@ export default function DataTable<T>({ caption, rows, columns, rowKey, rowLabel 
     });
   }, [rows, columns, sort, manualSort]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollFrame = useRef<HTMLElement>(null);
+  useScrollEdges(scrollRef, scrollFrame, `${state}:${Boolean(rows.length)}`);
   const virtual = useVirtualTableRows(sortedRows, rowKey, scrollRef, state === 'ready');
   const select = (key: string, checked: boolean) => onSelectionChange?.(checked ? [...new Set([...selectedKeys, key])] : selectedKeys.filter(item => item !== key));
   const allSelected = rows.length > 0 && rows.every(row => selectedKeys.includes(rowKey(row)));
   const partlySelected = !allSelected && rows.some(row => selectedKeys.includes(rowKey(row)));
-  return <section className="gt-data-table" data-responsive-foundation data-state={state}>
+  return <section ref={scrollFrame} className="gt-data-table gt-scroll-cues" data-responsive-foundation data-state={state}>
     {state !== 'ready' && <PageState state={state} onRetry={state === 'loading' ? undefined : onRetry} />}
     {state === 'ready' && !rows.length && <PageState state="empty" title="No records" description={emptyMessage} />}
     {state === 'ready' && rows.length > 0 && <div ref={scrollRef} className="gt-data-table__scroll" role="region" aria-labelledby={`${id}-caption`} tabIndex={0} style={virtual.active ? { maxHeight: 560, overflow: 'auto' } : undefined}>

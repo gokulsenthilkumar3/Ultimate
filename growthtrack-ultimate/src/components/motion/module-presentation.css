@@ -1,0 +1,21 @@
+/* Domain surfaces share a frame; each owner keeps its forms, tables and layouts. */
+.module-frame { min-inline-size: 0; --module-accent: var(--gt-character-mint); --module-tint: color-mix(in srgb, var(--module-accent) 9%, var(--gt-surface)); }
+.module-frame[data-module-area='wellness'] { --module-accent: var(--gt-character-yellow); }
+.module-frame[data-module-area='workspace'] { --module-accent: var(--gt-character-lilac); }
+.module-frame[data-area-kinetic='true'] :is(.fade-in, .card-enter, .stagger-item) { animation: none; }
+.module-frame[data-area-kinetic='true'] :is(.gt-editorial-header, .page-header) { padding-block-end: 22px; border-block-end: 1px solid var(--gt-border); margin-block-end: 22px; }
+.module-frame[data-area-kinetic='true'] :is(.gt-editorial-header__title, .editorial-overview__masthead h1) { letter-spacing: -.04em; text-wrap: balance; }
+.module-frame[data-area-kinetic='true'] :where(.glass-card, .gt-card, .native-card) { border: 1px solid var(--gt-border); border-radius: 18px; background: var(--gt-surface); box-shadow: 0 3px 0 color-mix(in srgb, var(--module-accent) 15%, transparent); }
+.module-frame[data-area-kinetic='true'] :is(.native-metric, .stat-card) { border-block-start: 3px solid var(--module-accent); }
+.module-frame[data-area-kinetic='true'] .gt-page-state { border-inline-start: 3px solid var(--module-accent); background: var(--module-tint); }
+.module-frame[data-area-kinetic='true'] .gt-tabs { background: var(--module-tint); }
+.module-frame[data-area-kinetic='true'] :is(.finance-chart-heading, .finance-card-heading) { border-block-end-color: color-mix(in srgb, var(--module-accent) 30%, var(--gt-border)); }
+@media (max-width: 600px) {
+  .module-frame[data-area-kinetic='true'] .gt-editorial-header { padding-block-start: 0; }
+  .module-frame[data-module-area='finance'] .gt-editorial-header .workspace-art { display: none; }
+  .module-frame[data-module-area='finance'] .page-header-block__actions:has(> .workspace-art:only-child) { display: none; }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .module-frame[data-area-animate='true'] :is(.native-card, .gt-card):has(> a):hover { border-color: var(--gt-border-strong); box-shadow: 0 5px 0 color-mix(in srgb, var(--module-accent) 24%, transparent); }
+}
+@media (forced-colors: active) { .module-frame :is(.glass-card, .gt-card, .native-card) { box-shadow: none; border-color: CanvasText; } }

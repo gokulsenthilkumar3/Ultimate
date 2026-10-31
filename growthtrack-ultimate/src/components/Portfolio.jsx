@@ -1,3 +1,4 @@
+import Tabs from './ui/Tabs';
 import PageHeader from './ui/PageHeader';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
@@ -6,7 +7,7 @@ import { Plus, Trash2, Edit3, DollarSign, RefreshCw } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
-import { handleTabKeyDown } from '../hooks/useHashTab';
+
 import { formatCurrency } from '../utils/userFormatters';
 import { localDateKey } from '../lib/metricSeries';
 import { finiteObservation, observationDate } from '../utils/projectGoal';
@@ -215,9 +216,7 @@ export default function Portfolio() {
       {[['Recorded cost', totalCost], ['Dated value', totalValue], ['Unrealized difference', totalDifference]].map(([label, value]) => <div key={label} className={label === 'Recorded cost' ? 'glass-card portfolio-metric--covered' : 'glass-card'}><p>{label}</p><strong>{money(value)}</strong></div>)}
     </div>
     {totalValue === null && <p className="text-secondary">Totals appear once every holding has a dated price — connect a source below or enter a dated price.</p>}
-    <div role="tablist" aria-label="Portfolio views" onKeyDown={event => handleTabKeyDown(event, { tabs: PORTFOLIO_TABS, activeTab: tab, selectTab: setTab, idPrefix: 'portfolio-tab' })} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-      {PORTFOLIO_TABS.map(({ id }) => <button key={id} id={'portfolio-tab-' + id} role="tab" type="button" aria-selected={tab === id} aria-controls={'portfolio-' + id + '-panel'} tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)} className="btn-secondary">{id[0].toUpperCase() + id.slice(1)}</button>)}
-    </div>
+    <Tabs label="Portfolio views" idPrefix="portfolio-tab" tabs={PORTFOLIO_TABS.map(({ id }) => ({ value: id, label: id[0].toUpperCase() + id.slice(1), panelId: 'portfolio-' + id + '-panel' }))} value={tab} onChange={setTab} />
     {showAdd && <form id="portfolio-add-form" className="glass-card" onSubmit={event => { event.preventDefault(); handleAdd(); }}>
       <h3>New Holding</h3>{fields(form, setForm)}
       <p className="text-secondary">Leave manual price and snapshot date blank if you only know the purchase cost.</p>

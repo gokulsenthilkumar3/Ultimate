@@ -5,6 +5,7 @@ import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { TrendingUp, Zap, Activity, Heart, Brain, DollarSign, Target, CheckCircle2, Download } from 'lucide-react';
 import useStore from '../store/useStore';
 import { formatMeasurement } from '../utils/userFormatters';
+import SignalArt from './motion/SignalArt';
 
 const TOOLTIP_STYLE = { 
   background: 'var(--bg-glass)', 
@@ -72,6 +73,7 @@ export default function Dashboards() {
     pendingExport.current = true;
     setExporting(true);
     setExportError('');
+    el.dispatchEvent(new Event('insights:still', { bubbles: true }));
     try {
       const { default: html2canvas } = await import('html2canvas');
       if (!el.isConnected || document.getElementById(id) !== el) return;
@@ -85,7 +87,7 @@ export default function Dashboards() {
       if (el.isConnected) setExportError('Dashboard export could not be created. Please try again.');
     } finally {
       pendingExport.current = false;
-      if (el.isConnected) setExporting(false);
+      if (el.isConnected) { el.dispatchEvent(new Event('insights:resume', { bubbles: true })); setExporting(false); }
     }
   };
 
@@ -174,18 +176,18 @@ export default function Dashboards() {
   const goalChartData = Object.values(goalData).map(d => ({ date: d.date, progress: d.progress / d.count })).sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
 
   return (
-    <div id="dashboard-overview" className="fade-in module-page" style={{ padding: '1rem 0' }}>
+    <div id="dashboard-overview" className="module-page insights-dashboard" data-insight-still={String(exporting)}>
       <PageHeader accent="Insights" title="Dashboards" subtitle={<>
             A cleaner command surface for body, habit, finance, and goal signals.
-          </>} actions={<><button className="btn-primary" disabled={exporting} aria-busy={exporting} onClick={() => void handleExport('dashboard-overview', 'growthtrack-dashboard')}>
+          </>} actions={<div className="insights-heading-art"><SignalArt kind="tiles" /><button className="btn-primary" disabled={exporting} aria-busy={exporting} onClick={() => void handleExport('dashboard-overview', 'growthtrack-dashboard')}>
            <Download size={18} /> {exporting ? 'EXPORTING…' : 'EXPORT DASHBOARD'}
-        </button></>} />
+        </button></div>} />
       {exportError && <p role="alert">{exportError}</p>}
 
-      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+      <div className="insights-dashboard__grid">
         
         {/* Bio-Balance Radar */}
-        <div id="chart-radar" className="glass-card" style={{ minHeight: '420px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <div id="chart-radar" className="glass-card insights-chart-card" data-insight="plot" style={{ minHeight: '420px', display: 'flex', flexDirection: 'column' }}>
            <SectionMeta
              icon={Brain}
              title="Physiological Balance"
@@ -214,7 +216,7 @@ export default function Dashboards() {
         </div>
 
         {/* Sleep vs Stress Correlation */}
-        <div id="chart-recovery" className="glass-card" style={{ minHeight: '420px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <div id="chart-recovery" className="glass-card insights-chart-card" data-insight="plot" style={{ minHeight: '420px', display: 'flex', flexDirection: 'column' }}>
            <SectionMeta
              icon={Activity}
              title="Recovery Correlation"
@@ -244,7 +246,7 @@ export default function Dashboards() {
         </div>
 
         {/* Finance Flow */}
-        <div id="chart-finance" className="glass-card" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <div id="chart-finance" className="glass-card insights-chart-card" data-insight="plot" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column' }}>
            <SectionMeta
              icon={DollarSign}
              title="Cash Flow"
@@ -265,7 +267,7 @@ export default function Dashboards() {
         </div>
 
         {/* Habit Consistency */}
-        <div id="chart-habit" className="glass-card" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <div id="chart-habit" className="glass-card insights-chart-card" data-insight="plot" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column' }}>
            <SectionMeta
              icon={CheckCircle2}
              title="Habit Consistency"
@@ -291,7 +293,7 @@ export default function Dashboards() {
         </div>
 
         {/* Goal Progress velocity */}
-        <div id="chart-goal" className="glass-card" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', gridColumn: '1 / -1', position: 'relative' }}>
+        <div id="chart-goal" className="glass-card insights-chart-card" data-insight="plot" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', gridColumn: '1 / -1' }}>
            <SectionMeta
              icon={Target}
              title="Goal Progress Velocity"
@@ -311,8 +313,8 @@ export default function Dashboards() {
         </div>
       </div>
 
-      <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-         <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+      <div className="insights-dashboard__metrics">
+         <div className="glass-card" data-insight="metric" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <Zap size={24} color="var(--accent)" />
             </div>
@@ -324,7 +326,7 @@ export default function Dashboards() {
                <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>Sleep × recovery score</p>
             </div>
          </div>
-         <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+         <div className="glass-card" data-insight="metric" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'rgba(52, 211, 153, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <TrendingUp size={24} color="var(--success)" />
             </div>
@@ -336,7 +338,7 @@ export default function Dashboards() {
                <p style={{ fontSize: '0.65rem', color: 'var(--text-3)', marginTop: '2px' }}>Weight delta · 14-day window</p>
             </div>
          </div>
-         <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+         <div className="glass-card" data-insight="metric" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'rgba(244, 63, 94, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <Heart size={24} color="#f43f5e" />
             </div>

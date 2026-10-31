@@ -12,6 +12,7 @@
 @import './desktop-responsive.css';
 @import './kinetic-layout.css';
 @import './kinetic-motion.css';
+@import './scroll-surfaces.css';
 
 @layer components {
   :root {

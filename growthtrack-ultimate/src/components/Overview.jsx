@@ -9,6 +9,7 @@ import { formatDate, formatNumber } from '../utils/userFormatters';
 import AnimatedNumber from './ui/AnimatedNumber';
 import { useKinetic } from './motion/KineticContext';
 import { Activity, CheckSquare, Moon, Target } from 'lucide-react';
+import SignalArt from './motion/SignalArt';
 
 const EMPTY = Object.freeze([]);
 const asList = value => Array.isArray(value) ? value : EMPTY;
@@ -83,11 +84,11 @@ export default function Overview() {
       <div><p className="editorial-overview__eyebrow">Insights / Overview</p><h1 id="insights-overview-title">Your day, in focus</h1>
         {!enabled && <p className="editorial-overview__subtitle">A clear view of saved work and wellness records.</p>}</div>
       {!enabled && <OverviewCompanion kind="siren" />}
-      <p className="editorial-overview__asof">As of {formatDate(today, user, { style: 'long', weekday: true })}</p>
+      <div className="insights-overview__stamp"><SignalArt kind="focus" /><p className="editorial-overview__asof">As of {formatDate(today, user, { style: 'long', weekday: true })}</p></div>
     </header>
     <div className="kinetic-overview-focus">
-    {enabled && <div className="kinetic-hero-metric" role="group" aria-labelledby="insights-due-label" style={{ '--hero-chars': dueText.length }}><span id="insights-due-label" className="kinetic-hero-metric__label">Tasks due or overdue</span><strong className="kinetic-hero-metric__value"><AnimatedNumber value={due.length} format={value => formatNumber(Math.round(value), user, { maximumFractionDigits: 0 })} /></strong><Link to={featurePath('tasks')}>Review tasks <span aria-hidden="true">↗</span></Link><OverviewCompanion kind="blip" toggle={false} /></div>}
-    <section className="editorial-overview__lead" aria-labelledby="insights-next-title">
+    {enabled && <div className="kinetic-hero-metric" data-insight="focus" role="group" aria-labelledby="insights-due-label" style={{ '--hero-chars': dueText.length }}><span id="insights-due-label" className="kinetic-hero-metric__label">Tasks due or overdue</span><strong className="kinetic-hero-metric__value"><AnimatedNumber value={due.length} format={value => formatNumber(Math.round(value), user, { maximumFractionDigits: 0 })} /></strong><Link to={featurePath('tasks')}>Review tasks <span aria-hidden="true">↗</span></Link><OverviewCompanion kind="blip" toggle={false} /></div>}
+    <section className="editorial-overview__lead" data-insight="tile" aria-labelledby="insights-next-title">
       <div><p className="editorial-overview__eyebrow">Next useful action</p><h2 id="insights-next-title">{focus.title}</h2><p>{focus.description}</p>
         <Link className="editorial-overview__primary" to={focus.href}>{focus.label}<span aria-hidden="true"> →</span></Link></div>
       <div className="editorial-overview__lead-note"><span className="editorial-overview__note-label">On the record</span>
@@ -96,15 +97,15 @@ export default function Overview() {
     </section>
     </div>
     <dl className="editorial-overview__facts" aria-label="Saved record summary">
-      <div><dt><CheckSquare size={18} aria-hidden="true" />Open tasks</dt><dd>{formatNumber(pending.length, user, { maximumFractionDigits: 0 })}</dd></div>
-      <div><dt><Target size={18} aria-hidden="true" />Active goals</dt><dd>{formatNumber(activeGoals.length, user, { maximumFractionDigits: 0 })}</dd></div>
-      <div><dt><Activity size={18} aria-hidden="true" />Saved measurements</dt><dd>{formatNumber(metrics.length, user, { maximumFractionDigits: 0 })}</dd></div>
+      <div data-insight="metric"><dt><CheckSquare size={18} aria-hidden="true" />Open tasks</dt><dd>{formatNumber(pending.length, user, { maximumFractionDigits: 0 })}</dd></div>
+      <div data-insight="metric"><dt><Target size={18} aria-hidden="true" />Active goals</dt><dd>{formatNumber(activeGoals.length, user, { maximumFractionDigits: 0 })}</dd></div>
+      <div data-insight="metric"><dt><Activity size={18} aria-hidden="true" />Saved measurements</dt><dd>{formatNumber(metrics.length, user, { maximumFractionDigits: 0 })}</dd></div>
     </dl>
     <div className="editorial-overview__lower">
       <section className="editorial-overview__section" aria-labelledby="insights-activity-title">
         <div className="editorial-overview__section-heading"><div><p className="editorial-overview__eyebrow">Your recent activity</p><h2 id="insights-activity-title">Latest dated activity</h2></div>
           <Link to={featurePath('analytics')}>Explore analytics</Link></div>
-        {activity.length ? <ol className="editorial-overview__activity">{activity.map(item => <li key={item.key}><Link to={item.href}><item.Icon size={16} aria-hidden="true" />{item.title}</Link><time dateTime={item.date}>{formatDate(item.date, user)}</time></li>)}</ol>
+        {activity.length ? <ol className="editorial-overview__activity insights-activity-trail">{activity.map(item => <li key={item.key} data-insight="trail"><Link to={item.href}><item.Icon size={16} aria-hidden="true" />{item.title}</Link><time dateTime={item.date}>{formatDate(item.date, user)}</time></li>)}</ol>
           : <div className="editorial-overview__empty">{enabled && <OverviewCompanion kind="nova" toggle={false} />}<p>No dated completions or wellness entries yet. Records appear here after you save them.</p></div>}
       </section>
       <nav className="editorial-overview__section" aria-label="Insight destinations">

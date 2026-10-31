@@ -1,10 +1,11 @@
+import Tabs from './ui/Tabs';
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GitBranch, Star, GitFork, ExternalLink, Code2, Clock, Circle, Search, ArrowDownUp, Plus, Trash2, Edit2, Save, X, Check, RefreshCw } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import { useToast } from '../hooks/useToast';
 import useStore from '../store/useStore';
-import { handleTabKeyDown } from '../hooks/useHashTab';
+
 import { formatDate as formatProfileDate } from '../utils/userFormatters';
 
 const LANGUAGE_COLORS = {
@@ -62,9 +63,22 @@ export default function Projects() {
   const user = useStore(s => s.user);
   const updateUserSlice = useStore(s => s.updateUserSlice);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedView = searchParams.get('view');
+  const activeTab = requestedView === 'mine' ? 'manual' : 'github';
 
-  const [activeTab, setActiveTab]       = useState('github');
-  const [viewMode, setViewMode]         = useState('grid');
+  const [manualViewMode, setManualViewMode] = useState('grid');
+  const viewMode = activeTab === 'manual' ? manualViewMode : requestedView === 'list' ? 'list' : 'grid';
+  const selectRouteView = view => setSearchParams(current => {
+    const next = new URLSearchParams(current);
+    next.set('view', view);
+    return next;
+  });
+  const selectSource = source => selectRouteView(source === 'manual' ? 'mine' : 'github');
+  const selectLayout = layout => {
+    if (activeTab === 'manual') setManualViewMode(layout);
+    else selectRouteView(layout);
+  };
   const [repos, setRepos]               = useState([]);
   const [loading, setLoading]           = useState(true);
   const [syncError, setSyncError]       = useState('');
@@ -284,20 +298,8 @@ export default function Projects() {
       />
 
       {/* Tabs */}
-      <div role="tablist" aria-label="Project sources"
-        onKeyDown={event => handleTabKeyDown(event, { tabs: PROJECT_TABS, activeTab, selectTab: setActiveTab, idPrefix: 'projects-tab' })}
-        style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        {PROJECT_TABS.map(({ id: key, label }) => (
-          <button key={key} id={`projects-tab-${key}`} type="button" role="tab" aria-selected={activeTab === key}
-            aria-controls={`projects-panel-${key}`} tabIndex={activeTab === key ? 0 : -1}
-            className={`btn-sm ${activeTab === key ? 'active' : ''}`}
-            onClick={() => setActiveTab(key)} style={{ padding: '0.5rem 1.2rem', fontWeight: 800 }}>
-            {label} {key === 'github' ? `(${repos.length})` : `(${manualProjects.length})`}
-          </button>
-        ))}
-      </div>
+      <Tabs label="Project sources" idPrefix="projects-tab" tabs={PROJECT_TABS.map(({ id, label }) => ({ value: id, label: label + ' (' + (id === 'github' ? repos.length : manualProjects.length) + ')', panelId: 'projects-panel-' + id }))} value={activeTab} onChange={selectSource} />
 
-      {/* ── GitHub tab ── */}
       {activeTab === 'github' && (
         <div id="projects-panel-github" role="tabpanel" aria-labelledby="projects-tab-github">
           {/* Toolbar */}
@@ -370,8 +372,8 @@ export default function Projects() {
               </div>
 
               <div role="group" aria-label="Repository layout" style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
-                <button aria-pressed={viewMode === 'grid'} className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>Grid</button>
-                <button aria-pressed={viewMode === 'list'} className={`btn-sm ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>List</button>
+                <button aria-pressed={viewMode === 'grid'} className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => selectLayout('grid')}>Grid</button>
+                <button aria-pressed={viewMode === 'list'} className={`btn-sm ${viewMode === 'list' ? 'active' : ''}`} onClick={() => selectLayout('list')}>List</button>
               </div>
 
               {githubManageEnabled && githubToken && (
@@ -676,9 +678,9 @@ export default function Projects() {
                 <Plus size={16} /> Add Project
               </button>
               <div role="group" aria-label="Project layout" style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-elevated)', padding: '3px', borderRadius: 'var(--radius-sm)' }}>
-                <button aria-pressed={viewMode === 'grid'} className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>Grid</button>
-                <button aria-pressed={viewMode === 'kanban'} className={`btn-sm ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode('kanban')}>Kanban</button>
-                <button aria-pressed={viewMode === 'gantt'} className={`btn-sm ${viewMode === 'gantt' ? 'active' : ''}`} onClick={() => setViewMode('gantt')}>Timeline</button>
+                <button aria-pressed={viewMode === 'grid'} className={`btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => selectLayout('grid')}>Grid</button>
+                <button aria-pressed={viewMode === 'kanban'} className={`btn-sm ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => selectLayout('kanban')}>Kanban</button>
+                <button aria-pressed={viewMode === 'gantt'} className={`btn-sm ${viewMode === 'gantt' ? 'active' : ''}`} onClick={() => selectLayout('gantt')}>Timeline</button>
               </div>
             </div>
           )}

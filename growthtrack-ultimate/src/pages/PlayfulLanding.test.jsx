@@ -1,5 +1,5 @@
 import React, { StrictMode } from 'react';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,6 +21,47 @@ afterEach(() => {
 const show = (extra = null) => render(<StrictMode><MemoryRouter><LandingPage />{extra}</MemoryRouter></StrictMode>);
 
 describe('fictional landing flow', () => {
+  it('lets the keyboard choose every personal companion pose without changing the fictional day or account', async () => {
+    const user = userEvent.setup();
+    const network = vi.spyOn(globalThis, 'fetch');
+    const storage = vi.spyOn(Storage.prototype, 'setItem');
+    const setUser = vi.spyOn(useStore.getState(), 'setUser');
+    const { container } = show();
+    const controls = within(screen.getByRole('group', { name: 'Choose a companion pose' }));
+    expect(controls.getByRole('button', { name: 'At ease' })).toHaveAttribute('aria-pressed', 'true');
+    for (const [label, pose, caption] of [
+      ['Say hello', 'greet', 'Hello, you. There’s room for you here.'],
+      ['Listen', 'listen', 'A thoughtful moment. No rush at all.'],
+      ['Celebrate', 'celebrate', 'A small win? That absolutely counts.'],
+      ['At ease', 'idle', 'A little backup. Entirely at your pace.'],
+    ]) {
+      const button = controls.getByRole('button', { name: label });
+      button.focus();
+      await user.keyboard('{Enter}');
+      expect(button).toHaveFocus();
+      expect(button).toHaveAttribute('aria-pressed', 'true');
+      expect(container.querySelector('.personal-companion')).toHaveAttribute('data-pose', pose);
+      expect(screen.getByText(caption)).toBeVisible();
+    }
+    expect(screen.getByRole('checkbox', { name: 'Write one good paragraph' })).not.toBeChecked();
+    expect(network).not.toHaveBeenCalled();
+    expect(storage).not.toHaveBeenCalled();
+    expect(setUser).not.toHaveBeenCalled();
+  });
+
+  it('keeps personal companion poses functional with reduced motion and resets the pose on reopening', async () => {
+    const user = userEvent.setup();
+    useStore.setState({ reducedMotion: true });
+    const view = show();
+    expect(view.container.querySelector('.welcome-companion')).toHaveAttribute('data-animate', 'false');
+    await user.click(screen.getByRole('button', { name: 'Celebrate' }));
+    expect(view.container.querySelector('.personal-companion')).toHaveAttribute('data-pose', 'celebrate');
+    expect(screen.getByText('A small win? That absolutely counts.')).toBeVisible();
+    view.unmount();
+    show();
+    expect(screen.getByRole('button', { name: 'At ease' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('lets the keyboard snip and replay the hero without changing the day, storage, or account', async () => {
     const user = userEvent.setup();
     const network = vi.spyOn(globalThis, 'fetch');
@@ -127,7 +168,7 @@ describe('decorative motion controls', () => {
     await user.click(screen.getAllByRole('button', { name: 'Pause motion' })[0]);
     expect(screen.getAllByRole('button', { name: 'Play motion' })).toHaveLength(2);
     expect(container.querySelectorAll('.character-scene[data-animate="true"]')).toHaveLength(0);
-    expect(container.querySelector('[data-parallax]').style.getPropertyValue('--parallax-y')).toBe('');
+    expect(container.querySelector('.welcome-companion')).toHaveAttribute('data-animate', 'false');
     await user.click(screen.getByRole('checkbox', { name: 'Write one good paragraph' }));
     expect(screen.getByText('1 of 3 little wins')).toBeVisible();
     await user.click(screen.getAllByRole('button', { name: 'Play motion' })[1]);

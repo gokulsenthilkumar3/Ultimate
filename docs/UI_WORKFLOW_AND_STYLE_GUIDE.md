@@ -1,6 +1,6 @@
 # GrowthTrack: complete UI workflow and style guide
 
-Source snapshot: 30 October 2026. Design tokens: **5.0.0**, with 4.2 illustration aliases retained. Current production-source presentation: **kinetic-workspace-v4**, enabled by `data-ui-style="kinetic"`. **Playful** remains selectable in Profile & Settings → Display.
+Source snapshot: 31 October 2026. Design tokens: **5.0.0**, with 4.2 illustration aliases retained. Current production-source presentation: **kinetic-workspace-v4**, enabled by `data-ui-style="kinetic"`. **Playful** remains selectable in Profile & Settings → Display.
 
 This is the central explanation of the current Ultimate UI: the visitor journey, landing, login, home, navigation, registered modules and views, controls, typography, palettes, layout, animation and verification limits. It describes checked-in/local source, not a deployed release or a completed visual review.
 
@@ -15,6 +15,9 @@ Reading order: sections 3–8 explain the user journey; 9–15 explain controls 
 Earlier documents cover separate changes:
 
 - [Kinetic UI implementation and acceptance evidence](plans/2026-10-30-kinetic-ui.md): the current theme, Glow Crew, adaptive motion, Settings/Overview refinement, budgets and verification limits. The supplied [Kinetic UI 5 proposal](<GrowthTrack Kinetic UI 5.md>) remains the design brief.
+- [Motion refinement](plans/2026-10-31-motion-refinement.md): sequenced hero artwork, distinct crew gestures, layered route entrances, directional panel changes, surface lighting and cancellation checks.
+- [Insights page effects](plans/2026-10-31-insights-motion.md): distinct signatures and choreography across the eight Insights pages, including late-loaded panels, observed/projected chart identity and export settling.
+- [Finance, Wellness, Workspace and companion](plans/2026-10-31-finance-wellness-workspace.md): real-record overview refinements, shared area motion, Finance/Hub navigation names and device-local floating-agent controls. The [personal artwork notes](design/2026-10-31-personal-companion.md) describe the photo-inspired welcome and companion assets.
 - [Playful landing and overview flow](plans/2026-10-30-playful-motion.md): characters, landing playground and initial overview animation.
 - [Character workspace](plans/2026-10-30-character-workspace.md): animated logo, login, shared theme and every authenticated module's character treatment.
 - [Sign-out, sub-tabs and login refinement](plans/2026-10-30-ultra-ui.md): sign-out decisions, moving tab indicators, contextual navigation and richer controls.
@@ -48,8 +51,8 @@ The implementation uses React, custom CSS, semantic design tokens, original SVG,
 | Custom CSS and generated tokens | Typography, palette variables, component/shell rules, responsive layouts, interaction states and CSS keyframes. The shared presentation is not a newly installed commercial template. |
 | `@fontsource-variable/inter` | Source of the single self-hosted Inter Variable Latin WOFF2; normal weights 100–900 share one preloaded file. |
 | `lucide-react` | Stroke icons for navigation, actions, status, password visibility and other controls. Decorative SVG characters/logo are authored separately. |
-| Framer Motion | LazyMotion, route presence, shared selection highlights, dialogs, toasts and numeric interpolation. The layout feature bundle loads when motion is first needed. |
-| GSAP / ScrollTrigger | Dynamic imports confined to landing/login hero choreography, the landing parallax and the landing magnetic-button wrapper. Scoped effects are reverted on pause, viewport exit or unmount. |
+| Framer Motion | LazyMotion, measured tab movement, shared selection highlights, dialogs, toasts and numeric interpolation. The layout feature bundle loads when motion is first needed. |
+| GSAP | Dynamic imports confined to landing/login hero choreography and the landing magnetic-button wrapper. The hero uses a scoped timeline; decorative parallax uses a bounded browser frame callback. Scoped effects are reverted on pause, viewport exit or unmount. |
 | Browser animation APIs | CSS transitions/keyframes, Web Animations API page entrances, requestAnimationFrame scroll updates and viewport/visibility observation. |
 | Recharts | Existing finance, wellness and analytical charts. Their chart series, legends and tooltips remain owned by the relevant domain; some native charts/art use custom SVG instead. |
 | Three.js / React Three Fiber / Drei / postprocessing | Technical Physique/model rendering, camera, lighting and model effects. These do not render the flat landing characters. |
@@ -136,7 +139,7 @@ The command palette can navigate modules, find supported saved records and open 
 - Desktop shell mode starts at 960px: a 224px rail is pinned on the inline-start side.
 - Collapsed desktop rail: 64px, with a reachable reopen control.
 - 640–959px: a modal navigation drawer is opened by the header trigger.
-- Below 640px: a bottom quick-navigation dock provides the first four saved-order areas plus More; More provides searchable module access. The drawer trigger also remains an entry to full navigation.
+- Below 640px: a bottom quick-navigation dock provides the first four saved-order areas plus Hub; Hub provides searchable module access. The drawer trigger also remains an entry to full navigation.
 - Saved area/module order is respected. Drawer and dialog focus are managed; Escape/backdrop close when the relevant operation permits it.
 
 The generic token set also declares 640/1024px breakpoints; the navigation hook's actual pinned-rail threshold is 960px. Other pages use their own responsive cutoffs.
@@ -154,7 +157,7 @@ The generic token set also declares 640/1024px breakpoints; the navigation hook'
 
 Content is capped at 1360px in the shared shell. The outer application avoids horizontal overflow; wide tables, tab strips and shortcut lists scroll locally.
 
-Default chapter characters: Customers/Growth use Blip, Finance/Work use Mochi, Life/Insights/Platform use Ziggy. The home overview uses Blip; native NiftyLens uses Blip, Family uses Mochi and Forex uses Ziggy. Legacy names in their source are intentional aliases. These are decorative choices, not account-status indicators.
+Default chapter characters: Customers/Growth use Blip, Finance/Work use Mochi, Life/Insights/Hub use Ziggy. The home overview uses Blip; native NiftyLens uses Blip, Family uses Mochi and Forex uses Ziggy. Legacy names in their source are intentional aliases. These are decorative choices, not account-status indicators.
 
 ### First-run onboarding, check-in and utility settings
 
@@ -179,11 +182,11 @@ The canonical root home is `/insights/overview`, headed “Your day, in focus.�
 
 The next-action fallback order is due/overdue task, another pending task, an unchecked habit, an active goal, then an invitation to add a task. Missing records produce an honest empty message. The overview does not turn record counts into an invented health, confidence or growth score.
 
-Finance, Growth, Work, Life and Platform have their own overviews. They share the visual language while their owning components determine the real facts and actions.
+Finance, Growth, Work, Life and Hub have their own overviews. They share the visual language while their owning components determine the real facts and actions.
 
 ## 8. Areas, tabs and sub-tabs
 
-The default area order is **Customers, Finance, Growth, Work, Life, Insights, Platform**. The complete registered module/view table is in section 19.
+The default area order is **Customers, Finance, Growth, Work, Life, Insights, Hub**. The complete registered module/view table is in section 19.
 
 Three different controls are deliberately used:
 
@@ -237,7 +240,9 @@ Shared `Button` variants are primary, secondary, ghost, tertiary and danger/dest
 
 Key public controls are Snip the noise / Play it again; three tiny-day mode buttons; three task checkboxes per mode; Reset this day; Try the tiny demo; Meet the crew; Owner sign in; Privacy; Terms; Keep private / Allow analytics; Show/Hide password; Sign in; and motion controls.
 
-Key global controls are search/command palette, area/module navigation, sidebar collapse/reopen, drawer open/close, More/module search, theme, notifications, account/settings and Sign out. Domain controls remain owned by the corresponding page; a mapped record button can have different labels and instances for each record. The generated inventory exposes these source expressions and handlers' locations.
+Key global controls are search/command palette, area/module navigation, sidebar collapse/reopen, drawer open/close, Hub/module search, floating-companion paw toggle, theme, notifications, account/settings and Sign out. Domain controls remain owned by the corresponding page; a mapped record button can have different labels and instances for each record. The generated inventory exposes these source expressions and handlers' locations.
+
+The optional floating Sidekick uses an original personal illustration with four local poses. Its paw button and Profile & Settings → Display → Floating companion switch save visibility on this device. The tray opens the existing Agents and Action Center owners; displaying it or choosing a pose does not query a model or inspect records. The welcome page uses the same illustration in a layered CSS3D paper scene, while login keeps the nonpersonal crew artwork. See the [artwork, research and prompt](design/2026-10-31-personal-companion.md).
 
 Standard target tokens are 44px, large 52px and icon 44px. Login inputs are 56px, the login primary action 54px, and its eye button 44px. Some retained utility/header/navigation rules explicitly use 36–40px geometry; this is not a claim that every legacy target already passes a rendered 44px audit.
 
@@ -251,7 +256,7 @@ Navigation links keep real destinations; external links retain their own service
 
 ## 10. Dialogs, sign-out and feedback
 
-The quick Settings dialog uses a 208px section rail and a rounded, outlined account panel. Profile, Referrals, Audit and System keep their existing actions. Profile presents the real identity, four coloured icon cards for Account details / Privacy & security / Connections / Display preferences, then actual billing availability. Nova is decorative. Its 240ms entrance respects reduced motion; the close button, Escape handling, focus trap and return to the trigger remain available. Narrow widths use a horizontal section strip and stacked cards. Full Profile & Settings → Display includes Kinetic/Playful and Lite motion alongside the existing preferences.
+The quick Settings dialog uses a 208px section rail and a rounded, outlined account panel. Profile, Referrals, Audit and System keep their existing actions. Profile presents the real identity, four coloured icon cards for Account details / Privacy & security / Connections / Display preferences, then actual billing availability. Nova is decorative. Its spring entrance respects reduced motion; the close button, Escape handling, focus trap and return to the trigger remain available. Narrow widths use a horizontal section strip and stacked cards. Full Profile & Settings → Display includes Kinetic/Playful and Lite motion alongside the existing preferences.
 
 ### Shared dialog
 
@@ -445,24 +450,27 @@ The current Kinetic owners and timings are below. Only transform/opacity repeat.
 
 | Surface | Owner / effect / timing |
 | --- | --- |
-| Module navigation | `PageTransition.tsx`: AnimatePresence, 220ms fade/rise 8px/scale .995, ease `(.22,1,.36,1)`. Keyed by module identity, never by filter/view. Exiting content is inert. |
-| Sidebar, dock and Settings selection | `SelectionHighlight.tsx`: shared layoutId; spring stiffness 500, damping 34, mass .8. Instant for Lite/reduced motion. |
-| Tabs | `Tabs.jsx`: shared layout projection of the measured selected button, same spring. Existing keyboard, RTL, focus and disabled-tab semantics stay with the button. |
-| Dialog / quick Settings | `Modal.jsx`, `SettingsModal.jsx`: 240ms opacity/scale entry. Closing keeps the existing pending/dismissal/focus rules. |
-| Toast | `useToast.jsx`: 320ms opacity and 8px rise; lifetime/deduplication/action semantics remain separate. Successful feedback requests a bounded celebration. |
+| Module navigation | `PageTransition.tsx` / `useSectionReveal.ts`: stable wrapper, no outgoing-page wait or whole-page shrink. At most eight section targets, 40ms stagger, 320ms entries; Tier 2 opens the first section over 420ms and settles individual metric cards. First paint is untouched; pause/tier changes cancel pending entries without replay. |
+| Insights page choreography | `domains/insights/useInsightsMotion.ts`: owns all eight Insights features, including nested lazy content and query arrivals. Eight visible targets per burst, 320–440ms card entries, 520ms signature assembly and 620ms observed-line drawing. Dashed model/projection paths keep their identity. React StrictMode's rehearsal mount cannot consume the surviving entrance. |
+| Sidebar, dock and Settings selection | `SelectionHighlight.tsx`: shared layoutId and position projection; spring stiffness 460, damping 32, mass .65. Instant for Lite/reduced motion. |
+| Tabs | `Tabs.jsx`: explicit animated x/y/width/height targets measured from the selected button, same selection spring. Existing keyboard, RTL, focus and disabled-tab semantics stay with the button. |
+| Dialog / quick Settings | `Modal.jsx`, `SettingsModal.jsx`: spring stiffness 420, damping 34, mass .85; 20px rise, scale .985 to 1 and 160ms opacity. Closing keeps the existing pending/dismissal/focus rules; shared modal forms stay mounted when style changes. |
+| Toast | `useToast.jsx`: spring stiffness 510, damping 34, mass .65 and 160ms opacity. Errors enter from above, notifications from the side, confirmations from below with a small tilt. Lifetime/deduplication/action semantics remain separate. Successful feedback requests a bounded celebration. |
 | Hero/stat number | `AnimatedNumber.tsx`: 600ms interpolation, exact final value/formatter; final accessible text is immediately available. No count-up on Lite/reduced motion. |
-| Button hover / press | `kinetic-motion.css`: 180ms lift up to 2px and arrow up to 3px; press 120ms to scale .98. Fine-pointer hover only. No repeated colour/shadow animation. |
+| Button hover / press | `kinetic-motion.css`: 180ms lift up to 2px; a 420ms arrow pass on public/shared actions and distinct sun/moon/settings/bell gestures. Press 120ms to scale .98. Fine-pointer hover only. No repeated colour/shadow animation. |
 | Magnetic public button | `MagneticButton.tsx`: dynamic GSAP quickTo, at most ±4px on a separate wrapper, 180ms easing, fine pointers only. |
-| Landing/login hero entry | `useLandingMotion.ts`: dynamic GSAP/ScrollTrigger, two owning wrappers, 1.1s with 100ms stagger; clears transforms afterward and releases reserved tracks. |
-| Landing parallax | Same hook: Tier 2 only, two decorative layers bounded to ±16px, ScrollTrigger scrub .3s. Reverted on pause, viewport exit and unmount. Login has no parallax. |
-| Native module entry | `ModuleUI.jsx` / `usePageEntrance.js`: one bounded WAAPI entrance of the owning frame, 360ms. New query rows do not each animate; native GSAP pointer/row choreography was removed. |
-| Glow Crew idle / blink | `GlowCrew.tsx`, `CharacterScene.jsx`, `kinetic-motion.css`: 5s float up to 6px/±1°, 7s blink cycle briefly scaling eyes to .1. Tier 1 crews float without separate eye tracks; Tier 0 crews are static. |
-| Greet / listen | Arm wave 600ms twice; password focus closes eyes without reading field values. Greet returns to idle after 1200ms. |
-| Snip / celebrate / error | Body reaction 500ms twice / 700ms squash / 350ms shake. Finite states return to idle; inline success/error descriptions remain the authoritative signal. |
+| Landing/login hero entry | `useLandingMotion.ts`: dynamic GSAP timeline; headline 720ms without hiding it, copy 560ms with 55ms stagger, paper/actors about 700–720ms with separate assembly beats, underline drawn over 580ms. Yields immediately to focus/pointer input, pause and viewport exit. |
+| Landing parallax | Same hook: Tier 2 only, two decorative layers capped at −15px/+18px. One requested frame per scroll burst, no continuous loop or ScrollTrigger import. Reset on pause, viewport exit and unmount. Login has no parallax. |
+| Public scroll encounters | `useViewportReveal.ts`: headings, crew cards, playground, steps and closer appear once, 440–520ms, at most 55ms stagger between nearby entries. No hidden resting content; shared budget pre-emption and pause cancel in-flight motion. |
+| Native view change | `ModuleUI.jsx` / `usePageEntrance.js`: 260ms directional 12px panel entry, reversed for previous tabs and RTL. Header/tabs/forms stay mounted. Kinetic's initial page entry belongs to the section hook; Forex yields to the Insights owner. Playful retains its 360ms frame entrance. |
+| Glow Crew idle / blink | `kinetic-motion.css`: Blip's comet gesture, Mochi's soft stretch, Ziggy's small zigzag and Nova's curious tilt have separate 6.2–8.1s gesture/rest cycles. Eye cycles span 6.7–9.1s with distinct phases. Tier 1 crews omit eye tracks; Tier 0 crews stay static. |
+| Greet / listen | Arm wave 600ms twice; password focus closes eyes and each crew member turns away by its own small angle, without reading field values. Greet returns to idle after 1200ms. |
+| Snip / celebrate / error | Body reaction 500ms twice / 700ms squash or Nova star cheer / 350ms shake. Finite states return to idle; inline success/error descriptions remain the authoritative signal. |
 | Delayed loading | `LoadingSkeleton.jsx`: sleep companion after 2s; one 1.4s transform shimmer for the entire skeleton, rather than a loop on every placeholder. |
 | Canvas celebration | `ConfettiHost.tsx` / `ConfettiCanvas.tsx`: one shared canvas at a time, 6 pieces on Tier 1 / 12 on Tier 2, DPR ≤2, 700ms burst, released after 900ms. None on Lite/reduced motion. |
-| Demo checks / snipped notes | Existing 400ms check pop; 350ms opacity/550ms note transform transition. Fictional state remains local to the public page. |
-| Charts | `VisibleResponsiveContainer.tsx`: reserve geometry and mount after viewport admission. Recharts series animation is disabled, including offscreen series. |
+| Demo checks / snipped notes | 320ms check settle and ink draw; three note trajectories with 0/45/85ms delays, 520ms travel and 240ms fade, followed by a spring win stamp and finite ring. Fictional state remains local to the public page. |
+| Surface attention | `SurfaceLight.tsx`: one Tier 2 portal follows a fine pointer or centres on keyboard attention. A masked rim and subtle light pool leave card geometry still. At most one pending frame; skip touch/forced colours, clear on scroll/pause/pre-emption/unmount and ignore surfaces behind the active dialog. |
+| Charts | `VisibleResponsiveContainer.tsx`: reserve geometry and mount after viewport admission. Recharts value interpolation stays disabled. Insights adds bounded one-time stroke effects to visible observed lines, fades dashed model/projected lines without changing their dash pattern, and settles all effects before dashboard capture. |
 | Physique | Existing demand/on-interaction renderer; Kinetic caps DPR at 1/1.5/2 and removes real-time shadows on Tiers 0/1. Pausing decoration also governs its optional animation. |
 
 ### Adaptive motion and fallback
@@ -536,7 +544,7 @@ npm run context:index
 
 For appearance changes, update canonical tokens and regenerate through `npm run design:sync`; use `npm run design:check` for drift. UI impact and review handoff remain separate tools: `npm run impact:ui`, `npm run impact:ui:check`, `npm run handoff:ui`, `npm run handoff:ui:check`.
 
-Current Kinetic verification and acceptance limits are recorded in [the implementation evidence](plans/2026-10-30-kinetic-ui.md). Browser runs use an isolated fictional owner and the production build; they do not establish live owner workflow approval, backend availability, every nested view, or deployment. Source inventories, generation drift and documentation links are checked separately.
+Current Kinetic verification and acceptance limits are recorded in [the implementation evidence](plans/2026-10-30-kinetic-ui.md) and [the 31 October motion refinement](plans/2026-10-31-motion-refinement.md). Historical browser runs use an isolated fictional owner and the production build; they do not establish live owner workflow approval, backend availability, every nested view, or deployment. The motion refinement has component/bundle evidence and requires its own rendered review. Source inventories, generation drift and documentation links are checked separately.
 
 ## 19. Complete registered module and view inventory
 
@@ -598,17 +606,17 @@ A supported view uses a query such as `/wellness/physique?view=measurements`. No
 | Insights | Dashboards | `/insights/dashboards` | `saved`, `arrange` | analytics; ready |
 | Insights | Progress | `/insights/progress` | `timeline`, `comparisons`, `milestones` | analytics; ready |
 | Insights | Forecast | `/insights/forecast` | `trends`, `scenarios` | analytics; ready |
-| Platform | Overview | `/hub/overview` | No registered sub-view | command; ready |
-| Platform | Apps | `/hub/apps` | `modules`, `favorites`, `external` | record; ready |
-| Platform | Apps Suite | `/hub/companion` | `all`, `finsync`, `oxfin`, `equity`, `forex`, `family` | immersive; ready |
-| Platform | Agents | `/hub/agents` | `chat`, `history`, `context`, `settings` | record; ready |
-| Platform | Databases | `/hub/databases` | `custom`, `application`, `imports` | record; ready |
-| Platform | Profile & Settings | `/hub/settings` | `personal`, `physical`, `security`, `appearance`, `integrations` | settings; ready |
-| Platform | Notifications | `/hub/notifications` | `unread`, `all`, `preferences` | record; ready |
-| Platform | Helpdesk | `/hub/help` | `guides`, `troubleshooting`, `diagnostics` | record; ready |
-| Platform | Logs | `/hub/logs` | `activity`, `authentication`, `sync` | record; ready |
-| Platform | About | `/hub/about` | `version`, `capabilities`, `licenses` | detail; ready |
-| Platform | Plans | `/hub/plans` | `capabilities`, `billing` | settings; ready |
+| Hub | Overview | `/hub/overview` | No registered sub-view | command; ready |
+| Hub | Apps | `/hub/apps` | `modules`, `favorites`, `external` | record; ready |
+| Hub | Apps Suite | `/hub/companion` | `all`, `finsync`, `oxfin`, `equity`, `forex`, `family` | immersive; ready |
+| Hub | Agents | `/hub/agents` | `chat`, `history`, `context`, `settings` | record; ready |
+| Hub | Databases | `/hub/databases` | `custom`, `application`, `imports` | record; ready |
+| Hub | Profile & Settings | `/hub/settings` | `personal`, `physical`, `security`, `appearance`, `integrations` | settings; ready |
+| Hub | Notifications | `/hub/notifications` | `unread`, `all`, `preferences` | record; ready |
+| Hub | Helpdesk | `/hub/help` | `guides`, `troubleshooting`, `diagnostics` | record; ready |
+| Hub | Logs | `/hub/logs` | `activity`, `authentication`, `sync` | record; ready |
+| Hub | About | `/hub/about` | `version`, `capabilities`, `licenses` | detail; ready |
+| Hub | Plans | `/hub/plans` | `capabilities`, `billing` | settings; ready |
 
 <!-- END GENERATED UI ROUTES -->
 
@@ -700,7 +708,7 @@ The seven cash-flow pages use [Finance.tsx](../growthtrack-ultimate/src/componen
 | Progress | [InsightsHub.jsx](../growthtrack-ultimate/src/components/InsightsHub.jsx): currently a **read-only progress summary** with saved measurement/dates, goal/task/habit/sleep counts and links to measurement history and canonical logs. It is not three distinct Timeline/Comparisons/Milestones panels. |
 | Forecast | [TransformationPredictor.jsx](../growthtrack-ultimate/src/components/TransformationPredictor.jsx): **Cards / Timeline** presentation of the module's forecast/projection information. These are the actual local controls; the registered `trends/scenarios` pair does not imply two different implemented panels. |
 
-### Platform — 11 modules
+### Hub — 11 modules
 
 | Module | Current workflow and controls |
 | --- | --- |
@@ -760,6 +768,12 @@ Privacy and Terms use a reading layout: skip link → logo/back navigation → t
 ### Change display preferences
 
 Open the account Settings modal, choose Display preferences, then use the full Profile & Settings → Display section. Choose appearance, accent/named theme, density and accessibility preferences there. The utility-header theme button is a quicker light/dark action. The decorative-motion button pauses only the governed animation system; reduced-motion preferences take priority. Check narrow-screen navigation and local table/tab overflow independently of theme choice.
+
+The [Hub, Life and Current refinement](plans/2026-10-31-hub-life-weather.md) gives every Hub/Life registry page its own domain presentation boundary, decorative 2D artwork and governed card effects. Hub overview links include the module launcher, companions, account, notifications, agents, data, help, activity, customers and deployment information. Life overview adds illustrated library, social, saved-place and Family Connect destinations. Portal scrollbars are hidden on both axes; native scrolling remains, with horizontal edge cues on shared tabs, shortcuts and tables. These implementation changes do not establish rendered coverage or fill the metadata-only view limitations described above.
+
+The subsequent [horizontal subtab and loading fix](plans/2026-10-31-tab-scroll-performance.md) adds visible previous/next controls to overflowing navigation rows, mouse-wheel support with page-scroll release at the ends, selected-item visibility and RTL behavior. It unifies the older module tab rows with the shared presentation and keeps account sections usable at phone widths. The selected route's code and stylesheet load together; unrelated page prefetching is replaced with bounded hover/focus intent. Nineteen distinct pages were exercised in the isolated Chrome fixture at 390px; this is scroll-interaction evidence, separate from owner-account or all-view visual approval.
+
+Current accepts top-level weather/news settings and older nested sources. With no weather setting it uses Open-Meteo only after the owner chooses location; an explicitly blank source stays disabled. Its request uses a consistent provider contract and matches hourly detail data to the reported local hour. Failed refreshes retain the last reading and provide a retry. Source attribution is visible; missing values are not reported as zero.
 
 ### Inspect every control or update the reference
 

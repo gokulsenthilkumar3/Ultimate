@@ -81,7 +81,7 @@ describe('responsive canonical navigation', () => {
     expect(dock.getAllByRole('link').map(link => link.getAttribute('aria-label'))).toEqual(['Customers', 'Finance', 'Growth', 'Work']);
     expect(dock.getAllByRole('button')).toHaveLength(1);
     expect(screen.queryByRole('navigation', { name: 'Product areas' })).toBeNull();
-    await userEvent.click(dock.getByRole('button', { name: 'More' }));
+    await userEvent.click(dock.getByRole('button', { name: 'Hub' }));
     expect(screen.getByRole('searchbox', { name: 'Find a module' })).toHaveFocus();
     expect(within(screen.getByRole('dialog')).getAllByRole('heading', { level: 3 })).toHaveLength(7);
     resize(640);
@@ -99,7 +99,7 @@ describe('responsive canonical navigation', () => {
     mount({ activeTab: 'notes' }, tabMeta('notes').canonicalPath);
     const dock = within(screen.getByRole('navigation', { name: 'Quick navigation' }));
     expect(dock.getAllByRole('link')[0]).toHaveAccessibleName('Life');
-    await userEvent.click(dock.getByRole('button', { name: 'More' }));
+    await userEvent.click(dock.getByRole('button', { name: 'Hub' }));
     const search = screen.getByRole('searchbox');
     await userEvent.type(search, 'Calendar');
     expect(screen.queryByRole('heading', { name: 'Finance', level: 3 })).toBeNull();

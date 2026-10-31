@@ -6,6 +6,8 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 import PageState from './ui/PageState';
 import HeroMetric from './ui/HeroMetric';
+import PageHeader from './ui/PageHeader';
+import Tabs from './ui/Tabs';
 
 const CATEGORIES = [
   ['tasks', 'Tasks'], ['goals', 'Goals'], ['habits', 'Habits'],
@@ -35,18 +37,14 @@ export default function NotificationCenter({ notificationState }) {
   }
 
   if (!notificationState) return <PageState state="unavailable" title="Notifications are unavailable" description="The notification service is not connected." />;
-  return <section style={{ maxWidth: 800, marginInline: 'auto', padding: '1rem', display: 'grid', gap: '1rem' }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-      <div><h1><Bell size={22} aria-hidden="true" /> Notifications</h1>
-        <p>{unreadCount} unread reminder{unreadCount === 1 ? '' : 's'} · Stored source records only</p></div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem' }}>
+  return <section className="module-page hub-notifications">
+    <PageHeader accent="Hub" title="Notifications" icon={<Bell size={22} aria-hidden="true" />} subtitle={`${unreadCount} unread reminder${unreadCount === 1 ? '' : 's'} · Stored source records only`} actions={<div className="hub-notifications__actions">
         <Button variant="secondary" disabled={refreshing || saving || !state.enabled} onClick={() => perform(state.refresh)}>
           <RefreshCw size={15} aria-hidden="true" /> Refresh notifications
         </Button>
         <Button variant="secondary" disabled={disabled || !unreadCount} onClick={() => perform(state.markAllRead, 'Reminders marked as read.')}>Mark all read</Button>
         <Button variant="secondary" disabled={disabled || !notifications.length} onClick={() => perform(state.clearAll, 'Current reminders dismissed.')}>Dismiss current reminders</Button>
-      </div>
-    </div>
+      </div>} />
     <HeroMetric label="Unread reminders" value={loading || error ? undefined : unreadCount} note="Stored source records only" tone="lilac" />
     {(actionError || mutationError) && <p role="alert">{actionError || mutationError.message}</p>}
     {error && <PageState state="error" title="Notifications could not be loaded" description={error.message} onRetry={() => perform(state.refresh)} />}
@@ -67,7 +65,7 @@ export default function NotificationCenter({ notificationState }) {
       {state.timeZone && <small>Due dates use your profile timezone: {state.timeZone}.</small>}
     </Card></details>}
     <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-      {['unread', 'all', 'dismissed'].map(filter => <Button key={filter} variant="secondary" aria-pressed={view === filter} onClick={() => setView(filter)}>{filter[0].toUpperCase() + filter.slice(1)}</Button>)}
+      <Tabs label="Reminder views" tabs={['unread', 'all', 'dismissed'].map(value => ({ value, label: value[0].toUpperCase() + value.slice(1) }))} value={view} onChange={setView} />
       <label>Source <select value={category} onChange={event => setCategory(event.target.value)}>
         <option value="all">All sources</option>{CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
       </select></label>

@@ -1,3 +1,4 @@
+import Tabs from './ui/Tabs';
 import PageHeader from './ui/PageHeader';
 import { EMPTY_LIST } from '../lib/emptyValues';
 import React, { useState, useCallback, useMemo } from 'react';
@@ -261,14 +262,7 @@ export default function SocialMedia() {
       )}
 
       {/* Tab selector */}
-      <div role="tablist" aria-label="Social views" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.75rem' }}>
-        {['profiles', 'analytics', 'connections'].map(tab => (
-          <button key={tab} role="tab" aria-selected={activeTab === tab} className={`btn-sm${activeTab === tab ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab)} style={{ textTransform: 'capitalize', padding: '0.5rem 1.25rem' }}>
-            {tab}
-          </button>
-        ))}
-      </div>
+      <Tabs label="Social views" tabs={['profiles', 'analytics', 'connections'].map(value => ({ value, label: value[0].toUpperCase() + value.slice(1) }))} value={activeTab} onChange={setActiveTab} />
 
       {/* Connected strip */}
       {linkedPlatforms.length > 0 && activeTab === 'profiles' && (

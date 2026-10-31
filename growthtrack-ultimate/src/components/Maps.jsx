@@ -8,6 +8,7 @@ import { formatDateTime } from '../utils/userFormatters';
 import PageState from './ui/PageState';
 import LoadingSkeleton from './ui/LoadingSkeleton';
 import Tabs from './ui/Tabs';
+import PageHeader from './ui/PageHeader';
 
 const MapCanvas = lazy(() => import('./places/MapCanvas'));
 const VIEWS = [{ value: 'list', label: 'List' }, { value: 'map', label: 'Map' }, { value: 'timeline', label: 'Timeline' }, { value: 'privacy', label: 'Privacy' }];
@@ -50,7 +51,7 @@ export default function Maps() {
   }, [tracking]);
   const points = Array.isArray(locations.data) ? locations.data : [];
   return <section className="module-page maps-page">
-    <header className="page-header"><div><p className="eyebrow"><Navigation size={16} aria-hidden="true" /> Life</p><h1>Maps & places</h1><p className="page-subtitle">Capture only when you choose. Saved coordinates remain private to your account.</p></div><button className="btn-primary" type="button" onClick={captureOnce} disabled={locating || create.isPending}>{locating || create.isPending ? 'Saving location…' : 'Save current location'}</button></header>
+    <PageHeader accent="Life" icon={<Navigation size={16} aria-hidden="true" />} title="Maps & places" subtitle="Capture only when you choose. Saved coordinates remain private to your account." actions={<button className="btn-primary" type="button" onClick={captureOnce} disabled={locating || create.isPending}>{locating || create.isPending ? 'Saving location…' : 'Save current location'}</button>} />
     <Tabs label="Places views" idPrefix="places-view" tabs={VIEWS} value={view} onChange={selectView} />
     <p role="status"><ShieldCheck size={16} aria-hidden="true" /> {message}</p>
     {view === 'privacy' ? <section className="glass-card"><h2>Location privacy</h2><p>Tracking is off by default and never restored from another device. It stops when you leave this page. Browser permissions can be revoked in your browser settings.</p><button type="button" className="btn-secondary" onClick={() => { if (!navigator.geolocation) { setMessage('Location access is unavailable.'); return; } setTracking(value => !value); }} aria-pressed={tracking}>{tracking ? 'Stop capture' : 'Enable capture while this page is open'}</button><p>Delete individual samples in List. There is no automatic retention policy yet; your server backups may retain removed samples.</p><p>Loading a map requests tiles from OpenStreetMap and reveals your network address and viewed map area to that service. GrowthTrack does not bulk-download or cache map tiles for offline use.</p></section> : <>

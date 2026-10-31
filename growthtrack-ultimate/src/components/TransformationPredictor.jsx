@@ -7,6 +7,7 @@ import useStore from '../store/useStore';
 import { buildMetricForecasts } from '../utils/growthcast';
 import { formatDate, formatMeasurement, formatNumber } from '../utils/userFormatters';
 import { EMPTY_LIST } from '../lib/emptyValues';
+import SignalArt from './motion/SignalArt';
 
 const STATUS = {
   at_target: 'At the saved target',
@@ -26,10 +27,10 @@ export default React.memo(function TransformationPredictor({ logs }) {
     : formatNumber(value, state.user, { maximumFractionDigits: 2 }) + ' ' + unit;
 
   return (
-    <section className="module-page" aria-label="Growth forecast">
-      <PageHeader accent="Insights" title="Forecast" subtitle={<>Linear estimates from your dated observations and saved targets.</>} actions={<><div role="group" aria-label="Forecast views">
+    <section className="module-page insights-forecast" data-insight-view={view} aria-label="Growth forecast">
+      <PageHeader accent="Insights" title="Forecast" subtitle={<>Linear estimates from your dated observations and saved targets.</>} actions={<div className="insights-heading-art"><SignalArt kind="projection" /><div className="insights-view-toggle" role="group" aria-label="Forecast views">
           {['cards', 'timeline'].map(next => <button key={next} className="btn-secondary" aria-pressed={view === next} onClick={() => setView(next)}>{next === 'cards' ? 'Cards' : 'Timeline'}</button>)}
-        </div></>} status={<><p className="text-secondary">Each metric needs at least 3 valid observations on distinct dates. Estimates start at the latest observed date and assume that the measured trend continues.</p></>} />
+        </div></div>} status={<><p className="text-secondary">Each metric needs at least 3 valid observations on distinct dates. Estimates start at the latest observed date and assume that the measured trend continues.</p></>} />
       <p className="text-secondary">
         <Link to="/wellness/physique?view=history">Open measurement history</Link>
         {' · '}<Link to="/wellness/physique">Manage your targets</Link>
@@ -38,9 +39,9 @@ export default React.memo(function TransformationPredictor({ logs }) {
         <h3>No forecast available</h3>
         <p>Save a user target and dated measurements to see a forecast.</p>
       </div>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+      <div className="insights-forecast__grid">
         {predictions.map(prediction => (
-          <article key={prediction.key} className="glass-card" aria-label={prediction.label + ' forecast'}>
+          <article key={prediction.key} className="glass-card insights-forecast-card" data-insight="plot" data-trend={prediction.trend} aria-label={prediction.label + ' forecast'}>
             <h3>{prediction.label}</h3>
             <p>{prediction.observationCount} valid distinct-date observations</p>
             <p>Latest observation: {prediction.latestDate ? formatDate(prediction.latestDate, state.user) + ' · ' + measure(prediction.currentValue, prediction.unit) : 'Not recorded'}</p>
