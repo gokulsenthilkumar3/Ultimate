@@ -35,7 +35,7 @@ export default function useLandingMotion(ref: RefObject<HTMLElement | null>, { p
         if (copy.length) timeline.from(copy, { y: 12, opacity: .55, duration: .56, stagger: .055 }, .08);
         const hero = root.querySelector('.playful-hero') || root;
         const personalStage = hero.querySelector('.welcome-companion__entrance');
-        if (personalStage) timeline.from(personalStage, { y: 18, rotation: -2, scale: .97, duration: .8 }, .04);
+        if (personalStage) timeline.from(personalStage, { y: 14, rotation: -.8, scale: .985, duration: 1.05 }, .04);
         const actors = hero.querySelectorAll('.character-scene--crew .character-scene__actor');
         if (actors.length) timeline.from(actors, { y: 22, scale: .86, rotation: index => [-10, 7, -5, 8][index % 4], duration: .72, stagger: .055, ease: 'back.out(1.25)' }, .04);
         const paper = hero.querySelector('.character-scene__paper');

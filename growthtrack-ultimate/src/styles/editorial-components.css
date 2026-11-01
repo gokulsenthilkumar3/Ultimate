@@ -37,7 +37,7 @@
   gap: var(--gt-space-3) var(--gt-space-5);
   min-inline-size: 0;
   margin-block-end: var(--gt-space-5);
-  padding: var(--gt-space-2) 0 var(--gt-space-4);
+  padding: var(--gt-space-3) 0 var(--gt-space-5);
   border: 0;
   border-block-end: 1px solid var(--gt-border);
   border-radius: 0;
@@ -165,7 +165,7 @@
   background: var(--gt-surface-raised);
   margin-block-end: var(--gt-space-4);
 }
-.gt-tabs__indicator { position: absolute; z-index: 0; left: 0; top: 0; pointer-events: none; border: 1px solid var(--gt-border-strong); border-radius: 12px; background: var(--gt-surface); box-shadow: 0 3px 0 color-mix(in srgb, var(--gt-text) 9%, transparent); }
+.gt-tabs__indicator { position: absolute; z-index: 0; left: 0; top: 0; pointer-events: none; border: 1px solid var(--gt-border-strong); border-radius: 12px; background: var(--gt-surface); box-shadow: var(--gt-shadow-control); }
 @supports (scrollbar-width: none) {
   .gt-tabs[data-responsive-foundation] {
     scrollbar-width: none;
@@ -382,7 +382,7 @@
 .app-toast[data-tone='success'] { --toast-stamp: var(--gt-character-mint); }
 .app-toast[data-tone='error'] { --toast-stamp: var(--gt-character-coral); border-color: var(--gt-danger); }
 .app-toast[data-tone='warning'] { --toast-stamp: var(--gt-character-yellow); }
-.app-toast__icon { display: grid; place-items: center; flex: none; inline-size: 35px; block-size: 35px; border: 1px solid var(--toast-domain-accent, #233d3626); border-radius: 10px; background: var(--toast-stamp); color: var(--gt-character-ink); transform: rotate(-5deg); }
+.app-toast__icon { display: grid; place-items: center; flex: none; inline-size: 35px; block-size: 35px; border: 1px solid var(--toast-domain-accent, #233d3626); border-radius: 10px; background: var(--toast-stamp); color: var(--gt-character-ink); transform: none; }
 .app-toast__message { flex: 1; min-inline-size: 0; font-size: 12px; font-weight: 550; line-height: 1.6; overflow-wrap: anywhere; }
 .app-toast :is(.app-toast__action, .app-toast__dismiss) { display: inline-flex; align-items: center; justify-content: center; flex: none; min-inline-size: 44px; min-block-size: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--gt-muted); cursor: pointer; }
 .app-toast .app-toast__action { padding-inline: 10px; background: var(--gt-surface-raised); color: var(--gt-text); font-size: 11px; font-weight: 650; }

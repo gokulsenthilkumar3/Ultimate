@@ -1,6 +1,6 @@
 /** GrowthTrack's semantic visual contract. Generated CSS is derived from here. */
 export const tokens = {
-  version: '5.0.0',
+  version: '5.1.0',
   space: { '1': 4, '2': 8, '3': 12, '4': 16, '5': 24, '6': 32, '7': 40, '8': 48, '9': 64 },
   radius: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, pill: 999 },
   motion: { instant: '0ms', fast: '120ms', standard: '200ms', emphasized: '240ms', ease: 'cubic-bezier(.2, 0, 0, 1)', reduced: '0ms' },
@@ -24,7 +24,7 @@ export const tokens = {
     radius: { xs: 6, sm: 10, md: 16, lg: 20, xl: 24, pill: 999 },
     themes: {
       light: {
-        canvas: '#FFFBED', surface: '#FFFDF7', surfaceRaised: '#F1F0E4', surfaceSunken: '#F3F0E5',
+        canvas: '#F7F9F6', surface: '#FFFFFF', surfaceRaised: '#F0F4EE', surfaceSunken: '#EDF2EB',
         text: '#233D36', muted: '#53665B', subtle: '#607165', border: '#D6DCC9', borderStrong: '#A7B49C', inputBorder: '#83937C',
         sidebar: '#E3EED9', sidebarText: '#233D36', sidebarMuted: '#53665B', sidebarActive: '#CADFBD', sidebarActiveText: '#233D36',
       },

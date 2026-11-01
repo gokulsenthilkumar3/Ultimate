@@ -1,0 +1,75 @@
+/* Welcome cast: a small gesture followed by a long rest. These variables reuse
+   CharacterScene's admitted body tracks; no extra timers or animation layers. */
+[data-ui-style='kinetic'] .playful-landing .glow-crew--blip {
+  --crew-idle: welcome-blip-glide;
+  --crew-duration: 10.8s;
+  --crew-phase: -1.6s;
+  --crew-blink: 9.7s;
+}
+[data-ui-style='kinetic'] .playful-landing .glow-crew--mochi {
+  --crew-idle: welcome-mochi-breathe;
+  --crew-duration: 12s;
+  --crew-phase: -4.1s;
+  --crew-blink: 11.3s;
+}
+[data-ui-style='kinetic'] .playful-landing .glow-crew--ziggy {
+  --crew-idle: welcome-ziggy-poise;
+  --crew-duration: 9.6s;
+  --crew-phase: -6.8s;
+  --crew-blink: 8.9s;
+}
+[data-ui-style='kinetic'] .playful-landing .glow-crew--nova {
+  --crew-idle: welcome-nova-wonder;
+  --crew-duration: 13.2s;
+  --crew-phase: -9s;
+  --crew-blink: 12.1s;
+}
+
+/* No rotations accumulate: every character returns to its grounded pose. */
+@keyframes welcome-blip-glide {
+  0%, 62%, 100% { transform: none; }
+  72% { transform: translate(-1px, 1px) rotate(-1deg); }
+  83% { transform: translate(4px, -3px) rotate(2deg); }
+  94% { transform: translate(1px, 0) rotate(.4deg); }
+}
+@keyframes welcome-mochi-breathe {
+  0%, 54%, 100% { transform: none; }
+  71% { transform: translateY(-2px) scale(1.012, 1.018); }
+  86% { transform: scale(1.004, .997); }
+}
+@keyframes welcome-ziggy-poise {
+  0%, 68%, 100% { transform: none; }
+  77% { transform: rotate(-2.5deg) translateX(-1px); }
+  86% { transform: rotate(1.5deg) translateX(1px); }
+  94% { transform: rotate(-.4deg); }
+}
+@keyframes welcome-nova-wonder {
+  0%, 57%, 100% { transform: none; }
+  70% { transform: rotate(4deg) translateY(-1px); }
+  81% { transform: rotate(4deg) translateY(-1px); }
+  94% { transform: rotate(-.5deg); }
+}
+
+/* The cards are articles, so this is decorative pointer feedback rather than a
+   hidden action or an additional keyboard stop. Existing state gestures win. */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] .playful-landing .playful-crew-card:hover .character-scene[data-animate='true']:not([data-tier='0']) .glow-crew[data-state='idle'] .glow-crew__body {
+    animation: welcome-crew-acknowledge 900ms cubic-bezier(.16, 1, .3, 1) 1;
+  }
+}
+@keyframes welcome-crew-acknowledge {
+  0%, 100% { transform: none; }
+  35% { transform: translateY(-3px) rotate(-2deg); }
+  68% { transform: translateY(-1px) rotate(.8deg); }
+}
+
+/* Explicit local stops supplement the shared pause, viewport and budget gates. */
+[data-kinetic-motion='false'] .playful-landing .glow-crew__body,
+.playful-landing .character-scene[data-animate='false'] .glow-crew__body,
+.playful-landing .character-scene[data-tier='0'] .glow-crew__body {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .playful-landing .glow-crew__body { animation: none !important; transition: none !important; }
+}
