@@ -22,6 +22,12 @@
 [data-ui-style='kinetic'][data-kinetic-motion='true'] .glow-crew__body { transition: transform 380ms var(--motion-settle); }
 [data-ui-style='kinetic'][data-kinetic-motion='true'] .animated-logo[data-animate='true'] .animated-logo__sun { animation: kinetic-hello 850ms var(--motion-settle); }
 [data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.gt-button, .btn-primary, .btn-secondary, .native-button, .header-control, .workspace-subnav__links a, .signout-choice, .playful-button) { transition: transform 180ms cubic-bezier(.22,1,.36,1), color 160ms ease, border-color 160ms ease; }
+/* Keep navigation feedback local so reading surfaces remain still. */
+[data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.gt-navigation-area, .gt-navigation-module, .workspace-subnav__icon) { transition: transform 180ms var(--motion-settle), background-color 160ms ease, color 160ms ease; }
+@media (hover: hover) and (pointer: fine) {
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] .gt-navigation-module:hover { transform: translateX(2px); }
+  [data-ui-style='kinetic'][data-kinetic-motion='true'] .workspace-subnav__links > a:hover .workspace-subnav__icon { transform: translateY(-2px); }
+}
 @media (hover: hover) and (pointer: fine) {
   [data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.gt-button, .btn-primary, .native-button, .playful-button):hover:not(:disabled) { transform: translateY(-2px); }
   [data-ui-style='kinetic'][data-kinetic-motion='true'] :is(.gt-button, .playful-button, .playful-signin):hover .lucide-arrow-right { animation: kinetic-arrow-pass 420ms var(--motion-settle); }

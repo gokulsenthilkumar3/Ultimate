@@ -124,10 +124,10 @@
   --gt-radius-pill: 999px;
 }
 [data-ui-style="playful"][data-theme="light"] {
-  --gt-canvas: #FFFBED;
-  --gt-surface: #FFFDF7;
-  --gt-surface-raised: #F1F0E4;
-  --gt-surface-sunken: #F3F0E5;
+  --gt-canvas: #F7F9F6;
+  --gt-surface: #FFFFFF;
+  --gt-surface-raised: #F0F4EE;
+  --gt-surface-sunken: #EDF2EB;
   --gt-text: #233D36;
   --gt-muted: #53665B;
   --gt-subtle: #607165;

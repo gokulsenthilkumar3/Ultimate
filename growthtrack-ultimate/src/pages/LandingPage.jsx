@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, Check, Ear, Hand, LockKeyhole, RotateCcw, Scissors, Smile, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, LockKeyhole, RotateCcw, Scissors } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CharacterScene, { MotionToggle } from '../components/motion/CharacterScene';
 import usePlayfulMotion from '../hooks/usePlayfulMotion';
@@ -8,11 +8,10 @@ import AnimatedLogo from '../components/motion/AnimatedLogo';
 import { useKinetic } from '../components/motion/KineticContext';
 import useLandingMotion from '../hooks/useLandingMotion';
 import { emitCelebration } from '../components/motion/ConfettiHost';
-import PersonalCompanionArt from '../components/motion/PersonalCompanionArt';
-import useSceneMotion from '../hooks/useSceneMotion';
+import WelcomeCompanion from './WelcomeCompanion';
 import './public-pages.css';
 import './playful-landing.css';
-import './welcome-companion.css';
+import './welcome-crew-motion.css';
 
 const crew = [
   { kind: 'siren', name: 'Siren', title: 'Hello, focus.', number: '01', copy: 'A friendly nudge toward the thing that matters. Big bell energy. Absolutely no alarm required.' },
@@ -30,40 +29,6 @@ const modes = [
   { id: 'wellness', label: 'Feel a little better', kind: 'siren', eyebrow: 'WELLNESS / A MOMENT FOR YOU', title: 'Small steps count, too.', tasks: ['Take a five-minute stretch', 'Refill the water bottle', 'Step outside for a moment'] },
   { id: 'life', label: 'Make room for life', kind: 'sunny', eyebrow: 'LIFE / MORE OF THE GOOD STUFF', title: 'Leave a little room for joy.', tasks: ['Save an idea for the weekend', 'Send a little hello', 'Make time for a favourite thing'] },
 ];
-
-const companionPoses = [
-  { id: 'idle', label: 'At ease', Icon: Smile, caption: 'A little backup. Entirely at your pace.' },
-  { id: 'greet', label: 'Say hello', Icon: Hand, caption: 'Hello, you. There’s room for you here.' },
-  { id: 'listen', label: 'Listen', Icon: Ear, caption: 'A thoughtful moment. No rush at all.' },
-  { id: 'celebrate', label: 'Celebrate', Icon: Sparkles, caption: 'A small win? That absolutely counts.' },
-];
-
-function WelcomeCompanion() {
-  const ref = useRef(null);
-  const [poseId, setPoseId] = useState('idle');
-  const { tier } = useKinetic();
-  const animate = useSceneMotion(ref, { cost: 2, priority: 2, enabled: tier > 0 });
-  const pose = companionPoses.find(item => item.id === poseId);
-  return <figure ref={ref} className="welcome-companion" data-state={poseId} data-animate={String(animate)} aria-labelledby="welcome-companion-caption">
-    <div className="welcome-companion__stage" id="welcome-companion-stage" aria-hidden="true">
-      <div className="welcome-companion__entrance"><div className="welcome-companion__diorama">
-        <span className="welcome-companion__back-paper" />
-        <span className="welcome-companion__arch" />
-        <svg className="welcome-companion__doodles" viewBox="0 0 500 500" fill="none" focusable="false"><path d="m406 68 5 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2 5-15ZM58 176l9 2m-13 11 8-3m-5-25 8 7m320 236 10 4m-5-19 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M76 79c17-22 43-22 64-11m-4-9 6 11-12 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><path d="M431 272c-30 17-9 52 9 29s-15-40-31-27" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 5" /></svg>
-        <span className="welcome-companion__hello">a familiar face,<br /><b>a fresh little world.</b></span>
-        <div className="welcome-companion__actor"><PersonalCompanionArt state={poseId} motion={false} className="welcome-companion__art" /></div>
-        <span className="welcome-companion__note"><span>Today’s plan</span><strong>Make room<br />for you.</strong><span className="welcome-companion__note-line" /><span className="welcome-companion__note-line" /></span>
-        <svg className="welcome-companion__leaf" viewBox="0 0 90 140" fill="none" focusable="false"><path d="M43 132V39m0 27C12 64 8 40 13 26c29 0 35 25 30 40Zm0 32c31-1 40-26 34-42-29 2-37 25-34 42Z" fill="var(--playful-mint)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M40 42C25 18 41 7 48 7c20 15 11 31-8 35Z" fill="var(--playful-yellow)" stroke="currentColor" strokeWidth="1.5" /></svg>
-        <span className="welcome-companion__floor" />
-        <span className="welcome-companion__seal"><Sparkles size={13} />small steps, big possibility</span>
-      </div></div>
-    </div>
-    <figcaption className="welcome-companion__caption" id="welcome-companion-caption"><span>YOU, WITH A LITTLE MORE CHARACTER</span><p aria-live="polite" aria-atomic="true">{pose.caption}</p></figcaption>
-    <div className="welcome-companion__controls" role="group" aria-label="Choose a companion pose">
-      {companionPoses.map(({ id, label, Icon }) => <button key={id} type="button" aria-pressed={poseId === id} aria-controls="welcome-companion-stage" onClick={() => setPoseId(id)}><Icon size={16} aria-hidden="true" /><span>{label}</span></button>)}
-    </div>
-  </figure>;
-}
 
 function TinyDay() {
   const [modeId, setModeId] = useState('focus');
