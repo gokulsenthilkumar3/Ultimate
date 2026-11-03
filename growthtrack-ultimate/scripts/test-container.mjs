@@ -8,6 +8,7 @@ const image = process.argv[2] || 'growthtrack-ultimate:verification';
 const id = `growthtrack-smoke-${randomUUID()}`;
 const password = randomBytes(24).toString('hex');
 const key = randomBytes(32).toString('hex');
+const handoffSecret = randomBytes(32).toString('hex');
 const label = 'com.growthtrack.disposable-smoke';
 let containerCreated = false;
 let volumeCreated = false;
@@ -31,7 +32,7 @@ try {
   assert.match(repeat.output, /EEXIST/);
   await docker(['run', '--rm', ...mount, '--env', 'OWNER_EMAIL=smoke@example.invalid', '--env', 'OWNER_NAME=Isolated smoke owner', '--env', 'OWNER_PASSWORD', image, 'owner'], { environment: { OWNER_PASSWORD: password } });
   await docker(['run', '--detach', '--name', id, '--label', `${label}=${id}`, '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges:true', '--tmpfs', '/tmp:size=64m,mode=1777', ...mount,
-    '--publish', '127.0.0.1::3001', '--env', 'APP_URL=https://localhost/Ultimate', '--env', 'APP_ORIGINS=https://localhost', '--env', 'APP_ENCRYPTION_KEY', image], { environment: { APP_ENCRYPTION_KEY: key } });
+    '--publish', '127.0.0.1::3001', '--env', 'APP_URL=https://localhost/Ultimate', '--env', 'APP_ORIGINS=https://localhost', '--env', 'APP_ENCRYPTION_KEY', '--env', 'HANDOFF_SECRET', image], { environment: { APP_ENCRYPTION_KEY: key, HANDOFF_SECRET: handoffSecret } });
   containerCreated = true;
   const port = (await docker(['port', id, '3001/tcp'])).output.trim();
   assert.match(port, /^127\.0\.0\.1:\d+$/);
