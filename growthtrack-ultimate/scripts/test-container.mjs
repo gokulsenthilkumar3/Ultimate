@@ -8,6 +8,7 @@ const image = process.argv[2] || 'growthtrack-ultimate:verification';
 const id = `growthtrack-smoke-${randomUUID()}`;
 const password = randomBytes(24).toString('hex');
 const key = randomBytes(32).toString('hex');
+const handoffSecret = randomBytes(32).toString('hex');
 const label = 'com.growthtrack.disposable-smoke';
 let containerCreated = false;
 let volumeCreated = false;
@@ -31,20 +32,25 @@ try {
   assert.match(repeat.output, /EEXIST/);
   await docker(['run', '--rm', ...mount, '--env', 'OWNER_EMAIL=smoke@example.invalid', '--env', 'OWNER_NAME=Isolated smoke owner', '--env', 'OWNER_PASSWORD', image, 'owner'], { environment: { OWNER_PASSWORD: password } });
   await docker(['run', '--detach', '--name', id, '--label', `${label}=${id}`, '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges:true', '--tmpfs', '/tmp:size=64m,mode=1777', ...mount,
-    '--publish', '127.0.0.1::3001', '--env', 'APP_URL=https://localhost/Ultimate', '--env', 'APP_ORIGINS=https://localhost', '--env', 'APP_ENCRYPTION_KEY', image], { environment: { APP_ENCRYPTION_KEY: key } });
+    '--publish', '127.0.0.1::3001', '--env', 'APP_URL=https://localhost/Ultimate', '--env', 'APP_ORIGINS=https://localhost', '--env', 'APP_ENCRYPTION_KEY', '--env', 'HANDOFF_SECRET', image], { environment: { APP_ENCRYPTION_KEY: key, HANDOFF_SECRET: handoffSecret } });
   containerCreated = true;
   const port = (await docker(['port', id, '3001/tcp'])).output.trim();
   assert.match(port, /^127\.0\.0\.1:\d+$/);
   const base = `http://${port}`;
   let online = false;
-  for (let attempt = 0; attempt < 30; attempt++) {
+  // Cold starts on hosted runners can spend nearly a minute loading Prisma
+  // and the production bundle after Docker has reported the container up.
+  for (let attempt = 0; attempt < 60; attempt++) {
     try {
       const response = await fetch(`${base}/api/health`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(2000) });
       if ((await response.json()).status === 'online') { online = true; break; }
     } catch { /* Wait only for this isolated container. */ }
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  assert.equal(online, true, 'The image must start with connected database');
+  if (!online) {
+    const logs = await docker(['logs', id], { allowFailure: true });
+    throw new Error(`The image did not reach a connected health state. Container logs:\n${logs.output}`);
+  }
   const anonymous = await fetch(`${base}/api/v1/workspace/notes`);
   assert.equal(anonymous.status, 401);
   const login = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://localhost' }, body: JSON.stringify({ email: 'smoke@example.invalid', password }) });

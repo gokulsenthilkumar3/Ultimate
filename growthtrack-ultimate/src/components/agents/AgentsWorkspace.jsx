@@ -63,6 +63,7 @@ export default function AgentsWorkspace({ state }) {
   const [selected, setSelected] = useState([]);
   const [search, setSearch] = useState('');
   const activeRequest = useRef(null), batch = useRef(null), bottom = useRef(null), thread = useRef(null), composer = useRef(null), follow = useRef(true), jump = useRef(null);
+  const restoreChatFocus = useRef(false);
   const selectionRef = useRef({ selected, consent });
   selectionRef.current = { selected, consent };
   const runner = useMemo(() => createAgentActionRunner({ getState: () => useStore.getState() }), []);
@@ -127,12 +128,20 @@ export default function AgentsWorkspace({ state }) {
     const escape = event => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
+      restoreChatFocus.current = true;
       const query = new URLSearchParams(params); query.delete('view'); setParams(query);
       document.getElementById(`${id}-chat`)?.focus();
+      setTimeout(() => document.getElementById(`${id}-chat`)?.focus(), 0);
     };
     document.addEventListener('keydown', escape);
     return () => document.removeEventListener('keydown', escape);
   }, [view, params, setParams, id]);
+
+  useEffect(() => {
+    if (view !== 'chat' || !restoreChatFocus.current) return;
+    restoreChatFocus.current = false;
+    requestAnimationFrame(() => document.getElementById(`${id}-chat`)?.focus());
+  }, [view, id]);
 
   function changeConsent(domain, checked) {
     if (!checked) setSelected(keys => keys.filter(key => !candidates.some(record => record.key === key && record.domain === domain)));

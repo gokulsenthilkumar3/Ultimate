@@ -23,7 +23,11 @@ concurrency:
 jobs:
   agent-guardrails:
     name: Agent guardrails
-    runs-on: ubuntu-latest
+    # Playwright 1.59.1 does not support the rolling ubuntu-latest image when
+    # GitHub advances it to Ubuntu 26.04. Keep browser dependencies on a
+    # supported, reproducible runner until Playwright publishes a compatible
+    # image recipe.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
@@ -54,7 +58,7 @@ jobs:
 
   quality:
     name: Quality Gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:

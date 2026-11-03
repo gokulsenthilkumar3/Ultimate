@@ -2,6 +2,8 @@
 
 Follow-up: [navigation usability and rendering impact](2026-11-03-navigation-ui-impact.md) records the next implementation pass. Clarification: `impact:ui` traces preview RecordsTable dependencies; its page/view counts below are preview estimates, not production DataTable coverage. The follow-up report lists production consumers separately.
 
+CI follow-up: the initial PR run failed before application tests because Playwright 1.59.1 was incompatible with GitHub's Ubuntu 26.04 `ubuntu-latest` image, Android setup requested the removed SDK `tools` package, and the container context omitted build/proxy modules. Those failures are addressed in the follow-up commit and cross-layer matrix: browser/platform jobs use Ubuntu 24.04, Android compiles against API 36, and the container retains `staticCompressionPlugin.js` plus an in-context workspace proxy module.
+
 ## Latest incremental verification
 
 Preserved the existing Overview and shared-control edits. Added Escape-to-clear to SearchField: focus stays in the input, a populated search consumes Escape before it reaches a containing surface, and an empty search lets Escape propagate. Consumer handlers can prevent the default behavior; read-only fields and IME composition are respected.

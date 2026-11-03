@@ -5,11 +5,16 @@ import serviceWorkerPlugin from './build/serviceWorkerPlugin.js';
 import staticCompressionPlugin from './build/staticCompressionPlugin.js';
 import nativeEntriesPlugin from './scripts/nativeEntriesPlugin.js';
 import kineticGraphPlugin from './scripts/kineticGraphPlugin.js';
-import { createUiProxies } from '../scripts/workspace-proxy.mjs';
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  // The workspace proxy lives at the repository root. Keep it optional so a
+  // standalone/container build only needs the Ultimate application context;
+  // workspace development still loads the canonical proxy when enabled.
+  const createUiProxies = env.GROWTHTRACK_WORKSPACE === '1'
+    ? (await import('./scripts/workspace-proxy.mjs')).createUiProxies
+    : null;
   const allowedHosts = (env.VITE_ALLOWED_HOSTS || 'localhost,127.0.0.1').split(',').map(host => host.trim()).filter(Boolean);
   const sentryEnabled = Boolean(env.SENTRY_AUTH_TOKEN && env.SENTRY_ORG && env.SENTRY_PROJECT);
 
@@ -34,7 +39,7 @@ export default defineConfig(({ mode }) => {
     strictPort: true,
     host: env.VITE_HOST || '127.0.0.1',
     allowedHosts,
-    proxy: env.GROWTHTRACK_WORKSPACE === '1' ? createUiProxies(env) : {
+    proxy: createUiProxies ? createUiProxies(env) : {
       '/api': {
         // Standalone `npm run dev` starts server.js on 3001. A workspace that
         // also starts the multi-product gateway can opt in with GATEWAY_URL.
