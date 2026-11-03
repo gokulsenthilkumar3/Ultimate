@@ -4,7 +4,7 @@ Date: **26 October 2026**. Target confirmed by the user: **their own likeness, d
 
 ## Visible result and remaining defects
 
-Review the actual renders: [neutral portrait](../../artifacts/parametric-visual/desktop-neutral-face.png), [front](../../artifacts/parametric-visual/desktop-neutral-front.png), [side](../../artifacts/parametric-visual/desktop-neutral-side.png), [back](../../artifacts/parametric-visual/desktop-neutral-back.png), and [head combination](../../artifacts/parametric-visual/desktop-head-combination-face.png). Three further torso-combination views are in the same evidence directory.
+The neutral portrait, front, side, back, head-combination, and torso-combination renders are generated locally by the parametric visual pipeline. The generated evidence directory is intentionally untracked; use the commands below to recreate it from the checked-in source.
 
 Skin now has authored colour variation and lip/face detail. The head has attached textured hair, and the body wears an authored tee over the existing shorts preview. The portrait still has flat dark eyes without corneal/iris depth, a coarse hairline and a generic neutral face. The tee is a finite fitting prototype. These are visible outstanding defects, not issues that passing numerical tests resolves.
 
