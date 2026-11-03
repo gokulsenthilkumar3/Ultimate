@@ -46,7 +46,10 @@ try {
     } catch { /* Wait only for this isolated container. */ }
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  assert.equal(online, true, 'The image must start with connected database');
+  if (!online) {
+    const logs = await docker(['logs', id], { allowFailure: true });
+    throw new Error(`The image did not reach a connected health state. Container logs:\n${logs.output}`);
+  }
   const anonymous = await fetch(`${base}/api/v1/workspace/notes`);
   assert.equal(anonymous.status, 401);
   const login = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://localhost' }, body: JSON.stringify({ email: 'smoke@example.invalid', password }) });
