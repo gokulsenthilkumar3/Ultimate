@@ -37,7 +37,9 @@ try {
   assert.match(port, /^127\.0\.0\.1:\d+$/);
   const base = `http://${port}`;
   let online = false;
-  for (let attempt = 0; attempt < 30; attempt++) {
+  // Cold starts on hosted runners can spend nearly a minute loading Prisma
+  // and the production bundle after Docker has reported the container up.
+  for (let attempt = 0; attempt < 60; attempt++) {
     try {
       const response = await fetch(`${base}/api/health`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(2000) });
       if ((await response.json()).status === 'online') { online = true; break; }
