@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npx prisma generate
-RUN npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script --output /app/prisma/fresh-schema.sql
+RUN node scripts/generate-schema.mjs
 RUN npm run build
 RUN npm prune --omit=dev
 

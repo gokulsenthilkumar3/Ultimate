@@ -8,7 +8,9 @@ import { createSealer } from '../../../server/domains/sync/sealer.js';
 import { isolatedFixture } from './fixture.mjs';
 
 const migration = await readFile(new URL('../../../prisma/migrations/20261018120000_record_rows/migration.sql', import.meta.url), 'utf8');
-const statements = migration.split(';').map(sql => sql.replace(/^\s*--.*$/gm, '').trim()).filter(Boolean);
+const splitSql = sql => sql.replace(/^\s*--.*$/gm, '').split(';').map(sql => sql.trim()).filter(Boolean);
+const statements = splitSql(migration);
+const typedStatements = splitSql(await readFile(new URL('../../../prisma/migrations/20261102160000_typed_record_fields/migration.sql', import.meta.url), 'utf8'));
 const holding = { name: 'Index fund', symbol: '120716', type: 'Mutual Fund', units: 10, buyPrice: 100, currentPrice: 90, buyDate: '2026-01-02' };
 const event = { title: 'Dentist', date: '2026-10-20', allDay: true, recurrence: 'none' };
 const navResponse = { meta: { scheme_name: 'Index Fund' }, data: [{ date: '16-10-2026', nav: '123.4567' }] };
@@ -28,7 +30,7 @@ async function legacyFixture(t) {
 }
 async function rowFixture(t) {
   const result = await legacyFixture(t);
-  await result.prisma.$transaction(async tx => { for (const statement of statements) await tx.$executeRawUnsafe(statement); });
+  await result.prisma.$transaction(async tx => { for (const statement of [...statements, ...typedStatements]) await tx.$executeRawUnsafe(statement); });
   return { ...result, services: createRecordServices(result.prisma) };
 }
 const createHolding = (services, owner, id, extra = {}) => services.holdings.create(owner, { id, mutationId: mutation(`create-${id}`), record: { ...holding, ...extra } });
@@ -173,4 +175,55 @@ test('versioned routes stay closed until the migration is enabled', async t => {
   await routes.find(([route]) => route === '/api/v1/finance/holdings')[1]({ user: { id: 'owner-a' }, query: {} }, res);
   assert.deepEqual([res.statusCode, res.body.code], [503, 'RECORD_ROWS_MIGRATION_REQUIRED']);
   assert.equal(toClient({ id: 'x', revision: 1, data: 'not json', updatedAt: new Date(0) }).id, 'x');
+});
+
+test('record writes store stable scalars in typed columns and only nested/custom data in JSON', async t => {
+  const { prisma, services } = await rowFixture(t);
+  const nested = { price: 0, date: '2026-10-20', source: 'manual' };
+  await createHolding(services, 'owner-a', 'typed', { currentPrice: 0, currency: 'usd', priceCurrency: 'usd', priceDate: '2026-10-20', schemeCode: 120716,
+    coingeckoId: 'bitcoin', snapshots: [nested], provenance: { source: 'statement' } });
+  const row = await prisma.portfolioHolding.findUnique({ where: { userId_id: { userId: 'owner-a', id: 'typed' } } });
+  assert.deepEqual([row.name, row.units, row.currentPrice, row.currency, row.priceDate, row.schemeCode], ['Index fund', 10, 0, 'USD', '2026-10-20', '120716']);
+  assert.deepEqual(JSON.parse(row.data), { snapshots: [nested], provenance: { source: 'statement' } });
+  const saved = await services.calendar.create('owner-a', { id: 'timed', mutationId: 'typed-calendar-01', record: { ...event, allDay: false, startTime: '09:30', endTime: '10:30',
+    timeZone: 'UTC', description: 'Review', location: 'Office', icsUid: 'uid-1', type: 'Meeting', custom: { attendees: ['owner'] } } });
+  const calendar = await prisma.calendarEvent.findUnique({ where: { userId_id: { userId: 'owner-a', id: 'timed' } } });
+  assert.deepEqual([calendar.title, calendar.date, calendar.startTime, calendar.allDay, calendar.icsUid], [event.title, event.date, '09:30', false, 'uid-1']);
+  assert.deepEqual(JSON.parse(calendar.data), { custom: { attendees: ['owner'] } });
+  assert.deepEqual(saved.custom, { attendees: ['owner'] });
+});
+
+test('typed values override stale legacy scalar JSON and explicit null clears never resurrect it', async t => {
+  const { prisma, services } = await rowFixture(t);
+  await createHolding(services, 'owner-a', 'clear', { currentPrice: 0, currency: 'USD' });
+  await prisma.portfolioHolding.update({ where: { userId_id: { userId: 'owner-a', id: 'clear' } }, data: { data: JSON.stringify({ units: 99, currentPrice: 900, currency: 'EUR', note: 'keep' }) } });
+  const before = (await services.holdings.listAll('owner-a'))[0];
+  assert.deepEqual([before.units, before.currentPrice, before.currency], [10, 0, 'USD']);
+  const cleared = await services.holdings.update('owner-a', 'clear', { mutationId: 'clear-prices-001', expectedRevision: 1, record: { currentPrice: null, currency: null } });
+  assert.deepEqual([cleared.currentPrice, cleared.currency, cleared.units, cleared.note], [null, null, 10, 'keep']);
+  const partial = await services.holdings.update('owner-a', 'clear', { mutationId: 'clear-name-0001', expectedRevision: 2, record: { name: 'Renamed' } });
+  assert.deepEqual([partial.currentPrice, partial.currency, partial.units], [null, null, 10]);
+  const stored = await prisma.portfolioHolding.findUnique({ where: { userId_id: { userId: 'owner-a', id: 'clear' } } });
+  assert.equal(stored.currentPrice, null);
+  assert.equal(Object.hasOwn(JSON.parse(stored.data), 'currentPrice'), false);
+  assert.equal(Object.hasOwn(JSON.parse(stored.data), 'units'), false);
+});
+
+test('forward record backfill moves correctly typed scalars and preserves malformed/custom legacy properties', async t => {
+  const { prisma } = await legacyFixture(t);
+  for (const statement of statements) await prisma.$executeRawUnsafe(statement);
+  const legacy = { ...holding, currentPrice: 'unknown', currency: { old: 'value' }, priceCurrency: 'INR', snapshots: [{ date: '2026-10-20', price: 90 }], custom: false };
+  await prisma.$executeRawUnsafe('INSERT INTO portfolio_holdings(userId,id,data) VALUES (?,?,?)', 'owner-a', 'legacy', JSON.stringify(legacy));
+  await prisma.$executeRawUnsafe('INSERT INTO calendar_events(userId,id,data) VALUES (?,?,?)', 'owner-a', 'invalid-json', '{invalid');
+  for (const statement of typedStatements) await prisma.$executeRawUnsafe(statement);
+  const row = await prisma.portfolioHolding.findUnique({ where: { userId_id: { userId: 'owner-a', id: 'legacy' } } });
+  assert.deepEqual([row.name, row.buyPrice, row.priceCurrency, row.currentPrice, row.currency], ['Index fund', 100, 'INR', null, null]);
+  const extras = JSON.parse(row.data);
+  assert.deepEqual(extras.currency, legacy.currency);
+  assert.equal(extras.currentPrice, 'unknown');
+  assert.equal(Object.hasOwn(extras, 'name'), false);
+  assert.deepEqual(extras.snapshots, legacy.snapshots);
+  const result = (await createRecordServices(prisma).holdings.listAll('owner-a'))[0];
+  assert.deepEqual([result.currentPrice, result.currency, result.custom], ['unknown', legacy.currency, false]);
+  assert.equal((await prisma.calendarEvent.findUnique({ where: { userId_id: { userId: 'owner-a', id: 'invalid-json' } } })).data, '{invalid');
 });

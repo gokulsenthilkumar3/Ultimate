@@ -15,7 +15,7 @@ export interface BillRecord {
   biller_id: string;
   country: string;
   service_type: string;
-  amount_due: number;
+  amount_due: number | string;
   currency: string;
   due_date: Date;
   status: string;
@@ -31,7 +31,7 @@ export interface AutopayRuleRecord {
   funding_source: string;
   type: string;
   schedule: string;
-  max_amount_per_charge: number | null;
+  max_amount_per_charge: number | string | null;
   active: boolean;
   created_at: Date;
   updated_at: Date;

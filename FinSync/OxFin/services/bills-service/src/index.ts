@@ -49,7 +49,7 @@ app.get('/v1/bills', async (req: Request, res: Response) => {
   if (isBillsDbEnabled) {
     try {
       const dbBills = await listBillsByUser(userId);
-      res.json({ bills: dbBills.map((r) => ({ id: r.id, userId: r.user_id, billerId: r.biller_id, country: r.country, serviceType: r.service_type, amountDue: r.amount_due, currency: r.currency, dueDate: r.due_date.toISOString(), status: r.status as Bill['status'], source: r.source as Bill['source'], createdAt: r.created_at.toISOString(), updatedAt: r.updated_at.toISOString() })) });
+      res.json({ bills: dbBills.map((r) => ({ id: r.id, userId: r.user_id, billerId: r.biller_id, country: r.country, serviceType: r.service_type, amountDue: Number(r.amount_due), currency: r.currency, dueDate: r.due_date.toISOString(), status: r.status as Bill['status'], source: r.source as Bill['source'], createdAt: r.created_at.toISOString(), updatedAt: r.updated_at.toISOString() })) });
       return;
     } catch (err: any) { console.error('Failed to fetch bills from DB:', err.message); }
   }
@@ -89,7 +89,7 @@ app.get('/v1/autopay-rules', async (req: Request, res: Response) => {
   if (isBillsDbEnabled) {
     try {
       const dbRules = await listAutopayRulesByUser(userId);
-      res.json({ autopayRules: dbRules.map((r) => ({ id: r.id, userId: r.user_id, billerId: r.biller_id, fundingSource: r.funding_source as AutopayRule['fundingSource'], type: r.type as AutopayRule['type'], schedule: r.schedule as AutopayRule['schedule'], maxAmountPerCharge: r.max_amount_per_charge ?? undefined, active: r.active, createdAt: r.created_at.toISOString(), updatedAt: r.updated_at.toISOString() })) });
+      res.json({ autopayRules: dbRules.map((r) => ({ id: r.id, userId: r.user_id, billerId: r.biller_id, fundingSource: r.funding_source as AutopayRule['fundingSource'], type: r.type as AutopayRule['type'], schedule: r.schedule as AutopayRule['schedule'], maxAmountPerCharge: r.max_amount_per_charge == null ? undefined : Number(r.max_amount_per_charge), active: r.active, createdAt: r.created_at.toISOString(), updatedAt: r.updated_at.toISOString() })) });
       return;
     } catch (err: any) { console.error('Failed to fetch autopay rules from DB:', err.message); }
   }

@@ -1,8 +1,8 @@
 import os
 import json
 import sqlite3
+from contextlib import closing
 import asyncio
-import aiohttp
 import logging
 import argparse
 from datetime import datetime, timedelta
@@ -31,24 +31,38 @@ class AsyncForexDataDownloader:
 
     def _init_db(self):
         """Initializes SQLite database to store historical OHLCV data."""
-        with sqlite3.connect(self.db_path) as conn:
+        # Legacy rows have no interval metadata, so retain them separately rather
+        # than guessing a granularity and returning incompatible candles.
+        with closing(sqlite3.connect(self.db_path)) as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS ohlcv_cache (
-                    instrument TEXT,
-                    timestamp DATETIME,
+                CREATE TABLE IF NOT EXISTS ohlcv_cache_v2 (
+                    instrument TEXT NOT NULL,
+                    granularity TEXT NOT NULL,
+                    timestamp DATETIME NOT NULL,
                     open REAL,
                     high REAL,
                     low REAL,
                     close REAL,
                     volume INTEGER,
-                    PRIMARY KEY (instrument, timestamp)
+                    PRIMARY KEY (instrument, granularity, timestamp)
                 )
             ''')
             conn.commit()
 
+    @staticmethod
+    def _cache_timestamp(value):
+        """Store UTC seconds consistently; naive provider timestamps are UTC."""
+        timestamp = pd.Timestamp(value)
+        if pd.isna(timestamp):
+            raise ValueError("Cache timestamps must not be missing")
+        if timestamp.tzinfo is not None:
+            timestamp = timestamp.tz_convert("UTC")
+        return timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
     async def fetch_ohlcv_from_oanda(self, session, instrument, start_date, end_date, interval):
         """Fetches candlestick data asynchronously from OANDA API."""
+        import aiohttp
         url = f"{self.base_url}/instruments/{instrument}/candles"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -94,43 +108,45 @@ class AsyncForexDataDownloader:
         
         df = pd.DataFrame(rows)
         # Insert into local cache database
-        await asyncio.to_thread(self._cache_data, instrument, df)
+        await asyncio.to_thread(self._cache_data, instrument, df, interval)
         return df
 
-    def _cache_data(self, instrument, df):
-        """Writes raw Pandas DataFrame to SQLite using UPSERT (INSERT OR REPLACE)"""
+    def _cache_data(self, instrument, df, interval=None):
+        """Write candles atomically, replacing only the same instrument/interval/time."""
+        interval = interval or self.config.get("interval", "H1")
         if df.empty:
             return
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             df_to_sql = df.copy()
             df_to_sql["instrument"] = instrument
             
             cursor = conn.cursor()
             for _, row in df_to_sql.iterrows():
                 cursor.execute('''
-                    INSERT OR REPLACE INTO ohlcv_cache 
-                    (instrument, timestamp, open, high, low, close, volume)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO ohlcv_cache_v2 
+                    (instrument, granularity, timestamp, open, high, low, close, volume)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    row["instrument"], 
-                    row["timestamp"].strftime("%Y-%m-%d %H:%M:%S"), 
+                    row["instrument"], interval, 
+                    self._cache_timestamp(row["timestamp"]),
                     row["open"], row["high"], row["low"], row["close"], row["volume"]
                 ))
             conn.commit()
 
-    def get_cached_data(self, instrument, start_date, end_date):
-        """Retrieves raw cached historical data for a specific instrument and time range."""
-        with sqlite3.connect(self.db_path) as conn:
+    def get_cached_data(self, instrument, start_date, end_date, interval=None):
+        """Retrieve cached candles within an inclusive UTC time range."""
+        interval = interval or self.config.get("interval", "H1")
+        with closing(sqlite3.connect(self.db_path)) as conn:
             query = '''
                 SELECT timestamp, open, high, low, close, volume 
-                FROM ohlcv_cache 
-                WHERE instrument = ? 
+                FROM ohlcv_cache_v2 
+                WHERE instrument = ? AND granularity = ? 
                 AND timestamp >= ? AND timestamp <= ?
                 ORDER BY timestamp ASC
             '''
             df = pd.read_sql_query(
                 query, conn, 
-                params=(instrument, start_date.strftime("%Y-%m-%d %H:%M:%S"), end_date.strftime("%Y-%m-%d %H:%M:%S")),
+                params=(instrument, interval, self._cache_timestamp(start_date), self._cache_timestamp(end_date)),
                 parse_dates=["timestamp"]
             )
             return df
@@ -175,6 +191,7 @@ class AsyncForexDataDownloader:
         return data
 
     async def run_pipeline(self):
+        import aiohttp
         end_date = datetime.utcnow()
         days = self.config.get("history_days", 30)
         start_date = end_date - timedelta(days=days)

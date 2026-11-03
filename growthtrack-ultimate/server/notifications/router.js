@@ -28,7 +28,7 @@ function issue(status, code, message) { return Object.assign(new Error(message),
 const conflict = () => issue(409, 'REVISION_CONFLICT', 'Notification preferences changed. Refresh before retrying.');
 const defaults = () => ({ schemaVersion: 1, revision: 0, preferences: structuredClone(DEFAULT_PREFERENCES), read: {}, dismissed: {} });
 
-export function createNotificationHandlers({ prisma, now = () => new Date() }) {
+export function createNotificationHandlers({ prisma, calendarRecords = null, now = () => new Date() }) {
   if (!prisma?.appSetting || !prisma?.user) throw new TypeError('An injected Prisma client is required.');
 
   async function stored(owner) {
@@ -50,14 +50,14 @@ export function createNotificationHandlers({ prisma, now = () => new Date() }) {
     const [user, tasks, goals, habits, subscriptions] = await Promise.all([
       prisma.user.findUnique({ where: { id: owner }, select: { id: true, calendarEvents: true } }),
       prisma.task.findMany({ where: { userId: owner }, select: { id: true, userId: true, title: true, due_date: true, status: true, done: true } }),
-      prisma.goal.findMany({ where: { userId: owner }, select: { id: true, userId: true, title: true, targetDate: true, data: true } }),
-      prisma.habit.findMany({ where: { userId: owner }, select: { id: true, userId: true, name: true, data: true, logs: { where: { date: today }, select: { date: true } } } }),
-      prisma.subscriptionItem.findMany({ where: { userId: owner }, select: { id: true, userId: true, name: true, active: true, data: true } }),
+      prisma.goal.findMany({ where: { userId: owner }, select: { id: true, userId: true, title: true, targetDate: true, status: true, target_value: true, current_value: true, data: true } }),
+      prisma.habit.findMany({ where: { userId: owner }, select: { id: true, userId: true, name: true, target_days: true, data: true, logs: { where: { date: today }, select: { date: true } } } }),
+      prisma.subscriptionItem.findMany({ where: { userId: owner }, select: { id: true, userId: true, name: true, active: true, next_date: true, data: true } }),
     ]);
     if (!user || user.id !== owner) throw issue(401, 'UNAUTHORIZED', 'Sign in to load notifications.');
     let events = [];
     try {
-      events = user.calendarEvents ? JSON.parse(user.calendarEvents) : [];
+      events = calendarRecords ? await calendarRecords.listAll(owner) : user.calendarEvents ? JSON.parse(user.calendarEvents) : [];
       if (!Array.isArray(events)) throw new Error('Invalid calendar');
       events = events.filter(event => event && [event.userId, event.user_id].every(id => id == null || id === owner));
     } catch { throw issue(503, 'SOURCE_INVALID', 'Calendar reminders could not be verified. Review the calendar records.'); }

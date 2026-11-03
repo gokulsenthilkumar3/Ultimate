@@ -1,3 +1,34 @@
+-- Legacy Supabase backend only. The current client uses src/lib/firestore.ts.
+-- Keep the historical SQL installation replayable for legacy consumers.
+CREATE TABLE IF NOT EXISTS public.watchlists (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ symbol text NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(user_id, symbol)
+);
+CREATE TABLE IF NOT EXISTS public.portfolios (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ symbol text NOT NULL,
+ qty numeric NOT NULL CHECK(qty > 0),
+ avg_price numeric NOT NULL CHECK(avg_price >= 0),
+ buy_date date NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS portfolios_user_id_idx ON public.portfolios(user_id);
+CREATE TABLE IF NOT EXISTS public.alerts (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ symbol text NOT NULL,
+ condition text NOT NULL CHECK(condition IN ('above', 'below')),
+ threshold numeric NOT NULL CHECK(threshold > 0),
+ channel text NOT NULL CHECK(channel IN ('email', 'telegram')),
+ triggered_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS alerts_user_id_idx ON public.alerts(user_id);
+
 -- Migration 002: Enable Row Level Security on user-scoped tables
 -- Run this in Supabase SQL editor or via supabase db push
 

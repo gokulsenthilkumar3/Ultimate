@@ -8,7 +8,7 @@ function getPool(): Pool {
 }
 
 export interface PaymentIntentRecord {
-  id: string; user_id: string; source: string; destination: string; amount: number;
+  id: string; user_id: string; source: string; destination: string; amount: number | string;
   currency: string; country: string; rail: string; purpose_code: string | null;
   status: string; external_reference: string | null; error_message: string | null;
   created_at: Date; updated_at: Date;

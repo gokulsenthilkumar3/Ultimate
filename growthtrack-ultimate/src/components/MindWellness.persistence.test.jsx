@@ -29,7 +29,7 @@ const mount = (query = '?view=journal&keep=yes') => render(<MemoryRouter initial
 describe('MindWellness persistence and explicit import', () => {
   it('uses query views and browser history while preserving other parameters', async () => {
     mount(); expect(screen.getByPlaceholderText('Start writing here...')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Breathe', exact: true }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Breathe', exact: true }));
     expect(screen.getByTestId('url')).toHaveTextContent('view=breathe');
     expect(screen.getByTestId('url')).toHaveTextContent('keep=yes');
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));

@@ -14,10 +14,16 @@ import { legacyNotesModel } from './server/domains/legacyNotes.js';
 import { registerNotesRoutes } from './server/domains/notes.js';
 import { collectionToClient } from './server/collectionPayload.js';
 import MetricLogController from './server/controllers/MetricLogController.js';
+import GoalProgressController from './server/controllers/GoalProgressController.js';
 import { enabledIdentityProviders } from './server/identityProviders.js';
 import { createEventLogger } from './server/eventLogger.js';
 import { BODY_METRIC_RANGES, validateBodyMetric } from './src/lib/bodyMetricContract.js';
 import { appleHealthSetupRequired, metricToClient } from './server/domains/providers.js';
+import { metricPayload, METRIC_INCLUDE } from './server/domains/metricPayload.js';
+import { collectionInclude } from './server/domains/collectionChildren.js';
+import { HEALTH_PROFILE_INCLUDE, healthProfileData, registerHealthProfileRoutes } from './server/domains/healthProfile.js';
+import { USER_STRUCTURES, prepareUserStructures, saveUserStructures, loadUserStructures } from './server/domains/userStructures.js';
+import { PLAN_DOCUMENTS, preparePlanDocuments, loadPlanDocuments } from './server/domains/planDocuments.js';
 import { registerFinanceRoutes } from './server/domains/finance.js';
 import { registerCustomerAdminRoutes } from './server/domains/customerAdmin.js';
 import { registerNativeModuleRoutes } from './server/domains/nativeModules.js';
@@ -79,7 +85,7 @@ if (notesV1Enabled) {
     await prisma.$queryRawUnsafe('SELECT "sequence" FROM "NoteChange" LIMIT 0');
   } catch { throw new Error('GROWTHTRACK_NOTES_V1 requires the reviewed Notes migration. Run npm run migrate:notes to rehearse it first.'); }
 }
-const notesModel = notesV1Enabled ? prisma.note : legacyNotesModel(prisma);
+const notesModel = notesV1Enabled ? prisma.note : legacyNotesModel(prisma, { typedFields: true });
 // Calendar events and holdings move from User JSON documents to revisioned rows
 // only after `npm run migrate:records -- --apply` and GROWTHTRACK_RECORD_ROWS=1.
 const recordRowsEnabled = config.features.recordRows;
@@ -231,7 +237,7 @@ app.get('/api/capabilities', authMiddleware, createCapabilitiesHandler({
   recordRowsEnabled,
 }));
 app.use('/api/agents', authMiddleware, createAgentsRouter());
-app.use('/api/notifications', authMiddleware, createNotificationsRouter({ prisma }));
+app.use('/api/notifications', authMiddleware, createNotificationsRouter({ prisma, calendarRecords: recordRowsEnabled ? recordServices.calendar : null }));
 
 // Gateway health — probes each product and returns live readiness.
 // AppLauncher polls this every 15 s to show online/offline state in the App Hub.
@@ -507,27 +513,6 @@ const jsonSize = value => Buffer.byteLength(JSON.stringify(value ?? null), 'utf8
 const PROTECTED_MUTATION_FIELDS = new Set(['id', 'userId', 'user_id', 'createdAt', 'updatedAt']);
 const stripProtectedFields = source => Object.fromEntries(Object.entries(source || {}).filter(([key]) => !PROTECTED_MUTATION_FIELDS.has(key)));
 
-const metricColumns = new Set(['date', 'metric', 'value', 'unit', 'side', 'phase', 'confidence', 'measuredAt', 'source']);
-const metricPayload = input => {
-  const raw = { ...(input || {}) };
-  delete raw.id; delete raw.userId; delete raw.createdAt;
-  const columns = Object.fromEntries(Object.entries(raw).filter(([key]) => metricColumns.has(key)));
-  if (columns.value !== undefined) {
-    const parsedValue = Number(columns.value);
-    columns.value = columns.value === '' || columns.value == null || !Number.isFinite(parsedValue) ? null : parsedValue;
-  }
-  if (columns.confidence !== undefined) {
-    const parsedConfidence = Number(columns.confidence);
-    columns.confidence = Number.isFinite(parsedConfidence) ? Math.max(0, Math.min(1, parsedConfidence)) : null;
-  }
-  if (columns.measuredAt !== undefined) {
-    const measuredAt = new Date(columns.measuredAt);
-    columns.measuredAt = Number.isNaN(measuredAt.getTime()) ? null : measuredAt;
-  }
-  const details = Object.fromEntries(Object.entries(raw).filter(([key, value]) => !metricColumns.has(key) && value !== '' && value !== undefined));
-  return { ...columns, value: columns.value == null || columns.value === '' ? null : Number(columns.value), data: JSON.stringify(details) };
-};
-
 const ownerFieldMap = {
   avatar: 'avatar', phone: 'phone', bio: 'bio', dob: 'dateOfBirth', gender: 'gender', bloodType: 'bloodType',
   location_name: 'locationName', country: 'country', state: 'state', city: 'city', nationality: 'nationality', language: 'language', timezone: 'timezone',
@@ -674,19 +659,7 @@ app.put('/api/config/:key', authMiddleware, async (req, res) => {
   res.json({ ...setting, value: parseStoredJson(setting.value, setting.value) });
 });
 
-app.get('/api/health-profile', authMiddleware, async (req, res) => {
-  const profile = await prisma.healthProfile.findUnique({ where: { userId: req.user.id } });
-  res.json(profile ? { ...profile, data: parseStoredJson(profile.data, {}) } : { data: {} });
-});
-
-app.put('/api/health-profile', authMiddleware, async (req, res) => {
-  const current = await prisma.healthProfile.findUnique({ where: { userId: req.user.id } });
-  const merged = { ...parseStoredJson(current?.data, {}), ...(req.body || {}) };
-  if (jsonSize(merged) > 1024 * 1024) return res.status(413).json({ error: 'Health profile is too large.' });
-  const profile = await prisma.healthProfile.upsert({ where: { userId: req.user.id }, update: { data: JSON.stringify(merged) }, create: { userId: req.user.id, data: JSON.stringify(merged) } });
-  await auditCrud({ action: current ? 'update' : 'create', table_name: 'health_profiles', item_id: profile.id, details: { fields: Object.keys(req.body || {}) }, userId: req.user.id, req });
-  res.json({ ...profile, data: merged });
-});
+registerHealthProfileRoutes(app, { prisma, authMiddleware, auditCrud, sendInternalError });
 
 app.post('/api/profile/avatar', authMiddleware, async (req, res) => {
   const avatar = req.body?.avatar;
@@ -780,12 +753,14 @@ app.get('/api/state', authMiddleware, async (req, res) => {
     prisma.ownerProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.userPreference.findUnique({ where: { userId: req.user.id } }),
     prisma.bodyProfile.findUnique({ where: { userId: req.user.id } }),
-    prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
+    prisma.healthProfile.findUnique({ where: { userId: req.user.id }, include: HEALTH_PROFILE_INCLUDE }),
     prisma.socialProfile.findMany({ where: { userId: req.user.id }, orderBy: { sortOrder: 'asc' } }),
-    prisma.task.findMany({ where: { userId: req.user.id } }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id }, include: { exercises: true } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id } }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), notesModel.findMany({ where: { userId: req.user.id, ...(notesV1Enabled ? { deletedAt: null } : {}) } }), prisma.goal.findMany({ where: { userId: req.user.id } }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id } }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany({ where: publicSettingsWhere() }),
+    prisma.task.findMany({ where: { userId: req.user.id }, include: collectionInclude('tasks') }), prisma.transaction.findMany({ where: { userId: req.user.id } }), prisma.budget.findMany({ where: { userId: req.user.id } }), prisma.metricLog.findMany({ include: METRIC_INCLUDE, where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }), prisma.nutritionLog.findMany({ where: { userId: req.user.id } }), prisma.workoutSession.findMany({ where: { userId: req.user.id }, include: { exercises: true } }), prisma.shoppingItem.findMany({ where: { userId: req.user.id }, include: collectionInclude('shopping') }), prisma.timesheetSession.findMany({ where: { userId: req.user.id } }), prisma.entertainmentMedia.findMany({ where: { userId: req.user.id } }), notesModel.findMany({ where: { userId: req.user.id, ...(notesV1Enabled ? { deletedAt: null } : {}) } }), prisma.goal.findMany({ where: { userId: req.user.id }, include: collectionInclude('goals') }), prisma.sleepLog.findMany({ where: { userId: req.user.id } }), prisma.document.findMany({ where: { userId: req.user.id } }), prisma.habit.findMany({ where: { userId: req.user.id }, include: collectionInclude('habits') }), prisma.subscriptionItem.findMany({ where: { userId: req.user.id } }), prisma.moodLog.findMany({ where: { userId: req.user.id } }), prisma.vitalsLog.findMany({ where: { userId: req.user.id } }), prisma.medication.findMany({ where: { userId: req.user.id } }), prisma.customTable.findMany({ where: { userId: req.user.id } }), prisma.appSetting.findMany({ where: publicSettingsWhere() }),
   ]);
   const [rowEvents, rowHoldings] = recordRowsEnabled
     ? await Promise.all([recordServices.calendar.listAll(req.user.id), recordServices.holdings.listAll(req.user.id)]) : [null, null];
+  const structuredUser = await loadUserStructures(prisma, req.user.id, user);
+  const structuredPlans = await loadPlanDocuments(prisma, req.user.id, user);
   const profileBaseline = metric_logs.find(row => row.source === 'profile' && row.metric === 'profile_baseline');
   const githubProfile = socialProfiles.find(profile => String(profile.provider || '').toLowerCase() === 'github');
   res.json({
@@ -794,7 +769,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
     user: {
       id: user.id, email: user.email, name: user.fullName, fullName: user.fullName,
       ...mapDatabaseFields(ownerProfile, ownerFieldMap),
-      ...parseStoredJson(profileBaseline?.data, {}),
+      ...Object.fromEntries(Object.entries(metricToClient(profileBaseline) || {}).filter(([key]) => key in bodyFieldMap)),
       // The normalized tables are authoritative; the baseline log remains a
       // compatibility snapshot and must never overwrite the latest profile.
       ...mapDatabaseFields(bodyProfile, bodyFieldMap),
@@ -807,9 +782,11 @@ app.get('/api/state', authMiddleware, async (req, res) => {
       trainingPlan: parseStoredJson(user.trainingPlan), nutritionStrategy: parseStoredJson(user.nutritionStrategy), lifestyleTips: parseStoredJson(user.lifestyleTips, []),
       medicalData: parseStoredJson(user.medicalData), physiqueTargets: parseStoredJson(user.physiqueTargets), assessmentQA: parseStoredJson(user.assessmentQA, []),
       skills: parseStoredJson(user.skills, []), calendar_events: rowEvents ?? parseStoredJson(user.calendarEvents, []), wellnessData: parseStoredJson(user.wellnessData), healthExtras: parseStoredJson(user.healthExtras), portfolio: rowHoldings ?? parseStoredJson(user.portfolio, []),
+      ...structuredUser,
+      ...structuredPlans,
     },
     preference: preference ? { ...preference, navigationOrder: parseStoredJson(preference.navigationOrder, []), navigationTabOrder: parseStoredJson(preference.navigationTabOrder, {}) } : null,
-    bodyProfile, healthProfile: parseStoredJson(healthProfile?.data, {}), socialProfiles, finance, budgets, metric_logs: metric_logs.map(metricToClient), workout_sessions: workout_sessions.map(row => collectionToClient('workout_sessions', row)),
+    bodyProfile, healthProfile: healthProfileData(healthProfile), socialProfiles, finance, budgets, metric_logs: metric_logs.map(metricToClient), workout_sessions: workout_sessions.map(row => collectionToClient('workout_sessions', row)),
     ...Object.fromEntries(Object.entries({ tasks, nutrition_logs, shopping, timesheet, entertainment, notes, goals, sleep_logs, documents, habits, subscriptions }).map(([name, rows]) => [name, rows.map(row => collectionToClient(name, row))])),
     moodLogs: moodLogs.map(row => collectionToClient('mood_logs', row)),
     vitalsLogs: vitalsLogs.map(row => collectionToClient('vitals_logs', row)),
@@ -832,6 +809,9 @@ app.post('/api/user', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'One or more body measurements are outside the supported range.', fields: invalidMeasurements });
     }
     const updateData = {};
+    const structured = prepareUserStructures(data);
+    const previousUser = await prisma.user.findUnique({ where: { id: req.user.id } });
+    const plans = preparePlanDocuments(data, await loadPlanDocuments(prisma, req.user.id, previousUser));
     const singletonFields = ['trainingPlan', 'nutritionStrategy', 'lifestyleTips', 'medicalData', 'physiqueTargets', 'assessmentQA', 'skills', 'calendarEvents', 'wellnessData', 'healthExtras', 'manualProjects', 'repoNotes', 'portfolio'];
 
     if (data.portfolio !== undefined) {
@@ -842,14 +822,14 @@ app.post('/api/user', authMiddleware, async (req, res) => {
       updateData.portfolio = JSON.stringify(portfolio);
     }
 
-    singletonFields.filter(field => field !== 'portfolio').forEach(field => {
+    singletonFields.filter(field => field !== 'portfolio' && !USER_STRUCTURES[field] && !PLAN_DOCUMENTS[field]).forEach(field => {
       if (data[field] !== undefined) {
         const value = data[field];
         updateData[field] = typeof value === 'object' ? JSON.stringify(value) : value;
       }
     });
 
-    if (Object.keys(updateData).length) await prisma.user.update({ where: { id: req.user.id }, data: updateData });
+    if (Object.keys(updateData).length || Object.keys(structured).length || Object.keys(plans).length) await saveUserStructures(prisma, req.user.id, structured, updateData, plans);
 
     const ownerData = mapClientFields(data, ownerFieldMap, ownerNumberFields, ownerBooleanFields);
     if (Object.keys(ownerData).length) {
@@ -863,10 +843,10 @@ app.post('/api/user', authMiddleware, async (req, res) => {
 
     const bodyClientData = Object.fromEntries(Object.keys(bodyFieldMap).filter(key => data[key] !== undefined).map(key => [key, data[key]]));
     if (Object.keys(bodyClientData).length) {
-      const existingBaseline = await prisma.metricLog.findFirst({ where: { userId: req.user.id, source: 'profile', metric: 'profile_baseline' }, orderBy: { createdAt: 'desc' } });
-      const payload = metricPayload({ ...parseStoredJson(existingBaseline?.data, {}), ...bodyClientData, date: new Date().toISOString().slice(0, 10), metric: 'profile_baseline', source: 'profile' });
+      const existingBaseline = await prisma.metricLog.findFirst({ include: METRIC_INCLUDE, where: { userId: req.user.id, source: 'profile', metric: 'profile_baseline' }, orderBy: { createdAt: 'desc' } });
+      const payload = metricPayload({ ...bodyClientData, date: new Date().toISOString().slice(0, 10), metric: 'profile_baseline', source: 'profile' }, existingBaseline);
       if (existingBaseline) await prisma.metricLog.update({ where: { id: existingBaseline.id }, data: payload });
-      else await prisma.metricLog.create({ data: { ...payload, userId: req.user.id } });
+      else await prisma.metricLog.create({ data: { ...payload, userId: req.user.id }, include: METRIC_INCLUDE });
     }
 
     if (Array.isArray(data.socialLinks)) {
@@ -890,11 +870,32 @@ app.post('/api/user', authMiddleware, async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
     sendInternalError(res, error, 'User profile update');
   }
 });
 
-// Single endpoints mapping to user JSON fields
+// Preserve singleton API shapes while structured entities use typed rows.
+async function persistUserSingleton(userId, field, value) {
+  if (PLAN_DOCUMENTS[field]) {
+    const previous = await prisma.user.findUnique({ where: { id: userId } });
+    const current = await loadPlanDocuments(prisma, userId, previous);
+    const prepared = preparePlanDocuments({ [field]: value }, current);
+    const user = await saveUserStructures(prisma, userId, {}, {}, prepared);
+    // Preserve the legacy response envelope; database writes above use rows.
+    return { ...user, [field]: JSON.stringify(value) };
+  }
+  if (USER_STRUCTURES[field]) {
+    if (field === 'assessmentQA' && value && !Array.isArray(value) && Array.isArray(value.items)) {
+      const previous = await prisma.user.findUnique({ where: { id: userId } });
+      value = [...(await loadUserStructures(prisma, userId, previous)).assessmentQA, value];
+    }
+    const prepared = prepareUserStructures({ [field]: value });
+    const user = await saveUserStructures(prisma, userId, prepared);
+    return { ...user, [field]: JSON.stringify(value) };
+  }
+  return prisma.user.update({ where: { id: userId }, data: { [field]: typeof value === 'object' ? JSON.stringify(value) : value } });
+}
 const singletons = [
   'training_plan', 'nutrition_strategy', 'lifestyle_tips', 'medical_data', 
   'physique_targets', 'assessment_qa', 'skills', 'calendar_events', 'wellness_data', 'health_extras', 'portfolio'
@@ -910,12 +911,9 @@ singletons.forEach(route => {
       if (route === 'portfolio' && jsonSize(req.body) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
       const value = route === 'portfolio' ? normalizePortfolioPayload(req.body) : req.body;
       if (route === 'portfolio' && jsonSize(value) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
-      const user = await prisma.user.update({
-        where: { id: req.user.id },
-        data: { [camelCaseField]: typeof value === 'object' ? JSON.stringify(value) : value }
-      });
+      const user = await persistUserSingleton(req.user.id, camelCaseField, value);
       res.json(user);
-    } catch(e) { sendInternalError(res, e, `${route} update`); }
+    } catch(e) { if (e.status) return res.status(e.status).json({ error: e.message, code: e.code }); sendInternalError(res, e, `${route} update`); }
   });
   
   app.put(`/api/${route}`, authMiddleware, async (req, res) => {
@@ -926,19 +924,16 @@ singletons.forEach(route => {
       if (route === 'portfolio' && jsonSize(req.body) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
       const value = route === 'portfolio' ? normalizePortfolioPayload(req.body) : req.body;
       if (route === 'portfolio' && jsonSize(value) > PORTFOLIO_MAX_BYTES) return res.status(413).json({ error: 'Portfolio is too large.' });
-      const user = await prisma.user.update({
-        where: { id: req.user.id },
-        data: { [camelCaseField]: typeof value === 'object' ? JSON.stringify(value) : value }
-      });
+      const user = await persistUserSingleton(req.user.id, camelCaseField, value);
       res.json(user);
-    } catch(e) { sendInternalError(res, e, `${route} update`); }
+    } catch(e) { if (e.status) return res.status(e.status).json({ error: e.message, code: e.code }); sendInternalError(res, e, `${route} update`); }
   });
 });
 
 // Domain endpoints that adapt specialized module payloads to the canonical
 // local tables. This keeps modules interconnected without duplicate storage.
 app.get('/api/hydration/logs', authMiddleware, async (req, res) => {
-  const rows = await prisma.metricLog.findMany({ where: { userId: req.user.id, metric: 'hydration' }, orderBy: { createdAt: 'desc' }, take: 1000 });
+  const rows = await prisma.metricLog.findMany({ include: METRIC_INCLUDE, where: { userId: req.user.id, metric: 'hydration' }, orderBy: { createdAt: 'desc' }, take: 1000 });
   res.json(rows.map(metricToClient));
 });
 
@@ -948,7 +943,7 @@ app.post('/api/hydration/log', authMiddleware, async (req, res) => {
   const at = req.body?.at ? new Date(req.body.at) : new Date();
   if (Number.isNaN(at.getTime())) return res.status(400).json({ error: 'Hydration time is invalid.' });
   const payload = metricPayload({ metric: 'hydration', source: 'manual', date: at.toISOString().slice(0, 10), value: amount, amount, at: at.toISOString() });
-  const row = await prisma.metricLog.create({ data: { ...payload, userId: req.user.id } });
+  const row = await prisma.metricLog.create({ data: { ...payload, userId: req.user.id }, include: METRIC_INCLUDE });
   await auditCrud({ action: 'create', table_name: 'metric_logs', item_id: row.id, details: 'Logged hydration', userId: req.user.id, req });
   res.json(metricToClient(row));
 });
@@ -997,11 +992,12 @@ registerNotesRoutes(app, { prisma, authMiddleware, enabled: notesV1Enabled });
 collections.forEach(({ name, model }) => {
   if (name === 'notes' && notesV1Enabled) return;
   if (name === 'documents') return; // The file domain owns byte transfers and protected metadata.
+  if (name === 'goal_progress_logs') { new GoalProgressController(prisma, auditCrud).registerRoutes(app, authMiddleware); return; }
   if (name === 'metric_logs') {
     const controller = new MetricLogController(model, name, metricPayload, stripProtectedFields, auditCrud, metricToClient, parseStoredJson);
     controller.registerRoutes(app, authMiddleware);
   } else {
-    const controller = new BaseController(model, name, null, stripProtectedFields, auditCrud);
+    const controller = new BaseController(model, name, null, stripProtectedFields, auditCrud, prisma);
     controller.registerRoutes(app, authMiddleware);
   }
 });
@@ -1010,12 +1006,12 @@ app.get('/api/database/tables', authMiddleware, async (req, res) => {
   const userTables = await Promise.all(collections.map(async ({ name, model }) => {
     const [count, rows] = await Promise.all([
       model.count({ where: { userId: req.user.id } }),
-      model.findMany({ where: { userId: req.user.id }, take: 10, orderBy: { createdAt: 'desc' }, ...(name === 'workout_sessions' ? { include: { exercises: true } } : {}) }),
+      model.findMany({ where: { userId: req.user.id }, take: 10, orderBy: { createdAt: 'desc' }, ...(name === 'metric_logs' ? { include: METRIC_INCLUDE } : collectionInclude(name) ? { include: collectionInclude(name) } : {}) }),
     ]);
     return { name, count, rows: name === 'metric_logs' ? rows.map(metricToClient) : ['documents', 'workout_sessions'].includes(name) ? rows.map(row => collectionToClient(name, row)) : rows };
   }));
   const [healthProfile, ownerProfile, bodyProfile, locations, settings, providers] = await Promise.all([
-    prisma.healthProfile.findUnique({ where: { userId: req.user.id } }),
+    prisma.healthProfile.findUnique({ where: { userId: req.user.id }, include: HEALTH_PROFILE_INCLUDE }),
     prisma.ownerProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.bodyProfile.findUnique({ where: { userId: req.user.id } }),
     prisma.locationPoint.findMany({ where: { userId: req.user.id }, take: 10, orderBy: { capturedAt: 'desc' } }),
@@ -1024,7 +1020,7 @@ app.get('/api/database/tables', authMiddleware, async (req, res) => {
   ]);
   res.json([
     ...userTables,
-    { name: 'health_profiles', count: healthProfile ? 1 : 0, rows: healthProfile ? [{ ...healthProfile, data: parseStoredJson(healthProfile.data, {}) }] : [] },
+    { name: 'health_profiles', count: healthProfile ? 1 : 0, rows: healthProfile ? [{ ...healthProfile, data: healthProfileData(healthProfile) }] : [] },
     { name: 'owner_profiles', count: ownerProfile ? 1 : 0, rows: ownerProfile ? [ownerProfile] : [] },
     { name: 'body_profiles', count: bodyProfile ? 1 : 0, rows: bodyProfile ? [{ ...bodyProfile, morphOverrides: parseStoredJson(bodyProfile.morphOverrides, {}) }] : [] },
     { name: 'location_points', count: await prisma.locationPoint.count({ where: { userId: req.user.id } }), rows: locations },

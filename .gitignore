@@ -74,6 +74,7 @@ __pypackages__/
 .ipynb_checkpoints/
 
 # Local scratch files and process output.
+/.evergreen/
 tmp/
 temp/
 logs/

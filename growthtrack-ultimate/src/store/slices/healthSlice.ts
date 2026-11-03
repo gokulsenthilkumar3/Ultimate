@@ -2,7 +2,7 @@ import { StateCreator } from 'zustand';
 import { apiSync } from '../useStore';
 import { MetricLog } from '../../schemas';
 import { createRecordActions } from '../recordActions';
-import { captureSession } from '../persistence';
+import { captureSession, requireRecord } from '../persistence';
 
 export interface HealthSlice {
   metric_logs: MetricLog[];
@@ -34,8 +34,8 @@ export const createHealthSlice: StateCreator<any, [], [], HealthSlice> = (set, g
 
   updateHealthExtras: async (data) => {
     const current = captureSession(get);
-    const response = await apiSync('/health-profile', 'PUT', data);
-    if (current()) set((state: any) => ({ healthProfile: { ...(state.healthProfile || {}), ...data, ...(response || {}) } }));
+    const response = requireRecord(await apiSync('/health-profile', 'PUT', data));
+    if (current()) set((state: any) => ({ healthProfile: { ...(state.healthProfile || {}), ...data, ...(response?.data || response || {}) } }));
     return response;
   },
 });

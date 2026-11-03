@@ -1,9 +1,43 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { DatabaseSync } from 'node:sqlite';
 import { PrismaClient } from '@prisma/client';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import { createPrivateStorage } from '../../../server/domains/privateStorage.js';
+
+export async function migratedFixture(test, beforeMigration = () => {}) {
+  const fixtureRoot = process.env.GROWTHTRACK_BACKEND_TEST_ROOT || os.tmpdir();
+  const relativeRoot = path.relative(os.tmpdir(), fixtureRoot);
+  if (relativeRoot && (!relativeRoot.startsWith('growthtrack-backend-suite-') || relativeRoot.includes(path.sep))) throw new Error('Unexpected fixture root.');
+  const directory = await fs.mkdtemp(path.join(fixtureRoot, 'growthtrack-backend-test-'));
+  const filename = path.join(directory, 'test.db');
+  const database = new DatabaseSync(filename);
+  try {
+    database.exec('PRAGMA foreign_keys=ON');
+    const migrations = new URL('../../../prisma/migrations/', import.meta.url);
+    for (const name of (await fs.readdir(migrations)).sort()) {
+      if (name === 'migration_lock.toml') continue;
+      beforeMigration(database, name);
+      database.exec(await fs.readFile(new URL(`${name}/migration.sql`, migrations), 'utf8'));
+    }
+    database.exec("INSERT OR IGNORE INTO User(id,email,passwordHash,fullName,referralCode) VALUES ('owner-a','a@example.test','hash','A','ref-a'),('owner-b','b@example.test','hash','B','ref-b')");
+  } finally { database.close(); }
+  const url = `file:${filename.replaceAll('\\', '/')}`;
+  const prisma = new PrismaClient({ adapter: new PrismaLibSql({ url }) });
+  test.after(async () => {
+    await prisma.$disconnect();
+    globalThis.gc?.();
+    const relative = path.relative(fixtureRoot, directory);
+    if (!relative.startsWith('growthtrack-backend-test-') || relative.includes(path.sep)) throw new Error('Unexpected test cleanup path.');
+    // The suite parent removes locked native SQLite files after the worker exits.
+    await fs.rm(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 }).catch(error => {
+      if (process.platform !== 'win32' || !['EBUSY', 'EPERM'].includes(error.code)) throw error;
+      if (!process.env.GROWTHTRACK_BACKEND_TEST_ROOT) test.diagnostic(`Temporary SQLite fixture retained until native handles close: ${directory}`);
+    });
+  });
+  return { prisma, url, directory };
+}
 
 // Never import server.js or use DATABASE_URL: every test owns a temporary SQLite file.
 export async function isolatedFixture(test) {
@@ -26,6 +60,7 @@ export async function isolatedFixture(test) {
     );
     CREATE TABLE "Document" (
       id TEXT PRIMARY KEY, userId TEXT NOT NULL REFERENCES "User"(id), title TEXT, url TEXT, data TEXT,
+      storageKey TEXT, sizeBytes INTEGER, mimeType TEXT, sha256 TEXT, previewKind TEXT, encryptionFormat TEXT, encryptionKeyId TEXT,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, createdBy TEXT,
       updatedBy TEXT, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -44,6 +79,7 @@ export async function isolatedFixture(test) {
     CREATE TABLE "WorkoutExercise" (
       id TEXT PRIMARY KEY, sessionId TEXT NOT NULL REFERENCES "WorkoutSession"(id) ON DELETE CASCADE,
       exercise_name TEXT, sets INTEGER, reps INTEGER, weight_kg REAL, notes TEXT,
+      source TEXT, metadataVersion INTEGER, setId TEXT, position INTEGER, setNumber INTEGER, completed BOOLEAN, payloadHash TEXT,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, createdBy TEXT,
       updatedBy TEXT, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );

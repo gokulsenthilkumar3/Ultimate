@@ -14,6 +14,8 @@ service cloud.firestore {
     function isValidTransaction() {
       return request.resource.data.keys().hasAll(['amount', 'type', 'category', 'date'])
         && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.amount <= 1000000000000
         && request.resource.data.type in ['credit', 'debit']
         && request.resource.data.category is string
         && request.resource.data.date is timestamp;
@@ -36,19 +38,54 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
       
+      function validAccount() {
+        return request.resource.data.keys().hasAll(['balance'])
+          && request.resource.data.balance is number
+          && request.resource.data.balance >= -1000000000000
+          && request.resource.data.balance <= 1000000000000
+          && ((request.resource.data.keys().hasAll(['name', 'currency'])
+              && request.resource.data.name is string && request.resource.data.name.size() > 0)
+            || (request.resource.data.keys().hasAll(['bankName', 'accountType', 'accountNumber'])
+              && request.resource.data.bankName is string && request.resource.data.bankName.size() > 0
+              && request.resource.data.accountType is string && request.resource.data.accountNumber is string))
+          && (!('currency' in request.resource.data)
+            || (request.resource.data.currency is string && request.resource.data.currency.matches('^[A-Z]{3}$')));
+      }
+      function validBudget() {
+        return (request.resource.data.keys().hasAll(['amount', 'month'])
+            && request.resource.data.amount is number && request.resource.data.amount >= 0
+            && request.resource.data.amount <= 1000000000000
+            && request.resource.data.month is string
+            && request.resource.data.month.matches('^[0-9]{4}-(0[1-9]|1[0-2])$'))
+          // Existing emulator/user records used named months and totalBudget.
+          || (request.resource.data.keys().hasAll(['totalBudget', 'month', 'year'])
+            && request.resource.data.totalBudget is number && request.resource.data.totalBudget >= 0
+            && request.resource.data.totalBudget <= 1000000000000
+            && request.resource.data.year is int && request.resource.data.year >= 1 && request.resource.data.year <= 9999
+            && request.resource.data.month in ['January','February','March','April','May','June','July','August','September','October','November','December']);
+      }
+      function validInvestment() {
+        return request.resource.data.keys().hasAll(['symbol', 'quantity', 'purchasePrice'])
+          && request.resource.data.symbol is string && request.resource.data.symbol.size() > 0
+          && request.resource.data.quantity is number && request.resource.data.quantity > 0 && request.resource.data.quantity <= 1000000000000
+          && request.resource.data.purchasePrice is number && request.resource.data.purchasePrice >= 0 && request.resource.data.purchasePrice <= 1000000000000;
+      }
       // Bank accounts - owner only
       match /accounts/{accountId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validAccount();
       }
       
       // Budgets - owner only
       match /budgets/{budgetId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validBudget();
       }
       
       // Investments - owner only
       match /investments/{investmentId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validInvestment();
       }
       
       // Notifications - owner only

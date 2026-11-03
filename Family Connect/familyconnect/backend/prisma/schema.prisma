@@ -41,6 +41,7 @@ model FamilyTree {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  rootMember    Member? @relation("TreeRoot", fields: [rootMemberId, id], references: [id, treeId], onDelete: NoAction, onUpdate: NoAction, map: "family_trees_root_tree_fkey")
   owner         User           @relation("TreeOwner", fields: [ownerId], references: [id])
   members       Member[]
   relationships Relationship[]
@@ -72,13 +73,17 @@ model Member {
 
   tree          FamilyTree     @relation(fields: [treeId], references: [id], onDelete: Cascade)
   createdBy     User           @relation("MemberCreator", fields: [createdById], references: [id])
+  rootedTrees FamilyTree[] @relation("TreeRoot")
   relationships1 Relationship[] @relation("Member1")
   relationships2 Relationship[] @relation("Member2")
-  events        Event[]
-  documents     Document[]
+  events        Event[] @relation("EventMember")
+  treeEvents    Event[] @relation("EventMemberTree")
+  documents     Document[] @relation("DocumentMember")
+  treeDocuments Document[] @relation("DocumentMemberTree")
 
   @@index([treeId])
   @@index([treeId, name])
+  @@unique([id, treeId])
   @@map("members")
 }
 
@@ -102,8 +107,8 @@ model Relationship {
   createdAt        DateTime         @default(now())
 
   tree    FamilyTree @relation(fields: [treeId], references: [id], onDelete: Cascade)
-  member1 Member     @relation("Member1", fields: [member1Id], references: [id])
-  member2 Member     @relation("Member2", fields: [member2Id], references: [id])
+  member1 Member     @relation("Member1", fields: [member1Id, treeId], references: [id, treeId], onDelete: NoAction, onUpdate: NoAction, map: "relationships_member1_tree_fkey")
+  member2 Member     @relation("Member2", fields: [member2Id, treeId], references: [id, treeId], onDelete: NoAction, onUpdate: NoAction, map: "relationships_member2_tree_fkey")
 
   @@index([treeId, member1Id])
   @@index([treeId, member2Id])  // covers reverse-direction relationship lookups
@@ -142,7 +147,10 @@ model Event {
   createdAt   DateTime  @default(now())
 
   tree   FamilyTree @relation(fields: [treeId], references: [id], onDelete: Cascade)
-  member Member?    @relation(fields: [memberId], references: [id])
+  // The simple reference preserves SET NULL on member deletion; the composite
+  // reference additionally prevents an attached member from another tree.
+  member Member?    @relation("EventMember", fields: [memberId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "events_memberId_fkey")
+  memberInTree Member? @relation("EventMemberTree", fields: [memberId, treeId], references: [id, treeId], onDelete: NoAction, onUpdate: NoAction, map: "events_member_tree_fkey")
 
   @@index([treeId, date])
   @@map("events")
@@ -171,7 +179,8 @@ model Document {
   uploadedAt DateTime     @default(now())
 
   tree   FamilyTree @relation(fields: [treeId], references: [id], onDelete: Cascade)
-  member Member?    @relation(fields: [memberId], references: [id])
+  member Member?    @relation("DocumentMember", fields: [memberId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "documents_memberId_fkey")
+  memberInTree Member? @relation("DocumentMemberTree", fields: [memberId, treeId], references: [id, treeId], onDelete: NoAction, onUpdate: NoAction, map: "documents_member_tree_fkey")
 
   @@index([treeId, memberId])  // member profile document gallery queries
   @@map("documents")
@@ -199,7 +208,7 @@ model AccessControl {
   user User       @relation(fields: [userId], references: [id])
 
   @@unique([treeId, userId])
-  @@index([treeId, userId])
+  @@index([userId, treeId])
   @@map("access_control")
 }
 

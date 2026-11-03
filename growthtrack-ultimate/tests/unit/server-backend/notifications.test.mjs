@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createNotificationHandlers, notificationSettingsKey } from '../../../server/notifications/router.js';
+import { migratedFixture } from './fixture.mjs';
+import { createRecordServices } from '../../../server/domains/records.js';
 
 function notificationFixture() {
   const settings = new Map();
@@ -35,6 +37,26 @@ test('notifications are source-linked, owner-scoped and reads do not write setti
   assert.equal((await handlers.list('owner-b')).notifications.length, 0);
   await assert.rejects(handlers.actions('owner-b', { expectedRevision: 0, action: 'read', ids: [first.notifications[0].id] }), { status: 404 });
   assert.equal(fixture.writes(), 0);
+});
+
+test('reminders use promoted goal/habit/subscription columns and the active calendar rows', async t => {
+  const { prisma } = await migratedFixture(t);
+  await prisma.goal.createMany({ data: [
+    { id: 'goal-active', userId: 'owner-a', title: 'Active', targetDate: '2026-11-03', status: 'active', target_value: 10, current_value: 2 },
+    { id: 'goal-done', userId: 'owner-a', title: 'Done', targetDate: '2026-11-03', status: 'completed' },
+    { id: 'goal-reached', userId: 'owner-a', title: 'Reached', targetDate: '2026-11-03', target_value: 10, current_value: 10 },
+  ] });
+  await prisma.habit.create({ data: { id: 'daily', userId: 'owner-a', name: 'Read', target_days: 7 } });
+  await prisma.subscriptionItem.create({ data: { id: 'renewal', userId: 'owner-a', name: 'Software', active: 1, next_date: '2026-11-03' } });
+  const records = createRecordServices(prisma);
+  await records.calendar.create('owner-a', { id: 'meeting', mutationId: 'calendar-notification', record: { title: 'Meeting', date: '2026-11-03', allDay: true, recurrence: 'none', type: 'work' } });
+  const handlers = createNotificationHandlers({ prisma, calendarRecords: records.calendar, now: () => new Date('2026-11-03T09:00:00Z') });
+  await handlers.updatePreferences('owner-a', { expectedRevision: 0, preferences: { enabled: true, categories: { tasks: true, goals: true, habits: true, calendar: true, subscriptions: true } } });
+  const feed = await handlers.list('owner-a');
+  assert.deepEqual(feed.notifications.map(item => item.source.id).sort(), ['daily', 'goal-active', 'meeting', 'renewal']);
+  assert.equal((await handlers.list('owner-b')).notifications.length, 0);
+  await prisma.habitLog.create({ data: { habitId: 'daily', date: '2026-11-03' } });
+  assert.equal((await handlers.list('owner-a')).notifications.some(item => item.source.id === 'daily'), false);
 });
 
 test('read and dismiss state persists, revisions reject stale edits and no source text is stored', async () => {

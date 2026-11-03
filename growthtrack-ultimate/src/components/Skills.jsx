@@ -1,11 +1,14 @@
 import PageHeader from './ui/PageHeader';
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import StatTile from './ui/StatTile';
 import { Zap, Plus, Trash2, ChevronUp, Lock, Star, TrendingUp, Award, Edit3, X } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import { formatNumber } from '../utils/userFormatters';
+import useRecordMutation from '../hooks/useRecordMutation';
+import { captureSession } from '../store/persistence';
+const EMPTY_SKILL_FORM = Object.freeze({ name: '', category: 'technical', xp: 0, description: '', weeklyTarget: '', resource: '', nextAction: '' });
 
 // ── XP Curve (non-linear, feels like RPG) ─────────────────────────────────
 function xpForLevel(level) {
@@ -129,11 +132,16 @@ export default function Skills() {
   const [catFilter, setCatFilter]   = useState('all');
   const [showAdd,   setShowAdd]     = useState(false);
   const [levelUp,   setLevelUp]     = useState(null); // { id, color }
-  const emptyForm = { name: '', category: 'technical', xp: 0, description: '', weeklyTarget: '', resource: '', nextAction: '' };
+  const emptyForm = EMPTY_SKILL_FORM;
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [xpInputs, setXpInputs] = useState({});
+  const { pending, error: saveError, run } = useRecordMutation();
+  const createId = useRef(null);
+  useLayoutEffect(() => {
+    setForm(emptyForm); setEditId(null); setShowAdd(false); setDeleteConfirm(null); setXpInputs({}); createId.current = null;
+  }, [user?.id, emptyForm]);
 
   const enriched = useMemo(() => skills.map(s => {
     const { level, pct, progress, required } = xpProgressInLevel(Number(s.xp) || 0);
@@ -159,34 +167,32 @@ export default function Skills() {
   const saveSkill = () => {
     if (!form.name.trim()) { toast.error('Skill name required'); return; }
     const skill = { ...form, xp: Number(form.xp) || 0, weeklyTarget: Number(form.weeklyTarget) || 0 };
-    if (editId) {
-      if (typeof updateSkill === 'function') updateSkill(editId, skill);
-      toast.success(`"${skill.name}" updated.`);
-    } else {
-      const newSkill = { ...skill, id: Date.now(), createdAt: new Date().toISOString() };
-      if (typeof addSkill === 'function') addSkill(newSkill);
-      toast.success(`Skill "${newSkill.name}" added!`);
-    }
-    setForm(emptyForm);
-    setEditId(null);
-    setShowAdd(false);
+    if (!Number.isFinite(skill.xp) || skill.xp < 0 || !Number.isFinite(skill.weeklyTarget) || skill.weeklyTarget < 0) { toast.error('XP and weekly practice target must be non-negative numbers.'); return; }
+    const updating = editId != null;
+    if (!updating && !createId.current) createId.current = crypto.randomUUID();
+    const newSkill = { ...skill, id: createId.current, createdAt: new Date().toISOString() };
+    return run(() => updating ? updateSkill(editId, skill) : addSkill(newSkill), () => {
+      toast.success(updating ? `"${skill.name}" updated.` : `Skill "${skill.name}" added!`);
+      setForm(emptyForm); setEditId(null); setShowAdd(false); createId.current = null;
+    });
   };
 
   const startEdit = (skill) => { setForm({ ...emptyForm, ...skill }); setEditId(skill.id); setShowAdd(true); };
-  const cancelForm = () => { setForm(emptyForm); setEditId(null); setShowAdd(false); };
+  const cancelForm = () => { if (pending) return; setForm(emptyForm); setEditId(null); setShowAdd(false); createId.current = null; };
 
   const addXP = (id, amount) => {
     const skill    = skills.find(s => s.id === id);
     if (!skill) return;
+    if (!Number.isFinite(amount) || amount <= 0) { toast.error('Enter a positive amount of XP.'); return; }
     const prevLevel = levelFromXP(Number(skill.xp) || 0);
     const newXP     = (Number(skill.xp) || 0) + amount;
     const newLevel  = levelFromXP(newXP);
     const cat       = CAT_MAP[skill.category] || CAT_MAP.other;
-    if (typeof updateSkill === 'function') updateSkill(id, {
+    return run(() => updateSkill(id, {
       xp: newXP,
       lastPracticed: new Date().toISOString(),
       practiceCount: (Number(skill.practiceCount) || 0) + 1,
-    });
+    }), () => {
     setXpInputs(x => { const n = { ...x }; delete n[id]; return n; });
     if (newLevel > prevLevel) {
       toast.success(`🎉 Level up! ${skill.name} reached level ${newLevel}!`);
@@ -195,13 +201,19 @@ export default function Skills() {
     } else {
       toast.success(`+${amount} XP → ${skill.name}`);
     }
+    });
   };
 
   const doDelete = (id) => {
     const s = skills.find(x => x.id === id);
-    if (typeof deleteSkill === 'function') deleteSkill(id);
-    toast.info(`${s?.name} removed`, 5000, { action: { label: 'Undo', onClick: () => { if (s && typeof addSkill === 'function') addSkill(s); } } });
-    setDeleteConfirm(null);
+    const session = captureSession(useStore.getState);
+    return run(() => deleteSkill(id), () => {
+      toast.info(`${s?.name} removed`, 5000, { action: { label: 'Undo', onClick: () => {
+        if (!session()) { toast.error('The session changed. Refresh before restoring this skill.'); return; }
+        return run(() => addSkill(s), () => toast.success('Skill restored.'));
+      } } });
+      setDeleteConfirm(null);
+    });
   };
 
   // Build skill tree: group by category with prerequisite logic
@@ -216,8 +228,10 @@ export default function Skills() {
 
   return (
     <div style={{ padding: '0.5rem 0' }}>
+      {saveError && <p role="alert">{saveError}</p>}
+      {pending && <p role="status">Saving skill changes…</p>}
       {/* Header */}
-      <PageHeader accent="Workspace" title="Skills" subtitle={<>{skills.length} skills · {formatNumber(totalXP, user, { maximumFractionDigits: 0 })} total XP</>} actions={<><button onClick={() => { if (showAdd) cancelForm(); else setShowAdd(true); }} className="btn-primary"><Plus size={14} /> Add Skill</button></>} />
+      <PageHeader accent="Workspace" title="Skills" subtitle={<>{skills.length} skills · {formatNumber(totalXP, user, { maximumFractionDigits: 0 })} total XP</>} actions={<><button type="button" disabled={pending} aria-expanded={showAdd} aria-controls="skill-form" onClick={() => { if (showAdd) cancelForm(); else setShowAdd(true); }} className="btn-primary"><Plus size={14} /> Add Skill</button></>} />
 
       {/* Global stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -246,7 +260,7 @@ export default function Skills() {
 
       {/* Add form */}
       {showAdd && (
-        <div className="glass-card mb-lg">
+        <fieldset id="skill-form" disabled={pending} className="glass-card mb-lg" style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}><div><p style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-1)' }}>{editId ? 'Edit skill' : 'Create a skill'}</p><p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 3 }}>Add a clear next action so this skill is easy to practice.</p></div><button type="button" aria-label="Close skill form" onClick={cancelForm} style={{ background: 'none', border: 0, color: 'var(--text-3)', cursor: 'pointer' }}><X size={16} /></button></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
             <label><span className="sr-only">Skill name</span><input aria-label="Skill name" placeholder="Skill name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="form-input" /></label>
@@ -255,15 +269,15 @@ export default function Skills() {
             </select></label>
             <label><span className="sr-only">Current XP</span><input aria-label="Current XP" type="number" min="0" placeholder="Current XP (0)" value={form.xp} onChange={e => setForm(f => ({ ...f, xp: e.target.value }))} className="form-input" /></label>
             <label><span className="sr-only">Weekly practice target</span><input aria-label="Weekly practice target" type="number" min="0" placeholder="Practice sessions / week" value={form.weeklyTarget} onChange={e => setForm(f => ({ ...f, weeklyTarget: e.target.value }))} className="form-input" /></label>
-            <label style={{ gridColumn: 'span 2' }}><span className="sr-only">Description</span><input aria-label="Skill description" placeholder="Why this skill matters to you" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input" /></label>
+            <label style={{ gridColumn: '1 / -1' }}><span className="sr-only">Description</span><input aria-label="Skill description" placeholder="Why this skill matters to you" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="form-input" /></label>
             <label><span className="sr-only">Next action</span><input aria-label="Next action" placeholder="Next practice action" value={form.nextAction} onChange={e => setForm(f => ({ ...f, nextAction: e.target.value }))} className="form-input" /></label>
             <label><span className="sr-only">Learning resource</span><input aria-label="Learning resource" placeholder="Course, book, or resource" value={form.resource} onChange={e => setForm(f => ({ ...f, resource: e.target.value }))} className="form-input" /></label>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button onClick={cancelForm} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-            <button onClick={saveSkill} className="btn-primary">{editId ? 'Save changes' : 'Add skill'}</button>
+            <button onClick={saveSkill} className="btn-primary">{pending ? 'Saving…' : editId != null ? 'Save changes' : 'Add skill'}</button>
           </div>
-        </div>
+        </fieldset>
       )}
 
       {/* Category filter */}
@@ -351,16 +365,16 @@ export default function Skills() {
                           </div>
 
                           {/* XP input */}
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            <input type="number" placeholder="+XP" value={xpIn}
+                          <fieldset disabled={pending} aria-label={`Practice ${skill.name}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                            <input aria-label={`XP for ${skill.name}`} type="number" min="1" placeholder="+XP" value={xpIn}
                               onChange={e => setXpInputs(x => ({ ...x, [skill.id]: e.target.value }))}
-                              onKeyDown={e => { if (e.key === 'Enter') addXP(skill.id, Number(xpIn) || 10); }}
+                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addXP(skill.id, xpIn === '' ? 10 : Number(xpIn)); } }}
                               style={{ width: '70px', padding: '3px 7px', fontSize: '0.72rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'var(--text-1)', outline: 'none' }} />
                             {[10, 25, 50, 100].map(xp => (
                               <button key={xp} onClick={() => addXP(skill.id, xp)} style={{ padding: '3px 7px', borderRadius: '6px', fontSize: '0.62rem', fontWeight: 700, background: `${skill.cat.color}18`, border: `1px solid ${skill.cat.color}44`, color: skill.cat.color, cursor: 'pointer' }}>+{xp}</button>
                             ))}
                             <button onClick={() => addXP(skill.id, 25)} title="Record a focused practice session" style={{ padding: '3px 7px', borderRadius: '6px', fontSize: '0.62rem', fontWeight: 700, background: skill.cat.color, border: '1px solid transparent', color: '#fff', cursor: 'pointer' }}>Practice +25</button>
-                          </div>
+                          </fieldset>
                         </div>
                       </div>
 
@@ -407,7 +421,7 @@ export default function Skills() {
                   <td style={{ padding: '0.6rem 0.6rem', textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                       <button onClick={() => addXP(s.id, 10)} style={{ padding: '2px 8px', borderRadius: '5px', fontSize: '0.6rem', fontWeight: 700, background: `${s.cat.color}18`, border: `1px solid ${s.cat.color}44`, color: s.cat.color, cursor: 'pointer' }}>+10 XP</button>
-                      <button onClick={() => doDelete(s.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}><Trash2 size={11} /></button>
+                      <button disabled={pending} aria-label={`Delete ${s.name}`} onClick={() => doDelete(s.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}><Trash2 size={11} /></button>
                     </div>
                   </td>
                 </tr>

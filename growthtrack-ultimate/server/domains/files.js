@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import multer from 'multer';
 import { TextDecoder } from 'node:util';
 import { domainError, sendDomainError, transactionWithRetry } from './errors.js';
-import { fileMetadata, fileToClient } from './fileMetadata.js';
+import { fileMetadata, fileToClient, fileStorageColumns } from './fileMetadata.js';
 import { mutationCondition, nextUpdatedAt } from './mutations.js';
 import { setupRequired } from './providers.js';
 
@@ -76,7 +76,7 @@ export function createFileHandlers({ prisma, storage, limits = FILE_LIMITS, audi
           const records = await tx.document.findMany({ where: { userId: req.user.id } });
           const stored = records.map(fileMetadata).filter(Boolean);
           if (stored.length >= limits.maxFiles || stored.reduce((sum, file) => sum + file.bytes, 0) + metadata.bytes > limits.maxTotalBytes) throw domainError(413, 'VAULT_QUOTA', 'Vault storage limit reached. Delete a file before uploading.');
-          return tx.document.create({ data: { userId: req.user.id, title: name, url: null, data: JSON.stringify({ _vault: metadata }), createdBy: req.user.id, updatedBy: req.user.id } });
+          return tx.document.create({ data: { userId: req.user.id, title: name, url: null, ...fileStorageColumns(metadata), createdBy: req.user.id, updatedBy: req.user.id } });
         });
       } catch (error) {
         try { await storage.remove(key); } catch { /* Private orphan can be reconciled by an operator. */ }

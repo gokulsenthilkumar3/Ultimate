@@ -11,7 +11,7 @@ export interface WalletRecord {
   id: string;
   user_id: string;
   currency: string;
-  balance: number;
+  balance: number | string; // PostgreSQL NUMERIC is returned as text by pg.
   created_at: Date;
   updated_at: Date;
 }

@@ -5,9 +5,11 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import { createNotesService, registerNotesRoutes } from '../../../server/domains/notes.js';
 import { legacyNotesModel } from '../../../server/domains/legacyNotes.js';
-import { isolatedFixture, request, response } from './fixture.mjs';
+import BaseController from '../../../server/controllers/BaseController.js';
+import { isolatedFixture, request, response, call } from './fixture.mjs';
 
 const migration = await readFile(new URL('../../../prisma/migrations/20261005190000_note_revisions/migration.sql', import.meta.url), 'utf8');
+const typedMigration = await readFile(new URL('../../../prisma/migrations/20261103120000_typed_note_fields/migration.sql', import.meta.url), 'utf8');
 async function fixture(t, migrate = true, seed) {
   const result = await isolatedFixture(t);
   await result.prisma.$executeRawUnsafe(`CREATE TABLE "Note" (
@@ -17,10 +19,13 @@ async function fixture(t, migrate = true, seed) {
   if (seed) await seed(legacyNotesModel(result.prisma));
   if (migrate) await result.prisma.$transaction(async tx => {
     for (const statement of migration.split(';').map(sql => sql.trim()).filter(Boolean)) await tx.$executeRawUnsafe(statement);
+    // This focused fixture has no mood records; its note/revision DDL is the
+    // same additive migration that the complete-database tests replay.
+    for (const statement of typedMigration.split(';').map(sql => sql.replace(/^\s*--.*$/gm, '').trim()).filter(sql => sql && !/^(BEGIN|COMMIT)/.test(sql) && !sql.includes('"MoodLog"') && !sql.includes('"Habit"'))) await tx.$executeRawUnsafe(statement);
   });
   return { ...result, service: createNotesService(result.prisma) };
 }
-const body = (id = 'note-a') => ({ id, mutationId: `create:${id}`, title: 'Research', content: 'First body', pinned: true, tags: ['work'] });
+const body = (id = 'note-a') => ({ id, mutationId: `create:${id}`, title: 'Research', content: 'First body', pinned: true, tags: ['work'], color: '#123456' });
 
 test('legacy metadata cannot silently reclassify Workspace content as a private journal', async t => {
   const { service } = await fixture(t);
@@ -45,7 +50,7 @@ test('create/update receipts replay exactly and reject reuse with another payloa
   assert.equal(await prisma.noteRevision.count(), 2);
   assert.equal(await prisma.noteChange.count(), 2);
   assert.equal(await prisma.noteMutation.count(), 2);
-  assert.equal(JSON.parse((await prisma.note.findUnique({ where: { id: first.id } })).data).mutationId, undefined);
+  assert.equal(JSON.parse((await prisma.note.findUnique({ where: { id: first.id } })).data || '{}').mutationId, undefined);
 });
 
 test('concurrent clients create once and one stale writer loses without deleting either version', async t => {
@@ -99,6 +104,9 @@ test('delete is a replayable tombstone and restore appends a revision preserving
   assert.ok(sync.changes[0].note.deletedAt);
   const restored = await service.restore('owner-a', 'note-a', { mutationId: 'restore', expectedRevision: 3, revision: 1 });
   assert.equal(restored.content, 'First body');
+  assert.equal(restored.pinned, true);
+  assert.deepEqual(restored.tags, ['work']);
+  assert.equal(restored.color, '#123456');
   assert.equal(restored.deletedAt, null);
   assert.equal(restored.revision, 4);
   const history = await service.revisions('owner-a', 'note-a', { limit: 2 });
@@ -106,6 +114,43 @@ test('delete is a replayable tombstone and restore appends a revision preserving
   assert.equal(history.nextCursor, 2);
   assert.deepEqual((await service.revisions('owner-a', 'note-a', { cursor: 2 })).items.map(row => row.revision), [3, 4]);
   assert.equal(await prisma.note.count(), 1);
+});
+
+test('notes and revision snapshots keep ordinary fields in columns and preserve them through legacy edits and restore', async t => {
+  const { prisma, service } = await fixture(t);
+  const created = await service.create('owner-a', body());
+  const row = await prisma.note.findUnique({ where: { id: created.id } });
+  assert.equal(row.data, null);
+  assert.equal(row.color, '#123456');
+  assert.equal(row.tags, '["work"]');
+  await service.legacyUpdate('owner-a', created.id, { title: 'Renamed' });
+  const reloaded = await service.get('owner-a', created.id);
+  assert.equal(reloaded.pinned, true);
+  assert.deepEqual(reloaded.tags, ['work']);
+  const revision = await prisma.noteRevision.findUnique({ where: { noteId_revision: { noteId: created.id, revision: 2 } } });
+  assert.equal(revision.pinned, true);
+  assert.equal(revision.tags, '["work"]');
+  const journal = await service.legacyCreate('owner-a', { id: 'journal-typed', source: 'mind-journal', date: '2026-11-03', time: '09:30', text: 'Synthetic journal', content: 'Synthetic journal', prompt: 'What did you learn?', journalVersion: 1, wordCount: 2 });
+  const storedJournal = await prisma.note.findUnique({ where: { id: journal.id } });
+  assert.equal(storedJournal.source, 'mind-journal');
+  assert.equal(storedJournal.wordCount, 2);
+  assert.equal(storedJournal.data, null);
+  await assert.rejects(service.get('owner-a', journal.id), { code: 'NOTE_NOT_FOUND' });
+});
+
+test('typed legacy note endpoints classify journals privately before v1 is enabled', async t => {
+  const { prisma, service } = await fixture(t);
+  const controller = new BaseController(legacyNotesModel(prisma, { typedFields: true }), 'notes');
+  const created = await call(controller.create.bind(controller), request({ id: 'private-legacy', source: 'mind-journal', content: 'Synthetic journal', wordCount: 2 }));
+  assert.equal(created.statusCode, 200);
+  assert.equal(created.body.kind, 'mind-journal');
+  assert.equal(created.body.data, null);
+  await assert.rejects(service.get('owner-a', created.body.id), { code: 'NOTE_NOT_FOUND' });
+  assert.equal((await service.list('owner-a')).items.length, 0);
+  const changed = await call(controller.update.bind(controller), request({ source: null }, 'owner-a', created.body.id));
+  assert.equal(changed.statusCode, 400);
+  assert.equal(changed.body.code, 'NOTE_DOMAIN_CHANGE');
+  assert.equal((await prisma.note.findUnique({ where: { id: created.body.id } })).source, 'mind-journal');
 });
 
 test('list and sync have bounded owner-scoped cursors and search/pin filtering', async t => {
@@ -150,7 +195,7 @@ test('legacy and v1 updates share atomic history and reject stale timestamp writ
   assert.equal(await prisma.noteRevision.count(), 2);
 });
 
-test('migration preserves legacy bytes, IDs and timestamps, including malformed metadata and journals', async t => {
+test('migration preserves content, IDs and timestamps, including malformed metadata and journals', async t => {
   const rows = [
     { id: 'old-a', userId: 'owner-a', title: 'Exact', content: 'Unicode: \u2603\n\r\n', data: '{"pinned": true, "starred":true}' },
     { id: 'old-b', userId: 'owner-a', title: null, content: null, data: '{broken' },
@@ -161,7 +206,11 @@ test('migration preserves legacy bytes, IDs and timestamps, including malformed 
     for (const row of rows) await model.create({ data: row });
     before = await model.findMany({ orderBy: { id: 'asc' } });
   });
-  assert.deepEqual(await legacyNotesModel(prisma).findMany({ orderBy: { id: 'asc' } }), before);
+  const after = await legacyNotesModel(prisma).findMany({ orderBy: { id: 'asc' } });
+  assert.deepEqual(after.map(({data,...row})=>row), before.map(({data,...row})=>row));
+  assert.equal(after.find(row=>row.id==='old-b').data, '{broken');
+  assert.equal(after.find(row=>row.id==='old-a').data, null);
+  assert.equal((await service.get('owner-a','old-a')).pinned, true);
   assert.equal(await prisma.noteRevision.count(), 3);
   assert.equal(await prisma.noteChange.count(), 2);
   assert.deepEqual((await service.list('owner-a', { view: 'pinned' })).items.map(row => row.id), ['old-a']);
