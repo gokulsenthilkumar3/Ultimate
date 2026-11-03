@@ -11,6 +11,7 @@ export default function Tabs({ label, tabs, value, onChange, className = '', idP
   const id = useId();
   const { enabled: kineticEnabled, canAnimate, tier } = useKinetic();
   const ref = useRef(null);
+  const previousValue = useRef(value);
   const [rtl, setRtl] = useState(dir === 'rtl');
   const tabKeys = tabs.map(tab => tab.value).join('\0');
   const [indicator, setIndicator] = useState(null);
@@ -30,6 +31,12 @@ export default function Tabs({ label, tabs, value, onChange, className = '', idP
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [value, tabKeys, orientation, dir, rtl]);
+  useLayoutEffect(() => {
+    if (previousValue.current !== value && document.activeElement?.getAttribute('role') === 'tab') {
+      ref.current?.querySelector('[role="tab"][aria-selected="true"]')?.focus();
+    }
+    previousValue.current = value;
+  }, [value]);
   const enabled = tabs.filter(tab => !tab.disabled);
   const stop = enabled.some(tab => tab.value === value) ? value : enabled[0]?.value;
   const handleKey = event => {
