@@ -104,6 +104,8 @@ async function seedData() {
 
     // 3. Create sample bank account
     await db.collection('users').doc(sampleUserId).collection('accounts').doc('hdfc-savings').set({
+      name: 'HDFC Savings',
+      currency: 'INR',
       bankName: 'HDFC Bank',
       accountType: 'savings',
       accountNumber: '****1234',
@@ -116,7 +118,8 @@ async function seedData() {
 
     // 4. Create sample budget
     await db.collection('users').doc(sampleUserId).collection('budgets').doc('nov-2025').set({
-      month: 'November',
+      month: '2025-11',
+      amount: 40000,
       year: 2025,
       totalIncome: 50000,
       totalBudget: 40000,

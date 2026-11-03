@@ -126,7 +126,7 @@ const useStore = create<any>()(
         return singletonQueue(`${get()._sessionVersion}:${get().user?.id}:${key}`, async () => {
           if (!current()) throw new Error('The session changed. Refresh and try again.');
           const next = typeof data === 'function' ? data(get()[key]) : data;
-          const response = await apiSync(route, 'POST', next);
+          const response = requireRecord(await apiSync(route, 'POST', next));
           if (current()) set((state: any) => ({ [key]: next, user: state.user ? { ...state.user, [key]: next } : state.user }));
           return response;
         });
@@ -543,6 +543,7 @@ const useStore = create<any>()(
       updateMedicalData: (data: any) => saveSingleton('medicalData', '/medical_data', data),
       updatePhysiqueTargets: (data: any) => saveSingleton('physiqueTargets', '/physique_targets', data),
       updateAssessmentQA: (data: any) => saveSingleton('assessmentQA', '/assessment_qa', data),
+      saveAssessmentQA: (round: any) => saveSingleton('assessmentQA', '/assessment_qa', (current: any) => [...(current || []), round]),
       updateSkills: (data: any) => saveSingleton('skills', '/skills', data),
       addSkill: (skill: any) => saveSingleton('skills', '/skills', (current: any) => [...(current || []), skill]),
       updateSkill: (id: any, updates: any) => saveSingleton('skills', '/skills', (current: any) => (current || []).map((item: any) => item.id === id ? { ...item, ...updates } : item)),

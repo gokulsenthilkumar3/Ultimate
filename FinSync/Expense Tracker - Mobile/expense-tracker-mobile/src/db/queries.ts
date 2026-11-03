@@ -1,4 +1,10 @@
 import { getDB } from './index';
+function validateMoney(fields: object): void {
+  for (const [key, value] of Object.entries(fields)) {
+    if (!['amount', 'actual_amount', 'installment_amt', 'min_amount', 'max_amount'].includes(key) || value == null) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1e12 || value !== Math.round(value * 100) / 100) throw new Error(`${key} must have at most two decimal places and be within the supported range.`);
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -218,6 +224,7 @@ export async function getExpensesByDateRange(
 }
 
 export async function addExpense(expense: ExpenseInsert): Promise<number> {
+  validateMoney(expense);
   const db = getDB();
   const r = await db.runAsync(
     `INSERT INTO expenses
@@ -236,6 +243,7 @@ export async function updateExpense(
   id: number,
   fields: Partial<ExpenseInsert>
 ): Promise<void> {
+  validateMoney(fields);
   const db = getDB();
   const sets: string[] = [];
   const vals: unknown[] = [];
@@ -282,6 +290,7 @@ export async function getRecurringTemplatesWithDetails(): Promise<RecurringTempl
 export async function addRecurringTemplate(
   template: RecurringTemplateInsert
 ): Promise<number> {
+  validateMoney(template);
   const db = getDB();
   const r = await db.runAsync(
     `INSERT INTO recurring_templates
@@ -305,6 +314,7 @@ export async function updateRecurringTemplate(
   id: number,
   fields: Partial<RecurringTemplateInsert & { status: string; paid_periods: number; next_due_date: string }>
 ): Promise<void> {
+  validateMoney(fields);
   const db = getDB();
   const sets: string[] = [];
   const vals: unknown[] = [];
@@ -357,11 +367,13 @@ export async function getPendingEntries(): Promise<RecurringEntry[]> {
 export async function addRecurringEntry(
   entry: RecurringEntryInsert
 ): Promise<number> {
+  validateMoney(entry);
   const db = getDB();
   const r = await db.runAsync(
     `INSERT INTO recurring_entries
        (template_id, due_date, actual_amount, status, note)
-     VALUES (?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(template_id, due_date) DO NOTHING`,
     [
       entry.template_id, entry.due_date,
       entry.actual_amount ?? null,
@@ -369,7 +381,13 @@ export async function addRecurringEntry(
       entry.note ?? null,
     ]
   );
-  return r.lastInsertRowId;
+  if (r.changes > 0) return r.lastInsertRowId;
+  const existing = await db.getFirstAsync<{ id: number }>(
+    'SELECT id FROM recurring_entries WHERE template_id = ? AND due_date = ?',
+    [entry.template_id, entry.due_date]
+  );
+  if (!existing) throw new Error('Recurring entry was not saved.');
+  return existing.id;
 }
 
 export async function updateRecurringEntry(
@@ -381,6 +399,7 @@ export async function updateRecurringEntry(
     note?: string | null;
   }
 ): Promise<void> {
+  validateMoney(fields);
   const db = getDB();
   const sets: string[] = [];
   const vals: unknown[] = [];
@@ -399,6 +418,7 @@ export async function markEntryPaid(
   templateId: number,
   nextDueDate: string
 ): Promise<void> {
+  validateMoney({ actual_amount: actualAmount });
   const db = getDB();
   const today = new Date().toISOString().split('T')[0];
   await db.runAsync(
@@ -429,7 +449,7 @@ export async function getBudgets(month: string): Promise<BudgetWithDetails[]> {
     `SELECT b.*,
             c.name AS category_name,
             COALESCE((
-              SELECT SUM(e.amount)
+              SELECT SUM(e.amount_minor) / 100.0
               FROM expenses e
               WHERE e.date BETWEEN ? AND ?
                 AND (b.category_id IS NULL OR e.category_id = b.category_id)
@@ -448,6 +468,7 @@ export async function upsertBudget(
   amount: number,
   alert_pct: number
 ): Promise<void> {
+  validateMoney({ amount });
   const db = getDB();
   await db.runAsync(
     `INSERT INTO budgets (month, category_id, amount, alert_pct)
@@ -481,7 +502,7 @@ export async function getDashboardStats(month: string): Promise<DashboardStats> 
   const today = new Date().toISOString().split('T')[0];
 
   const totRow = await db.getFirstAsync<{ total: number; cnt: number }>(
-    `SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS cnt
+    `SELECT COALESCE(SUM(amount_minor) / 100.0,0) AS total, COUNT(*) AS cnt
      FROM expenses WHERE date BETWEEN ? AND ?`,
     [start, end]
   );
@@ -499,7 +520,7 @@ export async function getDashboardStats(month: string): Promise<DashboardStats> 
   );
 
   const cats = await db.getAllAsync<{ name: string; total: number; color: string | null }>(
-    `SELECT COALESCE(c.name, 'Uncategorized') AS name, c.color, SUM(e.amount) AS total
+    `SELECT COALESCE(c.name, 'Uncategorized') AS name, c.color, SUM(e.amount_minor) / 100.0 AS total
      FROM expenses e
      LEFT JOIN categories c ON c.id = e.category_id
      WHERE e.date BETWEEN ? AND ?

@@ -132,6 +132,15 @@ export function normalizePortfolioPayload(source) {
       const fieldPath = `${path}.${key}`;
       if (DATE_FIELDS.has(key)) result[key] = date(value, fieldPath);
       else if (CURRENCY_FIELDS.has(key)) result[key] = currency(value, fieldPath);
+      else if (key === 'schemeCode' || key === 'coingeckoId') {
+        if (value === null || value === '') result[key] = value;
+        else {
+          if (typeof value !== 'string' && !(key === 'schemeCode' && typeof value === 'number' && Number.isSafeInteger(value))) invalid(fieldPath, 'Use a provider identifier.');
+          const identifier = String(value).trim();
+          if (identifier.length > 80) invalid(fieldPath, 'Provider identifiers cannot exceed 80 characters.');
+          result[key] = identifier;
+        }
+      }
       else if (SNAPSHOT_FIELDS.has(key)) result[key] = value === null ? null : snapshot(value, fieldPath);
       else if (HISTORY_FIELDS.has(key)) result[key] = history(value, fieldPath);
       else result[key] = metadata(value, fieldPath);

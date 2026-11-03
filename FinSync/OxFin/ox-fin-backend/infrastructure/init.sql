@@ -1,7 +1,6 @@
 -- init.sql for OxFin backend
 -- Create tables for the application
-
--- Example tables (you can extend as needed)
+BEGIN;
 
 -- Users table extended for NextAuth and custom security
 CREATE TABLE users (
@@ -64,8 +63,8 @@ CREATE TABLE password_history (
 -- Business Domain Tables
 CREATE TABLE wallets (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    balance NUMERIC(12,2) NOT NULL DEFAULT 0,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    balance NUMERIC NOT NULL DEFAULT 0,
     currency VARCHAR(10) NOT NULL,
     type VARCHAR(20) DEFAULT 'full', -- 'full' or 'lite'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -73,10 +72,35 @@ CREATE TABLE wallets (
 
 CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
-    wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
-    amount NUMERIC(12,2) NOT NULL,
+    wallet_id INTEGER NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
+    amount NUMERIC NOT NULL,
     type VARCHAR(20) NOT NULL, -- e.g., 'deposit', 'withdrawal'
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+-- Fail rather than discard or silently repair unowned financial records.
+ALTER TABLE wallets ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE transactions ALTER COLUMN wallet_id SET NOT NULL;
+CREATE INDEX IF NOT EXISTS wallets_user_id_idx ON wallets(user_id);
+CREATE INDEX IF NOT EXISTS transactions_wallet_created_idx ON transactions(wallet_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS accounts_user_id_idx ON accounts(user_id);
+CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS password_history_user_id_idx ON password_history(user_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS transfer_requests (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    request_key VARCHAR(128) NOT NULL,
+    fingerprint TEXT NOT NULL,
+    response JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, request_key)
+);
+-- Unconstrained NUMERIC plus explicit precision checks rejects excess decimals
+-- rather than letting NUMERIC(12,2) silently round a submitted amount.
+ALTER TABLE wallets ADD CONSTRAINT wallets_balance_valid
+    CHECK (balance >= 0 AND balance <= 9999999999.99 AND scale(balance) <= 2);
+ALTER TABLE wallets ADD CONSTRAINT wallets_currency_valid CHECK (currency ~ '^[A-Z]{3}$');
+ALTER TABLE transactions ADD CONSTRAINT transactions_amount_valid
+    CHECK (abs(amount) <= 9999999999.99 AND scale(amount) <= 2);
+COMMIT;

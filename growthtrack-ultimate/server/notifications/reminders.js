@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { collectionToClient } from '../collectionPayload.js';
 
 export const CATEGORY_KEYS = ['tasks', 'goals', 'habits', 'calendar', 'subscriptions'];
 export const DEFAULT_PREFERENCES = { enabled: true, categories: { tasks: true, goals: true, habits: true, calendar: true, subscriptions: false } };
@@ -49,7 +50,7 @@ export function deriveReminders({ tasks = [], goals = [], habits = [], events = 
       label(task.title, 'Task due'), `${dueReason(due)} This task is not marked complete.`, '/workspace/tasks'));
   }
   for (const goal of goals) {
-    const data = recordData(goal);
+    const data = collectionToClient('goals', { ...goal, data: recordData(goal) });
     const due = validDay(goal.targetDate || data.targetDate || data.target_date || data.deadline);
     if (!goal.id || !due || done({ ...data, ...goal, status: goal.status ?? data.status }) || daysLeft(due) > 7) continue;
     if (Number(data.target_value) > 0 && Number(data.current_value) >= Number(data.target_value)) continue;
@@ -57,7 +58,7 @@ export function deriveReminders({ tasks = [], goals = [], habits = [], events = 
       `${dueReason(due)} This goal is still active.`, '/workspace/goals'));
   }
   for (const habit of habits) {
-    const data = recordData(habit);
+    const data = collectionToClient('habits', { ...habit, data: recordData(habit) });
     const daily = data.frequency === 'daily' || Number(data.target_days) === 7;
     if (!habit.id || !daily || data.active === false || data.active === 0 || data.archived || (validDay(data.startDate) && data.startDate > today)) continue;
     if (habit.logs?.some(log => log.date === today) || data.completed_dates?.includes(today)) continue;
@@ -85,7 +86,7 @@ export function deriveReminders({ tasks = [], goals = [], habits = [], events = 
     }
   }
   for (const subscription of subscriptions) {
-    const data = recordData(subscription);
+    const data = collectionToClient('subscriptions', { ...subscription, data: recordData(subscription) });
     const due = validDay(data.next_date || data.nextDate);
     if (!subscription.id || !due || subscription.active === 0 || data.cancelled || daysLeft(due) > 7) continue;
     reminders.push(reminder('subscriptions', 'subscription_due', subscription, due, label(subscription.name, 'Subscription renewal'),

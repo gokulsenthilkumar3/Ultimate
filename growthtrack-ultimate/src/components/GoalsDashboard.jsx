@@ -1,5 +1,5 @@
 import PageHeader from './ui/PageHeader';
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import StatTile from './ui/StatTile';
 import useStore, {
   selectGoals, selectAddGoal, selectDeleteGoal, selectUpdateGoal,
@@ -17,7 +17,8 @@ import { formatNumber } from '../utils/userFormatters';
 import { apiRequest } from '../lib/apiClient';
 import Pagination from './ui/Pagination';
 import useCollectionPage from '../hooks/useCollectionPage';
-import { captureSession } from '../store/persistence';
+import { captureSession, requireRecord } from '../store/persistence';
+import useRecordMutation from '../hooks/useRecordMutation';
 
 // ── Confetti helper (canvas-confetti) ────────────────────────────────────
 async function fireConfetti() {
@@ -97,29 +98,28 @@ function generateMilestones(goal, user) {
 }
 
 // ── Milestone Sub-tasks ───────────────────────────────────────────────────
-function MilestoneSubtasks({ goal, updateGoal, cat, newTask, setNewTask }) {
+function MilestoneSubtasks({ goal, updateGoal, cat, newTask, setNewTask, perform, pending }) {
   const subtasks = goal.subtasks || [];
 
   const addSubtask = () => {
     if (!newTask.trim()) return;
     const updated = [...subtasks, { id: Date.now(), text: newTask.trim(), done: false }];
-    updateGoal(goal.id, { subtasks: updated });
-    setNewTask('');
+    return perform(() => updateGoal(goal.id, { subtasks: updated }), () => setNewTask(''));
   };
 
   const toggleSubtask = (id) => {
     const updated = subtasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
-    updateGoal(goal.id, { subtasks: updated });
+    return perform(() => updateGoal(goal.id, { subtasks: updated }));
   };
 
   const deleteSubtask = (id) => {
-    updateGoal(goal.id, { subtasks: subtasks.filter(t => t.id !== id) });
+    return perform(() => updateGoal(goal.id, { subtasks: subtasks.filter(t => t.id !== id) }));
   };
 
   const doneCount = subtasks.filter(t => t.done).length;
 
   return (
-    <div style={{ marginTop: '0.75rem' }}>
+    <fieldset disabled={pending} style={{ minWidth: 0, border: 0, padding: 0, margin: '0.75rem 0 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.5rem' }}>
         <Sparkles size={11} color={cat.color} />
         <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -180,7 +180,7 @@ function MilestoneSubtasks({ goal, updateGoal, cat, newTask, setNewTask }) {
           <Plus size={12} />
         </button>
       </div>
-    </div>
+    </fieldset>
   );
 }
 
@@ -216,18 +216,34 @@ function GoalsWorkspace() {
   const [logHistory, setLogHistory] = useState({});
   const [loadingLog, setLoadingLog] = useState({});
   const [subtaskDrafts, setSubtaskDrafts] = useState({});
+  const [historyErrors, setHistoryErrors] = useState({});
+  const historyRequests = useRef(new Set());
+  const progressIds = useRef(new Map());
+  const createId = useRef(null);
+  const { pending, error: saveError, run: perform } = useRecordMutation();
   const listRef = useRef(null);
+  useLayoutEffect(() => {
+    setShowAdd(false); setEditId(null); setExpandedId(null); setEditForm({}); setEditSaving(false);
+    setLogForm({}); setLogHistory({}); setLoadingLog({}); setHistoryErrors({}); setSubtaskDrafts({});
+    progressIds.current.clear(); historyRequests.current.clear(); createId.current = null; editSaveInFlight.current = false;
+    setForm({ title: '', description: '', category: 'personal', status: 'active', priority: 'medium', target_value: '', current_value: '', unit: '', deadline: '' });
+  }, [user?.id]);
 
   const fetchProgressLogs = useCallback(async (goalId) => {
-    if (logHistory[goalId]) return;
+    if (logHistory[goalId] || historyRequests.current.has(goalId)) return;
+    historyRequests.current.add(goalId);
+    const currentSession = captureSession(useStore.getState);
     setLoadingLog(l => ({ ...l, [goalId]: true }));
+    setHistoryErrors(errors => ({ ...errors, [goalId]: '' }));
     try {
       const data = await apiRequest(`/api/goal_progress_logs?goal_id=${encodeURIComponent(goalId)}`);
-      setLogHistory(h => ({ ...h, [goalId]: Array.isArray(data) ? data : [] }));
-    } catch {
-      setLogHistory(h => ({ ...h, [goalId]: [] }));
+      if (!Array.isArray(data)) throw new Error('Progress history could not be verified.');
+      if (currentSession()) setLogHistory(h => ({ ...h, [goalId]: data.filter(row => String(row.goalId ?? row.goal_id) === String(goalId)) }));
+    } catch (error) {
+      if (currentSession()) setHistoryErrors(errors => ({ ...errors, [goalId]: error?.message || 'Progress history could not be loaded.' }));
     } finally {
-      setLoadingLog(l => ({ ...l, [goalId]: false }));
+      historyRequests.current.delete(goalId);
+      if (currentSession()) setLoadingLog(l => ({ ...l, [goalId]: false }));
     }
   }, [logHistory]);
 
@@ -235,42 +251,34 @@ function GoalsWorkspace() {
 
   const handleLogProgress = useCallback(async (goal) => {
     const lf = logForm[goal.id] || {};
-    const val = parseFloat(lf.value);
-    if (!lf.value || isNaN(val)) { toast.error('Enter a valid value to log.'); return; }
-    try {
-      const payload = {
-        goal_id: goal.id, value: val,
-        note: lf.note || '',
-        date: lf.date || new Date().toISOString().slice(0, 10),
-      };
-      await apiRequest('/api/goal_progress_logs', {
+    const val = Number(lf.value);
+    if (lf.value == null || String(lf.value).trim() === '' || !Number.isFinite(val)) { toast.error('Enter a valid value to log.'); return; }
+    const payload = { goalId: goal.id, value: val, note: lf.note || '', date: lf.date || new Date().toISOString().slice(0, 10) };
+    const fingerprint = JSON.stringify(payload);
+    if (progressIds.current.get(goal.id)?.fingerprint !== fingerprint) progressIds.current.set(goal.id, { fingerprint, id: crypto.randomUUID() });
+    return perform(async () => {
+      const saved = requireRecord(await apiRequest('/api/goal_progress_logs', {
         method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      const updates = { current_value: val };
-      const wasCompleted = goal.status === 'completed';
-      if (goal.target_value && val >= Number(goal.target_value)) {
-        updates.status = 'completed';
-        if (!wasCompleted) {
-          toast.success(`🎉 Goal "${goal.title}" completed!`);
-          fireConfetti();
-        }
-      }
-      await updateGoal(goal.id, updates);
+        body: JSON.stringify({ ...payload, id: progressIds.current.get(goal.id).id, ...(goal.updatedAt ? { expectedUpdatedAt: goal.updatedAt } : {}) }),
+      }));
+      if (saved.goal?.id !== goal.id) throw new Error('The goal update was not acknowledged. Refresh before retrying.');
+      return saved;
+    }, saved => {
+      useStore.setState(state => ({ goals: state.goals.map(row => row.id === goal.id ? saved.goal : row) }));
       setLogHistory(h => ({
         ...h,
-        [goal.id]: [...(h[goal.id] || []), payload].sort((a, b) => a.date.localeCompare(b.date)),
+        [goal.id]: [...(h[goal.id] || []).filter(row => row.id !== saved.id), saved].sort((a, b) => a.date.localeCompare(b.date)),
       }));
       setLogForm(f => ({ ...f, [goal.id]: {} }));
-      if (!updates.status) toast.success(`Progress logged: ${val} ${goal.unit || ''}`);
-    } catch { toast.error('Failed to log progress.'); }
-  }, [logForm, updateGoal, toast]);
+      progressIds.current.delete(goal.id);
+      if (saved.goal.status === 'completed' && goal.status !== 'completed') { toast.success(`🎉 Goal "${goal.title}" completed!`); fireConfetti(); }
+      else toast.success(`Progress logged: ${val} ${goal.unit || ''}`);
+    });
+  }, [logForm, perform, toast]);
 
   const handleMarkDone = useCallback(async (goal) => {
-    await updateGoal(goal.id, { status: 'completed', current_value: goal.target_value });
-    toast.success(`🎉 "${goal.title}" marked complete!`);
-    fireConfetti();
-  }, [updateGoal, toast]);
+    return perform(() => updateGoal(goal.id, { status: 'completed', ...(goal.target_value != null ? { current_value: goal.target_value } : {}) }), () => { toast.success(`🎉 "${goal.title}" marked complete!`); fireConfetti(); });
+  }, [updateGoal, toast, perform]);
 
   const orderedGoals = useMemo(() => [...goals].sort((a, b) =>
     Number(Boolean(b.is_focus)) - Number(Boolean(a.is_focus))
@@ -305,10 +313,11 @@ function GoalsWorkspace() {
   };
   const toggleFocus = useCallback(async (goal) => {
     const becomingFocus = !goal.is_focus;
-    if (becomingFocus) await Promise.all(goals.filter(g => g.is_focus && g.id !== goal.id).map(g => updateGoal(g.id, { is_focus: false })));
-    await updateGoal(goal.id, { is_focus: becomingFocus });
-    toast.success(becomingFocus ? `"${goal.title}" is your focus goal.` : 'Focus goal cleared.');
-  }, [goals, updateGoal, toast]);
+    return perform(async () => {
+      if (becomingFocus) for (const other of goals.filter(g => g.is_focus && g.id !== goal.id)) await updateGoal(other.id, { is_focus: false });
+      await updateGoal(goal.id, { is_focus: becomingFocus });
+    }, () => toast.success(becomingFocus ? `"${goal.title}" is your focus goal.` : 'Focus goal cleared.'));
+  }, [goals, updateGoal, toast, perform]);
 
   const handleDelete = useCallback(async (id) => {
     const goalToRestore = goals.find(g => g.id === id);
@@ -340,17 +349,21 @@ function GoalsWorkspace() {
       const today = new Date().toISOString().split('T')[0];
       if (form.deadline < today) { toast.error('Deadline cannot be in the past.'); return; }
     }
-    await addGoal({
+    if (!createId.current) createId.current = crypto.randomUUID();
+    return perform(() => addGoal({
+      id: createId.current,
       ...form,
       target_value:  form.target_value  ? Number(form.target_value)  : null,
       current_value: form.current_value ? Number(form.current_value) : 0,
       created_at: new Date().toISOString(),
       subtasks: [],
-    });
+    }), () => {
     setForm({ title: '', description: '', category: 'personal', status: 'active', priority: 'medium', target_value: '', current_value: '', unit: '', deadline: '' });
     setShowAdd(false);
     trackEvent('Set Goal', { type: form.category || 'other' });
     toast.success('Goal added!');
+    createId.current = null;
+    });
   };
 
   const startEdit = (g) => { setEditId(g.id); setEditForm({ ...g }); };
@@ -361,20 +374,24 @@ function GoalsWorkspace() {
       if (editForm.deadline < today) { toast.error('Deadline cannot be in the past.'); return; }
     }
     const goalId = editId;
+    const currentSession = captureSession(useStore.getState);
     editSaveInFlight.current = true;
     setEditSaving(true);
     try {
       await updateGoal(goalId, editForm);
+      if (!currentSession()) return;
       setEditId(current => current === goalId ? null : current);
       toast.success('Goal updated.');
-    } catch { toast.error('Could not update the goal. Your changes are still here.'); }
-    finally { editSaveInFlight.current = false; setEditSaving(false); }
+    } catch { if (currentSession()) toast.error('Could not update the goal. Your changes are still here.'); }
+    finally { if (currentSession()) { editSaveInFlight.current = false; setEditSaving(false); } }
   };
 
   return (
     <div style={{ padding: '0.5rem 0' }}>
+      {saveError && <p role="alert">{saveError}</p>}
+      {pending && <p role="status">Saving goal changes…</p>}
       {/* Header */}
-      <PageHeader accent="Workspace" title="Goals" subtitle={<>{stats.active} active · {stats.completed} completed</>} actions={<><button type="button" aria-expanded={showAdd} aria-controls="new-goal-form" onClick={() => setShowAdd(s => !s)} className="btn-primary">
+      <PageHeader accent="Workspace" title="Goals" subtitle={<>{stats.active} active · {stats.completed} completed</>} actions={<><button type="button" disabled={pending} aria-expanded={showAdd} aria-controls="new-goal-form" onClick={() => setShowAdd(s => !s)} className="btn-primary">
           <Plus size={14} /> New Goal
         </button></>} />
 
@@ -394,7 +411,7 @@ function GoalsWorkspace() {
 
       {/* Add form */}
       {showAdd && (
-        <div id="new-goal-form" className="glass-card mb-lg">
+        <fieldset id="new-goal-form" disabled={pending} className="glass-card mb-lg" style={{ minWidth: 0 }}>
           <p style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-1)', marginBottom: '0.75rem' }}>New Goal</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem', marginBottom: '0.75rem' }}>
             {[
@@ -435,9 +452,9 @@ function GoalsWorkspace() {
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button onClick={() => setShowAdd(false)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-3)' }}>Cancel</button>
-            <button onClick={handleAdd} className="btn-primary">Add Goal</button>
+            <button onClick={handleAdd} className="btn-primary">{pending ? 'Saving…' : 'Add Goal'}</button>
           </div>
-        </div>
+        </fieldset>
       )}
 
       {/* Filter bar */}
@@ -641,11 +658,11 @@ function GoalsWorkspace() {
                         onChange={e => setLogForm(f => ({ ...f, [g.id]: { ...lf, note: e.target.value } }))}
                         className="form-input" style={{ width: '100%' }} />
                     </div>
-                    <button onClick={() => handleLogProgress(g)} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.75rem' }}>
+                    <button disabled={pending} onClick={() => handleLogProgress(g)} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.75rem' }}>
                       <Plus size={12} /> Log
                     </button>
                     {g.status !== 'completed' && (
-                      <button onClick={() => handleMarkDone(g)}
+                      <button disabled={pending} onClick={() => handleMarkDone(g)}
                         style={{ padding: '0.45rem 0.9rem', fontSize: '0.75rem', background: '#10b981', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
                         <Check size={12} /> Mark Done 🎉
                       </button>
@@ -655,6 +672,8 @@ function GoalsWorkspace() {
                   {/* Progress chart */}
                   {loadingLog[g.id] ? (
                     <p style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>Loading history…</p>
+                  ) : historyErrors[g.id] ? (
+                    <div role="alert"><p>{historyErrors[g.id]}</p><button type="button" className="btn-sm" onClick={() => fetchProgressLogs(g.id)}>Retry progress history</button></div>
                   ) : chartData.length >= 2 ? (
                     <div style={{ marginBottom: '1rem' }}>
                       <p style={{ fontSize: '0.62rem', color: 'var(--text-3)', marginBottom: '4px' }}>Progress history</p>
@@ -672,7 +691,7 @@ function GoalsWorkspace() {
                   ) : null}
 
                   {/* Milestone sub-tasks */}
-                  <MilestoneSubtasks goal={g} updateGoal={updateGoal} cat={cat}
+                  <MilestoneSubtasks goal={g} updateGoal={updateGoal} cat={cat} perform={perform} pending={pending}
                     newTask={subtaskDrafts[g.id] || ''} setNewTask={value => setSubtaskDrafts(drafts => ({ ...drafts, [g.id]: value }))} />
 
                   {/* Milestone timeline */}

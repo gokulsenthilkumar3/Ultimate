@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { CREATE_TABLES_SQL, SEED_DEFAULTS_SQL } from './schema';
+import { SEED_DEFAULTS_SQL, initializeSchema } from './schema';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -80,6 +80,7 @@ class WebMockDB {
       return { lastInsertRowId: 0, changes: 1 };
     }
     if (/DELETE\s+FROM\s+categories/i.test(s)) {
+      if (this.state.budgets.some(b => b.category_id === params[0])) throw new Error('Category is referenced by a budget');
       this.state.categories = this.state.categories.filter(c => c.id !== params[0]);
       await this.persist();
       return { lastInsertRowId: 0, changes: 1 };
@@ -207,6 +208,9 @@ class WebMockDB {
       const id = this.newId();
       const now = new Date().toISOString();
       const [template_id, due_date, actual_amount, status, note] = params;
+      if (!this.state.recurring_templates.some(t => t.id === template_id)) throw new Error('Recurring template does not exist');
+      const existing = this.state.recurring_entries.find(e => e.template_id === template_id && e.due_date === due_date);
+      if (existing) return { lastInsertRowId: existing.id, changes: 0 };
       this.state.recurring_entries.push({
         id, template_id, due_date,
         actual_amount: actual_amount != null ? Number(actual_amount) : null,
@@ -242,6 +246,7 @@ class WebMockDB {
     if (/INSERT\s+INTO\s+budgets/i.test(s)) {
       const id = this.newId();
       const [month, category_id, amount, alert_pct] = params;
+      if (category_id != null && !this.state.categories.some(c => c.id === category_id)) throw new Error('Budget category does not exist');
       const existing = this.state.budgets.find(b =>
         b.month === month && (b.category_id ?? 0) === (category_id ?? 0)
       );
@@ -310,7 +315,7 @@ class WebMockDB {
     }
 
     // ── Expenses: aggregation (GROUP BY) — MUST be before BETWEEN check ──
-    if (/FROM\s+expenses/i.test(s) && /GROUP\s+BY/i.test(s)) {
+    if (!/FROM\s+budgets/i.test(s) && /FROM\s+expenses/i.test(s) && /GROUP\s+BY/i.test(s)) {
       const [start, end] = params;
       const rows = this.state.expenses.filter(e => e.date >= start && e.date <= end);
       const byCategory: Record<string | number, { name: string; total: number; color: string | null }> = {};
@@ -320,13 +325,13 @@ class WebMockDB {
         if (!byCategory[key]) {
           byCategory[key] = { name: cat?.name ?? 'Uncategorized', color: cat?.color ?? null, total: 0 };
         }
-        byCategory[key].total += Number(e.amount) || 0;
+        byCategory[key].total += Math.round((Number(e.amount) || 0) * 100);
       }
-      return Object.values(byCategory).sort((a, b) => b.total - a.total).slice(0, 5);
+      return Object.values(byCategory).map(row => ({ ...row, total: row.total / 100 })).sort((a, b) => b.total - a.total).slice(0, 5);
     }
 
     // ── Expenses: date range ──
-    if (/FROM\s+expenses/i.test(s) && /BETWEEN/i.test(s)) {
+    if (!/FROM\s+budgets/i.test(s) && /FROM\s+expenses/i.test(s) && /BETWEEN/i.test(s)) {
       const [start, end] = params;
       return this.state.expenses
         .filter(e => e.date >= start && e.date <= end)
@@ -335,7 +340,7 @@ class WebMockDB {
     }
 
     // ── Expenses: all ──
-    if (/FROM\s+expenses/i.test(s)) {
+    if (!/FROM\s+budgets/i.test(s) && /FROM\s+expenses/i.test(s)) {
       return this.state.expenses
         .map(e => this.enrichExpense(e))
         .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
@@ -379,7 +384,7 @@ class WebMockDB {
           const cat = this.state.categories.find(c => c.id === b.category_id);
           const spent = this.state.expenses
             .filter(e => e.date >= start && e.date <= end && (b.category_id == null || e.category_id === b.category_id))
-            .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+            .reduce((sum, e) => sum + Math.round((Number(e.amount) || 0) * 100), 0) / 100;
           return { ...b, category_name: cat?.name ?? null, spent };
         });
     }
@@ -391,12 +396,17 @@ class WebMockDB {
     await this.ensureLoaded();
     const s = sql.trim();
 
+    if (/SELECT\s+id\s+FROM\s+recurring_entries/i.test(s) && /template_id\s*=\s*\?/i.test(s)) {
+      const entry = this.state.recurring_entries.find(e => e.template_id === params[0] && e.due_date === params[1]);
+      return entry ? { id: entry.id } : null;
+    }
+
     // Total & count for expenses in a date range
-    if (/SUM\(amount\)/i.test(s) && /FROM\s+expenses/i.test(s)) {
+    if (/SUM\(/i.test(s) && /FROM\s+expenses/i.test(s)) {
       const [start, end] = params;
       const rows = this.state.expenses.filter(e => e.date >= start && e.date <= end);
       return {
-        total: rows.reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
+        total: rows.reduce((sum, e) => sum + Math.round((Number(e.amount) || 0) * 100), 0) / 100,
         cnt: rows.length,
       };
     }
@@ -475,7 +485,7 @@ export async function initDB(): Promise<void> {
   if (Platform.OS !== 'web') {
     await db.execAsync('PRAGMA journal_mode = WAL;');
     await db.execAsync('PRAGMA foreign_keys = ON;');
-    await db.execAsync(CREATE_TABLES_SQL);
+    await initializeSchema(db);
     await db.execAsync(SEED_DEFAULTS_SQL);
   } else {
     // Web mock: seed default categories and payment modes if not present

@@ -41,7 +41,7 @@ export function parseFinanceCsv(content) {
     const add = (field, message) => errors.push({ field, message });
     if (cells.length !== headers.length) add('row', 'Column count does not match the header.');
     const amount = Number(raw.amount);
-    if (!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(raw.amount) || !Number.isFinite(amount) || amount <= 0 || amount > 1e12) add('amount', 'Amount must be a positive decimal up to 1 trillion.');
+    if (!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(raw.amount) || !Number.isFinite(amount) || amount <= 0 || amount > 1e12 || amount !== Math.round(amount * 100) / 100) add('amount', 'Amount must be positive, have at most two decimal places, and be at most 1 trillion.');
     const type = TYPES[raw.type?.toLowerCase()];
     if (!type) add('type', 'Type must be Income, Expense, or Investment.');
     if (!isDate(raw.date)) add('date', 'Use a valid date in YYYY-MM-DD format.');

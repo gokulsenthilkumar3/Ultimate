@@ -1,9 +1,11 @@
 import PageHeader from './ui/PageHeader';
 import { EMPTY_RECORD } from '../lib/emptyValues';
 import { Z_INDEX } from '../constants';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Eye, Ear, Wind, Fingerprint, Brain, Activity, ClipboardList, Target, Smile, Heart, Sparkles, Droplets, X, Battery, Plus, Trash2 } from 'lucide-react';
 import useStore from '../store/useStore';
+import useRecordMutation from '../hooks/useRecordMutation';
+import Modal from './ui/Modal';
 
 const SENSE_ICONS = { vision: Eye, hearing: Ear, smell: Wind, taste: Activity, touch: Fingerprint };
 const SPECIAL_ICONS = [Target, Droplets, Sparkles];
@@ -19,23 +21,30 @@ export default function HealthExtras() {
   const [lifestyle, setLifestyle] = useState({ posture: '', diets: [], hobbies: [], broncoTest: '' });
   const [specialized, setSpecialized] = useState([]);
   const [recoveryMetrics, setRecoveryMetrics] = useState([]);
+  const owner = useStore(state => state.user?.id);
+  const dirty = useRef(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const { pending, error: saveError, run } = useRecordMutation();
+  useEffect(() => { dirty.current = false; setHasDraft(false); setSaved(false); setActiveSense(null); }, [owner]);
 
   useEffect(() => {
     const source = { ...healthTemplate, ...healthProfile };
-    setSenses(Object.fromEntries(Object.entries(source.senses || {}).map(([key, value]) => [key, { ...value, icon: SENSE_ICONS[key] || Activity }])));
+    setSenses(Object.fromEntries(Object.entries(source.senses || {}).filter(([, value]) => value && typeof value === 'object').map(([key, value]) => [key, { ...value, icon: SENSE_ICONS[key] || Activity }])));
     setLifestyle(source.lifestyle || { posture: '', diets: [], hobbies: [], broncoTest: '' });
     setSpecialized((source.specialized || []).map((item, index) => ({ ...item, icon: SPECIAL_ICONS[index % SPECIAL_ICONS.length] })));
-    setRecoveryMetrics(source.recoveryMetrics || []);
-  }, [healthProfile, healthTemplate]);
+    if (!dirty.current) setRecoveryMetrics((Array.isArray(source.recoveryMetrics) ? source.recoveryMetrics : []).filter(metric => metric && typeof metric === 'object'));
+  }, [healthProfile, healthTemplate, owner]);
 
-  const saveRecovery = next => { setRecoveryMetrics(next); updateHealth({ recoveryMetrics: next }); };
+  const editRecovery = next => { dirty.current = true; setHasDraft(true); setSaved(false); setRecoveryMetrics(next); };
+  const saveRecovery = () => run(() => updateHealth({ recoveryMetrics }), () => { dirty.current = false; setHasDraft(false); setSaved(true); });
 
   return (
     <div className="fade-in module-page" style={{ padding: '1rem 0' }}>
-      <PageHeader accent="Wellness" title="Health+" subtitle={<>Deep bio-metric analysis of your five senses, specialized organ health, and comprehensive lifestyle markers.</>} />
+      <PageHeader accent="Wellness" title="Health+" subtitle="Keep sensory observations, lifestyle notes and recovery metrics together." />
 
       {!Object.keys(senses).length && !specialized.length && !recoveryMetrics.length && (
-        <div className="glass-card health-empty-state"><Heart size={28} color="var(--accent)" /><div><h3>No fabricated health data</h3><p className="text-secondary">Add recovery metrics below or connect a health source. Saved values will appear from the local Health table.</p></div></div>
+        <div className="glass-card health-empty-state"><Heart size={28} color="var(--accent)" /><div><h3>No health observations yet</h3><p className="text-secondary">Add a recovery metric below. Saved observations will appear here.</p></div></div>
       )}
 
       <div className="stagger-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
@@ -51,10 +60,11 @@ export default function HealthExtras() {
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+            {!Object.keys(senses).length && <p className="text-secondary">No sensory observations recorded.</p>}
             {Object.entries(senses).map(([key, data]) => {
               const Icon = data.icon;
               return (
-                <div 
+                <div role="button" tabIndex={0} aria-label={`Open ${key} details`} aria-haspopup="dialog" onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActiveSense({ key, ...data }); } }}
                   key={key} 
                   onClick={() => setActiveSense({ key, ...data })}
                   className="hover-app-card"
@@ -98,6 +108,7 @@ export default function HealthExtras() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'center' }}>
+            {!specialized.length && <p className="text-secondary">No specialized observations recorded.</p>}
             {specialized.map((item, i) => {
               const Icon = item.icon;
               return (
@@ -179,18 +190,18 @@ export default function HealthExtras() {
                 <p className="label-caps" style={{ fontSize: '0.65rem' }}>System Readiness</p>
               </div>
             </div>
-            <button className="btn-sm" onClick={() => saveRecovery([...recoveryMetrics, { id: crypto.randomUUID(), name: '', value: '', status: 'Pending' }])}>
+            <button disabled={pending} className="btn-sm" onClick={() => editRecovery([...recoveryMetrics, { id: crypto.randomUUID(), name: '', value: '', status: 'Pending' }])}>
               <Plus size={14} /> Add Metric
             </button>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+          <fieldset disabled={pending} style={{ minWidth: 0, border: 0, padding: 0, margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(250px, 100%), 1fr))', gap: '1rem' }}>
             {recoveryMetrics.map(metric => (
               <div key={metric.id} style={{ padding: '1.25rem', background: 'var(--bg-elevated)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <input className="form-input" value={metric.name} placeholder="Metric name" onChange={e => saveRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, name: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-1)' }} />
+                <input aria-label="Metric name" className="form-input" value={metric.name ?? ''} placeholder="Metric name" onChange={e => editRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, name: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-1)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <input className="form-input" value={metric.value} placeholder="Value" onChange={e => saveRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, value: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--accent)', width: '60%' }} />
-                  <select className="form-input" value={metric.status} onChange={e => saveRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, status: e.target.value } : m))}>
+                  <input aria-label={`Value for ${metric.name || 'new metric'}`} className="form-input" value={metric.value ?? ''} placeholder="Value" onChange={e => editRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, value: e.target.value } : m))} style={{ background: 'transparent', border: 'none', padding: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--accent)', width: '60%', minWidth: 0 }} />
+                  <select aria-label={`Status for ${metric.name || 'new metric'}`} className="form-input" value={metric.status || 'Pending'} onChange={e => editRecovery(recoveryMetrics.map(m => m.id === metric.id ? { ...m, status: e.target.value } : m))}>
                     <option value="Optimal">Optimal</option>
                     <option value="Warning">Warning</option>
                     <option value="Critical">Critical</option>
@@ -198,10 +209,15 @@ export default function HealthExtras() {
                   </select>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                  <button className="btn-icon" onClick={() => saveRecovery(recoveryMetrics.filter(m => m.id !== metric.id))} style={{ color: 'var(--danger)', padding: '4px' }}><Trash2 size={14} /></button>
+                  <button aria-label={`Remove ${metric.name || 'new metric'}`} className="btn-icon" onClick={() => editRecovery(recoveryMetrics.filter(m => m.id !== metric.id))} style={{ color: 'var(--danger)', padding: '4px' }}><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}
+          </fieldset>
+          {saveError && <p role="alert">{saveError}</p>}
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button disabled={pending || !hasDraft} className="btn-primary" onClick={saveRecovery}>{pending ? 'Saving…' : 'Save recovery metrics'}</button>
+            <span role="status">{pending ? 'Saving recovery metrics…' : hasDraft ? 'Unsaved changes' : saved ? 'Recovery metrics saved.' : ''}</span>
           </div>
         </div>
 
@@ -209,13 +225,10 @@ export default function HealthExtras() {
 
       {/* Sensory Detail Modal */}
       {activeSense && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: Z_INDEX.OVERLAY, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
-          <div className="fade-in glass-card" style={{ width: '100%', maxWidth: '500px', position: 'relative', padding: '2.5rem', border: `1px solid ${activeSense.color}` }}>
+        <Modal open title={`${activeSense.key} details`} onClose={() => setActiveSense(null)}>
+          <div style={{ position: 'relative' }}>
             <div style={{ position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%', background: `radial-gradient(circle at center, ${activeSense.color}33 0%, transparent 60%)`, pointerEvents: 'none' }} />
             
-            <button onClick={() => setActiveSense(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'var(--text-2)', cursor: 'pointer' }}>
-              <X size={24} />
-            </button>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '2rem', position: 'relative', zIndex: Z_INDEX.BASE }}>
               <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: `${activeSense.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -253,7 +266,7 @@ export default function HealthExtras() {
                   Recommended Exercises
                 </h4>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {activeSense.exercises.map((ex, i) => (
+                  {(Array.isArray(activeSense.exercises) ? activeSense.exercises : []).map((ex, i) => (
                     <span key={i} style={{ padding: '6px 12px', background: `${activeSense.color}15`, color: activeSense.color, borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, border: `1px solid ${activeSense.color}33` }}>
                       {ex}
                     </span>
@@ -268,7 +281,7 @@ export default function HealthExtras() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

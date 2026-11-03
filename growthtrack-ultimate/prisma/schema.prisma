@@ -19,7 +19,9 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @default(now()) @updatedAt
 
-  // Singletons (stored as JSON string)
+  // Typed plans and collections below own their regular records. Their old
+  // strings remain only for malformed migration inputs and rollback workflows.
+  // Lifestyle/wellness configuration still uses bounded JSON documents.
   trainingPlan      String?
   nutritionStrategy String?
   lifestyleTips     String?
@@ -30,14 +32,10 @@ model User {
   calendarEvents    String?
   wellnessData      String?
   healthExtras      String?
-  // Project annotations are user-owned JSON singletons. Keeping them on the
-  // account means manual projects and repository notes survive a reload and
-  // follow the same authenticated write path as the rest of the profile.
+  // Legacy collection documents are retained only for malformed migration
+  // inputs or the explicit calendar/portfolio rollback workflow.
   manualProjects    String?
   repoNotes         String?
-  // Investment holdings are stored as a validated JSON array so the
-  // portfolio module shares the same authenticated persistence path as the
-  // other user-owned singleton records.
   portfolio         String?
 
   // Relations
@@ -78,6 +76,120 @@ model User {
   goalProgressLogs       GoalProgressLog[]
   createdBy              String?
   updatedBy              String?
+  skillRows              UserSkill[]
+  manualProjectRows      ManualProject[]
+  repositoryNoteRows     RepositoryNote[]
+  assessmentRounds       AssessmentRound[]
+  trainingPlanRecord     TrainingPlan?
+  nutritionStrategyRecord NutritionStrategy?
+  medicalPlanRecord      MedicalPlan?
+  physiquePlanRecord     PhysiquePlan?
+}
+
+model UserSkill {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  name String?
+  category String?
+  xp Float?
+  description String?
+  weeklyTarget Float?
+  resource String?
+  nextAction String?
+  lastPracticed String?
+  practiceCount Int?
+  data String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@unique([userId, position])
+  @@index([userId, category])
+  @@map("user_skills")
+}
+
+model ManualProject {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  title String?
+  description String?
+  stack String?
+  status String?
+  url String?
+  startDate String?
+  endDate String?
+  data String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@unique([userId, position])
+  @@index([userId, status])
+  @@map("manual_projects")
+}
+
+model RepositoryNote {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositoryId String
+  note String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@unique([userId, repositoryId])
+  @@map("repository_notes")
+}
+
+model AssessmentRound {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  round String?
+  color String?
+  data String?
+  answers AssessmentAnswer[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@unique([userId, position])
+  @@map("assessment_rounds")
+}
+
+model AssessmentAnswer {
+  id String @id @default(uuid())
+  roundId String
+  round AssessmentRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  questionKey String?
+  question String?
+  answer String?
+  data String?
+  @@unique([roundId, position])
+  @@map("assessment_answers")
 }
 
 model AuthSession {
@@ -480,6 +592,12 @@ model Task {
   tags        String?
   done        Boolean  @default(false)
   completedAt String?
+  description String?
+  category String?
+  reminderAt String?
+  recurrence String?
+  parent_task_id String?
+  subtaskRows TaskSubtask[]
   data        String?
   createdAt   DateTime @default(now())
   createdBy   String?
@@ -494,6 +612,7 @@ model Transaction {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount    Float?
+  amountMinor Int? @ignore
   type      String?
   category  String?
   method    String?
@@ -513,6 +632,7 @@ model Budget {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category     String?
   limit_amount Float?
+  limitMinor   Int? @ignore
   month        String?
   createdAt    DateTime @default(now())
   createdBy    String?
@@ -534,6 +654,15 @@ model MetricLog {
   confidence  Float?
   measuredAt  DateTime?
   source      String?   @default("manual")
+  type        String?
+  exercise    String?
+  weight      Float?
+  reps        Int?
+  sets        Int?
+  notes       String?
+  photoUrl    String?
+  label       String?
+  measurements MetricMeasurement[]
   data        String?
   stringValue String?
   createdAt   DateTime  @default(now())
@@ -545,10 +674,33 @@ model MetricLog {
   @@index([userId, date])
 }
 
+model MetricMeasurement {
+  id           String @id @default(uuid())
+  metricLogId  String
+  metricLog    MetricLog @relation(fields: [metricLogId], references: [id], onDelete: Cascade)
+  container    String
+  key          String
+  valueType    String
+  value        Float?
+  stringValue  String?
+  booleanValue Boolean?
+  unit         String?
+
+  @@unique([metricLogId, container, key])
+  @@index([key, value])
+}
+
 model HealthProfile {
   id        String   @id @default(uuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posture   String?
+  broncoTest String?
+  diets     String?
+  hobbies   String?
+  senses    HealthSense[]
+  specialized HealthSpecialized[]
+  recoveryMetrics HealthRecoveryMetric[]
   data      String   @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -556,6 +708,53 @@ model HealthProfile {
   updatedBy String?
 
   @@map("health_profiles")
+}
+
+model HealthSense {
+  id           String @id @default(uuid())
+  profileId    String
+  profile      HealthProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  key          String
+  level        Float?
+  note         String?
+  currentPower String?
+  targetPower  String?
+  path         String?
+  color        String?
+  exercises    String?
+  data         String?
+
+  @@unique([profileId, key])
+}
+
+model HealthSpecialized {
+  id        String @id @default(uuid())
+  profileId String
+  profile   HealthProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  position  Int
+  name      String?
+  score     Float?
+  color     String?
+  data      String?
+
+  @@unique([profileId, position])
+}
+
+model HealthRecoveryMetric {
+  id           String @id @default(uuid())
+  profileId    String
+  profile      HealthProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  clientId     String?
+  position     Int
+  name         String?
+  valueType    String?
+  value        Float?
+  stringValue  String?
+  booleanValue Boolean?
+  status       String?
+  data         String?
+
+  @@unique([profileId, position])
 }
 
 model LocationPoint {
@@ -597,11 +796,18 @@ model NutritionLog {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   logged_at String?
   date      String?
-  data      String? // Storing entire payload as JSON string if dynamic fields exist
+  name String?
+  meal String?
+  calories Float?
+  protein_g Float?
+  carbs_g Float?
+  fat_g Float?
+  data      String? // Custom extensions only; regular meal fields use columns.
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
 }
 
 model WorkoutSession {
@@ -628,6 +834,13 @@ model WorkoutExercise {
   reps          Int?
   weight_kg     Float?
   notes         String?
+  source String?
+  metadataVersion Int?
+  setId String?
+  position Int?
+  setNumber Int?
+  completed Boolean?
+  payloadHash String?
   createdAt     DateTime       @default(now())
   createdBy     String?
   updatedBy     String?
@@ -640,11 +853,30 @@ model ShoppingItem {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String?
   purchased Boolean  @default(false)
+  category String?
+  priority String?
+  quantity Int?
+  estimatedCost Float?
+  targetPrice Float?
+  actualCost Float?
+  notes String?
+  url String?
+  stage String?
+  deliverySpeed String?
+  neededBy String?
+  source String?
+  orderedAt String?
+  expectedDelivery String?
+  importKey String?
+  expenseId String?
+  expenseDate String?
+  priceRows ShoppingPrice[]
   data      String? // For flexible additional fields
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, stage, purchased])
 }
 
 model TimesheetSession {
@@ -653,11 +885,20 @@ model TimesheetSession {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      String?
   duration  Float?
+  project String?
+  task String?
+  seconds Int?
+  billable Boolean?
+  earnings Float?
+  notes String?
+  startTime String?
+  endTime String?
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
 }
 
 model EntertainmentMedia {
@@ -666,11 +907,18 @@ model EntertainmentMedia {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String?
   progress  String?
+  type String?
+  status String?
+  season Int?
+  episode Int?
+  total_episodes Int?
+  rating Float?
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, status, type])
 }
 
 model Note {
@@ -679,6 +927,16 @@ model Note {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String?
   content   String?
+  color     String?
+  tags      String? // Bounded ordered label list, not the note payload.
+  source    String?
+  date      String?
+  time      String?
+  text      String?
+  prompt    String?
+  journalVersion Int?
+  wordCount Int?
+  legacyImportId String?
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
@@ -702,6 +960,20 @@ model CalendarEvent {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   id           String
   revision     Int       @default(1)
+  title        String?
+  date         String?
+  endDate      String?
+  startTime    String?
+  endTime      String?
+  timeZone     String?
+  recurrence   String?
+  type         String?
+  description  String?
+  location     String?
+  color        String?
+  icsUid       String?
+  syncLabel    String?
+  allDay       Boolean?
   data         String
   syncProvider String?
   deletedAt    DateTime?
@@ -722,6 +994,31 @@ model PortfolioHolding {
   id        String
   revision  Int       @default(1)
   position  Int       @default(0)
+  name      String?
+  symbol    String?
+  type      String?
+  units     Float?
+  buyPrice  Float?
+  currentPrice Float?
+  buyDate   String?
+  date      String?
+  priceDate String?
+  currentPriceDate String?
+  snapshotDate String?
+  asOf String?
+  asOfDate String?
+  recordedAt String?
+  capturedAt String?
+  timestamp String?
+  priceUpdatedAt String?
+  currency String?
+  baseCurrency String?
+  priceCurrency String?
+  buyCurrency String?
+  purchaseCurrency String?
+  valuationCurrency String?
+  schemeCode String?
+  coingeckoId String?
   data      String
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -769,6 +1066,18 @@ model NoteRevision {
   revision  Int
   title     String?
   content   String?
+  color     String?
+  tags      String?
+  source    String?
+  date      String?
+  time      String?
+  text      String?
+  prompt    String?
+  journalVersion Int?
+  wordCount Int?
+  legacyImportId String?
+  pinned    Boolean @default(false)
+  starred   Boolean @default(false)
   data      String?
   deletedAt DateTime?
   createdAt DateTime @default(now())
@@ -807,12 +1116,22 @@ model Goal {
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   title        String?
   targetDate   String?
+  description String?
+  category String?
+  status String?
+  priority String?
+  target_value Float?
+  current_value Float?
+  unit String?
+  is_focus Boolean?
+  subtaskRows GoalSubtask[]
   data         String?
   progressLogs GoalProgressLog[]
   createdAt    DateTime          @default(now())
   createdBy    String?
   updatedBy    String?
   updatedAt    DateTime          @default(now()) @updatedAt
+  @@index([userId, status, targetDate])
 }
 
 model SleepLog {
@@ -822,11 +1141,15 @@ model SleepLog {
   date      String?
   hours     Float?
   quality   String?
+  bed_time String?
+  wake_time String?
+  notes String?
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
 }
 
 model Document {
@@ -835,6 +1158,13 @@ model Document {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String?
   url       String?
+  storageKey String?
+  sizeBytes Int?
+  mimeType String?
+  sha256 String?
+  previewKind String?
+  encryptionFormat String?
+  encryptionKeyId String?
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
@@ -848,6 +1178,11 @@ model Habit {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String?
   streak    Int        @default(0)
+  emoji String?
+  icon String?
+  category String?
+  target_days Int?
+  order_index Int?
   data      String?
   logs      HabitLog[]
   createdAt DateTime   @default(now())
@@ -873,12 +1208,20 @@ model SubscriptionItem {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String?
   cost      Float?
+  costMinor Int? @ignore
   active    Int      @default(1)
+  category String?
+  next_date String?
+  icon String?
+  auto_renew Int?
+  cycle String?
+  cancelled_date String?
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, active, next_date])
 }
 
 model MoodLog {
@@ -887,11 +1230,15 @@ model MoodLog {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      String?
   mood      String?
+  energy Float?
+  note String?
+  tags String? // Bounded ordered label list.
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
 }
 
 model VitalsLog {
@@ -901,11 +1248,13 @@ model VitalsLog {
   date      String?
   vital     String?
   value     Float?
+  unit String?
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date, vital])
 }
 
 model Medication {
@@ -914,11 +1263,45 @@ model Medication {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String?
   dosage    String?
+  frequency String?
+  start_date String?
+  end_date String?
   data      String?
   createdAt DateTime @default(now())
   createdBy String?
   updatedBy String?
   updatedAt DateTime @default(now()) @updatedAt
+}
+
+model TaskSubtask {
+  taskId String
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id String
+  title String
+  done Boolean @default(false)
+  position Int @default(0)
+  @@id([taskId, id])
+  @@index([taskId, position])
+}
+
+model GoalSubtask {
+  goalId String
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  id String
+  text String
+  done Boolean @default(false)
+  position Int @default(0)
+  @@id([goalId, id])
+  @@index([goalId, position])
+}
+
+model ShoppingPrice {
+  itemId String
+  item ShoppingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  position Int
+  date String
+  price Float
+  @@id([itemId, position])
 }
 
 model ProgressPhoto {
@@ -1013,4 +1396,278 @@ model SessionLog {
   metadata   String?
 
   @@map("session_logs")
+}
+
+// Generated plan record models: scripts/generate-plan-records.mjs
+model TrainingPlan {
+  id String @id @default(uuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  streak Int?
+  longestStreak Int?
+  lastCompletedDate String?
+  present String @default("[]")
+  data String?
+  schedule TrainingDay[]
+  prHistory TrainingPRHistory[]
+  readings TrainingPersonalRecord[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@map("training_plans")
+}
+
+model TrainingDay {
+  id String @id @default(uuid())
+  parentId String
+  parent TrainingPlan @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  day String?
+  muscleGroup String?
+  present String @default("[]")
+  data String?
+  exercises PlannedExercise[]
+  @@unique([parentId, position])
+  @@map("training_days")
+}
+
+model PlannedExercise {
+  id String @id @default(uuid())
+  parentId String
+  parent TrainingDay @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  name String?
+  sets Int?
+  reps Int?
+  weight Float?
+  present String @default("[]")
+  data String?
+  @@unique([parentId, position])
+  @@map("planned_exercises")
+}
+
+model TrainingPRHistory {
+  id String @id @default(uuid())
+  parentId String
+  parent TrainingPlan @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  date String?
+  lift String?
+  weight Float?
+  present String @default("[]")
+  data String?
+  @@unique([parentId, position])
+  @@map("training_pr_history")
+}
+
+model TrainingPersonalRecord {
+  id String @id @default(uuid())
+  parentId String
+  parent TrainingPlan @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  scope String
+  key String
+  valueType String
+  value Float?
+  stringValue String?
+  booleanValue Boolean?
+  unit String?
+  @@unique([parentId, scope, key])
+  @@index([scope, key, value])
+  @@map("training_personal_records")
+}
+
+model NutritionStrategy {
+  id String @id @default(uuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  calories Float?
+  protein_g Float?
+  carbs_g Float?
+  fat_g Float?
+  present String @default("[]")
+  data String?
+  meals PlannedMeal[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@map("nutrition_strategies")
+}
+
+model PlannedMeal {
+  id String @id @default(uuid())
+  parentId String
+  parent NutritionStrategy @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  name String?
+  time String?
+  icon String?
+  items String?
+  present String @default("[]")
+  data String?
+  @@unique([parentId, position])
+  @@map("planned_meals")
+}
+
+model MedicalPlan {
+  id String @id @default(uuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  present String @default("[]")
+  data String?
+  testsRequired RequiredMedicalTest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@map("medical_plans")
+}
+
+model RequiredMedicalTest {
+  id String @id @default(uuid())
+  parentId String
+  parent MedicalPlan @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  name String?
+  priority String?
+  frequency String?
+  status String?
+  notes String?
+  present String @default("[]")
+  data String?
+  @@unique([parentId, position])
+  @@map("required_medical_tests")
+}
+
+model PhysiquePlan {
+  id String @id @default(uuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  present String @default("[]")
+  data String?
+  targets PhysiqueTarget[]
+  milestones PhysiqueMilestone[]
+  zones PhysiqueZone[]
+  readings PhysiquePlanMeasurement[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@map("physique_plans")
+}
+
+model PhysiqueTarget {
+  id String @id @default(uuid())
+  parentId String
+  parent PhysiquePlan @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  label String?
+  metric String?
+  key String?
+  currentValueType String?
+  currentValue Float?
+  currentStringValue String?
+  currentBooleanValue Boolean?
+  targetValueType String?
+  targetValue Float?
+  targetStringValue String?
+  targetBooleanValue Boolean?
+  present String @default("[]")
+  data String?
+  @@unique([parentId, position])
+  @@map("physique_targets")
+}
+
+model PhysiqueMilestone {
+  id String @id @default(uuid())
+  parentId String
+  parent PhysiquePlan @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  label String?
+  targetDate String?
+  month String?
+  achieved Boolean?
+  present String @default("[]")
+  data String?
+  @@unique([parentId, position])
+  @@map("physique_milestones")
+}
+
+model PhysiqueZone {
+  id String @id @default(uuid())
+  parentId String
+  parent PhysiquePlan @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  position Int
+  clientId String?
+  clientIdType String?
+  clientCreatedAt String?
+  clientUpdatedAt String?
+  name String?
+  status String?
+  icon String?
+  present String @default("[]")
+  data String?
+  @@unique([parentId, position])
+  @@map("physique_zones")
+}
+
+model PhysiquePlanMeasurement {
+  id String @id @default(uuid())
+  parentId String
+  parent PhysiquePlan @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  scope String
+  key String
+  valueType String
+  value Float?
+  stringValue String?
+  booleanValue Boolean?
+  unit String?
+  @@unique([parentId, scope, key])
+  @@index([scope, key, value])
+  @@map("physique_plan_measurements")
 }

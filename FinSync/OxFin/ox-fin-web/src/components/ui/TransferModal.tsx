@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X,
@@ -23,6 +23,7 @@ interface TransferModalProps {
 }
 
 export default function TransferModal({ isOpen, onClose, onSuccess, wallets }: TransferModalProps) {
+    const pendingRequest = useRef<{ fingerprint: string; key: string } | null>(null);
     const [step, setStep] = useState<'form' | 'success'>('form');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -59,13 +60,15 @@ export default function TransferModal({ isOpen, onClose, onSuccess, wallets }: T
         }
 
         try {
+            const fingerprint = JSON.stringify([fromWalletId, toWalletId, amount, description]);
+            if (pendingRequest.current?.fingerprint !== fingerprint) pendingRequest.current = { fingerprint, key: crypto.randomUUID() };
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || '/api'}/user/transfer`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pendingRequest.current.key },
                 body: JSON.stringify({
                     fromWalletId: parseInt(fromWalletId),
                     toWalletId: parseInt(toWalletId),
-                    amount: parseFloat(amount),
+                    amount,
                     description: description || 'Internal Transfer'
                 })
             });
@@ -75,6 +78,7 @@ export default function TransferModal({ isOpen, onClose, onSuccess, wallets }: T
             if (!res.ok) {
                 setError(data.error || 'Transfer failed');
             } else {
+                pendingRequest.current = null;
                 setStep('success');
                 if (onSuccess) onSuccess();
             }

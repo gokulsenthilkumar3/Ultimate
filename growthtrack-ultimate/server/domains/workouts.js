@@ -78,7 +78,7 @@ export function createWorkoutHandlers({ prisma, auditCrud, uuid = randomUUID }) 
           for (const [index, set] of sets.entries()) {
             await tx.workoutExercise.create({ data: {
               id: uuid(), sessionId: payload.id, exercise_name: set.exName, sets: 1, reps: set.actualReps, weight_kg: set.actualWeight,
-              notes: JSON.stringify({ version: 1, source: WORKOUT_SOURCE, setId: set.id, index, set, payloadHash: hash }),
+              source:WORKOUT_SOURCE,metadataVersion:1,setId:set.id,position:index,setNumber:set.setNum,completed:true,payloadHash:hash,
               createdBy: req.user.id, updatedBy: req.user.id,
             } });
           }

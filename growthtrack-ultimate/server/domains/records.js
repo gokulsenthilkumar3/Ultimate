@@ -4,6 +4,7 @@ import { domainError, sendDomainError, transactionWithRetry } from './errors.js'
 import { normalizePortfolioPayload } from './portfolio.js';
 import { normalizeEvent, validateEvent } from '../../src/components/calendar/calendarModel.js';
 import { DEFAULT_CONFIG } from '../config.js';
+import { RECORD_FIELDS, RECORD_NULLS, recordPayload, recordStorageData } from './recordFields.js';
 
 // Calendar events and portfolio holdings stored one row per record. Each row
 // has an integer revision; owner writes must name the revision they read, so a
@@ -12,6 +13,7 @@ import { DEFAULT_CONFIG } from '../config.js';
 // and a change feed let other devices catch up.
 const PROTECTED = new Set(['id', 'revision', 'userId', 'user', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt', 'mutationId', 'expectedRevision', 'expectedUpdatedAt', 'position', 'syncProvider', 'readOnly', '__proto__', 'prototype', 'constructor']);
 const idSchema = z.string().trim().min(1).max(120).regex(/^[^\s/\\?#]+$/, 'Use an identifier without spaces or slashes.');
+PROTECTED.add(RECORD_NULLS);
 const mutationSchema = z.string().trim().min(8).max(160);
 const plain = z.record(z.string(), z.unknown());
 const createSchema = z.object({ id: idSchema, mutationId: mutationSchema, record: plain }).strict();
@@ -37,6 +39,9 @@ function normalizeCalendar(record, id) {
   const zone = typeof record.timeZone === 'string' && record.timeZone ? record.timeZone : 'UTC';
   let event;
   try { event = normalizeEvent({ ...record, id }, zone); } catch (error) { throw domainError(400, 'INVALID_EVENT', error.message); }
+  for (const [field, type] of Object.entries(RECORD_FIELDS.calendar)) {
+    if (type === 'String' && event[field] != null && typeof event[field] !== 'string') throw domainError(400, 'INVALID_EVENT', `${field} must be text.`);
+  }
   const problem = validateEvent(event, zone);
   if (problem) throw domainError(400, 'INVALID_EVENT', problem);
   return strip(event);
@@ -50,9 +55,9 @@ export const COLLECTIONS = Object.freeze({
   holdings: { model: 'portfolioHolding', label: 'holding', normalize: normalizeHolding, ordered: true, readOnlyWhenSynced: false },
 });
 
-export function toClient(row) {
-  let data = {};
-  try { data = JSON.parse(row.data || '{}'); } catch { data = {}; }
+export function toClient(row, collection) {
+  const kind = typeof collection === 'string' ? collection : Object.hasOwn(row, 'units') || Object.hasOwn(row, 'name') ? 'holdings' : 'calendar';
+  const data = recordPayload(row, kind);
   return { ...data, id: row.id, revision: row.revision, updatedAt: new Date(row.updatedAt).toISOString(),
     ...(row.syncProvider ? { syncProvider: row.syncProvider, readOnly: true } : {}) };
 }
@@ -61,20 +66,21 @@ export function createRecordService(prisma, collection, { now = () => new Date()
   if (!COLLECTIONS[collection]) throw new Error(`Unknown record collection ${collection}.`);
   const spec = { ...COLLECTIONS[collection], limit: limits[collection] };
   const table = db => db[spec.model];
+  const clientRecord = row => toClient(row, collection);
   const key = (userId, id) => ({ userId_id: { userId, id } });
   const order = spec.ordered ? [{ position: 'asc' }, { id: 'asc' }] : [{ id: 'asc' }];
 
   function encode(data) {
     const text = JSON.stringify(data);
     if (Buffer.byteLength(text, 'utf8') > maxRecordBytes) throw domainError(413, 'RECORD_TOO_LARGE', `This ${spec.label} is too large to store.`);
-    return text;
+    return recordStorageData(collection, data);
   }
   async function log(tx, userId, row, operation) {
     await tx.recordChange.create({ data: { userId, collection, recordId: row.id, revision: row.revision, operation } });
-    return toClient(row);
+    return clientRecord(row);
   }
   function conflict(row, message = `This ${spec.label} changed elsewhere. Review the latest version before saving.`) {
-    return Object.assign(domainError(409, 'VERSION_CONFLICT', message), { current: row ? toClient(row) : null });
+    return Object.assign(domainError(409, 'VERSION_CONFLICT', message), { current: row ? clientRecord(row) : null });
   }
   async function commit(userId, mutationId, request, work) {
     const hash = fingerprint(request);
@@ -107,13 +113,13 @@ export function createRecordService(prisma, collection, { now = () => new Date()
   return {
     collection,
     async listAll(userId, db = prisma) {
-      return (await table(db).findMany({ where: { userId, deletedAt: null }, orderBy: order })).map(toClient);
+      return (await table(db).findMany({ where: { userId, deletedAt: null }, orderBy: order })).map(clientRecord);
     },
     async list(userId, query = {}) {
       const input = parse(listSchema, query, 'INVALID_QUERY');
       const rows = await table(prisma).findMany({ where: { userId, deletedAt: null, ...(input.after ? { id: { gt: input.after } } : {}) }, orderBy: [{ id: 'asc' }], take: input.limit + 1 });
       const items = rows.slice(0, input.limit);
-      return { items: items.map(toClient), nextCursor: rows.length > input.limit ? items.at(-1).id : null };
+      return { items: items.map(clientRecord), nextCursor: rows.length > input.limit ? items.at(-1).id : null };
     },
     async create(userId, body) {
       const input = parse(createSchema, body, 'INVALID_RECORD');
@@ -126,8 +132,8 @@ export function createRecordService(prisma, collection, { now = () => new Date()
         if (await table(tx).count({ where: { userId, deletedAt: null } }) >= spec.limit) throw domainError(413, 'RECORD_LIMIT', `At most ${spec.limit} ${spec.label}s can be stored.`);
         const position = spec.ordered ? ((await table(tx).aggregate({ where: { userId }, _max: { position: true } }))._max.position ?? -1) + 1 : undefined;
         const row = existing
-          ? await bump(tx, existing, { data: encode(data), deletedAt: null, updatedBy: userId }, spec.ordered ? { position } : {})
-          : await table(tx).create({ data: { userId, id: input.id, data: encode(data), createdBy: userId, updatedBy: userId, createdAt: now(), updatedAt: now(), ...(spec.ordered ? { position } : {}) } });
+          ? await bump(tx, existing, { ...encode(data), deletedAt: null, updatedBy: userId }, spec.ordered ? { position } : {})
+          : await table(tx).create({ data: { userId, id: input.id, ...encode(data), createdBy: userId, updatedBy: userId, createdAt: now(), updatedAt: now(), ...(spec.ordered ? { position } : {}) } });
         return log(tx, userId, row, existing ? 'restore' : 'create');
       });
     },
@@ -137,8 +143,8 @@ export function createRecordService(prisma, collection, { now = () => new Date()
       return commit(userId, input.mutationId, { operation: 'update', id, input }, async tx => {
         const row = await owned(tx, userId, id);
         if (row.revision !== input.expectedRevision) throw conflict(row);
-        const data = spec.normalize({ ...JSON.parse(row.data), ...strip(input.record) }, id);
-        return log(tx, userId, await bump(tx, row, { data: encode(data), updatedBy: userId }), 'update');
+        const data = spec.normalize({ ...recordPayload(row, collection), ...strip(input.record) }, id);
+        return log(tx, userId, await bump(tx, row, { ...encode(data), updatedBy: userId }), 'update');
       });
     },
     async remove(userId, id, body) {
@@ -160,7 +166,7 @@ export function createRecordService(prisma, collection, { now = () => new Date()
       const byId = new Map(records.map(row => [row.id, row]));
       return { changes: items.map(change => {
         const row = byId.get(change.recordId);
-        return { sequence: change.sequence, id: change.recordId, revision: change.revision, operation: change.operation, record: row && !row.deletedAt ? toClient(row) : null };
+        return { sequence: change.sequence, id: change.recordId, revision: change.revision, operation: change.operation, record: row && !row.deletedAt ? clientRecord(row) : null };
       }), cursor: items.at(-1)?.sequence ?? input.cursor, hasMore: rows.length > input.limit };
     },
 
@@ -170,17 +176,18 @@ export function createRecordService(prisma, collection, { now = () => new Date()
     async systemPut(tx, userId, record, { syncProvider = null, actor = 'sync' } = {}) {
       const id = String(record.id);
       const data = spec.normalize(strip(record), id);
-      const text = encode(data);
+      const storage = encode(data);
       const existing = await table(tx).findUnique({ where: key(userId, id) });
       if (!existing) {
         const position = spec.ordered ? ((await table(tx).aggregate({ where: { userId }, _max: { position: true } }))._max.position ?? -1) + 1 : undefined;
-        const row = await table(tx).create({ data: { userId, id, data: text, createdBy: actor, updatedBy: actor, createdAt: now(), updatedAt: now(),
+        const row = await table(tx).create({ data: { userId, id, ...storage, createdBy: actor, updatedBy: actor, createdAt: now(), updatedAt: now(),
           ...(spec.readOnlyWhenSynced ? { syncProvider } : {}), ...(spec.ordered ? { position } : {}) } });
         await log(tx, userId, row, 'create');
         return 'added';
       }
-      if (!existing.deletedAt && existing.data === text) return 'unchanged';
-      const row = await bump(tx, existing, { data: text, deletedAt: null, updatedBy: actor }, spec.readOnlyWhenSynced ? { syncProvider } : {});
+      if (!existing.deletedAt && fingerprint(recordPayload(existing, collection)) === fingerprint(data)
+        && (!spec.readOnlyWhenSynced || existing.syncProvider === syncProvider)) return 'unchanged';
+      const row = await bump(tx, existing, { ...storage, deletedAt: null, updatedBy: actor }, spec.readOnlyWhenSynced ? { syncProvider } : {});
       await log(tx, userId, row, existing.deletedAt ? 'restore' : 'update');
       return existing.deletedAt ? 'added' : 'updated';
     },

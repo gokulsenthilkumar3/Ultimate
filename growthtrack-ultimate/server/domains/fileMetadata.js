@@ -1,5 +1,16 @@
 export function fileMetadata(row) {
+  if (row?.storageKey != null) return {
+    key:row.storageKey,bytes:row.sizeBytes,mime:row.mimeType,sha256:row.sha256,previewKind:row.previewKind,
+    ...(row.encryptionFormat ? {encryption:{format:row.encryptionFormat,keyId:row.encryptionKeyId}} : {}),
+  };
   try { return JSON.parse(row?.data || '{}')?._vault || null; } catch { return null; }
+}
+
+export function fileStorageColumns(metadata) {
+  return {
+    storageKey:metadata.key,sizeBytes:metadata.bytes,mimeType:metadata.mime,sha256:metadata.sha256,
+    previewKind:metadata.previewKind,encryptionFormat:metadata.encryption?.format ?? null,encryptionKeyId:metadata.encryption?.keyId ?? null,
+  };
 }
 
 export function fileToClient(row) {

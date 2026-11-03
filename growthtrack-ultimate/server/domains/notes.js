@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { noteCreateSchema, noteUpdateSchema, noteDeleteSchema, noteRestoreSchema, noteListSchema, noteSyncSchema } from '../../src/domains/workspace/contracts/notes.js';
-import { collectionPayload, collectionToClient, parseRecordData } from '../collectionPayload.js';
+import { collectionPayload, collectionToClient } from '../collectionPayload.js';
+import { COLLECTION_COLUMNS } from './collectionFields.js';
 import { mutationInput, mutationCondition, nextUpdatedAt } from './mutations.js';
 import { domainError, sendDomainError, transactionWithRetry } from './errors.js';
 
@@ -17,7 +18,10 @@ function stable(value) {
 const fingerprint = value => createHash('sha256').update(JSON.stringify(stable(value))).digest('hex');
 const client = row => JSON.parse(JSON.stringify(collectionToClient('notes', row)));
 const scope = (ownerId, id) => ({ userId: ownerId, ...(id ? { id } : {}), kind: 'workspace' });
-const snapshot = row => ({ noteId: row.id, revision: row.revision, title: row.title, content: row.content, data: row.data, deletedAt: row.deletedAt, actorId: row.updatedBy || row.userId });
+const snapshotFields = ['title', 'content', 'data', ...Object.keys(COLLECTION_COLUMNS.notes)];
+const snapshot = row => ({ noteId: row.id, revision: row.revision,
+  ...Object.fromEntries(snapshotFields.map(key => [key, row[key]])),
+  deletedAt: row.deletedAt, actorId: row.updatedBy || row.userId });
 
 export function createNotesService(prisma) {
   async function commit(ownerId, mutationId, request, work) {
@@ -103,8 +107,7 @@ export function createNotesService(prisma) {
         check(row, input.expectedRevision);
         const old = await tx.noteRevision.findUnique({ where: { noteId_revision: { noteId: id, revision: input.revision } } });
         if (!old) throw domainError(404, 'REVISION_NOT_FOUND', 'Revision not found.');
-        const flags = parseRecordData(old.data);
-        return change(tx, row, { title: old.title, content: old.content, data: old.data, pinned: flags.pinned === true, starred: flags.starred === true, deletedAt: null }, 'restore');
+        return change(tx, row, { ...Object.fromEntries(snapshotFields.map(key => [key, old[key]])), deletedAt: null }, 'restore');
       });
     },
     async sync(ownerId, query = {}) {
@@ -121,8 +124,7 @@ export function createNotesService(prisma) {
       const data = collectionPayload('notes', mutationInput(body));
       return commit(ownerId, `legacy:create:${id}`, { operation: 'legacy-create', id, data }, async tx => {
         if (await tx.note.findUnique({ where: { id } })) throw domainError(409, 'DUPLICATE_RECORD', 'This note identifier is already in use.');
-        const metadata = parseRecordData(data.data);
-        const row = await tx.note.create({ data: { ...data, pinned: metadata.pinned === true, starred: metadata.starred === true, id, userId: ownerId, kind: metadata.source === 'mind-journal' ? 'mind-journal' : 'workspace', createdBy: ownerId, updatedBy: ownerId } });
+        const row = await tx.note.create({ data: { ...data, id, userId: ownerId, kind: data.source === 'mind-journal' ? 'mind-journal' : 'workspace', createdBy: ownerId, updatedBy: ownerId } });
         await tx.noteRevision.create({ data: snapshot(row) });
         if (row.kind === 'workspace') await tx.noteChange.create({ data: { userId: ownerId, noteId: id, revision: 1, operation: 'create' } });
         return client(row);
@@ -134,9 +136,8 @@ export function createNotesService(prisma) {
         mutationCondition({ body, user: { id: ownerId }, params: { id } }, row);
         const data = deleting ? { deletedAt: new Date() } : collectionPayload('notes', mutationInput(body), row);
         if (!deleting) {
-          const metadata = parseRecordData(data.data);
+          const metadata = collectionToClient('notes', { ...row, ...data });
           if ((metadata.source === 'mind-journal') !== (row.kind === 'mind-journal')) throw domainError(400, 'NOTE_DOMAIN_CHANGE', 'Moving a note between Workspace and the private Mind journal requires a reviewed migration.');
-          data.pinned = metadata.pinned === true; data.starred = metadata.starred === true;
         }
         const result = await tx.note.updateMany({ where: { id, userId: ownerId, revision: row.revision }, data: { ...data, revision: row.revision + 1, updatedBy: ownerId, updatedAt: nextUpdatedAt(row) } });
         if (!result.count) throw domainError(409, 'VERSION_CONFLICT', 'This note has changed.');

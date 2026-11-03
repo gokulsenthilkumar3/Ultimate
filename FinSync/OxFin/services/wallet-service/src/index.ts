@@ -40,7 +40,7 @@ app.get('/v1/wallets', async (req: Request, res: Response) => {
       res.json({
         wallets: dbWallets.map((r: WalletRecord) => ({
           id: r.id, userId: r.user_id, currency: r.currency,
-          balance: r.balance, createdAt: r.created_at.toISOString(), updatedAt: r.updated_at.toISOString(),
+          balance: Number(r.balance), createdAt: r.created_at.toISOString(), updatedAt: r.updated_at.toISOString(),
         }))
       });
       return;

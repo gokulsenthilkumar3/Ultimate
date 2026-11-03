@@ -3,11 +3,15 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { createClient } from '@libsql/client';
 import { createSQLiteBackup } from './sqliteBackup.js';
+import { RECORD_FIELDS, RECORD_TABLES, recordColumnStatements, recordStorageData, recordPayload } from './recordFields.js';
 
 const SQL = await fs.readFile(new URL('../../prisma/migrations/20261018120000_record_rows/migration.sql', import.meta.url), 'utf8');
 const statements = SQL.split(';').map(value => value.replace(/^\s*--.*$/gm, '').trim()).filter(Boolean);
 const projection = 'SELECT "id", "calendarEvents", "portfolio" FROM "User" ORDER BY "id"';
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object'
+  ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
+const typedStatements = Object.keys(RECORD_FIELDS).flatMap(recordColumnStatements);
 // Fields that become row columns; everything else is copied verbatim.
 const COLUMN_FIELDS = ['id', 'revision', 'readOnly', 'syncProvider'];
 
@@ -41,36 +45,43 @@ async function migrateFile(filename, expectedHash, now = new Date().toISOString(
     const existing = await tx.execute("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('calendar_events','portfolio_holdings','record_mutations','record_changes')");
     if (existing.rows.length) throw new Error('The record-row migration has already been applied or the schema is partially upgraded.');
     for (const statement of statements) await tx.execute(statement);
+    for (const statement of typedStatements) await tx.execute(statement);
+    const insertRecord = async (collection, owner, item, extra = {}) => {
+      const values = { userId: owner, id: String(item.id), revision: 1,
+        ...recordStorageData(collection, JSON.parse(payload(item))), ...extra,
+        createdAt: now, updatedAt: now, createdBy: 'migration', updatedBy: 'migration' };
+      const keys = Object.keys(values);
+      await tx.execute({ sql: `INSERT INTO "${RECORD_TABLES[collection]}" (${keys.map(key => `"${key}"`).join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
+        args: keys.map(key => typeof values[key] === 'boolean' ? Number(values[key]) : values[key]) });
+    };
     let events = 0; let holdings = 0;
     for (const owner of before) {
       for (const item of parseDocument(owner.calendarEvents, owner.id, 'calendar')) {
         const syncProvider = typeof item.syncProvider === 'string' && item.syncProvider ? item.syncProvider : null;
-        await tx.execute({ sql: 'INSERT INTO "calendar_events" ("userId","id","revision","data","syncProvider","createdAt","updatedAt","createdBy","updatedBy") VALUES (?,?,1,?,?,?,?,?,?)',
-          args: [owner.id, String(item.id), payload(item), syncProvider, now, now, 'migration', 'migration'] });
+        await insertRecord('calendar', owner.id, item, { syncProvider });
         await tx.execute({ sql: 'INSERT INTO "record_changes" ("userId","collection","recordId","revision","operation","createdAt") VALUES (?,?,?,1,?,?)', args: [owner.id, 'calendar', String(item.id), 'create', now] });
         events += 1;
       }
       for (const [position, item] of parseDocument(owner.portfolio, owner.id, 'portfolio').entries()) {
-        await tx.execute({ sql: 'INSERT INTO "portfolio_holdings" ("userId","id","revision","position","data","createdAt","updatedAt","createdBy","updatedBy") VALUES (?,?,1,?,?,?,?,?,?)',
-          args: [owner.id, String(item.id), position, payload(item), now, now, 'migration', 'migration'] });
+        await insertRecord('holdings', owner.id, item, { position });
         await tx.execute({ sql: 'INSERT INTO "record_changes" ("userId","collection","recordId","revision","operation","createdAt") VALUES (?,?,?,1,?,?)', args: [owner.id, 'holdings', String(item.id), 'create', now] });
         holdings += 1;
       }
     }
     // Parity: every legacy record reads back identically, in order, per owner.
     for (const owner of before) {
-      const eventRows = await tx.execute({ sql: 'SELECT "id","data","syncProvider" FROM "calendar_events" WHERE "userId" = ? ORDER BY "id"', args: [owner.id] });
-      const holdingRows = await tx.execute({ sql: 'SELECT "id","data" FROM "portfolio_holdings" WHERE "userId" = ? ORDER BY "position"', args: [owner.id] });
+      const eventRows = await tx.execute({ sql: 'SELECT * FROM "calendar_events" WHERE "userId" = ? ORDER BY "id"', args: [owner.id] });
+      const holdingRows = await tx.execute({ sql: 'SELECT * FROM "portfolio_holdings" WHERE "userId" = ? ORDER BY "position"', args: [owner.id] });
       const legacyEvents = parseDocument(owner.calendarEvents, owner.id, 'calendar').map(expected).sort((a, b) => (a.id < b.id ? -1 : 1));
       const legacyHoldings = parseDocument(owner.portfolio, owner.id, 'portfolio').map(expected);
-      if (digest(eventRows.rows.map(row => ({ ...JSON.parse(row.data), id: row.id }))) !== digest(legacyEvents)) throw new Error(`Owner ${owner.id}: calendar parity failed; the migration will be rolled back.`);
-      if (digest(holdingRows.rows.map(row => ({ ...JSON.parse(row.data), id: row.id }))) !== digest(legacyHoldings)) throw new Error(`Owner ${owner.id}: portfolio parity failed; the migration will be rolled back.`);
+      if (digest(stable(eventRows.rows.map(row => ({ ...recordPayload(row, 'calendar'), id: row.id })))) !== digest(stable(legacyEvents))) throw new Error(`Owner ${owner.id}: calendar parity failed; the migration will be rolled back.`);
+      if (digest(stable(holdingRows.rows.map(row => ({ ...recordPayload(row, 'holdings'), id: row.id })))) !== digest(stable(legacyHoldings))) throw new Error(`Owner ${owner.id}: portfolio parity failed; the migration will be rolled back.`);
     }
     const after = (await tx.execute(projection)).rows.map(row => ({ id: row.id, calendarEvents: row.calendarEvents, portfolio: row.portfolio }));
     if (digest(after) !== hash) throw new Error('Legacy calendar/portfolio documents changed during migration; rolled back.');
     if ((await tx.execute('PRAGMA foreign_key_check')).rows.length) throw new Error('Migration foreign-key verification failed.');
     await tx.commit();
-    return { owners: before.length, events, holdings, legacyHash: hash, migrationHash: digest(SQL) };
+    return { owners: before.length, events, holdings, legacyHash: hash, migrationHash: digest([SQL, ...typedStatements]) };
   } catch (error) {
     if (tx) await tx.rollback().catch(() => undefined);
     throw error;

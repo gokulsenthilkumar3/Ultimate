@@ -2,7 +2,10 @@ export const WORKOUT_SOURCE = 'training-session';
 
 export function workoutSetMetadata(exercise) {
   try {
-    const value = JSON.parse(exercise.notes);
+    const value = exercise.source != null ? {
+      source:exercise.source,version:exercise.metadataVersion,setId:exercise.setId,index:exercise.position,payloadHash:exercise.payloadHash,
+      set:{id:exercise.setId,exName:exercise.exercise_name,setNum:exercise.setNumber,actualReps:exercise.reps,actualWeight:exercise.weight_kg,done:exercise.completed === true || exercise.completed === 1},
+    } : JSON.parse(exercise.notes);
     if (value?.source !== WORKOUT_SOURCE || value?.version !== 1 || typeof value.setId !== 'string'
       || !value.set || value.set.id !== value.setId || value.set.done !== true
       || typeof value.payloadHash !== 'string' || !/^[a-f0-9]{64}$/.test(value.payloadHash)

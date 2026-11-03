@@ -1,16 +1,17 @@
 import BaseController from './BaseController.js';
 import { mutationInput, mutationCondition, nextUpdatedAt, redactedAuditFields } from '../domains/mutations.js';
+import { METRIC_INCLUDE, metricPayload, metricToClient } from '../domains/metricPayload.js';
 
 class MetricLogController extends BaseController {
   constructor(model, name, metricPayloadFn = null, stripProtectedFieldsFn = null, auditCrudFn = null, metricToClientFn = null, parseStoredJsonFn = null) {
-    super(model, name, metricPayloadFn, stripProtectedFieldsFn, auditCrudFn);
-    this.metricToClient = metricToClientFn;
+    super(model, name, metricPayloadFn || metricPayload, stripProtectedFieldsFn, auditCrudFn);
+    this.metricToClient = metricToClientFn || metricToClient;
     this.parseStoredJson = parseStoredJsonFn;
   }
 
   async getAll(req, res) {
     try {
-      const items = await this.model.findMany({ where: { userId: req.user.id } });
+      const items = await this.model.findMany({ where: { userId: req.user.id }, include: METRIC_INCLUDE });
       res.json(items.map(this.metricToClient));
     } catch (e) {
       this.sendError(res, e, `${this.name} list`);
@@ -23,12 +24,6 @@ class MetricLogController extends BaseController {
       const rawData = mutationInput(req.body);
       let data = this.metricPayload(rawData);
       
-      Object.keys(data).forEach(k => {
-        if (typeof data[k] === 'object' && data[k] !== null) {
-          data[k] = JSON.stringify(data[k]);
-        }
-      });
-      
       const item = await this.model.create({
         data: { 
           ...data, 
@@ -36,7 +31,8 @@ class MetricLogController extends BaseController {
           id: id || undefined,
           createdBy: req.user.id,
           updatedBy: req.user.id
-        }
+        },
+        include: METRIC_INCLUDE,
       });
       if (this.auditCrud) {
         await this.auditCrud({ action: 'create', table_name: this.name, item_id: item.id, details: `Created ${this.name} record`, userId: req.user.id, req });
@@ -49,21 +45,16 @@ class MetricLogController extends BaseController {
 
   async update(req, res) {
     try {
-      const current = await this.model.findFirst({ where: { id: req.params.id, userId: req.user.id } });
+      const current = await this.model.findFirst({ where: { id: req.params.id, userId: req.user.id }, include: METRIC_INCLUDE });
       if (!current) return res.status(404).json({ error: 'Record not found.' });
       
       const input = mutationInput(req.body);
       const where = mutationCondition(req, current);
       const updatedAt = nextUpdatedAt(current);
-      let data = this.metricPayload({ ...this.parseStoredJson(current?.data, {}), ...input });
-      
-      Object.keys(data).forEach(k => {
-        if (typeof data[k] === 'object' && data[k] !== null) {
-          data[k] = JSON.stringify(data[k]);
-        }
-      });
-      
-      const item = await this.model.updateMany({
+      const data = this.metricPayload(input, current);
+      // An extended unique filter checks the version and owner, while Prisma's
+      // nested write updates child measurements atomically with their log.
+      await this.model.update({
         where,
         data: {
           ...data,
@@ -71,12 +62,12 @@ class MetricLogController extends BaseController {
           updatedAt,
         }
       });
-      if (!item.count) return res.status(409).json({ error: 'This record has changed. Refresh before saving.', code: 'VERSION_CONFLICT' });
       if (this.auditCrud) {
         await this.auditCrud({ action: 'update', table_name: this.name, item_id: req.params.id, details: redactedAuditFields(input), userId: req.user.id, req });
       }
-      res.json({ success: true, count: item.count, updatedAt });
+      res.json({ success: true, count: 1, updatedAt });
     } catch (e) {
+      if (e.code === 'P2025') return res.status(409).json({ error: 'This record has changed. Refresh before saving.', code: 'VERSION_CONFLICT' });
       this.sendError(res, e, `${this.name} update`);
     }
   }
