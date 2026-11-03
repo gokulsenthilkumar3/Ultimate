@@ -110,10 +110,17 @@ models are checked by the backend tests. `generate-plan-records.mjs --schema`
 regenerates those models. Its `--migration <previous-schema-file>` mode only
 creates a new migration file and refuses to overwrite one that already exists.
 
-Recorded verification: 132 backend checks, 18 SQLite/mobile/repair checks, six
-gateway checks, Prisma validation, fresh-schema generation and shared-design
-consistency pass. Two PostgreSQL repair checks are skipped without a configured
-disposable test database. Selected UI/persistence checks report 68 passes and one
-failure finding the `Breathe` button in the MindWellness navigation test. The
-preview suite reports 15 passes and the previously recorded `humanoid-base.glb`
-hash mismatch. Neither failing UI/asset path was changed by this storage work.
+Recorded verification after the UI persistence follow-up: 136 backend checks,
+80 selected UI/store checks, nine isolated browser cases and 18
+SQLite/mobile/repair checks pass. Gateway, Prisma validation, fresh-schema
+generation and shared-design consistency also pass. Two PostgreSQL repair checks
+are skipped without a configured disposable test database. The MindWellness
+selector now uses the actual Breathe tab; see the
+[UI follow-up](2026-11-03-ui-blind-spots.md) for its bounded browser coverage.
+The separate 3D preview suite still reports 15 passes and the previously recorded
+`humanoid-base.glb` hash mismatch.
+
+The final pre-PR migration review also covers legacy pin/star writes made after
+the earlier flag-column backfill. Valid booleans and integer flags move into the
+existing columns before their JSON keys are removed. Missing, null or malformed
+flags preserve existing column values and their residual metadata.

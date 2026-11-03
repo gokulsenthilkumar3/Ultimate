@@ -53,12 +53,18 @@ the current scroll offset; they are not used as pixel-diff sign-off.
 - Eight component/store files, 80 tests, pass. These cover failed/delayed writes,
   duplicate submissions, account changes, retained drafts, history retry, atomic
   progress publication, existing pagination and appearance persistence.
-- All 135 backend tests pass, including real SQLite transactions for progress
+- All 136 backend tests pass, including real SQLite transactions for progress
   replay, ownership, stale versions, date validation and rollback on child failure.
 - Gateway, shared-design consistency, generated README, UI impact and handoff
   drift checks pass. Generated matrix counts remain planning counts.
 - The isolated design preview builds and its 1,005 component checks pass; this
   remains automated evidence rather than approval of unreviewed browser scopes.
+
+The final ship rerun passes all nine browser cases using a separately managed
+Vite-only preview. An earlier run with Playwright-managed startup had two Goals
+expansion failures and stalled during Windows preview teardown. The expansion
+failure's cause is not established; the successful rerun does not establish that
+the harness is free of timing problems. No browser failure was hidden by retries.
 
 ```powershell
 cd growthtrack-ultimate

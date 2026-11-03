@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — typed records and reliable saves (2026-11-03)
+
+- Metrics, goals, skills, notes and plans now use typed fields and related records for their stable data, retaining JSON for flexible settings and legacy extensions.
+- Skills, Goals and Health+ preserve failed drafts, wait for confirmed saves and prevent duplicate submissions. Goal progress and its history save together, with safe retries.
+- Health+ dialogs support keyboard navigation, and Skills controls fit narrow screens.
+- Strengthened database ownership, references and monetary precision across Ultimate, Family, Equity and FinSync/OxFin. Forex cached candles retain their requested interval and timezone identity.
+- Added guarded local schema-repair tooling and synthetic migration, persistence and browser checks. Existing installations still require a backup, migration-history reconciliation and rehearsal before upgrades.
+
 ## Unreleased — 3D human model plan, revision 04
 
 - Reworked the plan page's 3D person so it reads as a human rather than a mannequin. The face now has eyes (procedural iris, pupil, clear cornea with catchlights, warm sclera, looking at the viewer), strand eyebrows and eyelashes, and strand scalp hair in ten styles; the skin has a ten-step tone scale with undertone, freckles, flush, shine, pores, light that wraps past shadow edges, glowing thin skin and natural lips.
