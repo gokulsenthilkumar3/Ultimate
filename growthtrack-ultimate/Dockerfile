@@ -23,6 +23,7 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/scripts ./scripts
 # The server shares contracts with the clients.
 COPY --from=build /app/src/lib/bodyMetricContract.js ./src/lib/bodyMetricContract.js
+COPY --from=build /app/src/config/nativeEntries.js ./src/config/nativeEntries.js
 COPY --from=build /app/src/domains/workspace/contracts ./src/domains/workspace/contracts
 COPY --from=build /app/src/components/calendar/calendarICS.js /app/src/components/calendar/calendarModel.js ./src/components/calendar/
 RUN mkdir -p /data/files /data/logs /data/backups && chown -R node:node /data
