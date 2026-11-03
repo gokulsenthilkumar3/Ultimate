@@ -1,5 +1,6 @@
 import React, { startTransition, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import PageState from './PageState';
+import Button from './Button';
 import useVirtualTableRows from '../../hooks/useVirtualTableRows';
 import useScrollEdges from '../../hooks/useScrollEdges';
 
@@ -10,6 +11,7 @@ export interface DataColumn<T> {
   align?: 'start' | 'end';
 }
 export type TableSort = { column: string; direction: 'asc' | 'desc' } | null;
+const EMPTY_SELECTION: readonly string[] = Object.freeze([]);
 export interface DataTableProps<T> {
   caption: string; rows: readonly T[]; columns: readonly DataColumn<T>[]; rowKey: (row: T) => string;
   rowLabel?: (row: T) => string; sort?: TableSort; onSortChange?: (sort: TableSort) => void; manualSort?: boolean;
@@ -18,7 +20,7 @@ export interface DataTableProps<T> {
 }
 
 /** Native table semantics; wide data scrolls inside a named, keyboard reachable region. */
-export default function DataTable<T>({ caption, rows, columns, rowKey, rowLabel = rowKey, sort: controlledSort, onSortChange, manualSort = false, selectedKeys = [], onSelectionChange, state = 'ready', onRetry, emptyMessage = 'No records match your filters.' }: DataTableProps<T>) {
+export default function DataTable<T>({ caption, rows, columns, rowKey, rowLabel = rowKey, sort: controlledSort, onSortChange, manualSort = false, selectedKeys = EMPTY_SELECTION, onSelectionChange, state = 'ready', onRetry, emptyMessage = 'No records match your filters.' }: DataTableProps<T>) {
   const id = useId();
   const [localSort, setLocalSort] = useState<TableSort>(null);
   const sort = controlledSort === undefined ? localSort : controlledSort;
@@ -42,17 +44,25 @@ export default function DataTable<T>({ caption, rows, columns, rowKey, rowLabel 
   const scrollFrame = useRef<HTMLElement>(null);
   useScrollEdges(scrollRef, scrollFrame, `${state}:${Boolean(rows.length)}`);
   const virtual = useVirtualTableRows(sortedRows, rowKey, scrollRef, state === 'ready');
+  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
   const select = (key: string, checked: boolean) => onSelectionChange?.(checked ? [...new Set([...selectedKeys, key])] : selectedKeys.filter(item => item !== key));
-  const allSelected = rows.length > 0 && rows.every(row => selectedKeys.includes(rowKey(row)));
-  const partlySelected = !allSelected && rows.some(row => selectedKeys.includes(rowKey(row)));
-  return <section ref={scrollFrame} className="gt-data-table gt-scroll-cues" data-responsive-foundation data-state={state}>
+  const selectedRowCount = useMemo(() => selectedSet.size === 0 ? 0 : rows.reduce(
+    (count, row) => count + Number(selectedSet.has(rowKey(row))), 0,
+  ), [rows, rowKey, selectedSet]);
+  const allSelected = rows.length > 0 && selectedRowCount === rows.length;
+  const partlySelected = selectedRowCount > 0 && !allSelected;
+  return <section ref={scrollFrame} className="gt-data-table gt-scroll-cues" data-responsive-foundation data-state={state} tabIndex={-1} role="group" aria-label={caption}>
+    {onSelectionChange && selectedKeys.length > 0 && <div className="gt-data-table__selection" role="group" aria-label="Row selection">
+      <p role="status">{selectedKeys.length} {selectedKeys.length === 1 ? 'record' : 'records'} selected</p>
+      <Button variant="secondary" onClick={() => { onSelectionChange([]); (scrollRef.current || scrollFrame.current)?.focus(); }}>Clear selection</Button>
+    </div>}
     {state !== 'ready' && <PageState state={state} onRetry={state === 'loading' ? undefined : onRetry} />}
     {state === 'ready' && !rows.length && <PageState state="empty" title="No records" description={emptyMessage} />}
     {state === 'ready' && rows.length > 0 && <div ref={scrollRef} className="gt-data-table__scroll" role="region" aria-labelledby={`${id}-caption`} tabIndex={0} style={virtual.active ? { maxHeight: 560, overflow: 'auto' } : undefined}>
       <table aria-rowcount={virtual.active ? rows.length + 1 : undefined}><caption id={`${id}-caption`}>{caption}</caption><thead><tr aria-rowindex={virtual.active ? 1 : undefined}>
         {onSelectionChange && <th scope="col"><input type="checkbox" aria-label="Select all visible rows" checked={allSelected} ref={node => { if (node) node.indeterminate = partlySelected; }} onChange={event => {
-          const visible = rows.map(rowKey);
-          onSelectionChange(event.target.checked ? [...new Set([...selectedKeys, ...visible])] : selectedKeys.filter(key => !visible.includes(key)));
+          const visible = new Set(rows.map(rowKey));
+          onSelectionChange(event.target.checked ? [...new Set([...selectedKeys, ...visible])] : selectedKeys.filter(key => !visible.has(key)));
         }} /></th>}
         {columns.map(column => <th key={column.id} scope="col" data-align={column.align} aria-sort={column.sort || (column.sortable ? sort?.column === column.id ? sort.direction === 'asc' ? 'ascending' : 'descending' : 'none' : undefined)}>
           {column.sortable ? <button type="button" onClick={() => {
@@ -61,8 +71,8 @@ export default function DataTable<T>({ caption, rows, columns, rowKey, rowLabel 
             onSortChange?.(next);
           }}>{column.header}<span key={sort?.column === column.id ? sort.direction : 'none'} className="gt-sort" aria-hidden="true"> {sort?.column === column.id ? sort.direction === 'asc' ? '↑' : '↓' : '↕'}</span></button> : column.header}
         </th>)}
-      </tr></thead><tbody>{virtual.segments.map(segment => segment.kind === 'spacer' ? <tr key={segment.key} aria-hidden="true"><td colSpan={columns.length + (onSelectionChange ? 1 : 0)} style={{ height: segment.height, padding: 0, border: 0, lineHeight: 0 }} /></tr> : <tr key={`row-${segment.key}`} data-virtual-key={segment.key} aria-rowindex={virtual.active ? segment.index + 2 : undefined} data-selected={selectedKeys.includes(segment.key)}>
-        {onSelectionChange && <td><input type="checkbox" checked={selectedKeys.includes(segment.key)} aria-label={`Select ${rowLabel(segment.row)}`} onChange={event => select(segment.key, event.target.checked)} /></td>}
+      </tr></thead><tbody>{virtual.segments.map(segment => segment.kind === 'spacer' ? <tr key={segment.key} aria-hidden="true"><td colSpan={columns.length + (onSelectionChange ? 1 : 0)} style={{ height: segment.height, padding: 0, border: 0, lineHeight: 0 }} /></tr> : <tr key={`row-${segment.key}`} data-virtual-key={segment.key} aria-rowindex={virtual.active ? segment.index + 2 : undefined} data-selected={selectedSet.has(segment.key)}>
+        {onSelectionChange && <td><input type="checkbox" checked={selectedSet.has(segment.key)} aria-label={`Select ${rowLabel(segment.row)}`} onChange={event => select(segment.key, event.target.checked)} /></td>}
         {columns.map(column => <td key={column.id} data-align={column.align}>{column.render ? column.render(segment.row) : column.accessor(segment.row) ?? '—'}</td>)}
       </tr>)}</tbody></table>
     </div>}

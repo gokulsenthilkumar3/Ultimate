@@ -1,0 +1,90 @@
+.command-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: min(8vh, 64px) 16px 16px;
+  background: rgba(0, 0, 0, .6);
+  backdrop-filter: blur(12px);
+}
+
+.command-palette-dialog {
+  width: 100%;
+  max-width: 580px;
+  max-height: calc(100vh - min(8vh, 64px) - 16px);
+  max-height: calc(100dvh - min(8vh, 64px) - 16px);
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .6), 0 0 0 1px rgba(99, 102, 241, .2);
+}
+
+.command-palette-search {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.command-palette-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-1);
+  font: 1rem var(--font-body);
+}
+
+.command-palette-search > button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--gt-radius-sm, 8px);
+  background: var(--gt-surface);
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.command-palette-search > button:hover { background: var(--accent-soft); }
+.command-palette-search :is(input, button):focus-visible {
+  outline: 3px solid var(--gt-focus, var(--accent));
+  outline-offset: 2px;
+}
+
+.command-palette-dialog #command-results {
+  min-height: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+}
+
+.command-palette-footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  font-size: .75rem;
+  color: var(--text-3);
+}
+
+.command-palette-footer [role='status'] { margin-inline-start: auto; }
+.command-palette-example { flex-basis: 100%; overflow-wrap: anywhere; order: 1; }
+
+@media (max-height: 480px) {
+  .command-palette-backdrop { padding-top: 12px; }
+  .command-palette-dialog { max-height: calc(100vh - 28px); max-height: calc(100dvh - 28px); }
+  .command-palette-example { display: none; }
+}

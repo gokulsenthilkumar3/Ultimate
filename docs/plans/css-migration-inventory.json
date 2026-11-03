@@ -1,7 +1,7 @@
 {
   "version": 2,
   "scope": "All tracked and nonignored source stylesheets; broad design approval is separate from rendered verification.",
-  "count": 78,
+  "count": 79,
   "files": [
     {
       "file": "Equity/NiftyLens/src/app/globals.css",
@@ -101,6 +101,12 @@
     },
     {
       "file": "growthtrack-ultimate/src/components/AiDashboard.css",
+      "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
+      "designDirectionApproval": "user approved demo and authorised real-app implementation",
+      "renderedVerification": "pending"
+    },
+    {
+      "file": "growthtrack-ultimate/src/components/CommandPalette.css",
       "disposition": "domain styles consume approved shared semantics; inspect remaining overrides",
       "designDirectionApproval": "user approved demo and authorised real-app implementation",
       "renderedVerification": "pending"

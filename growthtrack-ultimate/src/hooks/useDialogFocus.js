@@ -7,6 +7,17 @@ export const subscribeDialogs = listener => { dialogListeners.add(listener); ret
 const notifyDialogs = () => dialogListeners.forEach(listener => listener());
 let originalOverflow = '';
 
+function availableForFocus(element) {
+  if (!element || element.matches(':disabled, input[type="hidden"]') || element.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+  const style = getComputedStyle(element);
+  if (style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+  // A descendant's computed display can be visible inside a hidden container.
+  for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+    if (getComputedStyle(ancestor).display === 'none') return false;
+  }
+  return true;
+}
+
 /** Keep keyboard focus inside an open overlay and restore its trigger on close. */
 export default function useDialogFocus(isOpen, onClose) {
   const dialogRef = useRef(null);
@@ -22,11 +33,14 @@ export default function useDialogFocus(isOpen, onClose) {
     notifyDialogs();
     document.body.style.overflow = 'hidden';
     const focusable = () => [...(dialogRef.current?.querySelectorAll(
-      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
-    ) || [])].filter(element => !element.closest('[hidden], [inert], [aria-hidden="true"]') && getComputedStyle(element).display !== 'none' && getComputedStyle(element).visibility !== 'hidden');
-    (dialogRef.current?.querySelector('[data-dialog-autofocus]') || focusable()[0] || dialogRef.current)?.focus();
+      'button, a[href], input, select, textarea, [tabindex]',
+    ) || [])].filter(element => element.tabIndex >= 0 && availableForFocus(element))
+      .sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity));
+    const autofocus = dialogRef.current?.querySelector('[data-dialog-autofocus]');
+    const initial = autofocus && (autofocus.tabIndex >= 0 || autofocus.hasAttribute('tabindex')) && availableForFocus(autofocus) ? autofocus : focusable()[0];
+    (initial || dialogRef.current)?.focus();
     const handleKey = event => {
-      if (openDialogs.at(-1) !== token) return;
+      if (openDialogs.at(-1) !== token || event.defaultPrevented || event.isComposing) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         onCloseRef.current?.();

@@ -12,6 +12,7 @@ import { parseQuickCapture, QUICK_CAPTURE_EXAMPLES } from '../lib/quickCapture';
 import { apiRequest } from '../lib/apiClient';
 import { useToast } from '../hooks/useToast';
 import { useKinetic } from './motion/KineticContext';
+import './CommandPalette.css';
 
 // ── Module icon map ───────────────────────────────────────────────────────────
 const MODULE_ICONS = {
@@ -148,6 +149,8 @@ export default function CommandPalette() {
 
   // ── Build result list ─────────────────────────────────────────────────────
   const results = useMemo(() => {
+    // The palette stays mounted in the shell; closed searches need no ranking work.
+    if (!isOpen) return EMPTY_ARRAY;
     const q = query.trim();
     const candidates = [];
 
@@ -222,7 +225,10 @@ export default function CommandPalette() {
         return (typePriority[a.type] ?? 9) - (typePriority[b.type] ?? 9);
       })
       .slice(0, 40);
-  }, [query, tasks, goals, notes, habits, skills, sleepLogs, moodLogs]);
+  }, [isOpen, query, tasks, goals, notes, habits, skills, sleepLogs, moodLogs]);
+
+  // Store updates can remove results while the input remains focused.
+  const activeIdx = Math.min(selectedIdx, Math.max(0, results.length - 1));
 
   // Group consecutive items of the same type
   const grouped = useMemo(() => {
@@ -240,8 +246,8 @@ export default function CommandPalette() {
   }, [results]);
 
   useEffect(() => {
-    if (isOpen) document.getElementById(`command-result-${selectedIdx}`)?.scrollIntoView?.({ block: 'nearest' });
-  }, [selectedIdx, isOpen]);
+    if (isOpen) document.getElementById(`command-result-${activeIdx}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeIdx, isOpen, results]);
 
   const saveCapture = useCallback(async (capture) => {
     if (capturing) return;
@@ -284,9 +290,10 @@ export default function CommandPalette() {
   }, [activeTab, setActiveTab, saveCapture]);
 
   const handleKeyDown = (e) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.max(0, Math.min(i + 1, results.length - 1))); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
-    else if (e.key === 'Enter' && results[selectedIdx]) { e.preventDefault(); handleSelect(results[selectedIdx]); }
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(Math.max(0, Math.min(activeIdx + 1, results.length - 1))); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(Math.max(activeIdx - 1, 0)); }
+    else if (e.key === 'Enter' && results[activeIdx]) { e.preventDefault(); handleSelect(results[activeIdx]); }
   };
 
   if (!isOpen) return null;
@@ -295,10 +302,7 @@ export default function CommandPalette() {
     <div
       className="command-palette-backdrop"
       style={{
-        position: 'fixed', inset: 0, zIndex: Z_INDEX.PALETTE || 9999,
-        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        paddingTop: '8vh',
+        zIndex: Z_INDEX.PALETTE || 9999,
       }}
       onClick={() => setIsOpen(false)}
     >
@@ -308,11 +312,11 @@ export default function CommandPalette() {
         aria-modal="true"
         aria-label="Search your workspace"
         className="glass-card fade-in command-palette-dialog"
-        style={{ width: '92%', maxWidth: '580px', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.2)' }}
+        style={{ padding: 0 }}
         onClick={e => e.stopPropagation()}
       >
         {/* Search input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+        <div className="command-palette-search">
           <Search size={18} color="var(--text-3)" style={{ flexShrink: 0 }} />
           <input
             ref={inputRef}
@@ -323,7 +327,7 @@ export default function CommandPalette() {
             aria-expanded="true"
             aria-autocomplete="list"
             aria-controls="command-results"
-            aria-activedescendant={results[selectedIdx] ? `command-result-${selectedIdx}` : undefined}
+            aria-activedescendant={results[activeIdx] ? `command-result-${activeIdx}` : undefined}
             type="text"
             placeholder="Search, or capture: “spent 450 on lunch”, “drank 500ml”…"
             value={query}
@@ -332,13 +336,12 @@ export default function CommandPalette() {
               setSelectedIdx(0);
             }}
             onKeyDown={handleKeyDown}
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-1)', fontSize: '1rem', fontFamily: 'var(--font-body)' }}
           />
           <button className="header-control" onClick={() => setIsOpen(false)} aria-label="Close search"><X size={18} /></button>
         </div>
 
         {/* Results */}
-        <div id="command-results" role="listbox" aria-label="Search results" style={{ maxHeight: '420px', overflowY: 'auto', padding: '6px' }}>
+        <div id="command-results" role="listbox" aria-label="Search results">
           {results.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.85rem' }}>
               No results for <strong style={{ color: 'var(--text-2)' }}>"{query}"</strong>
@@ -358,20 +361,20 @@ export default function CommandPalette() {
                     id={`command-result-${idx}`}
                     role="option"
                     tabIndex={-1}
-                    aria-selected={idx === selectedIdx}
+                    aria-selected={idx === activeIdx}
                     onClick={() => handleSelect(item)}
                     onMouseEnter={() => setSelectedIdx(idx)}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                       padding: '9px 12px', borderRadius: '8px', border: 'none',
-                      background: idx === selectedIdx ? 'rgba(99,102,241,0.12)' : 'transparent',
+                      background: idx === activeIdx ? 'rgba(99,102,241,0.12)' : 'transparent',
                       color: 'var(--text-1)', cursor: 'pointer', textAlign: 'left',
                       transition: 'background 0.1s',
                     }}
                   >
                     <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', fontSize: '1rem', flexShrink: 0, width: '22px', textAlign: 'center' }}>{kineticEnabled ? <KineticResultIcon item={item} /> : item.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: idx === selectedIdx ? 700 : 600, color: idx === selectedIdx ? 'var(--accent)' : 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: idx === activeIdx ? 700 : 600, color: idx === activeIdx ? 'var(--accent)' : 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         <Highlight text={item.label} query={query} />
                       </div>
                       {item.detail && (
@@ -380,7 +383,7 @@ export default function CommandPalette() {
                         </div>
                       )}
                     </div>
-                    {idx === selectedIdx && <ArrowRight size={13} color="var(--accent)" style={{ flexShrink: 0 }} />}
+                    {idx === activeIdx && <ArrowRight size={13} color="var(--accent)" style={{ flexShrink: 0 }} />}
                   </button>
                 ))}
               </div>
@@ -389,11 +392,12 @@ export default function CommandPalette() {
         </div>
 
         {/* Footer hint */}
-        <div style={{ display: 'flex', gap: '1rem', padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: '0.62rem', color: 'var(--text-3)' }}>
+        <div className="command-palette-footer">
           <span>↑↓ navigate</span>
-          <span>↵ {results[selectedIdx]?.type === 'capture' ? (capturing ? 'saving…' : 'save') : 'open'}</span>
-          {!query.trim() && <span title={QUICK_CAPTURE_EXAMPLES.join(' · ')}>{!kineticEnabled && '✨ '}Try “{QUICK_CAPTURE_EXAMPLES[selectedIdx % QUICK_CAPTURE_EXAMPLES.length]}”</span>}
-          <span style={{ marginLeft: 'auto' }}>{results.length} result{results.length !== 1 ? 's' : ''}</span>
+          <span>↵ {results[activeIdx]?.type === 'capture' ? (capturing ? 'saving…' : 'save') : 'open'}</span>
+          <span>Esc close</span>
+          {!query.trim() && <span className="command-palette-example" title={QUICK_CAPTURE_EXAMPLES.join(' · ')}>{!kineticEnabled && '✨ '}Try “{QUICK_CAPTURE_EXAMPLES[activeIdx % QUICK_CAPTURE_EXAMPLES.length]}”</span>}
+          <span role="status" aria-live="polite" aria-atomic="true">{results.length ? `${results.length} result${results.length !== 1 ? 's' : ''}` : 'No results'}</span>
         </div>
       </div>
     </div>

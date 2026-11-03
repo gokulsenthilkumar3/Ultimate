@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import SearchField from './SearchField';
@@ -8,6 +8,30 @@ import DataReadiness from './DataReadiness';
 import PageHeader from './PageHeader';
 
 describe('shared UI foundation', () => {
+  it('clears search with Escape before dismissing a containing surface', () => {
+    const onClear = vi.fn(), onDismiss = vi.fn();
+    const view = render(<div onKeyDown={onDismiss}><SearchField value="query" onChange={vi.fn()} onClear={onClear} /></div>);
+    const field = screen.getByRole('searchbox');
+    fireEvent.keyDown(field, { key: 'Escape' });
+    expect(onClear).toHaveBeenCalledWith('');
+    expect(field).toHaveFocus();
+    expect(onDismiss).not.toHaveBeenCalled();
+    view.rerender(<div onKeyDown={onDismiss}><SearchField value="" onChange={vi.fn()} /></div>);
+    fireEvent.keyDown(field, { key: 'Escape' });
+    expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it('respects read-only search, composition and consumer keyboard handling', () => {
+    const onChange = vi.fn();
+    const view = render(<SearchField value="query" onChange={onChange} readOnly />);
+    fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' });
+    view.rerender(<SearchField value="query" onChange={onChange} />);
+    fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape', isComposing: true });
+    view.rerender(<SearchField value="query" onChange={onChange} onKeyDown={event => event.preventDefault()} />);
+    fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('provides a labelled searchable field with result status and clear action', async () => {
     const onChange = vi.fn();
     render(<SearchField label="Search tasks" value="report" onChange={onChange} resultCount={2} />);
@@ -15,6 +39,7 @@ describe('shared UI foundation', () => {
     expect(screen.getByText('2 results')).toHaveAttribute('role', 'status');
     await userEvent.click(screen.getByRole('button', { name: 'Clear search tasks' }));
     expect(onChange).toHaveBeenCalledWith('');
+    expect(screen.getByRole('searchbox', { name: 'Search tasks' })).toHaveFocus();
   });
 
   it('announces pagination boundaries and prevents invalid navigation', async () => {

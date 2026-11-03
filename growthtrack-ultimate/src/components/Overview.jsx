@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { OverviewCompanion } from './motion/CharacterScene';
 import usePlayfulMotion from '../hooks/usePlayfulMotion';
 import { Link } from 'react-router-dom';
@@ -11,6 +11,18 @@ import { useKinetic } from './motion/KineticContext';
 import { Activity, CheckSquare, Moon, Target } from 'lucide-react';
 import SignalArt from './motion/SignalArt';
 
+const WORKSPACE_LINKS = [
+  ['actions', undefined, 'Action Center', 'Review what needs attention'],
+  ['tasks', undefined, 'Tasks', 'Plan and manage your work'],
+  ['habits', 'today', 'Habits', 'Check in on your routines'],
+  ['goals', 'active', 'Goals', 'Review active milestones'],
+  ['training', 'logger', 'Training', 'Log your next workout'],
+  ['physique', '3d', 'Body model', 'Explore your measurements'],
+  ['finance', undefined, 'Finance', 'Review income and spending'],
+  ['portfolio', undefined, 'Portfolio', 'Review your investments'],
+  ['profile', undefined, 'Profile', 'Manage personal details'],
+  ['ai', undefined, 'Agents', 'Open your AI workspace'],
+];
 const EMPTY = Object.freeze([]);
 const asList = value => Array.isArray(value) ? value : EMPTY;
 const isDone = task => Boolean(task?.completed || task?.done || ['done', 'completed'].includes(String(task?.status || '').toLowerCase()));
@@ -32,11 +44,11 @@ export default function Overview() {
   const sleep = asList(useStore(state => state.sleep_logs));
   const habitLogs = useStore(state => state.habitLogsByHabit) || {};
   const taskSource = user?.tasks;
-  const tasks = Array.isArray(taskSource) ? taskSource : Object.values(taskSource || {}).flatMap(asList);
+  const tasks = useMemo(() => Array.isArray(taskSource) ? taskSource : Object.values(taskSource || {}).flatMap(asList), [taskSource]);
   const today = localDateKey(new Date());
-  const pending = tasks.filter(task => task && !isDone(task))
-    .sort((a, b) => (taskDate(a) || '9999').localeCompare(taskDate(b) || '9999') || taskPriority(a) - taskPriority(b));
-  const due = pending.filter(task => taskDate(task) && taskDate(task) <= today);
+  const pending = useMemo(() => tasks.filter(task => task && !isDone(task))
+    .sort((a, b) => (taskDate(a) || '9999').localeCompare(taskDate(b) || '9999') || taskPriority(a) - taskPriority(b)), [tasks]);
+  const due = useMemo(() => pending.filter(task => taskDate(task) && taskDate(task) <= today), [pending, today]);
   const checked = habits.filter(habit => (habit.completed_dates || []).includes(today)
     || (habitLogs[habit.id] || []).some(log => dateKey(log.date) === today && log.completed !== false)).length;
   const activeGoals = goals.filter(goal => String(goal?.status).toLowerCase() === 'active');
@@ -64,7 +76,7 @@ export default function Overview() {
     description: 'Add a task to give this overview a useful starting point.',
     label: 'Open tasks', href: featurePath('tasks'),
   };
-  const activity = [
+  const activity = useMemo(() => [
     ...tasks.filter(isDone).map(task => ({
       key: 'task-' + task.id, title: 'Completed ' + (task.title || task.name || 'a task'),
       date: completedDate(task), href: featurePath('tasks'), Icon: CheckSquare,
@@ -77,7 +89,7 @@ export default function Overview() {
       key: 'sleep-' + (log.id ?? index), title: 'Sleep entry dated',
       date: log.date, href: featurePath('sleep', 'history'), Icon: Moon,
     })),
-  ].filter(item => dateKey(item.date)).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 4);
+  ].filter(item => dateKey(item.date)).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 4), [tasks, metrics, sleep]);
 
   return <section className="module-page editorial-overview editorial-overview--insights playful-overview" data-playful-motion={String(canAnimate)} aria-labelledby="insights-overview-title">
     <header className="editorial-overview__masthead">
@@ -97,9 +109,9 @@ export default function Overview() {
     </section>
     </div>
     <dl className="editorial-overview__facts" aria-label="Saved record summary">
-      <div data-insight="metric"><dt><CheckSquare size={18} aria-hidden="true" />Open tasks</dt><dd>{formatNumber(pending.length, user, { maximumFractionDigits: 0 })}</dd></div>
-      <div data-insight="metric"><dt><Target size={18} aria-hidden="true" />Active goals</dt><dd>{formatNumber(activeGoals.length, user, { maximumFractionDigits: 0 })}</dd></div>
-      <div data-insight="metric"><dt><Activity size={18} aria-hidden="true" />Saved measurements</dt><dd>{formatNumber(metrics.length, user, { maximumFractionDigits: 0 })}</dd></div>
+      <div data-insight="metric"><dt><CheckSquare size={18} aria-hidden="true" />Open tasks</dt><dd>{formatNumber(pending.length, user, { maximumFractionDigits: 0 })}</dd><dd className="editorial-overview__metric-action"><Link to={featurePath('tasks')}>View tasks <span aria-hidden="true">&rarr;</span></Link></dd></div>
+      <div data-insight="metric"><dt><Target size={18} aria-hidden="true" />Active goals</dt><dd>{formatNumber(activeGoals.length, user, { maximumFractionDigits: 0 })}</dd><dd className="editorial-overview__metric-action"><Link to={featurePath('goals', 'active')}>View goals <span aria-hidden="true">&rarr;</span></Link></dd></div>
+      <div data-insight="metric"><dt><Activity size={18} aria-hidden="true" />Saved measurements</dt><dd>{formatNumber(metrics.length, user, { maximumFractionDigits: 0 })}</dd><dd className="editorial-overview__metric-action"><Link to={featurePath('physique', 'history')}>View history <span aria-hidden="true">&rarr;</span></Link></dd></div>
     </dl>
     <div className="editorial-overview__lower">
       <section className="editorial-overview__section" aria-labelledby="insights-activity-title">
@@ -110,17 +122,8 @@ export default function Overview() {
       </section>
       <nav className="editorial-overview__section" aria-label="Insight destinations">
         <p className="editorial-overview__eyebrow">Your workspace</p><h2>Jump back in</h2>
-        <ul className="editorial-overview__links">
-          <li><Link to={featurePath('actions')}>Action Center <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('tasks')}>Tasks <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('habits', 'today')}>Habits <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('goals', 'active')}>Goals <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('training', 'logger')}>Training <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('physique', '3d')}>Body model <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('finance')}>Finance <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('portfolio')}>Portfolio <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('profile')}>Profile <span aria-hidden="true">↗</span></Link></li>
-          <li><Link to={featurePath('ai')}>Agents <span aria-hidden="true">↗</span></Link></li>
+        <ul className="editorial-overview__links overview-workspace-links">
+          {WORKSPACE_LINKS.map(([feature, view, label, description]) => <li key={feature}><Link to={featurePath(feature, view)}><span><strong>{label}</strong><small>{description}</small></span><span aria-hidden="true">&rarr;</span></Link></li>)}
         </ul>
       </nav>
     </div>
