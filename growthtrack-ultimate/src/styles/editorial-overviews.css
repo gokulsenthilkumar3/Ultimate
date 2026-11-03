@@ -1,4 +1,13 @@
 /* Compact, data-first command pages. Imported by the application style entry. */
+.editorial-overview__facts .editorial-overview__metric-action { margin-block-start: .5rem; font: 600 .8rem/1.5 var(--gt-font); }
+.editorial-overview__metric-action a { display: inline-flex; align-items: center; gap: .5rem; min-block-size: 36px; color: var(--gt-action); text-decoration: none; }
+.editorial-overview__metric-action a:hover { text-decoration: underline; }
+.editorial-overview .overview-workspace-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: .625rem; margin-block-start: 1rem; }
+.editorial-overview .overview-workspace-links li { min-inline-size: 0; border: 0; }
+.editorial-overview .overview-workspace-links a { display: flex; align-items: center; justify-content: space-between; gap: .75rem; block-size: 100%; padding: .875rem; border: 1px solid var(--gt-border); border-radius: var(--gt-radius-xs); background: var(--gt-surface); text-decoration: none; }
+.editorial-overview .overview-workspace-links a:hover { border-color: var(--gt-action); background: color-mix(in srgb, var(--gt-action) 5%, var(--gt-surface)); }
+.overview-workspace-links strong { display: block; font-size: .875rem; font-weight: 600; }
+.overview-workspace-links small { display: block; margin-block-start: .25rem; color: var(--gt-muted); font-size: .75rem; line-height: 1.5; }
 .editorial-overview {
   box-sizing: border-box;
   display: grid;

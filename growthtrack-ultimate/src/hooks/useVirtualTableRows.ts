@@ -8,6 +8,8 @@ export default function useVirtualTableRows<T>(rows: readonly T[], keyOf: (row: 
   const [revision, setRevision] = useState(0);
   const [viewport, setViewport] = useState({ top: 0, height: 560, header: 0, focused: '' });
   const keys = useMemo(() => rows.map(keyOf), [rows, keyOf]);
+  // Scroll updates do not change the focused key; only rescan when focus or row order changes.
+  const focusedIndex = useMemo(() => viewport.focused ? keys.indexOf(viewport.focused) : -1, [keys, viewport.focused]);
   useEffect(() => { const present = new Set(keys); for (const key of heights.current.keys()) if (!present.has(key)) heights.current.delete(key); }, [keys]);
   useLayoutEffect(() => {
     if (!active || !scroll.current) return;
@@ -16,7 +18,9 @@ export default function useVirtualTableRows<T>(rows: readonly T[], keyOf: (row: 
     const geometry = { height: root.clientHeight || 560, header: 0 };
     const update = () => {
       const focused = root.contains(document.activeElement) ? document.activeElement?.closest<HTMLTableRowElement>('tr[data-virtual-key]')?.dataset.virtualKey || '' : '';
-      setViewport({ top: root.scrollTop, height: geometry.height, header: geometry.header, focused });
+      const next = { top: root.scrollTop, height: geometry.height, header: geometry.header, focused };
+      setViewport(current => current.top === next.top && current.height === next.height
+        && current.header === next.header && current.focused === next.focused ? current : next);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); }); };
     // Layout is read on resize, never on the high-frequency scroll path.
@@ -48,8 +52,7 @@ export default function useVirtualTableRows<T>(rows: readonly T[], keyOf: (row: 
   const start = active ? Math.max(0, find(top) - 3) : 0;
   const end = active ? Math.min(rows.length, find(top + viewport.height) + 4) : rows.length;
   const indices = Array.from({ length: Math.max(0, end - start) }, (_, i) => start + i);
-  const focused = keys.indexOf(viewport.focused);
-  if (active && focused >= 0 && !indices.includes(focused)) indices.push(focused);
+  if (active && focusedIndex >= 0 && !indices.includes(focusedIndex)) indices.push(focusedIndex);
   indices.sort((a, b) => a - b);
   const segments: ({ kind: 'spacer'; height: number; key: string } | { kind: 'row'; row: T; index: number; key: string })[] = [];
   let previous = 0;
