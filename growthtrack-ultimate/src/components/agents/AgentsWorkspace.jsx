@@ -131,6 +131,7 @@ export default function AgentsWorkspace({ state }) {
       restoreChatFocus.current = true;
       const query = new URLSearchParams(params); query.delete('view'); setParams(query);
       document.getElementById(`${id}-chat`)?.focus();
+      setTimeout(() => document.getElementById(`${id}-chat`)?.focus(), 0);
     };
     document.addEventListener('keydown', escape);
     return () => document.removeEventListener('keydown', escape);
