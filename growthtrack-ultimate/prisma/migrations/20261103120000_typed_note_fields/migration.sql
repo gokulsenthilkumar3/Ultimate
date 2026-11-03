@@ -33,6 +33,9 @@ UPDATE "Note" SET "wordCount"=json_extract(CASE WHEN json_valid("data") THEN CAS
 UPDATE "Note" SET "data"=json_remove("data", '$.wordCount') WHERE json_type(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.wordCount')='integer' AND json_extract(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.wordCount') BETWEEN 0 AND 2147483647;
 UPDATE "Note" SET "legacyImportId"=json_extract(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.legacyImportId') WHERE json_type(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.legacyImportId') IN ('text','null');
 UPDATE "Note" SET "data"=json_remove("data", '$.legacyImportId') WHERE json_type(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.legacyImportId') IN ('text','null');
+-- Legacy writers can update JSON flags after the older flag-column backfill.
+UPDATE "Note" SET "pinned"=json_extract("data", '$.pinned') WHERE CASE WHEN json_valid("data") THEN json_type("data", '$.pinned') IN ('true','false') OR (json_type("data", '$.pinned')='integer' AND json_extract("data", '$.pinned') IN (0,1)) ELSE false END;
+UPDATE "Note" SET "starred"=json_extract("data", '$.starred') WHERE CASE WHEN json_valid("data") THEN json_type("data", '$.starred') IN ('true','false') OR (json_type("data", '$.starred')='integer' AND json_extract("data", '$.starred') IN (0,1)) ELSE false END;
 UPDATE "Note" SET "data"=json_remove("data", '$.pinned') WHERE (json_type(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.pinned') IN ('true','false') OR (json_type(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.pinned')='integer' AND json_extract(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.pinned') IN (0,1)));
 UPDATE "Note" SET "data"=json_remove("data", '$.starred') WHERE (json_type(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.starred') IN ('true','false') OR (json_type(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.starred')='integer' AND json_extract(CASE WHEN json_valid("data") THEN CASE WHEN json_type("data")='object' THEN "data" ELSE '{}' END ELSE '{}' END, '$.starred') IN (0,1)));
 UPDATE "Note" SET "data"=NULL WHERE "data"='{}';
@@ -92,4 +95,3 @@ UPDATE "Habit" SET "data"=json_remove("data", '$.icon')
 UPDATE "Habit" SET "data"=NULL WHERE "data"='{}';
 
 COMMIT;
-

@@ -96,6 +96,29 @@ test('note/journal snapshots and mood labels backfill without losing malformed/c
  assert.equal(mood.tags,'["calm"]'); assert.deepEqual(JSON.parse(mood.data),{extra:{keep:true}});
 });
 
+test('note migration preserves flags written by legacy clients after the earlier flag backfill',async t=>{
+ const cases=[
+  ['boolean-true',{pinned:true,starred:true},[false,false],[true,true],{}],
+  ['boolean-false',{pinned:false,starred:false},[true,true],[false,false],{}],
+  ['integer-flags',{pinned:1,starred:0},[false,true],[true,false],{}],
+  ['absent-flags',{},[true,true],[true,true],{}],
+  ['malformed-flags',{pinned:'true',starred:2},[true,false],[true,false],{pinned:'true',starred:2}],
+  ['null-flags',{pinned:null,starred:null},[true,false],[true,false],{pinned:null,starred:null}],
+ ];
+ const {prisma}=await migratedFixture(t,(db,name)=>{
+  if(name!=='20261103120000_typed_note_fields')return;
+  seedUser(db);
+  const insert=db.prepare("INSERT INTO Note(id,userId,data,pinned,starred,createdAt,updatedAt) VALUES (?,'owner-a',?,?,?,'2026-10-01 10:00:00','2026-10-02 10:00:00')");
+  for(const [id,flags,columns] of cases)insert.run(id,JSON.stringify({...flags,extension:'keep'}),Number(columns[0]),Number(columns[1]));
+ });
+ for(const [id,, ,expected,residual] of cases){
+  const row=await prisma.note.findUnique({where:{id}});
+  assert.deepEqual([row.pinned,row.starred],expected,id);
+  assert.deepEqual(JSON.parse(row.data),{...residual,extension:'keep'},id);
+  assert.equal(row.updatedAt.toISOString(),'2026-10-02T10:00:00.000Z',id);
+ }
+});
+
 test('actual collection create/read/update stores typed scalars and relational children atomically',async t=>{
  const {prisma}=await migratedFixture(t);
  const cases=[
