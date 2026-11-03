@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.growthtrack.health"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.growthtrack.health"
         minSdk = 28

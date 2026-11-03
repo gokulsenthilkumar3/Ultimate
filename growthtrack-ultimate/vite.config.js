@@ -13,7 +13,7 @@ export default defineConfig(async ({ mode }) => {
   // standalone/container build only needs the Ultimate application context;
   // workspace development still loads the canonical proxy when enabled.
   const createUiProxies = env.GROWTHTRACK_WORKSPACE === '1'
-    ? (await import('../scripts/workspace-proxy.mjs')).createUiProxies
+    ? (await import('./scripts/workspace-proxy.mjs')).createUiProxies
     : null;
   const allowedHosts = (env.VITE_ALLOWED_HOSTS || 'localhost,127.0.0.1').split(',').map(host => host.trim()).filter(Boolean);
   const sentryEnabled = Boolean(env.SENTRY_AUTH_TOKEN && env.SENTRY_ORG && env.SENTRY_PROJECT);

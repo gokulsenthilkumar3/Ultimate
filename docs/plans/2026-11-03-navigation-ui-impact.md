@@ -24,6 +24,18 @@ This pass builds on the existing Overview, SearchField and DataTable edits descr
 
 These are source-observed production dependencies. The existing `impact:ui` generator traces the isolated preview catalog and its RecordsTable imports: its 65 pages, 205 destinations and 54 potential table pages / 181 views are **preview inventory estimates**, not the production DataTable dependency count or browser coverage. Production reach is described separately above.
 
+## Cross-layer impact matrix
+
+| Layer | Change surface | Contract impact | Verification / owner |
+| --- | --- | --- | --- |
+| UI | Overview summary links, SearchField Escape behavior, CommandPalette viewport/focus/IME behavior, DataTable selection and virtualization | Existing routes, labels, callbacks and keyboard contracts are preserved; palette adds a local stylesheet and keeps result scrolling inside the dialog | 79 targeted production tests, including 21 focused regressions; browser visual review still required |
+| API / gateway | No endpoint, payload, auth, proxy route or session mutation | No API contract change. The workspace proxy implementation is also available inside the Ultimate build context so container builds do not depend on a parent-directory import | Gateway suite: 6 tests passed; workspace proxy tests remain covered by the existing root test suite |
+| Database / persistence | No schema, migration, seed, fixture or customer-record change | No DB contract or data migration. Existing container smoke setup remains the owner of runtime persistence verification | Prisma validation/generation and server/database checks run in Quality Gate; container smoke runs after image build |
+| Tests / CI | New palette, dialog-focus and virtual-table regressions; CI runner and Android compile SDK compatibility | Test commands remain unchanged. CI now pins Playwright jobs to Ubuntu 24.04, avoids the obsolete Android `tools` package, and installs Android API/build tools 36 for Health Connect 1.1.0 | Targeted local tests passed; rerun GitHub Actions after push |
+| Packaging / container | `.dockerignore` now retains the compression plugin; Vite resolves the in-context proxy module | Docker image still uses the same entrypoint, runtime ports, health check and data volume contract | GitHub container build and `test-container.mjs` are the required verification |
+
+The API and database rows are explicit no-change assessments. They are included so UI work is not mistaken for a data or authorization migration. No customer data is copied into fixtures or docs.
+
 Routes, authentication, permissions, data stores and API contracts are unchanged. No customer records, demo fixtures, dependencies, database migrations or deployments are introduced. FinSync/OxFin customer applications retain their independent builds. Layout rules are owned by CommandPalette rather than appended to global override styles.
 
 ## Optimization limits
