@@ -60,7 +60,7 @@ it('uses real explorer controls under CSP to log in and send a cookie/CSRF mutat
     await page.locator('.endpoint-item').click();
     await page.getByRole('button', { name: /Send \(Ctrl\+Enter\)/ }).click();
     await expect.poll(() => page.locator('#resp-status').textContent()).toContain('200');
-    expect(await page.locator('#response-viewer').textContent()).toContain('fixtureSaved');
+    await expect.poll(() => page.locator('#response-viewer').textContent()).toContain('fixtureSaved');
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect.poll(() => page.locator('#auth-label').textContent()).toBe('Unauthenticated');
   } finally { await context.close(); }
