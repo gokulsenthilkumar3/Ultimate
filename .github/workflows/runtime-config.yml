@@ -1,0 +1,41 @@
+name: Runtime configuration regressions
+on:
+  pull_request:
+    paths:
+      - 'FinSync/apps/web/tailwind.config.ts'
+      - 'FinSync/package-lock.json'
+      - 'growthtrack-ultimate/logger.js'
+      - 'scripts/workspace.mjs'
+      - 'tests/runtime-log-regressions.test.mjs'
+      - '.github/workflows/runtime-config.yml'
+  push:
+    branches: [main, master]
+    paths:
+      - 'FinSync/apps/web/tailwind.config.ts'
+      - 'FinSync/package-lock.json'
+      - 'growthtrack-ultimate/logger.js'
+      - 'scripts/workspace.mjs'
+      - 'tests/runtime-log-regressions.test.mjs'
+      - '.github/workflows/runtime-config.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runtime-config:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            growthtrack-ultimate/package-lock.json
+            FinSync/package-lock.json
+      - name: Install Ultimate dependencies
+        run: npm ci --prefix growthtrack-ultimate
+      - name: Install FinSync web configuration dependencies
+        run: npm ci --prefix FinSync --workspace=apps/web --include-workspace-root --ignore-scripts
+      - name: Verify logger formatting and ES module configuration
+        run: node --test tests/runtime-log-regressions.test.mjs

@@ -35,6 +35,9 @@ const COLORS = {
   dim:      '\x1b[2m',
   bold:     '\x1b[1m',
 };
+if (Object.hasOwn(process.env, 'NO_COLOR') || !process.stdout.isTTY) {
+  for (const key of Object.keys(COLORS)) COLORS[key] = '';
+}
 
 // ── Product process map ───────────────────────────────────────────────────────
 // Next.js accepts port via -p flag, Vite via --port flag.
@@ -220,7 +223,7 @@ for (const name of selected) {
     cwd:   spec.cwd,
     shell: false,
     stdio: 'inherit',
-    env:   { ...process.env, FORCE_COLOR: '1', ...spec.env },
+    env:   { ...process.env, ...spec.env },
   });
 
   procs.push(child);

@@ -1,6 +1,6 @@
 import Tabs from './ui/Tabs';
 import PageHeader from './ui/PageHeader';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Filter, Download, Plus, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info, Clock, Shield, Database, Activity, Cpu, User, Hash, Server } from 'lucide-react';
 import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
@@ -14,7 +14,7 @@ import '../styles/logs.css';
 
 const ACTIONS   = ['all', 'create', 'update', 'delete', 'login', 'export', 'import', 'error', 'login_success', 'login_failed', 'signup', 'logout', 'session_start', 'session_end', 'page_view'];
 const SENTIMENTS = ['all', 'positive', 'neutral', 'negative'];
-const CATEGORIES = ['all', 'auth', 'session', 'audit', 'system'];
+const CATEGORIES = ['all', 'auth', 'session', 'audit', 'system', 'crud', 'request'];
 const TABLES     = ['all', 'users', 'goals', 'habits', 'tasks', 'finance', 'training', 'nutrition', 'notes', 'projects', 'sessions', 'navigation'];
 
 const SENTIMENT_COLORS = {
@@ -29,11 +29,11 @@ const ACTION_COLORS = {
 };
 
 function getSentiment(text = '') {
-  const t = (text || '').toLowerCase();
+  const t = String(text || '').toLowerCase();
   const pos = ['success', 'created', 'completed', 'done', 'added', 'achieved', 'won', 'ok', 'saved', 'activated'];
   const neg = ['error', 'failed', 'deleted', 'removed', 'denied', 'expired', 'invalid', 'crash', 'exception'];
-  if (pos.some(w => t.includes(w))) return 'positive';
   if (neg.some(w => t.includes(w))) return 'negative';
+  if (pos.some(w => new RegExp('\\b' + w + '\\b').test(t))) return 'positive';
   return 'neutral';
 }
 
@@ -60,6 +60,9 @@ export default function Logs() {
   const user  = useStore(s => s.user);
 
   const [logs,     setLogs]     = useState([]);
+  const [availableTotal, setAvailableTotal] = useState(0);
+  const requestVersion = useRef(0);
+  const nextServerPage = useRef(1);
   const [loading,  setLoading]  = useState(true);
   const [loadError, setLoadError] = useState('');
   const [diagnostics, setDiagnostics] = useState(null);
@@ -79,32 +82,42 @@ export default function Logs() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [manualForm, setManualForm] = useState({ action: 'create', table_name: 'users', details: '', category: 'audit' });
 
-  const fetchLogs = useCallback(async () => {
+  const fetchLogs = useCallback(async (append = false) => {
+    append = append === true;
+    const request = ++requestVersion.current;
     setLoading(true);
     setLoadError('');
+    if (!append) { setLogs([]); setAvailableTotal(0); setDiagnostics(null); nextServerPage.current = 1; }
     try {
       const qs = new URLSearchParams();
       if (categoryF !== 'all') qs.append('category', categoryF);
       if (actionF !== 'all') qs.append('action', actionF);
       if (search.trim()) qs.append('q', search.trim());
-      if (dateFrom) qs.append('from', new Date(dateFrom).toISOString());
-      if (dateTo) qs.append('to', new Date(dateTo + 'T23:59:59').toISOString());
+      if (dateFrom) qs.append('from', new Date(dateFrom + 'T00:00:00').toISOString());
+      if (dateTo) qs.append('to', new Date(dateTo + 'T23:59:59.999').toISOString());
+      if (append) qs.append('page', String(nextServerPage.current));
 
       const query = qs.toString();
       const data = await apiSync(query ? `/logs?${query}` : '/logs', 'GET');
+      if (request !== requestVersion.current) return;
       if (!data) throw new Error();
-      setLogs(Array.isArray(data) ? data : (data.logs || []));
+      const rows = Array.isArray(data) ? data : (data.logs || []);
+      setLogs(previous => append ? [...new Map([...previous, ...rows].map(row => [String(row.category || 'audit') + ':' + row.id, row])).values()] : rows);
+      setAvailableTotal(Array.isArray(data) ? rows.length : Number(data.total) || rows.length);
+      nextServerPage.current = (Number(data.page) || nextServerPage.current) + 1;
       try {
-        setDiagnostics(await apiSync('/logs/diagnostics', 'GET'));
+        const result = await apiSync('/logs/diagnostics', 'GET');
+        if (request === requestVersion.current) setDiagnostics(result);
       } catch (error) {
-        setDiagnostics({ status: 'unavailable', error: error?.message || 'Diagnostics unavailable.' });
+        if (request === requestVersion.current) setDiagnostics({ status: 'unavailable', error: error?.message || 'Diagnostics unavailable.' });
       }
     } catch (error) {
+      if (request !== requestVersion.current) return;
       setLoadError(error?.message || 'Logs service is unavailable.');
       setDiagnostics({ status: 'unavailable', error: error?.message || 'Logs service is unavailable.' });
-      setLogs([]);
+      if (!append) setLogs([]);
     } finally {
-      setLoading(false);
+      if (request === requestVersion.current) setLoading(false);
     }
   }, [categoryF, actionF, search, dateFrom, dateTo]);
 
@@ -115,13 +128,14 @@ export default function Logs() {
     finally { setSelfTesting(false); }
   }, [fetchLogs, toast]);
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  const invalidateRequests = useCallback(() => { requestVersion.current++; }, []);
+  useEffect(() => { fetchLogs(); return invalidateRequests; }, [fetchLogs, invalidateRequests]);
 
   const enriched = useMemo(() => logs.map(l => ({
     ...l,
-    _sentiment: getSentiment(l.details || l.description || ''),
+    _sentiment: getSentiment(l.details || l.description || l.failure_reason || ''),
     _ts: l.timestamp ? new Date(l.timestamp).getTime() : 0,
-    _severity: String(l.severity || (getSentiment(l.details || l.description || '') === 'negative' ? 'error' : 'info')).toLowerCase(),
+    _severity: String(l.severity || (getSentiment(l.details || l.description || l.failure_reason || '') === 'negative' ? 'error' : 'info')).toLowerCase(),
     _actor: l.user_name || l.actor_name || l.user_email || l.email || 'System',
     _source: l.source || 'ultimate-api',
     _details: l.details || l.description || l.failure_reason || 'No additional details recorded.',
@@ -139,12 +153,12 @@ export default function Logs() {
     if (actionF   !== 'all') list = list.filter(l => (l.action || '').toLowerCase().includes(actionF));
     if (tableF    !== 'all') list = list.filter(l => (l.table_name || '') === tableF);
     if (sentimentF !== 'all') list = list.filter(l => l._sentiment === sentimentF);
-    if (dateFrom)            list = list.filter(l => l._ts >= new Date(dateFrom).getTime());
-    if (dateTo)              list = list.filter(l => l._ts <= new Date(dateTo + 'T23:59:59').getTime());
+    if (dateFrom)            list = list.filter(l => l._ts >= new Date(dateFrom + 'T00:00:00').getTime());
+    if (dateTo)              list = list.filter(l => l._ts <= new Date(dateTo + 'T23:59:59.999').getTime());
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(l =>
-        (l.details || '').toLowerCase().includes(q) ||
+        String(l._details || '').toLowerCase().includes(q) ||
         (l.action  || '').toLowerCase().includes(q) ||
         (l.table_name || '').toLowerCase().includes(q) ||
         (l._actor || '').toLowerCase().includes(q) ||
@@ -182,8 +196,13 @@ export default function Logs() {
       ext = 'json';
     } else {
       const headers = Object.keys(data[0] || {});
-      const rows = [headers.join(','), ...data.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))];
-      content = rows.join('\n');
+      const cell = value => {
+        let text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+        if (/^\s*[=+\-@]/.test(text)) text = "'" + text;
+        return '"' + text.replaceAll('"', '""') + '"';
+      };
+      const rows = [headers.map(cell).join(','), ...data.map(r => headers.map(h => cell(r[h])).join(','))];
+      content = rows.join('\r\n');
       type = 'text/csv';
       ext = 'csv';
     }
@@ -223,7 +242,7 @@ export default function Logs() {
   return (
     <div style={{ padding: '0.5rem 0' }}>
       {/* Header */}
-      <PageHeader metric={{ label: 'Log entries', value: enriched.length, note: `${filtered.length} shown`, tone: 'lilac', user }} accent="Hub" title="Logs" subtitle={<>{enriched.length} total · {filtered.length} shown</>} actions={<><div style={{ display: 'flex', gap: '0.5rem' }}>
+      <PageHeader metric={{ label: 'Loaded log entries', value: enriched.length, note: `${filtered.length} shown`, tone: 'lilac', user }} accent="Hub" title="Logs" subtitle={<>{enriched.length} of {availableTotal} available loaded · {filtered.length} shown</>} actions={<><div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={fetchLogs} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-2)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
             <RefreshCw size={12} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} /> Refresh
           </button>
@@ -333,6 +352,7 @@ export default function Logs() {
           </div>
           <Pagination label="Audit log pages" page={currentPage} pageCount={pageCount} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>)}
+        {!loading && logs.length < availableTotal && <button type="button" className="btn-primary" onClick={() => fetchLogs(true)}>Load more logs</button>}
       </div>
 
       {/* Expanded details modal */}
