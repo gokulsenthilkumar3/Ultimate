@@ -219,14 +219,14 @@ app.get(['/api/health', '/health'], async (req, res) => {
   // Only a client that prefers HTML (a browser tab) gets the page; fetch()'s */* gets JSON.
   if (req.accepts(['json', 'html']) === 'html' && req.query.format !== 'json') {
     res.setHeader('content-type', 'text/html; charset=utf-8');
-    res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https:; frame-ancestors ${config.security.frameAncestors}`);
+    res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https:; frame-ancestors ${config.security.frameAncestors}`);
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     return res.end(renderServerHealthHtml(payload, { app: APP_URL, dbStudio: config.gateway.dbStudioUrl, gateway: `${config.gateway.url}/health` }));
   }
   res.json(payload);
 });
 app.get(['/api/docs', '/docs', '/api-explorer.html'], (req, res) => {
-  res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:; frame-ancestors ${config.security.frameAncestors}`);
+  res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:; frame-ancestors ${config.security.frameAncestors}`);
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.sendFile(path.join(__dirname, 'api-explorer.html'));
 });
