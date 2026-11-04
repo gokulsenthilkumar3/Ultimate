@@ -2,10 +2,12 @@ import {beforeAll,describe,expect,it,vi} from 'vitest';
 import fs from 'node:fs';
 import {BufferAttribute,MeshBasicMaterial,Vector3} from 'three';
 import validator from 'gltf-validator';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {readGlb,readAccessor} from '../../../scripts/plan-preview/glb.mjs';
 import {sceneFromGlb} from '../../../scripts/human75/glb-tools.mjs';
 import {decompressGlb,packGlb,sha256} from '../../../scripts/human-realism/glb-family.mjs';
-import {attachNativeAnatomy} from './useNativeAnatomy';
+import {attachNativeAnatomy,loadNativeAnatomyPackage} from './useNativeAnatomy';
 import {resolveModelAsset} from './modelAssetRegistry';
 import {anatomicalBodyExportIndex} from './anatomyTissueGeometry';
 import {protectAvatarCapture} from './protectedCapture';
@@ -22,16 +24,33 @@ function sceneWithCustomAttributes(glb){
   });
   return result;
 }
+// The private package's baked nativeBinding.bodySha256 equals the manifest
+// public sha256 (both hash the shipped compressed bytes). Production attaches
+// through loadNativeAnatomyPackage (real GLTFLoader with Meshopt decoder), so
+// tests must use that same path — sceneFromGlb does not restore node extras,
+// which would make the binding guard fail for the wrong reason.
+const loaded={};
+async function prepareLod(lod){
+  const a=manifest.assets[lod];
+  decoded[lod]={public:await decompressGlb(readGlb('public/assets/models/'+a.file)),private:await decompressGlb(readGlb('public/assets/models/'+a.privateFile))};
+  loaded[lod]=await loadNativeAnatomyPackage(
+    {privatePath:'public/assets/models/'+a.privateFile,privateSha256:a.privateSha256},
+    {fetcher:async()=>({ok:true,arrayBuffer:async()=>new Uint8Array(fs.readFileSync('public/assets/models/'+a.privateFile))}),loader:(()=>{const l=new GLTFLoader();l.setMeshoptDecoder(MeshoptDecoder);return l})()},
+  );
+}
 function fixture(lod='core'){
   const publicScene=sceneWithCustomAttributes(decoded[lod].public);
-  const privateScene=sceneWithCustomAttributes(decoded[lod].private);
   const asset={...manifest.assets[lod],lod};
-  const attachment=attachNativeAnatomy({scene:privateScene.root},publicScene.body,asset);
+  const attachment=attachNativeAnatomy({scene:loaded[lod].scene},publicScene.body,asset);
   return {...publicScene,attachment,asset};
 }
 beforeAll(async()=>{
-  for(const lod of ['core','hero']){
-    it(lod+' updates still tissue materials without disposing shared diagnostic materials',()=>{
+  await Promise.all(['core','hero'].map(prepareLod));
+},60_000);
+
+describe('actual R2 asset family',()=>{
+  it('updates still tissue materials without disposing shared diagnostic materials',()=>{
+    for(const lod of ['core','hero']){
       const {body,attachment}=fixture(lod);attachment.deformer.apply({});
       const first=new MeshBasicMaterial(),second=new MeshBasicMaterial(),dispose=vi.spyOn(first,'dispose'),secondDispose=vi.spyOn(second,'dispose');
       body.material=attachment.mesh.material=first;
@@ -42,13 +61,8 @@ beforeAll(async()=>{
       expect(attachment.deformer.updateDetails()).toBe(true);expect(patch.material).toBe(second);
       expect(dispose).not.toHaveBeenCalled();attachment.dispose();expect(secondDispose).not.toHaveBeenCalled();
       first.dispose();second.dispose();
-    });
-    const a=manifest.assets[lod];
-    decoded[lod]={public:await decompressGlb(readGlb('public/assets/models/'+a.file)),private:await decompressGlb(readGlb('public/assets/models/'+a.privateFile))};
-  }
-},30000);
-
-describe('actual R2 asset family',()=>{
+    }
+  });
   for(const lod of ['core','hero']){
     it(lod+' validates decoded geometry, matches its provenance and meets payload budgets',async()=>{
       const a=manifest.assets[lod],budgets=family.budgets;
