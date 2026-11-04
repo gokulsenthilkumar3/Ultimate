@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalModule, GROUP_ORDER, GROUPS, MODULE_DEFINITIONS, navigationGroups, normalizeGroupOrder, ROUTE_ALIASES, TABS } from './navigation';
+import { FEATURE_GROUPS } from './featureRegistry';
 
 describe('canonical module registry', () => {
+  it('shares the icon-free shell grouping contract with every navigation entry', () => {
+    for (const [id, tab] of Object.entries(TABS)) expect(tab.group).toBe(FEATURE_GROUPS[id]);
+    expect(FEATURE_GROUPS.forex).toBe('money');
+    for (const id of ['customers', 'finsync', 'oxfin']) expect(FEATURE_GROUPS[id]).toBe('customers');
+  });
   it('keeps Finance and Hub names when older configuration supplies the previous labels', () => {
     const groups = navigationGroups([{ id: 'money', label: 'Money', tabs: ['transactions'] }, { id: 'system', label: 'More' }]);
     expect(groups.money.label).toBe('Finance');

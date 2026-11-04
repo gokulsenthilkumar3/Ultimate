@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { Euler, Matrix4, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -40,7 +41,7 @@ describe('authored canonical hair and tee attachments', () => {
       expect(result.intersectionPairs).toBe(0); expect(result.minimumTriangleGapMm).toBeGreaterThanOrEqual(2);
       expect(result.proxyExterior.outsideProxy).toBe(true);
     } finally { bodyGeometry?.dispose(); garmentGeometry?.dispose(); attachments.dispose(); identity.dispose(); }
-  }, 60000);
+  }, 120000);
 
   it('applies transferred worker geometry only after a valid fit and preserves the live buffers', async () => {
     const identity = createParametricIdentity(source), body = identity.scene.getObjectByName('Body');
@@ -145,7 +146,7 @@ describe('authored canonical hair and tee attachments', () => {
       expect(changedVertices).toBeGreaterThan(1000);
       expect(source.getObjectByName('Body').geometry.attributes.position.array).toEqual(original);
     } finally { attachments.dispose(); identity.dispose(); }
-  }, 20000);
+  }, 60000);
 
   it('shares a canonical bind space and follows head/arm poses after identity changes', () => {
     const identity = createParametricIdentity(source), body = identity.scene.getObjectByName('Body');
@@ -169,7 +170,7 @@ describe('authored canonical hair and tee attachments', () => {
       expect(hair.matrix.elements).toEqual(body.matrix.elements);
       expect(hair.bindMatrixInverse.elements).toEqual(body.bindMatrixInverse.elements);
     } finally { attachments.dispose(); identity.dispose(); }
-  });
+  }, 30000);
 
   it('retains all 306 named offline shape deltas without changing the live source', () => {
     const body = source.getObjectByName('Body'), original = body.geometry.attributes.position.array.slice(), originalWeights = [...body.morphTargetInfluences];

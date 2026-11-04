@@ -11,7 +11,9 @@ const tests = (await fs.readdir(suiteDirectory)).filter(name => name.endsWith('.
 let exitCode = 1;
 try {
   exitCode = await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--test', ...tests], {
+    // Each file opens isolated native SQLite clients. Bound worker count on
+    // developer machines as well as CI instead of using every logical CPU.
+    const child = spawn(process.execPath, ['--test', '--test-concurrency=2', ...tests], {
       stdio: 'inherit', env: { ...process.env, GROWTHTRACK_BACKEND_TEST_ROOT: root },
     });
     child.on('error', reject);

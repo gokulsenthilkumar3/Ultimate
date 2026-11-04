@@ -46,7 +46,7 @@ it('retains genuine zeroes while discarding blank values in trends', () => {
     { date: '2026-09-03', type: 'energy', value: 2 },
     { date: '2026-09-04', type: 'energy', value: '' },
   ];
-  show(); fireEvent.click(screen.getByRole('tab', { name: 'trends' }));
+  show(); fireEvent.click(screen.getByRole('tab', { name: 'Trends' }));
   const trend = screen.getByTestId('trend-data');
   expect(trend).toHaveTextContent('"energy":0');
   expect(trend).not.toHaveTextContent('09-04');
@@ -59,7 +59,7 @@ it('keeps missing goal progress unavailable while retaining recorded zeroes and 
     { id: 'zero', title: 'Recorded zero', target_value: 10, current_value: 0 },
     { id: 'done', title: 'Completed', status: 'completed' },
   ];
-  show(); fireEvent.click(screen.getByRole('tab', { name: 'goals' }));
+  show(); fireEvent.click(screen.getByRole('tab', { name: 'Goals' }));
   expect(screen.getAllByText('Progress unavailable')).toHaveLength(2);
   expect(screen.getByText('0%')).toBeVisible();
   expect(screen.getByText('100%')).toBeVisible();
@@ -74,7 +74,7 @@ it('counts completed tasks in their due-date cohort once across different comple
     { due_date: localDateKey(yesterday), completed: false },
     { due_date: localDateKey(today), completed: false },
   ];
-  show(); fireEvent.click(screen.getByRole('tab', { name: 'trends' }));
+  show(); fireEvent.click(screen.getByRole('tab', { name: 'Trends' }));
   const data = JSON.parse(screen.getByTestId('trend-data').textContent);
   expect(data.find(point => point.date === localDateKey(today).slice(5))).toMatchObject({ rate: 0, total: 1 });
   expect(data.find(point => point.date === localDateKey(twoDaysAgo).slice(5))).toMatchObject({ rate: 100, total: 1 });

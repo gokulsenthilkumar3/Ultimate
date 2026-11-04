@@ -12,6 +12,10 @@ const flag = fallback => z.enum(['1', '0', 'true', 'false', 'on', 'off', 'yes', 
   .transform(value => ['1', 'true', 'on', 'yes'].includes(value));
 const list = fallback => z.string().default(fallback)
   .transform(value => value.split(',').map(item => item.trim()).filter(Boolean));
+const originList = list('').pipe(z.array(z.string().refine(value => {
+  try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && url.origin === value; }
+  catch { return false; }
+}, 'must be an exact http(s) origin without a path, credentials or wildcard')));
 // Base URLs drop a trailing slash so paths can be appended; APP_URL is kept as
 // written because the frontend base path is significant.
 const httpUrl = (fallback, { trimSlash = true } = {}) => z.string().default(fallback).transform((value, context) => {
@@ -30,9 +34,10 @@ const schema = z.object({
   NODE_ENV: z.string().default('development'),
   // HTTP server
   PORT: int(3001, 1, 65535),
-  LISTEN_HOST: z.string().min(1).default('0.0.0.0'),
+  LISTEN_HOST: z.string().min(1).default('127.0.0.1'),
   APP_URL: httpUrl('http://localhost:5000/Ultimate', { trimSlash: false }),
-  APP_ORIGINS: list(''),
+  APP_ORIGINS: originList,
+  CSP_CONNECT_ORIGINS: originList,
   DEV_ORIGIN_PORTS: list('3001,5000,5001,5173'),
   TRUST_PROXY: flag('false'),
   SERVE_FRONTEND: flag('false'),
@@ -46,6 +51,11 @@ const schema = z.object({
   API_RATE_LIMIT_PER_MINUTE: int(120, 1, 100_000),
   HANDOFF_SECRET: z.string().regex(/^[a-f0-9]{64}$/i, 'must be 64 hexadecimal characters').optional(),
   APP_ENCRYPTION_KEY: z.string().regex(/^[a-f0-9]{64}$/i, 'must be 64 hexadecimal characters').optional(),
+  OWNER_MFA_SECRET: z.string().regex(/^[A-Z2-7]{32,128}$/, 'must be an unpadded uppercase Base32 secret of at least 160 bits').optional(),
+  BACKUP_ENABLED: flag('off'),
+  BACKUP_DIR: z.string().min(1).default('backups'),
+  BACKUP_INTERVAL_HOURS: int(24, 1, 168),
+  BACKUP_FIRST_RUN_SECONDS: int(60, 0, 3600),
   // Logs and gateway
   LOG_RETENTION_DAYS: int(90, 1, 3650),
   LOG_CLEANUP_HOURS: int(6, 1, 168),
@@ -109,7 +119,8 @@ export function loadServerConfig(env = process.env) {
   }
   const e = parsed.data;
   const production = e.NODE_ENV === 'production';
-  if (production && !e.HANDOFF_SECRET) throw new Error('Invalid server configuration:\n- HANDOFF_SECRET: required in production so signed handoffs survive restarts and work across instances');
+  if (production && !e.HANDOFF_SECRET) throw new Error('Invalid server configuration:\n- HANDOFF_SECRET: required in production for a stable signing identity; outstanding handoffs remain process-local');
+  if (e.BACKUP_ENABLED && !e.APP_ENCRYPTION_KEY) throw new Error('Invalid server configuration:\n- APP_ENCRYPTION_KEY: required for encrypted scheduled backups');
   const devOrigins = e.DEV_ORIGIN_PORTS.flatMap(port => [`http://localhost:${port}`, `http://127.0.0.1:${port}`]);
   const origins = e.APP_ORIGINS.length ? e.APP_ORIGINS : production ? [] : devOrigins;
   const frameAncestors = ["'self'", ...e.APP_ORIGINS, ...(production ? [] : ['http://localhost:*', 'http://127.0.0.1:*'])].join(' ');
@@ -122,10 +133,11 @@ export function loadServerConfig(env = process.env) {
     env: e.NODE_ENV, production,
     server: { port: e.PORT, listenHost: e.LISTEN_HOST, appUrl: e.APP_URL, trustProxy: e.TRUST_PROXY,
       serveFrontend: e.SERVE_FRONTEND || production, frontendBasePath: e.FRONTEND_BASE_PATH, jsonBodyLimit: `${e.JSON_BODY_LIMIT_MB}mb` },
-    security: { origins, frameAncestors, sessionHours: e.SESSION_HOURS, sessionTouchMs: e.SESSION_TOUCH_MS,
+    security: { origins, frameAncestors, connectOrigins: [...new Set(['https://api.open-meteo.com', 'https://api.stripe.com', 'https://api-js.mixpanel.com', ...e.CSP_CONNECT_ORIGINS])], mfaSecret: e.OWNER_MFA_SECRET || null, sessionHours: e.SESSION_HOURS, sessionTouchMs: e.SESSION_TOUCH_MS,
       loginWindowMs: e.LOGIN_WINDOW_MS, loginMaxAttempts: e.LOGIN_MAX_ATTEMPTS, apiRateLimitPerMinute: e.API_RATE_LIMIT_PER_MINUTE,
       handoffSecret: e.HANDOFF_SECRET || null, encryptionKey: e.APP_ENCRYPTION_KEY || null },
     logs: { retentionDays: e.LOG_RETENTION_DAYS, cleanupIntervalMs: e.LOG_CLEANUP_HOURS * 60 * MINUTE, cleanupEnabled: e.LOG_CLEANUP_ENABLED },
+    backup: { enabled: e.BACKUP_ENABLED, directory: e.BACKUP_DIR, intervalMs: e.BACKUP_INTERVAL_HOURS * 60 * MINUTE, firstRunMs: e.BACKUP_FIRST_RUN_SECONDS * 1000 },
     gateway: { probeTimeoutMs: e.GATEWAY_PROBE_TIMEOUT_MS, url: e.GATEWAY_URL, dbStudioUrl: e.DB_STUDIO_URL,
       companions: [
         workspaceCompanion('finsync', 'FinSync', e.COMPANION_FINSYNC_URL),

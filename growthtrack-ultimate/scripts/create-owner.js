@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import bcrypt from 'bcryptjs';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { validateOwnerSetup } from '../server/domains/ownerProvisioning.js';
 
 const require = createRequire(import.meta.url);
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -21,9 +22,7 @@ const password = String(process.env.OWNER_PASSWORD || '');
 const fullName = String(process.env.OWNER_NAME || '').trim();
 
 try {
-  if (!email || !fullName || password.length < 12) {
-    throw new Error('Set OWNER_EMAIL, OWNER_NAME, and an OWNER_PASSWORD of at least 12 characters in .env.');
-  }
+  validateOwnerSetup({ email, fullName, password });
   const count = await prisma.user.count();
   if (count > 0) throw new Error('Owner creation refused because a user already exists.');
   const owner = await prisma.user.create({

@@ -6,11 +6,15 @@ on:
     paths:
       - "growthtrack-ultimate/**"
       - ".github/workflows/ci.yml"
+      - "package.json"
+      - ".nvmrc"
   pull_request:
     branches: [main, master]
     paths:
       - "growthtrack-ultimate/**"
       - ".github/workflows/ci.yml"
+      - "package.json"
+      - ".nvmrc"
   workflow_dispatch:
 
 permissions:
@@ -38,7 +42,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: growthtrack-ultimate/package-lock.json
       - name: Install locked dependencies
@@ -56,8 +60,8 @@ jobs:
       - name: Agent review, privacy and conversation browser workflows
         run: npm run test:agents:e2e
 
-  quality:
-    name: Quality Gate
+  static-checks:
+    name: Build and static checks
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
@@ -70,7 +74,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: growthtrack-ultimate/package-lock.json
 
@@ -83,9 +87,6 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Install browser test engines
-        run: npx playwright install --with-deps chromium firefox webkit
-
       - name: Asset provenance (hashes and licence status)
         run: npm run check:assets
 
@@ -94,15 +95,6 @@ jobs:
 
       - name: Digital human specification contracts
         run: npm run test:human-spec
-
-      - name: Unit and component tests with coverage
-        run: npm run test:run
-
-      - name: Isolated API, migration and backup/restore tests
-        run: node tests/unit/server-backend/run.mjs
-
-      - name: Authenticated browser fixture workflows
-        run: npm run test:e2e
 
       - name: Lint
         run: npm run lint
@@ -127,14 +119,105 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload quality evidence
+  unit-tests:
+    name: Unit and component coverage (${{ matrix.shard }}/4)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    defaults:
+      run:
+        working-directory: growthtrack-ultimate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Install browser engine for CSS geometry tests
+        run: npx playwright install --with-deps chromium
+      - name: Unit and component tests with coverage
+        run: npm run test:run -- --maxWorkers=2 --shard=${{ matrix.shard }}/4
+      - name: Upload unit coverage evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: growthtrack-quality-evidence
-          path: |
-            growthtrack-ultimate/coverage
-            growthtrack-ultimate/test-results
-            growthtrack-ultimate/playwright-report
+          name: growthtrack-unit-evidence-${{ matrix.shard }}
+          path: growthtrack-ultimate/coverage
           if-no-files-found: ignore
           retention-days: 14
+
+  backend-tests:
+    name: Isolated API and migration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: growthtrack-ultimate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Isolated API, migration and backup/restore tests
+        run: node tests/unit/server-backend/run.mjs
+
+  browser-tests:
+    name: Browser workflows (${{ matrix.browser }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    defaults:
+      run:
+        working-directory: growthtrack-ultimate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Install browser test engine
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Authenticated browser fixture workflows
+        run: npm run test:e2e -- --project=${{ matrix.browser }} --workers=2
+      - name: Upload browser workflow evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: growthtrack-browser-${{ matrix.browser }}
+          path: growthtrack-ultimate/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Preserve the required check name and fail it whenever any independent gate
+  # fails or is cancelled. Long test suites no longer share one job's deadline.
+  quality:
+    name: Quality Gate
+    if: ${{ always() }}
+    needs: [static-checks, unit-tests, backend-tests, browser-tests, agent-guardrails]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every validation job to pass
+        env:
+          CHECK_RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          if [[ "$CHECK_RESULTS" != "success,success,success,success,success" ]]; then
+            printf 'Required check results: %s\n' "$CHECK_RESULTS"
+            exit 1
+          fi

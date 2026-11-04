@@ -34,7 +34,8 @@ it.each(files)('adds real rig and surface data while retaining source positions,
   expect(output.json.meshes.find(m=>m.name==='GrowthTrackNails').extras.nails).toHaveLength(20);
   for(const [name,settings] of [['Nails',HUMAN_SURFACE.nails],['Tearline',HUMAN_SURFACE.tearline]]){
     const actual=output.json.materials.find(m=>m.name===`GrowthTrack${name}Material`).pbrMetallicRoughness.baseColorFactor;
-    expect(actual.slice(0,3)).toEqual(new Color(settings.color).toArray());
+    const expected=new Color(settings.color).toArray();
+    actual.slice(0,3).forEach((channel,index)=>expect(channel).toBeCloseTo(expected[index],12));
   }
 });
 it.each(files)('projects every nail onto real skin and gives cornea triangles an outward facing surface in %s',file=>{

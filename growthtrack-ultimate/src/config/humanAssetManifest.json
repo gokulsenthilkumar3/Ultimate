@@ -8,7 +8,7 @@
       "sha256": "c907a3778396b6f478cf218341b5a610e496ff793d7084e5dce889a472476f70",
       "bytes": 2066456,
       "privateFile": "humanoid-human-r2-private-core.glb",
-      "privateSha256": "62108cf9deba13e17c5d406d18e05e3838ef26e4436b227a64c1aa58fba3c2ab",
+      "privateSha256": "d8ee3b6881654ccb1daf9bd4ba70ae2df1f725f24f36e7064042207bd6814286",
       "privateBytes": 1180304,
       "anatomySex": "male"
     },
@@ -17,7 +17,7 @@
       "sha256": "5d0e8d250821aff9d1335e001e749b7abb3132754f4474e1bf74cfa509ec1002",
       "bytes": 4776532,
       "privateFile": "humanoid-human-r2-private-hero.glb",
-      "privateSha256": "53cba1d3cdc91f22e6573083c4e05db67d8473bea506a601e1642b232884b750",
+      "privateSha256": "b29ffd6e0f758db0f49a96a5f4375ae31407aa17b016f8aebeff5de3d082dcca",
       "privateBytes": 2073924,
       "anatomySex": "male"
     }

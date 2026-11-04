@@ -9,10 +9,12 @@ export default defineConfig([
   // output, local reports, generated fixtures, or bundled plugin sources and
   // should never hide real regressions in `src/`.
   globalIgnores([
-    'dist', '.agents', '.build_test', 'coverage', 'logs', 'playwright-report',
+    'dist', 'dist-admin-demo', '.agents', '.build_test', 'coverage', 'logs', 'playwright-report',
     'test-results', '.tmp', '.vite', '.claude', '.windsurf',
     'prisma-generated', 'release-v2', 'release-*',
     'docs/ui-review/before-source',
+    'docs/3d-plans/plan-assets/human-stage.js',
+    'docs/3d-plans/plan-assets/human-preview.js',
     'build_uber.js', 'replace-hovers.js', 'task_opts.cjs',
   ]),
   {
@@ -43,7 +45,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['server.js', 'server/**/*.js', 'scripts/**/*.js', 'scripts/**/*.mjs', 'desktop.js', 'logger.js', 'vite.config.js'],
+    files: ['server.js', 'server/**/*.js', 'scripts/**/*.js', 'scripts/**/*.mjs', 'desktop.js', 'logger.js', 'vite*.config.{js,mjs}'],
     languageOptions: { globals: { ...globals.node, ...globals.es2021 } },
   },
   {

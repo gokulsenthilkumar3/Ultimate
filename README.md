@@ -13,6 +13,7 @@ Run these commands from this application directory. Configure required values lo
 ```powershell
 npm install --prefix growthtrack-ultimate
 Copy-Item growthtrack-ultimate/.env.example growthtrack-ultimate/.env
+npm --prefix growthtrack-ultimate run db:generate
 ```
 
 ## Run

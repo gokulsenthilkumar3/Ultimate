@@ -105,6 +105,8 @@ public/assets/hdri/
 *.db-shm
 *.db-wal
 *.db-journal
+*.db.enc
+*.db.enc.json
 *.sqlite
 *.sqlite3
 server/.env

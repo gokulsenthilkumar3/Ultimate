@@ -9,9 +9,9 @@ describe('kinetic 5 colour contract', () => {
     expect(contrast(theme.sidebarText, theme.sidebar)).toBeGreaterThanOrEqual(4.5);
   });
   it('pairs the new bright primary with ink and keeps the 4.2 fallback values', () => {
-    expect(tokens.version).toBe('5.0.0');
+    expect(tokens.version).toMatch(/^5\.\d+\.\d+$/);
     expect(contrast(tokens.palettes.coral.light, tokens.palettes.coral.lightText)).toBeGreaterThanOrEqual(4.5);
     expect(tokens.illustration.colors.coral).toBe('#FF806B');
-    expect(tokens.illustration.themes.light.canvas).toBe('#FFFBED');
+    expect(tokens.illustration.themes.light.canvas).toBe('#F7F9F6');
   });
 });

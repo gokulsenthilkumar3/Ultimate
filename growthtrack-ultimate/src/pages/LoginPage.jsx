@@ -25,6 +25,8 @@ export default function LoginPage({ theme = 'light', palette = 'forest', signing
   useLandingMotion(rootRef);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [mfaRequired, setMfaRequired] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -46,11 +48,13 @@ export default function LoginPage({ theme = 'light', palette = 'forest', signing
     setLoading(true);
     setError('');
     try {
-      const { error: signInError } = await signIn(email, password);
+      const { error: signInError } = await signIn(...(mfaRequired ? [email, password, otp] : [email, password]));
       if (signInError) throw signInError;
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err?.name === 'ApiError' ? err.message : uiMessages.signIn);
+      const mfaError = ['MFA_REQUIRED', 'MFA_INVALID'].includes(err?.payload?.code);
+      if (mfaError) { setMfaRequired(true); setOtp(''); }
+      setError(mfaError ? err.payload.code === 'MFA_REQUIRED' ? 'Enter the six-digit code from your authenticator.' : 'That code is invalid or already used. Try the next code.' : err?.name === 'ApiError' ? err.message : uiMessages.signIn);
     } finally {
       setLoading(false);
     }
@@ -118,6 +122,7 @@ export default function LoginPage({ theme = 'light', palette = 'forest', signing
                 />
                 <button type="button" name="password" className="gt-public-login__reveal" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} disabled={busy} onClick={() => setShowPassword(value => !value)}>{showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button>
               </div>
+              {mfaRequired && <TextField className="gt-public-login__field" label="Authenticator code" name="otp" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoFocus value={otp} onChange={event => { setOtp(event.target.value.replace(/\D/g, '')); setError(''); }} disabled={busy} aria-describedby={error ? 'login-error' : undefined} />}
               {error && <div id="login-error" className="gt-public-login__error" role="alert">{error}</div>}
               <Button type="submit" className="gt-public-login__submit" loading={busy} loadingLabel={signingOut ? 'Finishing sign-out…' : 'Signing in…'}>Sign in <ArrowRight size={17} aria-hidden="true" /></Button>
             </form>

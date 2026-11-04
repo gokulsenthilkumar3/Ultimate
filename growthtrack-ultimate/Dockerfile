@@ -12,12 +12,13 @@ RUN npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
-ENV NODE_ENV=production PORT=3001 DATABASE_URL=file:/data/ultimate.db FILE_STORAGE_ROOT=/data/files LOG_DIR=/data/logs BACKUP_DIR=/data/backups GROWTHTRACK_NOTES_V1=1
+ENV NODE_ENV=production LISTEN_HOST=0.0.0.0 PORT=3001 DATABASE_URL=file:/data/ultimate.db FILE_STORAGE_ROOT=/data/files LOG_DIR=/data/logs BACKUP_DIR=/data/backups GROWTHTRACK_NOTES_V1=1
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 COPY --from=build /app/server.js ./server.js
+COPY --from=build /app/api-explorer.html ./api-explorer.html
 COPY --from=build /app/logger.js ./logger.js
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/scripts ./scripts

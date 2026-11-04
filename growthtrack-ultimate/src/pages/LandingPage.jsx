@@ -96,7 +96,7 @@ export default function LandingPage() {
   const cast = enabled ? glowCrew : crew;
 
   return <main ref={ref} className="gt-public playful-landing" data-playful-motion={String(canAnimate)} data-reduced-motion={String(reduced)}>
-    <a className="gt-public__skip" href="#public-content">Skip to main content</a>
+    <a className="gt-public__skip" href="#public-content" tabIndex={0}>Skip to main content</a>
     <div className="playful-wrap">
       <header className="playful-header">
         <div className="playful-header__identity"><Link className="playful-brand" to="/welcome" aria-label="GrowthTrack home"><AnimatedLogo />growthtrack<span className="playful-brand__dot" aria-hidden="true">.</span></Link><span className="playful-fictional-label">A fictional little world</span></div>

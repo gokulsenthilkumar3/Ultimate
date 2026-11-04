@@ -104,7 +104,7 @@ test('Shopping pages retain price and edit drafts and persist only the selected 
   expect(errors).toEqual([]);
 });
 
-test('companion hosts admit a frame only after confirmed readiness without loading another workspace', async ({ page }) => {
+test('customer products stay separate while service readiness changes', async ({ page }) => {
   let mode = 'pending';
   let release: (() => void) | undefined;
   const childDocuments: string[] = [];
@@ -116,20 +116,25 @@ test('companion hosts admit a frame only after confirmed readiness without loadi
   await page.route('**/api/gateway/health', async route => {
     if (mode === 'pending') await new Promise<void>(resolve => { release = resolve; });
     if (mode === 'failed') { await route.fulfill({ status: 503, json: { error: 'Fixture health unavailable.' } }); return; }
-    await route.fulfill({ json: { services: [{ id: 'equity', online: true }] } });
+    await route.fulfill({ json: { services: [{ id: 'finsync', online: true }] } });
   });
-  await page.route('**/Ultimate/products/equity/**', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body><h1>Synthetic companion</h1></body></html>' }));
-  await page.goto('/finance/equity');
-  await expect(page.getByRole('heading', { name: /^Checking Equity/ })).toBeVisible();
+  await page.route('**/Ultimate/products/finsync/**', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body><h1>Synthetic companion</h1></body></html>' }));
+  await page.goto('/hub/companion?view=finsync');
+  await expect(page.getByRole('heading', { name: 'FinSync customer administration', exact: true })).toBeVisible();
   await expect(page.locator('iframe')).toHaveCount(0);
   await expect.poll(() => Boolean(release)).toBe(true);
   mode = 'failed'; release!();
-  await expect(page.getByRole('link', { name: /^Open separate Equity/ })).toBeVisible();
+  await expect(page.getByText('Service status is unavailable. Ultimate routes remain usable.')).toBeVisible();
+  const product = page.getByRole('link', { name: /^Open separate FinSync/ });
+  await expect(product).toHaveAttribute('target', '_blank');
+  await expect(product).toHaveAttribute('rel', 'noopener noreferrer');
   expect(childDocuments).toEqual([]);
   expect(childStateRequests).toBe(0);
   mode = 'online';
-  await page.getByRole('button', { name: 'Refresh app', exact: true }).click();
-  await expect(page.frameLocator('.unified-product-frame').getByRole('heading', { name: 'Synthetic companion' })).toBeVisible();
-  expect(childDocuments).toHaveLength(1);
+  await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
+  await expect(page.getByText('Service status is unavailable. Ultimate routes remain usable.')).toHaveCount(0);
+  await expect(product).toBeVisible();
+  await expect(page.locator('iframe')).toHaveCount(0);
+  expect(childDocuments).toEqual([]);
   expect(childStateRequests).toBe(0);
 });

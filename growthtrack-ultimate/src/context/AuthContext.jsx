@@ -35,9 +35,9 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('growthtrack:auth-expired', expire);
   }, [clearSession, fetchSession]);
 
-  const signIn = async (email, password) => {
+  const signIn = async (email, password, otp) => {
     try {
-      const data = await authProvider.signIn({ email, password });
+      const data = await authProvider.signIn({ email, password, otp });
       setUser(data.user); setSession(data.session);
       setLoggingUser(data.user); await flushLogQueue();
       safeLocalStorage.setItem('growthtrack-user', JSON.stringify(data.user));

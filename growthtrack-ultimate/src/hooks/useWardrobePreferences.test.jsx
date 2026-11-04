@@ -8,7 +8,7 @@ import { apiRequest } from '../lib/apiClient';
 vi.mock('../lib/apiClient',()=>({apiRequest:vi.fn()}));
 vi.mock('../lib/logger',()=>({logCRUD:vi.fn().mockResolvedValue(undefined)}));
 beforeEach(()=> {
-  vi.useFakeTimers();vi.mocked(apiRequest).mockReset().mockResolvedValue({});
+  vi.useFakeTimers();vi.mocked(apiRequest).mockReset().mockResolvedValue({id:'fixture-targets'});
   useStore.getState().resetSessionData();useStore.setState({user:{id:'wardrobe-owner'},physiqueTargets:{anatomyV2:{schemaVersion:2}}});
 });
 afterEach(()=>{cleanup();vi.useRealTimers();});

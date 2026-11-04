@@ -17,7 +17,7 @@
     },
     {
       "file": "public/assets/models/humanoid-human-r2-private-core.glb",
-      "sha256": "62108cf9deba13e17c5d406d18e05e3838ef26e4436b227a64c1aa58fba3c2ab",
+      "sha256": "d8ee3b6881654ccb1daf9bd4ba70ae2df1f725f24f36e7064042207bd6814286",
       "bytes": 1180304,
       "budget": 2000000,
       "budgetPassed": true,
@@ -43,7 +43,7 @@
     },
     {
       "file": "public/assets/models/humanoid-human-r2-private-hero.glb",
-      "sha256": "53cba1d3cdc91f22e6573083c4e05db67d8473bea506a601e1642b232884b750",
+      "sha256": "b29ffd6e0f758db0f49a96a5f4375ae31407aa17b016f8aebeff5de3d082dcca",
       "bytes": 2073924,
       "budget": 5000000,
       "budgetPassed": true,

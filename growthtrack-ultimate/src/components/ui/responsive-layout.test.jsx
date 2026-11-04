@@ -36,9 +36,11 @@ const content = renderToStaticMarkup(<PageTemplate type="record" title="Transact
 function shell(dir = 'ltr', collapsed = false, width = 1280) {
   const navigation = width < 640
     ? `<div class="gt-mobile-navigation" data-responsive-foundation><nav class="gt-mobile-dock">${['Finance', 'Insights', 'Wellness', 'Workspace'].map(label => `<a href="#"><span>${label}</span></a>`).join('')}<button>Hub</button></nav></div>`
-    : `<aside class="gt-app-navigation" data-mode="${width < 1440 ? 'compact' : 'desktop'}" data-responsive-foundation data-collapsed="${collapsed}"><div class="gt-navigation-rail"><a href="#">Finance</a><button>Modules</button></div></aside>`;
+    : width < 960
+      ? `<aside class="gt-app-navigation" data-mode="compact" data-panel-mode="overlay" data-open="false" data-responsive-foundation><button class="gt-navigation-mobile-trigger">Open navigation</button></aside>`
+      : `<aside class="gt-app-navigation" data-mode="desktop" data-panel-mode="pinned" data-responsive-foundation data-collapsed="${collapsed}"><div class="gt-navigation-rail"><a href="#">Finance</a><button>Modules</button></div></aside>`;
   return `<style>html,body{margin:0;font-family:Arial,sans-serif}button{font:inherit}</style><style>${css}</style>
-  <div class="app-shell" dir="${dir}" data-ui-system="v3"><div class="main-area"><header class="app-header">Header</header><nav class="command-subnav">Legacy strip</nav><main class="content-area">${content}</main></div>
+  <div class="app-shell" dir="${dir}" data-ui-system="editorial"><div class="main-area"><header class="app-header">Header</header><nav class="command-subnav">Legacy strip</nav><main class="content-area">${content}</main></div>
   ${navigation}</div>`;
 }
 
@@ -49,19 +51,24 @@ describe('browser responsive geometry and accessibility styles', () => {
       await page.setContent(shell('ltr', false, width));
       const result = await page.evaluate(() => {
         const style = selector => getComputedStyle(document.querySelector(selector));
-        const rail = Boolean(document.querySelector('.gt-app-navigation') && style('.gt-app-navigation').display !== 'none');
+        const rail = Boolean(document.querySelector('.gt-navigation-rail') && style('.gt-navigation-rail').display !== 'none');
         const dock = Boolean(document.querySelector('.gt-mobile-navigation') && style('.gt-mobile-navigation').display !== 'none');
+        const trigger = Boolean(document.querySelector('.gt-navigation-mobile-trigger') && style('.gt-navigation-mobile-trigger').display !== 'none');
         const targets = [...document.querySelectorAll('[data-responsive-foundation] button, .gt-mobile-dock a, .gt-navigation-rail a')].filter(node => node.getClientRects().length).map(node => node.getBoundingClientRect());
         const main = document.querySelector('.main-area').getBoundingClientRect();
-        return { rail, dock, minHeight: Math.min(...targets.map(rect => rect.height)), minWidth: Math.min(...targets.map(rect => rect.width)), overflow: document.documentElement.scrollWidth - window.innerWidth, offset: parseFloat(style('.main-area').paddingInlineStart), strip: style('.command-subnav').display, mainLeft: main.left, mainRight: main.right, headerClearance: parseFloat(style('.main-area').paddingTop) };
+        const header = document.querySelector('.app-header').getBoundingClientRect();
+        return { rail, dock, trigger, minHeight: Math.min(...targets.map(rect => rect.height)), minWidth: Math.min(...targets.map(rect => rect.width)), overflow: document.documentElement.scrollWidth - window.innerWidth, offset: parseFloat(style('.main-area').paddingInlineStart), strip: style('.command-subnav').display, mainLeft: main.left, mainRight: main.right, headerHeight: header.height, headerBottom: header.bottom, contentTop: document.querySelector('.content-area').getBoundingClientRect().top };
       });
-      expect(result.rail).toBe(width >= 640); expect(result.dock).toBe(width <= 639);
+      expect(result.rail).toBe(width >= 960); expect(result.dock).toBe(width <= 639);
+      expect(result.trigger).toBe(width >= 640 && width < 960);
+      expect([result.rail, result.dock, result.trigger].filter(Boolean)).toHaveLength(1);
       expect(result.minHeight).toBeGreaterThanOrEqual(44); expect(result.minWidth).toBeGreaterThanOrEqual(44);
       expect(result.overflow).toBeLessThanOrEqual(1);
-      expect(result.offset).toBe(width <= 639 ? 0 : width < 1440 ? 76 : 332);
+      expect(result.offset).toBe(width < 960 ? 0 : 224);
       expect(result.strip).toBe('none');
       expect(result.mainLeft).toBe(0); expect(result.mainRight).toBe(width);
-      expect(result.headerClearance).toBeGreaterThanOrEqual(44);
+      expect(result.headerHeight).toBeGreaterThanOrEqual(44);
+      expect(result.contentTop).toBeGreaterThanOrEqual(result.headerBottom);
     } finally { await page.close(); }
   });
   it('puts RTL rail/header offsets on the right, supports collapsed desktop, and reverses search chrome', async () => {
@@ -75,8 +82,8 @@ describe('browser responsive geometry and accessibility styles', () => {
         const main = getComputedStyle(document.querySelector('.main-area'));
         return { railRight: rail.right, railLeft: rail.left, paddingLeft: main.paddingLeft, paddingRight: main.paddingRight, iconRight: icon.right, inputRight: input.right };
       });
-      expect(result.railRight).toBe(1280); expect(result.railLeft).toBe(1204);
-      expect(result.paddingLeft).toBe('0px'); expect(result.paddingRight).toBe('76px');
+      expect(result.railRight).toBe(1280); expect(result.railLeft).toBe(1216);
+      expect(result.paddingLeft).toBe('0px'); expect(result.paddingRight).toBe('64px');
       expect(result.iconRight).toBeGreaterThan(result.inputRight - 40);
     } finally { await page.close(); }
   });
@@ -98,13 +105,16 @@ describe('browser responsive geometry and accessibility styles', () => {
     const page = await browser.newPage({ viewport: { width: 640, height: 400 }, deviceScaleFactor: 2 });
     try {
       await page.setContent(shell('ltr', false, 640));
-      expect(await page.locator('.gt-app-navigation').isVisible()).toBe(true);
+      expect(await page.locator('.gt-navigation-mobile-trigger').isVisible()).toBe(true);
+      expect(await page.locator('.gt-navigation-rail').count()).toBe(0);
       expect(await page.locator('.gt-mobile-navigation').isVisible()).toBe(false);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       await page.setViewportSize({ width: 320, height: 400 });
       await page.setContent(shell('ltr', false, 320));
       const dock = await page.locator('.gt-mobile-dock').boundingBox();
-      expect(dock.x).toBeGreaterThanOrEqual(8); expect(dock.x + dock.width).toBeLessThanOrEqual(312);
+      expect(dock.x).toBeGreaterThanOrEqual(0); expect(dock.x + dock.width).toBeLessThanOrEqual(320);
+      const padding = await page.locator('.gt-mobile-dock').evaluate(node => parseFloat(getComputedStyle(node).paddingBottom));
+      expect(padding).toBeGreaterThanOrEqual(6);
     } finally { await page.close(); }
   });
 });

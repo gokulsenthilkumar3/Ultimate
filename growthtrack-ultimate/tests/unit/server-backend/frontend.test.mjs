@@ -6,7 +6,9 @@ import os from 'node:os';
 import express from 'express';
 import { once } from 'node:events';
 import { gzipSync, brotliCompressSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { frontendBasePath, registerFrontend } from '../../../server/frontend.js';
+import { loadServerConfig } from '../../../server/config.js';
 
 test('frontend base follows explicit setting, configured APP_URL path or Ultimate default', () => {
   assert.equal(frontendBasePath(), '/Ultimate/');
@@ -20,7 +22,8 @@ test('frontend base follows explicit setting, configured APP_URL path or Ultimat
 test('frontend mount serves assets and SPA under base, redirects root and preserves API/auth', async t => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'growthtrack-frontend-test-'));
   await fs.mkdir(path.join(directory, 'assets'));
-  await fs.writeFile(path.join(directory, 'index.html'), '<!doctype html><title>Ultimate fixture</title>');
+  const bootstrap = 'window.fixtureReady = true;';
+  await fs.writeFile(path.join(directory, 'index.html'), `<!doctype html><title>Ultimate fixture</title><script>${bootstrap}</script>`);
   await fs.writeFile(path.join(directory, 'assets', 'app.js'), 'export const loaded = true;');
   const script = 'export const largeFixture = ' + JSON.stringify('fixture '.repeat(1000)) + ';';
   const hashed = path.join(directory, 'assets', 'app-test1234.js');
@@ -31,7 +34,7 @@ test('frontend mount serves assets and SPA under base, redirects root and preser
   const app = express();
   app.get('/api/health', (_req, res) => res.json({ status: 'online' }));
   app.get('/auth/callback', (_req, res) => res.json({ auth: true }));
-  registerFrontend(app, { distDirectory: directory, appUrl: 'http://localhost/Ultimate/' });
+  registerFrontend(app, { distDirectory: directory, appUrl: 'http://localhost/Ultimate/', securityConfig: loadServerConfig({}) });
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(async () => {
@@ -41,6 +44,12 @@ test('frontend mount serves assets and SPA under base, redirects root and preser
     await fs.rm(directory, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${server.address().port}`;
+  for (const route of ['/Ultimate/', '/Ultimate/index.html', '/Ultimate/finance/overview']) {
+    const response = await fetch(base + route, { headers: { Accept: 'text/html' } });
+    assert.equal(response.status, 200);
+    assert.ok(response.headers.get('content-security-policy').includes(`'sha256-${createHash('sha256').update(bootstrap).digest('base64')}'`));
+    assert.doesNotMatch(response.headers.get('content-security-policy'), /script-src [^;]*'unsafe-inline'|'unsafe-eval'/);
+  }
   for (const pathname of ['/', '/Ultimate']) {
     const redirected = await fetch(`${base}${pathname}`, { redirect: 'manual' });
     assert.equal(redirected.status, 302);

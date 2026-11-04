@@ -10,6 +10,9 @@ import { initializeDatabase } from './server/domains/databaseInitialization.js';
 import { rehearseNoteMigration } from './server/domains/noteMigration.js';
 import { provisionLocalOwner } from './server/domains/ownerProvisioning.js';
 let mainWindow;
+let stopLocalServer;
+let quitting = false;
+let localServerClosing = false;
 if (process.env.GROWTHTRACK_USER_DATA) {
   const customData = path.resolve(process.env.GROWTHTRACK_USER_DATA);
   fs.mkdirSync(customData, { recursive: true });
@@ -145,7 +148,8 @@ async function createWindow() {
   // Tell the Express server to serve the frontend dist folder in desktop mode
   process.env.SERVE_FRONTEND = 'true';
   try {
-    const { server } = await import('./server.js');
+    const { server, closeServer } = await import('./server.js');
+    stopLocalServer = closeServer;
     if (!server.listening) await new Promise((resolve, reject) => {
       server.once('listening', resolve); server.once('error', reject);
     });
@@ -168,6 +172,16 @@ process.on('uncaughtException', (error) => showStartupFailure(error));
 process.on('unhandledRejection', (error) => showStartupFailure(error));
 
 if (singleInstance) app.on('ready', () => { void createWindow(); });
+
+app.on('before-quit', event => {
+  if (!stopLocalServer || quitting) return;
+  event.preventDefault();
+  if (localServerClosing) return;
+  localServerClosing = true;
+  // Let an encrypted archive finish and its temporary plaintext checks close.
+  // Shared-server mode has no local server or local backup to stop.
+  void stopLocalServer().catch(error => console.error('Local server shutdown failed:', error?.code || 'SHUTDOWN_FAILED')).finally(() => { quitting = true; app.quit(); });
+});
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') {

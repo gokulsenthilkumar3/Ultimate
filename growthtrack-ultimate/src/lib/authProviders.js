@@ -14,10 +14,10 @@ export class LocalAuthProvider {
     return { user: data.user, session: { expiresAt: data.expiresAt } };
   }
 
-  async signIn({ email, password }) {
+  async signIn({ email, password, otp }) {
     const normalizedEmail = String(email || '').trim().toLowerCase();
     if (!normalizedEmail || !String(password || '')) throw new Error('Email and password are required');
-    const data = await this.client('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: normalizedEmail, password }) });
+    const data = await this.client('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: normalizedEmail, password, ...(otp ? { otp } : {}) }) });
     setCsrfToken(data.csrfToken);
     return { user: data.user, session: { expiresAt: data.expiresAt } };
   }

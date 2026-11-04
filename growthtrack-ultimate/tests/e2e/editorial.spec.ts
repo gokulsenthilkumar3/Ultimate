@@ -19,8 +19,8 @@ for (const width of [320, 390, 640, 1024, 1440, 1920]) {
       const dock = page.getByRole('navigation', { name: 'Quick navigation' });
       await expect(dock).toBeVisible();
       await expect(dock.getByRole('link', { name: 'Finance' })).toBeVisible();
-      await expect(dock.getByRole('link').first()).toHaveAccessibleName('Finance');
-      await expect(dock.getByRole('button', { name: 'More' })).toBeVisible();
+      await expect(dock.getByRole('link').first()).toHaveAccessibleName('Customers');
+      await expect(dock.getByRole('button', { name: 'Hub' })).toBeVisible();
       const reserve = await page.evaluate(() => {
         const content = document.querySelector('#main-content');
         const dock = document.querySelector('.gt-mobile-dock');
@@ -28,9 +28,9 @@ for (const width of [320, 390, 640, 1024, 1440, 1920]) {
       });
       expect(reserve.padding).toBeGreaterThanOrEqual(reserve.dockHeight);
     } else {
+      if (width < 960) await page.getByRole('button', { name: 'Open module navigation', exact: true }).click();
       await expect(page.getByRole('navigation', { name: 'Product areas' })).toBeVisible();
-      if (width < 1600) await expect(page.getByRole('navigation', { name: 'Insights modules' })).toHaveCount(0);
-      else await expect(page.getByRole('navigation', { name: 'Insights modules' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Workspace overview', exact: true })).toHaveAttribute('aria-current', 'page');
     }
     await page.screenshot({ path: test.info().outputPath(`home-${width}.png`), fullPage: false });
   });
