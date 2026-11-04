@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — local architecture graph and Firebase setup cleanup (2026-11-04)
+
+- Inspect direct dependencies and indirect consumers with a local code graph, including type-only filtering, import-line evidence, bounded traversal and coverage diagnostics. Generated indexes remain ignored and queries reject stale source.
+- Configure NiftyLens Firebase values in an ignored local environment file; tracked setup instructions now contain blank placeholders.
+
 ## Unreleased — typed records and reliable saves (2026-11-03)
 
 - Metrics, goals, skills, notes and plans now use typed fields and related records for their stable data, retaining JSON for flexible settings and legacy extensions.
