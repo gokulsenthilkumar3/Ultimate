@@ -21,6 +21,7 @@
     "context:graph:impact": "node scripts/code-graph.mjs impact",
     "context:graph:impact:runtime": "node scripts/code-graph.mjs impact-runtime",
     "context:graph:coverage": "node scripts/code-graph.mjs coverage",
+    "architecture:check": "node scripts/check-architecture.mjs",
     "docs:sync": "node scripts/application-docs.mjs",
     "docs:check": "node scripts/application-docs.mjs --check",
     "config:check": "node scripts/environment-templates.mjs --check",

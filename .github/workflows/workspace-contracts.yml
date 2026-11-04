@@ -1,0 +1,31 @@
+name: Workspace contracts
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: workspace-contracts-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    name: Architecture and workspace contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+      - run: npm ci --prefix growthtrack-ultimate
+      - name: Graph, gateway and disposable schema regressions
+        run: node --test tests/code-context.test.mjs tests/code-graph.test.mjs tests/architecture-boundaries.test.mjs tests/gateway.test.mjs tests/workspace-proxy.test.mjs tests/database-schema.test.mjs tests/schema-repair-cli.test.mjs
+      - name: Enforce resolved import boundaries
+        run: node scripts/check-architecture.mjs
+      - name: Generated application documentation
+        run: npm run docs:check

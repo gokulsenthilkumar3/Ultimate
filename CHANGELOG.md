@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — CI architecture, security and resilience checks (2026-11-04)
+
+- Run local dependency-graph, import ownership, gateway and disposable SQLite schema regressions in GitHub Actions.
+- Add CodeQL analysis for JavaScript/TypeScript, Python and Actions, plus high-severity dependency review on pull requests.
+- Exercise delayed and disconnected initial loads across browser engines. Collect populated browser performance and bounded concurrent read-only console measurements in isolated scheduled/manual runs.
+
 ## Unreleased — database console and logging fixes (2026-11-04)
 
 - Browse read-only databases in a light/dark workspace with page-local sorting, filtering, column controls, exports and an accessible record inspector.

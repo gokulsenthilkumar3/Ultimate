@@ -1,0 +1,46 @@
+name: Isolated performance and load
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/performance-load.yml
+      - growthtrack-ultimate/scripts/load-smoke.mjs
+  schedule:
+    - cron: '19 4 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: performance-load-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  synthetic-performance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: growthtrack-ultimate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Populated browser fixture with delayed data
+        run: node scripts/page-performance.mjs --label=ci-populated --fixture=populated --pages=notes,goals,shopping --runs=3 --state-delay=500
+      - name: Browser correctness and resource bounds
+        run: node scripts/check-page-performance.mjs --report=../.gstack/benchmark-reports/ci-populated.json
+      - name: Bounded concurrent read-only API smoke
+        run: node scripts/load-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-performance
+          path: .gstack/benchmark-reports/
+          include-hidden-files: true
+          retention-days: 14
