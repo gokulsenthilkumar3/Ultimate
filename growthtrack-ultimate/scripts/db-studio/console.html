@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-density="comfortable">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Database Console · Ultimate</title>
+  <style>/* STUDIO_STYLES */</style>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to workspace</a>
+  <aside class="sidebar" aria-label="Database navigation">
+    <a class="brand" href="http://localhost:5000/Ultimate/" aria-label="Back to Ultimate">
+      <span class="brand-mark" aria-hidden="true">U</span><span>Ultimate<span class="brand-caption">DATABASE CONSOLE</span></span>
+    </a>
+    <div class="source-picker">
+      <label class="eyebrow" for="database-source">Connection</label>
+      <select id="database-source" onchange="changeSource()"><option value="ultimate">Ultimate</option></select>
+      <div class="connection-status" role="status"><span class="status-dot" id="connection-dot" data-state="loading"></span><span id="source-status">Connecting…</span></div>
+    </div>
+    <div class="sidebar-heading"><h2>Tables</h2><span id="stat-tables-count" class="count">0</span></div>
+    <div class="table-search-wrap"><label class="sr-only" for="table-search">Search tables</label><input id="table-search" type="search" placeholder="Find a table…" oninput="filterTables()" autocomplete="off"></div>
+    <ul id="table-list" class="table-list" aria-label="Tables"></ul>
+    <div class="sidebar-footer"><span class="lock-icon" aria-hidden="true">◇</span><div><strong>Read-only workspace</strong><p>Explore your data. No writes.</p></div></div>
+  </aside>
+  <main class="main-workspace" id="workspace" tabindex="-1">
+    <header class="topbar">
+      <div class="breadcrumb">Workspace <span aria-hidden="true">/</span> <strong>Database</strong></div>
+      <nav class="header-links" aria-label="Workspace links"><a href="http://localhost:5000/Ultimate/">Open Ultimate ↗</a><a href="http://127.0.0.1:5300/api/docs">API explorer ↗</a><button id="theme-toggle" class="btn" onclick="toggleTheme()" aria-label="Switch to dark theme">Dark theme</button></nav>
+    </header>
+    <section class="workspace-intro" aria-label="Console overview">
+      <div><div class="eyebrow">DATA WORKSPACE</div><h1>Database console<span class="read-only-badge">Read only</span></h1><p>Browse records, understand your schema, and query with confidence.</p></div>
+      <div class="overview-stats"><div><strong id="stat-records-count">—</strong><span>records in connection</span></div><div><strong id="provider-name">—</strong><span>database engine</span></div></div>
+    </section>
+    <div class="workspace-card">
+      <div class="nav-tabs" role="tablist" aria-label="Database views">
+        <button id="tab-data" class="nav-tab active" role="tab" aria-selected="true" aria-controls="panel-data" onclick="switchTab('data')">Records</button>
+        <button id="tab-schema" class="nav-tab" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-schema" onclick="switchTab('schema')">Schema</button>
+        <button id="tab-sql" class="nav-tab" role="tab" tabindex="-1" aria-selected="false" aria-controls="panel-sql" onclick="switchTab('sql')">SQL editor</button>
+        <span class="tab-context" id="table-context">Choose a table to explore</span>
+      </div>
+      <section id="panel-data" class="panel" role="tabpanel" aria-labelledby="tab-data">
+        <div class="toolbar"><div class="table-meta"><h2 id="current-table-name">Select a table</h2><span id="current-table-badge" class="badge" hidden></span></div><div class="actions-group"><button id="export-csv" class="btn" onclick="exportCSV()" title="Export matching rows and visible columns from this page" disabled>Export page CSV</button><button id="export-json" class="btn" onclick="exportJSON()" title="Export matching rows and visible columns from this page" disabled>JSON</button><button id="refresh-data" class="btn btn-primary" onclick="loadTableData()" disabled>↻ Refresh</button></div></div>
+        <div class="data-tools">
+          <div class="page-filter"><label class="sr-only" for="row-search">Filter loaded page</label><input id="row-search" type="search" placeholder="Filter this page…" oninput="filterRows()" disabled><span class="scope-label">Loaded page only</span></div>
+          <div class="view-controls">
+            <div class="density-control" role="group" aria-label="Row spacing"><button id="density-comfortable" type="button" aria-pressed="true" onclick="setDensity('comfortable')">Comfortable</button><button id="density-compact" type="button" aria-pressed="false" onclick="setDensity('compact')">Compact</button></div>
+            <details id="column-menu" class="column-menu"><summary>Columns <span id="column-count">0</span></summary><div class="column-popover"><div class="column-menu-heading"><strong>Visible columns</strong><button type="button" class="text-button" onclick="showAllColumns()">Show all</button></div><div id="column-options"></div><p>Keep at least one column visible.</p></div></details>
+          </div>
+        </div>
+        <div class="grid-hint"><span id="data-status" role="status">Choose a table from the sidebar.</span><button id="clear-view" class="text-button" onclick="resetPageView()" hidden>Reset page view</button></div>
+        <div class="grid-container" id="data-grid" tabindex="0" aria-label="Records table, scroll for more columns"><table id="data-table"><caption class="sr-only">Records from selected table</caption><thead id="data-thead"></thead><tbody id="data-tbody"></tbody></table></div>
+        <footer class="pagination-bar"><span id="page-info" role="status">No table selected</span><div class="page-controls"><label for="page-size">Rows per page</label><select id="page-size" onchange="changeLimit(this.value)"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option><option value="200">200</option></select><button id="btn-prev" class="btn" onclick="prevPage()" disabled aria-label="Previous page">←</button><span id="page-number">1 / 1</span><button id="btn-next" class="btn" onclick="nextPage()" disabled aria-label="Next page">→</button></div></footer>
+      </section>
+      <section id="panel-schema" class="panel hidden" role="tabpanel" aria-labelledby="tab-schema" hidden>
+        <div class="toolbar"><div class="table-meta"><h2>Schema <span id="schema-table-name" class="muted">/ Select a table</span></h2></div><span id="schema-status" class="muted" role="status">Column types and constraints</span></div>
+        <div class="grid-container" tabindex="0" aria-label="Schema table"><table><caption class="sr-only">Selected table schema</caption><thead><tr><th scope="col">#</th><th scope="col">Column</th><th scope="col">Type</th><th scope="col">Nullable</th><th scope="col">Default</th><th scope="col">Key</th></tr></thead><tbody id="schema-tbody"></tbody></table></div>
+      </section>
+      <section id="panel-sql" class="panel hidden" role="tabpanel" aria-labelledby="tab-sql" hidden>
+        <div class="toolbar"><div class="table-meta"><h2>SQL editor</h2><span class="badge">Read only</span></div><button id="run-sql" class="btn btn-primary" onclick="runSql()">Run query <kbd>Ctrl ↵</kbd></button></div>
+        <div class="sql-snippets" aria-label="Query templates"><span class="muted">Start with</span><button id="sample-rows" class="snippet-btn" onclick="setSampleQuery()" disabled>Selected table</button><button class="snippet-btn" onclick="setCatalogQuery()">List tables</button><button class="snippet-btn" onclick="setQuery('SELECT 1 AS connection_check;')">Connection check</button></div>
+        <label class="sr-only" for="sql-input">Read-only SQL query</label><textarea id="sql-input" class="sql-input" placeholder="SELECT 1 AS connection_check;" spellcheck="false"></textarea>
+        <div id="sql-status" class="query-status" role="status">Results will appear below. Run with Ctrl+Enter or ⌘+Enter.</div>
+        <div class="grid-container" tabindex="0" aria-label="SQL results"><table><caption class="sr-only">SQL query results</caption><thead id="sql-thead"></thead><tbody id="sql-tbody"></tbody></table></div>
+      </section>
+    </div>
+    <footer class="workspace-footer"><span>Local workspace · Database access is read only</span><span id="last-updated">Not refreshed yet</span></footer>
+  </main>
+  <div id="row-drawer" class="drawer-overlay" hidden>
+    <section class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1">
+      <div class="drawer-header"><div><div class="eyebrow">RECORD DETAILS</div><h2 id="drawer-title">Record inspector</h2><p id="drawer-subtitle" class="muted"></p></div><button id="close-drawer" class="btn" onclick="closeDrawer()" aria-label="Close record inspector">✕</button></div>
+      <div class="inspector-toolbar"><div class="inspector-navigation"><button id="inspect-prev" class="btn" onclick="stepRecord(-1)" aria-label="Inspect previous record">←</button><span id="inspect-position"></span><button id="inspect-next" class="btn" onclick="stepRecord(1)" aria-label="Inspect next record">→</button></div><button class="btn" id="copy-record" onclick="copyRecord()">Copy JSON</button></div>
+      <div class="inspector-search"><label class="sr-only" for="field-search">Find a field in this record</label><input id="field-search" type="search" placeholder="Find a field or value…" oninput="renderInspectorFields()"><span id="field-count" role="status"></span></div>
+      <div id="drawer-body" class="drawer-body"></div><div class="drawer-footer"><span id="copy-status" role="status">Read only · Press Esc to close</span></div>
+    </section>
+  </div>
+  <script>/* STUDIO_SCRIPT */</script>
+</body>
+</html>
