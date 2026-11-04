@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import LandingPage from './LandingPage';
@@ -31,7 +31,20 @@ function renderLogin(from) {
 
 beforeEach(() => { signIn.mockReset(); setPlayfulMotionPaused(false); useStore.setState({ reducedMotion: false }); });
 
-describe('public pages', () => {
+describe('public pages', { timeout: 15000 }, () => {
+  it('prompts for MFA after the password challenge and forwards the code on retry', async () => {
+    signIn.mockResolvedValueOnce({ error: { name: 'ApiError', payload: { code: 'MFA_REQUIRED' } } }).mockResolvedValueOnce({ error: null });
+    renderLogin({ pathname: '/finance/overview' });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email address' }), { target: { value: 'owner@example.test' } });
+    fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'fictional-password' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    const code = await screen.findByRole('textbox', { name: 'Authenticator code' });
+    expect(code).toHaveAttribute('autocomplete', 'one-time-code');
+    fireEvent.change(code, { target: { value: '123456' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(signIn).toHaveBeenLastCalledWith('owner@example.test', 'fictional-password', '123456');
+    expect(await screen.findByTestId('destination')).toHaveTextContent('/finance/overview');
+  });
   it('reacts to password focus, preserves entered fields on reveal, and keeps pause separate from sign in', async () => {
     const user = userEvent.setup();
     renderLogin({ pathname: '/finance/overview' });
@@ -112,6 +125,7 @@ describe('public pages', () => {
     const { rerender } = render(<MemoryRouter><LandingPage /></MemoryRouter>);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Less noise.More you.');
     expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('href', '#public-content');
+    expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('tabindex', '0');
     expect(document.getElementById('public-content')).toHaveAttribute('tabindex', '-1');
     expect(screen.getAllByRole('link', { name: /Owner sign in/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');

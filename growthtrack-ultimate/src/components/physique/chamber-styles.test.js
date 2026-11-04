@@ -17,7 +17,9 @@ let browser, before, after;
 beforeAll(async () => {
   browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
   const source = await readFile(root, 'utf8');
-  const original = source.replace("@import './premium.css' layer(legacy);", "@import './chamber.css' layer(legacy);\n@import './premium.css' layer(legacy);");
+  const legacyImport = "@import '../index.css' layer(legacy);";
+  expect(source).toContain(legacyImport);
+  const original = source.replace(legacyImport, `${legacyImport}\n@import './chamber.css' layer(legacy);`);
   before = await inline(original, root);
   after = await inline(source, root) + await inline(await readFile(owned, 'utf8'), owned);
 }, 20000);

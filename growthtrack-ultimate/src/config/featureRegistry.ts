@@ -85,6 +85,11 @@ export const FEATURES: readonly FeatureDefinition[] = Object.freeze([
 ]);
 
 export const FEATURE_BY_ID = Object.freeze(Object.fromEntries(FEATURES.flatMap(item => [[item.id, item], ...item.aliases.map(alias => [alias, item])])) as Record<string, FeatureDefinition>);
+// Shell routing needs domain names without downloading navigation artwork.
+const AREA_GROUP = { finance: 'money', insights: 'insights', wellness: 'wellness', workspace: 'work', life: 'life', hub: 'system' };
+export const FEATURE_GROUPS = Object.freeze(Object.fromEntries(FEATURES.map(item => [item.id,
+  ['customers', 'finsync', 'oxfin'].includes(item.id) ? 'customers' : item.id === 'forex' ? 'money' : AREA_GROUP[item.area],
+])) as Record<string, string>);
 const BY_PATH = Object.fromEntries(FEATURES.map(item => [item.canonicalPath, item]));
 export const AREA_ORDER: readonly ProductArea[] = Object.freeze(['finance', 'insights', 'wellness', 'workspace', 'life', 'hub']);
 

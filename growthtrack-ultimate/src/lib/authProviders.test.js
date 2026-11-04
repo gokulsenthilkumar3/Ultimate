@@ -19,6 +19,13 @@ describe('authentication providers', () => {
     expect(client).not.toHaveBeenCalled();
   });
 
+  it('forwards an authenticator code without storing it in the session contract', async () => {
+    const client = vi.fn().mockResolvedValue({ user: { id: 'u1' }, csrfToken: 'csrf', expiresAt: 'tomorrow' });
+    const result = await new LocalAuthProvider(client).signIn({ email: 'owner@example.test', password: 'fictional-password', otp: '123456' });
+    expect(JSON.parse(client.mock.calls[0][1].body).otp).toBe('123456');
+    expect(result).toEqual({ user: { id: 'u1' }, session: { expiresAt: 'tomorrow' } });
+  });
+
   it('keeps Clerk explicitly disabled until configured and installed', async () => {
     const provider = createAuthProvider({ type: 'clerk' });
     expect(provider).toBeInstanceOf(DisabledClerkProvider);

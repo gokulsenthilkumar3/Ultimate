@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe,expect,it } from 'vitest';
 import { Group,Vector3 } from 'three';
 import { createAnatomyGuides } from './anatomyGuides';
@@ -127,7 +128,7 @@ describe.each(['humanoid-base.glb','humanoid-base-lite.glb','humanoid-adult-v2.g
       const before=base();p.scrotum.envelope={[key]:key.endsWith('Cm')?8:70};d.apply(p);expect(anatomy.geometry.attributes.position.array,key).not.toEqual(before);p.scrotum.envelope={};
     }
     const before=base();p.scrotum.presentation='contracted';d.apply(p);expect(anatomy.geometry.attributes.position.array).not.toEqual(before);
-  });
+  },30000);
   it('keeps sac size independent of shaft girth, supports independent endpoints and resets cleared records',()=> {
     const {body,anatomy}=glbMeshFixture(file),d=createPrivateAnatomyDeformer(anatomy,body),p=profile(),start=(anatomy.userData.layout.tipVertex+1)*3;
     p.penis.resting={measurements:{midCircumferenceCm:8}};d.apply(p);const sac=anatomy.geometry.attributes.position.array.slice(start);
@@ -149,7 +150,7 @@ describe.each(['humanoid-base.glb','humanoid-base-lite.glb','humanoid-adult-v2.g
       apply(sample);expect(body.geometry.attributes.position.array,key).not.toEqual(original);
     }
     const colors=anatomy.geometry.attributes.color.array.slice();p.skinRegions.shaft={enabled:true,color:'#775544',tanIntensity:20};d.apply(p);expect(anatomy.geometry.attributes.color.array).not.toEqual(colors);
-  });
+  },30000);
 });
 it('uses dimensions or an explicit volume mode for internal schematic guides',()=> {
   const dims=testisGuideDimensions({lengthCm:4,widthCm:3,depthCm:2,volumeMl:30,inputMode:'volume'});

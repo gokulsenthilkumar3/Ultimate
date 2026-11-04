@@ -957,10 +957,10 @@
     },
     {
       "path": "public/assets/models/humanoid-human-r2-private-core.glb",
-      "sha256": "62108cf9deba13e17c5d406d18e05e3838ef26e4436b227a64c1aa58fba3c2ab",
+      "sha256": "d8ee3b6881654ccb1daf9bd4ba70ae2df1f725f24f36e7064042207bd6814286",
       "sourceAsset": "public/assets/models/humanoid-preview-75-lite.glb",
       "sourceSha256": "b1bdf5f9f597167049980e5e4f1abca19126e85b2c306d49a99c0455e4bec3ab",
-      "builtBy": "node scripts/build-human-realism.mjs",
+      "builtBy": "node scripts/build-human-realism.mjs; refreshed native binding metadata after texture-only upgrade; refreshed native binding metadata after texture-only upgrade",
       "components": [
         {
           "name": "Body mesh, skeleton binding and morph targets (GrowthTrackBody)",
@@ -1122,10 +1122,10 @@
     },
     {
       "path": "public/assets/models/humanoid-human-r2-private-hero.glb",
-      "sha256": "53cba1d3cdc91f22e6573083c4e05db67d8473bea506a601e1642b232884b750",
+      "sha256": "b29ffd6e0f758db0f49a96a5f4375ae31407aa17b016f8aebeff5de3d082dcca",
       "sourceAsset": "public/assets/models/humanoid-preview-75.glb",
       "sourceSha256": "4e03a12ee55d788cae10871d21c2db64d06691323a0d6c156f1085283419f549",
-      "builtBy": "node scripts/build-human-realism.mjs",
+      "builtBy": "node scripts/build-human-realism.mjs; refreshed native binding metadata after texture-only upgrade; refreshed native binding metadata after texture-only upgrade",
       "components": [
         {
           "name": "Body mesh, skeleton binding and morph targets (GrowthTrackBody)",
@@ -1216,7 +1216,7 @@
     },
     {
       "path": "public/assets/parametric/skin/manifest.json",
-      "sha256": "0d6261dd38c2dac08e3d4f0a398faa33506de565f4ecd6a250f7ebeab5db4fb4",
+      "sha256": "5b319cd6d6c314696cdc1de77c40632a3dfbfe3a555072089738975bec71118a",
       "builtBy": "node scripts/parametric-visual/build-skin-assets.mjs",
       "components": [
         {

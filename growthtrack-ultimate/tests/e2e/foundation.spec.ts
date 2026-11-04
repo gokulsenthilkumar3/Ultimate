@@ -49,13 +49,13 @@ for (const width of [320, 390, 640, 768, 1024, 1440, 1920, 2560]) {
     await expect(page.getByRole('heading', { name: /Work, made clear|Your work today/ })).toBeVisible();
     if (width === 640) expect(await page.evaluate(() => window.innerWidth)).toBe(640);
     if (width < 640) {
-      await page.getByRole('button', { name: /More/ }).click();
+      await page.getByRole('button', { name: 'Hub', exact: true }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await expect(page.getByRole('dialog').getByRole('link', { name: /Maps/ })).toBeVisible();
-    } else if (width < 1440) {
+    } else if (width < 960) {
       await page.getByRole('button', { name: 'Open module navigation' }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
-    } else await expect(page.getByRole('navigation', { name: 'Workspace modules' })).toBeVisible();
+    } else await expect(page.getByRole('navigation', { name: 'Product areas' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   });
 }
@@ -79,7 +79,7 @@ test('location capture remains off and list is available without tiles', async (
 
 test('social profiles are manual and all six provider connections disclose setup requirements', async ({ page }) => {
   await page.goto('/life/social?view=connections');
-  await expect(page.getByRole('heading', { name: 'Social profiles' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Social', exact: true })).toBeVisible();
   await expect(page.getByText(/No provider is connected by saving a profile link/)).toBeVisible();
   const connections = page.getByRole('region', { name: 'Social provider connections' });
   for (const provider of ['GitHub', 'YouTube', 'Instagram', 'Facebook', 'X', 'LinkedIn']) {
@@ -107,7 +107,7 @@ test('recovers a paused timer and never automatically submits its draft', async 
   await expect(page.getByText('00:02:05', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Task / Description')).toHaveValue('Recover this task');
   await expect(page.getByRole('button', { name: 'RESUME', exact: true })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'sessions', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Sessions', exact: true })).toBeVisible();
   expect(submissions).toEqual([]);
 });
 

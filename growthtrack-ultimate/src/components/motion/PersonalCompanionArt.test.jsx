@@ -1,13 +1,17 @@
 import React from 'react';
 import { act, cleanup, render } from '@testing-library/react';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import PersonalCompanionArt from './PersonalCompanionArt';
 import KineticProvider from './KineticProvider';
 import { setPlayfulMotionPaused } from '../../hooks/usePlayfulMotion';
 import useStore from '../../store/useStore';
 import { setKineticPreferences } from '../../hooks/useKineticPreferences';
 
-afterEach(() => { cleanup(); setPlayfulMotionPaused(false); useStore.setState({ reducedMotion: false }); setKineticPreferences({ lite: false }); });
+beforeEach(() => {
+  vi.spyOn(navigator, 'hardwareConcurrency', 'get').mockReturnValue(8);
+  setKineticPreferences({ style: 'kinetic', lite: false, companion: true });
+});
+afterEach(() => { cleanup(); setPlayfulMotionPaused(false); useStore.setState({ reducedMotion: false }); setKineticPreferences({ lite: false }); vi.restoreAllMocks(); });
 
 it('releases its motion admission for pause, reduced motion and a parent-owned scene, keeping the chosen pose visible', () => {
   useStore.setState({ reducedMotion: false }); setPlayfulMotionPaused(false);
@@ -35,4 +39,12 @@ it('releases its motion admission for pause, reduced motion and a parent-owned s
   expect(art).toHaveAttribute('aria-hidden', 'true');
   expect(art.querySelector('img').getAttribute('src')).toMatch(/assets\/illustrations\/personal-companion-small-v1\.webp$/);
   view.unmount(); expect(document.documentElement.dataset.animationCount).toBe('0');
+});
+
+it('keeps its pose visible without admitting motion on low-core hardware', () => {
+  vi.mocked(Object.getOwnPropertyDescriptor(navigator, 'hardwareConcurrency').get).mockReturnValue(2);
+  const view = render(<KineticProvider><PersonalCompanionArt state="celebrate" compact /></KineticProvider>);
+  expect(view.container.querySelector('.personal-companion')).toHaveAttribute('data-pose', 'celebrate');
+  expect(view.container.querySelector('.personal-companion')).toHaveAttribute('data-animate', 'false');
+  expect(document.documentElement.dataset.animationCount).toBe('0');
 });

@@ -529,8 +529,8 @@
       <div class="auth-bar">
         <span class="token-dot" id="auth-dot"></span>
         <span id="auth-label" class="auth-label">Unauthenticated</span>
-        <button class="btn btn-token-action" onclick="promptCustomToken()">Set JWT</button>
-        <button class="btn btn-token-action btn-hidden" id="btn-clear-token" onclick="clearToken()">Clear</button>
+        <button class="btn btn-token-action" data-action="refreshSession">Check session</button>
+        <button class="btn btn-token-action btn-hidden" id="btn-clear-token" data-action="clearToken">Sign out</button>
       </div>
       <a href="http://127.0.0.1:5000/Ultimate/" target="_blank" rel="noopener noreferrer" class="header-btn header-btn-accent">🚀 Open Ultimate (:5000)</a>
       <a href="http://localhost:5556/" target="_blank" rel="noopener noreferrer" class="header-btn">🗄️ DB Studio (:5556)</a>
@@ -543,13 +543,13 @@
     <aside class="sidebar">
       <div class="sidebar-search">
         <label for="search-input" class="sr-only">Search endpoints</label>
-        <input type="text" id="search-input" class="search-input" placeholder="Search 25+ endpoints (Press /)" oninput="filterEndpoints()">
+        <input type="text" id="search-input" class="search-input" placeholder="Search 25+ endpoints (Press /)" data-action="filterEndpoints">
         <div class="method-filters">
-          <button class="filter-btn active" onclick="setMethodFilter('ALL')">ALL</button>
-          <button class="filter-btn" onclick="setMethodFilter('GET')">GET</button>
-          <button class="filter-btn" onclick="setMethodFilter('POST')">POST</button>
-          <button class="filter-btn" onclick="setMethodFilter('PUT')">PUT</button>
-          <button class="filter-btn" onclick="setMethodFilter('DELETE')">DEL</button>
+          <button class="filter-btn active" data-action="setMethodFilter" data-argument="ALL">ALL</button>
+          <button class="filter-btn" data-action="setMethodFilter" data-argument="GET">GET</button>
+          <button class="filter-btn" data-action="setMethodFilter" data-argument="POST">POST</button>
+          <button class="filter-btn" data-action="setMethodFilter" data-argument="PUT">PUT</button>
+          <button class="filter-btn" data-action="setMethodFilter" data-argument="DELETE">DEL</button>
         </div>
       </div>
       <div class="endpoint-list" id="endpoint-list"></div>
@@ -561,14 +561,14 @@
       <section class="panel">
         <div class="panel-header">
           <span class="panel-title">Request Builder</span>
-          <button class="btn btn-send" onclick="sendRequest()">▶ Send (Ctrl+Enter)</button>
+          <button class="btn btn-send" data-action="sendRequest">▶ Send (Ctrl+Enter)</button>
         </div>
 
         <div class="panel-body">
           <div class="route-bar">
             <span id="active-method" class="method-pill method-get">GET</span>
             <input type="text" id="active-route" class="full-route-input" readonly placeholder="Selected Route" title="Selected API Route" aria-label="Selected API Route">
-            <button class="btn" onclick="copyRoute()" title="Copy route">📋</button>
+            <button class="btn" data-action="copyRoute" title="Copy route">📋</button>
           </div>
 
           <div id="endpoint-desc" class="endpoint-desc-text"></div>
@@ -581,9 +581,9 @@
           </div>
 
           <div class="builder-tabs">
-            <button type="button" class="builder-tab active" id="tab-btn-body" onclick="switchBuilderTab('body')">Payload (JSON)</button>
-            <button type="button" class="builder-tab" id="tab-btn-curl" onclick="switchBuilderTab('curl')">cURL Snippet</button>
-            <button type="button" class="builder-tab" id="tab-btn-auth" onclick="switchBuilderTab('auth')">Quick Auth Helper</button>
+            <button type="button" class="builder-tab active" id="tab-btn-body" data-action="switchBuilderTab" data-argument="body">Payload (JSON)</button>
+            <button type="button" class="builder-tab" id="tab-btn-curl" data-action="switchBuilderTab" data-argument="curl">cURL Snippet</button>
+            <button type="button" class="builder-tab" id="tab-btn-auth" data-action="switchBuilderTab" data-argument="auth">Quick Auth Helper</button>
           </div>
 
           <!-- Tab: Payload -->
@@ -591,8 +591,8 @@
             <div class="editor-toolbar">
               <span>Request Body</span>
               <div>
-                <button class="btn btn-editor-tool" onclick="beautifyBody()">Beautify</button>
-                <button class="btn btn-editor-tool" onclick="resetDefaultBody()">Reset Payload</button>
+                <button class="btn btn-editor-tool" data-action="beautifyBody">Beautify</button>
+                <button class="btn btn-editor-tool" data-action="resetDefaultBody">Reset Payload</button>
               </div>
             </div>
             <label for="body-input" style="display:none">JSON Body</label>
@@ -603,7 +603,7 @@
           <div id="builder-curl-panel" class="json-editor-box btn-hidden">
             <div class="editor-toolbar">
               <span>Executable cURL command</span>
-              <button class="btn btn-editor-tool" onclick="copyCurl()">Copy cURL</button>
+              <button class="btn btn-editor-tool" data-action="copyCurl">Copy cURL</button>
             </div>
             <pre id="curl-output" class="curl-pre"></pre>
           </div>
@@ -615,7 +615,8 @@
               <div class="auth-helper-form">
                 <input type="email" id="login-email" class="search-input" autocomplete="username" placeholder="Owner email" title="Login Email">
                 <input type="password" id="login-pwd" class="search-input" autocomplete="current-password" placeholder="Password" title="Login Password">
-                <button class="btn btn-primary" onclick="quickLogin()" style="justify-content:center">Login & Set Bearer Token</button>
+                <input type="text" id="login-otp" class="search-input" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="Authenticator code (if enabled)" title="Authenticator code">
+                <button class="btn btn-primary" data-action="quickLogin" style="justify-content:center">Sign in</button>
               </div>
             </div>
           </div>
@@ -629,7 +630,7 @@
           <div class="response-meta btn-hidden" id="response-meta">
             <span id="resp-status" class="status-code-badge status-2xx">200 OK</span>
             <span id="resp-time" style="color:var(--muted)">⚡ 0 ms</span>
-            <button class="btn btn-editor-tool" onclick="copyResponse()">Copy JSON</button>
+            <button class="btn btn-editor-tool" data-action="copyResponse">Copy JSON</button>
           </div>
         </div>
 
@@ -649,8 +650,8 @@
       { category: '⚡ System & Health', name: 'Database Tables Summary', method: 'GET', route: '/api/database/tables', desc: 'Returns row counts and schema overview for all user models', requiresAuth: true },
 
       // Auth & Identity
-      { category: '🔐 Auth & Identity', name: 'User Login', method: 'POST', route: '/api/auth/login', desc: 'Authenticate local owner and receive signed JWT session token', defaultBody: { email: '', password: '' } },
-      { category: '🔐 Auth & Identity', name: 'User Signup', method: 'POST', route: '/api/auth/signup', desc: 'Register local account credentials', defaultBody: { email: '', password: '', fullName: '' } },
+      { category: '🔐 Auth & Identity', name: 'User Login', method: 'POST', route: '/api/auth/login', desc: 'Authenticate the configured owner with a cookie session and CSRF token; include otp when MFA is enabled', defaultBody: { email: '', password: '' } },
+      { category: '🔐 Auth & Identity', name: 'Refresh CSRF', method: 'GET', route: '/api/auth/csrf', desc: 'Rotate the active session’s CSRF token', requiresAuth: true },
       { category: '🔐 Auth & Identity', name: 'Session Me Profile', method: 'GET', route: '/api/auth/me', desc: 'Get active logged-in user profile, subscription & role', requiresAuth: true },
       { category: '🔐 Auth & Identity', name: 'Identity Providers', method: 'GET', route: '/api/auth/providers', desc: 'List configured OAuth and local authentication adapters' },
       { category: '🔐 Auth & Identity', name: 'Issue Product Handoff', method: 'POST', route: '/api/integrations/handoff', desc: 'Create signed HMAC-SHA-256 handoff token for companion app', requiresAuth: true, defaultBody: { productId: 'finsync' } },
@@ -685,12 +686,18 @@
 
     let currentEndpoint = endpoints[0];
     let selectedMethod = 'ALL';
-    let jwtToken = sessionStorage.getItem('gt_api_explorer_jwt') || '';
+    let csrfToken = sessionStorage.getItem('growthtrack-csrf-token') || '';
+    let sessionActive = false;
 
     window.addEventListener('load', () => {
       renderEndpoints();
       selectEndpoint(endpoints[0]);
       updateAuthUI();
+      const actions = { refreshSession, clearToken, filterEndpoints, setMethodFilter, sendRequest, copyRoute, switchBuilderTab, beautifyBody, resetDefaultBody, copyCurl, quickLogin, copyResponse };
+      document.querySelectorAll('[data-action]').forEach(control => {
+        control.addEventListener(control.tagName === 'INPUT' ? 'input' : 'click', () => actions[control.dataset.action](control.dataset.argument));
+      });
+      void refreshSession();
 
       window.addEventListener('keydown', e => {
         if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
@@ -707,9 +714,9 @@
       const dot = document.getElementById('auth-dot');
       const label = document.getElementById('auth-label');
       const clearBtn = document.getElementById('btn-clear-token');
-      if (jwtToken) {
+      if (sessionActive) {
         dot.className = 'token-dot active';
-        label.innerText = 'Authenticated (JWT Active)';
+        label.innerText = 'Owner session active';
         clearBtn.classList.remove('btn-hidden');
       } else {
         dot.className = 'token-dot';
@@ -719,19 +726,27 @@
       updateCurl();
     }
 
-    function promptCustomToken() {
-      const val = prompt('Paste your Bearer JWT Token:', jwtToken);
-      if (val !== null) {
-        jwtToken = val.trim();
-        sessionStorage.setItem('gt_api_explorer_jwt', jwtToken);
-        updateAuthUI();
-      }
+    function rememberCsrf(value) {
+      csrfToken = value || '';
+      if (csrfToken) sessionStorage.setItem('growthtrack-csrf-token', csrfToken);
+      else sessionStorage.removeItem('growthtrack-csrf-token');
     }
 
-    function clearToken() {
-      jwtToken = '';
-      sessionStorage.removeItem('gt_api_explorer_jwt');
+    async function refreshSession() {
+      try {
+        const response = await fetch('/api/auth/csrf', { credentials: 'same-origin' });
+        if (!response.ok) throw new Error('No active session');
+        const data = await response.json(); rememberCsrf(data.csrfToken); sessionActive = true;
+      } catch { rememberCsrf(''); sessionActive = false; }
       updateAuthUI();
+    }
+
+    async function clearToken() {
+      try {
+        const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': csrfToken } });
+        if (!response.ok) { alert('Sign out failed. Check the session and try again.'); return; }
+        rememberCsrf(''); sessionActive = false; updateAuthUI();
+      } catch { alert('Sign out failed. Check the connection and try again.'); }
     }
 
     function setMethodFilter(method) {
@@ -769,7 +784,7 @@
           item.type = 'button';
           item.className = 'endpoint-item' + (currentEndpoint === ep ? ' active' : '');
           item.setAttribute('aria-current', currentEndpoint === ep ? 'true' : 'false');
-          item.onclick = () => selectEndpoint(ep);
+          item.addEventListener('click', () => selectEndpoint(ep));
           item.innerHTML = '<span class="method-pill method-' + ep.method.toLowerCase() + '">' + ep.method + '</span><span class="endpoint-route">' + ep.name + '</span>';
           groupEl.appendChild(item);
         });
@@ -835,8 +850,8 @@
 
       let curl = 'curl -X ' + currentEndpoint.method + ' "' + url + '"';
       curl += ' \\\n  -H "Content-Type: application/json"';
-      if (jwtToken) {
-        curl += ' \\\n  -H "Authorization: Bearer ' + jwtToken + '"';
+      if (sessionActive) {
+        curl += ' \\\n  --cookie cookies.txt -H "X-CSRF-Token: <session-csrf-token>"';
       }
       if (['POST', 'PUT', 'PATCH'].includes(currentEndpoint.method)) {
         const body = document.getElementById('body-input').value.trim();
@@ -853,11 +868,11 @@
       route = route.replace(':id', paramId).replace(':habitId', paramId);
 
       const headers = { 'Content-Type': 'application/json' };
-      if (jwtToken) headers['Authorization'] = 'Bearer ' + jwtToken;
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(currentEndpoint.method) && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
       const options = {
         method: currentEndpoint.method,
-        headers
+        headers, credentials: 'same-origin'
       };
 
       if (['POST', 'PUT', 'PATCH'].includes(currentEndpoint.method)) {
@@ -886,6 +901,8 @@
         const contentType = res.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
           data = await res.json();
+          if (res.ok && data.csrfToken) { rememberCsrf(data.csrfToken); sessionActive = true; updateAuthUI(); }
+          if (res.status === 401) { rememberCsrf(''); sessionActive = false; updateAuthUI(); }
           viewer.innerText = JSON.stringify(data, null, 2);
         } else {
           data = await res.text();
@@ -905,18 +922,19 @@
     async function quickLogin() {
       const email = document.getElementById('login-email').value;
       const password = document.getElementById('login-pwd').value;
+      const otp = document.getElementById('login-otp').value;
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          credentials: 'same-origin', body: JSON.stringify({ email, password, ...(otp ? { otp } : {}) })
         });
         const data = await res.json();
-        if (res.ok && data.token) {
-          jwtToken = data.token;
-          sessionStorage.setItem('gt_api_explorer_jwt', jwtToken);
+        if (res.ok && data.csrfToken) {
+          rememberCsrf(data.csrfToken); sessionActive = true;
+          document.getElementById('login-pwd').value = ''; document.getElementById('login-otp').value = '';
           updateAuthUI();
-          alert('✓ Login successful! Bearer token stored in explorer session.');
+          alert('✓ Owner session started. Requests use the session cookie and CSRF token.');
         } else {
           alert('Login failed: ' + (data.error || 'Invalid credentials'));
         }

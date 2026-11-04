@@ -13,6 +13,7 @@ Run these commands from this application directory. Configure required values lo
 ```powershell
 npm install
 Copy-Item .env.example .env
+npm run db:generate
 ```
 
 ## Run

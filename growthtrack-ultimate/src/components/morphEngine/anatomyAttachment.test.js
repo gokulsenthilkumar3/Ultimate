@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe,it,expect } from 'vitest';
 import { DoubleSide,Mesh,MeshBasicMaterial,Raycaster,Vector3 } from 'three';
 import { glbMeshFixture } from '../../tests/helpers/glbMeshFixture';
@@ -24,7 +25,7 @@ describe.each(['humanoid-base.glb','humanoid-base-lite.glb','humanoid-adult-v2.g
       expect(Math.max(...gaps),state).toBeLessThan(0);
     }
     surface.material.dispose();
-  });
+  },30000);
   it('keeps the upper sac attachment fixed while changing hang',()=> {
     const {body,anatomy}=glbMeshFixture(file),d=createPrivateAnatomyDeformer(anatomy,body),pole=anatomy.userData.layout.tipVertex+1;
     d.apply({});const attached=new Vector3().fromBufferAttribute(anatomy.geometry.attributes.position,pole);

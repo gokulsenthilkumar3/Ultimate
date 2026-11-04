@@ -18,6 +18,8 @@
 **/.env*
 **/*.db
 **/*.db-*
+**/*.db.enc
+**/*.db.enc.json
 **/*.sqlite*
 **/*.pem
 **/*.key

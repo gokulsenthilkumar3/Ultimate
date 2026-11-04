@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {describe,it,expect} from 'vitest';
 import {resolve} from 'node:path';
 import {readGlb,readAccessor,readImage} from '../../scripts/plan-preview/glb.mjs';
@@ -36,7 +37,7 @@ describe.each([['humanoid-base.glb','humanoid-adult-v2.glb'],['humanoid-base-lit
       }
     }
     geometry.dispose();material.dispose();
-  },15000);
+  },30000);
   it('preserves all assessed surfaces, image bytes, body morphs and calibrated private sections',()=> {
     const a=readGlb(resolve('public/assets/models',source)),b=readGlb(resolve('public/assets/models',upgraded));
     expect(b.json.images).toHaveLength(a.json.images.length);

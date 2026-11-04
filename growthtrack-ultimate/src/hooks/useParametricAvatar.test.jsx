@@ -25,13 +25,24 @@ const body = (index = 0) => JSON.parse(vi.mocked(apiRequest).mock.calls[index][1
 
 beforeEach(() => {
   vi.useFakeTimers();
-  vi.mocked(apiRequest).mockReset().mockResolvedValue({});
+  vi.mocked(apiRequest).mockReset().mockResolvedValue({ id: 'fixture-targets' });
   useStore.getState().resetSessionData();
   useStore.setState({ user: { id: 'parametric-owner' }, physiqueTargets: { goalMetrics: { waist: 80 }, renderSettings: { vignette: false } } });
 });
 afterEach(async () => { cleanup(); await settle(); vi.useRealTimers(); });
 
 describe('parametric avatar persistence', () => {
+  it('keeps a draft unsaved when the server omits the saved record acknowledgement', async () => {
+    vi.mocked(apiRequest).mockResolvedValueOnce({});
+    const { result } = renderHook(() => useParametricAvatar());
+    edit(result, 0.4);
+    await tick();
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toMatch(/did not acknowledge/);
+    expect(result.current.document.contexts.current.parameters.noseWider).toBe(0.4);
+    expect(useStore.getState().physiqueTargets.parametricAvatar).toBeUndefined();
+  });
+
   it('coalesces shape edits and merges with the latest unrelated targets at save time', async () => {
     const { result } = renderHook(() => useParametricAvatar());
     expect(result.current.status).toBe('new');
@@ -64,7 +75,7 @@ describe('parametric avatar persistence', () => {
     await tick();
     expect(result.current.status).toBe('saving');
     expect(useStore.getState().physiqueTargets.parametricAvatar).toBeUndefined();
-    await act(async () => { response.resolve({}); await settle(); });
+    await act(async () => { response.resolve({ id: 'fixture-targets' }); await settle(); });
     expect(result.current.status).toBe('saved');
     expect(useStore.getState().physiqueTargets.parametricAvatar.contexts.current.parameters.noseWider).toBe(0.4);
   });
@@ -94,7 +105,7 @@ describe('parametric avatar persistence', () => {
     edit(result, 0.9); await tick();
     expect(apiRequest).toHaveBeenCalledTimes(1);
     expect(result.current.document.contexts.current.parameters.noseWider).toBe(0.9);
-    await act(async () => { response.resolve({}); await settle(); });
+    await act(async () => { response.resolve({ id: 'fixture-targets' }); await settle(); });
     expect(apiRequest).toHaveBeenCalledTimes(2);
     expect(body(0).parametricAvatar.contexts.current.parameters.noseWider).toBe(0.2);
     expect(body(1).parametricAvatar.contexts.current.parameters.noseWider).toBe(0.9);
@@ -116,7 +127,7 @@ describe('parametric avatar persistence', () => {
     // Do not advance the debounce clock. Navigation must await this newer
     // draft as part of the already-running flush rather than discard it.
     edit(result, 0.9);
-    await act(async () => { firstResponse.resolve({}); await rejection; await settle(); });
+    await act(async () => { firstResponse.resolve({ id: 'fixture-targets' }); await rejection; await settle(); });
     expect(apiRequest).toHaveBeenCalledTimes(2);
     expect(body(0).parametricAvatar.contexts.current.parameters.noseWider).toBe(0.2);
     expect(body(1).parametricAvatar.contexts.current.parameters.noseWider).toBe(0.9);
@@ -210,7 +221,7 @@ describe('parametric avatar persistence', () => {
       useStore.getState().resetSessionData();
       useStore.setState({ user: { id: 'next-owner' }, physiqueTargets: { parametricAvatar: nextDocument } });
     });
-    await act(async () => { response.resolve({}); await settle(); });
+    await act(async () => { response.resolve({ id: 'fixture-targets' }); await settle(); });
     expect(apiRequest).toHaveBeenCalledTimes(1);
     expect(useStore.getState().physiqueTargets.parametricAvatar.id).toBe(nextDocument.id);
     expect(() => edit(result, 0.2)).toThrow(/Reopen/);

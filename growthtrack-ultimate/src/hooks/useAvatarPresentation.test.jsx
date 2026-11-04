@@ -10,7 +10,7 @@ vi.mock('../lib/logger', () => ({ logCRUD:vi.fn().mockResolvedValue(undefined) }
 
 beforeEach(() => {
   vi.useFakeTimers();
-  vi.mocked(apiRequest).mockReset().mockResolvedValue({});
+  vi.mocked(apiRequest).mockReset().mockResolvedValue({ id: 'fixture-targets' });
   useStore.getState().resetSessionData();
   useStore.setState({ user:{ id:'layout-owner' },physiqueTargets:{ goalMetrics:{ waist:80 } } });
 });

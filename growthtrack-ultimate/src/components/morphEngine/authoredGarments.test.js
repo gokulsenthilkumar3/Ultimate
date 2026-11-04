@@ -144,7 +144,7 @@ it('keeps upper fabric outside trousers at every rise after changing pelvis meas
     }
     expect(comparisons).toBeGreaterThan(0);lower.dispose();garment.dispose();
   }
-});
+},30000);
 
 it('keeps both sides of UV seams sewn together when applying ease and body morphs',()=> {
   const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');

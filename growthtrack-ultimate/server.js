@@ -1,3 +1,6 @@
+import { registerOperationsRoutes } from './server/domains/operations.js';
+import { registerIntegrationRoutes } from './server/domains/integrations.js';
+import { createServerCloser } from './server/lifecycle.js';
 import express from 'express';
 import cors from 'cors';
 import { createRequire } from 'module';
@@ -9,6 +12,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'url';
 import { logToFile } from './logger.js';
 import { createSecurity } from './server/security.js';
+import { createBackupScheduler, createEncryptedSQLiteBackup } from './server/domains/scheduledBackups.js';
+import { localDatabaseFile } from './server/domains/sqliteBackup.js';
 import BaseController from './server/controllers/BaseController.js';
 import { legacyNotesModel } from './server/domains/legacyNotes.js';
 import { registerNotesRoutes } from './server/domains/notes.js';
@@ -41,7 +46,6 @@ import { registerFrontend } from './server/frontend.js';
 import createAgentsRouter from './server/agents/router.js';
 import createNotificationsRouter from './server/notifications/router.js';
 import { normalizePortfolioPayload, PORTFOLIO_MAX_BYTES } from './server/domains/portfolio.js';
-import { renderServerHealthHtml } from './server/serverHealthHtml.js';
 import { loadServerConfig } from './server/config.js';
 import { createJsonErrorHandler } from './server/domains/errors.js';
 import { createSyncEngine, registerSyncRoutes, startSyncScheduler } from './server/domains/sync/engine.js';
@@ -102,6 +106,13 @@ const PORT = config.server.port;
 const APP_URL = config.server.appUrl;
 const eventLogger = createEventLogger({ prisma, logToFile });
 const security = createSecurity({ prisma, logToFile, writeEvent: eventLogger.write, config });
+// No backup or key configuration is changed on an existing installation.
+const backupSource = config.backup.enabled ? localDatabaseFile(__dirname, { DATABASE_URL: databaseUrl }) : null;
+const backupScheduler = createBackupScheduler({
+  ...config.backup,
+  backup: () => createEncryptedSQLiteBackup({ source: backupSource, directory: path.resolve(__dirname, config.backup.directory), keyHex: config.security.encryptionKey }),
+  onError: error => logToFile('error', 'scheduled_backup_failed', { code: /^[A-Z0-9_]+$/.test(error.code || '') ? error.code : 'BACKUP_FAILED' }),
+});
 async function cleanupExpiredLogs() {
   const cutoff = new Date(Date.now() - config.logs.retentionDays * 24 * 60 * 60 * 1000);
   try {
@@ -112,27 +123,13 @@ async function cleanupExpiredLogs() {
     ]);
   } catch (error) { logToFile('warning', 'log_retention_cleanup_failed', { error: String(error?.message || error) }); }
 }
+let logCleanupTimer;
 if (config.logs.cleanupEnabled) {
   void cleanupExpiredLogs();
-  const logCleanupTimer = setInterval(cleanupExpiredLogs, config.logs.cleanupIntervalMs);
+  logCleanupTimer = setInterval(cleanupExpiredLogs, config.logs.cleanupIntervalMs);
   logCleanupTimer.unref?.();
 }
 const authMiddleware = security.authenticate;
-// Production requires HANDOFF_SECRET (enforced in config). Locally an ephemeral
-// secret works for one process; say so instead of failing silently later.
-const handoffSecret = config.security.handoffSecret || crypto.randomBytes(32).toString('hex');
-if (!config.security.handoffSecret) logToFile('warning', 'handoff_secret_ephemeral', { detail: 'Set HANDOFF_SECRET so companion handoffs survive restarts.' });
-const handoffNonces = new Map();
-const productCallbacks = Object.freeze(Object.fromEntries(config.gateway.companions.map(product => [product.id, product.callbackUrl])));
-const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
-const signHandoff = payload => { const body = encode(payload); return `${body}.${crypto.createHmac('sha256', handoffSecret).update(body).digest('base64url')}`; };
-const verifyHandoff = token => {
-  const [body, signature] = String(token || '').split('.'); if (!body || !signature) return null;
-  const expected = crypto.createHmac('sha256', handoffSecret).update(body).digest(); const received = Buffer.from(signature, 'base64url');
-  if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) return null;
-  try { return JSON.parse(Buffer.from(body, 'base64url').toString('utf8')); } catch { return null; }
-};
-
 app.disable('x-powered-by');
 app.set('trust proxy', config.server.trustProxy ? 1 : false);
 app.use(security.headers);
@@ -163,72 +160,7 @@ app.use('/api', (req, res, next) => {
 
 // Root path is reserved for the frontend (dist/index.html)
 
-app.get(['/api/health', '/health'], async (req, res) => {
-  const t0 = performance.now();
-  let dbStatus = 'CONNECTED';
-  let dbLatency = 0;
-  try {
-    await prisma.$queryRawUnsafe('SELECT 1');
-    dbLatency = Number((performance.now() - t0).toFixed(2));
-  } catch (e) {
-    dbStatus = 'DISCONNECTED';
-    dbLatency = -1;
-  }
-
-  const mem = process.memoryUsage();
-  const uptimeSeconds = Math.round(process.uptime());
-  const hours = Math.floor(uptimeSeconds / 3600);
-  const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-  const seconds = uptimeSeconds % 60;
-  const uptimeFormatted = `${hours > 0 ? hours + 'h ' : ''}${minutes}m ${seconds}s`;
-  const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024 * 10) / 10;
-  const heapTotalMB = Math.round(mem.heapTotal / 1024 / 1024 * 10) / 10;
-  const rssMB = Math.round(mem.rss / 1024 / 1024 * 10) / 10;
-  const heapPercent = Math.round((mem.heapUsed / mem.heapTotal) * 100);
-
-  const payload = {
-    status: dbStatus === 'CONNECTED' ? 'online' : 'degraded',
-    service: 'GrowthTrack Ultimate Core API',
-    version: require('./package.json').version,
-    port: PORT,
-    environment: config.env,
-    nodeVersion: process.version,
-    platform: `${process.platform}-${process.arch}`,
-    uptimeSeconds,
-    uptimeFormatted,
-    memory: { heapUsedMB, heapTotalMB, rssMB, heapPercent },
-    database: {
-      provider: 'SQLite (Prisma + LibSQL adapter)',
-      file: path.basename(databaseUrl.replace(/^file:/, '')),
-      status: dbStatus,
-      latencyMs: dbLatency,
-    },
-    subsystems: {
-      auth: 'Local owner sessions and authentication routes are configured',
-      bodyTwin: '3D physique and morphology routes are configured',
-      metrics: 'Metric, body, vital and mood routes are configured',
-      workouts: 'Session, routine and exercise routes are configured',
-      finance: 'Budget, transaction and portfolio routes are configured',
-      databaseBrowser: 'Owner browser is configured; separate local Studio is optional',
-      apiDocs: 'Local API Explorer is available at /api/docs',
-      gateway: 'Gateway is a separate optional service; see :3000/health for reachability'
-    }
-  };
-
-  // Only a client that prefers HTML (a browser tab) gets the page; fetch()'s */* gets JSON.
-  if (req.accepts(['json', 'html']) === 'html' && req.query.format !== 'json') {
-    res.setHeader('content-type', 'text/html; charset=utf-8');
-    res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https:; frame-ancestors ${config.security.frameAncestors}`);
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    return res.end(renderServerHealthHtml(payload, { app: APP_URL, dbStudio: config.gateway.dbStudioUrl, gateway: `${config.gateway.url}/health` }));
-  }
-  res.json(payload);
-});
-app.get(['/api/docs', '/docs', '/api-explorer.html'], (req, res) => {
-  res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:; frame-ancestors ${config.security.frameAncestors}`);
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.sendFile(path.join(__dirname, 'api-explorer.html'));
-});
+registerOperationsRoutes(app, { prisma, config, backupScheduler, authMiddleware, root: __dirname, version: require('./package.json').version, databaseUrl });
 app.get('/api/auth/providers', (req, res) => res.json({ providers: enabledIdentityProviders() }));
 app.get('/api/capabilities', authMiddleware, createCapabilitiesHandler({
   prisma, version: require('./package.json').version,
@@ -239,44 +171,7 @@ app.get('/api/capabilities', authMiddleware, createCapabilitiesHandler({
 app.use('/api/agents', authMiddleware, createAgentsRouter());
 app.use('/api/notifications', authMiddleware, createNotificationsRouter({ prisma, calendarRecords: recordRowsEnabled ? recordServices.calendar : null }));
 
-// Gateway health — probes each product and returns live readiness.
-// AppLauncher polls this every 15 s to show online/offline state in the App Hub.
-const GATEWAY_PRODUCT_REGISTRY = Object.freeze([
-  { id: 'ultimate', name: 'Ultimate', healthUrl: `http://127.0.0.1:${PORT}/api/health` },
-  ...config.gateway.companions.map(({ id, name, healthUrl }) => ({ id, name, healthUrl })),
-]);
-async function probeProduct({ id, name, healthUrl }) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.gateway.probeTimeoutMs);
-  try {
-    const res = await fetch(healthUrl, { signal: controller.signal });
-    return { id, name, online: res.ok };
-  } catch { return { id, name, online: false }; }
-  finally { clearTimeout(timer); }
-}
-app.get('/api/gateway/health', async (req, res) => {
-  try {
-    const services = await Promise.all(GATEWAY_PRODUCT_REGISTRY.map(probeProduct));
-    return res.json({ status: 'online', gateway: { port: PORT }, services });
-  } catch (err) {
-    return res.status(500).json({ status: 'error', error: err.message });
-  }
-});
-app.post('/api/integrations/handoff', authMiddleware, (req, res) => {
-  const productId = String(req.body?.productId || ''); const callback = productCallbacks[productId];
-  if (!callback) return res.status(400).json({ error: 'Unknown product.' });
-  const now = Math.floor(Date.now() / 1000); const jti = crypto.randomUUID();
-  const payload = { iss: 'ultimate-local', aud: productId, sub: req.user.id, email: req.user.email, name: req.user.fullName, iat: now, exp: now + 60, jti };
-  for (const [nonce, expires] of handoffNonces) if (expires <= now) handoffNonces.delete(nonce);
-  handoffNonces.set(jti, payload.exp); const token = signHandoff(payload); const separator = callback.includes('?') ? '&' : '?';
-  return res.json({ token, expiresAt: payload.exp, launchUrl: `${callback}${separator}ultimate_handoff=${encodeURIComponent(token)}` });
-});
-app.post('/api/integrations/consume', (req, res) => {
-  const productId = String(req.body?.productId || ''); const payload = verifyHandoff(req.body?.token); const now = Math.floor(Date.now() / 1000);
-  if (!payload || payload.aud !== productId || payload.exp <= now || !handoffNonces.has(payload.jti)) return res.status(401).json({ error: 'Invalid or expired handoff.' });
-  handoffNonces.delete(payload.jti);
-  return res.json({ user: { id: payload.sub, email: payload.email, name: payload.name }, provider: payload.iss });
-});
+registerIntegrationRoutes(app, { config, authMiddleware, logToFile });
 
 // Keep CRUD auditing at the API boundary so every module is covered, including
 // modules whose client-side store does not import the logger directly.
@@ -1086,7 +981,7 @@ app.get('/api/habit_logs/:habitId', authMiddleware, async (req, res) => {
 });
 
 if (config.server.serveFrontend) {
-  registerFrontend(app, { distDirectory: path.join(__dirname, 'dist'), frontendBasePath: config.server.frontendBasePath, appUrl: APP_URL });
+  registerFrontend(app, { distDirectory: path.join(__dirname, 'dist'), frontendBasePath: config.server.frontendBasePath, appUrl: APP_URL, securityConfig: config });
 } else {
   app.use((req, res, next) => {
     if (!req.path.startsWith('/api/') && !req.path.startsWith('/auth/') && req.path !== '/') {
@@ -1112,17 +1007,20 @@ const stopSyncScheduler = config.sync.scheduler.enabled
 
 // Graceful shutdown: stop timers, let in-flight requests (including sync
 // transactions) finish, then close the database. A deadline prevents hangs.
+export const closeServer = createServerCloser({
+  server,
+  stopScheduling: () => { stopSyncScheduler(); clearInterval(logCleanupTimer); },
+  stopBackups: () => backupScheduler.stop(),
+  disconnect: () => prisma.$disconnect(),
+});
 let shuttingDown = false;
 async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   logToFile('info', 'server_shutdown', { signal });
-  stopSyncScheduler();
-  clearInterval(logCleanupTimer);
   const deadline = setTimeout(() => process.exit(1), 10_000);
   deadline.unref?.();
-  await new Promise(resolve => server.close(resolve));
-  await prisma.$disconnect().catch(() => undefined);
+  await closeServer();
   process.exit(0);
 }
 // Electron owns its own lifecycle; standalone and container runs handle signals.

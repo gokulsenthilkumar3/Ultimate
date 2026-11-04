@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {beforeAll,describe,expect,it,vi} from 'vitest';
 import fs from 'node:fs';
 import {BufferAttribute,MeshBasicMaterial,Vector3} from 'three';

@@ -4,7 +4,7 @@
     "documentation": [{ "title": "Complete UI workflow and style guide", "path": "docs/UI_WORKFLOW_AND_STYLE_GUIDE.md" }],
     "runtime": "Node.js/npm workspace; Ultimate uses React, Vite and Express. Companion services retain their current frameworks.",
     "status": "NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; restricted customer-admin adapters remain separate work.",
-    "install": ["npm install --prefix growthtrack-ultimate", "Copy-Item growthtrack-ultimate/.env.example growthtrack-ultimate/.env"],
+    "install": ["npm install --prefix growthtrack-ultimate", "Copy-Item growthtrack-ultimate/.env.example growthtrack-ultimate/.env", "npm --prefix growthtrack-ultimate run db:generate"],
     "start": ["npm run dev"],
     "checks": ["npm run build:design", "npm run test:design", "npm run test:gateway", "npm run design:check", "node --test tests/code-context.test.mjs"],
     "environment": ["Configure Ultimate's ignored .env for the live application. The design demo requires no credentials.", "Install and configure companion dependencies before using npm run dev. Use npm run dev:core for Ultimate, the gateway and database console only."],
@@ -15,7 +15,7 @@
     "documentation": [{ "title": "Complete UI workflow and style guide", "path": "docs/UI_WORKFLOW_AND_STYLE_GUIDE.md" }],
     "runtime": "React, Vite, Express, Prisma/SQLite; optional Electron desktop packaging and Three.js physique tools.",
     "status": "Authenticated desktop portal with native NiftyLens, Family Connect and Forex pages, shared motion/loading states and a separate fictional review demo. FinSync/OxFin customer adapters still require configuration.",
-    "install": ["npm install", "Copy-Item .env.example .env"], "start": ["npm run dev"], "checks": ["npm run build:design", "npm run test:design", "npm run build", "npm test"],
+    "install": ["npm install", "Copy-Item .env.example .env", "npm run db:generate"], "start": ["npm run dev"], "checks": ["npm run build:design", "npm run test:design", "npm run build", "npm test"],
     "environment": ["The design demo requires no credentials. ADMIN_DEMO_PORT can override its local port.", "The live app requires locally configured owner credentials, session/encryption/handoff secrets and its database. After configuration, npm run db:sync initialises the development schema; review database changes before running it against existing data."],
     "notes": ["For the existing app use npm run dev; the workspace-root npm run dev:core also starts the gateway and database console.", "3D research HTML and assets live in docs/3d-plans/. Runtime Physique assets remain separate.", "Use the root architecture plan for product boundaries and the required customer-admin security work."]
   },

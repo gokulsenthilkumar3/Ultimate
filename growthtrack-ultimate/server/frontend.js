@@ -1,6 +1,8 @@
 import express from 'express';
 import path from 'node:path';
 import { stat } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { contentSecurityPolicy } from './contentSecurityPolicy.js';
 
 export function frontendBasePath({ frontendBasePath: configured, appUrl } = {}) {
   const input = configured ?? (appUrl ? new URL(appUrl).pathname : '/Ultimate/');
@@ -11,9 +13,15 @@ export function frontendBasePath({ frontendBasePath: configured, appUrl } = {}) 
   return base === '/' ? '/' : `${base}/`;
 }
 
-export function registerFrontend(app, { distDirectory, frontendBasePath: configured, appUrl }) {
+export function registerFrontend(app, { distDirectory, frontendBasePath: configured, appUrl, securityConfig }) {
   const basePath = frontendBasePath({ frontendBasePath: configured, appUrl });
   const mountPath = basePath === '/' ? '/' : basePath.slice(0, -1);
+  // Apply the same policy to index.html and every SPA fallback. Hashes are
+  // derived from the final build so minification cannot invalidate them.
+  if (securityConfig) {
+    const policy = contentSecurityPolicy(securityConfig, readFileSync(path.join(distDirectory, 'index.html'), 'utf8'));
+    app.use((req, res, next) => { res.setHeader('Content-Security-Policy', policy); next(); });
+  }
   app.use((req, res, next) => {
     if (/^\/(api|auth)(\/|$)/.test(req.path)) return res.status(404).json({ error: 'Endpoint not found.' });
     if (basePath !== '/' && (req.method === 'GET' || req.method === 'HEAD') && (req.path === '/' || req.path === mountPath)) return res.redirect(302, basePath);

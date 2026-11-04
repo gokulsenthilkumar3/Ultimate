@@ -3,34 +3,35 @@ import lazy from './app/lazyPage';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import useStore from './store/useStore';
 import { useAuth } from './context/AuthContext';
-import { ToastProvider } from './hooks/useToast';
 import ErrorBoundary from './components/ErrorBoundary';
 import './styles/app-styles.css';
-import { TAB_GROUP_MAP } from './config/navigation';
-import { FEATURE_BY_ID, featurePath, resolveFeatureRoute } from './config/featureRegistry';
+import { FEATURE_BY_ID, FEATURE_GROUPS as TAB_GROUP_MAP, featurePath, resolveFeatureRoute } from './config/featureRegistry';
 import useRoutePreload from './app/useRoutePreload';
 import { getTextDirection } from './utils/userFormatters';
 import useDesignPreferences from './hooks/useDesignPreferences';
 import usePlayfulMotion from './hooks/usePlayfulMotion';
 import PageTransition from './components/motion/PageTransition';
 import { useKinetic } from './components/motion/KineticContext';
-import WorkspaceChapter from './components/motion/WorkspaceChapter';
-import WorkspaceSubnav from './components/WorkspaceSubnav';
-import SignOutDialog from './components/SignOutDialog';
-import CommandPalette from './components/CommandPalette';
-import FloatingPillDock from './components/FloatingPillDock';
-import PremiumSidebar from './components/PremiumSidebar';
-import Header from './components/Header';
 import LoadingSkeleton from './components/ui/LoadingSkeleton';
-import PageState from './components/ui/PageState';
-import PageHeader from './components/ui/PageHeader';
-import NotFound from './components/NotFound';
 import { TIMING } from './constants';
 import { logPageView } from './lib/logger';
 import useNotifications from './hooks/useNotifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { listDrafts, removeOwnerDrafts } from './lib/drafts';
 import { userDateKey } from './utils/calendarDate';
+
+// Anonymous entry pages do not need the authenticated workspace controls.
+const ToastProvider = lazy(() => import('./hooks/useToast').then(module => ({ default: module.ToastProvider })));
+const WorkspaceChapter = lazy(() => import('./components/motion/WorkspaceChapter'));
+const WorkspaceSubnav = lazy(() => import('./components/WorkspaceSubnav'));
+const SignOutDialog = lazy(() => import('./components/SignOutDialog'));
+const PageHeader = lazy(() => import('./components/ui/PageHeader'));
+const PageState = lazy(() => import('./components/ui/PageState'));
+const NotFound = lazy(() => import('./components/NotFound'));
+const CommandPalette = lazy(() => import('./components/CommandPalette'));
+const FloatingPillDock = lazy(() => import('./components/FloatingPillDock'));
+const PremiumSidebar = lazy(() => import('./components/PremiumSidebar'));
+const Header = lazy(() => import('./components/Header'));
 
 const MODULE_COMPONENTS = {
   overview: lazy(() => import('./components/Overview')),
@@ -295,7 +296,7 @@ export default function App() {
   if (route.redirect) return <Navigate to={route.redirect} replace />;
 
   const group = TAB_GROUP_MAP[activeTab] || 'system';
-  return <ErrorBoundary resetKey="root"><ToastProvider>
+  return <ErrorBoundary resetKey="root"><Suspense fallback={<LoadingSkeleton variant={group} />}><ToastProvider>
     <SignOutDialog open={Boolean(logoutDialog)} drafts={logoutDialog} busy={logoutBusy} error={logoutError} onCancel={() => { if (!logoutBusy) setLogoutDialog(null); }} onConfirm={confirmLogout} />
     <CommandPalette />
     <Suspense fallback={null}>
@@ -320,5 +321,5 @@ export default function App() {
         {initialDataReady && companionEnabled && <ErrorBoundary resetKey={activeTab} fallback={<></>}><Suspense fallback={null}><FloatingCompanion /></Suspense></ErrorBoundary>}
       </div>
     </div>
-  </ToastProvider></ErrorBoundary>;
+  </ToastProvider></Suspense></ErrorBoundary>;
 }

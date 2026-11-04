@@ -5,7 +5,7 @@ import {
   Settings, ShieldCheck, ShoppingBag, Sparkles, Target, TrendingUp, Trophy,
   Users, Utensils, WalletCards, Waves, CheckCircle,
 } from 'lucide-react';
-import { FEATURES, FEATURE_BY_ID } from './featureRegistry';
+import { FEATURES, FEATURE_BY_ID, FEATURE_GROUPS } from './featureRegistry';
 
 const TAB_CORE = {
   overview: { label: 'Overview', group: 'insights', icon: Home, emoji: '🏠', keywords: ['home', 'today', 'dashboard'] },
@@ -62,12 +62,11 @@ const TAB_CORE = {
   companion: { label: 'Apps Suite', group: 'system', icon: Cloud, emoji: '🎛️', keywords: ['companion', 'suite', 'ecosystem', 'integrated', 'matrix'] },
 };
 
-const AREA_GROUP = { finance: 'money', insights: 'insights', wellness: 'wellness', workspace: 'work', life: 'life', hub: 'system' };
 const AREA_ICON = { finance: WalletCards, insights: TrendingUp, wellness: HeartPulse, workspace: BriefcaseBusiness, life: Users, hub: LayoutDashboard };
 export const TABS = Object.freeze(Object.fromEntries(FEATURES.map(feature => {
   const meta = TAB_CORE[feature.id] || { icon: AREA_ICON[feature.area], emoji: '▦', keywords: [] };
   return [feature.id, Object.freeze({
-    ...meta, ...feature, group: ['customers', 'finsync', 'oxfin'].includes(feature.id) ? 'customers' : feature.id === 'forex' ? 'money' : AREA_GROUP[feature.area], description: `${feature.label} · ${feature.area}`,
+    ...meta, ...feature, group: FEATURE_GROUPS[feature.id], description: `${feature.label} · ${feature.area}`,
     shortLabel: feature.label, order: 0, navigation: 'secondary', pageTemplate: feature.template,
   })];
 })));
@@ -85,7 +84,7 @@ export const GROUPS = {
 export const GROUP_ORDER = ['customers', 'money', 'wellness', 'work', 'life', 'insights', 'system'];
 export const MOBILE_QUICK_GROUPS = ['customers', 'money', 'wellness', 'work'];
 const LEGACY_DEFAULT_GROUP_ORDER = ['wellness', 'insights', 'work', 'money', 'life', 'system'];
-export const TAB_GROUP_MAP = Object.fromEntries(Object.entries(TABS).map(([id, tab]) => [id, tab.group]));
+export const TAB_GROUP_MAP = FEATURE_GROUPS;
 export const ROUTE_ALIASES = Object.fromEntries(FEATURES.flatMap(item => item.aliases.map(alias => [alias, item.id])));
 export const MODULE_DEFINITIONS = Object.freeze(Object.values(TABS).map(meta => Object.freeze({
   ...meta,

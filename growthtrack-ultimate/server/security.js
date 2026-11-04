@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { DEFAULT_CONFIG } from './config.js';
+import { contentSecurityPolicy } from './contentSecurityPolicy.js';
+import { consumeOwnerCode, csrfDigest, sessionCsrfHash, sessionHasMfa } from './domains/ownerMfa.js';
 
 const COOKIE_NAME = 'growthtrack_session';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -29,8 +31,9 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
   const attempts = new Map();
   const apiBuckets = new Map();
   const isProduction = config.production;
+  const dummyPasswordHash = bcrypt.hash(randomToken(), 12);
   const { sessionHours: SESSION_HOURS, sessionTouchMs: SESSION_TOUCH_MS, loginWindowMs: LOGIN_WINDOW_MS,
-    loginMaxAttempts: LOGIN_MAX_ATTEMPTS, apiRateLimitPerMinute, frameAncestors } = config.security;
+    loginMaxAttempts: LOGIN_MAX_ATTEMPTS, apiRateLimitPerMinute } = config.security;
   const allowedOrigins = new Set(config.security.origins);
   // Throttle buckets are keyed by client and path; expired entries are dropped
   // so the maps cannot grow without bound on a long-running server.
@@ -62,8 +65,8 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
     if (isProduction) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-    res.setHeader('Content-Security-Policy', `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors ${frameAncestors}; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http: https: ws: wss:`);
-    res.setHeader('Cache-Control', req.path.startsWith('/api/auth') ? 'no-store' : 'private, no-cache');
+    res.setHeader('Content-Security-Policy', contentSecurityPolicy(config));
+    res.setHeader('Cache-Control', /^\/(?:api\/)?auth(?:\/|$)/.test(req.path) ? 'no-store' : 'private, no-cache');
     next();
   };
 
@@ -93,20 +96,32 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
       return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
     }
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+    // Reserve before asynchronous password checks so concurrent failures cannot
+    // all observe the same empty throttle bucket.
+    attempts.set(bucketKey, [...bucket, now]);
 
     const user = await prisma.user.findUnique({ where: { email } });
-    const valid = user ? await bcrypt.compare(password, user.passwordHash) : false;
+    const passwordMatches = await bcrypt.compare(password, user?.passwordHash || await dummyPasswordHash);
+    const valid = Boolean(user && passwordMatches);
     if (!valid) {
-      attempts.set(bucketKey, [...bucket, now]);
       await writeLoginLog({ userId: user?.id, email, action: 'login_failed', failureReason: 'invalid_credentials', req });
       return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+
+    if (config.security.mfaSecret) {
+      if (!req.body?.otp) return res.status(401).json({ code: 'MFA_REQUIRED', error: 'Enter the six-digit code from your authenticator.' });
+      const verified = await consumeOwnerCode({ prisma, secret: config.security.mfaSecret, userId: user.id, code: req.body.otp });
+      if (!verified) {
+        await writeLoginLog({ userId: user.id, email, action: 'login_failed', failureReason: 'invalid_authenticator', req });
+        return res.status(401).json({ code: 'MFA_INVALID', error: 'Invalid or already used authenticator code.' });
+      }
     }
 
     attempts.delete(bucketKey);
     const sessionToken = randomToken();
     const csrfToken = randomToken();
     const expiresAt = new Date(now + SESSION_HOURS * 60 * 60 * 1000);
-    const session = await prisma.authSession.create({ data: { userId: user.id, tokenHash: sha256(sessionToken), csrfHash: sha256(csrfToken), ipAddress: req.ip, userAgent: req.headers['user-agent'], expiresAt } });
+    const session = await prisma.authSession.create({ data: { userId: user.id, tokenHash: sha256(sessionToken), csrfHash: sessionCsrfHash(sha256(csrfToken), config.security.mfaSecret), ipAddress: req.ip, userAgent: req.headers['user-agent'], expiresAt } });
     if (writeEvent) await writeEvent({ category: 'session', action: 'start', user_id: user.id, user_name: user.fullName, user_email: user.email, item_id: session.id, details: `Session ${session.id} created` }, req);
     await writeLoginLog({ userId: user.id, email, action: 'login_success', req });
 
@@ -119,13 +134,13 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
     const sessionToken = cookies[COOKIE_NAME];
     if (!sessionToken) return res.status(401).json({ error: 'Authentication required.' });
     const session = await prisma.authSession.findUnique({ where: { tokenHash: sha256(sessionToken) }, include: { user: true } });
-    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+    if (!session || session.revokedAt || session.expiresAt <= new Date() || (config.security.mfaSecret && !sessionHasMfa(session.csrfHash, config.security.mfaSecret))) {
       res.clearCookie(COOKIE_NAME, { path: '/', sameSite: 'strict', secure: isProduction });
       return res.status(401).json({ error: 'Session expired.' });
     }
     if (!SAFE_METHODS.has(req.method)) {
       const csrfToken = req.headers['x-csrf-token'];
-      if (!csrfToken || sha256(String(csrfToken)) !== session.csrfHash) return res.status(403).json({ error: 'Invalid CSRF token.' });
+      if (!csrfToken || sha256(String(csrfToken)) !== csrfDigest(session.csrfHash)) return res.status(403).json({ error: 'Invalid CSRF token.' });
     }
     req.user = session.user;
     req.authSession = session;
@@ -147,7 +162,7 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
 
   const csrf = async (req, res) => {
     const csrfToken = randomToken();
-    await prisma.authSession.update({ where: { id: req.authSession.id }, data: { csrfHash: sha256(csrfToken) } });
+    await prisma.authSession.update({ where: { id: req.authSession.id }, data: { csrfHash: sessionCsrfHash(sha256(csrfToken), config.security.mfaSecret) } });
     res.json({ csrfToken });
   };
 
@@ -170,7 +185,7 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
       const valid = currentPassword && await bcrypt.compare(currentPassword, req.user.passwordHash);
       if (!valid) return res.status(403).json({ error: 'Current password is incorrect.' });
     }
-    if (newPassword && newPassword.length < 12) return res.status(400).json({ error: 'New password must be at least 12 characters.' });
+    if (newPassword && (newPassword.length < 12 || Buffer.byteLength(newPassword, 'utf8') > 72)) return res.status(400).json({ error: 'New password must be at least 12 characters and at most 72 UTF-8 bytes.' });
     if (email !== req.user.email) {
       const duplicate = await prisma.user.findUnique({ where: { email } });
       if (duplicate && duplicate.id !== req.user.id) return res.status(409).json({ error: 'Email is already in use.' });
