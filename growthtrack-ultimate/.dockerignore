@@ -6,6 +6,7 @@
 !prisma.config.ts
 !vite.config.js
 !index.html
+!api-explorer.html
 !logger.js
 !server.js
 !src/**

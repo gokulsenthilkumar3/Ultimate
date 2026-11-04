@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — database console and logging fixes (2026-11-04)
+
+- Browse read-only databases in a light/dark workspace with page-local sorting, filtering, column controls, exports and an accessible record inspector.
+- Load more audit logs, keep filter results current, and export correctly quoted CSV. Runtime logs include timestamps and respect terminal color preferences; FinSync starts with its ES-module configuration and refreshed browser compatibility data.
+- Keep hydration loading/error state tied to the newest request, include the API explorer in container builds, and wait for completed response rendering in the explorer browser regression.
+
 ## Unreleased — local architecture graph and Firebase setup cleanup (2026-11-04)
 
 - Inspect direct dependencies and indirect consumers with a local code graph, including type-only filtering, import-line evidence, bounded traversal and coverage diagnostics. Generated indexes remain ignored and queries reject stale source.

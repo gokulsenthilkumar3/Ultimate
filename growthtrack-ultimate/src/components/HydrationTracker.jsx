@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import ResponsiveContainer from './ui/VisibleResponsiveContainer';
 import { PieChart, Pie } from 'recharts';
@@ -41,23 +41,27 @@ export default function HydrationTracker() {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logsLoaded, setLogsLoaded] = useState(false);
   const [logsError, setLogsError] = useState('');
+  const requestVersion = useRef(0);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
+    const request = ++requestVersion.current;
     setLoadingLogs(true);
     setLogsError('');
     try {
       const res = await apiSync('/hydration/logs', 'GET');
+      if (request !== requestVersion.current) return;
       if (!Array.isArray(res)) throw new Error('Hydration history response was invalid.');
       setLogs(res);
       setLogsLoaded(true);
     } catch (error) {
-      setLogsError(error instanceof Error ? error.message : 'Could not load hydration history.');
+      if (request === requestVersion.current) setLogsError(error instanceof Error ? error.message : 'Could not load hydration history.');
     } finally {
-      setLoadingLogs(false);
+      if (request === requestVersion.current) setLoadingLogs(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchLogs(); }, []);
+  const invalidateRequests = useCallback(() => { requestVersion.current++; }, []);
+  useEffect(() => { fetchLogs(); return invalidateRequests; }, [fetchLogs, invalidateRequests]);
 
   // Rolling 24h total
   const current = useMemo(() => {

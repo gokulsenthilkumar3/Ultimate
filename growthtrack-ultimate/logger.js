@@ -42,7 +42,8 @@ const rotatingTransport = new DailyRotateFile({
 // ── Transport: console (dev-friendly colorised output) ────────────────────────
 const consoleTransport = new winston.transports.Console({
   format: winston.format.combine(
-    winston.format.colorize(),
+    winston.format.timestamp(),
+    ...(process.stdout.isTTY && !Object.hasOwn(process.env, 'NO_COLOR') ? [winston.format.colorize()] : []),
     winston.format.printf(({ level, message, timestamp, ...meta }) => {
       const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
       return `${timestamp} [${level}]: ${message}${metaStr}`;

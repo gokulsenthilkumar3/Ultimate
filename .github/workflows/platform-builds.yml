@@ -24,7 +24,9 @@ jobs:
       - run: docker build --tag growthtrack-ultimate:verification .
       - run: node scripts/test-container.mjs
   ios-companion:
-    runs-on: macos-15
+    # Hosted ARM capacity can cancel jobs before a runner is assigned. The
+    # standard Intel image supports the same Swift tests and simulator build.
+    runs-on: macos-15-intel
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
