@@ -27,7 +27,7 @@ jobs:
           - app: OxFin
             directory: FinSync/OxFin/ox-fin-web
             install: npm ci --ignore-scripts
-            test: node --test src/lib/databaseConfig.test.mjs src/lib/adminDirectory.test.mjs
+            test: npm test -- --runInBand
     defaults:
       run:
         working-directory: ${{ matrix.directory }}
