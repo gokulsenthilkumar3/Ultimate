@@ -4,14 +4,18 @@
 
 Create `.env.local` in the root of the project:
 
+Copy `.env.example` to `.env.local`, then fill in your own project's Firebase web
+configuration from Firebase Console → Project Settings → Your apps. The values
+below are intentionally blank. Keep local configuration out of Git.
+
 ```env
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyAkSj0de46GqMZsxWfq-ARO3kF7XtVChaQ
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=niftylens-e75c5.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=niftylens-e75c5
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=niftylens-e75c5.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=609686963123
-NEXT_PUBLIC_FIREBASE_APP_ID=1:609686963123:web:603e098900bf373059c1c6
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-6DPB6Y49LS
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
 ```
 
 ## 2. Enable Firebase Auth

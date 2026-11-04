@@ -18,13 +18,13 @@ if [ ! -f ".env.local" ]; then
   cp .env.example .env.local
   echo ""
   echo "  ⚠   .env.local created. Fill in your Firebase values:"
-  echo "      NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyAkSj0de46GqMZsxWfq-ARO3kF7XtVChaQ"
-  echo "      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=niftylens-e75c5.firebaseapp.com"
-  echo "      NEXT_PUBLIC_FIREBASE_PROJECT_ID=niftylens-e75c5"
-  echo "      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=niftylens-e75c5.firebasestorage.app"
-  echo "      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=609686963123"
-  echo "      NEXT_PUBLIC_FIREBASE_APP_ID=1:609686963123:web:603e098900bf373059c1c6"
-  echo "      NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-6DPB6Y49LS"
+  echo "      NEXT_PUBLIC_FIREBASE_API_KEY="
+  echo "      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="
+  echo "      NEXT_PUBLIC_FIREBASE_PROJECT_ID="
+  echo "      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="
+  echo "      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="
+  echo "      NEXT_PUBLIC_FIREBASE_APP_ID="
+  echo "      NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="
 else
   echo "[2/3] .env.local already exists — skipping."
 fi
