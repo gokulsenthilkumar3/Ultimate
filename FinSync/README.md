@@ -43,6 +43,8 @@ npm run type-check --workspace=apps/web
 ## Workspace documentation
 
 - [Application directory](../docs/APPLICATIONS.md)
+- [Repository structure and file policy](../docs/REPOSITORY_STRUCTURE.md)
+- [Current architecture](../docs/ARCHITECTURE.md)
 - [Ownership and independent builds](../docs/BUILD_BOUNDARIES.md)
 - [Desktop redesign and architecture](../docs/plans/2026-10-28-admin-redesign.md)
 - [Complete architecture and UI review handoff](../docs/UI_ARCHITECTURE_HANDOFF.md)

@@ -1,5 +1,8 @@
 # 🚀 Ultimate — 90-Day Execution Sprint
 
+> Historical planning record. Preserve its original proposals and measurements. Use [the engineering plan](docs/Eng%20Plan.md) and [current architecture](docs/ARCHITECTURE.md) for maintained guidance.
+
+
 > **Started:** July 16, 2026 | **Target:** October 13, 2026
 
 ## 📊 Weekly Check-in (Update Every Friday 5pm)

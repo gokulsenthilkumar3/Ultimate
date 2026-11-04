@@ -1,5 +1,7 @@
 # Improvements2504.1 — Change Notes
 
+> Historical change notes from April 2026. Use [CI validation](../docs/CI_VALIDATION.md) and [current architecture](../docs/ARCHITECTURE.md) for maintained guidance. Paths and claims below describe that earlier change.
+
 > Branch created: 25 April 2026
 > Base: `main` @ `67a12a9`
 

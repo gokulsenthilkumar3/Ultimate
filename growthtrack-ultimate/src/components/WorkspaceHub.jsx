@@ -91,7 +91,7 @@ export default function WorkspaceHub() {
           { id: 'tasks', label: 'Tasks', metric: count(pending.length), detail: 'Open tasks', description: 'Turn a plan into a next step.', Icon: ListTodo, tone: 'mint' },
           { id: 'projects', view: 'mine', label: 'Projects', metric: count(projects.length), detail: 'Saved projects', description: 'Keep the bigger picture together.', Icon: FolderKanban, tone: 'lilac' },
           { id: 'notes', label: 'Notes', metric: count(notes.length), detail: 'Saved notes', description: 'Give a good thought somewhere to land.', Icon: NotebookPen, tone: 'yellow' },
-        ].map(({ id, view, label, metric, detail, description, Icon, tone }) => <li key={id} data-area-motion="launcher"><Link to={featurePath(id, view)} aria-label={label} aria-describedby={`workspace-door-${id}`} data-tone={tone}>
+        ].map(({ id, view, label, metric, detail, description, Icon, tone }) => <li key={id} data-area-motion="launcher"><Link to={featurePath(id, view)} aria-describedby={`workspace-door-${id}`} data-tone={tone}>
           <span className="workspace-hub__destination-top"><span className="workspace-hub__destination-icon">{React.createElement(Icon, { size: 22, strokeWidth: 1.65, 'aria-hidden': true })}</span><strong>{label}</strong><ArrowUpRight size={18} aria-hidden="true" /></span>
           <span className="workspace-hub__destination-detail" id={`workspace-door-${id}`}><span className="workspace-hub__metric">{metric}</span>{' '}<span>{detail}</span></span><span className="workspace-hub__destination-copy">{description}</span>
         </Link></li>)}
@@ -117,7 +117,7 @@ export default function WorkspaceHub() {
           ['documents', undefined, 'My Files', 'Keep your documents close', Files],
           ['timesheet', 'timer', 'Timesheet', 'Give your time a clear record', Timer],
           ['goals', undefined, 'Goals', 'Connect today to what is next', Target],
-        ].map(([id, view, label, description, Icon]) => <li key={id}><Link to={featurePath(id, view)} aria-label={label}>{React.createElement(Icon, { size: 19, strokeWidth: 1.65, 'aria-hidden': true })}<span><strong>{label}</strong><small>{description}</small></span><ArrowUpRight size={15} aria-hidden="true" /></Link></li>)}
+        ].map(([id, view, label, description, Icon]) => <li key={id}><Link to={featurePath(id, view)}>{React.createElement(Icon, { size: 19, strokeWidth: 1.65, 'aria-hidden': true })}<span><strong>{label}</strong><small>{description}</small></span><ArrowUpRight size={15} aria-hidden="true" /></Link></li>)}
       </ul>
     </nav>
   </section>;

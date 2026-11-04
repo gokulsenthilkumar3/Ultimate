@@ -1,10 +1,13 @@
 name: Isolated performance and load
 on:
   pull_request:
-    branches: [main]
+    branches: [main, master]
     paths:
       - .github/workflows/performance-load.yml
-      - growthtrack-ultimate/scripts/load-smoke.mjs
+      - 'growthtrack-ultimate/**'
+      - 'scripts/**'
+      - package.json
+      - .nvmrc
   schedule:
     - cron: '19 4 * * 1'
   workflow_dispatch:
@@ -36,11 +39,55 @@ jobs:
       - name: Browser correctness and resource bounds
         run: node scripts/check-page-performance.mjs --report=../.gstack/benchmark-reports/ci-populated.json
       - name: Bounded concurrent read-only API smoke
+        if: ${{ !cancelled() }}
         run: node scripts/load-smoke.mjs
+      - name: Authenticated application API load and isolation
+        if: ${{ !cancelled() }}
+        run: node --test tests/unit/server-backend/api-load.test.mjs
+      - name: Slow network and interaction measurements
+        if: ${{ !cancelled() }}
+        run: node scripts/page-performance.mjs --label=ci-slow --fixture=populated --pages=overview,notes,goals,shopping --runs=1 --network=4g --cpu-throttle=4 --interact
+      - name: Enforce slow-network budgets
+        if: ${{ !cancelled() }}
+        run: node scripts/check-resilience-performance.mjs --report=ci-slow --slow
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: isolated-performance
+          path: .gstack/benchmark-reports/
+          include-hidden-files: true
+          retention-days: 14
+  endurance:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: growthtrack-ultimate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Browser endurance and interaction fixture
+        run: node scripts/page-performance.mjs --label=ci-soak --fixture=populated --pages=overview --runs=1 --soak-minutes=10 --interact
+      - name: Enforce resource growth bounds
+        run: node scripts/check-resilience-performance.mjs --report=ci-soak --soak
+      - name: Sustained authenticated API workload
+        if: ${{ !cancelled() }}
+        run: node --test tests/unit/server-backend/api-load.test.mjs
+        env:
+          API_LOAD_ENDURANCE: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: endurance-evidence
           path: .gstack/benchmark-reports/
           include-hidden-files: true
           retention-days: 14

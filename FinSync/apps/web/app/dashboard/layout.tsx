@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const pathname = usePathname();
     const [user, setUser] = useState<UserProfile>({ name: 'Loading…', email: '', initials: '?', plan: 'Free Plan', budgetRule: '50/30/20' });
-    const [pageTitle, setPageTitle] = useState('Dashboard');
+    const pageTitle = [...navItems, ...bottomItems].find(n => n.href === pathname)?.label || 'Dashboard';
     const [navOpen, setNavOpen] = useState(false);
     const navToggle = useRef<HTMLButtonElement>(null);
     useEffect(() => {
@@ -42,11 +42,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [navOpen]);
-
-    useEffect(() => {
-        const nav = [...navItems, ...bottomItems].find(n => n.href === pathname);
-        if (nav) setPageTitle(nav.label);
-    }, [pathname]);
 
     useEffect(() => {
         let redirectTimer: any;

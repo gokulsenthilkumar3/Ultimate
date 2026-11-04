@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — optional integrations and workspace safeguards (2026-11-05)
+
+- Choose an account-scoped technology planning profile and explicitly request Jev or local Laya feature advice with consent and review. Keep existing runtimes and databases; the 32 optional adapter packages provide disabled templates and health contracts.
+- Protect new FinSync private profiles with server-side authenticated encryption, restrict product customer directories to scoped service identities and approved readers, and verify OxFin production database certificates.
+- Validate repository ownership, configuration syntax, documentation links and JSON/TOON round trips. Preserve provenance and explicit unavailability for historical artifacts.
+- Expand architectural, security, accessibility, loading and performance checks, including independent companion builds and isolated packaging tests.
+
 ## Unreleased — CI architecture, security and resilience checks (2026-11-04)
 
 - Run local dependency-graph, import ownership, gateway and disposable SQLite schema regressions in GitHub Actions.

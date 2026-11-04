@@ -10,7 +10,7 @@ export default defineConfig([
   // should never hide real regressions in `src/`.
   globalIgnores([
     'dist', 'dist-admin-demo', '.agents', '.build_test', 'coverage', 'logs', 'playwright-report',
-    'test-results', '.tmp', '.vite', '.claude', '.windsurf',
+    'test-results', '.tmp', '.vite', '.claude', '.windsurf', '**/.venv/**',
     'prisma-generated', 'release-v2', 'release-*',
     'docs/ui-review/before-source',
     'docs/3d-plans/plan-assets/human-stage.js',

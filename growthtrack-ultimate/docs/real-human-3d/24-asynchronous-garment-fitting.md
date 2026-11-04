@@ -1,5 +1,7 @@
 # Asynchronous garment fitting and editable joints
 
+> Evidence availability: linked local artifacts are not included in this checkout. This historical record does not establish current rendered coverage. Use the [maintained architecture](../../../docs/ARCHITECTURE.md) and fresh scoped tests when assessing the current implementation.
+
 Date: **27 October 2026**. Continues the interrupted work after
 [garment contact verification](23-garment-contact-verification.md).
 
@@ -25,7 +27,7 @@ fall back to blocking the main thread, and later exports fail promptly if the
 worker has stopped. Closing the editor terminates its worker and rejects any
 pending export wait.
 
-[Desktop evidence](../../artifacts/parametric-visual/desktop-active-editing.json)
+[Desktop evidence](../../../docs/evidence/ARTIFACTS.md#artifact-026)
 records 20 nose edits followed by 20 waist edits on the textured figure:
 
 | Measurement | Result |
@@ -61,7 +63,7 @@ glTF validator with **zero errors and warnings**.
 
 ## Expanded body and hand proxy experiment
 
-[Reproducible candidate evidence](../../artifacts/parametric-portrait/garment-proxy-experiment.json)
+[Reproducible candidate evidence](../../../docs/evidence/ARTIFACTS.md#artifact-024)
 uses posed convex body parts expanded by 3 mm. Every source triangle belongs
 to a part; palms, forearms and individual fingers have separate proxies.
 Hand parts can select an exit side independent of the torso's outward normal.
@@ -85,7 +87,7 @@ prove that no valid garment fit exists. Proxy separation alone is not a
 production fit, and the prototype has not received visual approval.
 
 The live solver therefore retains its existing geometric behavior. The full
-[150-case matrix](../../artifacts/parametric-portrait/garment-matrix.json)
+[150-case matrix](../../../docs/evidence/ARTIFACTS.md#artifact-023)
 was rerun through the shared typed-array solver boundary and again passed
 **147/150**, with the same 92, 77 and 64 crossing-pair failures. The source was
 unchanged, and strict mode correctly exited with status 1. The 2 mm global

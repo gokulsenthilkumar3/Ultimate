@@ -24,6 +24,8 @@ for (const app of apps) {
     '## Workspace documentation', '',
     ...(app.documentation || []).map(document => `- [${document.title}](${link(app.path, document.path)})`),
     `- [Application directory](${link(app.path, 'docs/APPLICATIONS.md')})`,
+    `- [Repository structure and file policy](${link(app.path, 'docs/REPOSITORY_STRUCTURE.md')})`,
+    `- [Current architecture](${link(app.path, 'docs/ARCHITECTURE.md')})`,
     `- [Ownership and independent builds](${link(app.path, 'docs/BUILD_BOUNDARIES.md')})`,
     `- [Desktop redesign and architecture](${link(app.path, 'docs/plans/2026-10-28-admin-redesign.md')})`,
     `- [Complete architecture and UI review handoff](${link(app.path, 'docs/UI_ARCHITECTURE_HANDOFF.md')})`,

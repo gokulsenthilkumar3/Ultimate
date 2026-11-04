@@ -1,5 +1,7 @@
 # Forensic audit of the 3D human model system
 
+> Evidence availability: linked local artifacts are not included in this checkout. This historical record does not establish current rendered coverage. Use the [maintained architecture](../../docs/ARCHITECTURE.md) and fresh scoped tests when assessing the current implementation.
+
 Audit date: **26 October 2026**.
 
 **Strategy follow-up:** [Parametric assets, realism and identity-capture review](3D_HUMAN_STRATEGY_REVIEW_2026-10-26.md) evaluates the subsequently proposed `three.ws`, Avatar SDK/MetaPerson and MetaHuman export paths. It revises the continuity-first recommendation; the inventory and measured findings below remain the dated audit baseline.
@@ -96,7 +98,7 @@ Compression differs by family:
 - No inspected human GLB uses Draco or KTX2/Basis textures.
 - R2 public albedo is JPEG, exported at quality **90**; normal/packed maps remain PNG.
 
-Sources: [asset provenance](../public/assets/models/ASSET-PROVENANCE.json), [Blender export record](../artifacts/human-r2/blender-source.json), [R2 build script](../scripts/build-human-realism.mjs).
+Sources: [asset provenance](../public/assets/models/ASSET-PROVENANCE.json), [Blender export record](../../docs/evidence/ARTIFACTS.md#artifact-009), [R2 build script](../scripts/build-human-realism.mjs).
 
 ### 4. Actual model numbers
 
@@ -420,11 +422,11 @@ The evidence does **not** support a diagnosis of universally broken normals, mis
 
 ### Images and current-state inspection
 
-- [R2 face, neutral](../artifacts/head-anatomy/hero-face-neutral.png).
-- [R2 face, mouth open](../artifacts/head-anatomy/hero-face-open.png).
-- [R2 Blender full-body render](../artifacts/human-r2/human-r2-oblique.png).
+- [R2 face, neutral](../../docs/evidence/ARTIFACTS.md#artifact-006).
+- [R2 face, mouth open](../../docs/evidence/ARTIFACTS.md#artifact-007).
+- [R2 Blender full-body render](../../docs/evidence/ARTIFACTS.md#artifact-010).
 - [Earlier browser full-body render](real-human-3d/evidence/milestone-03-human-full-body.png).
-- [Offline interactive R2 viewer](../artifacts/human-r2/live-human-3d.html).
+- [Offline interactive R2 viewer](../../docs/evidence/ARTIFACTS.md#artifact-011).
 
 The face images are dated **24 October**; the earlier browser body image is dated **21 October**. These are saved evidence, not screenshots captured from a fresh authenticated session during this audit.
 

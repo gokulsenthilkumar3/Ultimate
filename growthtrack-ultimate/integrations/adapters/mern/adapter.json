@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "mern",
+  "category": "Architecture",
+  "kind": "architecture-template",
+  "runtimeEnabled": false,
+  "owner": "Optional domain service",
+  "contract": {
+    "health": "GET /health -> {\"status\":\"ok\"}",
+    "authorization": "Domain-owned identity and authorization required before data endpoints",
+    "configuration": "Server environment only; no browser-supplied destinations"
+  },
+  "acceptance": [
+    "Independent build and dependency lock",
+    "Authenticated contract tests",
+    "Timeout/cancellation/error tests",
+    "Owner isolation",
+    "Backup/rollback or deployment rollback",
+    "Explicit owner activation"
+  ]
+}

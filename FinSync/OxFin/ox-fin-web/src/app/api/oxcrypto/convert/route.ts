@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parseResult = ConvertSchema.safeParse(body);
     if (!parseResult.success) {
-        return NextResponse.json({ error: parseResult.error.errors }, { status: 400 });
+        return NextResponse.json({ error: parseResult.error.issues }, { status: 400 });
     }
     const { amountUsd } = parseResult.data;
     const OX_CRYPTO_RATE = 0.011; // 1 ரூ = $0.011 USD (example)

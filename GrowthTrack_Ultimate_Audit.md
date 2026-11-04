@@ -1,5 +1,8 @@
 # GrowthTrack Ultimate — Full-Stack & UI/UX Audit
 
+> Historical planning record. Preserve its original proposals and measurements. Use [the engineering plan](docs/Eng%20Plan.md) and [current architecture](docs/ARCHITECTURE.md) for maintained guidance.
+
+
 **Repo:** `gokulsenthilkumar3/Ultimate` · **Stack:** React 19 + Vite 8 + Zustand + React Router 7 + Three.js/R3F + Express 5 + Supabase/Firebase
 **Scope of analysis:** `growthtrack-ultimate/` (frontend), `server/` (backend API), plus a `files/` and `Ultimate-mirror/` directory at repo root.
 

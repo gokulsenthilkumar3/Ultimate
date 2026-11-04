@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Forgot Password?</h1>
                 <p className="text-gray-600">
-                  No worries! Enter your email and we'll send you reset instructions.
+                  No worries! Enter your email and we&apos;ll send you reset instructions.
                 </p>
               </div>
 
@@ -127,7 +127,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
                 <p className="text-gray-600 mb-6">
-                  We've sent password reset instructions to:
+                  We&apos;ve sent password reset instructions to:
                 </p>
                 <p className="font-medium text-gray-900 mb-6 bg-gray-50 p-3 rounded-lg">
                   {email}
@@ -151,7 +151,7 @@ export default function ForgotPasswordPage() {
                     }}
                     className="w-full text-sm text-gray-600 hover:text-gray-900 transition-colors"
                   >
-                    Didn't receive the email? Try again
+                    Didn&apos;t receive the email? Try again
                   </button>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function ForgotPasswordPage() {
         {/* Security Note */}
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500">
-            🔒 For your security, we'll never ask for your password via email or phone
+            🔒 For your security, we&apos;ll never ask for your password via email or phone
           </p>
         </div>
       </div>

@@ -1,13 +1,11 @@
 import { Pool } from 'pg';
+import { databaseConfig } from './databaseConfig';
 
 const globalForDb = global as unknown as { db: Pool };
 
 export const db =
     globalForDb.db ||
-    new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-    });
+    new Pool(databaseConfig());
 
 if (process.env.NODE_ENV !== 'production') globalForDb.db = db;
 
@@ -20,7 +18,7 @@ export const query = async (text: string, params?: any[]) => {
         try {
             const res = await db.query(text, params);
             const duration = Date.now() - start;
-            console.log('executed query', { text, duration, rows: res.rowCount });
+            console.log('executed query', { duration, rows: res.rowCount });
             return res;
         } catch (error) {
             if (!isTransientDatabaseError(error) || attempt === maxAttempts) {

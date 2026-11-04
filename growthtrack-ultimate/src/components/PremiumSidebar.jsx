@@ -45,7 +45,7 @@ export default function PremiumSidebar({ activeTab, user, onOpenSettings, onLogo
     {modalOpen && <div className="gt-navigation-shade" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
     {railVisible && <section id={`${id}-rail`} className="gt-navigation-rail" ref={modalOpen ? dialogRef : undefined} role={modalOpen ? 'dialog' : undefined} aria-modal={modalOpen || undefined} aria-label={modalOpen ? 'Workspace navigation' : undefined} tabIndex={modalOpen ? -1 : undefined}>
       <header className="gt-portal-brand">
-        <Link className="gt-navigation-brand" to={tabMeta('overview').canonicalPath} aria-label="GrowthTrack Home"><AnimatedLogo />{expanded && <strong>GrowthTrack<small>A little more you.</small></strong>}</Link>
+        <Link className="gt-navigation-brand" to={tabMeta('overview').canonicalPath} aria-label={expanded ? undefined : 'GrowthTrack Home'}><AnimatedLogo />{expanded && <strong>GrowthTrack<small>A little more you.</small></strong>}</Link>
         <button ref={toggleRef} type="button" className="gt-navigation-toggle" onClick={() => desktop ? void saveCollapsed(!collapsed) : setDrawerOpen(false)} aria-label={!desktop ? 'Close navigation' : collapsed ? 'Open module navigation' : 'Close module navigation'} aria-expanded={desktop ? !collapsed : modalOpen} aria-busy={preference.pending || undefined}>
           {!desktop ? <X size={18} /> : collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
         </button>

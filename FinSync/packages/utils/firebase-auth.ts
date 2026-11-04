@@ -20,6 +20,8 @@ import {
   PhoneAuthProvider,
   PhoneMultiFactorGenerator,
   getAuth,
+  multiFactor,
+  getMultiFactorResolver,
 } from 'firebase/auth';
 
 export interface AuthResult {
@@ -89,7 +91,7 @@ export async function signInWithEmail(
     const result: UserCredential = await signInWithEmailAndPassword(auth, email, password);
 
     // Check if MFA is enrolled
-    if (result.user.multiFactor?.enrolledFactors && result.user.multiFactor.enrolledFactors.length > 0) {
+    if (multiFactor(result.user).enrolledFactors.length > 0) {
       return { user: result.user, mfaRequired: false }; // MFA verification happens after successful login
     }
 
@@ -99,7 +101,7 @@ export async function signInWithEmail(
     if (error.code === 'auth/multi-factor-auth-required') {
       return {
         mfaRequired: true,
-        mfaResolver: error.resolver as MultiFactorResolver,
+        mfaResolver: getMultiFactorResolver(auth, error),
       };
     }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
@@ -30,7 +31,7 @@ const errorMap = {
     },
 };
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
     const searchParams = useSearchParams();
     const error = searchParams.get('error') as ErrorType || ErrorType.Default;
 
@@ -64,4 +65,8 @@ export default function AuthErrorPage() {
             </div>
         </div>
     );
+}
+
+export default function AuthErrorPage() {
+    return <Suspense fallback={<p role="status">Loading authentication status…</p>}><AuthErrorContent /></Suspense>;
 }

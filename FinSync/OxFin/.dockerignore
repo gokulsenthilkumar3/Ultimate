@@ -1,0 +1,28 @@
+# The gateway prototype Dockerfile expects the OxFin directory as its context.
+**/node_modules
+**/.git
+**/.next
+**/coverage
+**/.env*
+**/*.db
+**/*.pem
+**/*.key
+**/.aws
+**/.ssh
+**/.code-index
+**/.codeindexignore
+**/*.log
+
+# Private credentials and database sidecars are never build inputs.
+**/*.db-*
+**/*.db.enc*
+**/*.sqlite*
+**/*.p12
+**/*.pfx
+**/.secrets
+**/secrets
+**/credentials*.json
+**/service-account*.json
+**/serviceAccountKey*.json
+**/firebase-adminsdk*.json
+**/.streamlit/secrets.toml

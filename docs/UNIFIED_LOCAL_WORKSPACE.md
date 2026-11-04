@@ -1,20 +1,23 @@
 # Ultimate local workspace
 
-Run `npm run dev` (or `npm run dev:all`) from the repository root. It starts
-Ultimate, all five companion UIs, both separate companion APIs, the API gateway,
-and the database console. Use `npm run dev:core` for Ultimate, gateway and console only.
+Run `npm run dev` from the repository root for Ultimate, the gateway, the database
+console, Family API and Forex API. Native Equity, Family and Forex views belong to
+Ultimate. `npm run dev:all` additionally starts the separate customer and legacy
+UIs. Use `npm run dev:core` for Ultimate, gateway and console only.
 
 | Entry point | URL |
 | --- | --- |
-| Ultimate and every product UI | http://localhost:5000/Ultimate/ |
+| Ultimate portal and configured product handoffs | http://localhost:5000/Ultimate/ |
 | All product APIs | http://127.0.0.1:5300 |
 | All local SQL stores, one read-only console | http://localhost:5556 |
 
 The gateway uses 5300 because another local project occupies port 3000.
 Ultimate's internal proxies and public API links use `127.0.0.1:5300` consistently.
 
-In Ultimate, use **Apps** or **Apps Suite** to open FinSync, OxFin, Family Connect,
-Equity/NiftyLens and Forex. These open inside Ultimate. **Databases → All databases**
+The product registry retains legacy UI handoffs; those destinations need their
+own processes, started with `dev:all` or the selected `dev:*` command. Native
+Equity, Family and Forex routes use domain-owned portal views instead.
+**Databases → All databases**
 opens the shared database console inside the same UI. The standalone console also
 remains available on 5556. SQLite, OxFin PostgreSQL and Family Connect PostgreSQL
 remain separate stores with their existing data. FinSync's existing cloud Firebase

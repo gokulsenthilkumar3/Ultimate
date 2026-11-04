@@ -1,0 +1,111 @@
+name: Independent application builds
+on:
+  pull_request:
+    paths: ['FinSync/**', 'Equity/NiftyLens/**', 'Family Connect/**', 'styles/**', 'scripts/**', 'growthtrack-ultimate/src/design/**', 'growthtrack-ultimate/src/domains/workspace/contracts/**', '.nvmrc', '.github/workflows/companion-builds.yml']
+  push:
+    branches: [main, master]
+    paths: ['FinSync/**', 'Equity/NiftyLens/**', 'Family Connect/**', 'styles/**', 'scripts/**', 'growthtrack-ultimate/src/design/**', 'growthtrack-ultimate/src/domains/workspace/contracts/**', '.nvmrc', '.github/workflows/companion-builds.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: companion-builds-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  security-contracts:
+    name: Companion security contracts (${{ matrix.app }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: FinSync
+            directory: FinSync
+            install: npm ci --workspace=apps/web --include-workspace-root --ignore-scripts
+            test: node --test apps/web/lib/server/profileService.test.mjs apps/web/lib/server/profileStore.test.mjs apps/web/lib/server/customerDirectory.test.mjs
+          - app: OxFin
+            directory: FinSync/OxFin/ox-fin-web
+            install: npm ci --ignore-scripts
+            test: node --test src/lib/databaseConfig.test.mjs src/lib/adminDirectory.test.mjs
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: ${{ matrix.directory }}/package-lock.json
+      - run: ${{ matrix.install }}
+      - run: ${{ matrix.test }}
+  firestore-rules:
+    name: FinSync isolated Firestore authorization
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: FinSync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: FinSync/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci --workspace=apps/web --include-workspace-root --ignore-scripts
+      - name: Run rules and patched transport against dedicated demo emulators
+        run: npx firebase emulators:exec --only auth,firestore --project demo-finsync-security --config firebase.security-tests.json "node --test apps/web/lib/server/firestoreRules.test.mjs"
+  build:
+    name: Build ${{ matrix.app }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: FinSync
+            directory: FinSync
+            install: npm ci --workspace=apps/web --include-workspace-root
+            build: npm run build --workspace=apps/web
+          - app: OxFin
+            directory: FinSync/OxFin/ox-fin-web
+            install: npm ci
+            build: npm run build
+          - app: Equity
+            directory: Equity/NiftyLens
+            install: npm ci
+            build: npm run build
+          - app: Family web
+            directory: Family Connect/familyconnect/frontend
+            install: npm ci
+            build: npm run build
+          - app: Family API
+            directory: Family Connect/familyconnect/backend
+            install: npm ci
+            build: npx prisma generate && npm run build
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      HUSKY: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: ${{ matrix.directory }}/package-lock.json
+      - name: Install this application's locked dependencies
+        run: ${{ matrix.install }}
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build without production credentials
+        if: ${{ !cancelled() }}
+        run: ${{ matrix.build }}

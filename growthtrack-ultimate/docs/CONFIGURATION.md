@@ -40,6 +40,13 @@ For a fresh local development installation, install dependencies, copy `.env.exa
 | `OWNER_MFA_SECRET` | none | Optional uppercase, unpadded Base32 authenticator secret (32–128 characters). Required at every owner sign-in once configured. Also supports `OWNER_MFA_SECRET_FILE` through the deployment secret loader. |
 | `APP_ENCRYPTION_KEY` | none | 64 hex characters; encrypts new vault files and sync connection secrets. Without it, sources that need a key or private URL show "Server key needed". |
 
+All `/api` requests additionally share a process-local 600-request/client/minute
+budget across paths, including reads. Client, write-path and login tracking maps
+are capped at 10,000 entries; capacity exhaustion fails closed. These application
+limits complement upstream protection, not replace it. See
+[production edge security](PRODUCTION_EDGE_SECURITY.md) for CDN/DNS/TLS/DDoS
+activation and verification requirements.
+
 MFA setup: run `npm run mfa:setup` in a private terminal. Add the generated secret or provisioning URI to an authenticator, retain a protected recovery copy, then put `OWNER_MFA_SECRET` in the ignored backend environment or deployment secret manager and restart. The login page requests a six-digit code after password verification. Codes use a 30-second period with one adjacent interval of clock tolerance; accepted counters are stored atomically in private application settings to reject replay across processes and restarts. Secret values and codes are not written to audit events. Enabling or rotating MFA requires existing password-only/previous-key sessions to sign in again. Other installations keep their existing session behaviour.
 
 Recovery requires local operator access to the server secret configuration. There is no browser bypass or self-service enrollment. Rotate the authenticator secret after recovery; turning it off restores password-only authentication. Keep clocks synchronized and treat this as owner authentication for a single-owner deployment, rather than per-customer MFA provisioning.

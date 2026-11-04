@@ -5,6 +5,8 @@ import { GROUPS, tabMeta } from '../config/navigation';
 import AnimatedLogo from './motion/AnimatedLogo';
 import { MotionToggle } from './motion/CharacterScene';
 import useKineticPreferences, { setKineticPreferences } from '../hooks/useKineticPreferences';
+import JevAssistant from './agents/JevAssistant';
+import TechnologyCustomizer from './technology/TechnologyCustomizer';
 
 export default function Header({ activeTab, user, theme, setTheme, onOpenSettings, unreadCount = 0, onOpenNotifications, serverStatus }) {
   const meta = tabMeta(activeTab);
@@ -19,10 +21,12 @@ export default function Header({ activeTab, user, theme, setTheme, onOpenSetting
         <span className="app-header__brand-copy"><strong>GrowthTrack</strong><small>Private workspace</small></span>
       </Link>
       <span className="app-header__context" data-area={meta.group} aria-label="Current area"><span aria-hidden="true">✳</span>{group?.label || 'Workspace'}</span>
-      <button type="button" className="app-header__search" onClick={openCommandPalette} aria-label="Search all modules and records">
-        <Search size={18} aria-hidden="true" /><span>Search GrowthTrack</span><kbd aria-hidden="true">{/Mac|iPhone|iPad/.test(globalThis.navigator?.platform || '') ? <Command size={12} /> : 'Ctrl'} K</kbd>
+      <button type="button" className="app-header__search" onClick={openCommandPalette} aria-label={`Search GrowthTrack ${/Mac|iPhone|iPad/.test(globalThis.navigator?.platform || '') ? 'Command' : 'Ctrl'} K`}>
+        <Search size={18} aria-hidden="true" /><span>Search GrowthTrack</span>{' '}<kbd aria-hidden="true">{/Mac|iPhone|iPad/.test(globalThis.navigator?.platform || '') ? <Command size={12} /> : 'Ctrl'} K</kbd>
       </button>
       <div className="app-header__controls">
+        <JevAssistant activeTab={activeTab} />
+        <TechnologyCustomizer ownerId={user?.id} />
         <button type="button" className="header-control" data-companion-toggle aria-pressed={companion} aria-label={companion ? 'Hide floating companion' : 'Show floating companion'} title={companion ? 'Hide floating companion' : 'Show floating companion'} onClick={() => setKineticPreferences({ companion: !companion })}>
           <PawPrint size={18} aria-hidden="true" />
         </button>
@@ -34,7 +38,7 @@ export default function Header({ activeTab, user, theme, setTheme, onOpenSetting
         <button type="button" className="header-control" onClick={onOpenNotifications} aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}>
           <Bell size={19} aria-hidden="true" />{unreadCount > 0 && <span className="header-control__badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
         </button>
-        <button type="button" className="app-header__profile" onClick={onOpenSettings} aria-label="Open account and settings">
+        <button type="button" className="app-header__profile" onClick={onOpenSettings} aria-label={`${user?.name || 'Account'}, open account and settings`}>
           <UserRound size={18} aria-hidden="true" /><span>{user?.name || 'Account'}</span>
         </button>
       </div>

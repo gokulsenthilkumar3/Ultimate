@@ -1,9 +1,9 @@
 [
   {
     "path": ".", "title": "GrowthTrack workspace", "purpose": "A desktop workspace for personal growth, work, family, equity and Forex research, with a dedicated customer-admin area for the separate FinSync and OxFin products.",
-    "documentation": [{ "title": "Complete UI workflow and style guide", "path": "docs/UI_WORKFLOW_AND_STYLE_GUIDE.md" }],
+    "documentation": [{"title":"Complete UI workflow and style guide","path":"docs/UI_WORKFLOW_AND_STYLE_GUIDE.md"},{"title":"Agent workflow, Jev and TOON","path":"docs/AGENT_WORKFLOW.md"}],
     "runtime": "Node.js/npm workspace; Ultimate uses React, Vite and Express. Companion services retain their current frameworks.",
-    "status": "NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; restricted customer-admin adapters remain separate work.",
+    "status": "NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; read-only customer-admin adapters require explicit product configuration and approved readers.",
     "install": ["npm install --prefix growthtrack-ultimate", "Copy-Item growthtrack-ultimate/.env.example growthtrack-ultimate/.env", "npm --prefix growthtrack-ultimate run db:generate"],
     "start": ["npm run dev"],
     "checks": ["npm run build:design", "npm run test:design", "npm run test:gateway", "npm run design:check", "node --test tests/code-context.test.mjs"],
@@ -12,7 +12,7 @@
   },
   {
     "path": "growthtrack-ultimate", "title": "GrowthTrack Ultimate", "purpose": "The desktop portal for personal growth, work, insights and family/market modules, and the future customer-admin home for FinSync and OxFin.",
-    "documentation": [{ "title": "Complete UI workflow and style guide", "path": "docs/UI_WORKFLOW_AND_STYLE_GUIDE.md" }],
+    "documentation": [{"title":"Complete UI workflow and style guide","path":"docs/UI_WORKFLOW_AND_STYLE_GUIDE.md"},{"title":"Agent workflow, Jev and TOON","path":"docs/AGENT_WORKFLOW.md"}],
     "runtime": "React, Vite, Express, Prisma/SQLite; optional Electron desktop packaging and Three.js physique tools.",
     "status": "Authenticated desktop portal with native NiftyLens, Family Connect and Forex pages, shared motion/loading states and a separate fictional review demo. FinSync/OxFin customer adapters still require configuration.",
     "install": ["npm install", "Copy-Item .env.example .env", "npm run db:generate"], "start": ["npm run dev"], "checks": ["npm run build:design", "npm run test:design", "npm run build", "npm test"],

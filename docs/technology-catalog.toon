@@ -1,0 +1,59 @@
+version: 1
+description: "Customization planning catalog; selections do not install, migrate or provision technology."
+technologies[56]{id,category,label,status,owner,note,evidence}:
+  json,API,JSON,present,Workspace,Configuration and HTTP/SSE data envelopes.,growthtrack-ultimate/server/agents/router.js
+  rest,API,REST,present,Ultimate,Existing Express endpoints and authenticated client.,growthtrack-ultimate/src/lib/apiClient.js
+  graphql,API,GraphQL,adapter-required,Domain service,"Requires an owned schema, resolvers, authorization and query-cost limits.",null
+  modular-monolith,Architecture,Modular monolith,present,Ultimate,Retain domain-owned modules in the existing portal/API.,docs/BUILD_BOUNDARIES.md
+  microservices,Architecture,Microservices,reference-only,OxFin,Prototype service source exists; independent deployment and production readiness are unverified.,FinSync/OxFin/services/api-gateway/README.md
+  serverless,Architecture,Serverless,adapter-required,Deployment owner,Requires runtime/storage/session/worker design; not suitable for the complete local desktop stack unchanged.,null
+  mern,Architecture,MERN,adapter-required,Optional domain service,"React, Express and Node exist. MongoDB persistence is not installed; preserve existing SQL owners.",null
+  cdn,Caching,CDN / edge cache,present,Ultimate edge,Static asset policies exist; no external CDN is provisioned.,growthtrack-ultimate/deploy/Caddyfile
+  redis,Caching,Redis,present,OxFin / Family,Existing product configuration; live connection not verified.,FinSync/OxFin/ox-fin-backend/docker-compose.yml
+  memcached,Caching,Memcached,adapter-required,Domain service,"Needs key ownership, TTLs, invalidation, outage behavior and private-data policy.",null
+  github,CI and version control,GitHub,present,Workspace,Checked-in GitHub Actions workflows.,.github/workflows/ci.yml
+  gitlab,CI and version control,GitLab,adapter-required,Workspace CI,"Requires translating existing gates, secrets, artifact retention and protected-branch policies.",null
+  bitbucket,CI and version control,Bitbucket,adapter-required,Workspace CI,"Requires translating existing gates, secrets, artifact retention and protected-branch policies.",null
+  jenkins,CI and version control,Jenkins,adapter-required,Workspace CI,"Requires translating existing gates, secrets, artifact retention and protected-branch policies.",null
+  circleci,CI and version control,CircleCI,adapter-required,Workspace CI,"Requires translating existing gates, secrets, artifact retention and protected-branch policies.",null
+  docker,Deployment,Docker,present,Application owner,Docker build/runtime manifests exist; not a deployment authorization.,growthtrack-ultimate/Dockerfile
+  vercel,Deployment,Vercel,reference-only,Equity,Existing deployment configuration; hosted status unverified.,Equity/NiftyLens/vercel.json
+  aws,Deployment,AWS,adapter-required,Deployment owner,"Needs isolated deployment manifests, identity/secrets, persistent storage, health, rollback and cost limits.",null
+  azure,Deployment,Azure,adapter-required,Deployment owner,"Needs isolated deployment manifests, identity/secrets, persistent storage, health, rollback and cost limits.",null
+  gcp,Deployment,GCP,adapter-required,Deployment owner,"Needs isolated deployment manifests, identity/secrets, persistent storage, health, rollback and cost limits.",null
+  kubernetes,Deployment,Kubernetes,adapter-required,Deployment owner,"Needs isolated deployment manifests, identity/secrets, persistent storage, health, rollback and cost limits.",null
+  gpt,AI,GPT / OpenAI,adapter-required,Agents,Existing GPT-OSS through Groq is not the OpenAI GPT API. A native provider needs its own transport and tests.,null
+  claude,AI,Claude,adapter-required,Agents,"Requires Anthropic transport, consent, models, streaming and error-contract tests.",null
+  gemini,AI,Gemini,reference-only,Family / integrations,Existing SDK references do not establish a working Ultimate chat provider.,Family Connect/familyconnect/backend/package.json
+  deepseek,AI,DeepSeek,adapter-required,Agents,Can be evaluated through configured local inference when installed; not a verified provider here.,null
+  mistral,AI,Mistral,adapter-required,Agents,Requires an evaluated local model or owned provider adapter.,null
+  llama,AI,Meta Llama,adapter-required,Agents,Ollama can discover permitted installed text models; no Llama checkpoint was installed or evaluated.,null
+  groq,AI,Groq,present,Agents,Existing bounded chat/plan transport; keys required.,growthtrack-ultimate/server/agents/groq.js
+  ollama,AI,Ollama,present,Agents,Existing local inference transport; running models required.,growthtrack-ultimate/server/agents/router.js
+  jev,AI,Jev,present,Agents,"Optional advisory decision adapter; key/consent required, no automatic actions.",growthtrack-ultimate/server/agents/jev.js
+  laya,AI,Laya,present,Agents,"Loopback HTTP decision adapter; separate local server/checkpoints required, live inference unverified.",growthtrack-ultimate/server/agents/jev.js
+  nodejs,Frameworks,Node.js,present,Workspace,Existing JavaScript runtime; Node is a runtime rather than an application framework.,package.json
+  react,Frameworks,React,present,Ultimate,Existing frontend.,growthtrack-ultimate/package.json
+  express,Frameworks,Express,present,Ultimate,Existing API.,growthtrack-ultimate/server.js
+  fastapi,Frameworks,FastAPI,present,Forex,Existing owned Python API.,Forex/Dockerfile.api
+  spring-boot,Frameworks,Spring Boot,adapter-required,Independent service,Use a separate domain-owned service with versioned HTTP contracts and independent dependencies/tests.,null
+  django,Frameworks,Django,adapter-required,Independent service,Use a separate domain-owned service with versioned HTTP contracts and independent dependencies/tests.,null
+  ruby-on-rails,Frameworks,Ruby on Rails,adapter-required,Independent service,Use a separate domain-owned service with versioned HTTP contracts and independent dependencies/tests.,null
+  langchain,Frameworks,LangChain,adapter-required,Independent service,Use a separate domain-owned service with versioned HTTP contracts and independent dependencies/tests.,null
+  postgresql,Databases,PostgreSQL,present,Family / OxFin,Independent SQL owners and migration tests.,tests/database-postgres-schema.mjs
+  sqlite,Databases,SQLite,present,Ultimate,Existing owner-scoped persistence.,growthtrack-ultimate/prisma/schema.prisma
+  mysql,Databases,MySQL,adapter-required,Data owner,"Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",null
+  oracle,Databases,Oracle,adapter-required,Data owner,"Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",null
+  mongodb,Databases,MongoDB,adapter-required,Data owner,"Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",null
+  dynamodb,Databases,DynamoDB,adapter-required,Data owner,"Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",null
+  apache-cassandra,Databases,Apache Cassandra,adapter-required,Data owner,"Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",null
+  javascript,Languages,JavaScript,present,Workspace,Existing authored application source.,growthtrack-ultimate/server.js
+  typescript,Languages,TypeScript,present,Workspace,Existing authored application source.,growthtrack-ultimate/src/config/featureRegistry.ts
+  python,Languages,Python,present,Forex,Existing Python runtime; keep its independent environment.,Forex/main.py
+  swift,Languages,Swift,present,iOS companion,Existing native source/build checks.,growthtrack-ultimate/companions/ios/Package.swift
+  java,Languages,Java,adapter-required,Independent service,"New language runtimes require a separately owned build, dependencies, tests and deployment contract.",null
+  csharp,Languages,C#,adapter-required,Independent service,"New language runtimes require a separately owned build, dependencies, tests and deployment contract.",null
+  ruby,Languages,Ruby,adapter-required,Independent service,"New language runtimes require a separately owned build, dependencies, tests and deployment contract.",null
+  php,Languages,PHP,adapter-required,Independent service,"New language runtimes require a separately owned build, dependencies, tests and deployment contract.",null
+  rust,Languages,Rust,adapter-required,Independent service,"New language runtimes require a separately owned build, dependencies, tests and deployment contract.",null
+  go,Languages,Go,adapter-required,Independent service,"New language runtimes require a separately owned build, dependencies, tests and deployment contract.",null

@@ -39,11 +39,21 @@ export function registerFrontend(app, { distDirectory, frontendBasePath: configu
     const file = path.resolve(distDirectory, '.' + req.path + (encoding === 'br' ? '.br' : '.gz'));
     try { if (!(await stat(file)).isFile()) return next(); }
     catch (error) { if (error.code === 'ENOENT') return next(); return next(error); }
+    if (!req.headers.cookie) res.set('Cache-Control', 'public, max-age=31536000, immutable');
     res.type(path.extname(req.path));
     res.set('Content-Encoding', encoding);
     return res.sendFile(file, { dotfiles: 'deny' });
   });
-  app.use(mountPath, express.static(distDirectory, { index: 'index.html', dotfiles: 'deny' }));
+  app.use(mountPath, express.static(distDirectory, {
+    index: 'index.html', dotfiles: 'deny',
+    setHeaders(res, file) {
+      if (!res.req.headers.cookie && !res.req.headers.authorization && !res.req.headers.range
+        && path.dirname(file) === path.join(distDirectory, 'assets')
+        && /-[\w-]{6,}\.(?:js|css)$/.test(file)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  }));
   app.use((req, res, next) => {
     const withinBase = basePath === '/' || req.path.startsWith(basePath);
     const relative = basePath === '/' ? req.path.slice(1) : req.path.slice(basePath.length);

@@ -1,0 +1,510 @@
+{
+  "version": 1,
+  "description": "Customization planning catalog; selections do not install, migrate or provision technology.",
+  "technologies": [
+    {
+      "id": "json",
+      "category": "API",
+      "label": "JSON",
+      "status": "present",
+      "owner": "Workspace",
+      "note": "Configuration and HTTP/SSE data envelopes.",
+      "evidence": "growthtrack-ultimate/server/agents/router.js"
+    },
+    {
+      "id": "rest",
+      "category": "API",
+      "label": "REST",
+      "status": "present",
+      "owner": "Ultimate",
+      "note": "Existing Express endpoints and authenticated client.",
+      "evidence": "growthtrack-ultimate/src/lib/apiClient.js"
+    },
+    {
+      "id": "graphql",
+      "category": "API",
+      "label": "GraphQL",
+      "status": "adapter-required",
+      "owner": "Domain service",
+      "note": "Requires an owned schema, resolvers, authorization and query-cost limits.",
+      "evidence": null
+    },
+    {
+      "id": "modular-monolith",
+      "category": "Architecture",
+      "label": "Modular monolith",
+      "status": "present",
+      "owner": "Ultimate",
+      "note": "Retain domain-owned modules in the existing portal/API.",
+      "evidence": "docs/BUILD_BOUNDARIES.md"
+    },
+    {
+      "id": "microservices",
+      "category": "Architecture",
+      "label": "Microservices",
+      "status": "reference-only",
+      "owner": "OxFin",
+      "note": "Prototype service source exists; independent deployment and production readiness are unverified.",
+      "evidence": "FinSync/OxFin/services/api-gateway/README.md"
+    },
+    {
+      "id": "serverless",
+      "category": "Architecture",
+      "label": "Serverless",
+      "status": "adapter-required",
+      "owner": "Deployment owner",
+      "note": "Requires runtime/storage/session/worker design; not suitable for the complete local desktop stack unchanged.",
+      "evidence": null
+    },
+    {
+      "id": "mern",
+      "category": "Architecture",
+      "label": "MERN",
+      "status": "adapter-required",
+      "owner": "Optional domain service",
+      "note": "React, Express and Node exist. MongoDB persistence is not installed; preserve existing SQL owners.",
+      "evidence": null
+    },
+    {
+      "id": "cdn",
+      "category": "Caching",
+      "label": "CDN / edge cache",
+      "status": "present",
+      "owner": "Ultimate edge",
+      "note": "Static asset policies exist; no external CDN is provisioned.",
+      "evidence": "growthtrack-ultimate/deploy/Caddyfile"
+    },
+    {
+      "id": "redis",
+      "category": "Caching",
+      "label": "Redis",
+      "status": "present",
+      "owner": "OxFin / Family",
+      "note": "Existing product configuration; live connection not verified.",
+      "evidence": "FinSync/OxFin/ox-fin-backend/docker-compose.yml"
+    },
+    {
+      "id": "memcached",
+      "category": "Caching",
+      "label": "Memcached",
+      "status": "adapter-required",
+      "owner": "Domain service",
+      "note": "Needs key ownership, TTLs, invalidation, outage behavior and private-data policy.",
+      "evidence": null
+    },
+    {
+      "id": "github",
+      "category": "CI and version control",
+      "label": "GitHub",
+      "status": "present",
+      "owner": "Workspace",
+      "note": "Checked-in GitHub Actions workflows.",
+      "evidence": ".github/workflows/ci.yml"
+    },
+    {
+      "id": "gitlab",
+      "category": "CI and version control",
+      "label": "GitLab",
+      "status": "adapter-required",
+      "owner": "Workspace CI",
+      "note": "Requires translating existing gates, secrets, artifact retention and protected-branch policies.",
+      "evidence": null
+    },
+    {
+      "id": "bitbucket",
+      "category": "CI and version control",
+      "label": "Bitbucket",
+      "status": "adapter-required",
+      "owner": "Workspace CI",
+      "note": "Requires translating existing gates, secrets, artifact retention and protected-branch policies.",
+      "evidence": null
+    },
+    {
+      "id": "jenkins",
+      "category": "CI and version control",
+      "label": "Jenkins",
+      "status": "adapter-required",
+      "owner": "Workspace CI",
+      "note": "Requires translating existing gates, secrets, artifact retention and protected-branch policies.",
+      "evidence": null
+    },
+    {
+      "id": "circleci",
+      "category": "CI and version control",
+      "label": "CircleCI",
+      "status": "adapter-required",
+      "owner": "Workspace CI",
+      "note": "Requires translating existing gates, secrets, artifact retention and protected-branch policies.",
+      "evidence": null
+    },
+    {
+      "id": "docker",
+      "category": "Deployment",
+      "label": "Docker",
+      "status": "present",
+      "owner": "Application owner",
+      "note": "Docker build/runtime manifests exist; not a deployment authorization.",
+      "evidence": "growthtrack-ultimate/Dockerfile"
+    },
+    {
+      "id": "vercel",
+      "category": "Deployment",
+      "label": "Vercel",
+      "status": "reference-only",
+      "owner": "Equity",
+      "note": "Existing deployment configuration; hosted status unverified.",
+      "evidence": "Equity/NiftyLens/vercel.json"
+    },
+    {
+      "id": "aws",
+      "category": "Deployment",
+      "label": "AWS",
+      "status": "adapter-required",
+      "owner": "Deployment owner",
+      "note": "Needs isolated deployment manifests, identity/secrets, persistent storage, health, rollback and cost limits.",
+      "evidence": null
+    },
+    {
+      "id": "azure",
+      "category": "Deployment",
+      "label": "Azure",
+      "status": "adapter-required",
+      "owner": "Deployment owner",
+      "note": "Needs isolated deployment manifests, identity/secrets, persistent storage, health, rollback and cost limits.",
+      "evidence": null
+    },
+    {
+      "id": "gcp",
+      "category": "Deployment",
+      "label": "GCP",
+      "status": "adapter-required",
+      "owner": "Deployment owner",
+      "note": "Needs isolated deployment manifests, identity/secrets, persistent storage, health, rollback and cost limits.",
+      "evidence": null
+    },
+    {
+      "id": "kubernetes",
+      "category": "Deployment",
+      "label": "Kubernetes",
+      "status": "adapter-required",
+      "owner": "Deployment owner",
+      "note": "Needs isolated deployment manifests, identity/secrets, persistent storage, health, rollback and cost limits.",
+      "evidence": null
+    },
+    {
+      "id": "gpt",
+      "category": "AI",
+      "label": "GPT / OpenAI",
+      "status": "adapter-required",
+      "owner": "Agents",
+      "note": "Existing GPT-OSS through Groq is not the OpenAI GPT API. A native provider needs its own transport and tests.",
+      "evidence": null
+    },
+    {
+      "id": "claude",
+      "category": "AI",
+      "label": "Claude",
+      "status": "adapter-required",
+      "owner": "Agents",
+      "note": "Requires Anthropic transport, consent, models, streaming and error-contract tests.",
+      "evidence": null
+    },
+    {
+      "id": "gemini",
+      "category": "AI",
+      "label": "Gemini",
+      "status": "reference-only",
+      "owner": "Family / integrations",
+      "note": "Existing SDK references do not establish a working Ultimate chat provider.",
+      "evidence": "Family Connect/familyconnect/backend/package.json"
+    },
+    {
+      "id": "deepseek",
+      "category": "AI",
+      "label": "DeepSeek",
+      "status": "adapter-required",
+      "owner": "Agents",
+      "note": "Can be evaluated through configured local inference when installed; not a verified provider here.",
+      "evidence": null
+    },
+    {
+      "id": "mistral",
+      "category": "AI",
+      "label": "Mistral",
+      "status": "adapter-required",
+      "owner": "Agents",
+      "note": "Requires an evaluated local model or owned provider adapter.",
+      "evidence": null
+    },
+    {
+      "id": "llama",
+      "category": "AI",
+      "label": "Meta Llama",
+      "status": "adapter-required",
+      "owner": "Agents",
+      "note": "Ollama can discover permitted installed text models; no Llama checkpoint was installed or evaluated.",
+      "evidence": null
+    },
+    {
+      "id": "groq",
+      "category": "AI",
+      "label": "Groq",
+      "status": "present",
+      "owner": "Agents",
+      "note": "Existing bounded chat/plan transport; keys required.",
+      "evidence": "growthtrack-ultimate/server/agents/groq.js"
+    },
+    {
+      "id": "ollama",
+      "category": "AI",
+      "label": "Ollama",
+      "status": "present",
+      "owner": "Agents",
+      "note": "Existing local inference transport; running models required.",
+      "evidence": "growthtrack-ultimate/server/agents/router.js"
+    },
+    {
+      "id": "jev",
+      "category": "AI",
+      "label": "Jev",
+      "status": "present",
+      "owner": "Agents",
+      "note": "Optional advisory decision adapter; key/consent required, no automatic actions.",
+      "evidence": "growthtrack-ultimate/server/agents/jev.js"
+    },
+    {
+      "id": "laya",
+      "category": "AI",
+      "label": "Laya",
+      "status": "present",
+      "owner": "Agents",
+      "note": "Loopback HTTP decision adapter; separate local server/checkpoints required, live inference unverified.",
+      "evidence": "growthtrack-ultimate/server/agents/jev.js"
+    },
+    {
+      "id": "nodejs",
+      "category": "Frameworks",
+      "label": "Node.js",
+      "status": "present",
+      "owner": "Workspace",
+      "note": "Existing JavaScript runtime; Node is a runtime rather than an application framework.",
+      "evidence": "package.json"
+    },
+    {
+      "id": "react",
+      "category": "Frameworks",
+      "label": "React",
+      "status": "present",
+      "owner": "Ultimate",
+      "note": "Existing frontend.",
+      "evidence": "growthtrack-ultimate/package.json"
+    },
+    {
+      "id": "express",
+      "category": "Frameworks",
+      "label": "Express",
+      "status": "present",
+      "owner": "Ultimate",
+      "note": "Existing API.",
+      "evidence": "growthtrack-ultimate/server.js"
+    },
+    {
+      "id": "fastapi",
+      "category": "Frameworks",
+      "label": "FastAPI",
+      "status": "present",
+      "owner": "Forex",
+      "note": "Existing owned Python API.",
+      "evidence": "Forex/Dockerfile.api"
+    },
+    {
+      "id": "spring-boot",
+      "category": "Frameworks",
+      "label": "Spring Boot",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "Use a separate domain-owned service with versioned HTTP contracts and independent dependencies/tests.",
+      "evidence": null
+    },
+    {
+      "id": "django",
+      "category": "Frameworks",
+      "label": "Django",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "Use a separate domain-owned service with versioned HTTP contracts and independent dependencies/tests.",
+      "evidence": null
+    },
+    {
+      "id": "ruby-on-rails",
+      "category": "Frameworks",
+      "label": "Ruby on Rails",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "Use a separate domain-owned service with versioned HTTP contracts and independent dependencies/tests.",
+      "evidence": null
+    },
+    {
+      "id": "langchain",
+      "category": "Frameworks",
+      "label": "LangChain",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "Use a separate domain-owned service with versioned HTTP contracts and independent dependencies/tests.",
+      "evidence": null
+    },
+    {
+      "id": "postgresql",
+      "category": "Databases",
+      "label": "PostgreSQL",
+      "status": "present",
+      "owner": "Family / OxFin",
+      "note": "Independent SQL owners and migration tests.",
+      "evidence": "tests/database-postgres-schema.mjs"
+    },
+    {
+      "id": "sqlite",
+      "category": "Databases",
+      "label": "SQLite",
+      "status": "present",
+      "owner": "Ultimate",
+      "note": "Existing owner-scoped persistence.",
+      "evidence": "growthtrack-ultimate/prisma/schema.prisma"
+    },
+    {
+      "id": "mysql",
+      "category": "Databases",
+      "label": "MySQL",
+      "status": "adapter-required",
+      "owner": "Data owner",
+      "note": "Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",
+      "evidence": null
+    },
+    {
+      "id": "oracle",
+      "category": "Databases",
+      "label": "Oracle",
+      "status": "adapter-required",
+      "owner": "Data owner",
+      "note": "Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",
+      "evidence": null
+    },
+    {
+      "id": "mongodb",
+      "category": "Databases",
+      "label": "MongoDB",
+      "status": "adapter-required",
+      "owner": "Data owner",
+      "note": "Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",
+      "evidence": null
+    },
+    {
+      "id": "dynamodb",
+      "category": "Databases",
+      "label": "DynamoDB",
+      "status": "adapter-required",
+      "owner": "Data owner",
+      "note": "Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",
+      "evidence": null
+    },
+    {
+      "id": "apache-cassandra",
+      "category": "Databases",
+      "label": "Apache Cassandra",
+      "status": "adapter-required",
+      "owner": "Data owner",
+      "note": "Requires an owned schema/adapter, query and ownership semantics, migration/replay and backup/restore tests.",
+      "evidence": null
+    },
+    {
+      "id": "javascript",
+      "category": "Languages",
+      "label": "JavaScript",
+      "status": "present",
+      "owner": "Workspace",
+      "note": "Existing authored application source.",
+      "evidence": "growthtrack-ultimate/server.js"
+    },
+    {
+      "id": "typescript",
+      "category": "Languages",
+      "label": "TypeScript",
+      "status": "present",
+      "owner": "Workspace",
+      "note": "Existing authored application source.",
+      "evidence": "growthtrack-ultimate/src/config/featureRegistry.ts"
+    },
+    {
+      "id": "python",
+      "category": "Languages",
+      "label": "Python",
+      "status": "present",
+      "owner": "Forex",
+      "note": "Existing Python runtime; keep its independent environment.",
+      "evidence": "Forex/main.py"
+    },
+    {
+      "id": "swift",
+      "category": "Languages",
+      "label": "Swift",
+      "status": "present",
+      "owner": "iOS companion",
+      "note": "Existing native source/build checks.",
+      "evidence": "growthtrack-ultimate/companions/ios/Package.swift"
+    },
+    {
+      "id": "java",
+      "category": "Languages",
+      "label": "Java",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "New language runtimes require a separately owned build, dependencies, tests and deployment contract.",
+      "evidence": null
+    },
+    {
+      "id": "csharp",
+      "category": "Languages",
+      "label": "C#",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "New language runtimes require a separately owned build, dependencies, tests and deployment contract.",
+      "evidence": null
+    },
+    {
+      "id": "ruby",
+      "category": "Languages",
+      "label": "Ruby",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "New language runtimes require a separately owned build, dependencies, tests and deployment contract.",
+      "evidence": null
+    },
+    {
+      "id": "php",
+      "category": "Languages",
+      "label": "PHP",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "New language runtimes require a separately owned build, dependencies, tests and deployment contract.",
+      "evidence": null
+    },
+    {
+      "id": "rust",
+      "category": "Languages",
+      "label": "Rust",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "New language runtimes require a separately owned build, dependencies, tests and deployment contract.",
+      "evidence": null
+    },
+    {
+      "id": "go",
+      "category": "Languages",
+      "label": "Go",
+      "status": "adapter-required",
+      "owner": "Independent service",
+      "note": "New language runtimes require a separately owned build, dependencies, tests and deployment contract.",
+      "evidence": null
+    }
+  ]
+}

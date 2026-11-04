@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function UltimateCallback() {
+function UltimateCallbackContent() {
   const router = useRouter(); const params = useSearchParams(); const [message, setMessage] = useState('Connecting to Ultimate…');
   useEffect(() => {
     const token = params.get('ultimate_handoff'); if (!token) { setMessage('The sign-in handoff is missing.'); return; }
@@ -11,4 +11,8 @@ export default function UltimateCallback() {
       .catch(() => setMessage('This sign-in link expired. Return to Ultimate and open OxFin again.'));
   }, [params, router]);
   return <main className="min-h-screen grid place-items-center"><p>{message}</p></main>;
+}
+
+export default function UltimateCallback() {
+  return <Suspense fallback={<p role="status">Loading sign-in handoff…</p>}><UltimateCallbackContent /></Suspense>;
 }

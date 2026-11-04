@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const result = ConsentSchema.safeParse(body);
     if (!result.success) {
-        return NextResponse.json({ error: result.error.errors }, { status: 400 });
+        return NextResponse.json({ error: result.error.issues }, { status: 400 });
     }
     userConsents = { ...userConsents, ...result.data };
     return NextResponse.json({ message: 'Consents updated', consents: userConsents });

@@ -1,0 +1,9 @@
+image: node:24
+stages: [verify]
+verify:
+  stage: verify
+  script:
+    - npm ci --prefix growthtrack-ultimate
+    - npm run repository:check
+    - npm run adapters:check
+    - npm --prefix growthtrack-ultimate run typecheck

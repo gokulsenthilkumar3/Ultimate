@@ -61,6 +61,7 @@ export default defineConfig(async ({ mode }) => {
       // Without this, every DB transaction triggers HMR, restarts server.js,
       // and can corrupt or wipe in-flight data.
       ignored: [
+        '**/.venv/**',
         // Playwright writes HTML snapshots while recording. Watching them
         // reloads the app during the test and can interrupt model loading.
         '**/artifacts/**',

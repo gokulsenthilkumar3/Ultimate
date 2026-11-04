@@ -6,9 +6,9 @@ changed by this documentation pass.
 
 ## Views
 
-- [Workspace system context](../../diagrams/workspace-system-context.svg)
-- [Current 3D runtime](../../diagrams/avatar-3d-current.svg)
-- [Proposed four-layer architecture](../../diagrams/avatar-3d-target.svg)
+- [Workspace system context source](../../diagrams/workspace-system-context.mmd)
+- [Current 3D runtime source](../../diagrams/avatar-3d-current.mmd)
+- [Proposed four-layer architecture source](../../diagrams/avatar-3d-target.mmd)
 - [Editable sources and diagram formats](../../diagrams/README.md)
 
 The context view locates the subsystem inside Ultimate. The current view shows

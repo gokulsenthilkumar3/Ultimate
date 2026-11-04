@@ -223,7 +223,7 @@ export default function DashboardPage() {
                         </div>
                         {hasBudget ? (
                             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                                You're on track with your {profile?.budgetRule} budget! Consider locking {formatCurrency(Math.round(savings * 0.4))} into SIPs this month to hit your annual savings goal.
+                                You&apos;re on track with your {profile?.budgetRule} budget! Consider locking {formatCurrency(Math.round(savings * 0.4))} into SIPs this month to hit your annual savings goal.
                             </p>
                         ) : (
                             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>

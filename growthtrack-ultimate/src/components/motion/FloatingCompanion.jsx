@@ -34,7 +34,7 @@ export default function FloatingCompanion() {
   };
   return <aside className="floating-companion" id="floating-companion" aria-label="Workspace companion" hidden={obscured} data-animate={canAnimate && tier > 0}>
     <button className="floating-companion__hide" type="button" aria-label="Hide floating companion" title="Hide companion" onClick={hide}><X size={14} aria-hidden="true" /></button>
-    <button className="floating-companion__creature" type="button" aria-label="Open companion" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)} onPointerEnter={() => setGreeting(true)} onPointerLeave={() => setGreeting(false)} onFocus={() => setGreeting(true)} onBlur={() => setGreeting(false)}>
+    <button className="floating-companion__creature" type="button" aria-label="Open Sidekick companion" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)} onPointerEnter={() => setGreeting(true)} onPointerLeave={() => setGreeting(false)} onFocus={() => setGreeting(true)} onBlur={() => setGreeting(false)}>
       <span className="floating-companion__stage">
         <span className="floating-companion__halo" aria-hidden="true" />
         <span className="floating-companion__spark" aria-hidden="true"><Sparkles size={15} strokeWidth={1.6} /></span>
