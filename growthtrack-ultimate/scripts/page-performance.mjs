@@ -45,7 +45,7 @@ const checkCompanion = args.includes('--check-companion');
 const layerDetails = args.includes('--layer-details');
 if (!Number.isFinite(settleMs) || settleMs < 0 || settleMs > 5000 || !Number.isFinite(soakMinutes) || soakMinutes < 0 || soakMinutes > 30 || !['local', '4g'].includes(network)) throw new Error('Invalid settling, network or soak options.');
 if (!Number.isFinite(width) || width < 320 || width > 2560 || !Number.isFinite(cpuThrottle) || cpuThrottle < 1 || cpuThrottle > 6 || !['reduce', 'no-preference'].includes(motion) || !['kinetic', 'playful'].includes(presentation) || !['light', 'dark', 'amoled'].includes(appearance) || !['coral', 'forest', 'gold', 'ocean', 'mint', 'violet', 'rose', 'bcl', 'gbb'].includes(palette)) throw new Error('Invalid browser measurement configuration.');
-const output = path.resolve(root, '../.gstack/benchmark-reports');
+const output = path.resolve(root, option('output', '../.gstack/benchmark-reports'));
 await mkdir(output, { recursive: true });
 if (args.includes('--screenshots')) await mkdir(path.join(output, 'screenshots', label), { recursive: true });
 const manifest = JSON.parse(await readFile(path.join(dist, '.vite/manifest.json'), 'utf8'));
@@ -174,8 +174,9 @@ try {
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(origin + '/Ultimate' + pageInfo.path + (viewParam ? `?view=${encodeURIComponent(viewParam)}` : ''), { waitUntil: 'load', timeout: 20000 });
         let failure = null;
-        try { await page.waitForFunction(() => document.querySelector('#main-content h1, #main-content h2, h1') && !document.querySelector('#main-content .app-loading-skeleton'), null, { timeout: 8000 }); }
-        catch { failure = 'No page heading rendered within 8s'; }
+        const readyTimeout = network === '4g' ? 30000 : 8000;
+        try { await page.waitForFunction(() => document.querySelector('#main-content h1, #main-content h2, h1') && !document.querySelector('#main-content .app-loading-skeleton'), null, { timeout: readyTimeout }); }
+        catch { failure = `No page heading rendered within ${readyTimeout / 1000}s`; }
         if (fixtureName === 'populated') {
           const deadline = Date.now() + 12000;
           while (Date.now() < deadline && (pending.size || Date.now() - lastRequestChange < 200)) await page.waitForTimeout(50);
@@ -188,6 +189,13 @@ try {
         let tabOverflow = [];
         if (interact || checkTabs || checkDirection) {
           const check = async (name, action) => { console.log(`${pageInfo.id}: checking ${name}`); try { const details = await action(); interactions.push({ name, passed: true, ...(details ? { details } : {}) }); } catch (error) { interactions.push({ name, passed: false, error: error.message.slice(0, 250), ...(error.details ? { details: error.details } : {}) }); failure ||= `Interaction failed: ${name}`; } };
+          if (interact && !pageInfo.public) await check('keyboard search and recovery', async () => {
+            await page.getByRole('button', { name: /Search GrowthTrack/ }).click();
+            await page.getByRole('dialog').waitFor();
+            await page.keyboard.type('task');
+            await page.keyboard.press('Escape');
+            await page.getByRole('dialog').waitFor({ state: 'hidden' });
+          });
           if (checkTabs) await check('horizontal subtabs: buttons, mouse wheel and page-scroll release', async () => { tabOverflow = await checkTabOverflow(page); });
           if (checkDirection) await check('live inherited RTL: arrows and selection indicator', async () => { await checkTabDirection(page); });
           if (pageInfo.id === 'welcome') {
@@ -246,10 +254,10 @@ try {
             });
           }
           if (pageInfo.id === 'overview') {
-            await check('command palette keyboard flow', async () => { await page.getByRole('button', { name: 'Search all modules and records' }).click(); await page.getByRole('dialog').waitFor(); await page.keyboard.press('Escape'); });
+            await check('command palette keyboard flow', async () => { await page.getByRole('button', { name: 'Search GrowthTrack' }).click(); await page.getByRole('dialog').waitFor(); await page.keyboard.press('Escape'); });
             await check('sign-out cancellation', async () => { if (width < 960) await page.getByRole('button', { name: 'Open module navigation', exact: true }).click(); await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await page.getByRole('button', { name: 'Stay signed in' }).click(); if (!await page.locator('.app-shell').count()) throw new Error('Cancellation lost the workspace'); if (width < 960) await page.keyboard.press('Escape'); });
             await check('settings sections and Display destination', async () => {
-              await page.getByRole('button', { name: 'Open account and settings', exact: true }).click();
+              await page.getByRole('button', { name: /open account and settings/i }).click();
               const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
               await settings.waitFor();
               if (args.includes('--screenshots') && run === 0) await page.screenshot({ path: path.join(output, 'screenshots', label, 'settings.png') });
@@ -275,7 +283,7 @@ try {
             const perf = await diagnostics.send('Performance.getMetrics');
             const dom = await diagnostics.send('Memory.getDOMCounters');
             memorySoak.push({ elapsedMs: Date.now() - started, heapBytes: perf.metrics.find(item => item.name === 'JSHeapUsedSize')?.value, ...dom });
-            if (memorySoak.length % 2 === 0) { await page.getByRole('button', { name: 'Search all modules and records' }).click(); await page.keyboard.type('task'); await page.keyboard.press('Escape'); }
+            if (memorySoak.length % 2 === 0) { await page.getByRole('button', { name: 'Search GrowthTrack' }).click(); await page.keyboard.type('task'); await page.keyboard.press('Escape'); }
             if (memorySoak.length % 2 === 0) console.log(`Soak ${Math.round((Date.now() - started) / 60000)}m: ${dom.nodes} nodes, ${dom.jsEventListeners} listeners`);
           }
         }

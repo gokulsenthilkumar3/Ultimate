@@ -1,0 +1,3 @@
+# Explicit optional isolated environment. No checkpoint is downloaded by npm/build/tests.
+# Source reviewed at this commit; inference quality has not been evaluated in GrowthTrack.
+laya[serve] @ git+https://github.com/NandhaKishorM/laya.git@462c2644e654add83516e53c7a65909f8072d529

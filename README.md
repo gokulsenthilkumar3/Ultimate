@@ -4,7 +4,7 @@ A desktop workspace for personal growth, work, family, equity and Forex research
 
 **Runtime:** Node.js/npm workspace; Ultimate uses React, Vite and Express. Companion services retain their current frameworks.
 
-**Status:** NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; restricted customer-admin adapters remain separate work.
+**Status:** NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; read-only customer-admin adapters require explicit product configuration and approved readers.
 
 ## Setup
 
@@ -50,7 +50,10 @@ node --test tests/code-context.test.mjs
 ## Workspace documentation
 
 - [Complete UI workflow and style guide](docs/UI_WORKFLOW_AND_STYLE_GUIDE.md)
+- [Agent workflow, Jev and TOON](docs/AGENT_WORKFLOW.md)
 - [Application directory](docs/APPLICATIONS.md)
+- [Repository structure and file policy](docs/REPOSITORY_STRUCTURE.md)
+- [Current architecture](docs/ARCHITECTURE.md)
 - [Ownership and independent builds](docs/BUILD_BOUNDARIES.md)
 - [Desktop redesign and architecture](docs/plans/2026-10-28-admin-redesign.md)
 - [Complete architecture and UI review handoff](docs/UI_ARCHITECTURE_HANDOFF.md)

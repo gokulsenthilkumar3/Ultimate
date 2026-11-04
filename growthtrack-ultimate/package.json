@@ -33,6 +33,7 @@
       "src/lib/aiContextTypes.js",
       "src/config/products.js",
       "src/config/nativeEntries.js",
+      "src/config/featureCatalog.js",
       "api-explorer.html",
       "src/components/calendar/calendarICS.js",
       "src/components/calendar/calendarModel.js",
@@ -131,6 +132,7 @@
     "@sentry/vite-plugin": "^5.4.0",
     "@stripe/stripe-js": "^9.13.0",
     "@tanstack/react-query": "^5.100.11",
+    "@toon-format/toon": "4.4.0",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "concurrently": "^10.0.5",
@@ -167,6 +169,7 @@
     "zustand": "5.0.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@eslint/js": "9.39.4",
     "@playwright/test": "1.59.1",
     "@testing-library/jest-dom": "6.9.1",
@@ -184,6 +187,7 @@
     "eslint-plugin-react-refresh": "0.5.2",
     "globals": "17.4.0",
     "gltf-validator": "^2.0.0-dev.3.10",
+    "js-yaml": "4.3.2",
     "jsdom": "^29.0.2",
     "meshoptimizer": "1.1.1",
     "prisma": "^7.9.1",

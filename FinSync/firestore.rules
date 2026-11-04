@@ -23,7 +23,16 @@ service cloud.firestore {
     
     // User profiles - only owner can read/write
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      // Identity/bootstrap fields only; protected profile data is server-owned.
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['email', 'authProvider', 'createdAt', 'onboarded'])
+        && (!('onboarded' in request.resource.data) || request.resource.data.onboarded == false);
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profile', 'budget'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['profile'])
+          || request.resource.data.get('profile', {}).diff(resource.data.get('profile', {})).affectedKeys().hasOnly(['name', 'familySize']));
+      allow delete: if false;
       
       // User settings
       match /settings/{document=**} {
@@ -94,6 +103,11 @@ service cloud.firestore {
       }
     }
     
+    // Only the server Admin SDK can access encrypted PII. No client bypass.
+    match /privateProfiles/{userId} {
+      allow read, write: if false;
+    }
+
     // App configuration - public read, admin write only
     match /config/{document} {
       allow read: if true;

@@ -1,9 +1,9 @@
 name: Security analysis
 on:
   pull_request:
-    branches: [main]
+    branches: [main, master]
   push:
-    branches: [main]
+    branches: [main, master]
   schedule:
     - cron: '37 3 * * 1'
   workflow_dispatch:
@@ -13,6 +13,22 @@ concurrency:
   group: security-analysis-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  secrets:
+    name: Secret scan (redacted)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: false
+      - name: Install pinned scanner
+        run: go install github.com/zricethezav/gitleaks/v8@v8.24.3
+      - name: Scan commit history without exposing findings
+        run: gitleaks git --redact=100 --no-banner .
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04

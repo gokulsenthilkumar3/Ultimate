@@ -1,0 +1,14 @@
+version: 2.1
+jobs:
+  verify:
+    docker:
+      - image: cimg/node:24.12
+    steps:
+      - checkout
+      - run: npm ci --prefix growthtrack-ultimate
+      - run: npm run repository:check
+      - run: npm run adapters:check
+      - run: npm --prefix growthtrack-ultimate run typecheck
+workflows:
+  verify:
+    jobs: [verify]

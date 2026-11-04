@@ -1,4 +1,3 @@
-// src/middleware/rateLimiter.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Redis from 'ioredis';
@@ -6,40 +5,30 @@ import Redis from 'ioredis';
 const redisUrl = process.env.OXFIN_REDIS_URL;
 const redis = redisUrl ? new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 }) : null;
 const memory = new Map<string, { count: number; reset: number }>();
-
-// Token bucket: 60 requests per minute per IP
-const LIMIT = 60;
-const WINDOW_MS = 60_000;
+const LIMIT = 60, WINDOW_MS = 60_000;
+const script = `local n = redis.call('INCR', KEYS[1]); if n == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]); end; return {n, redis.call('PTTL', KEYS[1])}`;
 
 export async function rateLimiter(request: NextRequest) {
-    const ip = request.headers.get('x-forwarded-for') || request.ip || 'unknown';
-    const key = `rl:${ip}`;
-    const now = Date.now();
-    let ttl = 0;
-    let count: string | null = null;
+    // Ingress must overwrite this header before proxy trust is enabled.
+    const forwarded = process.env.OXFIN_TRUST_PROXY === 'true' ? request.headers.get('x-forwarded-for') : null;
+    const ip = forwarded && forwarded.length <= 64 && !forwarded.includes(',') ? forwarded : 'unknown';
+    const key = `rl:${ip}`, now = Date.now();
+    let count: number | undefined, ttl = WINDOW_MS;
     if (redis) {
-        try { ttl = await redis.pttl(key); count = await redis.get(key); }
-        catch { /* use the bounded in-process fallback */ }
+        try {
+            const result = await redis.eval(script, 1, key, WINDOW_MS) as [number, number];
+            count = Number(result[0]); ttl = Number(result[1]);
+        } catch { /* bounded process-local fallback */ }
     }
-    if (!count) {
-        const entry = memory.get(key);
-        if (!entry || entry.reset <= now) { memory.set(key, { count: 1, reset: now + WINDOW_MS }); return NextResponse.next(); }
-        count = String(entry.count);
-        ttl = entry.reset - now;
+    if (count === undefined) {
+        if (memory.size >= 10000) {
+            for (const [tracked, value] of memory) if (value.reset <= now) memory.delete(tracked);
+            if (!memory.has(key) && memory.size >= 10000) return NextResponse.json({ error: 'Server busy' }, { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } });
+        }
+        let entry = memory.get(key);
+        if (!entry || entry.reset <= now) { entry = { count: 0, reset: now + WINDOW_MS }; memory.set(key, entry); }
+        count = ++entry.count; ttl = entry.reset - now;
     }
-    if (count === null) {
-        await redis.set(key, '1', 'PX', WINDOW_MS);
-        return NextResponse.next();
-    }
-    const current = parseInt(count, 10);
-    if (current >= LIMIT) {
-        const retryAfter = ttl > 0 ? Math.ceil(ttl / 1000) : 60;
-        const resp = NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-        resp.headers.set('Retry-After', retryAfter.toString());
-        return resp;
-    }
-    if (redis) { try { await redis.incr(key); } catch { /* fallback below */ } }
-    const entry = memory.get(key);
-    if (entry && entry.reset > now) entry.count += 1;
+    if (count > LIMIT) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(ttl / 1000))), 'Cache-Control': 'no-store' } });
     return NextResponse.next();
 }

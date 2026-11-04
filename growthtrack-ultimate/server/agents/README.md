@@ -1,5 +1,7 @@
 # Agents API contract
 
+For optional Jev decision advice, TOON context formatting and coding-agent guidance, use the maintained [agent workflow](../../../docs/AGENT_WORKFLOW.md). Jev is not a chat provider, is disabled by default, requires per-request remote consent and never executes actions. The standard chat/plan paths below retain their existing defaults and permissions.
+
 Main/backend owns mounting. Named and default exports are the factory:
 
 ```js

@@ -1,5 +1,7 @@
 # Face anatomy implementation continuation
 
+> Evidence availability: linked local artifacts are not included in this checkout. This historical record does not establish current rendered coverage. Use the [maintained architecture](../../../../docs/ARCHITECTURE.md) and fresh scoped tests when assessing the current implementation.
+
 Date: 2026-10-24. Status: **first editor/oral slices implemented and checked; final visual acceptance open**.
 
 The owner requested, “continue implemenation of the face anatomy chnages in design, code and so on.” This supersedes the research packet's former implementation hold. It authorises work on the existing head editor and renderer with the documented research gaps retained. It is not evidence that the complete head, calibrated fitting, global representation or likeness acceptance gates have passed.
@@ -68,11 +70,11 @@ node node_modules/@playwright/test/cli.js test --config playwright.head-anatomy.
 
 | Artifact | Review purpose |
 | --- | --- |
-| [Core neutral](../../../artifacts/head-anatomy/core-face-neutral.png), [core open mouth](../../../artifacts/head-anatomy/core-face-open.png) | Same R2 core face in resting and open-mouth portrait views |
-| [Hero neutral](../../../artifacts/head-anatomy/hero-face-neutral.png), [hero open mouth](../../../artifacts/head-anatomy/hero-face-open.png) | Corresponding R2 hero portrait views, including visible teeth after the oral fit correction |
-| [Mobile editor](../../../artifacts/head-anatomy/face-editor-mobile.png) | Narrow-viewport feature editing layout |
-| [Core diagnostics](../../../artifacts/head-anatomy/core-browser.json), [hero diagnostics](../../../artifacts/head-anatomy/hero-browser.json) | Browser runtime state captured alongside the images |
-| [Verification record](../../../artifacts/head-anatomy/review.json) | Source and artifact hashes, passed checks, browser rerun details and remaining visual limits |
+| [Core neutral](../../../../docs/evidence/ARTIFACTS.md#artifact-002), [core open mouth](../../../../docs/evidence/ARTIFACTS.md#artifact-003) | Same R2 core face in resting and open-mouth portrait views |
+| [Hero neutral](../../../../docs/evidence/ARTIFACTS.md#artifact-006), [hero open mouth](../../../../docs/evidence/ARTIFACTS.md#artifact-007) | Corresponding R2 hero portrait views, including visible teeth after the oral fit correction |
+| [Mobile editor](../../../../docs/evidence/ARTIFACTS.md#artifact-004) | Narrow-viewport feature editing layout |
+| [Core diagnostics](../../../../docs/evidence/ARTIFACTS.md#artifact-001), [hero diagnostics](../../../../docs/evidence/ARTIFACTS.md#artifact-005) | Browser runtime state captured alongside the images |
+| [Verification record](../../../../docs/evidence/ARTIFACTS.md#artifact-008) | Source and artifact hashes, passed checks, browser rerun details and remaining visual limits |
 
 The face images are approximately **559 × 609 portrait UI renders**, not the 1600 × 1600 matched-reference stills required by [the realism acceptance contract](audit-and-realism.md). They demonstrate current application output at that scale, not reference-matched likeness, all-angle anatomy, validated materials or complete motion/contact. No external reference or new scan is introduced by these checks.
 

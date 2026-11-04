@@ -684,7 +684,7 @@ export default function Tasks() {
               fontWeight: 800,
               border: showForm ? '1px solid var(--border)' : 'none',
               background: showForm ? 'var(--bg-elevated)' : 'var(--accent)',
-              color: showForm ? 'var(--text-1)' : '#000',
+              color: showForm ? 'var(--text-1)' : 'var(--gt-on-action)',
               boxShadow: showForm ? 'none' : 'var(--glow-cyan)',
               transition: 'all 0.25s var(--ease)'
             }}

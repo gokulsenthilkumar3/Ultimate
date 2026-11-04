@@ -124,7 +124,7 @@ service-account*.json
 *.pfx
 
 # Docker
-.dockerignore
+# Build-context exclusion rules are source configuration and must be committed.
 docker-compose.override.yml
 
 # Package manager lock files (choose one)

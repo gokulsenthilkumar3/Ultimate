@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "owners": {
+    ".agents": "Workspace tooling",
+    ".github": "Workspace CI",
+    "Claude": "Historical 3D provenance",
+    "Equity": "Equity",
+    "Family Connect": "Family Connect",
+    "FinSync": "FinSync and independently owned OxFin",
+    "Forex": "Forex",
+    "diagrams": "Architecture documentation",
+    "docs": "Workspace documentation",
+    "growthtrack-ultimate": "Ultimate",
+    "scripts": "Workspace tooling",
+    "tests": "Workspace contracts"
+  },
+  "rootFiles": [
+    ".gitignore",
+    ".nvmrc",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "CLEANUP_MANIFEST.md",
+    "GrowthTrack_Ultimate_Audit.md",
+    "MIGRATION_GUIDE.md",
+    "README.md",
+    "RELEASE_NOTES.md",
+    "SPRINT.md",
+    "WORKSPACE.md",
+    "build-desktop.ps1",
+    "feature.md",
+    "package.json",
+    "task.md"
+  ],
+  "canonicalDocs": [
+    "README.md",
+    "docs/ARCHITECTURE.md",
+    "docs/BUILD_BOUNDARIES.md",
+    "docs/Eng Plan.md",
+    "docs/REPOSITORY_STRUCTURE.md",
+    "docs/CI_VALIDATION.md",
+    "docs/applications.json",
+    "docs/AGENT_WORKFLOW.md",
+    "docs/evidence/ARTIFACTS.md"
+  ],
+  "historicalRootNotes": [
+    "SPRINT.md",
+    "feature.md",
+    "task.md",
+    "GrowthTrack_Ultimate_Audit.md"
+  ],
+  "dockerContexts": [
+    "Forex",
+    "Forex/Forex-Ensemble-Prediction",
+    "FinSync/OxFin",
+    "growthtrack-ultimate"
+  ],
+  "dockerExclusions": [
+    "**/.env*",
+    "**/*.db",
+    "**/*.db-*",
+    "**/*.db.enc*",
+    "**/*.sqlite*",
+    "**/*.pem",
+    "**/*.key",
+    "**/*.p12",
+    "**/*.pfx",
+    "**/.aws",
+    "**/.ssh",
+    "**/.secrets",
+    "**/secrets",
+    "**/credentials*.json",
+    "**/service-account*.json",
+    "**/serviceAccountKey*.json",
+    "**/firebase-adminsdk*.json",
+    "**/.streamlit/secrets.toml"
+  ],
+  "templateBases": {
+    "docs/templates/ui-architecture-handoff.md": "docs"
+  }
+}

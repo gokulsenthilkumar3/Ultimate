@@ -124,13 +124,13 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      <div aria-label="Errors" style={{ position: 'fixed', top: 'max(24px, env(safe-area-inset-top))', left: '50%', transform: 'translateX(-50%)', zIndex: 'var(--z-toast, 120)', display: 'flex', flexDirection: 'column', gap: '0.6rem', pointerEvents: 'none', width: 'min(380px, calc(100vw - 48px))' }}>
+      <div role="region" aria-label="Errors" style={{ position: 'fixed', top: 'max(24px, env(safe-area-inset-top))', left: '50%', transform: 'translateX(-50%)', zIndex: 'var(--z-toast, 120)', display: 'flex', flexDirection: 'column', gap: '0.6rem', pointerEvents: 'none', width: 'min(380px, calc(100vw - 48px))' }}>
         {errors.map((item) => <ToastItem key={item.id} item={item} dismiss={dismiss} />)}
       </div>
-      <div aria-label="Activity confirmations" style={{ position: 'fixed', bottom: 'max(110px, calc(24px + env(safe-area-inset-bottom)))', right: '24px', zIndex: 'var(--z-toast, 120)', display: 'flex', flexDirection: 'column', gap: '0.6rem', pointerEvents: 'none' }}>
+      <div role="region" aria-label="Activity confirmations" style={{ position: 'fixed', bottom: 'max(110px, calc(24px + env(safe-area-inset-bottom)))', right: '24px', zIndex: 'var(--z-toast, 120)', display: 'flex', flexDirection: 'column', gap: '0.6rem', pointerEvents: 'none' }}>
         {confirmations.map((item) => <ToastItem key={item.id} item={item} dismiss={dismiss} />)}
       </div>
-      <div aria-label="Notifications" style={{ position: 'fixed', top: 'max(24px, env(safe-area-inset-top))', right: '24px', zIndex: 'var(--z-toast, 120)', display: 'flex', flexDirection: 'column', gap: '0.6rem', pointerEvents: 'none', width: 'min(380px, calc(100vw - 48px))' }}>
+      <div role="region" aria-label="Notifications" style={{ position: 'fixed', top: 'max(24px, env(safe-area-inset-top))', right: '24px', zIndex: 'var(--z-toast, 120)', display: 'flex', flexDirection: 'column', gap: '0.6rem', pointerEvents: 'none', width: 'min(380px, calc(100vw - 48px))' }}>
         {notifications.map((item) => <ToastItem key={item.id} item={item} dismiss={dismiss} />)}
       </div>
     </ToastContext.Provider>

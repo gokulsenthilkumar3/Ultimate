@@ -846,7 +846,7 @@ app.post('/api/hydration/log', authMiddleware, async (req, res) => {
 app.post('/api/health/sync/apple', authMiddleware, appleHealthSetupRequired);
 
 registerFinanceRoutes(app, authMiddleware, { prisma, auditCrud });
-registerCustomerAdminRoutes(app, authMiddleware);
+registerCustomerAdminRoutes(app, authMiddleware, { writeEvent: eventLogger.write });
 registerNativeModuleRoutes(app, authMiddleware);
 registerRecordRoutes(app, { authMiddleware, services: recordServices, enabled: recordRowsEnabled });
 const syncEngine = createSyncEngine({ prisma, records: recordRowsEnabled ? recordServices : null, fetchDefaults: config.sync.fetch, connectors: createConnectors(config.sync), sealer: createSealer(config.security.encryptionKey), logEvent: event => eventLogger.write({ source: 'sync-engine', ...event }) });

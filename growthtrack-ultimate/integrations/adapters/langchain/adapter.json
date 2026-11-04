@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "langchain",
+  "category": "Frameworks",
+  "kind": "service-bridge-template",
+  "runtimeEnabled": false,
+  "owner": "Independent service",
+  "contract": {
+    "health": "GET /health -> {\"status\":\"ok\"}",
+    "authorization": "Domain-owned identity and authorization required before data endpoints",
+    "configuration": "Server environment only; no browser-supplied destinations"
+  },
+  "acceptance": [
+    "Independent build and dependency lock",
+    "Authenticated contract tests",
+    "Timeout/cancellation/error tests",
+    "Owner isolation",
+    "Backup/rollback or deployment rollback",
+    "Explicit owner activation"
+  ]
+}

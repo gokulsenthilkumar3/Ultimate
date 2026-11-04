@@ -55,7 +55,7 @@ for (const target of targets) {
   const absolute = path.join(root, target);
   if (process.argv.includes('--check')) {
     const current = await readFile(absolute, 'utf8').catch(() => '');
-    if (current !== css) throw new Error(`Design adapter is stale: ${target}. Run npm run design:sync.`);
+    if (current.replace(/\r\n/g, '\n') !== css) throw new Error(`Design adapter is stale: ${target}. Run npm run design:sync.`);
   } else await writeFile(absolute, css);
 }
 console.log(`Design ${tokens.version}: ${targets.length} adapters ${process.argv.includes('--check') ? 'verified' : 'generated'}.`);

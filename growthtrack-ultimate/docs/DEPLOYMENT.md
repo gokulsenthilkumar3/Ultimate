@@ -1,5 +1,9 @@
 # Self-hosted Ultimate deployment
 
+For the implemented ingress protections, CDN/private-cache policy and remaining
+DNS/CDN/DDoS activation gates, see [production edge security](PRODUCTION_EDGE_SECURITY.md).
+Repository configuration alone does not establish live production readiness.
+
 The selected deployment is Docker Compose with one Ultimate web/API container and Caddy HTTPS. The current database remains SQLite and files use a persistent local volume. PostgreSQL, shared object storage, workers and a managed-cloud cutover remain pending. This setup does not establish mobile feature parity or a production release.
 
 ## Fresh installation

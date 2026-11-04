@@ -1,5 +1,7 @@
 # Accuracy audit and lifelike-human acceptance contract
 
+> Evidence availability: linked local artifacts are not included in this checkout. This historical record does not establish current rendered coverage. Use the [maintained architecture](../../../../docs/ARCHITECTURE.md) and fresh scoped tests when assessing the current implementation.
+
 Date: 2026-10-24. Scope: recheck the research, coverage ledger and proposed adult face/hair implementation. **Research and proposal revision only; new implementation is not approved or delivered.**
 
 The target is a digital human who looks convincing in close-up and movement. The previous packet provided a useful feature inventory, but population-genetic coverage was much stronger than its evidence for rendering, asset production and motion. The proposal now puts one complete, reference-matched head prototype first. Broad customisation follows demonstrated quality.
@@ -101,7 +103,7 @@ The [evidence snapshot](audit-evidence.json) records the inspected local files a
 
 | Observation | Evidence | Implication |
 | --- | --- | --- |
-| The available source render remains visibly synthetic at this viewing scale | [Existing oblique render](../../../artifacts/human-r2/human-r2-oblique.png), 640 × 800 image inspected | Broad smooth highlights, limited visible skin detail, groom clumping and a static spread-arm pose need reference comparison. This is a visual judgement, not a measured realism score. |
+| The available source render remains visibly synthetic at this viewing scale | [Existing oblique render](../../../../docs/evidence/ARTIFACTS.md#artifact-010), 640 × 800 image inspected | Broad smooth highlights, limited visible skin detail, groom clumping and a static spread-arm pose need reference comparison. This is a visual judgement, not a measured realism score. |
 | Facial close-up and motion are not established by that image | Face occupies only a small portion of the full-body frame; no newly captured animation reviewed | Do not diagnose fine eyelid/teeth geometry from it or certify unseen angles. |
 | Dental geometry is procedural and repetitive | [faceGeometry.js](../../../src/components/morphEngine/faceGeometry.js), `roundedPart`, `createMouthInterior` | Differentiated crowns and rigged arch fitting remain production work. |
 | The cornea is approximated by a dark low-opacity layer | [surfaceParts.js](../../../src/components/morphEngine/surfaceParts.js) | A configured IOR alone does not prove refractive optics or correct iris depth. |

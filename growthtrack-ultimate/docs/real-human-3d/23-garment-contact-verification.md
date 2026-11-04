@@ -1,5 +1,7 @@
 # Garment contact and rig continuation
 
+> Evidence availability: linked local artifacts are not included in this checkout. This historical record does not establish current rendered coverage. Use the [maintained architecture](../../../docs/ARCHITECTURE.md) and fresh scoped tests when assessing the current implementation.
+
 Date: **27 October 2026**. This resumes the interrupted validation after the
 [skin and eye continuation](22-portrait-tissue-and-eyes.md).
 
@@ -34,7 +36,7 @@ self-intersecting body geometry.
 
 ## Completed matrix
 
-[Full machine-readable evidence](../../artifacts/parametric-portrait/garment-matrix.json)
+[Full machine-readable evidence](../../../docs/evidence/ARTIFACTS.md#artifact-023)
 contains all 150 cases and confirms that the shared source was unchanged.
 
 | Failing case | Crossing triangle pairs | Body region | Minimum signed sample |
@@ -71,7 +73,7 @@ remaining solver/garment work without excluding cases or weakening acceptance.
   and input-to-two-frame-callback latency of **696.8 ms**. The CPU metric excludes
   garment fitting. The end-to-end latency is materially slower than the earlier
   skin/eye-only checkpoint and is not an interactive-performance acceptance.
-  [Raw desktop evidence](../../artifacts/parametric-visual/desktop-active-editing.json).
+  [Raw desktop evidence](../../../docs/evidence/ARTIFACTS.md#artifact-026).
 - The inspected torso-combination front view remains a generic prototype.
   Hair finishing, likeness calibration, expressions, garment acceptance and
   physical Android verification remain open.

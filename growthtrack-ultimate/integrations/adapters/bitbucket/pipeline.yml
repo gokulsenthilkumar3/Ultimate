@@ -1,0 +1,10 @@
+image: node:24
+pipelines:
+  default:
+    - step:
+        name: Workspace checks
+        script:
+          - npm ci --prefix growthtrack-ultimate
+          - npm run repository:check
+          - npm run adapters:check
+          - npm --prefix growthtrack-ultimate run typecheck

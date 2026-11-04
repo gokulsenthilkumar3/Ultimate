@@ -290,11 +290,11 @@ function ShoppingWorkspace() {
           <Search size={12} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
           <input aria-label="Search shopping" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="form-input" style={{ paddingLeft: '28px' }} />
         </div>
-        <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="form-input" style={{ width: 'auto' }}>
+        <select aria-label="Shopping category" value={catFilter} onChange={e => setCatFilter(e.target.value)} className="form-input" style={{ width: 'auto' }}>
           <option value="all">All Categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={priFilter} onChange={e => setPriFilter(e.target.value)} className="form-input" style={{ width: 'auto' }}>
+        <select aria-label="Shopping priority" value={priFilter} onChange={e => setPriFilter(e.target.value)} className="form-input" style={{ width: 'auto' }}>
           <option value="all">All Priorities</option>
           {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
         </select>

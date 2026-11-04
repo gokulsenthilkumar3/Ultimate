@@ -2,20 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { validatePAN, validateDOB, validatePhone, validateIncome, validateFamilySize, formatPAN, formatPhone, formatCurrency, calculateMonthlyIncome, calculatePersonalisedBudget } from '@/packages/utils/validators';
+import { auth } from '@/lib/firebase';
+import { validatePAN, validateDOB, validatePhone, validateIncome, validateFamilySize, formatCurrency, calculateMonthlyIncome, calculatePersonalisedBudget } from '@/packages/utils/validators';
 import ToastManager, { useToastManager } from '@/components/ToastManager';
-import AES from 'crypto-js/aes';
-
-// Legacy compatibility only: NEXT_PUBLIC_ values are readable by the browser.
-// Replace this path with authenticated server-side encryption before production.
-const SECRET_KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY;
-
-const encryptData = (text: string | number) => {
-  if (!SECRET_KEY) throw new Error('Profile encryption is not configured.');
-  return AES.encrypt(String(text), SECRET_KEY).toString();
-};
 
 interface ProfileData { name: string; pan: string; dob: string; phone: string; income: string; familySize: string; }
 
@@ -104,22 +93,20 @@ export default function OnboardingPage() {
       const user = auth.currentUser;
       if (!user) { showToast('Please log in again', 'error'); router.push('/login'); return; }
 
-      // Encrypt sensitive Personal Identifiable Information (PII) before storing
-      const encryptedProfile = {
-        name: data.name, // Name is usually not encrypted to display in UI, but PII is
-        pan: encryptData(formatPAN(data.pan)),
-        dob: encryptData(data.dob),
-        phone: encryptData(formatPhone(data.phone)),
-        income: encryptData(data.income),
-        familySize: parseInt(data.familySize),
-        onboarded: true,
-        createdAt: new Date().toISOString()
-      };
-
-      await setDoc(doc(db, 'users', user.uid), {
-          profile: encryptedProfile,
-          budget: { monthly: { income: monthly, needs: budget.needs, wants: budget.wants, savings: budget.savings }, rule: budget.rule },
-      }, { merge: true });
+      const token = await user.getIdToken();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/profile/onboarding`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        if (result.code === 'PROFILE_MIGRATION_REQUIRED') {
+          showToast('Your existing profile needs a server migration. No saved data was replaced.', 'error');
+          return;
+        }
+        throw new Error('Profile save failed');
+      }
 
       showToast('Profile encrypted & saved!', 'success');
       setStep(3);
@@ -147,7 +134,7 @@ export default function OnboardingPage() {
           {step === 1 && (
             <>
               <h2 style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 26, fontWeight: 800, letterSpacing: '-0.6px', color: 'var(--text-primary)', marginBottom: 8 }}>
-                Let's get to know you
+                Let&apos;s get to know you
               </h2>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 32 }}>
                 This helps us personalise your financial journey based on your household.
@@ -257,7 +244,7 @@ export default function OnboardingPage() {
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
               </div>
               <h2 style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 32, fontWeight: 800, letterSpacing: -1, color: 'var(--text-primary)', marginBottom: 12 }}>
-                You're all set!
+                You&apos;re all set!
               </h2>
               <p style={{ fontSize: 15, color: 'var(--text-secondary)', maxWidth: 360, margin: '0 auto 32px' }}>
                 Welcome to FinSync Super, {data.name}! Your personalised dashboard is ready.

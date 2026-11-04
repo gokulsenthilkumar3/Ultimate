@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: growthtrack-optional
+spec:
+  replicas: 0
+  selector:
+    matchLabels: {app: growthtrack-optional}
+  template:
+    metadata:
+      labels: {app: growthtrack-optional}
+    spec:
+      containers:
+        - name: service
+          image: REPLACE_WITH_REVIEWED_IMAGE_DIGEST
+          ports: [{containerPort: 8080}]
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: '1', memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+          readinessProbe:
+            httpGet: {path: /health, port: 8080}

@@ -1,5 +1,7 @@
 # Garment classification and projection experiments
 
+> Evidence availability: linked local artifacts are not included in this checkout. This historical record does not establish current rendered coverage. Use the [maintained architecture](../../../docs/ARCHITECTURE.md) and fresh scoped tests when assessing the current implementation.
+
 Date: **27 October 2026**. Continues the interrupted follow-up to
 [asynchronous fitting and editable joints](24-asynchronous-garment-fitting.md).
 
@@ -63,7 +65,7 @@ fail. It accepts the replacement geometry only when the whole-triangle
 exterior certificate, 2 mm source-surface gap and 80 mm displacement checks
 all pass. Otherwise it restores the previous result and reports failure.
 
-The full [production matrix](../../artifacts/parametric-portrait/garment-matrix.json)
+The full [production matrix](../../../docs/evidence/ARTIFACTS.md#artifact-023)
 verifies these results after the inverse-skin round trip, using all 30 shapes,
 five poses and original hand/finger checks. Both torso fixtures pass with
 negative signed samples still present in the evidence. Only the belly/elbow
@@ -143,9 +145,9 @@ four-case sets are incomplete. Reports record source-file integrity,
 per-case displacement, body crossings, source-surface clearance, proxy
 classification and timing scope:
 
-- [Expanded convex candidate](../../artifacts/parametric-portrait/garment-classification.json)
-- [Bone primitives](../../artifacts/parametric-portrait/garment-bone-colliders.json)
-- [Geodesic candidate](../../artifacts/parametric-portrait/garment-geodesic-projection.json)
+- [Expanded convex candidate](../../../docs/evidence/ARTIFACTS.md#artifact-019)
+- [Bone primitives](../../../docs/evidence/ARTIFACTS.md#artifact-018)
+- [Geodesic candidate](../../../docs/evidence/ARTIFACTS.md#artifact-020)
 
 Wardrobe expansion remains gated on the actual production solver passing all
 150 fixtures and visual acceptance. The immediate unresolved case is
@@ -174,7 +176,7 @@ appendage/torso contact under the current displacement and clearance limits.
   latest 20-edit samples record p95 input-to-two-frame-callback times of
   **66.7 ms for nose edits** and **65.2 ms for waist edits**. The final garment
   worker solve takes **564.5 ms**, separately from input responsiveness.
-  [Desktop evidence](../../artifacts/parametric-visual/desktop-active-editing.json).
+  [Desktop evidence](../../../docs/evidence/ARTIFACTS.md#artifact-026).
   Inspected standing views remain a generic prototype and do not certify the
   fallback's flexed-pose appearance, likeness or physical Android performance.
 

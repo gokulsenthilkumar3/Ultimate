@@ -2,6 +2,14 @@
 .git/
 .gitignore
 
+# Apply the same packaging boundary to this historical build context.
+**/.env*
+**/*.db
+**/*.pem
+**/*.key
+**/.aws
+**/.ssh
+
 # Python cache
 __pycache__/
 *.pyc
@@ -52,3 +60,17 @@ mlruns/
 **/.code-index
 **/.code-index/**
 **/.codeindexignore
+
+# Private credentials and database sidecars are never build inputs.
+**/*.db-*
+**/*.db.enc*
+**/*.sqlite*
+**/*.p12
+**/*.pfx
+**/.secrets
+**/secrets
+**/credentials*.json
+**/service-account*.json
+**/serviceAccountKey*.json
+**/firebase-adminsdk*.json
+**/.streamlit/secrets.toml

@@ -63,7 +63,7 @@ describe('responsive canonical navigation', () => {
     const trigger = screen.getByRole('button', { name: 'Open module navigation' });
     await userEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: 'Workspace navigation' });
-    expect(within(dialog).getByRole('link', { name: 'GrowthTrack Home' })).toHaveFocus();
+    expect(within(dialog).getByRole('link', { name: /^GrowthTrack/ })).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
     expect(within(dialog).getAllByRole('link').at(-1)).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Escape' });

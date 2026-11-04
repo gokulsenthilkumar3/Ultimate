@@ -385,7 +385,7 @@ export async function parseTransaction(smsText: string): Promise<Transaction> {
 
 ## Code of Conduct
 
-We are committed to providing a welcoming and inclusive environment. Please read our [Code of Conduct](CODE_OF_CONDUCT.md).
+We are committed to providing a welcoming and inclusive environment. A standalone Code of Conduct document is not maintained in this checkout.
 
 ---
 

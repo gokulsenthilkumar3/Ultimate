@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "platform": "Serverless",
+  "applyEnabled": false,
+  "image": null,
+  "region": null,
+  "identity": null,
+  "secretsManager": null,
+  "persistentStorage": null,
+  "ingress": null,
+  "rollbackImage": null,
+  "note": "Supply and review platform-specific infrastructure; this file performs no provisioning."
+}

@@ -33,19 +33,19 @@ it('persists hide/show without changing motion preferences, and restores keyboar
   setKineticPreferences({ style: 'playful', lite: true });
   show();
   await userEvent.click(within(screen.getByRole('complementary', { name: 'Workspace companion' })).getByRole('button', { name: 'Hide floating companion' }));
-  expect(screen.queryByRole('button', { name: 'Open companion' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Open Sidekick companion' })).toBeNull();
   const toggle = screen.getByRole('button', { name: 'Show floating companion' });
   expect(toggle).toHaveFocus();
   expect(JSON.parse(localStorage.getItem(KINETIC_PREFERENCE_KEY))).toEqual({ style: 'playful', lite: true, companion: false });
   await userEvent.click(toggle);
-  expect(screen.getByRole('button', { name: 'Open companion' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Open Sidekick companion' })).toBeVisible();
   expect(toggle).toHaveAttribute('aria-pressed', 'true');
 });
 
 it('uses existing owner routes, traps dialog focus, and makes no model requests on display', async () => {
   const fetch = vi.spyOn(globalThis, 'fetch');
   show();
-  const trigger = screen.getByRole('button', { name: 'Open companion' });
+  const trigger = screen.getByRole('button', { name: 'Open Sidekick companion' });
   await userEvent.click(trigger);
   const panel = screen.getByRole('dialog', { name: 'Your companion' });
   expect(within(panel).getByRole('button', { name: 'Close dialog' })).toHaveFocus();
@@ -65,14 +65,14 @@ it('uses existing owner routes, traps dialog focus, and makes no model requests 
 it('stays out of another dialog and follows visibility changes from another browser tab', async () => {
   const view = show({ external: true });
   expect(screen.getByRole('dialog', { name: 'Another workflow' })).toBeVisible();
-  expect(screen.queryByRole('button', { name: 'Open companion' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Open Sidekick companion' })).toBeNull();
   view.rerender(<MemoryRouter><Host external={false} /></MemoryRouter>);
-  expect(screen.getByRole('button', { name: 'Open companion' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Open Sidekick companion' })).toBeVisible();
   act(() => {
     localStorage.setItem(KINETIC_PREFERENCE_KEY, JSON.stringify({ style: 'kinetic', lite: false, companion: false }));
     window.dispatchEvent(new StorageEvent('storage', { key: KINETIC_PREFERENCE_KEY }));
   });
-  expect(screen.queryByRole('button', { name: 'Open companion' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Open Sidekick companion' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Show floating companion' })).toBeVisible();
 });
 
@@ -80,7 +80,7 @@ it('changes the personal character pose locally without changing agent consent o
   const fetch = vi.spyOn(globalThis, 'fetch');
   show();
   const savedPreferences = localStorage.getItem(KINETIC_PREFERENCE_KEY);
-  const trigger = screen.getByRole('button', { name: 'Open companion' });
+  const trigger = screen.getByRole('button', { name: 'Open Sidekick companion' });
   const art = () => within(trigger).getByTestId('personal-companion-art');
   expect(art()).toHaveAttribute('data-compact', 'true');
   expect(art()).toHaveAttribute('aria-hidden', 'true');

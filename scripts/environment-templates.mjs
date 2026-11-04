@@ -27,12 +27,20 @@ FINVU_API_KEY=
 # Next.js loads its own application folder's env file, not this parent file.
 `,
   'FinSync/apps/web/.env.example': `${publicFirebase}
-# Legacy compatibility only. A NEXT_PUBLIC_ key cannot protect production PII.
-# Intentionally blank. Replace the browser encryption flow server-side before production.
-NEXT_PUBLIC_ENCRYPTION_KEY=
+# Server-only profile encryption. Provision through deployment secret management.
+FINSYNC_PROFILE_ENCRYPTION_KEY=
+FINSYNC_PROFILE_KEY_VERSION=
+FINSYNC_APP_ORIGIN=
+FIREBASE_PROJECT_ID=
+# Prefer workload identity/ADC in production. Never commit a credentials file.
+GOOGLE_APPLICATION_CREDENTIALS=
+# Read-only Ultimate service identity; separate from OxFin and customer tokens.
+FINSYNC_ADMIN_SERVICE_TOKEN=
 `,
   'FinSync/OxFin/ox-fin-web/.env.example': `# Copy to .env.local. Set your own local connection and signing values.
 DATABASE_URL=
+DATABASE_SSL_CA=
+OXFIN_ADMIN_SERVICE_TOKEN=
 NEXTAUTH_SECRET=
 NEXTAUTH_URL=http://localhost:3000
 NEXT_PUBLIC_BASE_PATH=
@@ -42,6 +50,8 @@ GOOGLE_CLIENT_SECRET=
 GITHUB_ID=
 GITHUB_SECRET=
 OXFIN_REDIS_URL=
+# Enable only when ingress overwrites X-Forwarded-For with one validated IP.
+OXFIN_TRUST_PROXY=false
 OXFIN_PAYMENT_PROVIDER=
 OXFIN_STRIPE_SECRET_KEY=
 OXFIN_RAZORPAY_KEY_ID=

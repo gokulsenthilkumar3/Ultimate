@@ -1,4 +1,34 @@
+{
+    servers {
+        max_header_size 32KB
+        timeouts {
+            read_header 10s
+            read_body 2m
+            idle 2m
+        }
+    }
+}
+
 {$APP_DOMAIN:localhost} {
+    tls {
+        protocols tls1.2 tls1.3
+    }
+    request_body {
+        max_size 65MB
+    }
+    header -Server
     encode zstd gzip
-    reverse_proxy ultimate:3001
+    reverse_proxy ultimate:3001 {
+        # This profile has exactly one trusted hop: Caddy -> Ultimate.
+        # Discard client-supplied forwarding chains and request identifiers.
+        header_up X-Forwarded-For {remote_host}
+        header_up -Forwarded
+        header_up -X-Real-IP
+        header_up -CF-Connecting-IP
+        header_up -X-Request-Id
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 60s
+        }
+    }
 }

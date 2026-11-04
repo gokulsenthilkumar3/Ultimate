@@ -14,6 +14,8 @@ dist/
 .cache/
 .gstack/
 .tmp/
+# Architecture diagnostics belong in the ignored local index, not the repository root.
+/.tmp-architecture-check.json
 build/
 !growthtrack-ultimate/build/
 growthtrack-ultimate/build/*

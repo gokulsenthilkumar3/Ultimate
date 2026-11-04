@@ -1,5 +1,7 @@
 # Exact capsule colliders and cached geodesic projection
 
+> Evidence availability: linked local artifacts are not included in this checkout. This historical record does not establish current rendered coverage. Use the [maintained architecture](../../../docs/ARCHITECTURE.md) and fresh scoped tests when assessing the current implementation.
+
 Date: **27 October 2026**. Follows
 [the 149/150 classification pass](25-garment-classification-and-projection.md).
 
@@ -131,10 +133,10 @@ integrity, complete source-face coverage and the original displacement bound.
 Reports include each collider's dimensions, first/cached projection timings,
 contact-fitting time, verification time and the independent acceptance fields:
 
-- [Exact capsules with torso boxes](../../artifacts/parametric-portrait/garment-analytic-capsules.json)
-- [Exact appendages with convex torso parts](../../artifacts/parametric-portrait/garment-hybrid-capsules.json)
-- [Geodesic plus exact capsules/boxes](../../artifacts/parametric-portrait/garment-analytic-capsules-geodesic.json)
-- [Geodesic plus mixed colliders](../../artifacts/parametric-portrait/garment-hybrid-capsules-geodesic.json)
+- [Exact capsules with torso boxes](../../../docs/evidence/ARTIFACTS.md#artifact-017)
+- [Exact appendages with convex torso parts](../../../docs/evidence/ARTIFACTS.md#artifact-022)
+- [Geodesic plus exact capsules/boxes](../../../docs/evidence/ARTIFACTS.md#artifact-016)
+- [Geodesic plus mixed colliders](../../../docs/evidence/ARTIFACTS.md#artifact-021)
 
 The external shape-editing export limitation remains explicitly disclosed.
 No production solver switch, wardrobe expansion, commit, push or deployment

@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { DEFAULT_CONFIG } from './config.js';
+import { createRequestBudget } from './requestBudget.js';
 import { contentSecurityPolicy } from './contentSecurityPolicy.js';
 import { consumeOwnerCode, csrfDigest, sessionCsrfHash, sessionHasMfa } from './domains/ownerMfa.js';
 
@@ -32,6 +33,7 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
   const apiBuckets = new Map();
   const isProduction = config.production;
   const dummyPasswordHash = bcrypt.hash(randomToken(), 12);
+  const requestBudget = createRequestBudget();
   const { sessionHours: SESSION_HOURS, sessionTouchMs: SESSION_TOUCH_MS, loginWindowMs: LOGIN_WINDOW_MS,
     loginMaxAttempts: LOGIN_MAX_ATTEMPTS, apiRateLimitPerMinute } = config.security;
   const allowedOrigins = new Set(config.security.origins);
@@ -66,18 +68,22 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
     res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
     if (isProduction) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     res.setHeader('Content-Security-Policy', contentSecurityPolicy(config));
-    res.setHeader('Cache-Control', /^\/(?:api\/)?auth(?:\/|$)/.test(req.path) ? 'no-store' : 'private, no-cache');
+    res.setHeader('Cache-Control', /^\/(?:api|auth)(?:\/|$)/.test(req.path) ? 'no-store' : 'private, no-cache');
     next();
   };
 
-  const apiRateLimit = (req, res, next) => {
+  const apiRateLimit = (req, res, next) => requestBudget(req, res, () => {
     if (SAFE_METHODS.has(req.method)) return next();
     const now = Date.now();
     const key = `${req.ip || 'unknown'}:${req.path}`;
+    if (!apiBuckets.has(key) && apiBuckets.size >= 10_000) {
+      res.setHeader('Retry-After', '60');
+      return res.status(503).json({ code: 'REQUEST_CAPACITY', error: 'Server busy. Try again shortly.' });
+    }
     const bucket = (apiBuckets.get(key) || []).filter(time => now - time < RATE_WINDOW_MS);
     if (bucket.length >= apiRateLimitPerMinute) return res.status(429).json({ error: 'Too many requests. Try again shortly.' });
     bucket.push(now); apiBuckets.set(key, bucket); return next();
-  };
+  });
 
   async function writeLoginLog({ userId, email, action, failureReason, req }) {
     if (writeEvent) return writeEvent({ category: 'auth', action, user_id: userId, user_email: email, details: failureReason, severity: action.includes('failed') || action.includes('blocked') ? 'warning' : 'info' }, req);
@@ -90,6 +96,10 @@ export function createSecurity({ prisma, logToFile, writeEvent, config = DEFAULT
     const password = String(req.body?.password || '');
     const now = Date.now();
     const bucketKey = req.ip || 'unknown';
+    if (!attempts.has(bucketKey) && attempts.size >= 10_000) {
+      res.setHeader('Retry-After', '60');
+      return res.status(503).json({ code: 'REQUEST_CAPACITY', error: 'Server busy. Try again shortly.' });
+    }
     const bucket = (attempts.get(bucketKey) || []).filter(timestamp => now - timestamp < LOGIN_WINDOW_MS);
     if (bucket.length >= LOGIN_MAX_ATTEMPTS) {
       await writeLoginLog({ email, action: 'login_blocked', failureReason: 'rate_limit', req });

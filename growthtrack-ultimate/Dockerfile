@@ -27,6 +27,7 @@ COPY --from=build /app/src/lib/bodyMetricContract.js ./src/lib/bodyMetricContrac
 COPY --from=build /app/src/lib/agentActions.js /app/src/lib/agentPolicy.js /app/src/lib/aiContextTypes.js ./src/lib/
 COPY --from=build /app/src/config/nativeEntries.js ./src/config/nativeEntries.js
 COPY --from=build /app/src/config/products.js ./src/config/products.js
+COPY --from=build /app/src/config/featureCatalog.js ./src/config/featureCatalog.js
 COPY --from=build /app/src/domains/workspace/contracts ./src/domains/workspace/contracts
 COPY --from=build /app/src/components/calendar/calendarICS.js /app/src/components/calendar/calendarModel.js ./src/components/calendar/
 RUN mkdir -p /data/files /data/logs /data/backups && chown -R node:node /data

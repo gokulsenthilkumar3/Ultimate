@@ -1,4 +1,7 @@
 You are a senior full-stack 3D web engineer working on a React + Three.js / React-Three-Fiber
+
+> Historical planning record. Preserve its original proposals and measurements. Use [the engineering plan](docs/Eng%20Plan.md) and [current architecture](docs/ARCHITECTURE.md) for maintained guidance.
+
 fitness dashboard called "GrowthTrack Ultimate". Your task is to build the complete
 "Photorealistic 360° Parametric Human Engine" — a web-based Digital Twin system that lets
 the user either:

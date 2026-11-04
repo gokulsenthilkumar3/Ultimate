@@ -30,3 +30,15 @@ server/private-files
 **/.code-index
 **/.code-index/**
 **/.codeindexignore
+
+# Private credentials and database sidecars are never build inputs.
+**/*.db.enc*
+**/.aws
+**/.ssh
+**/.secrets
+**/secrets
+**/credentials*.json
+**/service-account*.json
+**/serviceAccountKey*.json
+**/firebase-adminsdk*.json
+**/.streamlit/secrets.toml

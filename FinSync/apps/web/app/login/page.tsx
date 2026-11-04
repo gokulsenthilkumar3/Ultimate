@@ -223,7 +223,7 @@ export default function LoginPage() {
           </form>
 
           <div className="auth-link-row">
-            Don't have an account?
+            Don&apos;t have an account?
             <a href="/signup">Create one free</a>
           </div>
         </div>

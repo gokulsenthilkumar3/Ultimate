@@ -118,7 +118,7 @@ export default function DashboardPage() {
                             AI Insight
                         </div>
                         <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                            You're saving well! Consider investing ₹5,100 more in SIP this month to hit your annual investment goal.
+                            You&apos;re saving well! Consider investing ₹5,100 more in SIP this month to hit your annual investment goal.
                         </p>
                         <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }}>
                             Explore options

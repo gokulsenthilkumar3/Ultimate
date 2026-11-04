@@ -118,7 +118,7 @@ export default function MFASetupModal({ isOpen, onClose, onSuccess }: MFASetupMo
                                         <p className="text-sm text-slate-600 leading-relaxed">Enter the 6-digit code from the app to confirm your identity.</p>
                                     </div>
                                 </div>
-                                <Button onClick={startSetup} loading={loading} className="w-full py-3">
+                                <Button onClick={startSetup} isLoading={loading} className="w-full py-3">
                                     Get Started
                                 </Button>
                             </motion.div>
@@ -168,7 +168,7 @@ export default function MFASetupModal({ isOpen, onClose, onSuccess }: MFASetupMo
                                             autoFocus
                                         />
                                     </div>
-                                    <Button type="submit" loading={loading} disabled={code.length !== 6} className="w-full py-3">
+                                    <Button type="submit" isLoading={loading} disabled={code.length !== 6} className="w-full py-3">
                                         Verify & Enable
                                     </Button>
                                     <button

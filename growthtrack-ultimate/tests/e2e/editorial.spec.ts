@@ -7,7 +7,7 @@ for (const width of [320, 390, 640, 1024, 1440, 1920]) {
     await expect(page.locator('.app-shell[data-ui-system="editorial"]')).toBeVisible();
     await expect(page.locator('#main-content')).toBeVisible();
     await expect(page.locator('#main-content h1, #main-content h2').first()).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Search all modules and records' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search GrowthTrack' })).toBeVisible();
     const headerTop = await page.locator('.app-header').evaluate(element => element.getBoundingClientRect().top);
     expect(headerTop).toBeGreaterThanOrEqual(0);
     expect(headerTop, await page.evaluate(() => JSON.stringify([...document.querySelectorAll('body, #root, .app-shell, .main-area, .app-header')].map(element => {

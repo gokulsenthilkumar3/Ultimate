@@ -1,0 +1,196 @@
+{
+  "scope": "Static relative JS/TS imports, re-exports, literal dynamic imports and require calls. Aliases, external packages, computed imports and non-JS/TS dependencies are not resolved.",
+  "coverage": {
+    "scope": "Static relative JS/TS imports, re-exports, literal dynamic imports and require calls. Aliases, external packages, computed imports and non-JS/TS dependencies are not resolved.",
+    "parsedFiles": 1285,
+    "totals": {
+      "resolved": 2855,
+      "unresolvedRelative": 45,
+      "nonRelative": 2471,
+      "computed": 12
+    },
+    "filesWithGaps": 33,
+    "gaps": [
+      {
+        "file": "tests/plan-preview.test.mjs",
+        "resolved": 0,
+        "unresolvedRelative": 11,
+        "nonRelative": 7,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/server.js",
+        "resolved": 44,
+        "unresolvedRelative": 3,
+        "nonRelative": 10,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/comparison/BodyPartInfoPanel.jsx",
+        "resolved": 2,
+        "unresolvedRelative": 3,
+        "nonRelative": 2,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/comparison/ModeTransitionEngine.jsx",
+        "resolved": 0,
+        "unresolvedRelative": 3,
+        "nonRelative": 1,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/morphEngine/modelAssetRegistry.js",
+        "resolved": 0,
+        "unresolvedRelative": 3,
+        "nonRelative": 0,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/companion-ui-preview.mjs",
+        "resolved": 0,
+        "unresolvedRelative": 0,
+        "nonRelative": 5,
+        "computed": 2
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/comparison/TimelineScrubber.jsx",
+        "resolved": 3,
+        "unresolvedRelative": 2,
+        "nonRelative": 5,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/morphEngine/humanAssetFamily.test.js",
+        "resolved": 7,
+        "unresolvedRelative": 2,
+        "nonRelative": 4,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/morphEngine/parametricVisualAssets.js",
+        "resolved": 1,
+        "unresolvedRelative": 2,
+        "nonRelative": 1,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/morphEngine/parametricVisualAssets.test.js",
+        "resolved": 2,
+        "unresolvedRelative": 2,
+        "nonRelative": 4,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/audit-physique-viewer.mjs",
+        "resolved": 0,
+        "unresolvedRelative": 0,
+        "nonRelative": 2,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/build-design-tokens.mjs",
+        "resolved": 0,
+        "unresolvedRelative": 0,
+        "nonRelative": 2,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/build-human-75.mjs",
+        "resolved": 8,
+        "unresolvedRelative": 0,
+        "nonRelative": 6,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/build-human-realism.mjs",
+        "resolved": 11,
+        "unresolvedRelative": 0,
+        "nonRelative": 7,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/container-entry.mjs",
+        "resolved": 3,
+        "unresolvedRelative": 0,
+        "nonRelative": 3,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/page-performance.mjs",
+        "resolved": 6,
+        "unresolvedRelative": 1,
+        "nonRelative": 6,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/performance-fixture.mjs",
+        "resolved": 0,
+        "unresolvedRelative": 1,
+        "nonRelative": 0,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/plan-preview/build-viewer.mjs",
+        "resolved": 0,
+        "unresolvedRelative": 0,
+        "nonRelative": 4,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/verify-native-motion.mjs",
+        "resolved": 2,
+        "unresolvedRelative": 0,
+        "nonRelative": 4,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/scripts/verify-private-anatomy.mjs",
+        "resolved": 2,
+        "unresolvedRelative": 0,
+        "nonRelative": 4,
+        "computed": 1
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/About.jsx",
+        "resolved": 6,
+        "unresolvedRelative": 1,
+        "nonRelative": 2,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/body3d/parametricSkinMaterial.js",
+        "resolved": 2,
+        "unresolvedRelative": 1,
+        "nonRelative": 1,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/comparison/ComparisonHUD.jsx",
+        "resolved": 2,
+        "unresolvedRelative": 1,
+        "nonRelative": 3,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/comparison/ExportSystem.js",
+        "resolved": 2,
+        "unresolvedRelative": 1,
+        "nonRelative": 1,
+        "computed": 0
+      },
+      {
+        "file": "growthtrack-ultimate/src/components/ContextFooter.jsx",
+        "resolved": 1,
+        "unresolvedRelative": 1,
+        "nonRelative": 2,
+        "computed": 0
+      }
+    ],
+    "gapsTruncated": true,
+    "parseDiagnosticFiles": 0,
+    "diagnostics": [],
+    "diagnosticsTruncated": false
+  },
+  "violations": []
+}

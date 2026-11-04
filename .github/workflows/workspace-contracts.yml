@@ -1,9 +1,9 @@
 name: Workspace contracts
 on:
   pull_request:
-    branches: [main]
+    branches: [main, master]
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,6 +11,35 @@ concurrency:
   group: workspace-contracts-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  postgres-contracts:
+    name: Disposable PostgreSQL integrity and migration contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-fixture
+          POSTGRES_DB: growthtrack_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d growthtrack_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      SCHEMA_TEST_DATABASE_URL: postgresql://postgres:isolated-ci-fixture@127.0.0.1:5432/growthtrack_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: FinSync/OxFin/ox-fin-web/package-lock.json
+      - name: Install locked PostgreSQL test driver
+        run: npm ci --prefix FinSync/OxFin/ox-fin-web --ignore-scripts
+      - name: Replay real SQL and validate ownership, precision, RLS and rollback
+        run: node --test --test-concurrency=1 tests/database-postgres-schema.mjs tests/schema-repair-cli.test.mjs FinSync/OxFin/services/schema.test.mjs
   contracts:
     name: Architecture and workspace contracts
     runs-on: ubuntu-24.04
@@ -24,8 +53,28 @@ jobs:
           cache-dependency-path: growthtrack-ultimate/package-lock.json
       - run: npm ci --prefix growthtrack-ultimate
       - name: Graph, gateway and disposable schema regressions
-        run: node --test tests/code-context.test.mjs tests/code-graph.test.mjs tests/architecture-boundaries.test.mjs tests/gateway.test.mjs tests/workspace-proxy.test.mjs tests/database-schema.test.mjs tests/schema-repair-cli.test.mjs
+        run: node --test tests/code-context.test.mjs tests/code-graph.test.mjs tests/architecture-boundaries.test.mjs tests/gateway.test.mjs tests/workspace-proxy.test.mjs tests/database-schema.test.mjs tests/schema-repair-cli.test.mjs tests/resilience-budgets.test.mjs
       - name: Enforce resolved import boundaries
         run: node scripts/check-architecture.mjs
       - name: Generated application documentation
         run: npm run docs:check
+      - name: File ownership, configuration and documentation structure
+        run: |
+          node --test tests/repository-audit.test.mjs
+          node --test tests/agent-tooling.test.mjs
+          npm run evidence:check
+          npm run technology:check
+          npm run adapters:check
+          node --test tests/technology-catalog.test.mjs
+          npm run repository:check
+      - name: Environment and design contracts
+        run: |
+          npm run config:check
+          npm run design:check
+          npm run impact:ui:check
+          npm run handoff:ui:check
+          npm run scale:ui
+      - name: Isolated design build and component tests
+        run: |
+          npm run build:design
+          npm run test:design
