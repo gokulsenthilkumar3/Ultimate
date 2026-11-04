@@ -25,7 +25,14 @@ const body = (index = 0) => JSON.parse(vi.mocked(apiRequest).mock.calls[index][1
 
 beforeEach(() => {
   vi.useFakeTimers();
-  vi.mocked(apiRequest).mockReset().mockResolvedValue({});
+  // The real store runs singleton saves through requireRecord(), which needs an
+  // acknowledged record id, and captureSession(), which compares _dataRevision.
+  // Mirror the server envelope (persistUserSingleton returns the user row) and
+  // bump the revision on every accepted write so queued saves resolve as saved.
+  vi.mocked(apiRequest).mockReset().mockImplementation(async () => {
+    useStore.setState(state => ({ _dataRevision: state._dataRevision + 1 }));
+    return { id: 'parametric-owner' };
+  });
   useStore.getState().resetSessionData();
   useStore.setState({ user: { id: 'parametric-owner' }, physiqueTargets: { goalMetrics: { waist: 80 }, renderSettings: { vignette: false } } });
 });

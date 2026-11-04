@@ -112,9 +112,10 @@ async function cleanupExpiredLogs() {
     ]);
   } catch (error) { logToFile('warning', 'log_retention_cleanup_failed', { error: String(error?.message || error) }); }
 }
+let logCleanupTimer = null;
 if (config.logs.cleanupEnabled) {
   void cleanupExpiredLogs();
-  const logCleanupTimer = setInterval(cleanupExpiredLogs, config.logs.cleanupIntervalMs);
+  logCleanupTimer = setInterval(cleanupExpiredLogs, config.logs.cleanupIntervalMs);
   logCleanupTimer.unref?.();
 }
 const authMiddleware = security.authenticate;
@@ -1118,7 +1119,7 @@ async function shutdown(signal) {
   shuttingDown = true;
   logToFile('info', 'server_shutdown', { signal });
   stopSyncScheduler();
-  clearInterval(logCleanupTimer);
+  if (logCleanupTimer) clearInterval(logCleanupTimer);
   const deadline = setTimeout(() => process.exit(1), 10_000);
   deadline.unref?.();
   await new Promise(resolve => server.close(resolve));
