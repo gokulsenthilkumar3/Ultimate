@@ -13,6 +13,7 @@ export default defineConfig([
     'test-results', '.tmp', '.vite', '.claude', '.windsurf',
     'prisma-generated', 'release-v2', 'release-*',
     'docs/ui-review/before-source',
+    'docs/3d-plans/plan-assets',
     'build_uber.js', 'replace-hovers.js', 'task_opts.cjs',
   ]),
   {
@@ -43,7 +44,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['server.js', 'server/**/*.js', 'scripts/**/*.js', 'scripts/**/*.mjs', 'desktop.js', 'logger.js', 'vite.config.js'],
+    files: ['server.js', 'server/**/*.js', 'scripts/**/*.js', 'scripts/**/*.mjs', 'desktop.js', 'logger.js', 'vite.config.js', 'vite.admin-demo.config.js'],
     languageOptions: { globals: { ...globals.node, ...globals.es2021 } },
   },
   {

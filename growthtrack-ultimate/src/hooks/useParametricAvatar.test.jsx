@@ -25,7 +25,11 @@ const body = (index = 0) => JSON.parse(vi.mocked(apiRequest).mock.calls[index][1
 
 beforeEach(() => {
   vi.useFakeTimers();
-  vi.mocked(apiRequest).mockReset().mockResolvedValue({});
+  // saveSingleton() captures the session (revision + owner) before enqueuing;
+  // responses that land after a newer write must not be applied. Mirror the
+  // server envelope (requireRecord needs an id) without bumping _dataRevision
+  // from the mock — only resetSessionData/fetchInitialData legitimately do.
+  vi.mocked(apiRequest).mockReset().mockResolvedValue({ id: 'parametric-owner' });
   useStore.getState().resetSessionData();
   useStore.setState({ user: { id: 'parametric-owner' }, physiqueTargets: { goalMetrics: { waist: 80 }, renderSettings: { vignette: false } } });
 });
@@ -64,7 +68,9 @@ describe('parametric avatar persistence', () => {
     await tick();
     expect(result.current.status).toBe('saving');
     expect(useStore.getState().physiqueTargets.parametricAvatar).toBeUndefined();
-    await act(async () => { response.resolve({}); await settle(); });
+    // saveSingleton() runs through requireRecord(), which needs an id; a bare
+    // {} is rejected as "not acknowledged", so resolve with the server envelope.
+    await act(async () => { response.resolve({ id: 'parametric-owner' }); await settle(); });
     expect(result.current.status).toBe('saved');
     expect(useStore.getState().physiqueTargets.parametricAvatar.contexts.current.parameters.noseWider).toBe(0.4);
   });
@@ -94,7 +100,7 @@ describe('parametric avatar persistence', () => {
     edit(result, 0.9); await tick();
     expect(apiRequest).toHaveBeenCalledTimes(1);
     expect(result.current.document.contexts.current.parameters.noseWider).toBe(0.9);
-    await act(async () => { response.resolve({}); await settle(); });
+    await act(async () => { response.resolve({ id: "parametric-owner" }); await settle(); });
     expect(apiRequest).toHaveBeenCalledTimes(2);
     expect(body(0).parametricAvatar.contexts.current.parameters.noseWider).toBe(0.2);
     expect(body(1).parametricAvatar.contexts.current.parameters.noseWider).toBe(0.9);
@@ -116,7 +122,7 @@ describe('parametric avatar persistence', () => {
     // Do not advance the debounce clock. Navigation must await this newer
     // draft as part of the already-running flush rather than discard it.
     edit(result, 0.9);
-    await act(async () => { firstResponse.resolve({}); await rejection; await settle(); });
+    await act(async () => { firstResponse.resolve({ id: 'parametric-owner' }); await rejection; await settle(); });
     expect(apiRequest).toHaveBeenCalledTimes(2);
     expect(body(0).parametricAvatar.contexts.current.parameters.noseWider).toBe(0.2);
     expect(body(1).parametricAvatar.contexts.current.parameters.noseWider).toBe(0.9);
