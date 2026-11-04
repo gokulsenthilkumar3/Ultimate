@@ -49,7 +49,7 @@ export function chunkSource(file, source) {
   }
   return chunks;
 }
-function sourceFiles() {
+export function sourceFiles() {
   const tracked = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 }).split('\0').filter(Boolean);
   return [...new Set(tracked)].filter(isIndexable).sort();
 }

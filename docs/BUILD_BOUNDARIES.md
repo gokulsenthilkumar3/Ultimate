@@ -48,6 +48,8 @@ Give each owner an independent build/check job and versioned API contract. Run t
 
 The checked-in exclusion policy is `scripts/code-index-policy.mjs`. `.codeindexignore` is an optional, ignored local extension, and `.code-index/` contains ignored generated data. The indexer works in a fresh checkout without either file. Both are excluded from Git and the applicable desktop/container packaging rules; do not ship them with an application or make a live product depend on them.
 
+The local architecture graph uses that same source policy. Run `npm run context:graph`, then `npm run context:graph:query -- <repository-relative-file>` for direct neighbours or `npm run context:graph:impact -- <repository-relative-file>` for bounded indirect consumers. Run `npm run context:graph:coverage` to inspect unsupported references and parse diagnostics before relying on an impact result. See the [retrieval plan](plans/2026-10-28-code-retrieval.md) for supported import forms and limits. These commands do not establish runtime or build independence.
+
 Verification: `node --test tests/code-context.test.mjs`, `npm run build:design`, `npm run test:design`. These checks verify the refactor and local exclusion policy; they do not publish a release or certify every legacy application build.
 
 The current [UI impact analysis](plans/2026-10-28-ui-system-impact.md) maps conservative route-family reach and owner areas. Run `npm run impact:ui:check` for drift and `npm run scale:ui` for the bounded synthetic table/review checks. The latter measures Node model operations, not rendering or production concurrency.

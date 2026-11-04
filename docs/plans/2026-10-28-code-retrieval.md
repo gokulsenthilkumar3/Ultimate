@@ -23,6 +23,20 @@ The indexer redacts credential-shaped tokens and direct literal secret assignmen
 
 ## Embedding design
 
+### Local architecture dependency graph
+
+`npm run context:graph` builds an ignored `.code-index/graph.json` using the same source allowlist, exclusions, size limits and redaction as lexical retrieval. It uses Ultimate's installed TypeScript parser; install Ultimate dependencies first. No source is executed or uploaded.
+
+`npm run context:graph:query -- "growthtrack-ultimate/server.js"` returns up to 100 direct dependencies and 100 direct importers, with full counts. Graph edges retain the import line. Queries verify all included source hashes, the file inventory and exclusion policy; rebuild after additions, edits or deletions. Run `node --test tests/code-context.test.mjs tests/code-graph.test.mjs` for tooling checks.
+
+`npm run context:graph:impact -- "growthtrack-ultimate/src/lib/bodyMetricContract.js"` traverses reverse imports to find indirect consumers. Optional positional depth and result limits default to 8 and 100 (maximum 32 and 1,000). Each consumer records its shortest distance, the dependency connecting it toward the changed file, and the import line in the consumer. Traversal handles cycles and deduplicates diamond paths. `truncated` marks a result cap; `depthLimited` marks unexplored edges at the depth cap. These are potential static consumers, not proof that every consumer's behaviour changes or a replacement for affected application checks.
+
+This graph resolves relative JavaScript/TypeScript imports, re-exports, literal dynamic imports and `require` calls to allowed files, including stylesheets. Aliases, external packages, computed imports, Python imports and CSS dependencies are not resolved. Syntax diagnostics are recorded; those files may have partial edges. This is a navigation aid, not a complete runtime graph, call graph, permission audit or proof of independent builds. The existing UI impact map remains separately scoped to the demo. Graph neighbours do not change lexical search ranking.
+
+`npm run context:graph:coverage` exposes resolution gaps: resolved edges, unresolved relative references, non-relative references (packages and aliases together), computed calls and syntax diagnostic files. It lists at most 25 files with gaps and 25 diagnostic files, with total counts and truncation flags. Unresolved relative references can be excluded files, assets, unsupported resolutions or missing modules; the count is not a broken-build verdict. No unresolved literal specifiers are persisted. Graph schema v3 requires rebuilding older graphs.
+
+Edges identify static imports, re-exports, dynamic imports and require calls, and mark explicitly type-only declarations. `npm run context:graph:impact:runtime -- <file> [depth] [limit]` excludes type-only edges throughout traversal; the default impact command includes them. Mixed type/value declarations and side-effect imports remain runtime candidates. This syntax-based distinction does not predict compiler import elision, bundler tree shaking or execution of a lazy branch. The graph parses source in memory and persists only allowed paths and metadata; lexical excerpts still use source redaction.
+
 ```mermaid
 flowchart LR
   Files[Allowed source files] --> Filter[Exclusions and redaction]
