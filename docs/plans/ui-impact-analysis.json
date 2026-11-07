@@ -25,13 +25,13 @@
   },
   "counts": {
     "pages": 65,
-    "pageViewDestinations": 205,
+    "pageViewDestinations": 207,
     "lazyRouteFamilies": 13,
-    "baseReviewVariants": 4920,
-    "plannedViewportVariants": 24600,
+    "baseReviewVariants": 4968,
+    "plannedViewportVariants": 24840,
     "sourceStylesheetsInventoried": 79,
     "tablePotentialPages": 54,
-    "tablePotentialViews": 181
+    "tablePotentialViews": 183
   },
   "viewportMatrix": [
     {
@@ -399,7 +399,7 @@
       "area": "Review workflow",
       "tests": "growthtrack-ultimate/src/admin-demo/ui-system.test.jsx",
       "cases": [
-        "24,600 synthetic scoped review records",
+        "24,840 synthetic scoped review records",
         "Density, theme, state and viewport isolation",
         "One tab is not a completed page",
         "Pending view selection and wraparound",
@@ -1766,11 +1766,13 @@
       "family": "family",
       "entry": "growthtrack-ultimate/src/admin-demo/screens/FamilyScreen.jsx",
       "views": [
+        "today",
         "tree",
         "people",
         "memories",
         "vault",
         "timeline",
+        "connections",
         "access"
       ],
       "sharedTablePotentialImpact": true,

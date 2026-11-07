@@ -24,5 +24,10 @@
   {"id":"marumagal","group":"Marriage & in-laws","tamil":"மருமகள்","roman":"Marumagal","meaning":"Daughter-in-law","type":"inlaw","gender":"female"},
   {"id":"anni","group":"Marriage & in-laws","tamil":"அண்ணி","roman":"Anni","meaning":"Older brother’s wife","type":"inlaw","gender":"female"},
   {"id":"machan","group":"Marriage & in-laws","tamil":"மச்சான்","roman":"Machan","meaning":"Wife’s brother","type":"inlaw","gender":"male"},
-  {"id":"machini","group":"Marriage & in-laws","tamil":"மச்சினி","roman":"Machini","meaning":"Wife’s sister","type":"inlaw","gender":"female"}
+  {"id":"machini","group":"Marriage & in-laws","tamil":"மச்சினி","roman":"Machini","meaning":"Wife’s sister","type":"inlaw","gender":"female"},
+  {"id":"nanban","group":"Friends & chosen family","tamil":"நண்பன்","roman":"Nanban","meaning":"Male friend","type":"friend","gender":"male"},
+  {"id":"nanbi","group":"Friends & chosen family","tamil":"நண்பி","roman":"Nanbi","meaning":"Female friend","type":"friend","gender":"female"},
+  {"id":"thozhan","group":"Friends & chosen family","tamil":"தோழன்","roman":"Thozhan","meaning":"Male companion / friend","type":"friend","gender":"male"},
+  {"id":"thozhi","group":"Friends & chosen family","tamil":"தோழி","roman":"Thozhi","meaning":"Female companion / friend","type":"friend","gender":"female"},
+  {"id":"vazhikatti","group":"Friends & chosen family","tamil":"வழிகாட்டி","roman":"Vazhikatti","meaning":"Mentor / guide","type":"mentor"}
 ]

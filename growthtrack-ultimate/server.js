@@ -807,7 +807,7 @@ app.post('/api/health/sync/apple', authMiddleware, appleHealthSetupRequired);
 
 registerFinanceRoutes(app, authMiddleware, { prisma, auditCrud });
 registerCustomerAdminRoutes(app, authMiddleware, { writeEvent: eventLogger.write });
-registerNativeModuleRoutes(app, authMiddleware);
+registerNativeModuleRoutes(app, authMiddleware, { forexUrl: config.nativeModules.forexUrl });
 registerFamilyBridge(app, authMiddleware, config.family);
 registerRecordRoutes(app, { authMiddleware, services: recordServices, enabled: recordRowsEnabled });
 const syncEngine = createSyncEngine({ prisma, records: recordRowsEnabled ? recordServices : null, fetchDefaults: config.sync.fetch, connectors: createConnectors(config.sync), sealer: createSealer(config.security.encryptionKey), logEvent: event => eventLogger.write({ source: 'sync-engine', ...event }) });
@@ -883,6 +883,24 @@ app.get('/api/database/tables', authMiddleware, async (req, res) => {
     { name: 'app_settings', count: settings.length, rows: settings.map(row => ({ ...row, value: parseStoredJson(row.value, row.value) })) },
     { name: 'integration_providers', count: providers.length, rows: providers },
   ]);
+});
+
+// The Ultimate database page is also the entry point for the shared local
+// database console. Keep the console's source catalog behind the same
+// authenticated API so the UI works both with the direct Core API and through
+// the optional workspace gateway (without exposing connection details).
+app.get('/api/database/sources', authMiddleware, async (_req, res) => {
+  const base = String(process.env.DB_STUDIO_URL || 'http://127.0.0.1:5556').replace(/\/$/, '');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+  try {
+    const response = await fetch(`${base}/api/sources`, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Database catalog returned ${response.status}`);
+    const sources = await response.json();
+    res.json(Array.isArray(sources) ? sources : []);
+  } catch (error) {
+    res.status(503).json({ error: 'Database source catalog unavailable.', detail: error?.name === 'AbortError' ? 'timeout' : 'unavailable' });
+  } finally { clearTimeout(timeout); }
 });
 
 // Nested entities overrides

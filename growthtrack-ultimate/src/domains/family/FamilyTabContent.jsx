@@ -4,6 +4,8 @@ import PageState from '../../components/ui/PageState';
 import { Card, Field, ModuleSkeleton, NativeTable, Pagination } from '../native/ModuleUI';
 import { dateLabel } from '../native/format';
 import FamilyTree from './FamilyTree';
+import FamilyToday from './FamilyToday';
+import RelationshipPreferences from './RelationshipPreferences';
 import MemberPicker from './MemberPicker';
 import AccessRole from './AccessRole';
 import { relationToMe } from './kinship';
@@ -13,8 +15,8 @@ function EmptyAction({ title, description, action, onAction, canAct }) {
   return <div className="family-empty"><PageState state="empty" title={title} description={description} />{canAct && <button type="button" className="native-button" onClick={onAction}><Plus size={16} />{action}</button>}</div>;
 }
 export default function FamilyTabContent({ view, edit, role, treeId, tree, people, connections, meId, focusId, open, onFocusPerson, account, members, events, documents, access, page, setPage, search, setSearch, memberLife, setMemberLife, peopleView, setPeopleView, eventType, setEventType, eventPerson, setEventPerson, download, downloadBusy, onSaveRole, roleBusy }) {
-  if (view === 'tree') return <Card className="family-tree-card" title="Family tree" description="Explore a branch. Select a person to open their details." actions={edit && <div className="native-actions"><button type="button" className="native-button native-button--quiet" onClick={() => open('relationship')}>Add relationship</button><button type="button" className="native-button" onClick={() => open('member')}><Plus size={16} />Add person</button></div>}>
-    {people.length ? <FamilyTree members={people} relationships={connections} meId={meId} focusId={focusId} total={tree._count?.members ?? people.length} account={account} treeId={treeId} onFocusPerson={onFocusPerson} onSelect={person => {onFocusPerson(person);open('profile',person);}} /> : <EmptyAction title="Plant the first seed" description="Start with yourself, then add your relatives." action="Add yourself" canAct={edit} onAction={() => open('member',{markAsMe:true})} />}
+  if (view === 'tree') return <Card className="family-tree-card" title="Your relationship map" description="Generations, shared stories, and the paths that connect you.">
+    {people.length ? <FamilyTree members={people} relationships={connections} meId={meId} focusId={focusId} total={tree._count?.members ?? people.length} account={account} treeId={treeId} onFocusPerson={onFocusPerson} onAddPerson={edit?()=>open('member'):undefined} onAddRelationship={edit?()=>open('relationship'):undefined} onRelative={edit?person=>open('member',{anchor:person}):undefined} onSelect={person => {open('profile',person);}} /> : <EmptyAction title="Plant the first seed" description="Start with yourself, then add your relatives." action="Add yourself" canAct={edit} onAction={() => open('member',{markAsMe:true})} />}
   </Card>;
   if (view === 'people') return <Card title="People" description="Search the full tree, then open a profile or show a branch." actions={edit && <button type="button" className="native-button" onClick={() => open('member')}><Plus size={16} />Add person</button>}>
     <div className="family-filters"><Field label="Search all people"><input type="search" value={search} onChange={event=>{setSearch(event.target.value);setPage(0);}} placeholder="Search names…" /></Field><Field label="Living status"><select aria-label="Living status" value={memberLife} onChange={event=>{setMemberLife(event.target.value);setPage(0);}}><option value="all">Everyone</option><option value="living">Living</option><option value="deceased">Deceased</option></select></Field><div className="native-actions" role="group" aria-label="People layout"><button className="native-button native-button--quiet" type="button" aria-pressed={peopleView==='grid'} onClick={()=>setPeopleView('grid')}>Grid</button><button className="native-button native-button--quiet" type="button" aria-pressed={peopleView==='list'} onClick={()=>setPeopleView('list')}>List</button></div></div>
@@ -32,5 +34,7 @@ export default function FamilyTabContent({ view, edit, role, treeId, tree, peopl
     {access.isPending?<ModuleSkeleton label="Loading tree access"/>:access.data&&!access.isError&&<><NativeTable caption="Family tree access" rows={access.data.slice(page*25,page*25+25)} columns={[{id:'name',header:'Person',render:row=><span className="family-access-person"><i aria-hidden="true">{row.user?.name?.[0]||'?'}</i><strong>{row.user?.name}</strong></span>},{id:'email',header:'Account',render:row=>row.user?.email},{id:'role',header:'Role',render:row=>role==='admin'?<AccessRole key={`${row.id}:${row.role}`} row={row} ownerId={tree.ownerId} busy={roleBusy} onSave={onSaveRole}/>:human(row.role)}]}/><Pagination total={access.data.length} page={page} onPage={setPage}/></>}
     <p className="family-inline-help family-card-note">Viewers can read. Editors and family heads can add/connect people and maintain records. Admins manage access. Me never changes a role.</p>
   </Card>;
+  if(view==='connections')return <RelationshipPreferences key={treeId} account={account} treeId={treeId} people={people}/>;
+  if(view==='today')return <FamilyToday account={account} treeId={treeId} people={people} counts={tree._count||{}} open={open}/>;
   return null;
 }

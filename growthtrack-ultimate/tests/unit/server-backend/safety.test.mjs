@@ -74,6 +74,16 @@ test('redacted CRUD events contain no invented actor or request identity', async
   assert.equal(logged.user_agent, null);
 });
 
+test('audit writes map normalized user aliases to the Prisma actor fields', async () => {
+  let logged;
+  const logger = createEventLogger({ prisma: { auditLog: { create: async input => { logged = input.data; return { id: 'event' }; } } }, logToFile: () => {} });
+  await logger.write({ category: 'audit', user_id: 'owner-a', user_name: 'Owner', user_email: 'owner@example.test', action: 'update' });
+  assert.equal(logged.actor_name, 'Owner');
+  assert.equal(logged.actor_email, 'owner@example.test');
+  assert.equal('user_name' in logged, false);
+  assert.equal('user_email' in logged, false);
+});
+
 test('shared settings surfaces use an explicit allowlist without private notification state', () => {
   const keys = publicSettingsWhere().key.in;
   assert.ok(keys.includes('navigation'));
