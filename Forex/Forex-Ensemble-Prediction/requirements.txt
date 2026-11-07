@@ -16,12 +16,13 @@ shap==0.45.1
 optuna==3.6.1
 
 # MLOps experiment tracking
-mlflow==2.13.0
+# Lightweight tracking dependency; this application never launches its server.
+mlflow-skinny==3.18.0
 
 # API serving
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
-python-multipart==0.0.9
+python-multipart==0.0.33
 
 # Visualization
 matplotlib==3.8.4
@@ -43,6 +44,6 @@ isort==5.13.2
 
 # LLM Integration
 transformers==4.39.3
-torch==2.2.2
+torch==2.15.0
 openai==1.16.2
 requests==2.31.0

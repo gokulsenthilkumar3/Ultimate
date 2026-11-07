@@ -14,26 +14,31 @@ import useStore, {
 import { useToast } from '../hooks/useToast';
 import EmptyState from './ui/EmptyState';
 import '../styles/entertainment-route.css';
+import { entertainmentMetrics } from '../domains/life/entertainmentMetrics';
+import IntegrationGuide from './sync/IntegrationGuide';
+import StreamingConnections from './sync/StreamingConnections';
 
-const TYPES    = ['Anime', 'Series', 'Movie', 'Documentary'];
+const TYPES    = ['Anime', 'Series', 'Movie', 'Documentary', 'YouTube'];
 const STATUSES = ['Watching', 'Plan to Watch', 'Completed', 'Dropped'];
 const STATUS_COLOR = {
   Watching: 'var(--info)', Completed: 'var(--success)',
   Dropped: 'var(--danger)', 'Plan to Watch': 'var(--warning)'
 };
 const TYPE_COLOR = {
-  Anime: '#ec4899', Series: '#0ea5e9', Movie: '#e5a50a', Documentary: '#10b981'
+  Anime: '#ec4899', Series: '#0ea5e9', Movie: '#e5a50a', Documentary: '#10b981', YouTube: '#b12c32'
 };
-const TYPE_ICON = { Anime: '⛩️', Series: '📺', Movie: '🎬', Documentary: '🎥' };
+const TYPE_ICON = { Anime: '⛩️', Series: '📺', Movie: '🎬', Documentary: '🎥', YouTube: '▶️' };
 const OTT_PROVIDERS = [
   { name: 'Netflix',         color: '#E50914', icon: '🎬' },
   { name: 'Amazon Prime',    color: '#00A8E1', icon: '📦' },
-  { name: 'Disney+ Hotstar', color: '#113CCF', icon: '⭐' },
+  { name: 'JioHotstar',      color: '#113CCF', icon: '⭐' },
   { name: 'Zee5',            color: '#8230C6', icon: '📡' },
-  { name: 'Apple TV+',       color: '#f5f5f7', icon: '🍎' },
-  { name: 'JioCinema',       color: '#003bce', icon: '🎭' },
+  { name: 'Apple TV+',       color: '#557d6d', icon: '🍎' },
+  { name: 'Crunchyroll',     color: '#b95d18', icon: '⛩️' },
+  { name: 'YouTube',         color: '#b12c32', icon: '▶️' },
+  { name: 'SonyLIV',         color: '#8e660b', icon: '📺' },
 ];
-const EMPTY_FORM = { title: '', type: 'Anime', season: 1, episode: 0, total_episodes: '', rating: '', status: 'Plan to Watch' };
+const EMPTY_FORM = { title: '', type: 'Anime', season: 1, episode: 0, total_episodes: '', rating: '', durationMinutes: '', status: 'Plan to Watch' };
 
 // ── RatingDisplay ─────────────────────────────────────────────────────────────
 function RatingDisplay({ value }) {
@@ -217,7 +222,9 @@ function MediaCard({ item, onDelete, onProgress }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function Entertainment() {
-  const { media }           = useStore(selectEntertainment);
+  const entertainment = useStore(selectEntertainment);
+  const ownerId = useStore(state => state.user?.id);
+  const media = useMemo(() => entertainment.media.filter(item => item.progress !== 'streaming-watch-event-v1'), [entertainment.media]);
   const addMediaItem        = useStore(selectAddMediaItem);
   const deleteMediaItem     = useStore(selectDeleteMediaItem);
   const updateMediaItem = useStore(s => s.updateMediaItem);
@@ -254,6 +261,7 @@ export default function Entertainment() {
 
   const handleAdd = async () => {
     if (!form.title.trim()) { toast.error('Title cannot be empty'); return; }
+    if (form.durationMinutes !== '' && (!Number.isFinite(Number(form.durationMinutes)) || Number(form.durationMinutes) < 0 || Number(form.durationMinutes) > 10080)) { toast.error('Duration must be between 0 and 10,080 minutes.'); return; }
     if (!createId.current) createId.current = crypto.randomUUID();
     if (await perform(() => addMediaItem({ ...form, id: createId.current }))) {
       createId.current = null; setForm(EMPTY_FORM); toast.success(`"${form.title}" added to library`);
@@ -310,13 +318,7 @@ export default function Entertainment() {
     }, {});
   }, [filtered]);
 
-  const stats = useMemo(() => ({
-    total: media.length,
-    watching: media.filter(m => m.status === 'Watching').length,
-    completed: media.filter(m => m.status === 'Completed').length,
-    avgRating: (() => { const rated = media.filter(m => m.rating != null && m.rating !== '' && Number.isFinite(Number(m.rating))); return rated.length ? (rated.reduce((s, m) => s + Number(m.rating), 0) / rated.length).toFixed(1) : '—'; })(),
-    backlog: media.filter(m => m.status === 'Plan to Watch').length,
-  }), [media]);
+  const stats = useMemo(() => entertainmentMetrics(media), [media]);
 
   const SortIcon = sortDir === 'asc' ? SortAsc : SortDesc;
   const TABS = ['Library', 'Stats', 'Sync'];
@@ -345,12 +347,17 @@ export default function Entertainment() {
           { label: 'Completed', value: stats.completed, icon: Trophy, color: 'var(--success)' },
           { label: 'Backlog', value: stats.backlog, icon: Clock, color: 'var(--warning)' },
           { label: 'Avg Rating', value: stats.avgRating, icon: Star, color: '#e5a50a' },
+          { label: 'Films watched', value: stats.films, icon: Film, color: 'var(--accent)' },
+          { label: 'Episodes watched', value: stats.episodes, icon: Tv, color: 'var(--info)' },
+          { label: 'YouTube videos', value: stats.videos, icon: Eye, color: 'var(--accent)' },
+          { label: 'Avg recorded minutes', value: stats.averageMinutes ?? '—', icon: Clock, color: 'var(--warning)' },
         ].map(({ label, value, icon, color }, index) => (
           <StatCard key={label} icon={icon} label={label} value={value} color={color} lead={index === 0} />
         ))}
       </div>
 
       {/* Tabs */}
+      <p className="text-secondary">Watch-time estimate covers {stats.durationCoverage} recorded films, videos or episodes with a known duration. Unrecorded runtimes are not counted as zero.</p>
       <Tabs label="Entertainment views" tabs={TABS.map(tab => ({ value: tab, label: tab }))} value={activeTab} onChange={setActiveTab} />
 
       {/* LIBRARY TAB */}
@@ -365,11 +372,12 @@ export default function Entertainment() {
                   onChange={e => setForm({ ...form, title: e.target.value })}
                   onKeyDown={e => e.key === 'Enter' && handleAdd()}
                   className="form-input" />
+                <label>Minutes per film, video or episode (optional)<input aria-label="Minutes per film, video or episode" type="number" min="0" max="10080" className="form-input" value={form.durationMinutes} onChange={event => setForm({ ...form, durationMinutes: event.target.value })} /></label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="form-input" style={{ flex: 1 }}>
+                  <select aria-label="New title type" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="form-input" style={{ flex: 1 }}>
                     {TYPES.map(t => <option key={t}>{t}</option>)}
                   </select>
-                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="form-input" style={{ flex: 1 }}>
+                  <select aria-label="New title status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="form-input" style={{ flex: 1 }}>
                     {STATUSES.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
@@ -427,7 +435,7 @@ export default function Entertainment() {
                     {['All', ...TYPES].map(t => (
                       <button key={t} onClick={() => setFilterType(t)}
                         className={`gt-button gt-button--sm ${filterType === t ? 'gt-button--primary' : 'gt-button--secondary'}`}
-                        style={{ fontSize: '0.7rem', color: filterType === t ? undefined : TYPE_COLOR[t] }}>
+                        style={{ fontSize: '0.7rem' }}>
                         {t}
                       </button>
                     ))}
@@ -479,6 +487,7 @@ export default function Entertainment() {
       {/* STATS TAB */}
       {activeTab === 'Stats' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <IntegrationGuide area="entertainment" />
           <div className="glass-card">
             <span className="card-title"><BarChart2 size={16} style={{ display: 'inline', marginRight: '6px' }} />Library Breakdown</span>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
@@ -545,21 +554,7 @@ export default function Entertainment() {
       {/* SYNC TAB */}
       {activeTab === 'Sync' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-
-          {/* Trakt.tv Sync Card */}
-          <div className="glass-card" style={{ borderTop: '3px solid #ed1c24', padding: '1.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '1.5rem' }}>📡</span>
-              <div>
-                <h3 style={{ fontWeight: 900, fontSize: '1.1rem', color: '#ed1c24', margin: 0 }}>Trakt.tv Sync</h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '2px' }}>Setup required — authenticated watch-history import is not implemented.</p>
-              </div>
-            </div>
-            <button className="btn-primary" disabled>Sync Watch History — setup required</button>
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: '1rem', lineHeight: 1.6 }}>
-              TODO: server-managed Trakt authorization, connection status, paginated history import and acknowledged per-title deduplication. No credentials are collected and no watch history is changed here. Use manual library entry until this integration is available.
-            </p>
-          </div>
+          <StreamingConnections key={ownerId} />
 
           {/* OTT Provider Sync */}
           <div className="glass-card" style={{ padding: '1.75rem' }}>

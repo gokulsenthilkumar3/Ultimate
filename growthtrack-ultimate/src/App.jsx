@@ -95,6 +95,7 @@ const HubPresentation = lazy(() => import('./domains/hub/HubPresentation'));
 const LifePresentation = lazy(() => import('./domains/life/LifePresentation'));
 const ModulePresentation = lazy(() => import('./components/motion/ModulePresentation'));
 const FloatingCompanion = lazy(() => import('./components/motion/FloatingCompanion'));
+const DesktopNavigationBridge = lazy(() => import('./components/motion/DesktopNavigationBridge'));
 const PRESENTATIONS = { insights: InsightsMotion, hub: HubPresentation, life: LifePresentation, finance: ModulePresentation, wellness: ModulePresentation, workspace: ModulePresentation };
 const UnifiedWorkspace = lazy(() => import('./components/UnifiedWorkspace'));
 const OnboardingWizard = lazy(() => import('./components/OnboardingWizard'));
@@ -318,6 +319,7 @@ export default function App() {
         </main>
         <PremiumSidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} onOpenSettings={() => setShowSettings(true)} onLogout={requestLogout} />
         <FloatingPillDock activeTab={activeTab} onTabChange={setActiveTab} />
+        {initialDataReady && <Suspense fallback={null}><DesktopNavigationBridge /></Suspense>}
         {initialDataReady && companionEnabled && <ErrorBoundary resetKey={activeTab} fallback={<></>}><Suspense fallback={null}><FloatingCompanion /></Suspense></ErrorBoundary>}
       </div>
     </div>

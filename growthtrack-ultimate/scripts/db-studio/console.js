@@ -11,6 +11,7 @@ const provider = () => sources.find(source => source.id === sourceId())?.provide
 const textValue = value => value == null ? 'null' : typeof value === 'object' ? JSON.stringify(value) : String(value);
 
 async function dbFetch(route, options) {
+  if (route === '/query' && provider() === 'SQL Server') throw new Error('Use SSMS for custom T-SQL. SQL Server Studio supports bounded table/schema reads.');
   const response = await fetch(apiBase + route + (route.includes('?') ? '&' : '?') + 'source=' + encodeURIComponent(sourceId()), options);
   if (!response.ok) throw new Error('Database unavailable or query not permitted. Check the connection and try again.');
   return response.json();

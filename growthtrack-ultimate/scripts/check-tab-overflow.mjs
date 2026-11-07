@@ -25,6 +25,9 @@ export async function checkTabOverflow(page) {
     await page.waitForFunction(element => Math.abs(element.scrollLeft) > 2, await row.elementHandle(), { timeout: 2000 });
     if (Math.abs(await page.evaluate(() => window.scrollY) - before) > 2) throw new Error(`Mouse wheel moved the page instead of ${label}`);
     await row.evaluate(element => { element.scrollTo({ left: getComputedStyle(element).direction === 'rtl' ? -(element.scrollWidth - element.clientWidth) : element.scrollWidth - element.clientWidth, behavior: 'instant' }); });
+    // A programmatic jump during Chrome's previous wheel transaction keeps its
+    // scroll target latched. End that gesture before testing native chaining.
+    await page.waitForTimeout(350);
     const atEnd = await page.evaluate(() => ({ y: window.scrollY, remaining: document.documentElement.scrollHeight - innerHeight - scrollY }));
     if (atEnd.remaining > 80) {
       stage = 'release page scrolling at row end';
@@ -36,7 +39,8 @@ export async function checkTabOverflow(page) {
     } catch (failure) {
       const details = await rail.evaluate(frame => {
         const row = frame.querySelector('[data-overflow-items]'), rect = row?.getBoundingClientRect(), style = row && getComputedStyle(row);
-        return { row: { width: row?.clientWidth, height: row?.clientHeight, scrollWidth: row?.scrollWidth, left: row?.scrollLeft, top: rect?.top, display: style?.display, direction: style?.flexDirection, wrap: style?.flexWrap, overflow: style?.overflow }, pageY: scrollY, pageHeight: document.documentElement.scrollHeight, bodyOverflow: getComputedStyle(document.body).overflow, controls: [...frame.querySelectorAll('.gt-overflow-rail__control')].map(button => ({ hidden: button.hidden, disabled: button.disabled, x: button.getBoundingClientRect().x, y: button.getBoundingClientRect().y, width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height })) };
+        const ancestors = []; for (let element = row; element; element = element.parentElement) ancestors.push({ tag: element.tagName, className: element.className, scrollTop: element.scrollTop, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, overflowY: getComputedStyle(element).overflowY, overscroll: getComputedStyle(element).overscrollBehavior });
+        return { ancestors, row: { width: row?.clientWidth, height: row?.clientHeight, scrollWidth: row?.scrollWidth, left: row?.scrollLeft, top: rect?.top, display: style?.display, direction: style?.flexDirection, wrap: style?.flexWrap, overflow: style?.overflow }, pageY: scrollY, pageHeight: document.documentElement.scrollHeight, bodyOverflow: getComputedStyle(document.body).overflow, controls: [...frame.querySelectorAll('.gt-overflow-rail__control')].map(button => ({ hidden: button.hidden, disabled: button.disabled, x: button.getBoundingClientRect().x, y: button.getBoundingClientRect().y, width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height })) };
       });
       const error = new Error(`${label} / ${stage}: ${failure.message}`); error.details = details; throw error;
     }

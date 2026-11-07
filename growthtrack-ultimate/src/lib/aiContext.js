@@ -69,7 +69,8 @@ export function getAiContextCandidates(state, consent = EMPTY_AI_CONSENT, { incl
       const key = `${type}:${record.id}`;
       if (seen.has(key)) continue;
       const fields = Object.fromEntries(definitions[type].fields.flatMap(field => {
-        const value = ['journal', 'notes'].includes(type) && field === 'content' ? record.content ?? record.text : record[field];
+        const value = ['journal', 'notes'].includes(type) && field === 'content' ? record.content ?? record.text
+          : type === 'nutrition' && ['protein', 'carbs', 'fat'].includes(field) ? record[`${field}_g`] ?? record[field] : record[field];
         if (typeof value === 'string') return [[field, value.slice(0, ['journal', 'notes'].includes(type) && ['content', 'text'].includes(field) ? 4000 : 800)]];
         if (typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value))) return [[field, value]];
         return [];

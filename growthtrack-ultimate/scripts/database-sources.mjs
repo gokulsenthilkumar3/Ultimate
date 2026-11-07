@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
+import { createDatabaseClient } from '../server/database.js';
 
 const appRoot = path.resolve(import.meta.dirname, '..');
 const workspaceRoot = path.dirname(appRoot);
@@ -83,8 +84,39 @@ export function createDatabaseSources(env = process.env) {
   const oxfinUrl = new URL(env.DB_STUDIO_OXFIN_URL || oxfinEnv.DATABASE_URL || 'postgresql://localhost:5434/oxfin');
   if (!env.DB_STUDIO_OXFIN_URL) oxfinUrl.port = env.OXFIN_DB_PORT || '5434';
   return new Map([
-    ['ultimate', { name: 'Ultimate', provider: 'SQLite', adapter: createSqliteSource(path.resolve(appRoot, sqliteUrl.replace(/^file:/, ''))) }],
+    ['ultimate', ultimateEnv.DATABASE_PROVIDER === 'sqlserver' || sqliteUrl.startsWith('sqlserver:')
+      ? { name: 'Ultimate', provider: 'SQL Server', adapter: createSqlServerSource(ultimateEnv) }
+      : { name: 'Ultimate', provider: 'SQLite', adapter: createSqliteSource(path.resolve(appRoot, sqliteUrl.replace(/^file:/, ''))) }],
     ['oxfin', { name: 'OxFin', provider: 'PostgreSQL', adapter: createPostgresSource(oxfinUrl.href) }],
     ['family', { name: 'Family Connect', provider: 'PostgreSQL', adapter: createPostgresSource(env.DB_STUDIO_FAMILY_URL || familyEnv.DATABASE_URL || 'postgresql://localhost:5432/familyconnect') }],
   ]);
+}
+
+export function createSqlServerSource(env) {
+  let connection;
+  const client = async () => (await (connection ||= createDatabaseClient(appRoot, env))).prisma;
+  const read = async (query, ...parameters) => (await client()).$queryRawUnsafe(query, ...parameters);
+  const names = async () => (await read("SELECT name FROM sys.tables WHERE schema_id=SCHEMA_ID('dbo') AND name NOT LIKE '\\_\\_%' ESCAPE '\\' ORDER BY name")).map(row => row.name);
+  const quote = value => '[' + value.replaceAll(']', ']]') + ']';
+  const table = async name => { if (!(await names()).includes(name)) throw new Error('Unknown table'); return `dbo.${quote(name)}`; };
+  return {
+    async ping() { await read('SELECT 1 AS online'); },
+    async tables() {
+      const tables = await names();
+      return Promise.all(tables.map(async name => ({ name, count: Number((await read(`SELECT COUNT(*) AS count FROM dbo.${quote(name)}`))[0].count) })));
+    },
+    async rows(name, page, limit) {
+      const target = await table(name);
+      const columns = (await read("SELECT COLUMN_NAME AS name FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME=@P1 ORDER BY ORDINAL_POSITION", name)).map(row => row.name);
+      const rows = await read(`SELECT * FROM ${target} ORDER BY ${quote(columns[0])} OFFSET @P1 ROWS FETCH NEXT @P2 ROWS ONLY`, (page - 1) * limit, limit);
+      const total = Number((await read(`SELECT COUNT(*) AS total FROM ${target}`))[0].total);
+      return { columns, rows, total, page, limit };
+    },
+    async schema(name) {
+      await table(name);
+      return read("SELECT ORDINAL_POSITION-1 AS cid,COLUMN_NAME AS name,DATA_TYPE AS type,CASE WHEN IS_NULLABLE='NO' THEN 1 ELSE 0 END AS [notnull],COLUMN_DEFAULT AS dflt_value,0 AS pk FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME=@P1 ORDER BY ORDINAL_POSITION", name);
+    },
+    async query() { throw new Error('Run custom T-SQL through SSMS. Studio exposes only bounded metadata and table reads for SQL Server.'); },
+    async close() { if (connection) await (await connection).prisma.$disconnect(); },
+  };
 }

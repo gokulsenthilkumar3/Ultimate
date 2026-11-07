@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Graphify · GrowthTrack</title>
+    <link rel="stylesheet" href="/viewer.css" />
+    <link rel="stylesheet" href="/brain.css" />
+    <script src="/viewer.js" defer></script>
+    <script src="/brain.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <div class="identity">
+        <span class="mark" aria-hidden="true">◈</span>
+        <div>
+          <p class="eyebrow">GROWTHTRACK / LOCAL INTELLIGENCE</p>
+          <h1>Graphify <span>workspace</span></h1>
+        </div>
+      </div>
+      <nav aria-label="Graph tools">
+        <a href="/api/graph/capabilities">Agent API ↗</a
+        ><button id="refresh">Refresh snapshot</button>
+      </nav>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">FOLLOW THE CONNECTIONS</p>
+          <h2>A little clarity. <br />A connected codebase.</h2>
+          <p>
+            Find a symbol. Follow its relationships. Read the evidence behind
+            each connection.
+          </p>
+        </div>
+        <div class="stats" aria-label="Graph snapshot">
+          <div><strong id="nodes">—</strong><span>nodes</span></div>
+          <div><strong id="edges">—</strong><span>relationships</span></div>
+          <div><strong id="communities">—</strong><span>communities</span></div>
+        </div>
+      </section>
+      <p id="status" role="status">Loading the local Graphify snapshot…</p>
+      <div class="workspace-tabs" role="tablist" aria-label="Graphify views">
+        <button
+          id="tab-brain"
+          role="tab"
+          aria-selected="false"
+          aria-controls="brain-panel"
+          tabindex="-1"
+        >
+          ◈ Brain <span>Whole codebase</span>
+        </button>
+        <button
+          id="tab-explorer"
+          role="tab"
+          aria-selected="true"
+          aria-controls="explorer-panel"
+        >
+          Explorer <span>One neighborhood</span>
+        </button>
+      </div>
+      <section
+        id="brain-panel"
+        role="tabpanel"
+        aria-labelledby="tab-brain"
+        hidden
+      >
+        <div class="brain-toolbar">
+          <div>
+            <p class="eyebrow">YOUR CODEBASE / ONE SUPER GRAPH</p>
+            <h2>Your codebase, in a new dimension.</h2>
+          </div>
+          <div class="brain-controls" aria-label="Brain controls">
+            <div
+              class="brain-segment"
+              role="group"
+              aria-label="Graph dimensions"
+            >
+              <button id="brain-3d" aria-pressed="true">3D</button
+              ><button id="brain-2d" aria-pressed="false">2D</button>
+            </div>
+            <button id="brain-motion" aria-pressed="true">Pause motion</button>
+            <button id="brain-out" aria-label="Zoom brain out">−</button
+            ><button id="brain-fit">Fit all</button
+            ><button id="brain-in" aria-label="Zoom brain in">+</button
+            ><button id="brain-theme" aria-pressed="false">Light canvas</button>
+          </div>
+        </div>
+        <div class="brain-experience-controls" aria-label="Explore in 3D">
+          <span id="brain-renderer-badge">3D / LOADING</span>
+          <div class="brain-segment" role="group" aria-label="Drag behavior">
+            <button id="brain-orbit" aria-pressed="true">Orbit</button
+            ><button id="brain-pan" aria-pressed="false">Pan</button>
+          </div>
+          <label
+            ><input id="brain-lines" type="checkbox" checked />
+            Connections</label
+          >
+          <label
+            ><input id="brain-focus" type="checkbox" /> Focus selection</label
+          >
+          <button id="brain-fullscreen">Expand view</button>
+          <details class="brain-help">
+            <summary>How to explore</summary>
+            <p>
+              Drag to orbit. Shift + drag or Pan moves the view. Scroll or pinch
+              to zoom. Select a node or search for its source. Arrow keys orbit;
+              Shift + arrows pan; Home fits all; Space pauses motion. Use 2D for
+              the original map.
+            </p>
+          </details>
+        </div>
+        <div class="brain-layout">
+          <section
+            class="brain-chart"
+            aria-label="Whole codebase architecture graph"
+          >
+            <canvas
+              id="brain-canvas"
+              tabindex="0"
+              role="img"
+              aria-label="Whole Graphify graph. Drag to pan, scroll to zoom. Keyboard: arrows pan, plus or minus zoom, Home fits all. Use search buttons to select nodes."
+              >Your browser needs Canvas support. All nodes remain searchable in
+              the adjacent list.</canvas
+            >
+            <canvas
+              id="brain-webgl"
+              tabindex="0"
+              role="img"
+              aria-label="3D codebase graph. Drag to orbit, Shift drag to pan, scroll or pinch to zoom. Keyboard arrows orbit, Shift arrows pan, Home fits all, Space pauses motion. Search buttons select nodes."
+              hidden
+            ></canvas>
+            <p id="brain-caption" role="status">
+              Open Brain to load every native node and relationship.
+            </p>
+            <div id="brain-legend" aria-label="Graph color legend"></div>
+          </section>
+          <aside class="brain-sidebar" aria-label="Find and inspect code">
+            <label for="brain-search">Find anything in the brain</label
+            ><input
+              id="brain-search"
+              type="search"
+              maxlength="200"
+              placeholder="Symbol, path, community…"
+              autocomplete="off"
+            />
+            <p id="brain-search-count" class="muted"></p>
+            <div id="brain-results" class="brain-results"></div>
+            <button id="brain-more" hidden>Next matches →</button>
+            <section id="brain-selection" aria-live="polite">
+              <h3>Select a node</h3>
+              <p>
+                Zoom into any part of the codebase, or search for a file.
+                Isolated nodes stay visible; connections come from Graphify.
+              </p>
+            </section>
+          </aside>
+        </div>
+        <section class="brain-port-panel" aria-label="Architecture and ports">
+          <div class="ports-heading">
+            <h3>Architecture & ports</h3>
+            <span>CONFIGURATION · SELECT TO LOCATE SOURCE</span>
+          </div>
+          <div id="brain-services"></div>
+        </section>
+      </section>
+      <div
+        class="workspace"
+        id="explorer-panel"
+        role="tabpanel"
+        aria-labelledby="tab-explorer"
+      >
+        <aside class="finder">
+          <p class="eyebrow">01 / FIND</p>
+          <h2>Your starting point</h2>
+          <label for="search">Search symbols or paths</label
+          ><input
+            id="search"
+            type="search"
+            maxlength="200"
+            placeholder="Try WelcomeCompanion"
+            autocomplete="off"
+          />
+          <p id="results-count" class="muted"></p>
+          <div id="results" class="results"></div>
+          <button id="more-results" hidden>Next results →</button>
+        </aside>
+        <section class="map-panel" aria-label="Graph neighborhood">
+          <div class="map-heading">
+            <div>
+              <p class="eyebrow">02 / EXPLORE</p>
+              <h2 id="map-title">Select a starting point</h2>
+            </div>
+            <span class="badge">NATIVE GRAPHIFY</span>
+          </div>
+          <div class="canvas">
+            <svg
+              id="map"
+              viewBox="0 0 800 650"
+              role="img"
+              aria-label="Selected node and its actual Graphify neighbors"
+            ></svg>
+            <p id="map-empty">Search on the left to explore a neighborhood.</p>
+          </div>
+          <div class="map-footer">
+            <span id="edge-count"
+              >Bounded neighborhoods keep exploration fast.</span
+            ><button id="more-edges" hidden>Next relationships →</button>
+          </div>
+        </section>
+        <aside class="inspector">
+          <p class="eyebrow">03 / UNDERSTAND</p>
+          <h2>Source & relationships</h2>
+          <div id="details">
+            <p class="muted">
+              Choose a node to see its source path, community and original
+              relationship evidence.
+            </p>
+          </div>
+          <div class="agent-note">
+            <h3>For agents, too</h3>
+            <p>
+              Structured JSON, native IDs, bounded pages and snapshot
+              provenance.
+            </p>
+            <a href="/api/graph/capabilities">Discover endpoints ↗</a
+            ><a href="/api/graph/schema">Response contract ↗</a
+            ><code>GET /api/graph/nodes?q=welcome</code>
+          </div>
+        </aside>
+      </div>
+      <footer>
+        <p>
+          Source: <code>graphify-out/graph.json</code> · Read-only · Localhost
+          only
+        </p>
+        <p>
+          Connections reflect extraction, not verified runtime integrations.
+          Refresh the graph with <code>npm run graphify:update</code>.
+        </p>
+        <p id="provenance"></p>
+      </footer>
+    </main>
+  </body>
+</html>

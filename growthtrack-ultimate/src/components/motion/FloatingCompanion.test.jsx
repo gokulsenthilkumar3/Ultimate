@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore } from 'react';
+﻿import React, { useSyncExternalStore } from 'react';
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -11,7 +11,7 @@ import { getActiveDialog, subscribeDialogs } from '../../hooks/useDialogFocus';
 import useKineticPreferences, { KINETIC_PREFERENCE_KEY, setKineticPreferences } from '../../hooks/useKineticPreferences';
 
 vi.mock('./CharacterScene', () => ({ default: () => <svg aria-hidden="true" />, MotionToggle: () => null }));
-vi.mock('./PersonalCompanionArt', () => ({ default: ({ state, className, compact, decorative }) => <span className={className} data-testid="personal-companion-art" data-state={state} data-compact={String(Boolean(compact))} aria-hidden={decorative} /> }));
+vi.mock('./AgentKite', () => ({ default: ({ state, className, compact, decorative }) => <span className={className} data-testid="agent-kite-art" data-state={state} data-compact={String(Boolean(compact))} aria-hidden="true" /> }));
 vi.mock('./AnimatedLogo', () => ({ default: () => <svg aria-hidden="true" /> }));
 
 function Host({ external = false }) {
@@ -76,12 +76,12 @@ it('stays out of another dialog and follows visibility changes from another brow
   expect(screen.getByRole('button', { name: 'Show floating companion' })).toBeVisible();
 });
 
-it('changes the personal character pose locally without changing agent consent or preferences', async () => {
+it('changes the folded-wing agent pose locally without changing agent consent or preferences', async () => {
   const fetch = vi.spyOn(globalThis, 'fetch');
   show();
   const savedPreferences = localStorage.getItem(KINETIC_PREFERENCE_KEY);
   const trigger = screen.getByRole('button', { name: 'Open Sidekick companion' });
-  const art = () => within(trigger).getByTestId('personal-companion-art');
+  const art = () => within(trigger).getByTestId('agent-kite-art');
   expect(art()).toHaveAttribute('data-compact', 'true');
   expect(art()).toHaveAttribute('aria-hidden', 'true');
   await userEvent.hover(trigger);
@@ -95,7 +95,7 @@ it('changes the personal character pose locally without changing agent consent o
     const button = within(poses).getByRole('button', { name: label + ' pose' });
     await userEvent.click(button);
     expect(button).toHaveAttribute('aria-pressed', 'true');
-    expect(within(panel).getByTestId('personal-companion-art')).toHaveAttribute('data-state', state);
+    expect(within(panel).getByTestId('agent-kite-art')).toHaveAttribute('data-state', state);
     expect(art()).toHaveAttribute('data-state', state);
   }
   await userEvent.click(within(poses).getByRole('button', { name: 'Focus pose' }));
@@ -105,3 +105,4 @@ it('changes the personal character pose locally without changing agent consent o
   expect(localStorage.getItem(KINETIC_PREFERENCE_KEY)).toBe(savedPreferences);
   expect(fetch).not.toHaveBeenCalled();
 });
+

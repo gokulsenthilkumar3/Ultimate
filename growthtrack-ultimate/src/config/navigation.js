@@ -76,13 +76,13 @@ export const GROUPS = {
   insights: { label: 'Insights', icon: TrendingUp, tabs: ['actions', 'current', 'analytics', 'dashboards', 'progress', 'forecast'] },
   money: { label: 'Finance', icon: WalletCards, tabs: [...FEATURES.filter(item => item.area === 'finance' && !['finsync', 'oxfin'].includes(item.id)).map(item => item.id), 'forex'] },
   wellness: { label: 'Growth', icon: HeartPulse, tabs: ['wellness', 'sleep', 'lifestyle', 'mind', 'medical', 'health', 'habits', 'physique', 'assessment', 'training', 'strength', 'nutrition', 'hydration', 'healthSync'] },
-  work: { label: 'Work', icon: BriefcaseBusiness, tabs: ['workspace', 'calendar', 'documents', 'notes', 'tasks', 'projects', 'timesheet', 'skills', 'goals'] },
-  life: { label: 'Life', icon: Users, tabs: ['life', 'family', 'social', 'entertainment', 'maps'] },
+  work: { label: 'Work', icon: BriefcaseBusiness, tabs: ['workspace', 'tasks', 'calendar', 'notes', 'projects', 'goals', 'skills', 'documents', 'timesheet'] },
+  life: { label: 'Life', icon: Users, tabs: ['life', 'maps', 'entertainment', 'family', 'social'] },
   system: { label: 'Hub', icon: LayoutDashboard, tabs: ['hub', 'companion', 'apps', 'ai', 'databases', 'profile', 'notifications', 'help', 'logs', 'about', 'pricing'] },
 };
 
-export const GROUP_ORDER = ['customers', 'money', 'wellness', 'work', 'life', 'insights', 'system'];
-export const MOBILE_QUICK_GROUPS = ['customers', 'money', 'wellness', 'work'];
+export const GROUP_ORDER = ['work', 'life', 'wellness', 'money', 'insights', 'customers', 'system'];
+export const MOBILE_QUICK_GROUPS = ['work', 'life', 'wellness', 'money'];
 const LEGACY_DEFAULT_GROUP_ORDER = ['wellness', 'insights', 'work', 'money', 'life', 'system'];
 export const TAB_GROUP_MAP = FEATURE_GROUPS;
 export const ROUTE_ALIASES = Object.fromEntries(FEATURES.flatMap(item => item.aliases.map(alias => [alias, item.id])));
@@ -98,7 +98,7 @@ export function normalizeGroupOrder(saved = []) {
   const valid = Array.isArray(saved) ? saved.filter(id => Object.hasOwn(GROUPS, id)) : [];
   // Prior releases persisted their old default with removed 'today'/'body'
   // entries. Treat that exact sequence as an obsolete default, not a choice.
-  if ([LEGACY_DEFAULT_GROUP_ORDER, ['money', 'insights', 'wellness', 'work', 'life', 'system']].some(order => valid.join('|') === order.join('|'))) return [...GROUP_ORDER];
+  if ([LEGACY_DEFAULT_GROUP_ORDER, ['customers', 'money', 'wellness', 'work', 'life', 'insights', 'system'], ['money', 'insights', 'wellness', 'work', 'life', 'system']].some(order => valid.join('|') === order.join('|'))) return [...GROUP_ORDER];
   return [...new Set([...valid, ...GROUP_ORDER])];
 }
 
@@ -114,7 +114,10 @@ export function navigationGroups(configured = []) {
       ...group,
       label: ['money', 'system'].includes(id) ? group.label : typeof custom?.label === 'string' && custom.label.trim() ? custom.label : group.label,
       // Configuration may reorder modules, but must never hide built-in destinations.
-      tabs: normalizeTabOrder(custom?.tabs, group.tabs),
+      tabs: normalizeTabOrder(
+        (id === 'work' && custom?.tabs?.join('|') === 'workspace|calendar|documents|notes|tasks|projects|timesheet|skills|goals')
+        || (id === 'life' && custom?.tabs?.join('|') === 'life|family|social|entertainment|maps') ? group.tabs : custom?.tabs,
+        group.tabs),
     }];
   }));
 }

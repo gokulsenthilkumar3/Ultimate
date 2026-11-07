@@ -13,7 +13,7 @@ async function setRange(input: any, value: number) {
 }
 
 test('parametric shapes save separately and editable exports reopen with a valid rig', async ({ page }, testInfo) => {
-  const fixture = await setupHumanViewer(page, 'reduce');
+  const fixture = await setupHumanViewer(page, 'reduce', {}, {}, { studio: false, tools: false });
   await page.getByRole('button', { name: 'Parametric human editor', exact: true }).click();
   const editor = page.getByRole('region', { name: 'Parametric human editor', exact: true });
   const canvas = editor.locator('canvas');
@@ -131,7 +131,7 @@ test('parametric shapes save separately and editable exports reopen with a valid
 });
 
 test('parametric editor fits mobile width and preserves per-person state', async ({ page }) => {
-  const fixture = await setupHumanViewer(page, 'reduce');
+  const fixture = await setupHumanViewer(page, 'reduce', {}, {}, { studio: false, tools: false });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Parametric human editor', exact: true }).click();
   const editor = page.getByRole('region', { name: 'Parametric human editor', exact: true });

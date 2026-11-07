@@ -1,0 +1,1747 @@
+datasource db {
+  provider = "sqlserver"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output = "../prisma-generated/sqlserver"
+}
+
+model User {
+  id                 String   @id @default(uuid()) @db.NVarChar(200)
+  email              String   @unique @db.NVarChar(200)
+  passwordHash       String @db.NVarChar(Max)
+  fullName           String @db.NVarChar(Max)
+  subscriptionTier   String?  @default("free") @db.NVarChar(Max)
+  stripeCustomerId   String? @db.NVarChar(200)
+  subscriptionStatus String? @db.NVarChar(Max)
+  referralCode       String   @unique @default(uuid()) @db.NVarChar(200)
+  creditBalance      Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+
+  // Typed plans and collections below own their regular records. Their old
+  // strings remain only for malformed migration inputs and rollback workflows.
+  // Lifestyle/wellness configuration still uses bounded JSON documents.
+  trainingPlan      String? @db.NVarChar(Max)
+  nutritionStrategy String? @db.NVarChar(Max)
+  lifestyleTips     String? @db.NVarChar(Max)
+  medicalData       String? @db.NVarChar(Max)
+  physiqueTargets   String? @db.NVarChar(Max)
+  assessmentQA      String? @db.NVarChar(Max)
+  skills            String? @db.NVarChar(Max)
+  calendarEvents    String? @db.NVarChar(Max)
+  wellnessData      String? @db.NVarChar(Max)
+  healthExtras      String? @db.NVarChar(Max)
+  // Legacy collection documents are retained only for malformed migration
+  // inputs or the explicit calendar/portfolio rollback workflow.
+  manualProjects    String? @db.NVarChar(Max)
+  repoNotes         String? @db.NVarChar(Max)
+  portfolio         String? @db.NVarChar(Max)
+
+  // Relations
+  tasks                  Task[]
+  transactions           Transaction[]
+  budgets                Budget[]
+  metricLogs             MetricLog[]
+  nutritionLogs          NutritionLog[]
+  workoutSessions        WorkoutSession[]
+  shoppingItems          ShoppingItem[]
+  timesheetSessions      TimesheetSession[]
+  entertainmentMedia     EntertainmentMedia[]
+  notes                  Note[]
+  noteMutations          NoteMutation[]
+  noteChanges            NoteChange[]
+  goals                  Goal[]
+  sleepLogs              SleepLog[]
+  documents              Document[]
+  habits                 Habit[]
+  subscriptions          SubscriptionItem[]
+  moodLogs               MoodLog[]
+  vitalsLogs             VitalsLog[]
+  medications            Medication[]
+  authSessions           AuthSession[]
+  preference             UserPreference?
+  ownerProfile           OwnerProfile?
+  socialProfiles         SocialProfile[]
+  bodyProfile            BodyProfile?
+  healthProfile          HealthProfile?
+  locationPoints         LocationPoint[]
+  customTables           CustomTable[]
+  integrationCredentials IntegrationCredential[]
+  calendarEventRows      CalendarEvent[]
+  portfolioHoldings      PortfolioHolding[]
+  recordMutations        RecordMutation[]
+  recordChanges          RecordChange[]
+  progressPhotos         ProgressPhoto[]
+  goalProgressLogs       GoalProgressLog[]
+  createdBy              String? @db.NVarChar(Max)
+  updatedBy              String? @db.NVarChar(Max)
+  skillRows              UserSkill[]
+  manualProjectRows      ManualProject[]
+  repositoryNoteRows     RepositoryNote[]
+  assessmentRounds       AssessmentRound[]
+  trainingPlanRecord     TrainingPlan?
+  nutritionStrategyRecord NutritionStrategy?
+  medicalPlanRecord      MedicalPlan?
+  physiquePlanRecord     PhysiquePlan?
+
+}
+
+model UserSkill {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  userId String @db.NVarChar(200)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  name String? @db.NVarChar(Max)
+  category String? @db.NVarChar(200)
+  xp Float?
+  description String? @db.NVarChar(Max)
+  weeklyTarget Float?
+  resource String? @db.NVarChar(Max)
+  nextAction String? @db.NVarChar(Max)
+  lastPracticed String? @db.NVarChar(Max)
+  practiceCount Int?
+  data String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  @@unique([userId, position])
+  @@index([userId, category])
+  @@map("user_skills")
+
+}
+
+model ManualProject {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  userId String @db.NVarChar(200)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  title String? @db.NVarChar(Max)
+  description String? @db.NVarChar(Max)
+  stack String? @db.NVarChar(Max)
+  status String? @db.NVarChar(200)
+  url String? @db.NVarChar(Max)
+  startDate String? @db.NVarChar(Max)
+  endDate String? @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  @@unique([userId, position])
+  @@index([userId, status])
+  @@map("manual_projects")
+
+}
+
+model RepositoryNote {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  userId String @db.NVarChar(200)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  repositoryId String @db.NVarChar(200)
+  note String @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  @@unique([userId, repositoryId])
+  @@map("repository_notes")
+
+}
+
+model AssessmentRound {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  userId String @db.NVarChar(200)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  round String? @db.NVarChar(Max)
+  color String? @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  answers AssessmentAnswer[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  @@unique([userId, position])
+  @@map("assessment_rounds")
+
+}
+
+model AssessmentAnswer {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  roundId String @db.NVarChar(200)
+  round AssessmentRound @relation(fields: [roundId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  questionKey String? @db.NVarChar(Max)
+  question String? @db.NVarChar(Max)
+  answer String? @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  @@unique([roundId, position])
+  @@map("assessment_answers")
+
+}
+
+model AuthSession {
+  id         String    @id @default(uuid()) @db.NVarChar(200)
+  userId     String @db.NVarChar(200)
+  user       User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tokenHash  String    @unique @db.NVarChar(200)
+  csrfHash   String @db.NVarChar(Max)
+  ipAddress  String? @db.NVarChar(Max)
+  userAgent  String? @db.NVarChar(Max)
+  expiresAt  DateTime
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  createdBy  String? @db.NVarChar(Max)
+  updatedBy  String? @db.NVarChar(Max)
+  updatedAt  DateTime  @default(now()) @updatedAt
+
+  @@index([userId, expiresAt])
+  @@map("auth_sessions")
+
+}
+
+model UserPreference {
+  id                 String   @id @default(uuid()) @db.NVarChar(200)
+  userId             String   @unique @db.NVarChar(200)
+  user               User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  theme              String   @default("dark") @db.NVarChar(Max)
+  palette            String   @default("gold") @db.NVarChar(Max)
+  sidebarCollapsed   Boolean  @default(false)
+  onboardingComplete Boolean  @default(false)
+  navigationOrder    String? @db.NVarChar(Max)
+  navigationTabOrder String? @db.NVarChar(Max)
+  reducedMotion      Boolean  @default(false)
+  density            String   @default("comfortable") @db.NVarChar(Max)
+  updatedAt          DateTime @default(now()) @updatedAt
+  createdBy          String? @db.NVarChar(Max)
+  updatedBy          String? @db.NVarChar(Max)
+  createdAt          DateTime @default(now())
+
+  @@map("user_preferences")
+
+}
+
+model OwnerProfile {
+  id                        String   @id @default(uuid()) @db.NVarChar(200)
+  userId                    String   @unique @db.NVarChar(200)
+  user                      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  avatar                    String? @db.NVarChar(Max)
+  phone                     String? @db.NVarChar(Max)
+  bio                       String? @db.NVarChar(Max)
+  dateOfBirth               String? @db.NVarChar(Max)
+  gender                    String? @db.NVarChar(Max)
+  bloodType                 String? @db.NVarChar(Max)
+  locationName              String? @db.NVarChar(Max)
+  country                   String? @db.NVarChar(Max)
+  state                     String? @db.NVarChar(Max)
+  city                      String? @db.NVarChar(Max)
+  nationality               String? @db.NVarChar(Max)
+  language                  String? @db.NVarChar(Max)
+  timezone                  String? @db.NVarChar(Max)
+  occupation                String? @db.NVarChar(Max)
+  education                 String? @db.NVarChar(Max)
+  maritalStatus             String? @db.NVarChar(Max)
+  incomeBracket             Float?
+  livingSituation           String? @db.NVarChar(Max)
+  dietaryPreference         String? @db.NVarChar(Max)
+  emergencyContactName      String? @db.NVarChar(Max)
+  emergencyContactPhone     String? @db.NVarChar(Max)
+  medicalConditions         String? @db.NVarChar(Max)
+  allergies                 String? @db.NVarChar(Max)
+  restingHeartRate          Float?
+  activityLevel             String? @db.NVarChar(Max)
+  maintenanceCalories       Float?
+  trainingStyle             String? @db.NVarChar(Max)
+  baseCurrency              String? @db.NVarChar(Max)
+  isdCode                   String? @db.NVarChar(Max)
+  netWorth                  Float?
+  primaryBank               String? @db.NVarChar(Max)
+  passportNationality       String? @db.NVarChar(Max)
+  dateFormat                String? @db.NVarChar(Max)
+  numberFormat              String? @db.NVarChar(Max)
+  measurementSystem         String? @db.NVarChar(Max)
+  textDirection             String? @db.NVarChar(Max)
+  motherLanguage            String? @db.NVarChar(Max)
+  motherLanguageProficiency String? @db.NVarChar(Max)
+  privacyLevel              String   @default("Private") @db.NVarChar(Max)
+  emailNotifications        Boolean  @default(false)
+  smsNotifications          Boolean  @default(false)
+  notifications             Boolean  @default(true)
+  primaryGoal               String? @db.NVarChar(Max)
+  updatedAt                 DateTime @default(now()) @updatedAt
+  createdAt                 DateTime @default(now())
+  createdBy                 String? @db.NVarChar(Max)
+  updatedBy                 String? @db.NVarChar(Max)
+
+  @@map("owner_profiles")
+
+}
+
+model SocialProfile {
+  id         String   @id @default(uuid()) @db.NVarChar(200)
+  userId     String @db.NVarChar(200)
+  user       User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  provider   String @db.NVarChar(200)
+  profileUrl String? @db.NVarChar(Max)
+  followers  Int      @default(0)
+  avgLikes   Int      @default(0)
+  avgViews   Int      @default(0)
+  enabled    Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  createdBy  String? @db.NVarChar(Max)
+  updatedBy  String? @db.NVarChar(Max)
+
+  @@unique([userId, provider])
+  @@map("social_profiles")
+
+}
+
+model BodyProfile {
+  id     String @id @default(uuid()) @db.NVarChar(200)
+  userId String @unique @db.NVarChar(200)
+  user   User   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Canonical measurements. Values are stored in cm, kg, %, and degrees;
+  // the UI converts them to the user's preferred display system.
+  heightCm           Float?
+  weightKg           Float?
+  bodyFatPct         Float?
+  leanMassKg         Float?
+  skeletalMuscleKg   Float?
+  bodyWaterPct       Float?
+  boneMassKg         Float?
+  visceralFatLevel   Float?
+  chestCm            Float?
+  waistCm            Float?
+  shouldersCm        Float?
+  armsCm             Float?
+  forearmsCm         Float?
+  hipsCm             Float?
+  thighsCm           Float?
+  calvesCm           Float?
+  neckCm             Float?
+  glutesCm           Float?
+  ankleCm            Float?
+  wristCm            Float?
+  elbowCm            Float?
+  underbustCm        Float?
+  highHipCm          Float?
+  chestDepthCm       Float?
+  shoulderBreadthCm  Float?
+  bideltoidBreadthCm Float?
+  pelvicBreadthCm    Float?
+  torsoLengthCm      Float?
+  sittingHeightCm    Float?
+  upperArmCm         Float?
+  lowerArmCm         Float?
+  handLengthCm       Float?
+  legLengthCm        Float?
+  upperLegLengthCm   Float?
+  lowerLegLengthCm   Float?
+  inseamCm           Float?
+  neckLengthCm       Float?
+  footLengthCm       Float?
+  headCircCm         Float?
+
+  // Left/right values preserve asymmetry without replacing the bilateral
+  // summary measurements above.
+  leftShoulderCm               Float?
+  rightShoulderCm              Float?
+  leftUpperArmCircumferenceCm  Float?
+  rightUpperArmCircumferenceCm Float?
+  leftForearmCm                Float?
+  rightForearmCm               Float?
+  leftWristCm                  Float?
+  rightWristCm                 Float?
+  leftThighCm                  Float?
+  rightThighCm                 Float?
+  leftCalfCm                   Float?
+  rightCalfCm                  Float?
+  leftHipCm                    Float?
+  rightHipCm                   Float?
+
+  // Posture and alignment.
+  headTiltAngle        Float?
+  pelvicTilt           Float?
+  shoulderRounding     Float?
+  shoulderTiltDeg      Float?
+  spineCurvatureDeg    Float?
+  hipRotationDeg       Float?
+  kneeAlignmentDeg     Float?
+  leftKneeAngleDeg     Float?
+  rightKneeAngleDeg    Float?
+  leftFootRotationDeg  Float?
+  rightFootRotationDeg Float?
+
+  // Face measurements plus authored facial shape channels (0–1 where noted).
+  faceWidthCm            Float?
+  faceHeightCm           Float?
+  eyeSpacingCm           Float?
+  earLengthCm            Float?
+  earWidthCm             Float?
+  noseLengthCm           Float?
+  noseWidthCm            Float?
+  browDepth              Float?
+  noseBridgeWidth        Float?
+  noseTipSize            Float?
+  earProminence          Float?
+  jawWidth               Float?
+  chinProjection         Float?
+  lipFullness            Float?
+  eyeSize                Float?
+  targetWeightKg         Float?
+  targetBodyFatPct       Float?
+  targetLeanMassKg       Float?
+  targetSkeletalMuscleKg Float?
+  targetChestCm          Float?
+  targetWaistCm          Float?
+  targetShouldersCm      Float?
+  targetArmsCm           Float?
+  targetThighsCm         Float?
+  targetHipsCm           Float?
+  targetGlutesCm         Float?
+  targetCalvesCm         Float?
+
+  // Appearance and avatar configuration. Color values are validated by the
+  // API; Fitzpatrick remains the stable material fallback for rendering.
+  biologicalSex        String? @db.NVarChar(Max)
+  modelPreset          String? @db.NVarChar(Max)
+  skinTone             String? @db.NVarChar(Max)
+  skinFitzpatrickIndex Int?
+  skinUndertone        String? @db.NVarChar(Max)
+  skinColorHex         String? @db.NVarChar(Max)
+  skinTextureVariant   String? @db.NVarChar(Max)
+  skinFreckleDensity   Float?
+  skinFeatureMap       String? @db.NVarChar(Max)
+  hairStyle            String? @db.NVarChar(Max)
+  hairColorHex         String? @db.NVarChar(Max)
+  hairTexture          String? @db.NVarChar(Max)
+  hairlineStyle        String? @db.NVarChar(Max)
+  hairPart             String? @db.NVarChar(Max)
+  hairDensity          Float?
+  hairLengthCm         Float?
+  facialHairStyle      String? @db.NVarChar(Max)
+  facialHairColorHex   String? @db.NVarChar(Max)
+  facialHairDensity    Float?
+  eyebrowStyle         String? @db.NVarChar(Max)
+  eyebrowColorHex      String? @db.NVarChar(Max)
+  eyeColorHex          String? @db.NVarChar(Max)
+  eyePattern           String? @db.NVarChar(Max)
+  eyelidShape          String? @db.NVarChar(Max)
+  eyelashStyle         String? @db.NVarChar(Max)
+  scleraColorHex       String? @db.NVarChar(Max)
+  irisLimbalRing       Boolean?
+  lipColorHex          String? @db.NVarChar(Max)
+  bodyHairPattern      String? @db.NVarChar(Max)
+  bodyHairColorHex     String? @db.NVarChar(Max)
+  bodyHairTexture      String? @db.NVarChar(Max)
+  bodyHairDensity      Float?
+  nailColorHex         String? @db.NVarChar(Max)
+  nailShape            String? @db.NVarChar(Max)
+  nailLengthMm         Float?
+  avatarAsset          String? @db.NVarChar(Max)
+  tattooAsset          String? @db.NVarChar(Max)
+  anatomyPreset        String? @db.NVarChar(Max)
+  anatomyVisibility    String? @db.NVarChar(Max)
+  anatomyRevealConsent Boolean  @default(false)
+  morphOverrides       String   @default("{}") @db.NVarChar(Max)
+  facialMorphs         String? @db.NVarChar(Max)
+  bodyProportions      String? @db.NVarChar(Max)
+  skinTones            String? @db.NVarChar(Max)
+  skinDetails          String? @db.NVarChar(Max)
+  hairProperties       String? @db.NVarChar(Max)
+  eyeProperties        String? @db.NVarChar(Max)
+
+  // Localized Skin Shades
+  skinShadeHeadHex     String? @db.NVarChar(Max)
+  skinShadeNeckHex     String? @db.NVarChar(Max)
+  skinShadeTorsoHex    String? @db.NVarChar(Max)
+  skinShadeAbsHex      String? @db.NVarChar(Max)
+  skinShadeArmsHex     String? @db.NVarChar(Max)
+  skinShadeLegsHex     String? @db.NVarChar(Max)
+  skinShadeGenitalsHex String? @db.NVarChar(Max)
+  skinShadeHandsHex    String? @db.NVarChar(Max)
+  skinShadeFeetHex     String? @db.NVarChar(Max)
+
+  updatedAt DateTime @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+
+  @@map("body_profiles")
+
+}
+
+model IntegrationCredential {
+  id                     String    @id @default(uuid()) @db.NVarChar(200)
+  userId                 String @db.NVarChar(200)
+  user                   User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  provider               String @db.NVarChar(200)
+  accountName            String? @db.NVarChar(Max)
+  clientIdCiphertext     String? @db.NVarChar(Max)
+  accessTokenCiphertext  String? @db.NVarChar(Max)
+  refreshTokenCiphertext String? @db.NVarChar(Max)
+  tokenExpiresAt         DateTime?
+  enabled                Boolean   @default(true)
+  lastSyncAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @default(now()) @updatedAt
+  createdBy              String? @db.NVarChar(Max)
+  updatedBy              String? @db.NVarChar(Max)
+
+  @@unique([userId, provider])
+  @@map("integration_credentials")
+
+}
+
+model AppSetting {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  key       String   @unique @db.NVarChar(200)
+  value     String @db.NVarChar(Max)
+  valueType String   @default("string") @db.NVarChar(Max)
+  category  String   @default("application") @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+
+  @@map("app_settings")
+
+}
+
+model IntegrationProvider {
+  id               String   @id @default(uuid()) @db.NVarChar(200)
+  providerKey      String   @unique @db.NVarChar(200)
+  displayName      String @db.NVarChar(Max)
+  category         String @db.NVarChar(Max)
+  authType         String @db.NVarChar(Max)
+  enabled          Boolean  @default(false)
+  icon             String? @db.NVarChar(Max)
+  documentationUrl String? @db.NVarChar(Max)
+  sortOrder        Int      @default(0)
+  updatedAt        DateTime @default(now()) @updatedAt
+  createdBy        String? @db.NVarChar(Max)
+  updatedBy        String? @db.NVarChar(Max)
+  createdAt        DateTime @default(now())
+
+  @@map("integration_providers")
+
+}
+
+model HelpArticle {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  slug      String   @unique @db.NVarChar(200)
+  section   String @db.NVarChar(Max)
+  title     String @db.NVarChar(Max)
+  body      String @db.NVarChar(Max)
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+
+  @@map("help_articles")
+
+}
+
+model PlanTemplate {
+  id            String   @id @default(uuid()) @db.NVarChar(200)
+  planType      String @db.NVarChar(Max)
+  name          String @db.NVarChar(Max)
+  description   String? @db.NVarChar(Max)
+  durationWeeks Int?
+  active        Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+  createdBy     String? @db.NVarChar(Max)
+  updatedBy     String? @db.NVarChar(Max)
+
+  @@map("plan_templates")
+
+}
+
+model Referral {
+  id           String   @id @default(uuid()) @db.NVarChar(200)
+  referrerId   String @db.NVarChar(200)
+  referredId   String @db.NVarChar(200)
+  status       String   @default("pending") @db.NVarChar(Max)
+  creditAmount Int      @default(10)
+  createdAt    DateTime @default(now())
+  createdBy    String? @db.NVarChar(Max)
+  updatedBy    String? @db.NVarChar(Max)
+  updatedAt    DateTime @default(now()) @updatedAt
+
+}
+
+model Task {
+  id          String   @id @default(uuid()) @db.NVarChar(200)
+  userId      String @db.NVarChar(200)
+  user        User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  title       String? @db.NVarChar(Max)
+  status      String? @db.NVarChar(200)
+  due_date    String? @db.NVarChar(200)
+  priority    String? @db.NVarChar(Max)
+  project     String? @db.NVarChar(Max)
+  section     String? @db.NVarChar(Max)
+  tags        String? @db.NVarChar(Max)
+  done        Boolean  @default(false)
+  completedAt String? @db.NVarChar(Max)
+  description String? @db.NVarChar(Max)
+  category String? @db.NVarChar(Max)
+  reminderAt String? @db.NVarChar(Max)
+  recurrence String? @db.NVarChar(Max)
+  parent_task_id String? @db.NVarChar(Max)
+  subtaskRows TaskSubtask[]
+  data        String? @db.NVarChar(Max)
+  createdAt   DateTime @default(now())
+  createdBy   String? @db.NVarChar(Max)
+  updatedBy   String? @db.NVarChar(Max)
+  updatedAt   DateTime @default(now()) @updatedAt
+  @@index([userId, createdAt])
+  @@index([userId, status, due_date])
+
+}
+
+model Transaction {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  amount    Float?
+  amountMinor BigInt? @ignore
+  type      String? @db.NVarChar(Max)
+  category  String? @db.NVarChar(Max)
+  method    String? @db.NVarChar(Max)
+  date      String? @db.NVarChar(200)
+  note      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
+  @@index([userId, createdAt])
+
+}
+
+model Budget {
+  id           String   @id @default(uuid()) @db.NVarChar(200)
+  userId       String @db.NVarChar(200)
+  user         User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category     String? @db.NVarChar(Max)
+  limit_amount Float?
+  limitMinor   BigInt? @ignore
+  month        String? @db.NVarChar(200)
+  createdAt    DateTime @default(now())
+  createdBy    String? @db.NVarChar(Max)
+  updatedBy    String? @db.NVarChar(Max)
+  updatedAt    DateTime @default(now()) @updatedAt
+  @@index([userId, month])
+
+}
+
+model MetricLog {
+  id          String    @id @default(uuid()) @db.NVarChar(200)
+  userId      String @db.NVarChar(200)
+  user        User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  date        String? @db.NVarChar(200)
+  metric      String? @db.NVarChar(200)
+  value       Float?
+  unit        String? @db.NVarChar(Max)
+  side        String? @db.NVarChar(Max)
+  phase       String?   @default("current") @db.NVarChar(Max)
+  confidence  Float?
+  measuredAt  DateTime?
+  source      String?   @default("manual") @db.NVarChar(Max)
+  type        String? @db.NVarChar(Max)
+  exercise    String? @db.NVarChar(Max)
+  weight      Float?
+  reps        Int?
+  sets        Int?
+  notes       String? @db.NVarChar(Max)
+  photoUrl    String? @db.NVarChar(Max)
+  label       String? @db.NVarChar(Max)
+  measurements MetricMeasurement[]
+  data        String? @db.NVarChar(Max)
+  stringValue String? @db.NVarChar(Max)
+  createdAt   DateTime  @default(now())
+  createdBy   String? @db.NVarChar(Max)
+  updatedBy   String? @db.NVarChar(Max)
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@index([userId, metric, measuredAt])
+  @@index([userId, date])
+
+}
+
+model MetricMeasurement {
+  id           String @id @default(uuid()) @db.NVarChar(200)
+  metricLogId  String @db.NVarChar(200)
+  metricLog    MetricLog @relation(fields: [metricLogId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  container    String @db.NVarChar(200)
+  key          String @db.NVarChar(200)
+  valueType    String @db.NVarChar(Max)
+  value        Float?
+  stringValue  String? @db.NVarChar(Max)
+  booleanValue Boolean?
+  unit         String? @db.NVarChar(Max)
+
+  @@unique([metricLogId, container, key])
+  @@index([key, value])
+
+}
+
+model HealthProfile {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String   @unique @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  posture   String? @db.NVarChar(Max)
+  broncoTest String? @db.NVarChar(Max)
+  diets     String? @db.NVarChar(Max)
+  hobbies   String? @db.NVarChar(Max)
+  senses    HealthSense[]
+  specialized HealthSpecialized[]
+  recoveryMetrics HealthRecoveryMetric[]
+  data      String   @default("{}") @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+
+  @@map("health_profiles")
+
+}
+
+model HealthSense {
+  id           String @id @default(uuid()) @db.NVarChar(200)
+  profileId    String @db.NVarChar(200)
+  profile      HealthProfile @relation(fields: [profileId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  key          String @db.NVarChar(200)
+  level        Float?
+  note         String? @db.NVarChar(Max)
+  currentPower String? @db.NVarChar(Max)
+  targetPower  String? @db.NVarChar(Max)
+  path         String? @db.NVarChar(Max)
+  color        String? @db.NVarChar(Max)
+  exercises    String? @db.NVarChar(Max)
+  data         String? @db.NVarChar(Max)
+
+  @@unique([profileId, key])
+
+}
+
+model HealthSpecialized {
+  id        String @id @default(uuid()) @db.NVarChar(200)
+  profileId String @db.NVarChar(200)
+  profile   HealthProfile @relation(fields: [profileId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position  Int
+  name      String? @db.NVarChar(Max)
+  score     Float?
+  color     String? @db.NVarChar(Max)
+  data      String? @db.NVarChar(Max)
+
+  @@unique([profileId, position])
+
+}
+
+model HealthRecoveryMetric {
+  id           String @id @default(uuid()) @db.NVarChar(200)
+  profileId    String @db.NVarChar(200)
+  profile      HealthProfile @relation(fields: [profileId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clientId     String? @db.NVarChar(200)
+  position     Int
+  name         String? @db.NVarChar(Max)
+  valueType    String? @db.NVarChar(Max)
+  value        Float?
+  stringValue  String? @db.NVarChar(Max)
+  booleanValue Boolean?
+  status       String? @db.NVarChar(Max)
+  data         String? @db.NVarChar(Max)
+
+  @@unique([profileId, position])
+
+}
+
+model LocationPoint {
+  id         String   @id @default(uuid()) @db.NVarChar(200)
+  userId     String @db.NVarChar(200)
+  user       User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  latitude   Float
+  longitude  Float
+  accuracyM  Float?
+  source     String   @default("browser") @db.NVarChar(Max)
+  capturedAt DateTime @default(now())
+  createdBy  String? @db.NVarChar(Max)
+  updatedBy  String? @db.NVarChar(Max)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@index([userId, capturedAt])
+  @@map("location_points")
+
+}
+
+model CustomTable {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  name      String @db.NVarChar(Max)
+  schema    String   @default("[]") @db.NVarChar(Max)
+  rows      String   @default("[]") @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+
+  @@map("custom_tables")
+
+}
+
+model NutritionLog {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  logged_at String? @db.NVarChar(Max)
+  date      String? @db.NVarChar(200)
+  name String? @db.NVarChar(Max)
+  meal String? @db.NVarChar(Max)
+  calories Float?
+  protein_g Float?
+  carbs_g Float?
+  fat_g Float?
+  data      String? @db.NVarChar(Max) // Custom extensions only; regular meal fields use columns.
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
+
+}
+
+model WorkoutSession {
+  id               String            @id @default(uuid()) @db.NVarChar(200)
+  userId           String @db.NVarChar(200)
+  user             User              @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  date             String? @db.NVarChar(Max)
+  notes            String? @db.NVarChar(Max)
+  duration_minutes Int?
+  volume           Float?
+  exercises        WorkoutExercise[]
+  createdAt        DateTime          @default(now())
+  createdBy        String? @db.NVarChar(Max)
+  updatedBy        String? @db.NVarChar(Max)
+  updatedAt        DateTime          @default(now()) @updatedAt
+
+}
+
+model WorkoutExercise {
+  id            String         @id @default(uuid()) @db.NVarChar(200)
+  sessionId     String @db.NVarChar(200)
+  session       WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  exercise_name String? @db.NVarChar(Max)
+  sets          Int?
+  reps          Int?
+  weight_kg     Float?
+  notes         String? @db.NVarChar(Max)
+  source String? @db.NVarChar(Max)
+  metadataVersion Int?
+  setId String? @db.NVarChar(200)
+  position Int?
+  setNumber Int?
+  completed Boolean?
+  payloadHash String? @db.NVarChar(Max)
+  createdAt     DateTime       @default(now())
+  createdBy     String? @db.NVarChar(Max)
+  updatedBy     String? @db.NVarChar(Max)
+  updatedAt     DateTime       @default(now()) @updatedAt
+
+}
+
+model ShoppingItem {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  name      String? @db.NVarChar(Max)
+  purchased Boolean  @default(false)
+  category String? @db.NVarChar(Max)
+  priority String? @db.NVarChar(Max)
+  quantity Int?
+  estimatedCost Float?
+  targetPrice Float?
+  actualCost Float?
+  notes String? @db.NVarChar(Max)
+  url String? @db.NVarChar(Max)
+  stage String? @db.NVarChar(200)
+  deliverySpeed String? @db.NVarChar(Max)
+  neededBy String? @db.NVarChar(Max)
+  source String? @db.NVarChar(Max)
+  orderedAt String? @db.NVarChar(Max)
+  expectedDelivery String? @db.NVarChar(Max)
+  importKey String? @db.NVarChar(Max)
+  expenseId String? @db.NVarChar(200)
+  expenseDate String? @db.NVarChar(Max)
+  priceRows ShoppingPrice[]
+  data      String? @db.NVarChar(Max) // For flexible additional fields
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, stage, purchased])
+
+}
+
+model TimesheetSession {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  date      String? @db.NVarChar(200)
+  duration  Float?
+  project String? @db.NVarChar(Max)
+  task String? @db.NVarChar(Max)
+  seconds Int?
+  billable Boolean?
+  earnings Float?
+  notes String? @db.NVarChar(Max)
+  startTime String? @db.NVarChar(Max)
+  endTime String? @db.NVarChar(Max)
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
+
+}
+
+model EntertainmentMedia {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  title     String? @db.NVarChar(Max)
+  progress  String? @db.NVarChar(Max)
+  type String? @db.NVarChar(200)
+  status String? @db.NVarChar(200)
+  season Int?
+  episode Int?
+  total_episodes Int?
+  rating Float?
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, status, type])
+
+}
+
+model Note {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  title     String? @db.NVarChar(Max)
+  content   String? @db.NVarChar(Max)
+  color     String? @db.NVarChar(Max)
+  tags      String? @db.NVarChar(Max) // Bounded ordered label list, not the note payload.
+  source    String? @db.NVarChar(Max)
+  date      String? @db.NVarChar(Max)
+  time      String? @db.NVarChar(Max)
+  text      String? @db.NVarChar(Max)
+  prompt    String? @db.NVarChar(Max)
+  journalVersion Int?
+  wordCount Int?
+  legacyImportId String? @db.NVarChar(200)
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  kind      String   @default("workspace") @db.NVarChar(200)
+  pinned    Boolean  @default(false)
+  starred   Boolean  @default(false)
+  revision  Int      @default(1)
+  deletedAt DateTime?
+  revisions NoteRevision[]
+
+  @@index([userId, kind, deletedAt, id])
+
+}
+
+// Row-per-record storage for calendar events and holdings (migration
+// 20261018120000_record_rows). Enabled with GROWTHTRACK_RECORD_ROWS=1; the
+// legacy User.calendarEvents/User.portfolio JSON is retained as a rollback copy.
+model CalendarEvent {
+  userId       String @db.NVarChar(200)
+  user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id           String @db.NVarChar(200)
+  revision     Int       @default(1)
+  title        String? @db.NVarChar(Max)
+  date         String? @db.NVarChar(Max)
+  endDate      String? @db.NVarChar(Max)
+  startTime    String? @db.NVarChar(Max)
+  endTime      String? @db.NVarChar(Max)
+  timeZone     String? @db.NVarChar(Max)
+  recurrence   String? @db.NVarChar(Max)
+  type         String? @db.NVarChar(Max)
+  description  String? @db.NVarChar(Max)
+  location     String? @db.NVarChar(Max)
+  color        String? @db.NVarChar(Max)
+  icsUid       String? @db.NVarChar(Max)
+  syncLabel    String? @db.NVarChar(Max)
+  allDay       Boolean?
+  data         String @db.NVarChar(Max)
+  syncProvider String? @db.NVarChar(200)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now())
+  createdBy    String? @db.NVarChar(Max)
+  updatedBy    String? @db.NVarChar(Max)
+
+  @@id([userId, id])
+  @@index([userId, deletedAt])
+  @@index([userId, syncProvider])
+  @@map("calendar_events")
+
+}
+
+model PortfolioHolding {
+  userId    String @db.NVarChar(200)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id        String @db.NVarChar(200)
+  revision  Int       @default(1)
+  position  Int       @default(0)
+  name      String? @db.NVarChar(Max)
+  symbol    String? @db.NVarChar(Max)
+  type      String? @db.NVarChar(Max)
+  units     Float?
+  buyPrice  Float?
+  currentPrice Float?
+  buyDate   String? @db.NVarChar(Max)
+  date      String? @db.NVarChar(Max)
+  priceDate String? @db.NVarChar(Max)
+  currentPriceDate String? @db.NVarChar(Max)
+  snapshotDate String? @db.NVarChar(Max)
+  asOf String? @db.NVarChar(Max)
+  asOfDate String? @db.NVarChar(Max)
+  recordedAt String? @db.NVarChar(Max)
+  capturedAt String? @db.NVarChar(Max)
+  timestamp String? @db.NVarChar(Max)
+  priceUpdatedAt String? @db.NVarChar(Max)
+  currency String? @db.NVarChar(Max)
+  baseCurrency String? @db.NVarChar(Max)
+  priceCurrency String? @db.NVarChar(Max)
+  buyCurrency String? @db.NVarChar(Max)
+  purchaseCurrency String? @db.NVarChar(Max)
+  valuationCurrency String? @db.NVarChar(Max)
+  schemeCode String? @db.NVarChar(Max)
+  coingeckoId String? @db.NVarChar(200)
+  data      String @db.NVarChar(Max)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+
+  @@id([userId, id])
+  @@index([userId, deletedAt, position])
+  @@map("portfolio_holdings")
+
+}
+
+model RecordMutation {
+  id          String   @id @default(uuid()) @db.NVarChar(200)
+  userId      String @db.NVarChar(200)
+  user        User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  collection  String @db.NVarChar(200)
+  mutationId  String @db.NVarChar(200)
+  fingerprint String @db.NVarChar(Max)
+  response    String @db.NVarChar(Max)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, collection, mutationId])
+  @@map("record_mutations")
+
+}
+
+model RecordChange {
+  sequence   Int      @id @default(autoincrement())
+  userId     String @db.NVarChar(200)
+  user       User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  collection String @db.NVarChar(200)
+  recordId   String @db.NVarChar(200)
+  revision   Int
+  operation  String @db.NVarChar(Max)
+  createdAt  DateTime @default(now())
+
+  @@index([userId, collection, sequence])
+  @@map("record_changes")
+
+}
+
+model NoteRevision {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  noteId    String @db.NVarChar(200)
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  revision  Int
+  title     String? @db.NVarChar(Max)
+  content   String? @db.NVarChar(Max)
+  color     String? @db.NVarChar(Max)
+  tags      String? @db.NVarChar(Max)
+  source    String? @db.NVarChar(Max)
+  date      String? @db.NVarChar(Max)
+  time      String? @db.NVarChar(Max)
+  text      String? @db.NVarChar(Max)
+  prompt    String? @db.NVarChar(Max)
+  journalVersion Int?
+  wordCount Int?
+  legacyImportId String? @db.NVarChar(200)
+  pinned    Boolean @default(false)
+  starred   Boolean @default(false)
+  data      String? @db.NVarChar(Max)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  actorId   String @db.NVarChar(200)
+
+  @@unique([noteId, revision])
+
+}
+
+model NoteMutation {
+  id          String   @id @default(uuid()) @db.NVarChar(200)
+  userId      String @db.NVarChar(200)
+  user        User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mutationId  String @db.NVarChar(200)
+  fingerprint String @db.NVarChar(Max)
+  response    String @db.NVarChar(Max)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, mutationId])
+
+}
+
+model NoteChange {
+  sequence  Int      @id @default(autoincrement())
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  noteId    String @db.NVarChar(200)
+  revision  Int
+  operation String @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+
+  @@index([userId, sequence])
+
+}
+
+model Goal {
+  id           String            @id @default(uuid()) @db.NVarChar(200)
+  userId       String @db.NVarChar(200)
+  user         User              @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  title        String? @db.NVarChar(Max)
+  targetDate   String? @db.NVarChar(200)
+  description String? @db.NVarChar(Max)
+  category String? @db.NVarChar(Max)
+  status String? @db.NVarChar(200)
+  priority String? @db.NVarChar(Max)
+  target_value Float?
+  current_value Float?
+  unit String? @db.NVarChar(Max)
+  is_focus Boolean?
+  subtaskRows GoalSubtask[]
+  data         String? @db.NVarChar(Max)
+  progressLogs GoalProgressLog[]
+  createdAt    DateTime          @default(now())
+  createdBy    String? @db.NVarChar(Max)
+  updatedBy    String? @db.NVarChar(Max)
+  updatedAt    DateTime          @default(now()) @updatedAt
+  @@index([userId, status, targetDate])
+
+}
+
+model SleepLog {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  date      String? @db.NVarChar(200)
+  hours     Float?
+  quality   String? @db.NVarChar(Max)
+  bed_time String? @db.NVarChar(Max)
+  wake_time String? @db.NVarChar(Max)
+  notes String? @db.NVarChar(Max)
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
+
+}
+
+model Document {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  title     String? @db.NVarChar(Max)
+  url       String? @db.NVarChar(Max)
+  storageKey String? @db.NVarChar(Max)
+  sizeBytes Int?
+  mimeType String? @db.NVarChar(Max)
+  sha256 String? @db.NVarChar(Max)
+  previewKind String? @db.NVarChar(Max)
+  encryptionFormat String? @db.NVarChar(Max)
+  encryptionKeyId String? @db.NVarChar(200)
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+
+}
+
+model Habit {
+  id        String     @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User       @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  name      String? @db.NVarChar(Max)
+  streak    Int        @default(0)
+  emoji String? @db.NVarChar(Max)
+  icon String? @db.NVarChar(Max)
+  category String? @db.NVarChar(Max)
+  target_days Int?
+  order_index Int?
+  data      String? @db.NVarChar(Max)
+  logs      HabitLog[]
+  createdAt DateTime   @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime   @default(now()) @updatedAt
+
+}
+
+model HabitLog {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  habitId   String @db.NVarChar(200)
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  date      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+
+}
+
+model SubscriptionItem {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  name      String? @db.NVarChar(Max)
+  cost      Float?
+  costMinor BigInt? @ignore
+  active    Int      @default(1)
+  category String? @db.NVarChar(Max)
+  next_date String? @db.NVarChar(200)
+  icon String? @db.NVarChar(Max)
+  auto_renew Int?
+  cycle String? @db.NVarChar(Max)
+  cancelled_date String? @db.NVarChar(Max)
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, active, next_date])
+
+}
+
+model MoodLog {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  date      String? @db.NVarChar(200)
+  mood      String? @db.NVarChar(Max)
+  energy Float?
+  note String? @db.NVarChar(Max)
+  tags String? @db.NVarChar(Max) // Bounded ordered label list.
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date])
+
+}
+
+model VitalsLog {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  date      String? @db.NVarChar(200)
+  vital     String? @db.NVarChar(200)
+  value     Float?
+  unit String? @db.NVarChar(Max)
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+  @@index([userId, date, vital])
+
+}
+
+model Medication {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  name      String? @db.NVarChar(Max)
+  dosage    String? @db.NVarChar(Max)
+  frequency String? @db.NVarChar(Max)
+  start_date String? @db.NVarChar(Max)
+  end_date String? @db.NVarChar(Max)
+  data      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+
+}
+
+model TaskSubtask {
+  taskId String @db.NVarChar(200)
+  task Task @relation(fields: [taskId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id String @db.NVarChar(200)
+  title String @db.NVarChar(Max)
+  done Boolean @default(false)
+  position Int @default(0)
+  @@id([taskId, id])
+  @@index([taskId, position])
+
+}
+
+model GoalSubtask {
+  goalId String @db.NVarChar(200)
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id String @db.NVarChar(200)
+  text String @db.NVarChar(Max)
+  done Boolean @default(false)
+  position Int @default(0)
+  @@id([goalId, id])
+  @@index([goalId, position])
+
+}
+
+model ShoppingPrice {
+  itemId String @db.NVarChar(200)
+  item ShoppingItem @relation(fields: [itemId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  date String @db.NVarChar(Max)
+  price Float
+  @@id([itemId, position])
+
+}
+
+model ProgressPhoto {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  date      String? @db.NVarChar(Max)
+  url       String? @db.NVarChar(Max)
+  notes     String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+
+}
+
+model GoalProgressLog {
+  id        String   @id @default(uuid()) @db.NVarChar(200)
+  userId    String @db.NVarChar(200)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  goalId    String @db.NVarChar(200)
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  value     Float?
+  note      String? @db.NVarChar(Max)
+  date      String? @db.NVarChar(Max)
+  createdAt DateTime @default(now())
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  updatedAt DateTime @default(now()) @updatedAt
+
+}
+
+// ── Logging Models ──────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.NVarChar(200)
+  action      String? @db.NVarChar(Max)
+  table_name  String? @db.NVarChar(Max)
+  item_id     String? @db.NVarChar(Max)
+  details     String? @db.NVarChar(Max)
+  actor_name  String?  @default("System") @db.NVarChar(Max)
+  actor_email String?  @default("admin@growthtrack.ultimate") @db.NVarChar(Max)
+  actor_ip    String? @db.NVarChar(Max)
+  category    String?  @default("system") @db.NVarChar(Max)
+  user_id     String? @db.NVarChar(Max)
+  user_agent  String? @db.NVarChar(Max)
+  severity    String?  @default("info") @db.NVarChar(Max)
+  source      String?  @default("ultimate-api") @db.NVarChar(Max)
+  request_id  String? @db.NVarChar(Max)
+  metadata    String? @db.NVarChar(Max)
+  timestamp   DateTime @default(now())
+  createdBy   String? @db.NVarChar(Max)
+  updatedBy   String? @db.NVarChar(Max)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@map("audit_logs")
+
+}
+
+model LoginLog {
+  id             String   @id @default(uuid()) @db.NVarChar(200)
+  user_id        String? @db.NVarChar(Max)
+  email          String? @db.NVarChar(Max)
+  action         String? @db.NVarChar(Max)
+  ip_address     String? @db.NVarChar(Max)
+  user_agent     String? @db.NVarChar(Max)
+  failure_reason String? @db.NVarChar(Max)
+  timestamp      DateTime @default(now())
+  createdBy      String? @db.NVarChar(Max)
+  updatedBy      String? @db.NVarChar(Max)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+  source         String?  @default("ultimate-api") @db.NVarChar(Max)
+  request_id     String? @db.NVarChar(Max)
+  metadata       String? @db.NVarChar(Max)
+
+  @@map("login_logs")
+
+}
+
+model SessionLog {
+  id         String   @id @default(uuid()) @db.NVarChar(200)
+  user_id    String? @db.NVarChar(Max)
+  action     String? @db.NVarChar(Max)
+  ip_address String? @db.NVarChar(Max)
+  user_agent String? @db.NVarChar(Max)
+  details    String? @db.NVarChar(Max)
+  timestamp  DateTime @default(now())
+  createdBy  String? @db.NVarChar(Max)
+  updatedBy  String? @db.NVarChar(Max)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  source     String?  @default("ultimate-api") @db.NVarChar(Max)
+  request_id String? @db.NVarChar(Max)
+  metadata   String? @db.NVarChar(Max)
+
+  @@map("session_logs")
+
+}
+
+// Generated plan record models: scripts/generate-plan-records.mjs
+model TrainingPlan {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  userId String @unique @db.NVarChar(200)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  streak Int?
+  longestStreak Int?
+  lastCompletedDate String? @db.NVarChar(Max)
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  schedule TrainingDay[]
+  prHistory TrainingPRHistory[]
+  readings TrainingPersonalRecord[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  @@map("training_plans")
+
+}
+
+model TrainingDay {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent TrainingPlan @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  day String? @db.NVarChar(Max)
+  muscleGroup String? @db.NVarChar(Max)
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  exercises PlannedExercise[]
+  @@unique([parentId, position])
+  @@map("training_days")
+
+}
+
+model PlannedExercise {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent TrainingDay @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  name String? @db.NVarChar(Max)
+  sets Int?
+  reps Int?
+  weight Float?
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  @@unique([parentId, position])
+  @@map("planned_exercises")
+
+}
+
+model TrainingPRHistory {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent TrainingPlan @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  date String? @db.NVarChar(Max)
+  lift String? @db.NVarChar(Max)
+  weight Float?
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  @@unique([parentId, position])
+  @@map("training_pr_history")
+
+}
+
+model TrainingPersonalRecord {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent TrainingPlan @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scope String @db.NVarChar(200)
+  key String @db.NVarChar(200)
+  valueType String @db.NVarChar(Max)
+  value Float?
+  stringValue String? @db.NVarChar(Max)
+  booleanValue Boolean?
+  unit String? @db.NVarChar(Max)
+  @@unique([parentId, scope, key])
+  @@index([scope, key, value])
+  @@map("training_personal_records")
+
+}
+
+model NutritionStrategy {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  userId String @unique @db.NVarChar(200)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  calories Float?
+  protein_g Float?
+  carbs_g Float?
+  fat_g Float?
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  meals PlannedMeal[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  @@map("nutrition_strategies")
+
+}
+
+model PlannedMeal {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent NutritionStrategy @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  name String? @db.NVarChar(Max)
+  time String? @db.NVarChar(Max)
+  icon String? @db.NVarChar(Max)
+  items String? @db.NVarChar(Max)
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  @@unique([parentId, position])
+  @@map("planned_meals")
+
+}
+
+model MedicalPlan {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  userId String @unique @db.NVarChar(200)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  testsRequired RequiredMedicalTest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  @@map("medical_plans")
+
+}
+
+model RequiredMedicalTest {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent MedicalPlan @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  name String? @db.NVarChar(Max)
+  priority String? @db.NVarChar(Max)
+  frequency String? @db.NVarChar(Max)
+  status String? @db.NVarChar(Max)
+  notes String? @db.NVarChar(Max)
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  @@unique([parentId, position])
+  @@map("required_medical_tests")
+
+}
+
+model PhysiquePlan {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  userId String @unique @db.NVarChar(200)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  targets PhysiqueTarget[]
+  milestones PhysiqueMilestone[]
+  zones PhysiqueZone[]
+  readings PhysiquePlanMeasurement[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdBy String? @db.NVarChar(Max)
+  updatedBy String? @db.NVarChar(Max)
+  @@map("physique_plans")
+
+}
+
+model PhysiqueTarget {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent PhysiquePlan @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  label String? @db.NVarChar(Max)
+  metric String? @db.NVarChar(Max)
+  key String? @db.NVarChar(Max)
+  currentValueType String? @db.NVarChar(Max)
+  currentValue Float?
+  currentStringValue String? @db.NVarChar(Max)
+  currentBooleanValue Boolean?
+  targetValueType String? @db.NVarChar(Max)
+  targetValue Float?
+  targetStringValue String? @db.NVarChar(Max)
+  targetBooleanValue Boolean?
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  @@unique([parentId, position])
+  @@map("physique_targets")
+
+}
+
+model PhysiqueMilestone {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent PhysiquePlan @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  label String? @db.NVarChar(Max)
+  targetDate String? @db.NVarChar(Max)
+  month String? @db.NVarChar(Max)
+  achieved Boolean?
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  @@unique([parentId, position])
+  @@map("physique_milestones")
+
+}
+
+model PhysiqueZone {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent PhysiquePlan @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position Int
+  clientId String? @db.NVarChar(200)
+  clientIdType String? @db.NVarChar(Max)
+  clientCreatedAt String? @db.NVarChar(Max)
+  clientUpdatedAt String? @db.NVarChar(Max)
+  name String? @db.NVarChar(Max)
+  status String? @db.NVarChar(Max)
+  icon String? @db.NVarChar(Max)
+  present String @default("[]") @db.NVarChar(Max)
+  data String? @db.NVarChar(Max)
+  @@unique([parentId, position])
+  @@map("physique_zones")
+
+}
+
+model PhysiquePlanMeasurement {
+  id String @id @default(uuid()) @db.NVarChar(200)
+  parentId String @db.NVarChar(200)
+  parent PhysiquePlan @relation(fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scope String @db.NVarChar(200)
+  key String @db.NVarChar(200)
+  valueType String @db.NVarChar(Max)
+  value Float?
+  stringValue String? @db.NVarChar(Max)
+  booleanValue Boolean?
+  unit String? @db.NVarChar(Max)
+  @@unique([parentId, scope, key])
+  @@index([scope, key, value])
+  @@map("physique_plan_measurements")
+
+}

@@ -15,12 +15,16 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
+# Package telemetry is separate from explicitly configured experiment tracking.
+os.environ.setdefault("MLFLOW_DISABLE_TELEMETRY", "true")
+os.environ.setdefault("MLFLOW_DISABLE_AGENT_HINT", "true")
+
 try:
     import mlflow
     MLFLOW_AVAILABLE = True
 except ImportError:
     MLFLOW_AVAILABLE = False
-    log.warning("mlflow not installed. Experiment tracking disabled. Run: pip install mlflow")
+    log.warning("MLflow tracking unavailable. Install the project's requirements in its virtual environment.")
 
 
 def setup_mlflow(
@@ -40,9 +44,13 @@ def setup_mlflow(
     if not MLFLOW_AVAILABLE:
         return
     uri = tracking_uri or os.environ.get("MLFLOW_TRACKING_URI", "mlruns")
+    # Preserve the application's existing local file-store workflow on MLflow 3.
+    # An explicit operator opt-out remains authoritative; never migrate records.
+    if uri.startswith("file:") or "://" not in uri:
+        os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
     mlflow.set_tracking_uri(uri)
     mlflow.set_experiment(experiment_name)
-    log.info(f"MLflow tracking URI: {uri}  |  Experiment: {experiment_name}")
+    log.info("MLflow experiment tracking configured; destination credentials are not logged.")
 
 
 @contextmanager

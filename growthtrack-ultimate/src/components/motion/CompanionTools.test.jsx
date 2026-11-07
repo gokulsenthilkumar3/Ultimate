@@ -1,0 +1,34 @@
+import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+const mocks = vi.hoisted(() => ({ create: vi.fn() }));
+vi.mock('../../domains/workspace/adapters/notesApi', () => ({ createNotesApi: () => ({ create: mocks.create }) }));
+import CompanionTools from './CompanionTools';
+const focus = () => ({ timer: null, ready: true, seconds: 0, start: vi.fn(), pause: vi.fn(), resume: vi.fn(), stop: vi.fn(), enableAlerts: vi.fn() });
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
+it('starts only the explicit local timer command and rejects unrelated instructions', async () => {
+  const model = focus(); render(<MemoryRouter><CompanionTools user={{ id: 'owner' }} focus={model} onHide={() => {}} /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('tab', { name: 'Quick capture' }));
+  fireEvent.change(screen.getByLabelText('Quick command or note'), { target: { value: 'delete my tasks' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Run command' }));
+  expect(await screen.findByRole('status')).toHaveTextContent('Try /timer');
+  expect(model.start).not.toHaveBeenCalled(); expect(mocks.create).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Quick command or note'), { target: { value: '/timer 25' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Run command' }));
+  await waitFor(() => expect(model.start).toHaveBeenCalledWith(25));
+});
+it('waits for note acknowledgement and clears unsubmitted text when accounts change', async () => {
+  let acknowledge; mocks.create.mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
+  const model = focus(); const show = user => <MemoryRouter><CompanionTools user={{ id: user }} focus={model} onHide={() => {}} /></MemoryRouter>;
+  const view = render(show('owner-one')); fireEvent.click(screen.getByRole('tab', { name: 'Quick capture' }));
+  fireEvent.change(screen.getByLabelText('Quick command or note'), { target: { value: 'An explicit synthetic note' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save as note' }));
+  expect(screen.queryByText('Note saved to your workspace.')).toBeNull();
+  expect(screen.getByLabelText('Quick command or note')).toHaveValue('An explicit synthetic note');
+  view.rerender(show('owner-two'));
+  expect(screen.getByLabelText('Quick command or note')).toHaveValue('');
+  acknowledge({ id: 'saved' });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Save as note' })).not.toHaveAttribute('aria-busy', 'true'));
+  expect(screen.queryByText('Note saved to your workspace.')).toBeNull();
+});

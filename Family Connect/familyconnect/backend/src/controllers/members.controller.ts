@@ -1,9 +1,13 @@
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, RelationshipType } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { cacheGet, cacheSet, cacheInvalidate, CACHE_TTL } from '../services/cache.service';
 import { authorizeTree } from '../services/treeAccess';
 import { z } from 'zod';
+import kinship from '../contracts/kinship.json';
+import { saveSelf } from '../services/personIdentity';
+import { validateRelationship, FamilyRuleError } from '../services/relationshipRules';
+import { memberWhere } from '../services/recordFilters';
 
 const prisma = new PrismaClient();
 export const memberFields = z.object({
@@ -16,36 +20,40 @@ export const memberFields = z.object({
 });
 const dates = (fields: Record<string, any>) => ({ ...fields, ...('birthDate' in fields ? { birthDate: fields.birthDate ? new Date(fields.birthDate) : null } : {}), ...('deathDate' in fields ? { deathDate: fields.deathDate ? new Date(fields.deathDate) : null } : {}) });
 
-export const createMember = async (req: AuthRequest, res: Response): Promise<void> => {
+export const createFields = memberFields.extend({
+  treeId: z.string().min(1).max(200), markAsMe: z.boolean().optional(),
+  relative: z.object({ memberId: z.string().min(1).max(200), presetId: z.string().max(80).optional(), type: z.enum(RelationshipType).optional(), customLabel: z.string().max(160).optional(), marriageDate: z.iso.date().optional() }).strict().optional(),
+}).strict();
+
+export function createPersonHandler(database = prisma) { return async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user!.id;
-    const { treeId, name, birthDate, birthLocation, deathDate, gender, religion, bio, photoUrl } = req.body;
-    if (!treeId || !name) { res.status(400).json({ error: 'TreeId and Name are required' }); return; }
-
-    if (!await authorizeTree(req, res, treeId, true)) return;
-    const parsed = memberFields.safeParse(req.body);
-    if (!parsed.success) { res.status(400).json({ error: 'Review the member name, dates and profile fields.' }); return; }
-
-    const member = await prisma.member.create({
-      data: {
-        ...dates(parsed.data), treeId, name: parsed.data.name,
-        birthDate:     birthDate     ? new Date(birthDate)  : null,
-        birthLocation: birthLocation ?? null,
-        deathDate:     deathDate     ? new Date(deathDate)  : null,
-        gender:        gender        ?? null,
-        religion:      religion      ?? null,
-        bio:           bio           ?? null,
-        photoUrl:      photoUrl      ?? null,
-        createdById:   userId,
-      },
-    });
+    if (!req.user) { res.status(401).json({ error: 'An Ultimate session is required.' }); return; }
+    const userId = req.user.id, parsed = createFields.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: 'Review the person’s name, dates and relationship.' }); return; }
+    const { treeId, relative, markAsMe, ...profile } = parsed.data;
+    const preset = relative?.presetId ? kinship.find(item => item.id === relative.presetId) : null;
+    if (relative && ((relative.presetId && !preset) || (!preset && !relative.type) || (preset && relative.type && preset.type !== relative.type))) { res.status(400).json({ error: 'Choose a supported relationship.' }); return; }
+    const member = await database.$transaction(async tx => {
+      const access = await tx.accessControl.findUnique({ where: { treeId_userId: { treeId, userId } } });
+      if (!access || !['admin', 'editor', 'family_head'].includes(access.role)) throw new FamilyRuleError(403, 'Tree editor access is required.');
+      const created = await tx.member.create({ data: { ...dates(profile), name: profile.name, treeId, createdById: userId } });
+      if (relative) {
+        const type = (preset?.type || relative.type) as RelationshipType;
+        await validateRelationship(tx, treeId, created.id, relative.memberId, type);
+        await tx.relationship.create({ data: { treeId, member1Id: created.id, member2Id: relative.memberId, type, customLabel: relative.customLabel || (preset ? `${preset.tamil} · ${preset.roman} (${preset.meaning})` : null), ...(relative.marriageDate ? { marriageDate: new Date(relative.marriageDate) } : {}) } });
+      }
+      if (markAsMe) await saveSelf(tx, userId, treeId, created.id);
+      return created;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     await cacheInvalidate(`tree:${treeId}:user:${userId}`, `members:${treeId}`);
     res.status(201).json(member);
   } catch (error) {
-    console.error('Create member error:', error);
+    if (error instanceof FamilyRuleError) { res.status(error.status).json({ error: error.message }); return; }
+    if ((error as { code?: string }).code === 'P2034') { res.status(409).json({ error: 'The tree changed. Refresh before adding this person again.' }); return; }
     res.status(500).json({ error: 'Internal server error' });
   }
-};
+}; }
+export const createMember = createPersonHandler();
 
 export const getMembers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -58,8 +66,7 @@ export const getMembers = async (req: AuthRequest, res: Response): Promise<void>
     if (req.query.page !== undefined) {
       const page = Math.max(0, Math.min(100000, Math.floor(Number(req.query.page) || 0)));
       const limit = Math.max(1, Math.min(100, Math.floor(Number(req.query.limit) || 25)));
-      const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 160) : '';
-      const where = { treeId: treeId as string, ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}) };
+      const where = memberWhere(treeId as string,req.query);
       const [rows, total] = await prisma.$transaction([prisma.member.findMany({ where, orderBy: [{ name: 'asc' }, { id: 'asc' }], skip: page * limit, take: limit }), prisma.member.count({ where })]);
       res.set('Cache-Control', 'private, no-store'); res.json({ rows, total, page, limit }); return;
     }
@@ -79,6 +86,7 @@ export const getMembers = async (req: AuthRequest, res: Response): Promise<void>
     await cacheSet(cacheKey, members, CACHE_TTL.MEMBERS);
     res.status(200).json(members);
   } catch (error) {
+    if(error instanceof z.ZodError){res.status(400).json({error:'Choose a valid living status and a search of up to 160 characters.'});return;}
     console.error('Get members error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }

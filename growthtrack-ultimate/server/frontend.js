@@ -3,6 +3,7 @@ import path from 'node:path';
 import { stat } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { contentSecurityPolicy } from './contentSecurityPolicy.js';
+import { isModelDeliveryFile } from './modelDelivery.js';
 
 export function frontendBasePath({ frontendBasePath: configured, appUrl } = {}) {
   const input = configured ?? (appUrl ? new URL(appUrl).pathname : '/Ultimate/');
@@ -30,16 +31,21 @@ export function registerFrontend(app, { distDirectory, frontendBasePath: configu
   app.use(mountPath, async (req, res, next) => {
     // Only hashed build code is public and immutable. Leave APIs, HTML, auth,
     // uploads and range requests on their existing response paths.
+    const relativeAsset = req.path.slice(1);
+    const modelAsset = isModelDeliveryFile(relativeAsset);
     if (!['GET', 'HEAD'].includes(req.method) || req.headers.range || req.headers.authorization
-      || !/^\/assets\/[^/]+-[\w-]{6,}\.(?:js|css)$/.test(req.path)) return next();
+      || (!modelAsset && !/^\/assets\/[^/]+-[\w-]{6,}\.(?:js|css)$/.test(req.path))) return next();
     res.vary('Accept-Encoding');
     const encoding = req.acceptsEncodings('br', 'gzip', 'identity');
     if (!encoding) return res.sendStatus(406);
     if (encoding === 'identity') return next();
-    const file = path.resolve(distDirectory, '.' + req.path + (encoding === 'br' ? '.br' : '.gz'));
+    const assetName = modelAsset ? relativeAsset : path.posix.join('assets', path.posix.basename(req.path));
+    const file = path.resolve(distDirectory, assetName + (encoding === 'br' ? '.br' : '.gz'));
+    const relative = path.relative(path.resolve(distDirectory, 'assets'), file);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) return next();
     try { if (!(await stat(file)).isFile()) return next(); }
     catch (error) { if (error.code === 'ENOENT') return next(); return next(error); }
-    if (!req.headers.cookie) res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    if (!req.headers.cookie) res.set('Cache-Control', modelAsset ? 'public, max-age=3600, must-revalidate' : 'public, max-age=31536000, immutable');
     res.type(path.extname(req.path));
     res.set('Content-Encoding', encoding);
     return res.sendFile(file, { dotfiles: 'deny' });

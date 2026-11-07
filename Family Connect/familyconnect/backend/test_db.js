@@ -1,27 +1,17 @@
+﻿// Connectivity check using the configured identity. Never guess passwords or
+// log credentials/driver errors that may contain connection URLs.
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
-const users = ["postgres", "gokul"];
-const passwords = [
-  "gokul", "gokul123", "gokul@123", "Gokul@123", "gokul1234",
-  "root", "admin", "password", "postgres", "password123", "familyconnect",
-  "123456", "1234", "admin123", "postgres123", "password1234", "12345",
-  "postgrespw", "docker", "system", "manager", ""
-];
-
 async function test() {
-  for (const u of users) {
-    for (const p of passwords) {
-      const url = `postgresql://${u}:${p}@localhost:5433/postgres`;
-      const prisma = new PrismaClient({ datasources: { db: { url } } });
-      try {
-        await prisma.$connect();
-        console.log(`SUCCESS: User is '${u}', Password is '${p}'`);
-        await prisma.$disconnect();
-        return;
-      } catch (e) {
-        // ignore errors
-      }
-    }
-  }
-  console.log("ALL PASSED PASSWORDS FAILED");
+  if (!process.env.DATABASE_URL) throw new Error('Configure DATABASE_URL before checking connectivity.');
+  const prisma = new PrismaClient();
+  try {
+    await prisma.$connect();
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('Database connection verified.');
+  } catch {
+    console.error('Database connection failed. Check the local configuration.');
+    process.exitCode = 1;
+  } finally { await prisma.$disconnect(); }
 }
-test();
+test().catch(() => { console.error('Database connectivity check could not start.'); process.exitCode = 1; });

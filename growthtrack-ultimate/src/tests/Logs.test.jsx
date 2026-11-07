@@ -104,6 +104,23 @@ describe('Logs service states', () => {
     expect(await screen.findByText('Token expired')).toBeVisible();
   });
 
+  it('stops at the server window even when a new entry caused overlapping pages', async () => {
+    apiSyncMock.mockImplementation(path => {
+      if (path === '/logs') return Promise.resolve({ logs: [{ id: 'one', details: 'First entry' }, { id: 'two', details: 'Overlapping entry' }], total: 4, page: 1, limit: 2 });
+      if (path === '/logs?page=2') return Promise.resolve({ logs: [{ id: 'two', details: 'Overlapping entry' }, { id: 'three', details: 'Third entry' }], total: 5, page: 2, limit: 2 });
+      if (path === '/logs?page=3') return Promise.resolve({ logs: [{ id: 'four', details: 'Last entry' }], total: 5, page: 3, limit: 2 });
+      return Promise.resolve({ status: 'healthy' });
+    });
+    render(<Logs />);
+    await screen.findByText('First entry');
+    await userEvent.click(screen.getByRole('button', { name: 'Load more logs' }));
+    await screen.findByText('Third entry');
+    await userEvent.click(screen.getByRole('button', { name: 'Load more logs' }));
+    await screen.findByText('Last entry');
+    expect(screen.getByText(/4 of 5 available loaded/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Load more logs' })).toBeNull();
+  });
+
   it('exports quoted CSV cells and neutralizes spreadsheet formulas', async () => {
     apiSyncMock.mockImplementation(path => path === '/logs'
       ? Promise.resolve({ logs: [{ id: 'csv', category: 'audit', details: '=1+1,"quoted"\nsecond line' }], total: 1 })

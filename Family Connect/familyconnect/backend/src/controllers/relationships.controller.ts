@@ -1,51 +1,42 @@
+import { Prisma, PrismaClient, RelationshipType } from '@prisma/client';
 import { Response } from 'express';
-import { PrismaClient, RelationshipType } from '@prisma/client';
+import { z } from 'zod';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { authorizeTree, membersBelongToTree } from '../services/treeAccess';
+import kinship from '../contracts/kinship.json';
+import { validateRelationship, FamilyRuleError } from '../services/relationshipRules';
+import { cacheInvalidate } from '../services/cache.service';
 
 const prisma = new PrismaClient();
+export const relationshipCreate = z.object({
+  treeId: z.string().min(1).max(200), member1Id: z.string().min(1).max(200), member2Id: z.string().min(1).max(200),
+  type: z.enum(RelationshipType).optional(), presetId: z.string().max(80).optional(), customLabel: z.string().max(160).optional(),
+  marriageDate: z.union([z.iso.date(), z.iso.datetime(), z.literal(''), z.null()]).optional(),
+  divorceDate: z.union([z.iso.date(), z.iso.datetime(), z.literal(''), z.null()]).optional(),
+}).strict();
 
-export const createRelationship = async (req: AuthRequest, res: Response): Promise<void> => {
+export function createRelationshipHandler(database = prisma) { return async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: 'An Ultimate session is required.' }); return; }
+  const parsed = relationshipCreate.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: 'Choose two people and a valid relationship.' }); return; }
+  const { treeId, member1Id, member2Id, presetId, type: requestedType, customLabel, marriageDate, divorceDate } = parsed.data;
+  const preset = presetId ? kinship.find(item => item.id === presetId) : null;
+  if ((presetId && !preset) || (!preset && !requestedType) || (preset && requestedType && preset.type !== requestedType)) { res.status(400).json({ error: 'Choose a supported relationship.' }); return; }
+  const type = (preset?.type || requestedType) as RelationshipType;
   try {
-    const userId = req.user!.id;
-    const { treeId, member1Id, member2Id, type, customLabel, marriageDate, divorceDate } = req.body;
-
-    if (!treeId || !member1Id || !member2Id || !type) {
-      res.status(400).json({ error: 'treeId, member1Id, member2Id, and type are required' });
-      return;
-    }
-
-    // Check access
-    const access = await prisma.accessControl.findFirst({
-      where: {
-        treeId: treeId,
-        userId: userId
-      }
-    });
-
-    if (!access || !await authorizeTree(req, res, treeId, true)) {
-      if (res.headersSent) return;
-      res.status(403).json({ error: 'Access denied to this family tree' });
-      return;
-    }
-    if (member1Id === member2Id || !await membersBelongToTree(treeId, [member1Id, member2Id])) { res.status(400).json({ error: 'Choose two different members from this tree.' }); return; }
-    if (!Object.values(RelationshipType).includes(type) || [marriageDate, divorceDate].some(date => date && !Number.isFinite(Date.parse(date))) || (customLabel && (typeof customLabel !== 'string' || customLabel.length > 160))) { res.status(400).json({ error: 'Review the relationship type, label and dates.' }); return; }
-
-    const relationship = await prisma.relationship.create({
-      data: {
-        treeId,
-        member1Id,
-        member2Id,
-        type,
-        customLabel,
-        marriageDate: marriageDate ? new Date(marriageDate) : null,
-        divorceDate: divorceDate ? new Date(divorceDate) : null
-      }
-    });
-
+    const relationship = await database.$transaction(async tx => {
+      const access = await tx.accessControl.findUnique({ where: { treeId_userId: { treeId, userId: req.user!.id } } });
+      if (!access || !['admin', 'editor', 'family_head'].includes(access.role)) throw new FamilyRuleError(403, 'Tree editor access is required.');
+      await validateRelationship(tx, treeId, member1Id, member2Id, type);
+      return tx.relationship.create({ data: { treeId, member1Id, member2Id, type,
+        customLabel: customLabel || (preset ? `${preset.tamil} · ${preset.roman} (${preset.meaning})` : null),
+        marriageDate: marriageDate ? new Date(marriageDate) : null, divorceDate: divorceDate ? new Date(divorceDate) : null,
+      } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    await cacheInvalidate(`tree:${treeId}:user:${req.user.id}`);
     res.status(201).json(relationship);
   } catch (error) {
-    console.error('Create relationship error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    if (error instanceof FamilyRuleError) { res.status(error.status).json({ error: error.message }); return; }
+    res.status((error as { code?: string }).code === 'P2034' ? 409 : 500).json({ error: 'The relationship could not be saved. Refresh before trying again.' });
   }
-};
+}; }
+export const createRelationship = createRelationshipHandler();

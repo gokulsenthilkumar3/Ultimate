@@ -13,7 +13,7 @@ function json(res, status, data) {
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
   });
-  res.end(JSON.stringify(data));
+  res.end(JSON.stringify(data, (_key, value) => typeof value === 'bigint' ? value.toString() : value));
 }
 
 export function createDatabaseStudio({ sources = createDatabaseSources() } = {}) {

@@ -61,6 +61,7 @@ export default function Logs() {
 
   const [logs,     setLogs]     = useState([]);
   const [availableTotal, setAvailableTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const requestVersion = useRef(0);
   const nextServerPage = useRef(1);
   const [loading,  setLoading]  = useState(true);
@@ -87,7 +88,7 @@ export default function Logs() {
     const request = ++requestVersion.current;
     setLoading(true);
     setLoadError('');
-    if (!append) { setLogs([]); setAvailableTotal(0); setDiagnostics(null); nextServerPage.current = 1; }
+    if (!append) { setLogs([]); setAvailableTotal(0); setHasMore(false); setDiagnostics(null); nextServerPage.current = 1; }
     try {
       const qs = new URLSearchParams();
       if (categoryF !== 'all') qs.append('category', categoryF);
@@ -105,6 +106,10 @@ export default function Logs() {
       setLogs(previous => append ? [...new Map([...previous, ...rows].map(row => [String(row.category || 'audit') + ':' + row.id, row])).values()] : rows);
       setAvailableTotal(Array.isArray(data) ? rows.length : Number(data.total) || rows.length);
       nextServerPage.current = (Number(data.page) || nextServerPage.current) + 1;
+      // Offset pages may overlap when new logs arrive. Exhaustion depends on
+      // the server window, not the number of unique records accumulated.
+      const limit = Number(data.limit) || rows.length;
+      setHasMore(!Array.isArray(data) && rows.length > 0 && (nextServerPage.current - 1) * limit < Number(data.total));
       try {
         const result = await apiSync('/logs/diagnostics', 'GET');
         if (request === requestVersion.current) setDiagnostics(result);
@@ -352,7 +357,7 @@ export default function Logs() {
           </div>
           <Pagination label="Audit log pages" page={currentPage} pageCount={pageCount} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </>)}
-        {!loading && logs.length < availableTotal && <button type="button" className="btn-primary" onClick={() => fetchLogs(true)}>Load more logs</button>}
+        {!loading && hasMore && <button type="button" className="btn-primary" onClick={() => fetchLogs(true)}>Load more logs</button>}
       </div>
 
       {/* Expanded details modal */}

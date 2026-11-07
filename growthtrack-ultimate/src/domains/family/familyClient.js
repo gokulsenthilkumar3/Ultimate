@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
+import { getCsrfToken, refreshCsrfToken } from '../../lib/apiClient';
 
 let connection = null, owner = null, epoch = 0;
 const listeners = new Set();
@@ -7,8 +8,8 @@ export function resetFamilyConnection(nextOwner = null) { connection = null; own
 if (typeof window !== 'undefined') window.addEventListener('growthtrack:session-changed', event => resetFamilyConnection(event.detail?.owner || null));
 export function connectFamily(ownerId, payload, expectedEpoch) {
   if (owner !== ownerId || epoch !== expectedEpoch) return false;
-  if (!payload?.user?.id || typeof payload.token !== 'string' || payload.token === 'ultimate-local') throw new Error('Family Connect did not return a valid account connection.');
-  connection = { owner: ownerId, user: payload.user, token: payload.token }; publish(); return true;
+  if (!payload?.user?.id || (payload.authMode !== 'ultimate' && (typeof payload.token !== 'string' || payload.token === 'ultimate-local'))) throw new Error('Family Connect did not return a valid account connection.');
+  connection = payload.authMode === 'ultimate' ? { owner: ownerId, user: payload.user, authMode: 'ultimate' } : { owner: ownerId, user: payload.user, token: payload.token }; publish(); return true;
 }
 export const familyEpoch = () => epoch;
 export function useFamilyConnection(ownerId) {
@@ -21,21 +22,26 @@ export class FamilyError extends Error {
   constructor(message, status = 0) { super(message); this.status = status; this.payload = { error: message }; }
 }
 
-/** A Family 401 expires only the Family connection, never the Ultimate session. */
+/** Native 401s belong to Ultimate; legacy token failures only clear Family. */
 export async function familyRequest(path, { connection: account, body, method = 'GET', signal, blob = false } = {}) {
-  if (!/^\/(auth\/(login|register)|trees|members|relationships|events|documents|ai)(\/|\?|$)/.test(path)) throw new FamilyError('Unsupported Family request.');
+  if (!/^\/(session|auth\/(login|register)|trees|members|relationships|events|documents|ai)(\/|\?|$)/.test(path)) throw new FamilyError('Unsupported Family request.');
+  const shared = path === '/session' || account?.authMode === 'ultimate';
+  const requestEpoch = epoch;
   const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 20_000);
   const abort = () => controller.abort();
   signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) controller.abort();
   const headers = new Headers({ Accept: blob ? '*/*' : 'application/json' });
-  if (account?.token) headers.set('Authorization', `Bearer ${account.token}`);
+  if (!shared && account?.token) headers.set('Authorization', `Bearer ${account.token}`);
   if (body && !(body instanceof FormData)) headers.set('Content-Type', 'application/json');
   try {
-    const response = await fetch(`/api/family${path}`, { method, body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined, headers, credentials: 'omit', signal: controller.signal });
+    if (shared && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) headers.set('X-CSRF-Token', getCsrfToken() || await refreshCsrfToken());
+    const response = await fetch(`${shared ? '/api/native/family' : '/api/family'}${path}`, { method, body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined, headers, credentials: shared ? 'include' : 'omit', signal: controller.signal });
     if (!response.ok) {
-      if (response.status === 401 && account && connection?.token === account.token) resetFamilyConnection(account.owner);
+      if (response.status === 401 && shared && requestEpoch === epoch && !controller.signal.aborted) window.dispatchEvent(new CustomEvent('growthtrack:auth-expired'));
+      if (response.status === 401 && account && connection === account) resetFamilyConnection(account.owner);
       const data = await response.json().catch(() => ({}));
-      throw new FamilyError(typeof data.error === 'string' ? data.error : 'The Family service could not complete this request.', response.status);
+      const fallback = response.status === 404 ? 'This Family feature is missing from the running API. Start the latest Family build and retry.' : response.status === 429 ? 'Too many Family requests. Wait a moment before retrying.' : 'The Family service could not complete this request.';
+      throw new FamilyError(typeof data.error === 'string' ? data.error : fallback, response.status);
     }
     return blob ? response.blob() : response.json();
   } catch (error) {

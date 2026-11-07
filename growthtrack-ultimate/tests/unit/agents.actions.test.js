@@ -17,6 +17,14 @@ function setup(extra = {}) {
 }
 
 describe('reviewed agent action boundary', () => {
+  it('reschedules the displayed task date along with its persisted alias', async () => {
+    const s = setup();
+    const task = s.state.user.tasks.pending[0];
+    Object.assign(task, { dueDate: '2026-10-01', due_date: '2026-10-01' });
+    s.state.updateTask = vi.fn(async (_id, patch) => Object.assign(task, patch(task)));
+    await s.apply(s.prepare([{ kind: 'task.update', recordId: task.id, dueDate: '2026-11-02' }], context));
+    expect(task).toMatchObject({ dueDate: '2026-11-02', due_date: '2026-11-02' });
+  });
   it('rejects unsupported operations, invalid dates and hidden payload fields', () => {
     for (const action of [{ kind: 'shell', command: 'anything' }, { kind: 'task.create', title: 'Task', url: 'https://external.test' }, { kind: 'task.create', title: 'Task', dueDate: '2026-02-31' }, { kind: 'task.update', recordId: 'task-1' }]) {
       expect(agentPlanSchema.safeParse({ summary: 'Plan', actions: [action] }).success).toBe(false);

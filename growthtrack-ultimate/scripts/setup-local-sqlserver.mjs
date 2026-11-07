@@ -1,0 +1,30 @@
+// Operator-run local setup. No credentials are printed or passed in argv.
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const sqlcmd = 'C:/Program Files/Microsoft SQL Server/Client SDK/ODBC/180/Tools/Binn/SQLCMD.EXE';
+const destination = path.join(root, '.env.sqlserver');
+if (fs.existsSync(destination)) throw new Error('Private .env.sqlserver already exists; refusing to replace its credentials.');
+const password = 'Gt!' + crypto.randomBytes(32).toString('hex');
+const query = `USE master;
+IF EXISTS (SELECT 1 FROM sys.server_principals WHERE name=N'growthtrack_app') THROW 51000,'Login already exists; review it manually.',1;
+EXEC master.dbo.xp_instance_regwrite N'HKEY_LOCAL_MACHINE',N'Software\\Microsoft\\MSSQLServer\\MSSQLServer',N'LoginMode',REG_DWORD,2;
+EXEC master.dbo.xp_instance_regwrite N'HKEY_LOCAL_MACHINE',N'Software\\Microsoft\\MSSQLServer\\MSSQLServer\\SuperSocketNetLib\\Tcp',N'Enabled',REG_DWORD,1;
+EXEC master.dbo.xp_instance_regwrite N'HKEY_LOCAL_MACHINE',N'Software\\Microsoft\\MSSQLServer\\MSSQLServer\\SuperSocketNetLib\\Tcp\\IPAll',N'TcpDynamicPorts',REG_SZ,N'';
+EXEC master.dbo.xp_instance_regwrite N'HKEY_LOCAL_MACHINE',N'Software\\Microsoft\\MSSQLServer\\MSSQLServer\\SuperSocketNetLib\\Tcp\\IPAll',N'TcpPort',REG_SZ,N'14333';
+CREATE LOGIN [growthtrack_app] WITH PASSWORD=N'${password}',CHECK_POLICY=ON,DEFAULT_DATABASE=[GrowthTrackDB];
+USE GrowthTrackDB;
+CREATE USER [growthtrack_app] FOR LOGIN [growthtrack_app];
+ALTER ROLE db_datareader ADD MEMBER [growthtrack_app];
+ALTER ROLE db_datawriter ADD MEMBER [growthtrack_app];
+GO
+`;
+const result = spawnSync(sqlcmd, ['-S', '.\\SQLEXPRESS', '-E', '-C', '-b', '-l', '8'], { input: query, encoding: 'utf8', windowsHide: true });
+if (result.status !== 0) throw new Error('SQL Server setup failed; inspect the local server configuration before retrying. Credentials were not written.');
+const previous = fs.readFileSync(path.join(root, '.env'), 'utf8');
+const clean = previous.split(/\r?\n/).filter(line => !/^(DATABASE_PROVIDER|DATABASE_URL|BACKUP_ENABLED)=/.test(line)).join('\n');
+fs.writeFileSync(destination, `${clean.trimEnd()}\nDATABASE_PROVIDER=sqlserver\nDATABASE_URL="sqlserver://127.0.0.1:14333;database=GrowthTrackDB;user=growthtrack_app;password=${password};encrypt=true;trustServerCertificate=true;connectionLimit=5;connectTimeout=15000;"\nBACKUP_ENABLED=false\n`, { flag: 'wx', mode: 0o600 });
+console.log('Restricted local database login created; candidate configuration saved privately. SQL Express restart and verification required before activation.');

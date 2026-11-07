@@ -27,6 +27,30 @@ The indexer redacts credential-shaped tokens and direct literal secret assignmen
 
 `npm run context:graph` builds an ignored `.code-index/graph.json` using the same source allowlist, exclusions, size limits and redaction as lexical retrieval. It uses Ultimate's installed TypeScript parser; install Ultimate dependencies first. No source is executed or uploaded.
 
+Install the workspace's pinned development tools with `npm install` at the root.
+The graph command now formats `graph.json` with Prettier and generates the
+self-contained `.code-index/graph.html` viewer. Open that HTML file directly in
+a browser; no server, account, CDN or network access is required. The viewer
+shows parsed source-import relationships only. Manually declared product arrows
+were removed at the user's request. This custom local tool is not Graphify and
+must not be presented as Graphify-generated intents or relationships.
+The viewer offers bounded file dependencies, reverse-import impact
+up to three levels, file/module search, type-only edge filtering, zoom/pan and
+SVG export. Import arrows point from importer to dependency. Displayed caps and static
+coverage limits remain explicit. This is a local dependency viewer, not a
+separate Graphify service. `npm run context:graph:view` rebuilds both artifacts;
+`npm run format:graph` formats only the generated JSON and `npm run format:graph:check`
+checks its formatting. Generated graph files remain ignored and outside releases.
+
+For **Graphify itself**, run `npm run graphify:build`. This calls the installed
+Graphify code-only extractor with model backends disabled, exports its own
+`graphify-out/graph.html` and `graphify-out/wiki/index.md`, and applies Prettier to
+`graphify-out/graph.json` without changing graph data. `.graphifyignore` bounds
+the scan, and `graphify-out/` stays Git-ignored. Use `graphify export wiki` and
+`graphify benchmark graphify-out/graph.json` after the initial build. Do not type
+the optional-argument brackets shown in help. See the
+[verified extraction and limits](2026-11-05-product-connections.md#graphify-output-and-command-verification).
+
 `npm run context:graph:query -- "growthtrack-ultimate/server.js"` returns up to 100 direct dependencies and 100 direct importers, with full counts. Graph edges retain the import line. Queries verify all included source hashes, the file inventory and exclusion policy; rebuild after additions, edits or deletions. Run `node --test tests/code-context.test.mjs tests/code-graph.test.mjs` for tooling checks.
 
 `npm run context:graph:impact -- "growthtrack-ultimate/src/lib/bodyMetricContract.js"` traverses reverse imports to find indirect consumers. Optional positional depth and result limits default to 8 and 100 (maximum 32 and 1,000). Each consumer records its shortest distance, the dependency connecting it toward the changed file, and the import line in the consumer. Traversal handles cycles and deduplicates diamond paths. `truncated` marks a result cap; `depthLimited` marks unexplored edges at the depth cap. These are potential static consumers, not proof that every consumer's behaviour changes or a replacement for affected application checks.

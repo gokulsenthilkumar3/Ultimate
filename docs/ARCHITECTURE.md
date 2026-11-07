@@ -20,9 +20,11 @@ The relevant implementation lives in the [application shell](../growthtrack-ulti
 
 ## Customer administration
 
-The presentation exists, but restricted FinSync/OxFin adapters are not production-ready. Known products return authenticated unavailable responses until configured. Real adapters require product-scoped authorization, server-owned credentials, minimal response contracts and audited mutations. They must not reuse customer handoff tokens as administrator authority.
+The read-only FinSync/OxFin adapters exist in `server/domains/customerAdmin.js`. They require explicit product-scoped URL/token/reader configuration, validate bounded response contracts and audit access. They return authenticated unavailable responses until configured; local implementation and synthetic checks do not establish production readiness. Mutations require their own authorization and audit design. Customer handoff tokens are not administrator authority.
 
-The [engineering plan](Eng%20Plan.md) tracks replacing FinSync's browser-held encryption boundary, building authorized customer-admin adapters and verifying OxFin database TLS. Follow its current evidence and acceptance criteria when assessing implementation progress. This documentation pass does not implement those runtime changes.
+The [engineering plan](Eng%20Plan.md) tracks replacing FinSync's browser-held encryption boundary, completing authorized customer-admin integration and verifying OxFin database TLS. Follow its current evidence and acceptance criteria when assessing implementation progress.
+
+The local [codebase map](plans/2026-10-28-code-retrieval.md) shows parsed source imports. Manually declared product arrows were removed at the user's request; this custom map is not Graphify output. The [connection review](plans/2026-11-05-product-connections.md) records the separate runtime contracts.
 
 ## Dependency direction
 

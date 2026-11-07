@@ -30,7 +30,7 @@ export async function setupHumanViewer(page: Page, reducedMotion: 'reduce' | 'no
         if (gate) { gate.started(); await gate.wait; }
         body = { ...body, ...payload }; return route.fulfill({ json: body });
       }
-      targets = payload; return route.fulfill({ json: targets });
+      targets = payload; return route.fulfill({ json: { id: 'synthetic-physique-targets', ...targets } });
     }
     return route.fulfill({ json: path === '/api/body-profile' ? body : { ...emptyState(), user: { ...OWNER, physiqueTargets: targets }, bodyProfile: body } });
   });

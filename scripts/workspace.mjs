@@ -54,8 +54,8 @@ const COMMANDS = {
   },
   ultimate: {
     cwd: path.join(root, 'growthtrack-ultimate'),
-    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
-    args: ['run', 'dev'],
+    command: process.execPath,
+    args: ['node_modules/concurrently/dist/bin/index.js', 'node node_modules/vite/bin/vite.js --configLoader native', 'node server.js'],
     env: { GROWTHTRACK_WORKSPACE: '1', GATEWAY_URL: 'http://127.0.0.1:5300', LISTEN_HOST: '127.0.0.1' },
     uiUrl:  'http://127.0.0.1:5000/Ultimate/',
     apiUrl: 'http://127.0.0.1:3001',

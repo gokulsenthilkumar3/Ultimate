@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PRODUCTS } from '../src/config/products.js';
+import { rejectExposedDeploymentSecrets } from './exposedSecrets.js';
 
 // One validated source for every backend setting. Each value can be set from
 // the environment; the defaults below are the only place they are written
@@ -65,6 +66,8 @@ const schema = z.object({
   COMPANION_OXFIN_URL: httpUrl('http://localhost:5102'),
   COMPANION_FOREX_URL: httpUrl('http://localhost:8501'),
   COMPANION_FAMILY_URL: httpUrl('http://localhost:5104'),
+  FAMILY_API_URL: httpUrl('http://127.0.0.1:3104').refine(value => { const url = new URL(value); return url.pathname === '/' && !url.search && !url.hash && (url.protocol === 'https:' || ['127.0.0.1', 'localhost', '[::1]', 'family-api'].includes(url.hostname)); }, 'must be an HTTPS origin or trusted local Family service origin'),
+  FAMILY_ULTIMATE_SECRET: z.string().regex(/^[a-f0-9]{64}$/i, 'must be 64 hexadecimal characters').optional(),
   COMPANION_EQUITY_URL: httpUrl('http://localhost:5105'),
   DB_STUDIO_URL: httpUrl('http://localhost:5556'),
   GATEWAY_URL: httpUrl('http://127.0.0.1:5300'),
@@ -118,6 +121,7 @@ export function loadServerConfig(env = process.env) {
     throw new Error(`Invalid server configuration:\n- ${problems.join('\n- ')}`);
   }
   const e = parsed.data;
+  rejectExposedDeploymentSecrets(e);
   const production = e.NODE_ENV === 'production';
   if (production && !e.HANDOFF_SECRET) throw new Error('Invalid server configuration:\n- HANDOFF_SECRET: required in production for a stable signing identity; outstanding handoffs remain process-local');
   if (e.BACKUP_ENABLED && !e.APP_ENCRYPTION_KEY) throw new Error('Invalid server configuration:\n- APP_ENCRYPTION_KEY: required for encrypted scheduled backups');
@@ -147,6 +151,7 @@ export function loadServerConfig(env = process.env) {
         workspaceCompanion('equity', 'Equity/NiftyLens', e.COMPANION_EQUITY_URL),
       ] },
     features: { notesV1: e.GROWTHTRACK_NOTES_V1, recordRows: e.GROWTHTRACK_RECORD_ROWS },
+    family: { baseUrl: e.FAMILY_API_URL, secret: e.FAMILY_ULTIMATE_SECRET || null },
     records: { limits: { calendar: e.RECORD_CALENDAR_LIMIT, holdings: e.RECORD_HOLDINGS_LIMIT }, maxRecordBytes: e.RECORD_MAX_KB * 1024 },
     sync: {
       scheduler: { enabled: e.GROWTHTRACK_SYNC_SCHEDULER, intervalMs: e.SYNC_SCHEDULER_INTERVAL_MINUTES * MINUTE, firstRunMs: e.SYNC_FIRST_RUN_SECONDS * 1000 },

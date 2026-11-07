@@ -28,11 +28,11 @@
 .about-entry--minor { --about-tone: var(--gt-character-mint); }
 .about-entry--patch { --about-tone: var(--gt-character-yellow); }
 .about-entry--initial { --about-tone: var(--gt-character-coral); }
-.about-entry__dot { position: absolute; inset-inline-start: 8px; inset-block-start: 16px; z-index: 1; display: grid; place-items: center; inline-size: 24px; block-size: 24px; border: 2px solid var(--gt-text); border-radius: 50%; background: var(--about-tone); color: var(--gt-text); }
+.about-entry__dot { position: absolute; inset-inline-start: 8px; inset-block-start: 16px; z-index: 1; display: grid; place-items: center; inline-size: 24px; block-size: 24px; border: 2px solid var(--gt-text); border-radius: 50%; background: var(--about-tone); color: #10231c; }
 .about-entry__card { overflow: hidden; border: 1.5px solid var(--gt-border-strong); border-radius: 20px; background: var(--gt-surface); box-shadow: var(--gt-shadow-card); }
 .about-entry__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 20px 0; }
 .about-entry__hash { color: var(--gt-text); font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 17px; font-weight: 800; letter-spacing: -.02em; text-underline-offset: 3px; }
-.about-entry__badge { padding: 3px 10px; border-radius: 999px; background: var(--about-tone); color: var(--gt-text); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.about-entry__badge { padding: 3px 10px; border-radius: 999px; background: var(--about-tone); color: #10231c; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .about-entry__date { display: inline-flex; align-items: center; gap: 4px; color: var(--gt-muted); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .about-entry__toggle { display: flex; align-items: center; gap: 16px; inline-size: 100%; min-block-size: 44px; padding: 8px 20px 16px; border: 0; background: transparent; color: var(--gt-text); text-align: start; cursor: pointer; }
 .about-entry__toggle:focus-visible { outline: 3px solid var(--gt-focus); outline-offset: -4px; }

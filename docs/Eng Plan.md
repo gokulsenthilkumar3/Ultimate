@@ -1,5 +1,15 @@
 # GrowthTrack engineering plan: improve the existing workspace
 
+7 November Family follow-up: [local stabilization and AWS/Azure rollout boundaries](plans/2026-11-07-family-hardening.md) records the reminder fix, schema checks, guarded CRUD additions, bridge circuit breaker, readiness, scoped API contract and remaining storage/schema/integration work. Cloud deployment remains deferred by the owner.
+
+The [Tamil relationship and Me workflow](plans/2026-11-07-family-tamil-relationships.md) adds explicit direction previews, atomic person/relative creation, 26 Tamil presets, private one-person-per-account/tree selection and bounded branch focus. Relationship creation/editing now includes transaction-based duplicate/ancestry checks; database constraints and the broader storage/schema rollout remain pending.
+
+5 November follow-up: [critical-alert remediation and local browser measurements](plans/2026-11-05-critical-alerts-and-performance.md)
+records the exposed local key rotation, critical dependency upgrades, CodeQL
+boundary fixes and measured performance limits. The 4 November assessment below
+is retained as its dated baseline; hosted rescanning and provider-side key status
+remain separate from local test results.
+
 Reviewed against the working tree on 4 November 2026. This maintained plan supersedes the supplied review text retained at the end of this file. It covers all supplied recommendations; it does not authorize implementing every speculative rewrite in those reviews.
 
 **Decision: retain the application stack and product boundaries. Replace FinSync's browser-held encryption boundary; build missing customer-admin adapters behind explicit authorization. Improve the remaining areas incrementally.** Neither a workspace restart nor five mandatory subsystem rewrites is justified by the source reviewed.

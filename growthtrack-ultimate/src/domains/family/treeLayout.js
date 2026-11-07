@@ -1,5 +1,16 @@
-export function layoutFamilyTree(members, relationships, limit = 60) {
-  const visible = members.slice(0, limit), ids = new Set(visible.map(member => member.id));
+export function layoutFamilyTree(members, relationships, limit = 60, focusId, pinId) {
+  const available = new Map(members.map(person => [person.id, person])), neighbors = new Map();
+  for (const edge of relationships) {
+    neighbors.set(edge.member1Id, [...(neighbors.get(edge.member1Id) || []), edge.member2Id]);
+    neighbors.set(edge.member2Id, [...(neighbors.get(edge.member2Id) || []), edge.member1Id]);
+  }
+  const ordered = [], seen = new Set(), focusQueue = [...new Set([focusId, pinId].filter(id => available.has(id)))];
+  for (let i = 0; i < focusQueue.length && ordered.length < limit; i++) {
+    const id = focusQueue[i]; if (seen.has(id)) continue; seen.add(id);
+    if (available.has(id)) ordered.push(available.get(id));
+    focusQueue.push(...(neighbors.get(id) || []).filter(next => !seen.has(next)));
+  }
+  const visible = [...ordered, ...members.filter(person => !seen.has(person.id))].slice(0, limit), ids = new Set(visible.map(member => member.id));
   const edges = relationships.filter(edge => ids.has(edge.member1Id) && ids.has(edge.member2Id));
   const parents = edges.filter(edge => ['parent', 'child', 'step_parent', 'step_child'].includes(edge.type)).map(edge => ['child', 'step_child'].includes(edge.type) ? [edge.member2Id, edge.member1Id] : [edge.member1Id, edge.member2Id]);
   const indegree = new Map(visible.map(member => [member.id, 0])), levels = new Map(visible.map(member => [member.id, 0]));

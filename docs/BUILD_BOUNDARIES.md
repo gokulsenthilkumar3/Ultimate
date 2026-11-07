@@ -29,7 +29,7 @@ The demo's previously combined screen file is split into `growthtrack-ultimate/s
 - Reusable controls, tables, dialogs and chart primitives stay shared in `components.jsx`; application rules, data permissions and service connections belong to their owning domains.
 - FinSync and OxFin reuse customer-admin presentation while product identity and scoping remain explicit. Their customer-facing applications retain separate builds.
 
-The [approved production rollout](plans/2026-10-28-production-ui.md) applies the shared design in Ultimate and adds a dedicated customer-admin domain. The [native modules implementation](plans/2026-10-30-native-modules.md) now loads NiftyLens, Family Connect and Forex from `src/domains/{equity,family,forex}`. Their frames, motion, paged tables and lightweight SVG charts share `src/domains/native`; none imports fictional demo data. Market-provider configuration, Family identity/roles/files and Python models remain with their owners. Restricted FinSync/OxFin customer adapters remain separate work. Keep page-specific rules with their domain and common tokens/primitives in the shared UI layer. Enforce dependencies toward shared contracts and primitives; avoid sibling-domain implementation imports and circular dependencies.
+The [approved production rollout](plans/2026-10-28-production-ui.md) applies the shared design in Ultimate and adds a dedicated customer-admin domain. The [native modules implementation](plans/2026-10-30-native-modules.md) now loads NiftyLens, Family Connect and Forex from `src/domains/{equity,family,forex}`. Their frames, motion, paged tables and lightweight SVG charts share `src/domains/native`; none imports fictional demo data. Market-provider configuration, Family identity/roles/files and Python models remain with their owners. Restricted read-only FinSync/OxFin customer adapters now exist; explicit product credentials, authorized readers and runtime verification are still required. Keep page-specific rules with their domain and common tokens/primitives in the shared UI layer. Enforce dependencies toward shared contracts and primitives; avoid sibling-domain implementation imports and circular dependencies.
 
 ## Runtime and release ownership
 
@@ -37,7 +37,7 @@ The [approved production rollout](plans/2026-10-28-production-ui.md) applies the
 | --- | --- | --- |
 | Ultimate | Shell, owner session, work/growth views, admin BFF, desktop host | Existing Ultimate API and persistence |
 | Equity | Native market watch, movers, quote details and source status | Public price-cache adapter, pipeline and provider configuration |
-| Family | Native tree, people, memories, events, vault and access views | Existing account/JWT, live tree permissions, private files and persistence |
+| Family | Native tree, people, memories, events, vault and access views using the Ultimate session | Signed Ultimate identity bridge, live tree permissions, private files and persistence; standalone auth only without the bridge |
 | Forex | Native model, recent/history, comparison and volatility views | Cached Python inference, saved artifacts and historical dataset; training is separate |
 | FinSync | FinSync customer-admin views | Customer web/mobile, product identity, finance data |
 | OxFin | OxFin customer-admin views | Customer web, product identity, wallet/payment/investment APIs |

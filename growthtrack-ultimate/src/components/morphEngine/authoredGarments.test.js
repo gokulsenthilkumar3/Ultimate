@@ -31,6 +31,14 @@ it('uses independent authored topology and normalized pose weights for every out
     garment.dispose();
   }
 });
+it('falls back for equal-count bodies with different triangle or vertex correspondence',()=> {
+  for(const change of ['indices','uv']) {
+    const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb');
+    const attribute=change==='indices'?body.geometry.index:body.geometry.attributes.uv;
+    attribute.setX(0,attribute.getX(0)+1);
+    expect(createAuthoredGarment(body,garments[0])).toBeNull();
+  }
+});
 it('follows body morphs and local edits without changing the other clone or source clothing',()=> {
   const {body}=glbMeshFixture('humanoid-adult-v2-lite.glb'),goal=glbMeshFixture('humanoid-adult-v2-lite.glb').body;
   const source=garments[0],options={...wardrobeDefaults('GYM'),easeCm:0};

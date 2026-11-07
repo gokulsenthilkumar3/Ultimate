@@ -10,6 +10,7 @@ import useStore, { apiSync } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import { formatNumber } from '../utils/userFormatters';
 import useHashTab from '../hooks/useHashTab';
+import IntegrationGuide from './sync/IntegrationGuide';
 
 // ── Brand config ───────────────────────────────────────────────────────────────
 const PLATFORM_CONFIG = {
@@ -399,7 +400,7 @@ export default function SocialMedia() {
       {activeTab === 'connections' && <section className="glass-card" aria-label="Social provider connections" style={{ padding: '1.5rem' }}>
         <h3>Provider connections</h3>
         <p>Automatic reads require each provider’s authorized API access, credentials, and capability review. No provider is connected by saving a profile link.</p>
-        <ul>{CORE_PROVIDERS.map(provider => <li key={provider}>{provider}: setup required</li>)}</ul>
+        <IntegrationGuide area="social" />
       </section>}
     </div>
   );

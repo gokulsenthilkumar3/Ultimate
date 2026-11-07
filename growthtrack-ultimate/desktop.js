@@ -1,15 +1,34 @@
-import { app, BrowserWindow, shell, ipcMain, safeStorage } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, safeStorage, screen } from 'electron';
 import { dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { sharedServerUrl } from './desktop-config.js';
+import { sharedServerUrl, privateDesktopPort } from './desktop-config.js';
 import { inspectDesktopDatabase } from './server/domains/desktopDatabase.js';
 import { initializeDatabase } from './server/domains/databaseInitialization.js';
 import { rehearseNoteMigration } from './server/domains/noteMigration.js';
 import { provisionLocalOwner } from './server/domains/ownerProvisioning.js';
+import { registerDesktopCompanion } from './server/domains/desktopCompanion.js';
 let mainWindow;
+const explicitServerUrl = process.env.GROWTHTRACK_SERVER_URL;
+const localConnectionFile = path.join(path.dirname(fileURLToPath(import.meta.url)), 'desktop-local-connection.json');
+if (!process.env.GROWTHTRACK_SERVER_URL && fs.existsSync(localConnectionFile)) {
+  const connection = JSON.parse(fs.readFileSync(localConnectionFile, 'utf8'));
+  if (connection.serverUrl) {
+    sharedServerUrl(connection.serverUrl, { allowLoopback: connection.allowLoopback === true });
+    process.env.GROWTHTRACK_SERVER_URL = connection.serverUrl;
+    process.env.GROWTHTRACK_ALLOW_LOOPBACK_SERVER = String(connection.allowLoopback === true);
+  }
+}
+const configuredSharedServer = () => sharedServerUrl(process.env.GROWTHTRACK_SERVER_URL, { allowLoopback: process.env.GROWTHTRACK_ALLOW_LOOPBACK_SERVER === 'true' });
+let trustedDesktopOrigin = '';
+registerDesktopCompanion({ ipcMain, app, BrowserWindow, screen, preloadPath: path.join(path.dirname(fileURLToPath(import.meta.url)), 'preload.cjs'), getWindow: () => mainWindow, getOrigin: () => trustedDesktopOrigin,
+  getCompanionUrl: () => {
+    const shared = configuredSharedServer();
+    const base = shared ? shared.pathname.replace(/\/?$/, '/') : process.env.FRONTEND_BASE_PATH || '/Ultimate/';
+    return new URL(`${base}companion.html`, trustedDesktopOrigin).href;
+  } });
 let stopLocalServer;
 let quitting = false;
 let localServerClosing = false;
@@ -99,10 +118,23 @@ async function setupOwner(userDatabase) {
 }
 
 async function createWindow() {
-  const shared = sharedServerUrl(process.env.GROWTHTRACK_SERVER_URL);
+  const connectionPreference = path.join(app.getPath('userData'), 'connection.json');
+  if (!explicitServerUrl && process.env.GROWTHTRACK_DESKTOP_MODE !== 'standalone' && fs.existsSync(connectionPreference)) {
+    if (fs.statSync(connectionPreference).size > 16384) throw new Error('Desktop connection settings are too large.');
+    const stored = JSON.parse(fs.readFileSync(connectionPreference, 'utf8'));
+    sharedServerUrl(stored.serverUrl, { allowLoopback: stored.allowLoopback === true });
+    process.env.GROWTHTRACK_SERVER_URL = stored.serverUrl;
+    process.env.GROWTHTRACK_ALLOW_LOOPBACK_SERVER = String(stored.allowLoopback === true);
+  }
+  if (process.env.GROWTHTRACK_DESKTOP_MODE === 'standalone') delete process.env.GROWTHTRACK_SERVER_URL;
+  const shared = configuredSharedServer();
+  if (!shared) process.env.PORT = String(await privateDesktopPort());
+  const privateOrigin = `http://127.0.0.1:${process.env.PORT}`;
+  trustedDesktopOrigin = shared?.origin || privateOrigin;
   const userDataDir = app.getPath('userData');
   const userDatabase = path.join(userDataDir, 'growthtrack.db');
   fs.mkdirSync(userDataDir, { recursive: true });
+  if (shared) fs.writeFileSync(connectionPreference, JSON.stringify({ serverUrl: shared.href, allowLoopback: process.env.GROWTHTRACK_ALLOW_LOOPBACK_SERVER === 'true' }, null, 2), { mode: 0o600 });
   // Create the window before loading the server so startup failures are visible.
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -120,7 +152,7 @@ async function createWindow() {
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const allowed = shared || new URL(`http://localhost:${process.env.PORT || 3001}`);
+    const allowed = shared || new URL(privateOrigin);
     try { if (new URL(url).origin !== allowed.origin) event.preventDefault(); }
     catch { event.preventDefault(); }
   });
@@ -137,13 +169,14 @@ async function createWindow() {
   prepareVaultKey(userDataDir);
   if (databaseStatus.ownerRequired) await setupOwner(userDatabase);
   process.env.DATABASE_URL = `file:${userDatabase.replaceAll('\\', '/')}`;
+  process.env.DATABASE_PROVIDER = 'sqlite';
   process.env.FILE_STORAGE_ROOT = path.join(userDataDir, 'private-files');
   process.env.LOG_DIR = path.join(userDataDir, 'logs');
   process.env.BACKUP_DIR = path.join(userDataDir, 'backups');
   process.env.LISTEN_HOST = '127.0.0.1';
   process.env.NODE_ENV = 'desktop';
-  process.env.APP_URL = `http://localhost:${process.env.PORT || 3001}/Ultimate/`;
-  process.env.APP_ORIGINS = `http://localhost:${process.env.PORT || 3001}`;
+  process.env.APP_URL = `${privateOrigin}/Ultimate/`;
+  process.env.APP_ORIGINS = privateOrigin;
 
   // Tell the Express server to serve the frontend dist folder in desktop mode
   process.env.SERVE_FRONTEND = 'true';
@@ -158,10 +191,10 @@ async function createWindow() {
   // Load the web app running on the express server
   const PORT = process.env.PORT || 3001;
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    try { await fetch(`http://localhost:${PORT}/api/health`); break; } catch { await new Promise((resolve) => setTimeout(resolve, 100)); }
+    try { await fetch(`${privateOrigin}/api/health`); break; } catch { await new Promise((resolve) => setTimeout(resolve, 100)); }
   }
   const frontendBase = process.env.FRONTEND_BASE_PATH || '/Ultimate/';
-  try { await mainWindow.loadURL(new URL(frontendBase, `http://localhost:${PORT}/`).href); } catch (error) { showStartupFailure(error); }
+  try { await mainWindow.loadURL(new URL(frontendBase, `${privateOrigin}/`).href); } catch (error) { showStartupFailure(error); }
 
   mainWindow.on('closed', function () {
     mainWindow = null;

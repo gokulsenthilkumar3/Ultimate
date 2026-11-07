@@ -11,17 +11,18 @@ import usePlayfulMotion from '../../hooks/usePlayfulMotion';
 import './native-modules.css';
 import { number, dateLabel } from './format';
 
-export function ModuleFrame({ domain, title, subtitle, kind, view, tabs, onViewChange, children, actions, artwork = null }) {
+export function ModuleFrame({ domain, title, subtitle, kind, view, tabs, onViewChange, children, actions, artwork = null, compact = false, context = null }) {
   const ref = useRef(null), id = useId();
   const { canAnimate } = usePlayfulMotion();
   const { enabled } = useKinetic();
   usePageEntrance(ref, view);
-  return <section ref={ref} className={`module-page native-module native-module--${domain}`} data-insight-view={domain === 'forex' ? view : undefined} data-motion={String(canAnimate)} data-playful-motion={String(canAnimate)}>
-    <PageHeader accent={domain === 'family' ? 'Life · Family Connect' : domain === 'equity' ? 'Finance · NiftyLens' : 'Finance · Forex'} title={title} subtitle={subtitle} actions={<div className="native-actions">{artwork}{actions}{!enabled && <MotionToggle compact />}</div>} />
-    <div className="native-hero" data-native-enter>
+  return <section ref={ref} className={`module-page native-module native-module--${domain}${compact ? ' native-module--compact' : ''}`} data-insight-view={domain === 'forex' ? view : undefined} data-motion={String(canAnimate)} data-playful-motion={String(canAnimate)}>
+    {compact ? <header className="family-page-heading"><div><span className="native-eyebrow">Life</span><h1>{title}</h1></div><div className="native-actions">{actions}</div></header> : <PageHeader accent={domain === 'family' ? 'Life · Family Connect' : domain === 'equity' ? 'Finance · NiftyLens' : 'Finance · Forex'} title={title} subtitle={subtitle} actions={<div className="native-actions">{artwork}{actions}{!enabled && <MotionToggle compact />}</div>} />}
+    {!compact && <div className="native-hero" data-native-enter>
       <div><span className="native-eyebrow">{domain === 'family' ? 'A little closer, every day' : domain === 'equity' ? 'A clearer view of the market' : 'Follow the signal'}</span><h2>{domain === 'family' ? 'Your people. Your story.' : domain === 'equity' ? 'Less noise. More perspective.' : 'Make room for a wider view.'}</h2><p>{domain === 'family' ? 'Keep generations, milestones and memories together.' : domain === 'equity' ? 'Explore your market snapshot, one thoughtful detail at a time.' : 'Explore saved models and currency history in your workspace.'}</p><span className="native-hero__stamp">{domain === 'family' ? 'GROW TOGETHER' : domain === 'equity' ? 'STAY CURIOUS' : 'LOOK A LITTLE CLOSER'} <span aria-hidden="true">↗</span></span></div>
       <div className="native-hero__art"><span className="native-hero__orbit" /><span className="native-hero__spark" aria-hidden="true">✳</span><CharacterScene kind={kind} /></div>
-    </div>
+    </div>}
+    {context}
     <Tabs label={`${title} views`} idPrefix={id} tabs={tabs.map(tab => ({ ...tab, panelId: `${id}-panel` }))} value={view} onChange={onViewChange} />
     <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${view}`} className="native-content">{children}</div>
   </section>;

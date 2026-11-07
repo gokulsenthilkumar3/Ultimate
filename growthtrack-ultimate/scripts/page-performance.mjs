@@ -48,6 +48,7 @@ if (!Number.isFinite(width) || width < 320 || width > 2560 || !Number.isFinite(c
 const output = path.resolve(root, option('output', '../.gstack/benchmark-reports'));
 await mkdir(output, { recursive: true });
 if (args.includes('--screenshots')) await mkdir(path.join(output, 'screenshots', label), { recursive: true });
+if (args.includes('--har')) await mkdir(path.join(output, 'har', label), { recursive: true });
 const manifest = JSON.parse(await readFile(path.join(dist, '.vite/manifest.json'), 'utf8'));
 const appSource = await readFile(path.join(root, 'src/App.jsx'), 'utf8');
 const names = Object.fromEntries([...appSource.matchAll(/(\w+):\s*lazy\(\(\) => import\('\.\/(.*?)'\)\)/g)].map(match => [match[1], match[2]]));
@@ -105,7 +106,9 @@ try {
   for (const pageInfo of pages) {
     const samples = [];
     for (let run = 0; run < runs; run++) {
-      const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: motion, serviceWorkers: 'block', extraHTTPHeaders: pageInfo.public ? { 'x-performance-anonymous': '1' } : {} });
+      const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: motion, serviceWorkers: 'block',
+        ...(args.includes('--har') ? { recordHar: { path: path.join(output, 'har', label, `${pageInfo.id}-${run + 1}.har`), content: 'omit' } } : {}),
+        extraHTTPHeaders: pageInfo.public ? { 'x-performance-anonymous': '1' } : {} });
       try {
         await context.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
         await context.addInitScript(({ countFormatters, presentation, appearance, palette, lite, checkCompanion }) => {
@@ -214,7 +217,10 @@ try {
               page.on('request', unexpected);
               try {
                 await figure.scrollIntoViewIfNeeded();
-                await page.waitForFunction(element => element.complete && element.naturalWidth === 1280 && element.naturalHeight === 1280, await image.elementHandle());
+                await page.waitForFunction(element => {
+                  const size = /-v4\.webp$/.test(element.currentSrc || element.src) ? 1254 : 1280;
+                  return element.complete && element.naturalWidth === size && element.naturalHeight === size;
+                }, await image.elementHandle());
                 for (const [index, [poseLabel, pose]] of poses.entries()) {
                   const button = controls.getByRole('button', { name: poseLabel, exact: true });
                   await button.focus(); await page.keyboard.press(index % 2 ? 'Space' : 'Enter');
@@ -227,7 +233,8 @@ try {
                     const frame = element.closest('.personal-companion__frame');
                     return { src: new URL(element.currentSrc || element.src).pathname, naturalWidth: element.naturalWidth, naturalHeight: element.naturalHeight, frameWidth: frame.clientWidth, frameHeight: frame.clientHeight };
                   });
-                  if (!atlas.src.endsWith('/personal-companion-v1.webp') || atlas.naturalWidth !== 1280 || atlas.naturalHeight !== 1280 || atlas.frameWidth <= 0 || Math.abs(atlas.frameWidth - atlas.frameHeight) > 1) throw new Error(`${poseLabel} does not render the square 1280px full atlas.`);
+                  const expectedSize = /-v4\.webp$/.test(atlas.src) ? 1254 : 1280;
+                  if (!/\/personal-companion-v(?:1|3|4)\.webp$/.test(atlas.src) || atlas.naturalWidth !== expectedSize || atlas.naturalHeight !== expectedSize || atlas.frameWidth <= 0 || Math.abs(atlas.frameWidth - atlas.frameHeight) > 1) throw new Error(`${poseLabel} does not render the expected square full atlas.`);
                   sources.add(atlas.src);
                   states.push({ label: poseLabel, pose, keyboard: index % 2 ? 'Space' : 'Enter', atlas });
                   if (args.includes('--screenshots') && run === 0) await page.screenshot({ path: path.join(output, 'screenshots', label, `welcome-pose-${pose}.png`), animations: 'disabled' });
@@ -257,7 +264,10 @@ try {
             await check('command palette keyboard flow', async () => { await page.getByRole('button', { name: 'Search GrowthTrack' }).click(); await page.getByRole('dialog').waitFor(); await page.keyboard.press('Escape'); });
             await check('sign-out cancellation', async () => { if (width < 960) await page.getByRole('button', { name: 'Open module navigation', exact: true }).click(); await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await page.getByRole('button', { name: 'Stay signed in' }).click(); if (!await page.locator('.app-shell').count()) throw new Error('Cancellation lost the workspace'); if (width < 960) await page.keyboard.press('Escape'); });
             await check('settings sections and Display destination', async () => {
-              await page.getByRole('button', { name: /open account and settings/i }).click();
+              if (width < 960) {
+                await page.getByRole('button', { name: 'Open module navigation', exact: true }).click();
+                await page.getByRole('button', { name: 'Settings', exact: true }).click();
+              } else await page.getByRole('button', { name: /open account and settings/i }).click();
               const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
               await settings.waitFor();
               if (args.includes('--screenshots') && run === 0) await page.screenshot({ path: path.join(output, 'screenshots', label, 'settings.png') });
@@ -370,5 +380,5 @@ await writeFile(path.join(output, `${label}.json`), JSON.stringify(report, null,
 if (label === 'baseline') await writeFile(path.join(output, `${report.timestamp.replaceAll(/[:.]/g, '-')}-baseline.json`), JSON.stringify(report, null, 2), { flag: 'wx' });
 const rows = results.map(page => `| ${page.path} | ${page.metrics.ready == null ? 'N/A' : Math.round(page.metrics.ready)} | ${page.metrics.fcp == null ? 'N/A' : Math.round(page.metrics.fcp)} | ${page.metrics.lcp == null ? 'N/A' : Math.round(page.metrics.lcp)} | ${(page.metrics.jsBytes / 1000).toFixed(1)} | ${(page.metrics.cssBytes / 1000).toFixed(1)} | ${page.metrics.requests} | ${page.failures.length ? page.failures.join('; ') : 'Rendered'} |`);
 await writeFile(path.join(output, `${label}.md`), `# Production page performance: ${label}\n\n${report.fixture}. ${runs} run(s) per page; medians. Timings in ms, decoded sizes in decimal KB. First heading measures the initial heading, not completion of nested tabs or requests. Collection waits for the page loading skeleton to disappear, then observes ${settleMs}ms of post-render work. Browser: ${width}px, ${cpuThrottle}× CPU, ${network}, ${motion} motion, ${presentation}, ${appearance}, Lite ${lite}. This is a local synthetic browser benchmark, not real-user or backend performance. Event timings are interaction samples, not a field INP percentile; JS heap is not the full tab working set.\n\n| Route | First heading | FCP | LCP | JS KB | CSS KB | Requests | Result |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n${rows.join('\n')}\n`);
-console.log(`Saved ${results.length} pages to .gstack/benchmark-reports/${label}.{json,md}`);
+console.log(`Saved ${results.length} pages to ${path.join(output, label)}.{json,md}`);
 if (results.some(page => page.failures.length)) process.exitCode = 1;
