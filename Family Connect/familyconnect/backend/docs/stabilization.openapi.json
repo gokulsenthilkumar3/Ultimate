@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Family native API additions",
-    "version": "1.1.0",
-    "description": "Contract for stabilization, atomic person/relationship creation and Me selection. Existing tree/profile/upload/session routes remain outside this contract. Request schemas are generated from the runtime Zod validators. Local permanent-delete behavior precedes the planned soft-delete migration."
+    "version": "1.3.0",
+    "description": "Contract for stabilization, atomic person/relationship creation, Me selection, GEDCOM export/import and the audit trail. Profile payloads accept date certainty (birthDatePrecision, birthDateApproximate, deathDatePrecision, deathDateApproximate) and deathRecorded. Existing tree/profile/upload/session routes remain outside this contract. Request schemas are generated from the runtime Zod validators. Local permanent-delete behavior precedes the planned soft-delete migration."
   },
   "servers": [
     {
@@ -1077,6 +1077,477 @@
         }
       }
     },
+    "/trees/{id}/export/gedcom": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 200
+          }
+        }
+      ],
+      "get": {
+        "operationId": "exportGedcom",
+        "security": [
+          {
+            "UltimateSession": []
+          }
+        ],
+        "description": "Any tree member. Returns { filename, mediaType, gedcom, summary } where gedcom is GEDCOM 5.5.1 UTF-8 text. Trees above 5,000 people or 25,000 connections return 413. Connections GEDCOM cannot express (for example cousin, friend, mentor) are counted in summary.omitted, not exported. Internal record IDs are never exported.",
+        "responses": {
+          "200": {
+            "description": "filename, mediaType, gedcom, summary { people, families, omitted }"
+          },
+          "400": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The tree is larger than the export limit."
+          },
+          "429": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trees/{id}/audit": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 200
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getAuditTrail",
+        "security": [
+          {
+            "UltimateSession": []
+          }
+        ],
+        "description": "Tree admins only. Newest first, 50 entries per page. Each entry is metadata only: actor account ID, action, record kind and ID, and counts, kinds or field names. Names, biographies, dates, file names and before/after values are never recorded, and the private Me marker is not audited. Entries are written in the same transaction as the change they describe, have no foreign keys so they outlive the records, and cannot be edited or deleted through this API. Retention is an operator policy.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,5}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "rows (id, actorId, action, entity, entityId, details, createdAt), total, page, limit"
+          },
+          "400": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trees/{id}/import/gedcom/preview": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 200
+          }
+        }
+      ],
+      "post": {
+        "operationId": "previewGedcomImport",
+        "security": [
+          {
+            "UltimateSession": [],
+            "CsrfToken": []
+          }
+        ],
+        "description": "Editors, family heads and admins. Validates and summarizes a GEDCOM file up to 1 MiB without writing anything: counts, warnings, ignored record types (media is never read), probable duplicates of existing people (name order, case, punctuation and Latin accents are ignored) and partial-date and ranges warnings.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GedcomPreview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "canImport, stats, errors, warnings, warningCount, ignored, sample, duplicates, limits"
+          },
+          "400": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trees/{id}/import/gedcom": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 200
+          }
+        }
+      ],
+      "post": {
+        "operationId": "importGedcom",
+        "security": [
+          {
+            "UltimateSession": [],
+            "CsrfToken": []
+          }
+        ],
+        "description": "Editors, family heads and admins. Re-parses the file on the server and, in one serializable transaction, creates new people and connections only; existing records are never changed. Probable duplicates return 409 DUPLICATES unless allowDuplicates is true. Up to 1,000 people and 2,500 families per file. Day, month-only, year-only and approximate Gregorian dates are stored with that certainty (month and year dates as the first day of the period); a death with no usable date is stored as deceased with an unknown date; ranges and other calendars are kept as text at the start of the person's notes. Send idempotencyKey (8-100 URL-safe characters) so a retry after a timeout or lost response returns the committed result with replayed: true instead of importing twice; the same key with a different file returns 422. A concurrent duplicate key returns 409. Adopted, foster and sealing parent links import as parent connections labeled Adoptive parent, Foster parent or Sealing parent. A transaction that exceeds its time budget returns 503 and changes nothing. No automatic retry.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GedcomImport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "imported { people, relationships }, warnings, warningCount, ignored"
+          },
+          "400": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The file has no people or fails validation."
+          },
+          "429": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Rejected, unavailable or rate limited. Review the error before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/trees/{id}/me": {
       "parameters": [
         {
@@ -1553,6 +2024,31 @@
               }
             ]
           },
+          "birthDatePrecision": {
+            "type": "string",
+            "enum": [
+              "day",
+              "month",
+              "year"
+            ]
+          },
+          "birthDateApproximate": {
+            "type": "boolean"
+          },
+          "deathDatePrecision": {
+            "type": "string",
+            "enum": [
+              "day",
+              "month",
+              "year"
+            ]
+          },
+          "deathDateApproximate": {
+            "type": "boolean"
+          },
+          "deathRecorded": {
+            "type": "boolean"
+          },
           "birthLocation": {
             "anyOf": [
               {
@@ -1800,6 +2296,52 @@
         "required": [
           "memberId"
         ],
+        "additionalProperties": false
+      },
+      "GedcomPreview": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1048576
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "GedcomImport": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1048576
+          },
+          "allowDuplicates": {
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,100}$"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "AuditQuery": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "string",
+            "pattern": "^\\d{1,5}$"
+          }
+        },
         "additionalProperties": false
       },
       "DeleteConfirmation": {

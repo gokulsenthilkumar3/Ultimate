@@ -31,7 +31,9 @@ test('scheduled reminder queries only fields in the generated Member schema', as
   await job.run();
   assert.equal(job.errors.length, 0, job.errors.map(args => args.map(String).join(' ')).join('\n'));
   assert.equal(where.deathDate, null);
+  assert.equal(where.deathRecorded, false, 'a death recorded without a date still excludes the person');
   assert.ok(where.birthDate);
+  assert.equal(where.birthDatePrecision, 'day'); assert.equal(where.birthDateApproximate, false);
 });
 
 const { schemaShape } = require('../scripts/check-schema.cjs');
@@ -62,6 +64,9 @@ test('only living upcoming members notify admins/heads and reruns do not repeat 
     member: { findMany: async () => [
       { id: 'living', name: 'Fictional person', birthDate: new Date('2000-01-02T00:00:00Z'), deathDate: null, tree: { accessControl } },
       { id: 'deceased', name: 'Excluded', birthDate: new Date('2000-01-02T00:00:00Z'), deathDate: now, tree: { accessControl } },
+      { id: 'recorded', name: 'Excluded no date', birthDate: new Date('2000-01-02T00:00:00Z'), deathDate: null, deathRecorded: true, tree: { accessControl } },
+      { id: 'year', name: 'Excluded year', birthDate: new Date('2000-01-01T00:00:00Z'), birthDatePrecision: 'year', tree: { accessControl } },
+      { id: 'guess', name: 'Excluded guess', birthDate: new Date('2000-01-02T00:00:00Z'), birthDateApproximate: true, tree: { accessControl } },
     ] },
     notification: {
       findFirst: async ({ where }) => notifications.find(row => row.userId === where.userId && row.message === where.message && row.title === where.title),

@@ -3,8 +3,8 @@ import { Response } from 'express';
 import { z } from 'zod';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { cacheInvalidate } from '../services/cache.service';
-import { unlink } from 'node:fs/promises';
-import path from 'node:path';
+import { changedFields, recordAudit } from '../services/audit';
+import { getStorage, keyFromReference } from '../services/storage';
 import { validateRelationship, FamilyRuleError } from '../services/relationshipRules';
 
 const prisma = new PrismaClient();
@@ -32,15 +32,8 @@ async function sameTree(tx: Prisma.TransactionClient, treeId: string, ids: (stri
   if (await tx.member.count({ where: { treeId, id: { in: selected } } }) !== selected.length) throw new Rejected(400, 'Choose people from this family tree.');
 }
 
-// Only known storage roots are eligible. No recursive removal or user-selected filesystem paths.
-async function eraseFile(fileUrl: string) {
-  if (!/^\/uploads\/[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/.test(fileUrl)) throw new Error('Unknown storage reference');
-  const filename = path.basename(fileUrl);
-  for (const root of [path.resolve(__dirname, '../../uploads'), path.resolve(__dirname, '../../../uploads')]) {
-    try { await unlink(path.join(root, filename)); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-  }
-}
+// Only keys the storage adapter recognizes are eligible; there is no recursive removal or user-selected path.
+async function eraseFile(fileUrl: string) { await getStorage().remove(keyFromReference(fileUrl)); }
 
 export function createRecordMutationHandlers(database = prisma, removeFile = eraseFile, audit = (event: object) => console.info(JSON.stringify(event))) {
   const handler = (kind: Kind, operation: 'update' | 'delete') => async (req: AuthRequest, res: Response): Promise<void> => {
@@ -61,6 +54,7 @@ export function createRecordMutationHandlers(database = prisma, removeFile = era
           if (!parsed.success) throw new Rejected(400, 'Review the milestone fields. Tree and record ownership cannot change.');
           await sameTree(tx, record.treeId, [parsed.data.memberId]);
           const updated = await tx.event.update({ where: { id: record.id }, data: { ...parsed.data, ...(parsed.data.date ? { date: new Date(parsed.data.date) } : {}) } });
+          await recordAudit(tx, { treeId: record.treeId, actorId: req.user!.id, action: 'event.update', entity: 'event', entityId: record.id, details: { fields: changedFields(parsed.data) } });
           return { treeId: record.treeId, data: updated };
         }
         if (operation === 'update' && kind === 'relationship') {
@@ -73,6 +67,7 @@ export function createRecordMutationHandlers(database = prisma, removeFile = era
             ...('marriageDate' in parsed.data ? { marriageDate: parsed.data.marriageDate ? new Date(parsed.data.marriageDate) : null } : {}),
             ...('divorceDate' in parsed.data ? { divorceDate: parsed.data.divorceDate ? new Date(parsed.data.divorceDate) : null } : {}),
           } });
+          await recordAudit(tx, { treeId: record.treeId, actorId: req.user!.id, action: 'relationship.update', entity: 'relationship', entityId: record.id, details: { fields: changedFields(parsed.data) } });
           return { treeId: record.treeId, data: updated };
         }
         if (operation !== 'delete') throw new Rejected(405, 'Unsupported record operation.');
@@ -93,6 +88,7 @@ export function createRecordMutationHandlers(database = prisma, removeFile = era
             fileUrl = stored.fileUrl;
           }
         }
+        await recordAudit(tx, { treeId: record.treeId, actorId: req.user!.id, action: `${kind}.delete`, entity: kind, entityId: record.id, details: kind === 'document' ? { fileRemoved: Boolean(fileUrl) } : {} });
         return { treeId: record.treeId, data: { deleted: true, id: record.id }, fileUrl };
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       let storageCleanupPending = false;

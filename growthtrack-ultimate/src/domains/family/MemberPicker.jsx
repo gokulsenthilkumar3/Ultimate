@@ -1,4 +1,5 @@
 import React, { useDeferredValue, useEffect, useId, useRef, useState } from 'react';
+import { yearLabel } from './familyDates';
 import { useQuery } from '@tanstack/react-query';
 import { Field } from '../native/ModuleUI';
 import { familyRequest } from './familyClient';
@@ -25,7 +26,7 @@ export default function MemberPicker({ name, label, account, treeId, initial = [
     <input type="hidden" name={name} value={picked?.id || ''} />
     {picked && optional && <button type="button" className="native-link family-picker__clear" aria-label={`Clear ${label}`} onClick={() => choose(null)}>Clear</button>}
     {open && <div className="family-picker__popup"><ul id={`${id}-list`} role="listbox" aria-label={`${label} suggestions`}>
-      {options.map((option,index) => <li key={option.person?.id || 'empty'} id={`${id}-${index}`} role="option" aria-selected={picked?.id === option.person?.id} data-active={active === index} onMouseDown={event => event.preventDefault()} onMouseEnter={() => setActive(index)} onClick={() => choose(option.person)}><strong>{option.label}</strong>{option.person?.birthDate && <small>Born {option.person.birthDate.slice(0,4)}</small>}</li>)}
+      {options.map((option,index) => <li key={option.person?.id || 'empty'} id={`${id}-${index}`} role="option" aria-selected={picked?.id === option.person?.id} data-active={active === index} onMouseDown={event => event.preventDefault()} onMouseEnter={() => setActive(index)} onClick={() => choose(option.person)}><strong>{option.label}</strong>{option.person?.birthDate && <small>Born {yearLabel(option.person.birthDate, option.person.birthDateApproximate)}</small>}</li>)}
     </ul>{query.isFetching && <small role="status">Searching the full tree…</small>}{!options.length && !query.isFetching && <small role="status">No matching people. Try another name.</small>}{query.isError && <small className="native-form-error" role="alert">{query.error.message}</small>}</div>}
   </div>;
 }

@@ -29,6 +29,7 @@ export function normalizeWatchEvent(value) {
   const allowed = ['id', 'title', 'watchedAt', 'type', 'season', 'episode', 'durationMinutes', 'status'];
   if (Object.keys(value).some(key => !allowed.includes(key))) invalid('The event contains unsupported fields.');
   for (const [key, max] of [['id', 160], ['title', 300]]) {
+    // eslint-disable-next-line no-control-regex -- ASCII control characters are rejected on purpose.
     if (typeof value[key] !== 'string' || !value[key].trim() || value[key].length > max || /[\x00-\x1f]/.test(value[key])) invalid(`Provide a valid ${key} (up to ${max} characters).`);
   }
   if (typeof value.watchedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2}))?$/.test(value.watchedAt) || !Number.isFinite(Date.parse(value.watchedAt))) invalid('Use an ISO date or timestamp with a timezone for watchedAt.');

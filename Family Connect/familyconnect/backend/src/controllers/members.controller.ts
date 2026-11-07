@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { Prisma, PrismaClient, RelationshipType } from '@prisma/client';
+import { DatePrecision, Prisma, PrismaClient, RelationshipType } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { cacheGet, cacheSet, cacheInvalidate, CACHE_TTL } from '../services/cache.service';
 import { authorizeTree } from '../services/treeAccess';
@@ -7,6 +7,8 @@ import { z } from 'zod';
 import kinship from '../contracts/kinship.json';
 import { saveSelf } from '../services/personIdentity';
 import { validateRelationship, FamilyRuleError } from '../services/relationshipRules';
+import { normalizeProfileDates } from '../services/datePrecision';
+import { auditData, changedFields, recordAudit } from '../services/audit';
 import { memberWhere } from '../services/recordFilters';
 
 const prisma = new PrismaClient();
@@ -14,11 +16,13 @@ export const memberFields = z.object({
   name: z.string().trim().min(1).max(160),
   birthDate: z.union([z.iso.date(), z.iso.datetime(), z.literal(''), z.null()]).optional(),
   deathDate: z.union([z.iso.date(), z.iso.datetime(), z.literal(''), z.null()]).optional(),
+  birthDatePrecision: z.enum(DatePrecision).optional(), birthDateApproximate: z.boolean().optional(),
+  deathDatePrecision: z.enum(DatePrecision).optional(), deathDateApproximate: z.boolean().optional(), deathRecorded: z.boolean().optional(),
   birthLocation: z.string().max(300).nullable().optional(), gender: z.enum(['male', 'female', 'other']).nullable().optional(),
   religion: z.string().max(200).nullable().optional(), bio: z.string().max(10000).nullable().optional(), occupation: z.string().max(300).nullable().optional(),
   photoUrl: z.string().regex(/^\/uploads\/[a-zA-Z0-9_.-]+$/).nullable().optional(),
 });
-const dates = (fields: Record<string, any>) => ({ ...fields, ...('birthDate' in fields ? { birthDate: fields.birthDate ? new Date(fields.birthDate) : null } : {}), ...('deathDate' in fields ? { deathDate: fields.deathDate ? new Date(fields.deathDate) : null } : {}) });
+const dates = normalizeProfileDates;
 
 export const createFields = memberFields.extend({
   treeId: z.string().min(1).max(200), markAsMe: z.boolean().optional(),
@@ -37,6 +41,8 @@ export function createPersonHandler(database = prisma) { return async (req: Auth
       const access = await tx.accessControl.findUnique({ where: { treeId_userId: { treeId, userId } } });
       if (!access || !['admin', 'editor', 'family_head'].includes(access.role)) throw new FamilyRuleError(403, 'Tree editor access is required.');
       const created = await tx.member.create({ data: { ...dates(profile), name: profile.name, treeId, createdById: userId } });
+      // The private Me marker is a preference, not a record change, so it is deliberately absent from the trail.
+      await recordAudit(tx, { treeId, actorId: userId, action: 'member.create', entity: 'member', entityId: created.id, details: { connected: Boolean(relative) } });
       if (relative) {
         const type = (preset?.type || relative.type) as RelationshipType;
         await validateRelationship(tx, treeId, created.id, relative.memberId, type);
@@ -78,7 +84,7 @@ export const getMembers = async (req: AuthRequest, res: Response): Promise<void>
     const members = await prisma.member.findMany({
       where: { treeId: treeId as string },
       select: {
-        id: true, name: true, gender: true, birthDate: true, deathDate: true,
+        id: true, name: true, gender: true, birthDate: true, birthDatePrecision: true, birthDateApproximate: true, deathDate: true, deathDatePrecision: true, deathDateApproximate: true, deathRecorded: true,
         photoUrl: true, religion: true, birthLocation: true, createdAt: true, bio: true, occupation: true,
       },
       orderBy: { createdAt: 'asc' },
@@ -102,7 +108,10 @@ export const updateMember = async (req: AuthRequest, res: Response): Promise<voi
     if (!await authorizeTree(req, res, existing.treeId, true)) return;
     const parsed = memberFields.partial().strict().safeParse(req.body);
     if (!parsed.success || !Object.keys(parsed.data).length) { res.status(400).json({ error: 'Only valid member profile fields can be updated.' }); return; }
-    const updatedMember = await prisma.member.update({ where: { id }, data: dates(parsed.data) });
+    const [updatedMember] = await prisma.$transaction([
+      prisma.member.update({ where: { id }, data: dates(parsed.data) }),
+      prisma.auditLog.create({ data: auditData({ treeId: existing.treeId, actorId: userId, action: 'member.update', entity: 'member', entityId: id, details: { fields: changedFields(parsed.data) } }) }),
+    ]);
     await cacheInvalidate(
       `tree:${existing.treeId}:user:${userId}`,
       `members:${existing.treeId}`,
@@ -110,6 +119,7 @@ export const updateMember = async (req: AuthRequest, res: Response): Promise<voi
     );
     res.status(200).json(updatedMember);
   } catch (error) {
+    if (error instanceof FamilyRuleError) { res.status(error.status).json({ error: error.message }); return; }
     console.error('Update member error:', error);
     res.status(500).json({ error: 'Failed to update member' });
   }

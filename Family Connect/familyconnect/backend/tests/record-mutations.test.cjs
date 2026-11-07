@@ -4,7 +4,7 @@ const { createRecordMutationHandlers } = require('../dist/controllers/recordMuta
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; }, set() {} });
 
 function fixture(role = 'editor') {
-  const changes = [], audit = [], files = [];
+  const changes = [], audit = [], files = [], audits = [];
   const records = {
     member: { id: 'person-a', treeId: 'tree-a' },
     event: { id: 'event-a', treeId: 'tree-a', title: 'Fictional milestone' },
@@ -22,9 +22,10 @@ function fixture(role = 'editor') {
     updateMany: async input => { changes.push([kind, 'updateMany', input]); return { count: 1 }; },
     deleteMany: async input => { changes.push([kind, 'deleteMany', input]); return { count: 1 }; },
   };
+  tx.auditLog = { create: async input => { audits.push(input.data); return input.data; } };
   tx.familyTree = { updateMany: async input => { changes.push(['tree', 'updateMany', input]); return { count: 1 }; } };
   const db = { $transaction: async callback => callback(tx) };
-  return { tx, changes, audit, files, handlers: createRecordMutationHandlers(db, async file => files.push(file), event => audit.push(event)) };
+  return { tx, changes, audit, audits, files, handlers: createRecordMutationHandlers(db, async file => files.push(file), event => audit.push(event)) };
 }
 const request = (id, body, actor = 'allowed') => ({ user: { id: actor }, params: { id }, body });
 
@@ -87,4 +88,18 @@ test('shared storage objects are retained and serialization conflicts do not tri
   let attempts=0; const handlers=createRecordMutationHandlers({$transaction:async()=>{attempts++;throw {code:'P2034'};}},async()=>{},()=>{}),res=response();
   await handlers.deleteEvent(request('event-a',{confirm:'event-a'}),res);
   assert.equal(res.code,409);assert.equal(attempts,1);
+});
+
+test('updates and deletions write one metadata-only trail entry in the same transaction', async () => {
+  const f = fixture('admin'), cases = [['updateEvent', 'event-a', { title: 'Private milestone title' }, 'event.update', { fields: ['title'] }], ['updateRelationship', 'relation-a', { customLabel: 'Private label' }, 'relationship.update', { fields: ['customLabel'] }], ['deleteMember', 'person-a', { confirm: 'person-a' }, 'member.delete', {}], ['deleteDocument', 'document-a', { confirm: 'document-a' }, 'document.delete', { fileRemoved: true }]];
+  for (const [method, recordId, body, action, details] of cases) {
+    const before = f.audits.length, res = response();
+    await f.handlers[method](request(recordId, body), res);
+    assert.equal(res.code, 200, method); assert.equal(f.audits.length, before + 1, method);
+    const entry = f.audits.at(-1);
+    assert.deepEqual([entry.action, entry.treeId, entry.actorId, entry.entityId, entry.details], [action, 'tree-a', 'allowed', recordId, details], method);
+  }
+  assert.equal(/Private|fixture\.txt/.test(JSON.stringify(f.audits)), false, 'values and file names never enter the trail');
+  const viewer = fixture('viewer'), denied = response(); await viewer.handlers.updateEvent(request('event-a', { title: 'x' }), denied);
+  assert.equal(denied.code, 403); assert.equal(viewer.audits.length, 0, 'a refused change is not recorded as a change');
 });

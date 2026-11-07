@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
+import { yearLabel } from './familyDates';
 import { Background, Controls, Handle, MiniMap, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { layoutFamilyTree } from './treeLayout';
@@ -8,7 +9,7 @@ import PageState from '../../components/ui/PageState';
 
 function PersonNode({ data }) {
   const { person, label, me, onSelect } = data;
-  return <><Handle type="target" position={Position.Top}/><button type="button" className="family-flow-person nodrag" data-family-person data-me={me} aria-label={`Open ${person.name}${me?', Me':''}`} title={`${person.name}${label?` · ${label}`:''}`} onClick={()=>onSelect(person)}><strong>{person.name}</strong><small>{person.birthDate?person.birthDate.slice(0,4):'Birth date not recorded'}{person.deathDate?` – ${person.deathDate.slice(0,4)}`:''}</small><span>{label||'Family member'}</span></button><Handle type="source" position={Position.Bottom}/></>;
+  return <><Handle type="target" position={Position.Top}/><button type="button" className="family-flow-person nodrag" data-family-person data-me={me} aria-label={`Open ${person.name}${me?', Me':''}`} title={`${person.name}${label?` · ${label}`:''}`} onClick={()=>onSelect(person)}><strong>{person.name}</strong><small>{person.birthDate?yearLabel(person.birthDate,person.birthDateApproximate):'Birth date not recorded'}{person.deathDate?` – ${yearLabel(person.deathDate,person.deathDateApproximate)}`:person.deathRecorded?' – ?':''}</small><span>{label||'Family member'}</span></button><Handle type="source" position={Position.Bottom}/></>;
 }
 const nodeTypes = { person: PersonNode };
 

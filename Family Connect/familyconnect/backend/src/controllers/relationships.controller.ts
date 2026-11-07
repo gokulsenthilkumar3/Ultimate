@@ -5,6 +5,7 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 import kinship from '../contracts/kinship.json';
 import { validateRelationship, FamilyRuleError } from '../services/relationshipRules';
 import { cacheInvalidate } from '../services/cache.service';
+import { recordAudit } from '../services/audit';
 
 const prisma = new PrismaClient();
 export const relationshipCreate = z.object({
@@ -27,10 +28,12 @@ export function createRelationshipHandler(database = prisma) { return async (req
       const access = await tx.accessControl.findUnique({ where: { treeId_userId: { treeId, userId: req.user!.id } } });
       if (!access || !['admin', 'editor', 'family_head'].includes(access.role)) throw new FamilyRuleError(403, 'Tree editor access is required.');
       await validateRelationship(tx, treeId, member1Id, member2Id, type);
-      return tx.relationship.create({ data: { treeId, member1Id, member2Id, type,
+      const created = await tx.relationship.create({ data: { treeId, member1Id, member2Id, type,
         customLabel: customLabel || (preset ? `${preset.tamil} · ${preset.roman} (${preset.meaning})` : null),
         marriageDate: marriageDate ? new Date(marriageDate) : null, divorceDate: divorceDate ? new Date(divorceDate) : null,
       } });
+      await recordAudit(tx, { treeId, actorId: req.user!.id, action: 'relationship.create', entity: 'relationship', entityId: created.id, details: { type } });
+      return created;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     await cacheInvalidate(`tree:${treeId}:user:${req.user.id}`);
     res.status(201).json(relationship);
