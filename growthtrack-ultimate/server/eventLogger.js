@@ -32,7 +32,14 @@ export function createEventLogger({ prisma, logToFile }) {
       user_agent: input.user_agent || req?.headers?.['user-agent'],
     });
     try {
-      const common = { ...event, actor_name: event.user_name, actor_email: event.user_email };
+      // AuditLog stores the actor identity as actor_name/actor_email. Do not
+      // spread the normalized user_name/user_email aliases into Prisma data:
+      // Prisma rejects unknown fields and that used to make every audit write
+      // fail silently while the UI reported an empty log stream.
+      const auditEvent = { ...event };
+      delete auditEvent.user_name;
+      delete auditEvent.user_email;
+      const common = { ...auditEvent, actor_name: event.user_name, actor_email: event.user_email };
       let record;
       if (event.category === 'auth') {
         record = await prisma.loginLog.create({ data: { user_id: event.user_id, email: event.user_email, action: event.action, failure_reason: event.details, ip_address: event.actor_ip, user_agent: event.user_agent, source: event.source, request_id: event.request_id, metadata: event.metadata } });

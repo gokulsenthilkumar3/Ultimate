@@ -40,7 +40,10 @@ export function createMarketFeed({ environment = {}, fetchImpl = fetch, now = Da
     catch { throw new MarketFeedError('The market provider did not respond. Try again.'); }
     if (!response.ok) throw new MarketFeedError(response.status === 401 || response.status === 403 ? 'The market provider denied access. Review the price-cache read permissions.' : 'The market provider is unavailable. Try again.');
     const body = await response.json();
-    const rows = Array.isArray(body) ? body : Array.isArray(body.documents) ? body.documents.map(doc => ({ symbol: doc.name?.split('/').at(-1), ...Object.fromEntries(Object.entries(doc.fields || {}).map(([key, value]) => [key, firestoreValue(value)])) })) : null;
+    // Firestore returns an empty object (rather than `documents: []`) for an
+    // empty collection. That is a valid empty price cache, not a provider
+    // protocol error; the UI should render its honest empty-state message.
+    const rows = Array.isArray(body) ? body : Array.isArray(body.documents) ? body.documents.map(doc => ({ symbol: doc.name?.split('/').at(-1), ...Object.fromEntries(Object.entries(doc.fields || {}).map(([key, value]) => [key, firestoreValue(value)])) })) : body && typeof body === 'object' && Object.keys(body).length === 0 ? [] : null;
     if (!rows) throw new MarketFeedError('The market provider returned an unexpected response.');
     const quotes = rows.slice(0, 200).map(normalizeQuote).filter(Boolean).sort((a, b) => a.symbol.localeCompare(b.symbol));
     if (rows.length && !quotes.length) throw new MarketFeedError('The market provider returned invalid quotes.');
