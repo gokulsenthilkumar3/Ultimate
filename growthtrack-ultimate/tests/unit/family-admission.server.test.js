@@ -15,7 +15,8 @@ describe('Family admission policy', () => {
     expect([
       ['GET', '/trees'], ['HEAD', '/members/x'], ['POST', '/session'], ['PUT', '/events/x'], ['DELETE', '/documents/x'],
       ['GET', '/documents/tree-1'], ['GET', '/documents/file/x'], ['GET', '/documents/upload/a.png'], ['POST', '/documents'], ['GET', '/ai/ask'], ['POST', '/ai/ask'],
-    ].map(([method, path]) => classifyFamilyRequest(method, path))).toEqual(['read', 'read', 'write', 'write', 'write', 'read', 'transfer', 'transfer', 'transfer', 'ai', 'ai']);
+      ['GET', '/trees/t1/export/gedcom'], ['POST', '/trees/t1/import/gedcom/preview'], ['POST', '/trees/t1/import/gedcom'], ['GET', '/trees/t1'], ['PUT', '/trees/t1/me'],
+    ].map(([method, path]) => classifyFamilyRequest(method, path))).toEqual(['read', 'read', 'write', 'write', 'write', 'read', 'transfer', 'transfer', 'transfer', 'ai', 'ai', 'transfer', 'transfer', 'transfer', 'read', 'write']);
   });
 
   it('rejects invalid limits instead of silently disabling a bound', () => {

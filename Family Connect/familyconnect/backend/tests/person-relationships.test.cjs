@@ -5,8 +5,9 @@ const {createRelationshipHandler}=require('../dist/controllers/relationships.con
 const {validateRelationship}=require('../dist/services/relationshipRules');
 const response=()=>({code:200,status(code){this.code=code;return this;},set(){return this;},json(body){this.body=body;}});
 function fixture(role='editor'){
- let state={preferences:{theme:'keep',familySelf:{'other-tree':'other-person'}},members:[{id:'person-a',treeId:'tree-a',name:'Fictional A'},{id:'person-b',treeId:'tree-a',name:'Fictional B'}],relationships:[]};
+ let state={preferences:{theme:'keep',familySelf:{'other-tree':'other-person'}},members:[{id:'person-a',treeId:'tree-a',name:'Fictional A'},{id:'person-b',treeId:'tree-a',name:'Fictional B'}],relationships:[],audits:[]};
  const tx={
+  auditLog:{create:async({data})=>{state.audits.push(data);return data;}},
   accessControl:{findUnique:async({where})=>where.treeId_userId.treeId==='tree-a'&&where.treeId_userId.userId==='owner'?{role}:null},
   user:{findUnique:async()=>({preferences:state.preferences}),update:async({data})=>{state.preferences=data.preferences;return data;}},
   member:{findFirst:async({where})=>state.members.find(person=>person.id===where.id&&person.treeId===where.treeId)||null,count:async({where})=>state.members.filter(person=>where.id.in.includes(person.id)&&person.treeId===where.treeId).length,create:async({data})=>{const member={id:'new-person',...data};state.members.push(member);return member;}},
@@ -44,4 +45,19 @@ test('Tamil preset creation rejects forged preset/type pairs and serializes rela
  const f=fixture(),handler=createRelationshipHandler(f.db),res=response();
  await handler(req({treeId:'tree-a',member1Id:'person-a',member2Id:'person-b',presetId:'mama'}),res);assert.equal(res.code,201);assert.equal(f.state.relationships[0].type,'aunt_uncle');
  const invalid=response();await handler(req({treeId:'tree-a',member1Id:'person-a',member2Id:'person-b',presetId:'appa',type:'friend'}),invalid);assert.equal(invalid.code,400);
+});
+
+test('creating a person and a connection leaves metadata-only trail entries, and a rejected change leaves none',async()=>{
+ const f=fixture(),res=response();
+ await createPersonHandler(f.db)(req({treeId:'tree-a',name:'Fictional father',markAsMe:true,relative:{memberId:'person-a',presetId:'appa'}}),res);
+ assert.equal(res.code,201);
+ assert.deepEqual(f.state.audits.map(({details,...entry})=>[entry.action,entry.entity,entry.treeId,entry.actorId,details]),[['member.create','member','tree-a','owner',{connected:true}]]);
+ assert.equal(JSON.stringify(f.state.audits).includes('Fictional father'),false,'names never enter the trail');
+ assert.equal(/marked|markAsMe|familySelf|isMe/i.test(JSON.stringify(f.state.audits)),false,'the private Me marker is not audited');
+ const rejected=fixture(),denied=response();
+ await createPersonHandler(rejected.db)(req({treeId:'tree-a',name:'Fictional person',markAsMe:true,relative:{memberId:'private-person',presetId:'amma'}}),denied);
+ assert.notEqual(denied.code,201);assert.deepEqual(rejected.state.audits,[],'a rolled-back change leaves no trail entry');
+ const link=fixture(),made=response();
+ await createRelationshipHandler(link.db)(req({treeId:'tree-a',member1Id:'person-a',member2Id:'person-b',type:'sibling'}),made);
+ assert.equal(made.code,201);assert.deepEqual(link.state.audits.map(({details,...entry})=>[entry.action,entry.entityId,details]),[['relationship.create','new-link',{type:'sibling'}]]);
 });

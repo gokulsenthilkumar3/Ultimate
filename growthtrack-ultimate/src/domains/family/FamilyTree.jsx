@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { isDeceased, yearLabel } from './familyDates';
 import { Background, Controls, Handle, MiniMap, Position, ReactFlow, ReactFlowProvider, useReactFlow, MarkerType, useNodesInitialized } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { layoutFamilyTree, layoutFriendCircles, layoutMixedRelationships } from './treeLayout';
@@ -35,10 +36,10 @@ function PersonAvatar({person,account}) {
 function PersonNode({ data }) {
   const { person, label, me, onSelect, onRelative, onCenter, horizontal, account, appearance } = data;
   const [primary,...native]=label.split(' · ');
-  return <div className="family-person-card" data-me={me} data-deceased={Boolean(person.deathDate)} data-kind={appearance?.kind} data-tone={appearance?.tone}><Handle type="target" position={horizontal?Position.Left:Position.Top}/><Handle id="partner-in" type="target" position={Position.Left}/>
+  return <div className="family-person-card" data-me={me} data-deceased={isDeceased(person)} data-kind={appearance?.kind} data-tone={appearance?.tone}><Handle type="target" position={horizontal?Position.Left:Position.Top}/><Handle id="partner-in" type="target" position={Position.Left}/>
     {!me&&<span className="family-generation-cue" title={appearance?.cue} aria-label={appearance?.cue}>{appearance?.kind==='ancestor'?'↑':appearance?.kind==='descendant'?'↓':appearance?.kind==='social'?'◇':'○'}</span>}
     <span className="family-drag-handle" title="Drag to arrange" aria-hidden="true">⠿</span>
-    <button type="button" className="family-person-main nodrag" data-family-person aria-label={`Open ${person.name}${me?', Me':''}`} title={`${person.name} · ${label}`} onClick={()=>onSelect(person)}><PersonAvatar person={person} account={account}/><span className="family-person-copy"><strong>{person.name}</strong><small>{person.birthDate?.slice(0,4)||'Date unknown'}{person.deathDate?` – ${person.deathDate.slice(0,4)} · In memory`:''}</small><span>{primary||'Family member'}{native.length>0&&<small lang="ta">{native.join(' · ')}</small>}</span></span>{me&&<b className="family-person-me">Me</b>}</button>
+    <button type="button" className="family-person-main nodrag" data-family-person aria-label={`Open ${person.name}${me?', Me':''}`} title={`${person.name} · ${label}`} onClick={()=>onSelect(person)}><PersonAvatar person={person} account={account}/><span className="family-person-copy"><strong>{person.name}</strong><small>{person.birthDate?yearLabel(person.birthDate,person.birthDateApproximate):'Date unknown'}{person.deathDate?` – ${yearLabel(person.deathDate,person.deathDateApproximate)} · In memory`:person.deathRecorded?' – ? · In memory':''}</small><span>{primary||'Family member'}{native.length>0&&<small lang="ta">{native.join(' · ')}</small>}</span></span>{me&&<b className="family-person-me">Me</b>}</button>
     <div className="family-person-quick nodrag"><button type="button" onClick={()=>onSelect(person)}>Profile</button>{onRelative&&<button type="button" onClick={()=>onRelative(person)}>+ Relative</button>}<button type="button" onClick={()=>onCenter(person)}>Center</button></div><Handle type="source" position={horizontal?Position.Right:Position.Bottom}/><Handle id="partner-out" type="source" position={Position.Right}/></div>;
 }
 function UnionNode({data}) { return <><Handle type="target" position={data.horizontal?Position.Left:Position.Top}/><Handle type="source" position={data.horizontal?Position.Right:Position.Bottom}/></>; }

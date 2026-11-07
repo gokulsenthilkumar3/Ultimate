@@ -4,7 +4,7 @@
   "purpose": "Portable planning/source manifest for independent UI review. Initial statuses are untested planning values, not imported user approvals or browser observations.",
   "counts": {
     "pages": 65,
-    "pageViewDestinations": 205,
+    "pageViewDestinations": 207,
     "lazyRouteFamilies": 13,
     "screenComponents": 24,
     "sourceStylesheetsInventoried": 79,
@@ -12,8 +12,8 @@
     "applicationPackages": 23,
     "workPackages": 30,
     "reviewStates": 6,
-    "baseReviewVariants": 4920,
-    "plannedViewportVariants": 24600
+    "baseReviewVariants": 4968,
+    "plannedViewportVariants": 24840
   },
   "sourceOfTruth": [
     "AGENTS.md",
@@ -230,7 +230,7 @@
         "maps",
         "family"
       ],
-      "destinations": 17,
+      "destinations": 19,
       "productionGate": "Rendered verification, domain integration and affected application build; design direction is approved"
     },
     {
@@ -1286,11 +1286,13 @@
       "area": "life",
       "ownerArea": "Family and life",
       "views": [
+        "today",
         "tree",
         "people",
         "memories",
         "vault",
         "timeline",
+        "connections",
         "access"
       ],
       "featureIntent": "Tree/members, memories, family vault and timeline/events.",
@@ -2574,6 +2576,12 @@
     },
     {
       "pageId": "family",
+      "view": "today",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=today",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "family",
       "view": "tree",
       "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=tree",
       "initialReviewStatus": "not-tested"
@@ -2600,6 +2608,12 @@
       "pageId": "family",
       "view": "timeline",
       "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=timeline",
+      "initialReviewStatus": "not-tested"
+    },
+    {
+      "pageId": "family",
+      "view": "connections",
+      "demoUrl": "http://127.0.0.1:5410/admin-demo.html#/life/family?view=connections",
       "initialReviewStatus": "not-tested"
     },
     {
@@ -3333,7 +3347,7 @@
   "baselineEvidence": {
     "status": "last recorded local verification; see source for the current run and preserved separate baseline results",
     "uiChecksPassed": 989,
-    "routeThemeDensityRenderChecks": 820,
+    "routeThemeDensityRenderChecks": 828,
     "separateAvatarContractChecksPassed": 22,
     "browserVisualSignoff": "pending",
     "source": "docs/plans/2026-10-28-verification.md"

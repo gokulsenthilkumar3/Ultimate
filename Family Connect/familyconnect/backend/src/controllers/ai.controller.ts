@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { describeDate, isDeceased } from '../services/datePrecision';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -42,10 +43,10 @@ export const generateBio = async (req: AuthRequest, res: Response): Promise<void
     // Prepare context for Gemini
     const context = `
       Name: ${member.name}
-      Birth Date: ${member.birthDate ? new Date(member.birthDate).toDateString() : 'Unknown'}
+      Birth Date: ${describeDate({ date: member.birthDate, precision: member.birthDatePrecision, approximate: member.birthDateApproximate })}
       Birth Location: ${member.birthLocation || 'Unknown'}
       Gender: ${member.gender || 'Unknown'}
-      Status: ${member.deathDate ? `Deceased (Died: ${new Date(member.deathDate).toDateString()})` : 'Living'}
+      Status: ${isDeceased(member) ? `Deceased (Died: ${describeDate({ date: member.deathDate, precision: member.deathDatePrecision, approximate: member.deathDateApproximate }, 'date unknown')})` : 'Living'}
       Family Tree: ${member.tree.name}
     `;
 

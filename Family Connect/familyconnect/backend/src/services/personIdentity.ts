@@ -18,5 +18,5 @@ export async function saveSelf(tx: Prisma.TransactionClient, userId: string, tre
 export async function selectedSelf(database: Pick<PrismaClient, 'user' | 'member'>, userId: string, treeId: string) {
   const user = await database.user.findUnique({ where: { id: userId }, select: { preferences: true } });
   const memberId = selfFromPreferences(user?.preferences || null, treeId);
-  return memberId ? database.member.findFirst({ where: { id: memberId, treeId }, select: { id: true, name: true, birthDate: true, gender: true } }) : null;
+  return memberId ? database.member.findFirst({ where: { id: memberId, treeId }, select: { id: true, name: true, birthDate: true, birthDatePrecision: true, birthDateApproximate: true, gender: true } }) : null;
 }

@@ -46,6 +46,7 @@ function resolvePolicy(limits) {
 export function classifyFamilyRequest(method, pathname) {
   if (/^\/ai(?:\/|$)/.test(pathname)) return 'ai';
   const safe = method === 'GET' || method === 'HEAD';
+  if (/^\/trees\/[A-Za-z0-9_-]+\/(?:export|import)(?:\/|$)/.test(pathname)) return 'transfer'; // whole-tree GEDCOM files
   // Uploads and file downloads stream bytes and hold sockets longest; deleting metadata is an ordinary write.
   if (/^\/documents(?:\/|$)/.test(pathname) && (safe ? /^\/documents\/(?:file|upload)(?:\/|$)/.test(pathname) : method !== 'DELETE')) return 'transfer';
   return safe ? 'read' : 'write';

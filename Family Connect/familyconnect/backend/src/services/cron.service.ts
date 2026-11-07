@@ -26,12 +26,13 @@ export async function generateUpcomingBirthdayNotifications(database = prisma, n
   let created = 0;
   for (;;) {
     const members = await database.member.findMany({
-      where: { deathDate: null, birthDate: { not: null }, ...(cursor ? { id: { gt: cursor } } : {}) },
+      // Only an exact, non-approximate birthday can be announced; a month, a year or a guess cannot.
+      where: { deathDate: null, deathRecorded: false, birthDate: { not: null }, birthDatePrecision: 'day', birthDateApproximate: false, ...(cursor ? { id: { gt: cursor } } : {}) },
       orderBy: { id: 'asc' }, take: 250,
       include: { tree: { select: { accessControl: { select: { userId: true, role: true } } } } },
     });
     for (const member of members) {
-      if (!member.birthDate || member.deathDate) continue;
+      if (!member.birthDate || member.deathDate || member.deathRecorded || (member.birthDatePrecision ?? 'day') !== 'day' || member.birthDateApproximate) continue;
       const birthday = upcomingBirthday(member.birthDate, now);
       if (!birthday) continue;
       const { daysUntil, ageTurning } = birthday;

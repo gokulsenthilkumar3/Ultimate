@@ -27,7 +27,7 @@ export function createPersonIdentityHandlers(database = prisma) {
         const result = await database.$transaction(async tx => {
           const access = await tx.accessControl.findUnique({ where: { treeId_userId: { treeId, userId: req.user!.id } } });
           if (!access) return { status: 403, error: 'Access denied to this family tree.' };
-          const member = parsed.data.memberId ? await tx.member.findFirst({ where: { id: parsed.data.memberId, treeId }, select: { id: true, name: true, birthDate: true, gender: true } }) : null;
+          const member = parsed.data.memberId ? await tx.member.findFirst({ where: { id: parsed.data.memberId, treeId }, select: { id: true, name: true, birthDate: true, birthDatePrecision: true, birthDateApproximate: true, gender: true } }) : null;
           if (parsed.data.memberId && !member) return { status: 400, error: 'Choose a person from this family tree.' };
           await saveSelf(tx, req.user!.id, treeId, member?.id || null);
           return { status: 200, memberId: member?.id || null, member };

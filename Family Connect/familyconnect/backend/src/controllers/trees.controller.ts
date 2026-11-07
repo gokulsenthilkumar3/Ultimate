@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { cacheGet, cacheSet, cacheInvalidate, CACHE_TTL } from '../services/cache.service';
+import { recordAudit } from '../services/audit';
 
 const prisma = new PrismaClient();
 
@@ -11,13 +12,17 @@ export const createTree = async (req: AuthRequest, res: Response): Promise<void>
     const { name, isPublic } = req.body;
     if (typeof name !== 'string' || !name.trim() || name.length > 160) { res.status(400).json({ error: 'A tree name of up to 160 characters is required.' }); return; }
 
-    const tree = await prisma.familyTree.create({
-      data: {
-        name: name.trim(),
-        ownerId: userId,
-        isPublic: isPublic || false,
-        accessControl: { create: { userId, role: 'admin' } },
-      },
+    const tree = await prisma.$transaction(async tx => {
+      const created = await tx.familyTree.create({
+        data: {
+          name: name.trim(),
+          ownerId: userId,
+          isPublic: isPublic || false,
+          accessControl: { create: { userId, role: 'admin' } },
+        },
+      });
+      await recordAudit(tx, { treeId: created.id, actorId: userId, action: 'tree.create', entity: 'tree', entityId: created.id, details: { isPublic: Boolean(isPublic) } });
+      return created;
     });
     await cacheInvalidate(`trees:user:${userId}`);
     res.status(201).json(tree);
@@ -61,7 +66,7 @@ export const getTreeById = async (req: AuthRequest, res: Response): Promise<void
           ...(req.query.native === '1' ? { take: 120, orderBy: { createdAt: 'asc' as const } } : {}),
           select: {
             id: true, name: true, gender: true,
-            birthDate: true, deathDate: true, photoUrl: true,
+            birthDate: true, birthDatePrecision: true, birthDateApproximate: true, deathDate: true, deathDatePrecision: true, deathDateApproximate: true, deathRecorded: true, photoUrl: true,
           },
         },
         relationships: {
@@ -80,11 +85,11 @@ export const getTreeById = async (req: AuthRequest, res: Response): Promise<void
 
     const userAccess = tree.accessControl.find((ac) => ac.userId === userId);
     if (req.query.native === '1' && typeof req.query.focus === 'string' && req.query.focus.length <= 200) {
-      const focus = await prisma.member.findFirst({ where: { id: req.query.focus, treeId: id }, select: { id: true, name: true, gender: true, birthDate: true, deathDate: true, photoUrl: true } });
+      const focus = await prisma.member.findFirst({ where: { id: req.query.focus, treeId: id }, select: { id: true, name: true, gender: true, birthDate: true, birthDatePrecision: true, birthDateApproximate: true, deathDate: true, deathDatePrecision: true, deathDateApproximate: true, deathRecorded: true, photoUrl: true } });
       if (focus) {
         const near = await prisma.relationship.findMany({ where: { treeId: id, OR: [{ member1Id: focus.id }, { member2Id: focus.id }] }, orderBy: { createdAt: 'asc' }, take: 60 });
         const ids = [...new Set(near.flatMap(edge => [edge.member1Id, edge.member2Id]))];
-        const neighbors = await prisma.member.findMany({ where: { treeId: id, id: { in: ids } }, take: 120, select: { id: true, name: true, gender: true, birthDate: true, deathDate: true, photoUrl: true } });
+        const neighbors = await prisma.member.findMany({ where: { treeId: id, id: { in: ids } }, take: 120, select: { id: true, name: true, gender: true, birthDate: true, birthDatePrecision: true, birthDateApproximate: true, deathDate: true, deathDatePrecision: true, deathDateApproximate: true, deathRecorded: true, photoUrl: true } });
         tree.members = [...new Map([focus, ...neighbors, ...tree.members].map(person => [person.id, person])).values()].slice(0, 120);
         tree.relationships = [...new Map([...near, ...tree.relationships].map(edge => [edge.id, edge])).values()].slice(0, 600);
       }
@@ -115,10 +120,14 @@ export const inviteUserToTree = async (req: AuthRequest, res: Response): Promise
     const treeOwner = await prisma.familyTree.findUnique({ where: { id: treeId }, select: { ownerId: true } });
     if (treeOwner?.ownerId === invitedUser.id && role !== 'admin') { res.status(400).json({ error: 'The tree owner must remain an admin.' }); return; }
 
-    const access = await prisma.accessControl.upsert({
-      where: { treeId_userId: { treeId, userId: invitedUser.id } },
-      update: { role: role as Role },
-      create: { treeId, userId: invitedUser.id, role: role as Role },
+    const access = await prisma.$transaction(async tx => {
+      const granted = await tx.accessControl.upsert({
+        where: { treeId_userId: { treeId, userId: invitedUser.id } },
+        update: { role: role as Role },
+        create: { treeId, userId: invitedUser.id, role: role as Role },
+      });
+      await recordAudit(tx, { treeId, actorId: userId, action: 'access.grant', entity: 'access', entityId: invitedUser.id, details: { role } });
+      return granted;
     });
     await cacheInvalidate(`tree:${treeId}:user:${userId}`, `trees:user:${invitedUser.id}`);
     res.status(200).json(access);

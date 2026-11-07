@@ -1,8 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {memberWhere,eventWhere,documentWhere}=require('../dist/services/recordFilters');
 test('living filters scope both search and totals to the selected tree',()=>{
- assert.deepEqual(memberWhere('tree-a',{life:'living',search:' Test '}),{treeId:'tree-a',name:{contains:'Test',mode:'insensitive'},deathDate:null});
- assert.deepEqual(memberWhere('tree-a',{life:'deceased'}),{treeId:'tree-a',deathDate:{not:null}});
+ assert.deepEqual(memberWhere('tree-a',{life:'living',search:' Test '}),{treeId:'tree-a',name:{contains:'Test',mode:'insensitive'},deathDate:null,deathRecorded:false});
+ assert.deepEqual(memberWhere('tree-a',{life:'deceased'}),{treeId:'tree-a',OR:[{deathDate:{not:null}},{deathRecorded:true}]});
  assert.deepEqual(memberWhere('tree-a',{}),{treeId:'tree-a'});
  assert.throws(()=>memberWhere('tree-a',{life:['living']}));
 });

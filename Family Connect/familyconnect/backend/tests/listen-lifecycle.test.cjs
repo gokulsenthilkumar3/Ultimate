@@ -32,7 +32,7 @@ test('a successfully bound Family build advertises the native contract and retur
     });
     clearTimeout(timer);
     const health=await (await fetch(`http://127.0.0.1:${listening.port}/health`)).json();
-    assert.equal(health.apiContract,'family-native/1.2');
+    assert.equal(health.apiContract,'family-native/1.3');
     const missing=await fetch(`http://127.0.0.1:${listening.port}/api/v1/not-a-real-route`);
     assert.equal(missing.status,404);assert.equal((await missing.json()).code,'FAMILY_ROUTE_NOT_FOUND');
   } finally { clearTimeout(timer); if(child.exitCode===null)child.kill(); }

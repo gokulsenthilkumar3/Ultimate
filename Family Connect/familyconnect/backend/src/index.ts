@@ -58,7 +58,7 @@ app.get('/ready', async (_req, res) => {
   res.set('Cache-Control', 'no-store').status(database ? 200 : 503).json({ status: database ? 'ready' : 'unavailable', database: database ? 'reachable' : 'unavailable' });
 });
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', service: 'family-connect-api', apiContract: 'family-native/1.2', timestamp: new Date().toISOString() });
+  res.status(200).json({ status: 'ok', service: 'family-connect-api', apiContract: 'family-native/1.3', timestamp: new Date().toISOString() });
 });
 
 const server = app.listen(Number(PORT), HOST, (error?: Error) => {
@@ -70,5 +70,5 @@ const server = app.listen(Number(PORT), HOST, (error?: Error) => {
   }
   startCronJobs();
   const address = server.address();
-  console.log(JSON.stringify({ event: 'family.listening', pid: process.pid, port: typeof address === 'object' && address ? address.port : Number(PORT), apiContract: 'family-native/1.2' }));
+  console.log(JSON.stringify({ event: 'family.listening', pid: process.pid, port: typeof address === 'object' && address ? address.port : Number(PORT), apiContract: 'family-native/1.3' }));
 });

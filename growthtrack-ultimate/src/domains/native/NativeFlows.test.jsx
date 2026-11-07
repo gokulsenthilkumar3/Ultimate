@@ -65,8 +65,7 @@ function familyMock(role = 'editor') {
   });
 }
 async function connect() {
-  await screen.findByText('Ultimate session · Story User');
-  await screen.findByText(/editor access|viewer access/);
+  await screen.findByRole('region', { name: 'Family workspace context' });
 }
 
 describe('native Family flows and account boundaries', () => {
@@ -99,7 +98,7 @@ describe('native Family flows and account boundaries', () => {
   it('drops cached Family access on an Ultimate session change', async () => {
     vi.stubGlobal('fetch', familyMock()); renderModule(FamilyPage, 'tree'); await connect();
     window.dispatchEvent(new CustomEvent('growthtrack:session-changed', { detail: { owner: 'another-owner' } }));
-    await waitFor(() => expect(screen.queryByText('Ultimate session · Story User')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Family workspace context' })).toBeNull());
     expect(screen.queryByLabelText('Password')).toBeNull();
   });
   it('does not treat a legacy Family token failure as an Ultimate session failure', async () => {

@@ -3,6 +3,8 @@ import { PrismaClient, EventType } from '@prisma/client';
 import { authorizeTree, membersBelongToTree } from '../services/treeAccess';
 import { eventWhere } from '../services/recordFilters';
 import { z } from 'zod';
+import { AuthRequest } from '../middlewares/auth.middleware';
+import { recordAudit } from '../services/audit';
 
 const prisma = new PrismaClient();
 
@@ -50,7 +52,8 @@ export const createEvent = async (req: Request, res: Response): Promise<void> =>
     if (!Object.values(EventType).includes(type)) { res.status(400).json({ error: 'Choose a supported milestone type.' }); return; }
     if (!await membersBelongToTree(treeId, [memberId]) || !Number.isFinite(Date.parse(date)) || typeof title !== 'string' || title.length > 300) { res.status(400).json({ error: 'Review the event date, title and member.' }); return; }
 
-    const event = await prisma.event.create({
+    const event = await prisma.$transaction(async tx => {
+    const created = await tx.event.create({
       data: {
         treeId,
         memberId,
@@ -61,6 +64,9 @@ export const createEvent = async (req: Request, res: Response): Promise<void> =>
         description,
         photos: photos || [],
       },
+    });
+    await recordAudit(tx, { treeId, actorId: (req as AuthRequest).user!.id, action: 'event.create', entity: 'event', entityId: created.id, details: { type } });
+    return created;
     });
 
     res.status(201).json(event);
