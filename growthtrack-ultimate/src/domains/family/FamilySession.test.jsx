@@ -20,7 +20,7 @@ describe('Family uses the Ultimate session',()=>{
  });
  it('opens without a second login and sends cookies/CSRF through the protected native API',async()=>{
   const calls=[];vi.stubGlobal('fetch',vi.fn(async(url,options)=>{calls.push({url,options});return url.endsWith('/session')?response({authMode:'ultimate',user:{id:'family-a',name:'Family owner'}}):response([]);}));
-  show();await screen.findByText('Ultimate session · Family owner');
+  show();await screen.findByText('A new chapter starts here');
   expect(screen.queryByLabelText('Password')).toBeNull();expect(screen.queryByRole('button',{name:'Disconnect Family account'})).toBeNull();
   expect(calls[0].url).toBe('/api/native/family/session');expect(calls[0].options.credentials).toBe('include');expect(calls[0].options.headers.get('X-CSRF-Token')).toBe('synthetic-csrf');
   expect(calls.every(call=>!call.options.headers.has('Authorization'))).toBe(true);
