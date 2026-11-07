@@ -1,9 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { KINSHIP, kinshipPayload, relationToMe } from './kinship';
-import { layoutFamilyTree } from './treeLayout';
+import { layoutFamilyTree, layoutFriendCircles } from './treeLayout';
 describe('Tamil kinship and Me',()=>{
+ it('uses recorded age for Tamil sibling labels and preserves mentor direction',()=>{
+  const me={id:'me',birthDate:'2000-01-01'}, older={id:'older',gender:'female',birthDate:'1990-01-01'};
+  expect(relationToMe(older,'me',[me,older],[{member1Id:'me',member2Id:'older',type:'sibling'}])).toBe('Older sister · அக்கா');
+  expect(relationToMe({id:'student'},'me',[],[{member1Id:'me',member2Id:'student',type:'mentor'}])).toBe('Mentee');
+  expect(relationToMe({id:'step'},'me',[],[{member1Id:'step',member2Id:'me',type:'step_parent'}])).toBe('Step-parent');
+ });
+ it('positions assigned circles closer than unassigned friends',()=>{
+  const graph=layoutFriendCircles([{id:'me'},{id:'close'},{id:'unknown'}],[],'me',{close:{circle:'inner'}});
+  const radius=id=>Math.hypot(graph.positions.get(id).x,graph.positions.get(id).y);
+  expect(radius('me')).toBe(0);expect(radius('close')).toBeLessThan(radius('unknown'));
+ });
  it('keeps explicit structural types under Tamil labels',()=>{
-  expect(KINSHIP.filter(item=>item.tamil)).toHaveLength(26);
+  expect(KINSHIP.filter(item=>item.tamil)).toHaveLength(31);
   expect(kinshipPayload('appa')).toMatchObject({type:'parent',presetId:'appa'});
   expect(kinshipPayload('mama')).toMatchObject({type:'aunt_uncle'});
   expect(kinshipPayload('chithi-maternal','My family term').customLabel).toBe('My family term');

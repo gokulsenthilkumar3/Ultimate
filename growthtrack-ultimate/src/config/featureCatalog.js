@@ -53,7 +53,7 @@ export const FEATURES = Object.freeze([
   feature('social', 'life', 'social', 'Social', 'analytics', ['profiles', 'analytics', 'connections']),
   feature('entertainment', 'life', 'entertainment', 'Entertainment', 'record', ['library', 'stats', 'sync']),
   feature('maps', 'life', 'places', 'Maps & Places', 'record', ['map', 'list', 'timeline', 'privacy'], ['places']),
-  feature('family', 'life', 'family', 'Family Connect', 'immersive', ['tree', 'people', 'memories', 'vault', 'timeline', 'access'], ['family-connect']),
+  feature('family', 'life', 'family', 'Family Connect', 'immersive', ['today', 'tree', 'people', 'memories', 'vault', 'timeline', 'connections', 'access'], ['family-connect']),
   feature('hub', 'hub', 'overview', 'Overview', 'command'),
   Object.freeze({ ...feature('customers', 'hub', 'customers', 'All customers', 'record', ['customers', 'activity', 'support'], [], 'setup-required'), canonicalPath: '/customers' }),
   feature('apps', 'hub', 'apps', 'Apps', 'record', ['modules', 'favorites', 'external']),

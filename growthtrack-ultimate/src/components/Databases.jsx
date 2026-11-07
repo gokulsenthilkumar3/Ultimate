@@ -580,17 +580,29 @@ export default function Databases() {
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState('');
   const [systemTables, setSystemTables] = useState([]);
+  const [databaseSources, setDatabaseSources] = useState([]);
+  const [systemTablesLoading, setSystemTablesLoading] = useState(true);
+  const [systemTablesError, setSystemTablesError] = useState('');
   const [configDrafts, setConfigDrafts] = useState({});
   const [viewMode, setViewMode] = useState('table');
   const [showConsole, setShowConsole] = useState(false);
 
   const refreshSystemTables = useCallback(async () => {
-    try { 
+    setSystemTablesLoading(true);
+    setSystemTablesError('');
+    try {
       const data = await apiSync('/database/tables', 'GET');
-      setSystemTables(data); 
-    } catch { 
-      setSystemTables([]); 
-    }
+      // Keep compatibility with the legacy array response while accepting the
+      // richer envelope used by database gateways and future adapters.
+      setSystemTables(Array.isArray(data) ? data : (Array.isArray(data?.tables) ? data.tables : []));
+      try {
+        const sources = await apiSync('/database/sources', 'GET');
+        setDatabaseSources(Array.isArray(sources) ? sources : []);
+      } catch { setDatabaseSources([]); }
+    } catch (error) {
+      setSystemTables([]);
+      setSystemTablesError(error?.message || 'Application tables could not be loaded.');
+    } finally { setSystemTablesLoading(false); }
   }, []);
   useEffect(() => { refreshSystemTables(); }, [refreshSystemTables]);
   const saveConfig = async row => {
@@ -697,7 +709,14 @@ export default function Databases() {
             </div>
           </div>
         </div>
+        {databaseSources.length > 0 && <div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap', marginBottom: '.75rem' }} aria-label="Connected database sources">
+          {databaseSources.map(source => <span key={source.id} className="badge" title={`${source.name} · ${source.provider}`} style={{ borderColor: source.online ? 'rgba(16,185,129,.45)' : 'rgba(248,113,113,.45)' }}>
+            <span aria-hidden="true" style={{ color: source.online ? '#10b981' : '#f87171' }}>●</span> {source.name} · {source.provider} · {source.online ? 'online' : 'offline'}
+          </span>)}
+        </div>}
         <p className="text-secondary databases-system__hint">Every module table is available here as a read view. Create or edit records in their module; the API handles the SQL persistence and CRUD audit trail.</p>
+        {systemTablesError && <div role="alert" className="text-secondary" style={{ color: 'var(--danger)', marginBottom: '.75rem' }}>{systemTablesError} <button type="button" className="btn-secondary" onClick={refreshSystemTables}>Retry</button></div>}
+        {systemTablesLoading && <div className="text-secondary" role="status" style={{ padding: '1rem 0' }}>Loading application tables…</div>}
         <div className="databases-system__grid">
           {systemTables.map(table => (
             <details key={table.name} className="databases-system__table">

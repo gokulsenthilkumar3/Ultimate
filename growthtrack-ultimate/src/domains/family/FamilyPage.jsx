@@ -17,7 +17,7 @@ import FamilyProfile from './FamilyProfile';
 import DateCertaintyFields from './DateCertaintyFields';
 import { dateBody } from './familyDates';
 
-const TABS = [{ value: 'tree', label: 'Family tree' }, { value: 'people', label: 'People' }, { value: 'memories', label: 'Memories' }, { value: 'vault', label: 'Private vault' }, { value: 'timeline', label: 'Timeline' }, { value: 'access', label: 'Access' }];
+const TABS = [{ value: 'today', label: 'Today' }, { value: 'tree', label: 'Relationships' }, { value: 'people', label: 'People' }, { value: 'memories', label: 'Memories' }, { value: 'vault', label: 'Private vault' }, { value: 'timeline', label: 'Timeline' }, { value: 'connections', label: 'Circles & sharing' }, { value: 'access', label: 'Access' }];
 const EMPTY = [];
 const EVENTS = ['birthday', 'marriage', 'death', 'anniversary', 'festival', 'gathering', 'migration', 'achievement'];
 const human = text => text.replaceAll('_', ' ');

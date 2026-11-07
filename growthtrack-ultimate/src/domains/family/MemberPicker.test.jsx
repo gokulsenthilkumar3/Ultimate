@@ -24,15 +24,15 @@ describe('searchable person selection',()=>{
  it('can remove the optional connection without a second checkbox',async()=>{
   show(<NewPersonFields account={account} treeId="tree" people={people} anchor={people[0]} currentMe={people[0]}/>);
   expect(screen.queryByRole('checkbox',{name:'Connect them to someone in this tree'})).toBeNull();
-  await userEvent.click(screen.getByRole('button',{name:'Clear Person already in your tree'}));
+  await userEvent.click(screen.getByRole('button',{name:'Clear Connect to this existing person'}));
   expect(screen.queryByRole('combobox',{name:'Relationship to this person'})).toBeNull();
   expect(screen.getByText(/save a standalone person/)).toBeVisible();
  });
  it('shows an existing-person preview with both names and no new-person copy',async()=>{
   const {default:RelationshipFields}=await import('./RelationshipFields');
   show(<RelationshipFields account={account} treeId="tree" people={people} anchor={people[0]}/>);
-  const input=screen.getByRole('combobox',{name:'Their relative'});await userEvent.click(input);await userEvent.click(screen.getByRole('option',{name:'Fictional B'}));
-  await userEvent.selectOptions(screen.getByRole('combobox',{name:'Relationship to this person'}),'appa');
-  expect(screen.getByRole('status')).toHaveTextContent('Fictional B will be recorded as அப்பா');expect(screen.getByRole('status')).toHaveTextContent('of Fictional A');expect(screen.queryByText(/The new person/)).toBeNull();
+  const input=screen.getByRole('combobox',{name:'Person 1 — whose relationship are you describing?'});await userEvent.click(input);await userEvent.click(screen.getByRole('option',{name:'Fictional B'}));
+  await userEvent.click(screen.getByRole('radio',{name:/Appa/}));
+  expect(screen.getByRole('status')).toHaveTextContent('Fictional B is the அப்பா');expect(screen.getByRole('status')).toHaveTextContent('of Fictional A');expect(screen.queryByText(/The new person/)).toBeNull();
  });
 });

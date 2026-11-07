@@ -32,6 +32,12 @@ test('defaults are complete, frozen and derive companion URLs from one base each
   assert.equal(DEFAULT_CONFIG.security.origins.length, 8, 'development allows the local dev ports');
 });
 
+test('native Forex adapter has an explicit validated upstream', () => {
+  assert.equal(DEFAULT_CONFIG.nativeModules.forexUrl, 'http://127.0.0.1:8000');
+  assert.equal(loadServerConfig({ FOREX_API_URL: 'http://127.0.0.1:9123' }).nativeModules.forexUrl, 'http://127.0.0.1:9123');
+  assert.throws(() => loadServerConfig({ FOREX_API_URL: 'file:///tmp/forex' }), /FOREX_API_URL/);
+});
+
 test('environment overrides are applied, trimmed and blank values count as unset', () => {
   const config = loadServerConfig({ PORT: '4000', COMPANION_FINSYNC_URL: 'https://finsync.example.com/', APP_ORIGINS: ' https://app.example.com , ',
     SYNC_INTERVAL_ICS_MINUTES: '15', GROWTHTRACK_SYNC_SCHEDULER: 'off', GROWTHTRACK_RECORD_ROWS: '1', APP_ENCRYPTION_KEY: '', APP_URL: 'https://app.example.com/Ultimate/' });
