@@ -2,10 +2,12 @@ import http from 'node:http';
 import https from 'node:https';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
+import { classifyFamilyRequest, createFamilyAdmission, FamilyAdmissionError } from './familyAdmission.js';
 
 /** Family sees a short-lived, request-bound server assertion, never the browser's cookies. */
-export function registerFamilyBridge(app, authenticate, { baseUrl, secret, requestImpl } = {}) {
+export function registerFamilyBridge(app, authenticate, { baseUrl, secret, requestImpl, admission: admissionOptions } = {}) {
   const circuit = createFamilyCircuitBreaker();
+  const admission = createFamilyAdmission(admissionOptions);
   app.use('/api/native/family', authenticate, (req, res) => {
     res.set('Cache-Control', 'no-store');
     if (!secret) return res.status(503).json({ code: 'FAMILY_SETUP_REQUIRED', error: 'The shared Family service is not configured.' });
@@ -17,7 +19,19 @@ export function registerFamilyBridge(app, authenticate, { baseUrl, secret, reque
       destination = new URL(baseUrl);
       if (!['http:', 'https:'].includes(destination.protocol) || destination.username || destination.password || destination.pathname !== '/' || destination.search || destination.hash) throw new Error('origin');
     } catch { return res.status(503).json({ error: 'The Family service URL is invalid.' }); }
-    if (!circuit.acquire()) { res.set('Retry-After', '15'); return res.status(503).json({ code: 'FAMILY_CIRCUIT_OPEN', error: 'The Family service is recovering. Retry in a few seconds.' }); }
+    // Peek before admitting so requests refused during an outage consume no account budget,
+    // then admit before claiming the single recovery probe so a refused request cannot leak it.
+    const recovering = () => { res.set('Retry-After', String(circuit.retryAfter())); return res.status(503).json({ code: 'FAMILY_CIRCUIT_OPEN', error: 'The Family service is recovering. Retry in a few seconds.' }); };
+    if (!circuit.available()) return recovering();
+    let release;
+    try { release = admission.acquire(String(req.user.id), classifyFamilyRequest(req.method, incoming.pathname)); }
+    catch (error) {
+      if (!(error instanceof FamilyAdmissionError)) throw error;
+      res.set('Retry-After', String(error.retryAfter));
+      return res.status(error.status).json({ code: error.code, error: error.message });
+    }
+    res.once('close', release);
+    if (!circuit.acquire()) return recovering();
     let settled = false;
     const failure = () => { if (!settled) { settled = true; circuit.failure(); } };
     const success = () => { if (!settled) { settled = true; circuit.success(); } };
@@ -52,6 +66,10 @@ export function registerFamilyBridge(app, authenticate, { baseUrl, secret, reque
 export function createFamilyCircuitBreaker({ threshold = 3, cooldownMs = 15_000, now = Date.now } = {}) {
   let failures = 0, blockedUntil = 0, probing = false;
   return {
+    /** Side-effect-free: whether acquire() would currently succeed. */
+    available() { return !blockedUntil || (now() >= blockedUntil && !probing); },
+    /** Whole seconds a refused caller should wait, from the remaining cooldown. */
+    retryAfter() { return Math.max(1, Math.ceil((blockedUntil - now()) / 1000)); },
     acquire() {
       if (!blockedUntil) return true;
       if (now() < blockedUntil || probing) return false;
