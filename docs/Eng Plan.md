@@ -1,6 +1,6 @@
 # GrowthTrack engineering plan: improve the existing workspace
 
-7 November Family follow-up: [local stabilization and AWS/Azure rollout boundaries](plans/2026-11-07-family-hardening.md) records the reminder fix, schema checks, guarded CRUD additions, bridge circuit breaker, readiness, scoped API contract and remaining storage/schema/integration work. Cloud deployment remains deferred by the owner.
+7 November Family follow-up: [local stabilization and AWS/Azure rollout boundaries](plans/2026-11-07-family-hardening.md) records the reminder fix, schema checks, guarded CRUD additions, bridge circuit breaker, readiness, scoped API contract and remaining storage/schema/integration work. Cloud deployment remains deferred by the owner. The [Family connector admission plan](plans/2026-11-07-family-admission.md) adds per-account rate and concurrency admission to that bridge and records the proposed shared/adaptive follow-ups.
 
 The [Tamil relationship and Me workflow](plans/2026-11-07-family-tamil-relationships.md) adds explicit direction previews, atomic person/relative creation, 26 Tamil presets, private one-person-per-account/tree selection and bounded branch focus. Relationship creation/editing now includes transaction-based duplicate/ancestry checks; database constraints and the broader storage/schema rollout remain pending.
 
