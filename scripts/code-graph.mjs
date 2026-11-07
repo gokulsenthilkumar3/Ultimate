@@ -77,7 +77,7 @@ export function buildGraph() {
   }
   const graph = { version: 3, scope: 'Static relative JS/TS imports, re-exports, literal dynamic imports and require calls. Aliases, external packages, computed imports and non-JS/TS dependencies are not resolved.', exclusionsHash: policyHash(), files, edges, diagnostics, coverage };
   fs.mkdirSync(path.dirname(output), { recursive: true });
-  fs.writeFileSync(output + '.tmp', JSON.stringify(graph));
+  fs.writeFileSync(output + '.tmp', JSON.stringify(graph, null, 2) + '\n');
   fs.renameSync(output + '.tmp', output);
   return graph;
 }

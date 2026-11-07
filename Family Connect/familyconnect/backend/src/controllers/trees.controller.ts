@@ -79,6 +79,16 @@ export const getTreeById = async (req: AuthRequest, res: Response): Promise<void
     if (!tree) { res.status(404).json({ error: 'Tree not found or access denied' }); return; }
 
     const userAccess = tree.accessControl.find((ac) => ac.userId === userId);
+    if (req.query.native === '1' && typeof req.query.focus === 'string' && req.query.focus.length <= 200) {
+      const focus = await prisma.member.findFirst({ where: { id: req.query.focus, treeId: id }, select: { id: true, name: true, gender: true, birthDate: true, deathDate: true, photoUrl: true } });
+      if (focus) {
+        const near = await prisma.relationship.findMany({ where: { treeId: id, OR: [{ member1Id: focus.id }, { member2Id: focus.id }] }, orderBy: { createdAt: 'asc' }, take: 60 });
+        const ids = [...new Set(near.flatMap(edge => [edge.member1Id, edge.member2Id]))];
+        const neighbors = await prisma.member.findMany({ where: { treeId: id, id: { in: ids } }, take: 120, select: { id: true, name: true, gender: true, birthDate: true, deathDate: true, photoUrl: true } });
+        tree.members = [...new Map([focus, ...neighbors, ...tree.members].map(person => [person.id, person])).values()].slice(0, 120);
+        tree.relationships = [...new Map([...near, ...tree.relationships].map(edge => [edge.id, edge])).values()].slice(0, 600);
+      }
+    }
     const payload = { ...tree, currentUserRole: userAccess?.role ?? 'viewer' };
     await cacheSet(cacheKey, payload, CACHE_TTL.TREE);
     res.status(200).json(payload);

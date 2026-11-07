@@ -2,6 +2,7 @@
   "version": 1,
   "owners": {
     ".agents": "Workspace tooling",
+    ".codex": "Workspace tooling",
     ".github": "Workspace CI",
     "Claude": "Historical 3D provenance",
     "Equity": "Equity",
@@ -16,6 +17,8 @@
   },
   "rootFiles": [
     ".gitignore",
+    ".graphifyignore",
+    ".gitattributes",
     ".nvmrc",
     "AGENTS.md",
     "CHANGELOG.md",
@@ -29,6 +32,7 @@
     "build-desktop.ps1",
     "feature.md",
     "package.json",
+    "package-lock.json",
     "task.md"
   ],
   "canonicalDocs": [

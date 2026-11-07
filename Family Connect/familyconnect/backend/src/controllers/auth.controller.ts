@@ -3,8 +3,16 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { getJwtSecret } from '../config/environment';
+import { ultimateIdentity, openUltimateSession } from '../services/ultimateIdentity';
 
 const prisma = new PrismaClient();
+
+export const ultimateSession = async (req: Request, res: Response): Promise<void> => {
+  let identity;
+  try { identity = ultimateIdentity(req); } catch { res.status(401).json({ error: 'A valid Ultimate session is required.' }); return; }
+  try { res.set('Cache-Control', 'no-store'); res.json(await openUltimateSession(identity, prisma.user)); }
+  catch { res.status(503).json({ error: 'The Family account could not be opened. Review the shared account configuration.' }); }
+};
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {

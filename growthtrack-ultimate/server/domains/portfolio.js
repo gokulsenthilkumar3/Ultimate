@@ -100,13 +100,14 @@ function history(value, path) {
 }
 
 export function normalizePortfolioPayload(source) {
-  if (!Array.isArray(source)) invalid('portfolio', 'Portfolio must be an array.');
-  if (source.length > 200) throw domainError(413, 'PORTFOLIO_LIMIT', 'Portfolio cannot exceed 200 holdings.');
+  if (!Array.isArray(source)) throw domainError(400, 'INVALID_PORTFOLIO', 'portfolio: Portfolio must be an array.');
+  const holdings = Array.from(source);
+  if (holdings.length > 200) throw domainError(413, 'PORTFOLIO_LIMIT', 'Portfolio cannot exceed 200 holdings.');
   let serialized;
   try { serialized = JSON.stringify(source); } catch { invalid('portfolio', 'Use plain JSON data.'); }
   if (Buffer.byteLength(serialized, 'utf8') > MAX_BYTES) throw domainError(413, 'PORTFOLIO_LIMIT', 'Portfolio cannot exceed 512 KB.');
   const ids = new Set();
-  return source.map((holding, index) => {
+  return holdings.map((holding, index) => {
     const path = `portfolio[${index}]`;
     if (!plainObject(holding)) invalid(path, 'A holding must be an object.');
     if (typeof holding.name !== 'string' || !holding.name.trim() || holding.name.trim().length > 120) invalid(`${path}.name`, 'A name up to 120 characters is required.');

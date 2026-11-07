@@ -209,8 +209,14 @@ app.post('/v1/bills', authenticate, async (req: Request, res: Response) => {
 });
 
 app.post('/v1/bills/:id/autopay', authenticate, rateLimit(10, 60000), async (req: Request, res: Response) => {
+  const billId = req.params.id;
+  if (typeof billId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(billId)) {
+    res.status(400).json({ error: 'Invalid bill identifier' });
+    return;
+  }
   try {
-    const response = await axios.post(`${billsServiceUrl}/v1/bills/${req.params.id}/autopay`, req.body, {
+    const response = await axios.post(`/v1/bills/${encodeURIComponent(billId)}/autopay`, req.body, {
+      baseURL: billsServiceUrl, allowAbsoluteUrls: false, maxRedirects: 0, timeout: 10000,
       headers: {
         Authorization: req.headers.authorization ?? '',
         'x-user-id': req.user?.sub ?? '',

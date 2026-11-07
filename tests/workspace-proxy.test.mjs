@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { createGateway } from '../scripts/gateway.mjs';
-import { resolveApiRoute, createUiProxies } from '../scripts/workspace-proxy.mjs';
+import { resolveApiRoute, createUiProxies, proxyHttp } from '../scripts/workspace-proxy.mjs';
 
 test('API namespaces resolve to native backend routes', () => {
   const cases = [
@@ -49,4 +49,23 @@ test('gateway preserves request body, query, cookies, authorization and response
     assert.deepEqual(await response.json(), { url: '/api/v1/trees?preview=1', method: 'POST', cookie: 'owner=fixture', authorization: 'Bearer fixture', csrf: 'fixture', body: '{"name":"fixture"}' });
     assert.equal(response.headers.get('set-cookie'), 'test-session=value; Path=/; HttpOnly');
   } finally { gateway.closeAllConnections(); upstream.closeAllConnections(); await Promise.all([new Promise(resolve => gateway.close(resolve)), new Promise(resolve => upstream.close(resolve))]); }
+});
+
+test('protocol-relative and backslash paths cannot replace the configured upstream host', async t => {
+  const upstream = http.createServer((req, res) => res.end(req.headers.host));
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const target = `http://127.0.0.1:${upstream.address().port}`;
+  let forwardedPath = '//attacker.invalid/path';
+  const gateway = http.createServer((req, res) => proxyHttp(req, res, target, forwardedPath));
+  await new Promise(resolve => gateway.listen(0, '127.0.0.1', resolve));
+  t.after(async () => {
+    gateway.closeAllConnections(); upstream.closeAllConnections();
+    await Promise.all([new Promise(resolve => gateway.close(resolve)), new Promise(resolve => upstream.close(resolve))]);
+  });
+  for (const path of ['//attacker.invalid/path', '/\\attacker.invalid/path', 'http://attacker.invalid/path']) {
+    forwardedPath = path;
+    const response = await fetch(`http://127.0.0.1:${gateway.address().port}/api/state?q=1`);
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), new URL(target).host);
+  }
 });

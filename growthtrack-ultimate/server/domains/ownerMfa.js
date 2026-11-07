@@ -38,6 +38,16 @@ export async function consumeOwnerCode({ prisma, secret, userId, code, now = Dat
   // Persist a monotonic counter in existing private settings. The conditional
   // upsert rejects replays across concurrent logins, restarts and instances.
   const key = `private:owner-mfa:${mfaKeyId(secret)}:${userId}`;
+  if (prisma.$growthtrackProvider === 'sqlserver') {
+    const changed = await prisma.$executeRaw`
+      MERGE dbo.app_settings WITH (HOLDLOCK) AS target
+      USING (VALUES (${randomUUID()}, ${key}, ${String(matched)})) AS source(id, [key], value)
+      ON target.[key]=source.[key]
+      WHEN MATCHED AND TRY_CONVERT(BIGINT,target.value)<${matched}
+        THEN UPDATE SET value=source.value, updatedAt=SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN INSERT (id,[key],value,category) VALUES(source.id,source.[key],source.value,'security');`;
+    return changed === 1;
+  }
   const changed = await prisma.$executeRaw`
     INSERT INTO app_settings (id, key, value, category) VALUES (${randomUUID()}, ${key}, ${String(matched)}, 'security')
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updatedAt = CURRENT_TIMESTAMP

@@ -119,6 +119,8 @@ build/
 /build/*
 !/build/serviceWorkerPlugin.js
 !/build/staticCompressionPlugin.js
+!/build/uiBuildInfo.js
+!/build/icon.ico
 coverage/
 .build_test/
 .vercel/

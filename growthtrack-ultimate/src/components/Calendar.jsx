@@ -14,6 +14,7 @@ import PageTemplate from './ui/PageTemplate';
 import FormError from './ui/FormError';
 import FileUploader from './ui/FileUploader';
 import SyncCenter from './sync/SyncCenter';
+import IntegrationGuide from './sync/IntegrationGuide';
 import { persistCalendarRows } from './calendar/calendarRecords';
 import useCalendarWidth from './calendar/useCalendarWidth';
 import { addDays, addMonths, CALENDAR_VIEWS, calendarRange, calendarView, dateLabel, normalizeEvent, occurrencesInRange, occurrencesOnDay, parseDateKey, persistMutation, RECURRENCES, resolveTimeZone, todayKey, validateEvent } from './calendar/calendarModel';
@@ -240,6 +241,7 @@ export default function Calendar() {
         {!occurrences.length ? <PageState state="empty" title="No events in this date range" description="Add an event or choose another date range." /> : range.days.filter(day => occurrencesOnDay(occurrences, day).length).map(day => <section key={day} className="gt-calendar-day-section" aria-labelledby={`${id}-agenda-${day}`}><h2 id={`${id}-agenda-${day}`}><time dateTime={day}>{dayHeading(day)}</time></h2>{eventList(day)}</section>)}
       </section>}
       {view === 'connections' && <section aria-label="Calendar connections">
+        <IntegrationGuide area="calendar" />
         <SyncCenter target="calendar" title="Subscribed calendars" description="Paste a calendar’s private iCal address once. Events mirror here automatically every hour and stay read-only; change them in the original calendar." />
         <Link to={featurePath('profile', 'integrations')}>All live data sources</Link>
       </section>}

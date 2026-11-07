@@ -21,6 +21,13 @@ for (const app of apps) {
     'Keep credentials in ignored local environment files or a deployment secret manager. Tracked examples contain empty secret fields. Do not paste passwords, keys, personal records or production connection strings into this README. `NEXT_PUBLIC_`, `VITE_` and `EXPO_PUBLIC_` values are visible to clients.', '',
     '## Verification', app.checks.length ? block(app.checks) : '\nNo complete verification command is declared for this reference package.\n',
     '## Scope and limitations', '', ...app.notes.map(text => `- ${text}`), '',
+  ];
+  if (app.sections) {
+    for (const [title, content] of Object.entries(app.sections)) {
+      lines.push(`## ${title}`, '', content, '');
+    }
+  }
+  lines.push(
     '## Workspace documentation', '',
     ...(app.documentation || []).map(document => `- [${document.title}](${link(app.path, document.path)})`),
     `- [Application directory](${link(app.path, 'docs/APPLICATIONS.md')})`,
@@ -34,7 +41,7 @@ for (const app of apps) {
     `- [UI impact and scale checks](${link(app.path, 'docs/plans/2026-10-28-ui-system-impact.md')})`,
     `- [Code retrieval and embedding plan](${link(app.path, 'docs/plans/2026-10-28-code-retrieval.md')})`,
     '', '<!-- Generated from docs/applications.json by scripts/application-docs.mjs. Edit the catalog, then regenerate. -->', '',
-  ];
+  );
   const content = lines.join('\n');
   if (check) { if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n') !== content) { console.error(`Stale README: ${app.path}/README.md`); stale++; } }
   else fs.writeFileSync(target, content);

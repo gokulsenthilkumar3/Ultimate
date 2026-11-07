@@ -324,7 +324,7 @@
       controls = node('div', {}, node('div', { class: 'feet' }, node('div', {}, node('label', { class: 'fld', for: 'ms-ft', text: 'Feet' }), ft), node('div', {}, node('label', { class: 'fld', for: 'ms-in', text: 'Inches' }), inn)));
     } else {
       const input = node('input', { id: 'ms-input', class: 'input', inputmode: 'decimal', autocomplete: 'off', placeholder: 'Not recorded', value: cur != null ? trim(toDisplay(t, cur), 2) : '', 'aria-describedby': 'ms-hint ms-warn' });
-      const apply = display => { const v = display == null ? null : fromDisplay(t, display); if (validate(display)) { commit(m, v, sourceSel.value); renderReadout(); } };
+      const apply = display => { const v = display == null ? null : fromDisplay(t, display); if (validate(v)) { commit(m, v, sourceSel.value); renderReadout(); } };
       input.addEventListener('input', () => apply(parseNum(input.value)));
       const nudge = dir => { const stepDisplay = units.imperial && t === 'length' ? 0.25 : units.imperial && t === 'mass' ? 1 : m.step; const start = parseNum(input.value); const base = Number.isFinite(start) ? start : toDisplay(t, cur ?? readingFor(m) ?? (m.range[0] + m.range[1]) / 2); const next = Math.max(0, Math.round((base + dir * stepDisplay) / stepDisplay) * stepDisplay); input.value = trim(next, 2); apply(next); };
       controls = node('div', {}, node('label', { class: 'fld', for: 'ms-input' }, `${m.label} (${unitName(t)})`), node('div', { class: 'stepper' }, node('button', { type: 'button', class: 'btn', 'aria-label': `Decrease ${m.label}`, onclick: () => nudge(-1) }, '−'), input, node('button', { type: 'button', class: 'btn', 'aria-label': `Increase ${m.label}`, onclick: () => nudge(1) }, '+')));
@@ -496,22 +496,25 @@
     $('#hs-sentence').textContent = i === 0 ? 'This is your first check-in. Everything after it is compared with this one.' : changes.length ? `Since ${fmtDate(first.date, true)}: ${changes.map(x => histWords(x.k, x.d)).join(', ')}.` : `Nothing has changed since ${fmtDate(first.date, true)}.`;
     const key = state.chartKey; const t = histType(key); const mm = M_BY_ID[key];
     $('#hs-latest-l').textContent = `${mm.label} · ${fmtDate(c.date)}`; $('#hs-latest-v').textContent = show(t, c.m[key]);
-    const dd = c.m[key] - first.m[key]; $('#hs-latest-d').textContent = i === 0 ? 'First check-in' : `${dd === 0 ? 'No change' : `${show(t, Math.abs(dd))} ${dd < 0 ? 'down' : 'up'}`} since ${fmtDate(first.date)}`;
+    const dd = c.m[key] - first.m[key]; $('#hs-latest-d').textContent = i === 0 ? 'First check-in' : !Number.isFinite(dd) ? 'No comparable measurement in the first check-in' : `${dd === 0 ? 'No change' : `${show(t, Math.abs(dd))} ${dd < 0 ? 'down' : 'up'}`} since ${fmtDate(first.date)}`;
     $('#hs-col').textContent = `${mm.label} (${unitName(t)})`;
     const rows = $('#hs-table'); rows.innerHTML = '';
-    for (let j = n - 1; j >= 0; j -= 1) { const d = state.checkins[j].m[key] - first.m[key]; rows.append(node('tr', j === i ? { 'aria-current': 'true', style: 'background:var(--soft)' } : {}, node('td', { text: fmtDate(state.checkins[j].date, true) }), node('td', { text: trim(toDisplay(t, state.checkins[j].m[key]), 1) }), node('td', { text: j === 0 ? '—' : `${d > 0 ? '+' : d < 0 ? '−' : ''}${trim(Math.abs(toDisplay(t, d)), 1)}` }))); }
+    for (let j = n - 1; j >= 0; j -= 1) { const value = state.checkins[j].m[key]; const d = value - first.m[key]; rows.append(node('tr', j === i ? { 'aria-current': 'true', style: 'background:var(--soft)' } : {}, node('td', { text: fmtDate(state.checkins[j].date, true) }), node('td', { text: Number.isFinite(value) ? trim(toDisplay(t, value), 1) : '—' }), node('td', { text: j === 0 || !Number.isFinite(d) ? '—' : `${d > 0 ? '+' : d < 0 ? '−' : ''}${trim(Math.abs(toDisplay(t, d)), 1)}` }))); }
     renderChart();
   }
   function renderChart() {
-    const key = state.chartKey; const t = histType(key); const vals = state.checkins.map(c => toDisplay(t, c.m[key])); const lo = Math.min(...vals); const hi = Math.max(...vals); const span = hi - lo || 1;
-    const W = 640; const H = 180; const xs = state.checkins.map((c, i) => 36 + (i / Math.max(1, vals.length - 1)) * (W - 56)); const ys = vals.map(v => 24 + (1 - (v - lo) / span) * (H - 56));
+    const key = state.chartKey; const t = histType(key);
+    const points = state.checkins.flatMap((c, i) => Number.isFinite(c.m[key]) ? [{ c, i, value: toDisplay(t, c.m[key]) }] : []);
     const host = $('#hs-chart'); host.innerHTML = '';
+    if (!points.length) { host.textContent = 'No measurements recorded for this metric.'; return; }
+    const vals = points.map(point => point.value); const lo = Math.min(...vals); const hi = Math.max(...vals); const span = hi - lo || 1;
+    const W = 640; const H = 180; const xs = points.map(point => 36 + (point.i / Math.max(1, state.checkins.length - 1)) * (W - 56)); const ys = vals.map(v => 24 + (1 - (v - lo) / span) * (H - 56));
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('role', 'group'); svg.setAttribute('aria-label', `${M_BY_ID[key].label} across ${vals.length} check-ins`);
     const add = (tag, attrs, text) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (text != null) e.textContent = text; svg.append(e); return e; };
     [0, 0.5, 1].forEach(f => { const y = 24 + f * (H - 56); add('line', { class: 'grid', x1: 36, x2: W - 20, y1: y, y2: y }); add('text', { x: 4, y: y + 4 }, trim(hi - f * span, 1)); });
     add('polyline', { class: 'line', points: xs.map((x, i) => `${x},${ys[i]}`).join(' ') });
-    xs.forEach((x, i) => { const p = add('circle', { class: `pt${i === state.checkIndex ? ' on' : ''}`, cx: x, cy: ys[i], r: i === state.checkIndex ? 7 : 5, tabindex: 0, role: 'button', 'aria-label': `${fmtDate(state.checkins[i].date, true)}: ${trim(vals[i], 1)} ${unitName(t)}` }); p.addEventListener('click', () => gotoCheckin(i)); p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gotoCheckin(i); } }); });
-    add('text', { x: xs[0], y: H - 6 }, fmtDate(state.checkins[0].date)); add('text', { x: xs.at(-1) - 34, y: H - 6 }, fmtDate(state.checkins.at(-1).date));
+    xs.forEach((x, i) => { const originalIndex = points[i].i; const p = add('circle', { class: `pt${originalIndex === state.checkIndex ? ' on' : ''}`, cx: x, cy: ys[i], r: originalIndex === state.checkIndex ? 7 : 5, tabindex: 0, role: 'button', 'aria-label': `${fmtDate(points[i].c.date, true)}: ${trim(vals[i], 1)} ${unitName(t)}` }); p.addEventListener('click', () => gotoCheckin(originalIndex)); p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gotoCheckin(originalIndex); } }); });
+    add('text', { x: xs[0], y: H - 6 }, fmtDate(points[0].c.date)); add('text', { x: xs.at(-1) - 34, y: H - 6 }, fmtDate(points.at(-1).c.date));
     host.append(svg);
   }
   function applyGhost() {
@@ -539,9 +542,10 @@
     const msg = $('#ci-msg'); const date = $('#ci-date').value || TODAY; const w = parseNum($('#ci-weight').value); const waist = parseNum($('#ci-waist').value);
     if (Number.isNaN(w) || Number.isNaN(waist)) { msg.textContent = 'Use numbers only, like 78 or 84.5.'; return; }
     if (w == null && waist == null) { msg.textContent = 'Add at least one number to record a check-in.'; return; }
-    const latest = state.checkins.at(-1).m; const m = { ...latest };
-    if (w != null) m.weight = fromDisplay('mass', w); if (waist != null) m.waist = fromDisplay('length', waist);
     const existing = state.checkins.findIndex(c => c.date === date);
+    const baseline = existing >= 0 ? state.checkins[existing] : state.checkins.findLast(c => c.date < date);
+    const m = { ...baseline?.m };
+    if (w != null) m.weight = fromDisplay('mass', w); if (waist != null) m.waist = fromDisplay('length', waist);
     if (existing >= 0) state.checkins[existing] = { date, m: { ...state.checkins[existing].m, ...m } }; else { state.checkins.push({ date, m }); state.checkins.sort((a, b) => a.date.localeCompare(b.date)); }
     state.now = { ...state.now, ...(w != null ? { weight: m.weight } : {}), ...(waist != null ? { waist: m.waist } : {}) };
     state.edited = true; state.checkIndex = state.checkins.findIndex(c => c.date === date); histPos = null;

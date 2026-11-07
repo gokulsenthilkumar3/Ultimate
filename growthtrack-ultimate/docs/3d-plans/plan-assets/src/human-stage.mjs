@@ -569,14 +569,15 @@ void main() {
   let dirty = true; let raf = 0; let autoRotate = false;
   function invalidate() { dirty = true; if (!raf) raf = requestAnimationFrame(frame); }
   function renderScene() {
-    const w = canvas.width; const h = canvas.height;
+    const { x: w, y: h } = renderer.getSize(new Vector2());
+    renderer.setViewport(0, 0, w, h);
     camera.updateMatrixWorld(); updateHairUniforms();
     for (const fig of Object.values(figures)) aimEyes(fig.eyeMeshes, fig.group, camera.position);
     if (compare.mode === 'split') {
       const cut = Math.round(w * compare.split);
       renderer.setScissorTest(true);
       figures.primary.group.visible = true; figures.secondary.group.visible = false;
-      renderer.setScissor(0, 0, cut, h); renderer.setViewport(0, 0, w, h); renderer.render(scene, camera);
+      renderer.setScissor(0, 0, cut, h); renderer.render(scene, camera);
       figures.primary.group.visible = false; figures.secondary.group.visible = true;
       renderer.setScissor(cut, 0, w - cut, h); renderer.render(scene, camera);
       figures.primary.group.visible = true;

@@ -29,7 +29,7 @@ beforeAll(async () => {
   app.post('/api/auth/logout', (_req, res) => { res.clearCookie('fixture_session'); res.json({ success: true }); });
   server = app.listen(0, '127.0.0.1'); await once(server, 'listening');
   base = `http://127.0.0.1:${server.address().port}`;
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, channel: process.env.GROWTHTRACK_TEST_BROWSER_CHANNEL || undefined });
 }, 20000);
 afterAll(async () => { await browser?.close(); if (server) await new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }); });
 

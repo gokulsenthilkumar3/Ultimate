@@ -1,4 +1,19 @@
 /* Shared editorial primitives. Import after responsive-foundation.css. */
+.integration-guide { margin-block: var(--gt-space-5, 1.5rem); min-inline-size: 0; }
+.integration-guide header { max-inline-size: 70ch; margin-block-end: var(--gt-space-4, 1rem); }
+.integration-guide__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: var(--gt-space-4, 1rem); }
+.integration-guide__card { padding: var(--gt-space-5, 1.5rem); border: 1px solid var(--gt-border); border-radius: var(--gt-radius-lg, 16px); background: var(--gt-surface); min-inline-size: 0; display: flex; flex-direction: column; gap: .75rem; }
+.integration-guide__card h3,.integration-guide__card p { margin: 0; overflow-wrap: anywhere; }
+.integration-guide__card p { line-height: 1.6; color: var(--gt-muted); }
+.integration-guide__card > div { display: flex; flex-wrap: wrap; gap: 1rem; margin-block-start: auto; }
+.integration-guide__card a { color: var(--gt-text); text-decoration: underline; text-underline-offset: .2em; }
+.connection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.connection-actions p { flex: 1 1 22rem; }
+.github-contribution-calendar { display: grid; grid-template-rows: repeat(7, 10px); grid-auto-flow: column; grid-auto-columns: 10px; gap: 3px; overflow-x: auto; max-inline-size: 100%; padding-block: 1rem; }
+.github-contribution-calendar span { border-radius: 2px; background: var(--gt-border); }
+.github-contribution-calendar [data-level='1'] { background: color-mix(in srgb, var(--gt-accent, #458b63) 35%, var(--gt-surface)); }
+.github-contribution-calendar [data-level='2'] { background: color-mix(in srgb, var(--gt-accent, #458b63) 65%, var(--gt-surface)); }
+.github-contribution-calendar [data-level='3'] { background: var(--gt-accent, #458b63); }
 .gt-page-template {
   min-inline-size: 0;
   color: var(--gt-text);

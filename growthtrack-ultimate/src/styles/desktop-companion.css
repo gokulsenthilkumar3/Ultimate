@@ -1,0 +1,8 @@
+[data-companion-window] { color-scheme: light; background: transparent !important; }
+[data-companion-window] :is(body,#root) { margin: 0; background: transparent !important; min-block-size: 0; }
+.desktop-companion-window { margin: 8px; border: 1px solid var(--gt-border); border-radius: 22px; background: var(--gt-surface); color: var(--gt-text); box-shadow: var(--gt-shadow-floating); overflow: hidden; font-family: var(--gt-font); }
+.desktop-companion-window__handle { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; -webkit-app-region: drag; font-size: .7rem; color: var(--gt-muted); }
+.desktop-companion-window__handle button { -webkit-app-region: no-drag; inline-size: 32px; block-size: 32px; background: none; border: 1px solid var(--gt-border); border-radius: 50%; color: var(--gt-text); cursor: pointer; font-size: 1.2rem; }
+.desktop-companion-window__body { padding: 0 16px 18px; max-block-size: calc(100dvh - 76px); overflow-y: auto; }
+.desktop-companion-window__portrait { inline-size: 88px; block-size: 88px; margin-inline: auto; }
+.desktop-companion-window h1 { font-size: 1.35rem; text-align: center; letter-spacing: -.04em; }

@@ -1,10 +1,12 @@
 import Tabs from './ui/Tabs';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GitBranch, Star, GitFork, ExternalLink, Code2, Clock, Circle, Search, ArrowDownUp, Plus, Trash2, Edit2, Save, X, Check, RefreshCw } from 'lucide-react';
 import PageHeader from './ui/PageHeader';
 import { useToast } from '../hooks/useToast';
 import useStore from '../store/useStore';
+import { apiClient } from '../lib/apiClient';
+import GithubConnection from '../domains/workspace/GithubConnection';
 
 import { formatDate as formatProfileDate } from '../utils/userFormatters';
 
@@ -98,8 +100,11 @@ export default function Projects() {
 
   const toast = useToast();
 
-  const githubManageEnabled = user?.githubManageEnabled || false;
-  const githubToken = user?.githubToken || '';
+  const [connection, setConnection] = useState({ connected: false, allowManagement: false });
+  const [repoCoverage, setRepoCoverage] = useState(null);
+  const githubManageEnabled = connection.allowManagement === true;
+  const githubConnected = connection.connected === true;
+  useLayoutEffect(() => { setRepos([]); setRepoCoverage(null); setConnection({ connected: false, allowManagement: false }); }, [user?.id]);
   const githubUsername = readGithubUsername(user);
   const manualProjects = user?.manualProjects || [];
   const repoNotes = user?.repoNotes || {};
@@ -125,63 +130,37 @@ export default function Projects() {
   }, [showSortDropdown]);
 
   useEffect(() => {
-    if (!githubManageEnabled && !githubUsername) { setRepos([]); setSyncError(''); setLoading(false); return; }
+    if (!githubConnected && !githubUsername) { setRepos([]); setSyncError(''); setLoading(false); return; }
     setLoading(true);
     setSyncError('');
     
-    const endpoint = (githubManageEnabled && githubToken)
-      ? `https://api.github.com/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator`
-      : `https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=100`;
-
-    const headers = {};
-    if (githubManageEnabled && githubToken) {
-      headers['Authorization'] = `Bearer ${githubToken}`;
-      headers['Accept'] = 'application/vnd.github.v3+json';
-    }
-
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 12_000);
-    fetch(endpoint, { headers, signal: controller.signal })
-      .then(res => { 
-        if (res.status === 401) {
-          toast.error('GitHub token is invalid or expired. Please reconnect in settings.');
-          throw new Error('Unauthorized');
-        }
-        if (res.status === 404) throw new Error(`GitHub user “${githubUsername}” was not found. Check the saved username or URL.`);
-        if (res.status === 403) throw new Error('GitHub temporarily limited this request. Try again in a minute.');
-        if (!res.ok) throw new Error('GitHub could not load repositories. Try again.');
-        return res.json();
-      })
-      .then(data => { setRepos(Array.isArray(data) ? data : []); setLoading(false); })
+    apiClient.get(`/api/integrations/github/repos?${new URLSearchParams({ username: githubUsername || '' })}`, { signal: controller.signal, timeoutMs: 25000 })
+      .then(data => { if (!controller.signal.aborted) { setRepos(data.repositories || []); setRepoCoverage(data); setLoading(false); } })
       .catch(error => {
-        setLoading(false);
-        if (error.name !== 'AbortError') {
+        if (!controller.signal.aborted) {
+          setLoading(false);
           const message = error.message || 'GitHub could not load repositories. Try again.';
           setSyncError(message);
           toast.error(message);
         }
-      })
-      .finally(() => window.clearTimeout(timeout));
-  }, [githubManageEnabled, githubToken, githubUsername, refreshTick, toast]);
+      });
+    return () => controller.abort();
+  }, [githubConnected, githubUsername, refreshTick, toast, user?.id]);
 
   const handleCreateOrEditGithubRepo = async () => {
     if (!githubRepoForm.name.trim()) { toast.error('Repository name is required'); return; }
     
     const isEdit = githubRepoForm.editMode;
     const endpoint = isEdit 
-      ? `https://api.github.com/repos/${githubRepoForm.owner}/${githubRepoForm.oldName}`
-      : `https://api.github.com/user/repos`;
+      ? `/api/integrations/github/repos/${encodeURIComponent(githubRepoForm.owner)}/${encodeURIComponent(githubRepoForm.oldName)}`
+      : '/api/integrations/github/repos';
     
     const method = isEdit ? 'PATCH' : 'POST';
     
     try {
-      const res = await fetch(endpoint, {
+      const savedRepo = await apiClient.request(endpoint, {
         method,
-        headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           name: githubRepoForm.name.trim(),
           description: githubRepoForm.description.trim(),
@@ -189,12 +168,6 @@ export default function Projects() {
         })
       });
       
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to save repository');
-      }
-      
-      const savedRepo = await res.json();
       
       if (isEdit) {
         setRepos(repos.map(r => r.id === savedRepo.id ? savedRepo : r));
@@ -213,18 +186,7 @@ export default function Projects() {
     if (!window.confirm(`Are you absolutely sure you want to delete ${owner}/${name}? This action cannot be undone.`)) return;
     
     try {
-      const res = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${githubToken}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to delete repository');
-      }
+      await apiClient.delete(`/api/integrations/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`, { body: JSON.stringify({ confirmation: `${owner}/${name}` }) });
       
       setRepos(repos.filter(r => r.id !== repoId));
       toast.success(`Repository deleted successfully`);
@@ -302,6 +264,8 @@ export default function Projects() {
 
       {activeTab === 'github' && (
         <div id="projects-panel-github" role="tabpanel" aria-labelledby="projects-tab-github">
+          {user?.id && <GithubConnection key={user.id} onChange={setConnection} />}
+          {repoCoverage && <p role="status">{repoCoverage.visibility === 'public-only' ? 'Public repositories only. Connect GitHub above for authorized private projects.' : `Authorized repositories for @${repoCoverage.login}. Private access follows your GitHub token permissions.`}{repoCoverage.truncated ? ' This is a partial count due to the request-time or 1,000-repository bound.' : ` ${repos.length} repositories loaded.`}</p>}
           {/* Toolbar */}
           <div className="glass-card mb-lg" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -376,7 +340,7 @@ export default function Projects() {
                 <button aria-pressed={viewMode === 'list'} className={`btn-sm ${viewMode === 'list' ? 'active' : ''}`} onClick={() => selectLayout('list')}>List</button>
               </div>
 
-              {githubManageEnabled && githubToken && (
+              {githubManageEnabled && githubConnected && (
                 <button className="btn-primary" onClick={() => { setGithubRepoForm({ name: '', description: '', private: false, editMode: false, oldName: '', owner: '' }); setShowGithubModal(true); }}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
                   <Plus size={14} /> New Repo
@@ -457,7 +421,7 @@ export default function Projects() {
                     </a>
                     
                     <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                      {githubManageEnabled && githubToken && repo.permissions?.admin && (
+                      {githubManageEnabled && githubConnected && repo.permissions?.admin && (
                         <>
                           <button type="button" className="btn-icon" aria-label={`Edit ${repo.name} repository settings`} onClick={() => { setGithubRepoForm({ name: repo.name, description: repo.description || '', private: repo.private, editMode: true, oldName: repo.name, owner: repo.owner.login }); setShowGithubModal(true); }} style={{ padding: '4px' }} title="Edit Repo Settings">
                             <Edit2 size={14} color="var(--text-3)" />
@@ -595,7 +559,7 @@ export default function Projects() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-3)', width: '100px' }}>
                       <Clock size={14} /> {formatDate(repo.pushed_at, user)}
                     </div>
-                    {githubManageEnabled && githubToken && repo.permissions?.admin && (
+                    {githubManageEnabled && githubConnected && repo.permissions?.admin && (
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button type="button" className="btn-icon" aria-label={`Edit ${repo.name} repository settings`} onClick={() => { setGithubRepoForm({ name: repo.name, description: repo.description || '', private: repo.private, editMode: true, oldName: repo.name, owner: repo.owner.login }); setShowGithubModal(true); }} style={{ padding: '6px' }} title="Edit Repo Settings">
                           <Edit2 size={14} color="var(--text-3)" />

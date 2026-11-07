@@ -4,14 +4,41 @@
   "engines": {
     "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
   },
-  "version": "2.0.1",
+  "version": "2.0.5",
   "type": "module",
+  "author": {
+    "name": "Gokul Senthilkumar"
+  },
   "description": "Ultimate - GrowthTrack Digital Twin Engine — Fitness, Finance, 3D Body & Personal Dashboard",
   "main": "desktop.js",
   "build": {
     "appId": "com.growthtrack.ultimate",
     "asar": true,
     "productName": "GrowthTrack Ultimate",
+    "copyright": "Copyright © 2026 Gokul Senthilkumar",
+    "artifactName": "GrowthTrack-Ultimate-${version}-${arch}-Setup.${ext}",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GrowthTrack Ultimate",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
     "directories": {
       "output": "../growthtrack-release"
     },
@@ -23,6 +50,7 @@
       "scripts/**/*",
       "desktop.js",
       "desktop-config.js",
+      "desktop-local-connection.json",
       "desktop-setup.html",
       "preload.cjs",
       "server.js",
@@ -47,6 +75,16 @@
       "!**/vault/**",
       "!**/.code-index/**",
       "!**/.codeindexignore",
+      "!**/backups/**",
+      "!**/*.sqlite*",
+      "!**/*.mdf",
+      "!**/*.ndf",
+      "!**/*.ldf",
+      "!**/*.trn",
+      "!**/*.bak",
+      "!**/*.pfx",
+      "!**/*.p12",
+      "!**/.packaging/**",
       "package.json",
       "node_modules/@prisma/client/**/*",
       "node_modules/.prisma/**/*",
@@ -60,13 +98,17 @@
     "dev:design": "vite --config vite.admin-demo.config.js",
     "build:design": "vite build --config vite.admin-demo.config.js",
     "test:design": "vitest run --config vite.admin-demo.config.js",
+    "desktop": "node scripts/launch-desktop.mjs",
+    "desktop:dev": "node scripts/launch-desktop.mjs --dev",
     "build:desktop": "node scripts/build-desktop.mjs",
+    "release:windows": "node scripts/build-desktop.mjs --installer",
     "dev": "concurrently \"vite\" \"node server.js\"",
     "predev": "npm run db:generate",
     "build": "vite build",
     "humanoid:realism": "node scripts/build-human-realism.mjs",
     "humanoid:parametric": "node scripts/import-parametric-human.mjs",
     "test:e2e:parametric": "playwright test --config playwright.parametric.config.ts",
+    "test:e2e:lifestyle": "playwright test --config playwright.lifestyle.config.ts",
     "humanoid:source": "node scripts/build-human-realism.mjs --source",
     "validate:human-family": "node scripts/validate-human-family.mjs",
     "validate:private-anatomy": "node scripts/verify-private-anatomy.mjs",
@@ -86,6 +128,7 @@
     "test:e2e:ui": "playwright test --ui",
     "analyze": "vite build --mode analyze",
     "performance:pages": "node scripts/page-performance.mjs",
+    "performance:lighthouse": "node scripts/lighthouse-audit.mjs",
     "performance:kinetic": "node scripts/page-performance.mjs --browser=chrome --pages=welcome,login,overview --motion=no-preference --interact --settle-ms=1800",
     "performance:kinetic:soak": "node scripts/page-performance.mjs --browser=chrome --pages=overview --motion=no-preference --soak-minutes=30 --label=kinetic-soak",
     "check:kinetic-budgets": "node scripts/kinetic-budgets.mjs --check",
@@ -107,7 +150,7 @@
     "owner:create": "node scripts/create-owner.js",
     "mfa:setup": "node scripts/setup-owner-mfa.mjs",
     "db:sync": "prisma generate && prisma db push",
-    "db:generate": "prisma generate",
+    "db:generate": "node scripts/generate-prisma.mjs",
     "db:seed-config": "node scripts/seed-app-config.mjs",
     "backup:db": "node scripts/backup-db.mjs",
     "backup:restore": "node scripts/restore-encrypted-backup.mjs",
@@ -124,6 +167,7 @@
     "@fontsource/inter": "^5.3.0",
     "@libsql/client": "^0.17.4",
     "@prisma/adapter-libsql": "^7.9.1",
+    "@prisma/adapter-mssql": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.6.1",
@@ -133,6 +177,7 @@
     "@stripe/stripe-js": "^9.13.0",
     "@tanstack/react-query": "^5.100.11",
     "@toon-format/toon": "4.4.0",
+    "@xyflow/react": "^12.11.0",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "concurrently": "^10.0.5",
@@ -190,7 +235,7 @@
     "js-yaml": "4.3.2",
     "jsdom": "^29.0.2",
     "meshoptimizer": "1.1.1",
-    "prisma": "^7.9.1",
+    "prisma": "7.9.1",
     "rollup-plugin-visualizer": "^5.12.0",
     "three-mesh-bvh": "0.8.3",
     "typescript": "^6.0.3",

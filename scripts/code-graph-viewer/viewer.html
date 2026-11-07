@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- CSP -->
+    <title>GrowthTrack · Codebase map</title>
+    <!-- CSS -->
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">G</span>
+        <div>
+          <p class="eyebrow">GROWTHTRACK / DEVELOPER TOOLS</p>
+          <h1>Codebase map<span class="local-badge">LOCAL</span></h1>
+        </div>
+      </div>
+      <div class="totals">
+        <span><strong id="file-count">—</strong> indexed files</span
+        ><span><strong id="edge-count">—</strong> import edges</span>
+      </div>
+    </header>
+    <main class="workspace">
+      <aside class="finder" aria-label="Find a source file">
+        <h2>Find your starting point</h2>
+        <label for="file-search">Search paths</label>
+        <input
+          id="file-search"
+          type="search"
+          placeholder="Try server.js or customerAdmin"
+          autocomplete="off"
+        />
+        <label for="module-filter">Module</label>
+        <select id="module-filter">
+          <option value="">All modules</option>
+        </select>
+        <p id="search-count" class="muted" aria-live="polite"></p>
+        <div
+          id="file-list"
+          class="file-list"
+          role="list"
+          aria-label="Matching files"
+        ></div>
+        <div class="finder-footer">
+          <a href="./graph.json">Open formatted JSON ↗</a>
+          <p>
+            Refresh this snapshot with<br /><code
+              >npm.cmd run context:graph</code
+            >
+          </p>
+        </div>
+      </aside>
+      <section class="map-panel" aria-label="Dependency visualization">
+        <div class="map-toolbar">
+          <div class="view-tabs" role="tablist" aria-label="Graph view">
+            <button role="tab" aria-selected="true" data-view="modules">
+              Imports</button
+            ><button role="tab" aria-selected="false" data-view="file">
+              Dependencies</button
+            ><button role="tab" aria-selected="false" data-view="impact">
+              Impact
+            </button>
+          </div>
+          <button id="export" class="quiet-button">Export SVG ↗</button>
+        </div>
+        <div class="map-heading">
+          <div>
+            <p id="map-kicker" class="eyebrow"></p>
+            <h2 id="map-title"></h2>
+            <p id="map-description" class="muted"></p>
+          </div>
+          <div class="zoom-controls" aria-label="Map controls">
+            <button id="zoom-out" aria-label="Zoom out">−</button
+            ><button id="zoom-reset">Fit</button
+            ><button id="zoom-in" aria-label="Zoom in">+</button>
+          </div>
+        </div>
+        <div class="options">
+          <label
+            ><input id="hide-types" type="checkbox" /> Hide type-only
+            imports</label
+          ><label for="node-limit"
+            >File node limit
+            <select id="node-limit">
+              <option>24</option>
+              <option>48</option>
+              <option>80</option>
+            </select></label
+          ><span id="map-count" aria-live="polite"></span>
+        </div>
+        <div class="canvas">
+          <svg
+            id="map"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 1100 720"
+            role="img"
+            aria-label="Codebase module relationships"
+          ></svg>
+          <p class="canvas-hint">
+            Drag the background to pan · use + / − to zoom · select a node to
+            explore
+          </p>
+        </div>
+        <div id="legend" class="legend" aria-label="Module colors"></div>
+      </section>
+      <aside class="inspector" aria-label="Selection details">
+        <p class="eyebrow">INSPECT</p>
+        <h2 id="detail-title">Workspace</h2>
+        <p id="detail-path" class="path"></p>
+        <div id="detail-body"></div>
+        <div class="scope-note">
+          <h3>What this map knows</h3>
+          <p id="scope"></p>
+          <p id="coverage"></p>
+          <p id="generated"></p>
+          <p>
+            No source contents, credentials or private records are embedded.
+            This viewer makes no network requests.
+          </p>
+        </div>
+      </aside>
+    </main>
+    <!-- DATA -->
+    <!-- SCRIPT -->
+  </body>
+</html>

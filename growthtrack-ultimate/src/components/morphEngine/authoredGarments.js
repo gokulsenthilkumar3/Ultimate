@@ -1,5 +1,9 @@
 import {Box3,BufferAttribute,BufferGeometry,DoubleSide,Ray,Vector3} from 'three';
 import {MeshBVH} from 'three-mesh-bvh';
+import topologies from '../../config/garmentTopologies.json';
+import {garmentTopology} from './garmentTopology';
+
+const approvedTopologies=new Set(topologies.sources.map(source=>source.topology));
 
 const landmarkCache=new WeakMap();
 /** Read the sewing pattern's waist opening, rather than guessing its height
@@ -122,6 +126,7 @@ export function createAuthoredGarment(body,source,options={}) {
   // the 16,001 source vertices used by the pinned wardrobe bindings.
   const retainedPrefix=body.userData.growthtrack?.nativeFamily==='generic-adult-r2' && body.userData.growthtrack?.bindingPrepared && expected===16001 && count>=expected;
   if(expected!==count && !retainedPrefix)return null;
+  if(!approvedTopologies.has(garmentTopology(bodyGeometry)))return null;
   for(let i=0;i<bindings.count;i++)for(let k=0;k<bindings.itemSize;k++)if(bindings.getComponent(i,k)>=expected)return null;
   const geometry=sourceGeometry.clone(),rest=sourceGeometry.attributes.position;
   const bary=geometry.getAttribute('_body_bary'),anchors=geometry.getAttribute('_body_anchor');

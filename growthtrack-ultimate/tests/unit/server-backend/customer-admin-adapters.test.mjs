@@ -38,7 +38,7 @@ test('missing adapters, unknown products, unauthorized actors and bad filters ne
   assert.equal((await fetch(url + 'unknown/customers')).status, 404);
   assert.equal((await fetch(url + 'oxfin/customers')).status, 503);
   assert.equal((await fetch(url + 'finsync/customers', { headers: { 'X-Test-Actor': 'other-owner' } })).status, 403);
-  for (const query of ['limit=1000', 'offset=-1', 'q=a&q=b', 'tenant=victim']) assert.equal((await fetch(url + 'finsync/customers?' + query)).status, 400);
+  for (const query of ['limit=1000', 'offset=-1', 'q=a&q=b', 'status=a&status=b', 'plan=a&plan=b', 'limit=25&limit=50', 'offset=0&offset=1', 'tenant=victim']) assert.equal((await fetch(url + 'finsync/customers?' + query)).status, 400);
   assert.equal(calls.length, 0);
 });
 

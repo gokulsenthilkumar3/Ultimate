@@ -21,6 +21,8 @@ build/
 growthtrack-ultimate/build/*
 !growthtrack-ultimate/build/serviceWorkerPlugin.js
 !growthtrack-ultimate/build/staticCompressionPlugin.js
+!growthtrack-ultimate/build/uiBuildInfo.js
+!growthtrack-ultimate/build/icon.ico
 coverage/
 __pycache__/
 .pytest_cache/
@@ -111,6 +113,24 @@ public/assets/hdri/
 *.db.enc.json
 *.sqlite
 *.sqlite3
+*.mdf
+*.ndf
+*.ldf
+*.trn
+*.bak.enc
+*.bak.enc.json
+*.trn.enc
+# Installer/release binaries are distributed through release assets, not Git.
+*.exe
+*.msi
+*.msix
+*.appx
+*.nupkg
+*.asar
+*.asar.unpacked/
+*.blockmap
+.packaging/
+growthtrack-ultimate/release-upload/
 server/.env
 growthtrack-ultimate/.env.local
 .idea/
@@ -129,3 +149,7 @@ growthtrack-release-v2/
 growthtrack-release-*/
 growthtrack-ultimate/release-v2/
 growthtrack-ultimate/prisma-generated/
+
+# Local Graphify output contains generated source metadata, not application code.
+graphify-out/
+growthtrack-ultimate/desktop-local-connection.json

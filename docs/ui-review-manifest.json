@@ -2873,14 +2873,14 @@
       "title": "GrowthTrack workspace",
       "purpose": "A desktop workspace for personal growth, work, family, equity and Forex research, with a dedicated customer-admin area for the separate FinSync and OxFin products.",
       "runtime": "Node.js/npm workspace; Ultimate uses React, Vite and Express. Companion services retain their current frameworks.",
-      "recordedStatus": "NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; restricted customer-admin adapters remain separate work.",
+      "recordedStatus": "NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; read-only customer-admin adapters require explicit product configuration and approved readers.",
       "readme": "README.md"
     },
     {
       "path": "growthtrack-ultimate",
       "title": "GrowthTrack Ultimate",
       "purpose": "The desktop portal for personal growth, work, insights and family/market modules, and the future customer-admin home for FinSync and OxFin.",
-      "runtime": "React, Vite, Express, Prisma/SQLite; optional Electron desktop packaging and Three.js physique tools.",
+      "runtime": "React, Vite, Express; selectable Prisma SQLite/LibSQL or SQL Server adapters; Electron desktop and Three.js physique tools.",
       "recordedStatus": "Authenticated desktop portal with native NiftyLens, Family Connect and Forex pages, shared motion/loading states and a separate fictional review demo. FinSync/OxFin customer adapters still require configuration.",
       "readme": "growthtrack-ultimate/README.md"
     },

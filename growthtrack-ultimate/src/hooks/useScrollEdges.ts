@@ -56,7 +56,21 @@ export function mountScrollEdges(scroller: HTMLElement, frame: HTMLElement, opti
     const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientWidth : 1) * (rtl ? -1 : 1);
     // Browser scroll extents can be fractional while scrollWidth/clientWidth are rounded.
     // Use the same edge tolerance as the controls, so a final subpixel never traps page scrolling.
-    if ((delta > 0 && (rtl ? 0 : maximum) - scroller.scrollLeft <= 2) || (delta < 0 && scroller.scrollLeft - (rtl ? -maximum : 0) <= 2)) return;
+    if ((delta > 0 && (rtl ? 0 : maximum) - scroller.scrollLeft <= 2) || (delta < 0 && scroller.scrollLeft - (rtl ? -maximum : 0) <= 2)) {
+      // Chrome can retain a horizontal wheel target even when its vertical
+      // extent is hidden. Forward an ordinary vertical wheel to the nearest
+      // ancestor that can move, so long pages never get trapped at a rail end.
+      for (let ancestor = scroller.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        if (ancestor !== document.scrollingElement && !/^(auto|scroll)$/.test(getComputedStyle(ancestor).overflowY)) continue;
+        const maximumY = ancestor.scrollHeight - ancestor.clientHeight;
+        const step = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? ancestor.clientHeight : 1);
+        const nextY = Math.max(0, Math.min(maximumY, ancestor.scrollTop + step));
+        if (maximumY > 0 && Math.abs(nextY - ancestor.scrollTop) >= 1) {
+          event.preventDefault(); ancestor.scrollTop = nextY; return;
+        }
+      }
+      return;
+    }
     const next = Math.max(rtl ? -maximum : 0, Math.min(rtl ? 0 : maximum, scroller.scrollLeft + delta));
     if (Math.abs(next - scroller.scrollLeft) < 1) return;
     event.preventDefault(); scroller.scrollLeft = next; schedule();

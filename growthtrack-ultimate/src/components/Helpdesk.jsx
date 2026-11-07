@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   BookOpen, Search, ChevronDown, ChevronRight, Zap, ShieldCheck,
   LifeBuoy, FlaskConical, ArrowRight, Terminal, Cpu, Database,
@@ -145,7 +146,9 @@ function useDiagnostics(active) {
       try {
         const data = await apiRequest(probe.url);
         const val = probe.key ? data?.[probe.key] : data;
-        next[probe.id] = { ok: true, latency: Date.now() - t0, info: probe.key ? val?.status ?? 'ok' : data?.status ?? 'ok' };
+        const status = val?.status;
+        const ok = probe.id === 'auth' || (typeof status === 'string' && ['ok', 'online', 'healthy', 'connected'].includes(status.toLowerCase()));
+        next[probe.id] = { ok, latency: Date.now() - t0, info: status ?? (probe.id === 'auth' ? 'ok' : 'unknown') };
       } catch {
         next[probe.id] = { ok: false, latency: Date.now() - t0, info: 'unreachable' };
       }
@@ -164,6 +167,7 @@ function useDiagnostics(active) {
 function ArticleCard({ article, open, onToggle }) {
   return (
     <article
+      role="listitem"
       className={`helpdesk-k-article${open ? ' helpdesk-k-article--open' : ''}`}
       aria-label={article.title}
     >
@@ -368,18 +372,18 @@ export default function Helpdesk() {
             </p>
             <nav className="helpdesk-k-quick-links" aria-label="Quick links">
               {QUICK_LINKS.map(link => (
-                <a key={link.href} href={link.href} className="helpdesk-k-quick-link">
+                <Link key={link.href} to={link.href} className="helpdesk-k-quick-link">
                   <span className="helpdesk-k-quick-link__icon">{link.icon}</span>
                   {link.label}
                   <ChevronRight size={13} className="helpdesk-k-quick-link__arrow" aria-hidden="true" />
-                </a>
+                </Link>
               ))}
             </nav>
           </div>
 
           <div className="helpdesk-k-tip-block">
             <span className="helpdesk-k-tip-icon"><HelpCircle size={16} /></span>
-            <h3>Start with three signals</h3>
+            <h2>Start with three signals</h2>
             <p>Set one physique target, one weekly goal, and one calendar commitment. Analytics can then forecast progress from real activity instead of empty assumptions.</p>
           </div>
         </aside>
@@ -645,7 +649,7 @@ const HELPDESK_CSS = `
   color: var(--gt-text);
   margin-block-end: 8px;
 }
-.helpdesk-k-tip-block h3 {
+.helpdesk-k-tip-block h2 {
   margin: 0 0 8px;
   font: 700 14px/1.35 var(--gt-font);
   letter-spacing: -.025em;

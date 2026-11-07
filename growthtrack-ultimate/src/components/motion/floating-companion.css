@@ -49,3 +49,18 @@
 }
 @media (max-height: 500px) and (pointer: coarse) { .floating-companion:not(:has(.companion-panel)) { display: none; } }
 @media (forced-colors: active) { .floating-companion__creature { border: 1px solid ButtonText; } .floating-companion__art { filter: none; } .floating-companion__halo, .floating-companion__ground, .floating-companion__tag, .companion-panel__portrait-stage { border-color: CanvasText; background: Canvas; box-shadow: none; } .floating-companion__spark { border-color: CanvasText; background: Canvas; color: CanvasText; } .companion-panel__poses button[aria-pressed='true'] { border-color: Highlight; box-shadow: inset 0 -2px Highlight; } }
+.companion-tools { margin-block: 1rem; min-inline-size: 0; }
+.companion-tools :is(input,textarea,select) { inline-size: 100%; min-block-size: 44px; border: 1px solid var(--gt-border); border-radius: 10px; background: var(--gt-surface); color: var(--gt-text); padding: 9px; font: inherit; }
+.companion-tools label { display: grid; gap: 6px; font-size: .8rem; }
+.companion-tools p { color: var(--gt-muted); font-size: .75rem; line-height: 1.65; }
+.companion-tools details { margin-block: 1rem; }
+.companion-tools__notice { padding: .8rem; border-radius: 12px; border: 1px solid var(--gt-border); background: color-mix(in srgb, var(--gt-character-mint) 12%, var(--gt-surface)); }
+.companion-focus { display: grid; gap: .8rem; text-align: center; }
+.companion-focus__clock { font: 600 2.6rem/1.2 var(--font-mono, monospace); font-variant-numeric: tabular-nums; color: var(--gt-text); }
+.companion-play__stage { position: relative; inline-size: 220px; block-size: 200px; margin-inline: auto; touch-action: pan-y; }
+.companion-play__stage > svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; pointer-events: none; color: var(--gt-muted); }
+.companion-play__charm { position: absolute; inset: 64px auto auto 65px; inline-size: 90px; block-size: 110px; border: 0; background: none; padding: 0; color: var(--gt-text); cursor: grab; touch-action: none; transform-origin: 50% 8%; }
+.companion-play__charm:active { cursor: grabbing; }
+.companion-play__charm > svg { inline-size: 90px; block-size: 90px; }
+.companion-play__options { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.companion-play__options > button { grid-column: 1 / -1; }

@@ -1,4 +1,5 @@
 import PageHeader from './ui/PageHeader';
+import IntegrationGuide from './sync/IntegrationGuide';
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import StatTile from './ui/StatTile';
 import { Zap, Plus, Trash2, ChevronUp, Lock, Star, TrendingUp, Award, Edit3, X } from 'lucide-react';
@@ -232,6 +233,8 @@ export default function Skills() {
       {pending && <p role="status">Saving skill changes…</p>}
       {/* Header */}
       <PageHeader accent="Workspace" title="Skills" subtitle={<>{skills.length} skills · {formatNumber(totalXP, user, { maximumFractionDigits: 0 })} total XP</>} actions={<><button type="button" disabled={pending} aria-expanded={showAdd} aria-controls="skill-form" onClick={() => { if (showAdd) cancelForm(); else setShowAdd(true); }} className="btn-primary"><Plus size={14} /> Add Skill</button></>} />
+      {enriched.some(skill => skill.category === 'language') && <section className="integration-guide" aria-label="Your language learning"><h2>Your languages, your next session</h2><div className="integration-guide__grid">{enriched.filter(skill => skill.category === 'language').map(skill => <article className="integration-guide__card" key={skill.id}><h3>{skill.name}</h3><p>Level {skill.level} · {Number(skill.practiceCount) || 0} recorded practice sessions</p><p>{skill.nextAction || 'Choose a small lesson for your next practice.'}</p><button type="button" className="btn-secondary" onClick={() => { setCatFilter('language'); setActiveTab('list'); }}>View language practice</button></article>)}</div></section>}
+      <details><summary>Language apps and cloud notes</summary><IntegrationGuide area="learning" /></details>
 
       {/* Global stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>

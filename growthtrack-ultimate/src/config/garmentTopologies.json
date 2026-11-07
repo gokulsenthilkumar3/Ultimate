@@ -1,0 +1,36 @@
+{
+  "sources": [
+    {
+      "file": "humanoid-base.glb",
+      "topology": "16001:16001:89046:2b29d185"
+    },
+    {
+      "file": "humanoid-base-lite.glb",
+      "topology": "16001:16001:89046:2b29d185"
+    },
+    {
+      "file": "humanoid-adult-v2.glb",
+      "topology": "16001:16001:89046:2b29d185"
+    },
+    {
+      "file": "humanoid-adult-v2-lite.glb",
+      "topology": "16001:16001:89046:2b29d185"
+    },
+    {
+      "file": "humanoid-preview-75.glb",
+      "topology": "16001:16001:89046:2b29d185"
+    },
+    {
+      "file": "humanoid-preview-75-lite.glb",
+      "topology": "16001:16001:89046:2b29d185"
+    },
+    {
+      "file": "humanoid-human-r2-core.glb",
+      "topology": "16377:16377:91302:f7dba2ca"
+    },
+    {
+      "file": "humanoid-human-r2-hero.glb",
+      "topology": "45999:45999:263526:e48ef284"
+    }
+  ]
+}

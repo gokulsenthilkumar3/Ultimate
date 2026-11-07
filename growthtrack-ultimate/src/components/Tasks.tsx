@@ -152,7 +152,7 @@ function TaskCard({ task, onComplete, onDelete, onEdit, onSubToggle, onSubDelete
             {/* P1-P4 badge */}
             <span style={{
               fontSize: '0.62rem', fontWeight: 900, padding: '1px 7px', borderRadius: 99,
-              color: prio.color, background: prio.bg, border: `1px solid ${prio.border}`,
+              color: 'var(--text-1)', background: prio.bg, border: `1px solid ${prio.border}`,
               letterSpacing: '0.04em',
             }}>{prio.label}</span>
             {/* category badge */}

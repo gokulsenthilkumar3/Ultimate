@@ -7,6 +7,7 @@ import express from 'express';
 import { once } from 'node:events';
 import { gzipSync, brotliCompressSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
+import http from 'node:http';
 import { frontendBasePath, registerFrontend } from '../../../server/frontend.js';
 import { loadServerConfig } from '../../../server/config.js';
 
@@ -84,6 +85,17 @@ test('frontend mount serves assets and SPA under base, redirects root and preser
   const fallback = await fetch(`${base}/Ultimate/assets/fallback-test1234.js`, { headers: { 'Accept-Encoding': 'br, gzip' } });
   assert.equal(fallback.headers.get('content-encoding'), null);
   assert.equal(await fallback.text(), script);
+  // A literal Windows separator must never escape assets while negotiating a
+  // precompressed response. fetch normalizes this input, so send a raw path.
+  await fs.writeFile(path.join(directory, 'private-test1234.js.br'), brotliCompressSync(Buffer.from('private synthetic fixture')));
+  const traversal = await new Promise((resolve, reject) => {
+    const request = http.get(base, { path: '/Ultimate/assets/..\\private-test1234.js', headers: { 'Accept-Encoding': 'br' } }, response => {
+      let body = ''; response.on('data', chunk => { body += chunk; }); response.on('end', () => resolve({ status: response.statusCode, body }));
+    });
+    request.on('error', reject);
+  });
+  assert.ok([400, 404].includes(traversal.status));
+  assert.doesNotMatch(traversal.body, /private synthetic fixture/);
   const spa = await fetch(`${base}/Ultimate/settings/profile`);
   assert.equal(spa.status, 200);
   assert.match(await spa.text(), /Ultimate fixture/);

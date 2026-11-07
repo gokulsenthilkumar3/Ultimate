@@ -66,6 +66,24 @@ it('preserves trackpad horizontal input, modifier gestures and native scrolling 
   const normal = new WheelEvent('wheel', { deltaY: 120, cancelable: true }); element.dispatchEvent(normal); expect(normal.defaultPrevented).toBe(false);
 });
 
+it('forwards a boundary wheel to a scrollable ancestor and releases it at the outer boundary', () => {
+  const parent = document.createElement('div');
+  parent.style.overflowY = 'auto';
+  frame.replaceWith(parent); parent.append(frame);
+  Object.defineProperty(parent, 'clientHeight', { configurable: true, value: 300 });
+  Object.defineProperty(parent, 'scrollHeight', { configurable: true, value: 700 });
+  stop = mountScrollEdges(element, frame, { wheel: true }); flush();
+  element.scrollLeft = 600;
+  const boundary = new WheelEvent('wheel', { deltaY: 120, cancelable: true });
+  element.dispatchEvent(boundary);
+  expect(boundary.defaultPrevented).toBe(true);
+  expect(parent.scrollTop).toBe(120);
+  parent.scrollTop = 400;
+  const outerEnd = new WheelEvent('wheel', { deltaY: 120, cancelable: true });
+  element.dispatchEvent(outerEnd);
+  expect(outerEnd.defaultPrevented).toBe(false);
+});
+
 it('handles line-mode wheels in RTL and releases scrolling when the listener is removed', () => {
   element.style.direction = 'rtl'; stop = mountScrollEdges(element, frame, { wheel: true }); flush();
   const event = new WheelEvent('wheel', { deltaY: 3, deltaMode: 1, cancelable: true }); element.dispatchEvent(event); flush();

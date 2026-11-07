@@ -2,7 +2,7 @@
 
 The desktop portal for personal growth, work, insights and family/market modules, and the future customer-admin home for FinSync and OxFin.
 
-**Runtime:** React, Vite, Express, Prisma/SQLite; optional Electron desktop packaging and Three.js physique tools.
+**Runtime:** React, Vite, Express; selectable Prisma SQLite/LibSQL or SQL Server adapters; Electron desktop and Three.js physique tools.
 
 **Status:** Authenticated desktop portal with native NiftyLens, Family Connect and Forex pages, shared motion/loading states and a separate fictional review demo. FinSync/OxFin customer adapters still require configuration.
 
@@ -43,6 +43,7 @@ npm test
 - For the existing app use npm run dev; the workspace-root npm run dev:core also starts the gateway and database console.
 - 3D research HTML and assets live in docs/3d-plans/. Runtime Physique assets remain separate.
 - Use the root architecture plan for product boundaries and the required customer-admin security work.
+- SQL Server setup, provider selection, cutover evidence and backup limitations: ../docs/SQL_SERVER_SETUP.md.
 
 ## Workspace documentation
 

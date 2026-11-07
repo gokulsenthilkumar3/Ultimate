@@ -37,7 +37,7 @@ it('releases its motion admission for pause, reduced motion and a parent-owned s
   expect(art).toHaveAttribute('data-animate', 'false');
   expect(art.querySelector('img')).toHaveAttribute('alt', '');
   expect(art).toHaveAttribute('aria-hidden', 'true');
-  expect(art.querySelector('img').getAttribute('src')).toMatch(/assets\/illustrations\/personal-companion-small-v1\.webp$/);
+  expect(art.querySelector('img').getAttribute('src')).toMatch(/assets\/illustrations\/personal-companion-small-v4\.webp$/);
   view.unmount(); expect(document.documentElement.dataset.animationCount).toBe('0');
 });
 

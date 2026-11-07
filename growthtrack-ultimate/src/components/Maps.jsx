@@ -9,6 +9,8 @@ import PageState from './ui/PageState';
 import LoadingSkeleton from './ui/LoadingSkeleton';
 import Tabs from './ui/Tabs';
 import PageHeader from './ui/PageHeader';
+import { requestBrowserLocation, locationErrorMessage } from '../lib/browserLocation';
+import IntegrationGuide from './sync/IntegrationGuide';
 
 const MapCanvas = lazy(() => import('./places/MapCanvas'));
 const VIEWS = [{ value: 'list', label: 'List' }, { value: 'map', label: 'Map' }, { value: 'timeline', label: 'Timeline' }, { value: 'privacy', label: 'Privacy' }];
@@ -21,6 +23,8 @@ export default function Maps() {
   const [message, setMessage] = useState('Location capture is off on this device.');
   const watchRef = useRef(null);
   const lastSample = useRef(0);
+  const request = useRef(null);
+  useEffect(() => () => request.current?.abort(), []);
   const queryClient = useQueryClient();
   const locations = useQuery({ queryKey: ['locations', user?.id], queryFn: () => apiRequest('/api/locations') });
   const create = useMutation({
@@ -35,10 +39,13 @@ export default function Maps() {
     onError: error => setMessage(error.message || 'Deletion failed. The record is still saved.'),
   });
   const capture = position => { lastSample.current = Date.now(); create.mutate(position); };
-  const denied = error => { setLocating(false); setTracking(false); setMessage(error.code === 1 ? 'Location permission was denied. No location was saved.' : 'Location is currently unavailable. You can retry.'); };
-  const captureOnce = () => {
-    if (!navigator.geolocation) { setMessage('Location access is unavailable in this browser.'); return; }
-    setLocating(true); navigator.geolocation.getCurrentPosition(capture, denied, { maximumAge: 0, timeout: 15000 });
+  const denied = error => { setLocating(false); setTracking(false); setMessage(locationErrorMessage(error)); };
+  const captureOnce = async () => {
+    request.current?.abort();
+    const controller = new AbortController(); request.current = controller;
+    setLocating(true); setMessage('Waiting for your device location. Approve the browser prompt if it appears.');
+    try { const position = await requestBrowserLocation({ signal: controller.signal }); if (!controller.signal.aborted) capture(position); }
+    catch (error) { if (!controller.signal.aborted) denied(error); }
   };
   useEffect(() => {
     if (!tracking || !navigator.geolocation) return undefined;
@@ -54,6 +61,7 @@ export default function Maps() {
     <PageHeader accent="Life" icon={<Navigation size={16} aria-hidden="true" />} title="Maps & places" subtitle="Capture only when you choose. Saved coordinates remain private to your account." actions={<button className="btn-primary" type="button" onClick={captureOnce} disabled={locating || create.isPending}>{locating || create.isPending ? 'Saving location…' : 'Save current location'}</button>} />
     <Tabs label="Places views" idPrefix="places-view" tabs={VIEWS} value={view} onChange={selectView} />
     <p role="status"><ShieldCheck size={16} aria-hidden="true" /> {message}</p>
+    {view === 'timeline' && <IntegrationGuide area="places" />}
     {view === 'privacy' ? <section className="glass-card"><h2>Location privacy</h2><p>Tracking is off by default and never restored from another device. It stops when you leave this page. Browser permissions can be revoked in your browser settings.</p><button type="button" className="btn-secondary" onClick={() => { if (!navigator.geolocation) { setMessage('Location access is unavailable.'); return; } setTracking(value => !value); }} aria-pressed={tracking}>{tracking ? 'Stop capture' : 'Enable capture while this page is open'}</button><p>Delete individual samples in List. There is no automatic retention policy yet; your server backups may retain removed samples.</p><p>Loading a map requests tiles from OpenStreetMap and reveals your network address and viewed map area to that service. GrowthTrack does not bulk-download or cache map tiles for offline use.</p></section> : <>
       {locations.isPending ? <LoadingSkeleton /> : locations.isError ? <PageState state="error" title="Saved places could not be loaded" description="This error does not mean your timeline is empty." onRetry={locations.refetch} /> : <>
         {view === 'map' && (!tilesAllowed ? <section className="glass-card"><h2><Map size={18} aria-hidden="true" /> Optional map</h2><p>Map tiles are provided by OpenStreetMap. Loading them discloses your network address and viewed area. The list below works without third-party tiles.</p><button className="btn-secondary" type="button" onClick={() => setTilesAllowed(true)}>Load third-party map</button></section> : <Suspense fallback={<LoadingSkeleton />}><MapCanvas points={points} /></Suspense>)}

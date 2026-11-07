@@ -1,0 +1,94 @@
+name: Windows one-click installer
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'New release tag, e.g. desktop-v2.0.1'
+        required: true
+        type: string
+      publish:
+        description: 'Publish the verified installer publicly (otherwise create a draft)'
+        default: false
+        type: boolean
+permissions:
+  contents: write
+concurrency:
+  group: windows-release-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  installer:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: growthtrack-ultimate
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: growthtrack-ultimate/package-lock.json
+      - name: Validate release tag before building
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^desktop-v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$') { throw 'Use a desktop-vX.Y.Z release tag.' }
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:RELEASE_TAG -ne "desktop-v$version") { throw 'The tag must match the checked-out package version.' }
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) { throw 'Release exists; do not overwrite published installers.' }
+          $global:LASTEXITCODE = 0
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Installer and repository policy tests
+        working-directory: .
+        run: node --test tests/windows-installer.test.mjs tests/sqlserver-schema.test.mjs
+      - run: npm run test -- tests/unit/desktop-config.test.js
+      - name: Build self-contained installer
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+        run: npm run release:windows
+      - name: Stage verified release files
+        id: files
+        run: |
+          $release = Get-ChildItem .. -Directory -Filter 'growthtrack-release-*' | Where-Object { $_.Name -match '^growthtrack-release-\d{14}$' } | Sort-Object Name | Select-Object -Last 1
+          if (-not $release) { throw 'No completed release folder.' }
+          $manifest = Get-Content (Join-Path $release.FullName 'release-manifest.json') -Raw | ConvertFrom-Json
+          $installer = Join-Path $release.FullName $manifest.file
+          if ((Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.sha256) { throw 'Installer checksum mismatch.' }
+          New-Item -ItemType Directory -Path release-upload | Out-Null
+          Copy-Item $installer, (Join-Path $release.FullName 'SHA256SUMS.txt'), (Join-Path $release.FullName 'release-manifest.json'), (Join-Path $release.FullName 'RELEASE-NOTES.txt') release-upload
+          if ($env:SIGNED_REQUIRED -eq 'true' -and (Get-AuthenticodeSignature $installer).Status -ne 'Valid') { throw 'Signing was required but the installer is not validly signed.' }
+        env:
+          SIGNED_REQUIRED: ${{ vars.WINDOWS_SIGNING_REQUIRED }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-${{ inputs.tag }}
+          path: growthtrack-ultimate/release-upload/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Create release with exact checked-out source provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          PUBLISH_RELEASE: ${{ inputs.publish }}
+        run: |
+          $files = Get-ChildItem release-upload -File | Where-Object { $_.Extension -eq '.exe' -or $_.Name -in @('SHA256SUMS.txt','release-manifest.json','RELEASE-NOTES.txt') } | ForEach-Object FullName
+          $releaseArgs = @('release','create',$env:RELEASE_TAG,'--repo',$env:GITHUB_REPOSITORY,'--target',$env:GITHUB_SHA,'--title',"GrowthTrack Ultimate $env:RELEASE_TAG",'--notes-file','release-upload/RELEASE-NOTES.txt')
+          $releaseArgs += '--draft'
+          & gh @releaseArgs @files
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed.' }
+          $release = gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" | ConvertFrom-Json | Where-Object { $_.tag_name -eq $env:RELEASE_TAG -and $_.draft }
+          $manifest = Get-Content release-upload/release-manifest.json -Raw | ConvertFrom-Json
+          $remoteInstaller = $release.assets | Where-Object { $_.name -eq $manifest.file }
+          if (-not $remoteInstaller -or $remoteInstaller.digest -ne ('sha256:' + $manifest.sha256)) { throw 'Uploaded installer digest mismatch; draft not published.' }
+          if ($env:PUBLISH_RELEASE -eq 'true') {
+            gh release edit $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --draft=false --latest
+            if ($LASTEXITCODE -ne 0) { throw 'Publication failed; inspect the draft.' }
+          }

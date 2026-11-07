@@ -6,6 +6,8 @@ import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { authorizeTree, membersBelongToTree } from '../services/treeAccess';
 import { cacheInvalidate } from '../services/cache.service';
+import { documentWhere } from '../services/recordFilters';
+import { z } from 'zod';
 
 const prisma = new PrismaClient();
 const uploadDir = path.resolve(__dirname, '../../uploads');
@@ -18,15 +20,15 @@ export const getDocumentsByTree = async (req: Request, res: Response): Promise<v
   try {
     const treeId = req.params.treeId as string;
     if (!await authorizeTree(req, res, treeId)) return;
+    const where = documentWhere(treeId,req.query);
     res.set('Cache-Control', 'private, no-store');
     if (req.query.page !== undefined) {
       const page = Math.max(0, Math.min(100000, Math.floor(Number(req.query.page) || 0))), limit = 25;
-      const where = { treeId, ...(req.query.type === 'photo' ? { type: 'photo' as DocumentType } : {}) };
       const [rows, total] = await prisma.$transaction([prisma.document.findMany({ where, orderBy: [{ uploadedAt: 'desc' }, { id: 'asc' }], skip: page * limit, take: limit, include: { member: { select: { id: true, name: true } } } }), prisma.document.count({ where })]);
       res.json({ rows, total, page, limit }); return;
     }
-    res.json(await prisma.document.findMany({ where: { treeId }, orderBy: { uploadedAt: 'desc' }, include: { member: { select: { id: true, name: true, photoUrl: true } } } }));
-  } catch { res.status(500).json({ error: 'Failed to fetch documents.' }); }
+    res.json(await prisma.document.findMany({ where, orderBy: { uploadedAt: 'desc' }, include: { member: { select: { id: true, name: true, photoUrl: true } } } }));
+  } catch(error) { res.status(error instanceof z.ZodError?400:500).json({ error: error instanceof z.ZodError?'Choose a valid document type and person filter.':'Failed to fetch documents.' }); }
 };
 
 export const uploadDocument = async (req: Request, res: Response): Promise<void> => {

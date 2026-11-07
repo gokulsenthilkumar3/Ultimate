@@ -1,94 +1,552 @@
 [
   {
-    "path": ".", "title": "GrowthTrack workspace", "purpose": "A desktop workspace for personal growth, work, family, equity and Forex research, with a dedicated customer-admin area for the separate FinSync and OxFin products.",
-    "documentation": [{"title":"Complete UI workflow and style guide","path":"docs/UI_WORKFLOW_AND_STYLE_GUIDE.md"},{"title":"Agent workflow, Jev and TOON","path":"docs/AGENT_WORKFLOW.md"}],
+    "path": ".",
+    "title": "GrowthTrack workspace",
+    "purpose": "A desktop workspace for personal growth, work, family, equity and Forex research, with a dedicated customer-admin area for the separate FinSync and OxFin products.",
+    "documentation": [
+      {
+        "title": "Complete UI workflow and style guide",
+        "path": "docs/UI_WORKFLOW_AND_STYLE_GUIDE.md"
+      },
+      {
+        "title": "Agent workflow, Jev and TOON",
+        "path": "docs/AGENT_WORKFLOW.md"
+      }
+    ],
     "runtime": "Node.js/npm workspace; Ultimate uses React, Vite and Express. Companion services retain their current frameworks.",
     "status": "NiftyLens, Family Connect and Forex have native Ultimate UI modules. The fictional review demo stays isolated; read-only customer-admin adapters require explicit product configuration and approved readers.",
-    "install": ["npm install --prefix growthtrack-ultimate", "Copy-Item growthtrack-ultimate/.env.example growthtrack-ultimate/.env", "npm --prefix growthtrack-ultimate run db:generate"],
-    "start": ["npm run dev"],
-    "checks": ["npm run build:design", "npm run test:design", "npm run test:gateway", "npm run design:check", "node --test tests/code-context.test.mjs"],
-    "environment": ["Configure Ultimate's ignored .env for the live application. The design demo requires no credentials.", "Install and configure companion dependencies before using npm run dev. Use npm run dev:core for Ultimate, the gateway and database console only."],
-    "notes": ["Design demo: http://127.0.0.1:5410/admin-demo.html. Use All pages & review to inspect every page, tab, theme and UI state.", "Live workspace: npm run dev, then http://127.0.0.1:5000/Ultimate/. This starts Ultimate, the gateway, database console, Family API and Forex API. npm run dev:all also runs the standalone customer and legacy UIs.", "Customer applications remain separate. The demo's customer records are fictional, with no product APIs connected.", "Local code retrieval: npm run context:index, then npm run context:search -- \"question or symbol\". Embeddings are optional planned work.", "Tested Node runtime for this change: 24.12.0. Python and external data services are required only for their respective applications."]
+    "install": [
+      "npm install --prefix growthtrack-ultimate",
+      "Copy-Item growthtrack-ultimate/.env.example growthtrack-ultimate/.env",
+      "npm --prefix growthtrack-ultimate run db:generate"
+    ],
+    "start": [
+      "npm run dev"
+    ],
+    "checks": [
+      "npm run build:design",
+      "npm run test:design",
+      "npm run test:gateway",
+      "npm run design:check",
+      "node --test tests/code-context.test.mjs"
+    ],
+    "environment": [
+      "Configure Ultimate's ignored .env for the live application. The design demo requires no credentials.",
+      "Install and configure companion dependencies before using npm run dev. Use npm run dev:core for Ultimate, the gateway and database console only."
+    ],
+    "notes": [
+      "Design demo: http://127.0.0.1:5410/admin-demo.html. Use All pages & review to inspect every page, tab, theme and UI state.",
+      "Live workspace: npm run dev, then http://127.0.0.1:5000/Ultimate/. This starts Ultimate, the gateway, database console, Family API and Forex API. npm run dev:all also runs the standalone customer and legacy UIs.",
+      "Customer applications remain separate. The demo's customer records are fictional, with no product APIs connected.",
+      "Local code retrieval: npm run context:index, then npm run context:search -- \"question or symbol\". Embeddings are optional planned work.",
+      "Tested Node runtime for this change: 24.12.0. Python and external data services are required only for their respective applications."
+    ],
+    "sections": {
+      "Architecture and System Topology": "```mermaid\nflowchart TD\n    subgraph ClientTier [\"Client Interfaces\"]\n        WebPortal[\"Web Portal (http://127.0.0.1:5000/Ultimate/)\"]\n        DesktopApp[\"Desktop App (Electron desktop)\"]\n        AdminDemo[\"Review Demo (http://127.0.0.1:5410/admin-demo.html)\"]\n    end\n\n    subgraph GatewayRouter [\"Unified Gateway (:5300)\"]\n        GW[\"scripts/gateway.mjs\"]\n    end\n\n    subgraph UltimateCore [\"GrowthTrack Ultimate (Desktop & Web Portal)\"]\n        CoreAPI[\"Express API Server (:3001)\"]\n        ViteUI[\"Vite 8 / React 19 Frontend (:5000)\"]\n        DigitalTwin[\"3D Anatomical Twin & Posture Rig\"]\n        Companion[\"Kinetic Motion Personal Companion\"]\n    end\n\n    subgraph NativeDomains [\"Domain-Owned Service Modules\"]\n        EquityMod[\"NiftyLens Equity Watch (:5105)\"]\n        FamilyMod[\"Family Connect Tree & API (:3104 / :5104)\"]\n        ForexMod[\"Forex ML Inference & Streamlit (:8000 / :8501)\"]\n        AdminAdapters[\"FinSync & OxFin Customer Admin\"]\n    end\n\n    subgraph DataStorage [\"Data & Intelligence Layer\"]\n        DBStudio[\"GrowthTrack DB Studio (:5556)\"]\n        SQLiteDB[\"SQLite / LibSQL (dev.db)\"]\n        MSSQLDB[\"Microsoft SQL Server (SSMS GrowthTrackDB)\"]\n    end\n\n    ClientTier --> GW\n    GW --> ViteUI\n    GW --> CoreAPI\n    GW --> DBStudio\n    GW --> EquityMod\n    GW --> FamilyMod\n    GW --> ForexMod\n    CoreAPI --> SQLiteDB\n    CoreAPI --> MSSQLDB\n    DBStudio --> MSSQLDB\n```",
+      "Service Port & Protocol Matrix": "| Service | Port | Local URL | Health Check | Description |\n| :--- | :--- | :--- | :--- | :--- |\n| **Workspace Gateway** | `5300` | [http://127.0.0.1:5300](http://127.0.0.1:5300) | `/health` | Unified reverse proxy & companion router |\n| **Ultimate UI** | `5000` | [http://127.0.0.1:5000/Ultimate/](http://127.0.0.1:5000/Ultimate/) | `/Ultimate/` | Core React 19 / Vite 8 portal interface |\n| **Ultimate API** | `3001` | [http://127.0.0.1:3001](http://127.0.0.1:3001) | `/api/health` | Express backend, SQLite adapter, authentication |\n| **GrowthTrack DB Studio** | `5556` | [http://localhost:5556](http://localhost:5556) | `/api/tables` | Live database browser and console |\n| **NiftyLens (Equity)** | `5105` | [http://127.0.0.1:5105](http://127.0.0.1:5105) | `/health` | NSE/BSE market watch and technical charting |\n| **Family Connect API** | `3104` | [http://127.0.0.1:3104](http://127.0.0.1:3104) | `/health` | Tree nodes, permissions and documents |\n| **Family Connect Web** | `5104` | [http://127.0.0.1:5104](http://127.0.0.1:5104) | `/` | Standalone family interface (legacy) |\n| **Forex Inference API** | `8000` | [http://127.0.0.1:8000](http://127.0.0.1:8000) | `/health` | FastAPI saved-model prediction service |\n| **Forex Dashboard** | `8501` | [http://127.0.0.1:8501](http://127.0.0.1:8501) | `/_stcore/health` | Streamlit currency analytics dashboard |\n| **Admin Design Demo** | `5410` | [http://127.0.0.1:5410/admin-demo.html](http://127.0.0.1:5410/admin-demo.html) | `/admin-demo.html` | Fictional customer-admin preview |",
+      "Key Capabilities & Highlights": "- Shared personal workspace, domain-owned customer administration, 3D avatar editing and motion controls.\n- Versioned Notes and explicit companion actions; credentials use the server sealer. Existing record fields are not all encrypted at rest.\n- Selectable SQLite or SQL Server storage with separate reviewed schema/migration paths.\n- Electron desktop uses a build fingerprint and packaged-file verification; the version label alone does not establish freshness.\n- Provider-backed features require configuration and authorization; page availability is not proof of a working external connection.",
+      "Microsoft SQL Server & SSMS Setup": "Ultimate supports selectable SQLite and Microsoft SQL Server providers. The local API has been migrated to SQL Server. Open `docs/GrowthTrack_MSSQL_SSMS.sql` in SSMS for a non-destructive bootstrap of 73 application tables; matching repeat runs are a no-op and mismatched existing schemas are rejected. No Prisma Studio is required. Read [SQL Server setup and cutover](docs/SQL_SERVER_SETUP.md) for the local instance, credentials, backup requirements and migration limits. SSMS manages SQL Server; Prisma remains the internal query layer.",
+      "GitHub Wiki Architecture Plan": "The planned GitHub Wiki structure organizes the platform into modular guides:\n\n1. **Home & Quickstart:** High-level project vision, directory map, prerequisites, and instant launcher guide.\n2. **System Architecture & Gateway:** Reverse proxy routing, inter-service contracts, port matrix, and isolation policies.\n3. **3D Digital Twin & Morph Engine:** Parametric avatar modeling, MakeHuman CC0 asset pipeline, GLB validation, and skeletal rigging.\n4. **Life OS & Personal Companion:** Reactive motion physics, state persistence, habits matrix, and encrypted vault storage.\n5. **Database Strategy (SQLite vs SSMS):** Provider selection, verified SQLite-to-SQL Server migration, SSMS and database-specific backups.\n6. **Domain Modules & Portals:** NiftyLens (Equity), Family Connect, Forex ML Studio, and FinSync/OxFin admin adapters.\n7. **Desktop Packaging & Electron:** Electron Builder setup, code signing, hardware acceleration, and release workflows.\n8. **Testing & Quality Assurance:** Running Vitest, Playwright E2E tests, architecture linting, and accessibility audits."
+    }
   },
   {
-    "path": "growthtrack-ultimate", "title": "GrowthTrack Ultimate", "purpose": "The desktop portal for personal growth, work, insights and family/market modules, and the future customer-admin home for FinSync and OxFin.",
-    "documentation": [{"title":"Complete UI workflow and style guide","path":"docs/UI_WORKFLOW_AND_STYLE_GUIDE.md"},{"title":"Agent workflow, Jev and TOON","path":"docs/AGENT_WORKFLOW.md"}],
-    "runtime": "React, Vite, Express, Prisma/SQLite; optional Electron desktop packaging and Three.js physique tools.",
+    "path": "growthtrack-ultimate",
+    "title": "GrowthTrack Ultimate",
+    "purpose": "The desktop portal for personal growth, work, insights and family/market modules, and the future customer-admin home for FinSync and OxFin.",
+    "documentation": [
+      {
+        "title": "Complete UI workflow and style guide",
+        "path": "docs/UI_WORKFLOW_AND_STYLE_GUIDE.md"
+      },
+      {
+        "title": "Agent workflow, Jev and TOON",
+        "path": "docs/AGENT_WORKFLOW.md"
+      }
+    ],
+    "runtime": "React, Vite, Express; selectable Prisma SQLite/LibSQL or SQL Server adapters; Electron desktop and Three.js physique tools.",
     "status": "Authenticated desktop portal with native NiftyLens, Family Connect and Forex pages, shared motion/loading states and a separate fictional review demo. FinSync/OxFin customer adapters still require configuration.",
-    "install": ["npm install", "Copy-Item .env.example .env", "npm run db:generate"], "start": ["npm run dev"], "checks": ["npm run build:design", "npm run test:design", "npm run build", "npm test"],
-    "environment": ["The design demo requires no credentials. ADMIN_DEMO_PORT can override its local port.", "The live app requires locally configured owner credentials, session/encryption/handoff secrets and its database. After configuration, npm run db:sync initialises the development schema; review database changes before running it against existing data."],
-    "notes": ["For the existing app use npm run dev; the workspace-root npm run dev:core also starts the gateway and database console.", "3D research HTML and assets live in docs/3d-plans/. Runtime Physique assets remain separate.", "Use the root architecture plan for product boundaries and the required customer-admin security work."]
+    "install": [
+      "npm install",
+      "Copy-Item .env.example .env",
+      "npm run db:generate"
+    ],
+    "start": [
+      "npm run dev"
+    ],
+    "checks": [
+      "npm run build:design",
+      "npm run test:design",
+      "npm run build",
+      "npm test"
+    ],
+    "environment": [
+      "The design demo requires no credentials. ADMIN_DEMO_PORT can override its local port.",
+      "The live app requires locally configured owner credentials, session/encryption/handoff secrets and its database. After configuration, npm run db:sync initialises the development schema; review database changes before running it against existing data."
+    ],
+    "notes": [
+      "For the existing app use npm run dev; the workspace-root npm run dev:core also starts the gateway and database console.",
+      "3D research HTML and assets live in docs/3d-plans/. Runtime Physique assets remain separate.",
+      "Use the root architecture plan for product boundaries and the required customer-admin security work.",
+      "SQL Server setup, provider selection, cutover evidence and backup limitations: ../docs/SQL_SERVER_SETUP.md."
+    ]
   },
   {
-    "path": "FinSync", "title": "FinSync", "purpose": "A separate customer finance application for budgets, spending, account connections and financial planning, with web and mobile source packages.",
+    "path": "FinSync",
+    "title": "FinSync",
+    "purpose": "A separate customer finance application for budgets, spending, account connections and financial planning, with web and mobile source packages.",
     "runtime": "npm workspaces, Next.js web frontend, Firebase integration and Expo mobile source.",
     "status": "Customer application under development. Its customer administration belongs in GrowthTrack Ultimate; the customer app is not merged into Ultimate.",
-    "install": ["npm install", "Copy-Item apps/web/.env.example apps/web/.env.local"], "start": ["npm run web:dev"], "checks": ["npm run type-check --workspace=apps/web"],
-    "environment": ["Configure the web application's Firebase project in apps/web/.env.local. The parent .env.example is a variable reference, not a file automatically loaded by Next.js in apps/web.", "Server SDK credentials and financial-provider secrets must stay in server-only environment variables."],
-    "notes": ["Use apps/mobile for the mobile source. OxFin remains a separate product in this repository.", "Legacy onboarding uses browser-visible encryption configuration and needs server-side replacement before production. Removing fallback keys does not make that design secure.", "The root UI demo demonstrates customer administration with fictional data; it is not a live customer backend."]
+    "install": [
+      "npm install",
+      "Copy-Item apps/web/.env.example apps/web/.env.local"
+    ],
+    "start": [
+      "npm run web:dev"
+    ],
+    "checks": [
+      "npm run type-check --workspace=apps/web"
+    ],
+    "environment": [
+      "Configure the web application's Firebase project in apps/web/.env.local. The parent .env.example is a variable reference, not a file automatically loaded by Next.js in apps/web.",
+      "Server SDK credentials and financial-provider secrets must stay in server-only environment variables."
+    ],
+    "notes": [
+      "Use apps/mobile for the mobile source. OxFin remains a separate product in this repository.",
+      "Legacy onboarding uses browser-visible encryption configuration and needs server-side replacement before production. Removing fallback keys does not make that design secure.",
+      "The root UI demo demonstrates customer administration with fictional data; it is not a live customer backend."
+    ]
   },
   {
-    "path": "FinSync/apps/web", "title": "FinSync Web", "purpose": "The customer-facing FinSync web interface for sign-in, onboarding, spending, budgets and account settings.", "runtime": "Next.js App Router, React and Firebase.",
+    "path": "FinSync/apps/web",
+    "title": "FinSync Web",
+    "purpose": "The customer-facing FinSync web interface for sign-in, onboarding, spending, budgets and account settings.",
+    "runtime": "Next.js App Router, React and Firebase.",
     "status": "Independent customer app. Future administrator pages are owned by Ultimate.",
-    "install": ["npm install --prefix ../..", "Copy-Item .env.example .env.local"], "start": ["npm run dev"], "checks": ["npm run type-check", "npm run build"],
-    "environment": ["Provide NEXT_PUBLIC_FIREBASE_* project configuration in .env.local. Public variables are visible in the browser.", "Legacy NEXT_PUBLIC_ENCRYPTION_KEY has no built-in fallback and is not a confidential key. Do not use browser-held encryption for production PII; migrate through an authenticated server endpoint first."],
-    "notes": ["Missing required Firebase configuration now produces a setup error instead of using a hardcoded project.", "Onboarding requires a real session and a successful database save; it no longer reports mocked local saves as success."]
+    "install": [
+      "npm install --prefix ../..",
+      "Copy-Item .env.example .env.local"
+    ],
+    "start": [
+      "npm run dev"
+    ],
+    "checks": [
+      "npm run type-check",
+      "npm run build"
+    ],
+    "environment": [
+      "Provide NEXT_PUBLIC_FIREBASE_* project configuration in .env.local. Public variables are visible in the browser.",
+      "Legacy NEXT_PUBLIC_ENCRYPTION_KEY has no built-in fallback and is not a confidential key. Do not use browser-held encryption for production PII; migrate through an authenticated server endpoint first."
+    ],
+    "notes": [
+      "Missing required Firebase configuration now produces a setup error instead of using a hardcoded project.",
+      "Onboarding requires a real session and a successful database save; it no longer reports mocked local saves as success."
+    ]
   },
   {
-    "path": "FinSync/apps/mobile", "title": "FinSync Mobile", "purpose": "The Expo mobile application source for the FinSync customer product.", "runtime": "Expo Router and React Native.", "status": "Mobile source retained. Desktop portal redesign is the current priority; this is not a completed mobile feature audit.",
-    "install": ["npm install --prefix ../.."], "start": ["npm start"], "checks": ["npm run lint"], "environment": ["Configure only integrations actually used by the mobile source. Expo-public variables are not secrets."], "notes": ["An emulator or supported development device is needed for native previews. Customer administration belongs in Ultimate."]
+    "path": "FinSync/apps/mobile",
+    "title": "FinSync Mobile",
+    "purpose": "The Expo mobile application source for the FinSync customer product.",
+    "runtime": "Expo Router and React Native.",
+    "status": "Mobile source retained. Desktop portal redesign is the current priority; this is not a completed mobile feature audit.",
+    "install": [
+      "npm install --prefix ../.."
+    ],
+    "start": [
+      "npm start"
+    ],
+    "checks": [
+      "npm run lint"
+    ],
+    "environment": [
+      "Configure only integrations actually used by the mobile source. Expo-public variables are not secrets."
+    ],
+    "notes": [
+      "An emulator or supported development device is needed for native previews. Customer administration belongs in Ultimate."
+    ]
   },
   {
-    "path": "FinSync/OxFin", "title": "OxFin", "purpose": "A separate customer product for wallets, cards, bills and investment-related workflows.", "runtime": "Next.js web application, PostgreSQL/Redis infrastructure and reference service prototypes.", "status": "Under development. Ultimate is the target for OxFin customer administration; existing service prototypes are not a production admin backend.",
-    "install": ["npm install --prefix ox-fin-web", "Copy-Item ox-fin-web/.env.example ox-fin-web/.env.local", "Copy-Item ox-fin-backend/.env.example ox-fin-backend/.env"],
-    "start": ["npm --prefix ox-fin-web run dev"], "checks": ["npm --prefix ox-fin-web run build"],
-    "environment": ["Configure DATABASE_URL, NEXTAUTH_SECRET and optional provider credentials locally.", "Database infrastructure is in ox-fin-backend/docker-compose.yml. Set its required password before starting it. Preserve existing volumes."],
-    "notes": ["The six services/ folders are reference prototypes with incomplete dependency manifests. They are not part of the default workspace launcher.", "In particular, the example identity service does not implement password verification and must not authorise customer administration."]
+    "path": "FinSync/OxFin",
+    "title": "OxFin",
+    "purpose": "A separate customer product for wallets, cards, bills and investment-related workflows.",
+    "runtime": "Next.js web application, PostgreSQL/Redis infrastructure and reference service prototypes.",
+    "status": "Under development. Ultimate is the target for OxFin customer administration; existing service prototypes are not a production admin backend.",
+    "install": [
+      "npm install --prefix ox-fin-web",
+      "Copy-Item ox-fin-web/.env.example ox-fin-web/.env.local",
+      "Copy-Item ox-fin-backend/.env.example ox-fin-backend/.env"
+    ],
+    "start": [
+      "npm --prefix ox-fin-web run dev"
+    ],
+    "checks": [
+      "npm --prefix ox-fin-web run build"
+    ],
+    "environment": [
+      "Configure DATABASE_URL, NEXTAUTH_SECRET and optional provider credentials locally.",
+      "Database infrastructure is in ox-fin-backend/docker-compose.yml. Set its required password before starting it. Preserve existing volumes."
+    ],
+    "notes": [
+      "The six services/ folders are reference prototypes with incomplete dependency manifests. They are not part of the default workspace launcher.",
+      "In particular, the example identity service does not implement password verification and must not authorise customer administration."
+    ]
   },
   {
-    "path": "FinSync/OxFin/ox-fin-web", "title": "OxFin Web", "purpose": "The independent OxFin customer interface for wallets, cards, bills and investment workflows.", "runtime": "Next.js, React, NextAuth and PostgreSQL.", "status": "Customer application under development. Shared customer-admin adapters are planned in Ultimate.",
-    "install": ["npm install", "Copy-Item .env.example .env.local"], "start": ["npm run dev"], "checks": ["npm run build", "npm test"],
-    "environment": ["Configure DATABASE_URL and NEXTAUTH_SECRET. OAuth, payment and investment integrations require their own server-only environment values.", "NEXT_PUBLIC_API_BASE and NEXT_PUBLIC_BASE_PATH are public routing configuration. Never put provider secrets in public variables."],
-    "notes": ["Start database infrastructure separately if required. The workspace launcher uses internal product ports and shared routes.", "Customer-admin authorisation must use explicit product permissions, not a consumer session or iframe handoff."]
+    "path": "FinSync/OxFin/ox-fin-web",
+    "title": "OxFin Web",
+    "purpose": "The independent OxFin customer interface for wallets, cards, bills and investment workflows.",
+    "runtime": "Next.js, React, NextAuth and PostgreSQL.",
+    "status": "Customer application under development. Shared customer-admin adapters are planned in Ultimate.",
+    "install": [
+      "npm install",
+      "Copy-Item .env.example .env.local"
+    ],
+    "start": [
+      "npm run dev"
+    ],
+    "checks": [
+      "npm run build",
+      "npm test"
+    ],
+    "environment": [
+      "Configure DATABASE_URL and NEXTAUTH_SECRET. OAuth, payment and investment integrations require their own server-only environment values.",
+      "NEXT_PUBLIC_API_BASE and NEXT_PUBLIC_BASE_PATH are public routing configuration. Never put provider secrets in public variables."
+    ],
+    "notes": [
+      "Start database infrastructure separately if required. The workspace launcher uses internal product ports and shared routes.",
+      "Customer-admin authorisation must use explicit product permissions, not a consumer session or iframe handoff."
+    ]
   },
   {
-    "path": "FinSync/OxFin/ox-fin-backend", "title": "OxFin local infrastructure", "purpose": "Local PostgreSQL and Redis definitions and SQL initialisation for OxFin.", "runtime": "Docker Compose; this folder is not a Node.js API package.", "status": "Development infrastructure. Initialisation scripts run only for new database volumes.",
-    "install": ["Copy-Item .env.example .env"], "start": ["docker compose up -d"], "checks": ["docker compose config --quiet"],
-    "environment": ["Set POSTGRES_PASSWORD in the ignored .env before starting Compose; it has no shared default.", "Existing PostgreSQL volumes retain their current credentials. Changing an environment value does not rotate an existing database password."], "notes": ["Preserve persistent volumes. No database migration, credential rotation or data deletion is part of the UI redesign."]
+    "path": "FinSync/OxFin/ox-fin-backend",
+    "title": "OxFin local infrastructure",
+    "purpose": "Local PostgreSQL and Redis definitions and SQL initialisation for OxFin.",
+    "runtime": "Docker Compose; this folder is not a Node.js API package.",
+    "status": "Development infrastructure. Initialisation scripts run only for new database volumes.",
+    "install": [
+      "Copy-Item .env.example .env"
+    ],
+    "start": [
+      "docker compose up -d"
+    ],
+    "checks": [
+      "docker compose config --quiet"
+    ],
+    "environment": [
+      "Set POSTGRES_PASSWORD in the ignored .env before starting Compose; it has no shared default.",
+      "Existing PostgreSQL volumes retain their current credentials. Changing an environment value does not rotate an existing database password."
+    ],
+    "notes": [
+      "Preserve persistent volumes. No database migration, credential rotation or data deletion is part of the UI redesign."
+    ]
   },
   {
-    "path": "Equity", "title": "Equity", "purpose": "Market-research product area. NiftyLens is the canonical application.", "runtime": "See NiftyLens/package.json.", "status": "Native market watch in Ultimate; independent Next.js source and market pipeline retained. Quote availability depends on the configured provider.", "install": ["npm install --prefix NiftyLens", "Copy-Item NiftyLens/.env.example NiftyLens/.env.local"], "start": ["npm --prefix NiftyLens run dev"], "checks": ["npm --prefix NiftyLens run typecheck"], "environment": ["Configure market/data providers in NiftyLens/.env.local."], "notes": ["Ultimate /finance/equity renders real price-cache quotes and explicit source/setup states. Options/index provider features are not fabricated."]
+    "path": "Equity",
+    "title": "Equity",
+    "purpose": "Market-research product area. NiftyLens is the canonical application.",
+    "runtime": "See NiftyLens/package.json.",
+    "status": "Native market watch in Ultimate; independent Next.js source and market pipeline retained. Quote availability depends on the configured provider.",
+    "install": [
+      "npm install --prefix NiftyLens",
+      "Copy-Item NiftyLens/.env.example NiftyLens/.env.local"
+    ],
+    "start": [
+      "npm --prefix NiftyLens run dev"
+    ],
+    "checks": [
+      "npm --prefix NiftyLens run typecheck"
+    ],
+    "environment": [
+      "Configure market/data providers in NiftyLens/.env.local."
+    ],
+    "notes": [
+      "Ultimate /finance/equity renders real price-cache quotes and explicit source/setup states. Options/index provider features are not fabricated."
+    ]
   },
   {
-    "path": "Equity/NiftyLens", "title": "Equity / NiftyLens", "purpose": "Equity instruments, market charts, watchlists and market-data API source.", "runtime": "Next.js, React, Firebase/Supabase integrations and a separate pipeline folder.", "status": "Native market watch in Ultimate; independent Next.js source and market pipeline retained. Quote availability depends on the configured provider.",
-    "install": ["npm install", "Copy-Item .env.example .env.local"], "start": ["npm run dev"], "checks": ["npm run typecheck", "npm run build"], "environment": ["Configure the Firebase and/or Supabase integration used by your deployment. Public anonymous keys require database access rules; service-role keys remain server-only."], "notes": ["Missing providers must surface as unavailable data. The isolated portal demo uses fictional market values.", "The pipeline has its own environment template and must be configured separately."]
+    "path": "Equity/NiftyLens",
+    "title": "Equity / NiftyLens",
+    "purpose": "Equity instruments, market charts, watchlists and market-data API source.",
+    "runtime": "Next.js, React, Firebase/Supabase integrations and a separate pipeline folder.",
+    "status": "Native market watch in Ultimate; independent Next.js source and market pipeline retained. Quote availability depends on the configured provider.",
+    "install": [
+      "npm install",
+      "Copy-Item .env.example .env.local"
+    ],
+    "start": [
+      "npm run dev"
+    ],
+    "checks": [
+      "npm run typecheck",
+      "npm run build"
+    ],
+    "environment": [
+      "Configure the Firebase and/or Supabase integration used by your deployment. Public anonymous keys require database access rules; service-role keys remain server-only."
+    ],
+    "notes": [
+      "Missing providers must surface as unavailable data. The isolated portal demo uses fictional market values.",
+      "The pipeline has its own environment template and must be configured separately."
+    ]
   },
   {
-    "path": "Family Connect", "title": "Family Connect", "purpose": "Family trees, member profiles, memories, shared events and documents.", "runtime": "Frontend and backend packages in familyconnect/.", "status": "Native Ultimate family views use the existing Family API, account connection, permissions and PostgreSQL records. Standalone builds remain available.", "install": ["npm install --prefix familyconnect/frontend", "npm install --prefix familyconnect/backend"], "start": ["npm --prefix familyconnect/frontend run dev"], "checks": ["npm --prefix familyconnect/frontend run build", "npm --prefix familyconnect/backend run build"], "environment": ["Follow the frontend and backend READMEs; start the backend separately or use the configured root workspace launcher."], "notes": ["Family permissions and document storage remain owned by the existing backend during UI migration."]
+    "path": "Family Connect",
+    "title": "Family Connect",
+    "purpose": "Family trees, member profiles, memories, shared events and documents.",
+    "runtime": "Frontend and backend packages in familyconnect/.",
+    "status": "Native Ultimate family views use the existing Family API, account connection, permissions and PostgreSQL records. Standalone builds remain available.",
+    "install": [
+      "npm install --prefix familyconnect/frontend",
+      "npm install --prefix familyconnect/backend"
+    ],
+    "start": [
+      "npm --prefix familyconnect/frontend run dev"
+    ],
+    "checks": [
+      "npm --prefix familyconnect/frontend run build",
+      "npm --prefix familyconnect/backend run build"
+    ],
+    "environment": [
+      "Follow the frontend and backend READMEs; start the backend separately or use the configured root workspace launcher."
+    ],
+    "notes": [
+      "Family permissions and document storage remain owned by the existing backend during UI migration."
+    ]
   },
   {
-    "path": "Family Connect/familyconnect", "title": "Family Connect application", "purpose": "Family membership, relationship trees, memories, calendar events and document workflows.", "runtime": "React/Vite frontend and Express/Prisma/PostgreSQL backend.", "status": "Native Ultimate family views use the existing Family API, account connection, permissions and PostgreSQL records. Standalone builds remain available.", "install": ["npm install --prefix frontend", "npm install --prefix backend", "Copy-Item frontend/.env.example frontend/.env.local", "Copy-Item backend/.env.example backend/.env"], "start": ["npm --prefix frontend run dev"], "checks": ["npm --prefix frontend run build", "npm --prefix backend run build"], "environment": ["Configure DATABASE_URL and JWT_SECRET for the backend. Set the frontend API base for standalone development; the workspace launcher provides its shared routing."], "notes": ["Run npm --prefix backend run dev in a second terminal after configuration. Generate Prisma client with npm --prefix backend run prisma:generate.", "Database migrations modify schema; review them against your existing data before applying them."]
+    "path": "Family Connect/familyconnect",
+    "title": "Family Connect application",
+    "purpose": "Family membership, relationship trees, memories, calendar events and document workflows.",
+    "runtime": "React/Vite frontend and Express/Prisma/PostgreSQL backend.",
+    "status": "Native Ultimate family views use the existing Family API, account connection, permissions and PostgreSQL records. Standalone builds remain available.",
+    "install": [
+      "npm install --prefix frontend",
+      "npm install --prefix backend",
+      "Copy-Item frontend/.env.example frontend/.env.local",
+      "Copy-Item backend/.env.example backend/.env"
+    ],
+    "start": [
+      "npm --prefix frontend run dev"
+    ],
+    "checks": [
+      "npm --prefix frontend run build",
+      "npm --prefix backend run build"
+    ],
+    "environment": [
+      "Configure DATABASE_URL and JWT_SECRET for the backend. Set the frontend API base for standalone development; the workspace launcher provides its shared routing."
+    ],
+    "notes": [
+      "Run npm --prefix backend run dev in a second terminal after configuration. Generate Prisma client with npm --prefix backend run prisma:generate.",
+      "Database migrations modify schema; review them against your existing data before applying them."
+    ]
   },
   {
-    "path": "Family Connect/familyconnect/frontend", "title": "Family Connect Frontend", "purpose": "Family-tree, memory, profile, event and document interfaces.", "runtime": "React, TypeScript, Vite and React Flow.", "status": "Independent legacy UI retained for compatibility. Ultimate now owns native family views; private media uses authenticated downloads in both interfaces.", "install": ["npm install", "Copy-Item .env.example .env.local"], "start": ["npm run dev"], "checks": ["npm run build"], "environment": ["VITE_API_BASE points to the family backend's API. Its value is public routing configuration, not a secret."], "notes": ["Start the configured backend before using live data. The root workspace launcher supplies the shared product base path."]
+    "path": "Family Connect/familyconnect/frontend",
+    "title": "Family Connect Frontend",
+    "purpose": "Family-tree, memory, profile, event and document interfaces.",
+    "runtime": "React, TypeScript, Vite and React Flow.",
+    "status": "Independent legacy UI retained for compatibility. Ultimate now owns native family views; private media uses authenticated downloads in both interfaces.",
+    "install": [
+      "npm install",
+      "Copy-Item .env.example .env.local"
+    ],
+    "start": [
+      "npm run dev"
+    ],
+    "checks": [
+      "npm run build"
+    ],
+    "environment": [
+      "VITE_API_BASE points to the family backend's API. Its value is public routing configuration, not a secret."
+    ],
+    "notes": [
+      "Start the configured backend before using live data. The root workspace launcher supplies the shared product base path."
+    ]
   },
   {
-    "path": "Family Connect/familyconnect/backend", "title": "Family Connect Backend", "purpose": "Family authentication, trees, relationships, events, documents and notification APIs.", "runtime": "Express, TypeScript, Prisma and PostgreSQL; optional Redis and AI integration.", "status": "Existing Family API powers native Ultimate views. Live tree roles guard member edits, relationships, events and private document access. No schema migration is part of native UI consolidation.", "install": ["npm install", "Copy-Item .env.example .env", "npm run prisma:generate"], "start": ["npm run dev"], "checks": ["npm run build"], "environment": ["DATABASE_URL and JWT_SECRET are required. Generate your own random signing secret; there is no built-in fallback.", "PORT, REDIS_URL and GEMINI_API_KEY are optional configuration. An AI provider is not required for the family application."], "notes": ["Apply database migrations only after reviewing their effect on the target database. No migration is performed by the design demo.", "The server refuses to start without a JWT signing secret."]
+    "path": "Family Connect/familyconnect/backend",
+    "title": "Family Connect Backend",
+    "purpose": "Family authentication, trees, relationships, events, documents and notification APIs.",
+    "runtime": "Express, TypeScript, Prisma and PostgreSQL; optional Redis and AI integration.",
+    "status": "Existing Family API powers native Ultimate views. Live tree roles guard member edits, relationships, events and private document access. No schema migration is part of native UI consolidation.",
+    "install": [
+      "npm install",
+      "Copy-Item .env.example .env",
+      "npm run prisma:generate"
+    ],
+    "start": [
+      "npm run dev"
+    ],
+    "checks": [
+      "npm run build"
+    ],
+    "environment": [
+      "DATABASE_URL and JWT_SECRET are required. Generate your own random signing secret; there is no built-in fallback.",
+      "PORT, REDIS_URL and GEMINI_API_KEY are optional configuration. An AI provider is not required for the family application."
+    ],
+    "notes": [
+      "Apply database migrations only after reviewing their effect on the target database. No migration is performed by the design demo.",
+      "The server refuses to start without a JWT signing secret."
+    ]
   },
   {
-    "path": "Forex", "title": "Forex research and inference", "purpose": "Currency-data preparation, model research, saved-model inference and a Streamlit research dashboard.", "runtime": "Python, Streamlit and FastAPI, with model dependencies in requirements.txt.", "status": "Native Forex Studio in Ultimate uses cached, bounded Python history endpoints and existing saved artifacts. The independent Streamlit dashboard remains available.",
-    "install": ["python -m venv .venv", ".venv\\Scripts\\python.exe -m pip install -r requirements.txt"], "start": [".venv\\Scripts\\python.exe -m streamlit run app/dashboard.py"], "checks": [".venv\\Scripts\\python.exe -m pytest tests"], "environment": ["DATA_PATH, MODEL_DIR and FEAT_CONFIG select local data, artifacts and feature configuration. Set them in the process environment before launching; copying an env file alone does not load it.", "Provider keys are optional server/process configuration. Do not commit source data containing private records or exported model-provider credentials."], "notes": ["For the API, run .venv\\Scripts\\python.exe -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000.", "Use a Python version compatible with the pinned dependencies; installation can be substantial and is not performed for the UI demo.", "Forex-Ensemble-Prediction/ is historical reference source, not a second default application. The preview does not certify model quality or provide investment advice.", "Native workspace endpoints do not call external AI or train models. Historical fitted outputs are not held-out accuracy or live prices."]
+    "path": "Forex",
+    "title": "Forex research and inference",
+    "purpose": "Currency-data preparation, model research, saved-model inference and a Streamlit research dashboard.",
+    "runtime": "Python, Streamlit and FastAPI, with model dependencies in requirements.txt.",
+    "status": "Native Forex Studio in Ultimate uses cached, bounded Python history endpoints and existing saved artifacts. The independent Streamlit dashboard remains available.",
+    "install": [
+      "python -m venv .venv",
+      ".venv\\Scripts\\python.exe -m pip install -r requirements.txt"
+    ],
+    "start": [
+      ".venv\\Scripts\\python.exe -m streamlit run app/dashboard.py"
+    ],
+    "checks": [
+      ".venv\\Scripts\\python.exe -m pytest tests"
+    ],
+    "environment": [
+      "DATA_PATH, MODEL_DIR and FEAT_CONFIG select local data, artifacts and feature configuration. Set them in the process environment before launching; copying an env file alone does not load it.",
+      "Provider keys are optional server/process configuration. Do not commit source data containing private records or exported model-provider credentials."
+    ],
+    "notes": [
+      "For the API, run .venv\\Scripts\\python.exe -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000.",
+      "Use a Python version compatible with the pinned dependencies; installation can be substantial and is not performed for the UI demo.",
+      "Forex-Ensemble-Prediction/ is historical reference source, not a second default application. The preview does not certify model quality or provide investment advice.",
+      "Native workspace endpoints do not call external AI or train models. Historical fitted outputs are not held-out accuracy or live prices."
+    ]
   },
   {
-    "path": "Forex/Forex-Ensemble-Prediction", "title": "Forex historical reference", "purpose": "An earlier copy of Forex research and model code retained for reference.", "runtime": "Python research source.", "status": "Historical copy; use the parent Forex/ application for setup and changes.", "install": [], "start": [], "checks": [], "environment": ["Use the parent application's setup. Do not create a second environment or duplicate secrets here."], "notes": ["This directory is not a root workspace launcher target. Preserve research provenance when consolidating duplicated source."]
+    "path": "Forex/Forex-Ensemble-Prediction",
+    "title": "Forex historical reference",
+    "purpose": "An earlier copy of Forex research and model code retained for reference.",
+    "runtime": "Python research source.",
+    "status": "Historical copy; use the parent Forex/ application for setup and changes.",
+    "install": [],
+    "start": [],
+    "checks": [],
+    "environment": [
+      "Use the parent application's setup. Do not create a second environment or duplicate secrets here."
+    ],
+    "notes": [
+      "This directory is not a root workspace launcher target. Preserve research provenance when consolidating duplicated source."
+    ]
   },
   {
-    "path": "FinSync/Expense Tracker - Mobile/expense-tracker-mobile", "title": "Expense Tracker Mobile reference", "purpose": "An earlier Expo expense-tracking application, retained separately from the canonical FinSync mobile package.", "runtime": "Expo and React Native.", "status": "Reference application. Desktop portal work does not imply its features are merged or mobile-tested.", "install": ["npm install"], "start": ["npm start"], "checks": ["npm run lint"], "environment": ["Configure only integrations used by this application's source; public app configuration cannot hold secrets."], "notes": ["Use FinSync/apps/mobile for canonical FinSync mobile development. Keep customer administration in Ultimate."]
+    "path": "FinSync/Expense Tracker - Mobile/expense-tracker-mobile",
+    "title": "Expense Tracker Mobile reference",
+    "purpose": "An earlier Expo expense-tracking application, retained separately from the canonical FinSync mobile package.",
+    "runtime": "Expo and React Native.",
+    "status": "Reference application. Desktop portal work does not imply its features are merged or mobile-tested.",
+    "install": [
+      "npm install"
+    ],
+    "start": [
+      "npm start"
+    ],
+    "checks": [
+      "npm run lint"
+    ],
+    "environment": [
+      "Configure only integrations used by this application's source; public app configuration cannot hold secrets."
+    ],
+    "notes": [
+      "Use FinSync/apps/mobile for canonical FinSync mobile development. Keep customer administration in Ultimate."
+    ]
   },
-  { "path": "FinSync/OxFin/services/api-gateway", "title": "OxFin gateway prototype", "purpose": "Reference request routing and JWT checks for experimental OxFin services.", "runtime": "TypeScript/Express prototype.", "status": "Incomplete dependency manifest; not part of the default workspace launcher and not a production admin gateway.", "install": [], "start": [], "checks": [], "environment": ["AUTH_JWT_SECRET is required before execution; downstream service URLs are process configuration."], "notes": ["Complete and verify dependency declarations before running the existing dev script. Do not rely on dependencies installed in another app.", "Use the current web API and the planned restricted Ultimate admin adapter for product integration."] },
-  { "path": "FinSync/OxFin/services/identity-service", "title": "OxFin identity prototype", "purpose": "Reference token, registration and consent handlers.", "runtime": "TypeScript/Express prototype.", "status": "Prototype only: login does not verify passwords. It must not authorise real customers or administrators.", "install": [], "start": [], "checks": [], "environment": ["AUTH_JWT_SECRET must be supplied explicitly; there is no shared development secret."], "notes": ["Complete dependency manifests, credential verification, persisted identity, token lifecycle and security tests before considering standalone use."] },
-  { "path": "FinSync/OxFin/services/wallet-service", "title": "OxFin wallet prototype", "purpose": "Reference wallet workflow handlers.", "runtime": "TypeScript service prototype.", "status": "Incomplete dependency manifest; not a production wallet or admin backend.", "install": [], "start": [], "checks": [], "environment": ["Configure service/database values only in a local environment after reviewing the source."], "notes": ["Complete and verify dependency declarations and persistence before running the existing dev script. No live funds are managed by the UI demo."] },
-  { "path": "FinSync/OxFin/services/payments-service", "title": "OxFin payment prototype", "purpose": "Reference payment-provider workflow handlers.", "runtime": "TypeScript service prototype.", "status": "Incomplete dependency manifest; no live payment integration is enabled by the UI work.", "install": [], "start": [], "checks": [], "environment": ["Provider credentials are server-only and must be supplied outside source control."], "notes": ["Complete dependency declarations and sandbox integration checks before standalone use. The design demo never executes financial transactions."] },
-  { "path": "FinSync/OxFin/services/bills-service", "title": "OxFin bills prototype", "purpose": "Reference bill-management handlers.", "runtime": "TypeScript service prototype.", "status": "Incomplete dependency manifest; retained as reference source.", "install": [], "start": [], "checks": [], "environment": ["Supply local service configuration only after reviewing the implementation."], "notes": ["Complete dependency declarations, authentication and persistence checks before standalone use. It is not a default launcher target."] },
-  { "path": "FinSync/OxFin/services/ox-service", "title": "OxFin OX prototype", "purpose": "Reference OX-related workflow handlers.", "runtime": "TypeScript service prototype.", "status": "Incomplete dependency manifest; retained as reference source.", "install": [], "start": [], "checks": [], "environment": ["Configure optional provider/service values outside source control."], "notes": ["Complete dependency declarations and product-specific verification before standalone use. It is not a customer-admin authority."] }
+  {
+    "path": "FinSync/OxFin/services/api-gateway",
+    "title": "OxFin gateway prototype",
+    "purpose": "Reference request routing and JWT checks for experimental OxFin services.",
+    "runtime": "TypeScript/Express prototype.",
+    "status": "Incomplete dependency manifest; not part of the default workspace launcher and not a production admin gateway.",
+    "install": [],
+    "start": [],
+    "checks": [],
+    "environment": [
+      "AUTH_JWT_SECRET is required before execution; downstream service URLs are process configuration."
+    ],
+    "notes": [
+      "Complete and verify dependency declarations before running the existing dev script. Do not rely on dependencies installed in another app.",
+      "Use the current web API and the planned restricted Ultimate admin adapter for product integration."
+    ]
+  },
+  {
+    "path": "FinSync/OxFin/services/identity-service",
+    "title": "OxFin identity prototype",
+    "purpose": "Reference token, registration and consent handlers.",
+    "runtime": "TypeScript/Express prototype.",
+    "status": "Prototype only: login does not verify passwords. It must not authorise real customers or administrators.",
+    "install": [],
+    "start": [],
+    "checks": [],
+    "environment": [
+      "AUTH_JWT_SECRET must be supplied explicitly; there is no shared development secret."
+    ],
+    "notes": [
+      "Complete dependency manifests, credential verification, persisted identity, token lifecycle and security tests before considering standalone use."
+    ]
+  },
+  {
+    "path": "FinSync/OxFin/services/wallet-service",
+    "title": "OxFin wallet prototype",
+    "purpose": "Reference wallet workflow handlers.",
+    "runtime": "TypeScript service prototype.",
+    "status": "Incomplete dependency manifest; not a production wallet or admin backend.",
+    "install": [],
+    "start": [],
+    "checks": [],
+    "environment": [
+      "Configure service/database values only in a local environment after reviewing the source."
+    ],
+    "notes": [
+      "Complete and verify dependency declarations and persistence before running the existing dev script. No live funds are managed by the UI demo."
+    ]
+  },
+  {
+    "path": "FinSync/OxFin/services/payments-service",
+    "title": "OxFin payment prototype",
+    "purpose": "Reference payment-provider workflow handlers.",
+    "runtime": "TypeScript service prototype.",
+    "status": "Incomplete dependency manifest; no live payment integration is enabled by the UI work.",
+    "install": [],
+    "start": [],
+    "checks": [],
+    "environment": [
+      "Provider credentials are server-only and must be supplied outside source control."
+    ],
+    "notes": [
+      "Complete dependency declarations and sandbox integration checks before standalone use. The design demo never executes financial transactions."
+    ]
+  },
+  {
+    "path": "FinSync/OxFin/services/bills-service",
+    "title": "OxFin bills prototype",
+    "purpose": "Reference bill-management handlers.",
+    "runtime": "TypeScript service prototype.",
+    "status": "Incomplete dependency manifest; retained as reference source.",
+    "install": [],
+    "start": [],
+    "checks": [],
+    "environment": [
+      "Supply local service configuration only after reviewing the implementation."
+    ],
+    "notes": [
+      "Complete dependency declarations, authentication and persistence checks before standalone use. It is not a default launcher target."
+    ]
+  },
+  {
+    "path": "FinSync/OxFin/services/ox-service",
+    "title": "OxFin OX prototype",
+    "purpose": "Reference OX-related workflow handlers.",
+    "runtime": "TypeScript service prototype.",
+    "status": "Incomplete dependency manifest; retained as reference source.",
+    "install": [],
+    "start": [],
+    "checks": [],
+    "environment": [
+      "Configure optional provider/service values outside source control."
+    ],
+    "notes": [
+      "Complete dependency declarations and product-specific verification before standalone use. It is not a customer-admin authority."
+    ]
+  }
 ]

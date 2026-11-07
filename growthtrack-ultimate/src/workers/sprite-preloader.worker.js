@@ -24,7 +24,7 @@ self.onmessage = (e) => {
         
         self.postMessage({ type: 'PROGRESS', url, bitmap }, [bitmap]);
       } catch (err) {
-        console.error(`Worker failed to load ${url}:`, err);
+        console.error('Worker failed to load sprite:', url, err);
         self.postMessage({ type: 'ERROR', url, error: err.message });
       }
       processNext();

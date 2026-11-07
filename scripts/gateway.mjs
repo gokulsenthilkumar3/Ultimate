@@ -41,10 +41,10 @@ async function probe(id, target) {
   const t0 = performance.now();
   try {
     const probePath = id === 'agent' ? '/api/tags' : id === 'studio' ? '/api/sources' : NEXT_PRODUCTS.has(id) ? `${PRODUCT_UI_ROOT}/${id}/` : id === 'family' || id === 'forex' ? '/health' : '/api/health?format=json';
-    let response = await fetch(`${target}${probePath}`, { signal: controller.signal });
-    if (!response.ok && id !== 'agent') response = await fetch(target, { signal: controller.signal });
+    const response = await fetch(`${target}${probePath}`, { signal: controller.signal });
     const latency = Math.round(performance.now() - t0);
-    return { id, name: meta.name, online: response.ok, status: response.status, latency, checked: response.url };
+    return { id, name: meta.name, online: response.ok, status: response.status, latency, checked: response.url,
+      check: NEXT_PRODUCTS.has(id) ? 'ui-reachability' : 'api-health', dataReadiness: 'not-checked' };
   } catch {
     const latency = Math.round(performance.now() - t0);
     return { id, name: meta.name, online: false, status: null, latency, checked: target };
@@ -507,7 +507,7 @@ function renderGatewayHtml(services, payload) {
             <span class="latency-pill">${s.online ? `⚡ ${s.latency} ms` : 'Unreachable'}</span>
             <div class="card-actions">
               ${actionUrl ? `<a href="${actionUrl}" target="_blank" class="btn-action">Open App ↗</a>` : ''}
-              <a href="/api/${s.id}/health" target="_blank" class="btn-action" style="background:transparent; border-color:rgba(255,255,255,0.1)">API ↗</a>
+              <a href="/api/${s.id}/health" target="_blank" class="btn-action" style="background:transparent; border-color:rgba(255,255,255,0.1)">Health ↗</a>
             </div>
           </div>
         </div>`;

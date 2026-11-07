@@ -86,6 +86,17 @@ describe('owner-filtered app insights', () => {
     expect(summary.facts.nutrition).toMatchObject({ datedMeals: 2, excludedMeals: 1, distinctDays: 1, calories: { totalInLoadedMeals: 500, mealsWithValue: 2 }, protein: { totalInLoadedMeals: 0, mealsWithValue: 1 }, fat: { totalInLoadedMeals: null, mealsWithValue: 0 } });
   });
 
+  it('projects stored meal macros into consented context and wellness totals', () => {
+    const state = { user: { id: 'owner' }, nutrition_logs: [
+      { id: 'meal', userId: 'owner', date: '2026-10-25', protein_g: 0, carbs_g: 25, fat_g: 8, protein: 99 },
+    ] };
+    expect(getAiContextCandidates(state)).toEqual([]);
+    const rows = getAiContextCandidates(state, { wellness: true }, { includeOverviews: true, today: '2026-10-27' });
+    expect(JSON.parse(rows.find(row => row.type === 'nutrition').text)).toMatchObject({ protein: 0, carbs: 25, fat: 8 });
+    const summary = JSON.parse(rows.find(row => row.type === 'wellness_summary').text);
+    expect(summary.facts.nutrition).toMatchObject({ protein: { totalInLoadedMeals: 0, mealsWithValue: 1 }, carbs: { totalInLoadedMeals: 25 }, fat: { totalInLoadedMeals: 8 } });
+  });
+
   it('supports additional record sources and preserves valid bounded JSON for long notes', () => {
     const state = { user: { id: 'owner', projects: [{ id: 'project', name: 'Project' }], calendar_events: [{ id: 'event', title: 'Meeting' }], skills: [{ id: 'skill', name: 'Writing' }] },
       notes: [{ id: 'note', userId: 'owner', title: 'a'.repeat(2000), text: 'b'.repeat(9000), category: 'c'.repeat(2000), updatedAt: 'd'.repeat(2000) }],

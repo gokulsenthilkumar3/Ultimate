@@ -71,7 +71,7 @@ export function createAgentActionRunner({ getState, createNote = input => create
       if (action.kind === 'task.create') saved = await state.addTask({ title: action.title, description: action.description || '', priority: action.priority || 'p3', ...(action.dueDate ? { due_date: action.dueDate } : {}), status: 'pending', done: false });
       else if (action.kind === 'task.update') {
         const patch = Object.fromEntries(['title', 'description', 'priority'].filter(key => action[key] !== undefined).map(key => [key, action[key]]));
-        if (action.dueDate) patch.due_date = action.dueDate;
+        if (action.dueDate) { patch.due_date = action.dueDate; patch.dueDate = action.dueDate; }
         saved = await state.updateTask(action.recordId, checkedPatch(patch));
       } else if (action.kind === 'task.complete') saved = await state.updateTask(action.recordId, checkedPatch(() => {
         const completedAt = new Date().toISOString();

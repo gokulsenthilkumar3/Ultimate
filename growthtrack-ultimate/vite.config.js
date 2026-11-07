@@ -5,6 +5,8 @@ import serviceWorkerPlugin from './build/serviceWorkerPlugin.js';
 import staticCompressionPlugin from './build/staticCompressionPlugin.js';
 import nativeEntriesPlugin from './scripts/nativeEntriesPlugin.js';
 import kineticGraphPlugin from './scripts/kineticGraphPlugin.js';
+import uiBuildInfo from './build/uiBuildInfo.js';
+import { fileURLToPath } from 'node:url';
 
 // https://vite.dev/config/
 export default defineConfig(async ({ mode }) => {
@@ -33,6 +35,7 @@ export default defineConfig(async ({ mode }) => {
     }),
     staticCompressionPlugin(),
     kineticGraphPlugin(),
+    uiBuildInfo(),
   ].filter(Boolean),
   server: {
     port: Number(env.VITE_PORT || 5000),
@@ -81,6 +84,7 @@ export default defineConfig(async ({ mode }) => {
     sourcemap: sentryEnabled,
     chunkSizeWarningLimit: 800,
     rollupOptions: {
+      input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), companion: fileURLToPath(new URL('./companion.html', import.meta.url)) },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',

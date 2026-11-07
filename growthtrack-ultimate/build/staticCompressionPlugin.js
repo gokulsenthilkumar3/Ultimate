@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { Buffer } from 'node:buffer';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { MODEL_DELIVERY_FILES } from '../server/modelDelivery.js';
 
 const compressBrotli = promisify(brotliCompress);
 const compressGzip = promisify(gzip);
@@ -25,6 +26,17 @@ export default function staticCompressionPlugin() {
         const [br, gz] = await Promise.all([
           compressBrotli(source, { params: { [constants.BROTLI_PARAM_QUALITY]: 4 } }),
           compressGzip(source),
+        ]);
+        await Promise.all([writeFile(file + '.br', br), writeFile(file + '.gz', gz)]);
+      }));
+      // Public, pinned geometry is highly compressible. Integrity verification
+      // still checks the original bytes after HTTP content decoding.
+      await Promise.all(MODEL_DELIVERY_FILES.map(async fileName => {
+        const file = path.resolve(options.dir, fileName);
+        let source;
+        try { source = await readFile(file); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+        const [br, gz] = await Promise.all([
+          compressBrotli(source, { params: { [constants.BROTLI_PARAM_QUALITY]: 4 } }), compressGzip(source),
         ]);
         await Promise.all([writeFile(file + '.br', br), writeFile(file + '.gz', gz)]);
       }));

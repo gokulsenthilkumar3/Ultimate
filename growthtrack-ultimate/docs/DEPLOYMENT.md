@@ -39,6 +39,42 @@ Tag a reviewed image with `RELEASE_TAG`, retain the previous image, and rehearse
 
 ## Encryption and backups
 
+### Historical key exposure (PR #2)
+
+The deployment keys originally committed in PR #2 must be treated as exposed.
+They have been removed from the current tracked tree and `deploy/secrets/` is
+ignored. Removing them does not revoke copies in Git history or deployments.
+`deploy:secrets` deliberately preserves existing files, so rerunning it does not
+rotate those keys. Server startup and deployment setup now reject the historical
+keys using one-way fingerprints. On 5 November 2026 the local ignored Ultimate
+environment was found to reuse both keys. A read-only inventory found no encrypted
+documents, sealed connector settings, private file bytes or encrypted backups,
+and the local API was stopped. Both local keys were replaced with fresh random
+values while preserving a private ignored recovery environment. No secret values
+were printed. Other installations still require their own inventory and rotation.
+
+`node scripts/rotate-exposed-local-keys.mjs` performs the local dry run.
+`--apply` refuses nonempty encrypted/private storage or a listening local API,
+preserves the original environment and atomically replaces only exposed keys.
+It is not a ciphertext migration tool. Do not use its no-dependent-data procedure
+on an installation with encrypted records.
+
+1. Identify installations that used either historical key in a private operator
+   session. Do not paste key values into logs, tickets or review comments.
+2. For `HANDOFF_SECRET`, create a fresh 32-byte cryptographic random key in the
+   deployment secret manager, replace its mounted secret during a coordinated
+   restart, and verify a new handoff works and a previously issued handoff fails.
+   Restart every Ultimate process that could still sign with the old key.
+3. For `APP_ENCRYPTION_KEY`, first pause writes and retain a protected recovery
+   set of the database, uploaded bytes, configuration and original key. Inventory
+   encrypted vault files, sync credentials and backup archives that depend on it.
+   Rehearse decryption and re-encryption into separate staging storage with a
+   new key and verify checksums, credential reads and a full restore before a
+   production cutover. The current setup helper is not a key migration tool.
+4. Keep original keys restricted for recovery of retained old archives until
+   their retention obligations end. Do not overwrite the only key capable of
+   decrypting existing data. Record cutover and verification without secret values.
+
 `APP_ENCRYPTION_KEY` is 32 random bytes encoded as 64 hexadecimal characters. New vault uploads are encrypted with AES-256-GCM and a random nonce; the storage identifier is authenticated. Download and preview verify authentication and the original byte checksum. Missing keys fail explicitly. Legacy plaintext files remain readable and are labelled accurately in My Files. SQLite records, logs and backup/rehearsal files are still plaintext; use encrypted host storage and protected encrypted backup destinations. This is server-side file encryption, not end-to-end encryption or a completed storage migration.
 
 ```sh

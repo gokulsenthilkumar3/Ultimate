@@ -1,58 +1,83 @@
-import { createElement, useEffect, useRef, useState } from 'react';
-import { Ear, Hand, Smile, Sparkles } from 'lucide-react';
-import PersonalCompanionArt from '../components/motion/PersonalCompanionArt';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Compass, Moon, RotateCcw, Sparkles, Sun, ZoomIn, ZoomOut } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import ProceduralStage from '../components/motion/ProceduralStage';
 import { useKinetic } from '../components/motion/KineticContext';
-import useSceneMotion from '../hooks/useSceneMotion';
+import { featurePath } from '../config/featureRegistry';
+import { createWorldController, DRIVE_KEYS, stopTarget, WORLD_STOPS } from './welcomeWorldModel';
+import WelcomeWorldPoster from './WelcomeWorldPoster';
 import './welcome-companion.css';
 
-const companionPoses = [
-  { id: 'idle', label: 'At ease', Icon: Smile, caption: 'A little backup. Entirely at your pace.' },
-  { id: 'greet', label: 'Say hello', Icon: Hand, caption: 'Hello, you. There’s room for you here.' },
-  { id: 'listen', label: 'Listen', Icon: Ear, caption: 'A thoughtful moment. No rush at all.' },
-  { id: 'celebrate', label: 'Celebrate', Icon: Sparkles, caption: 'A small win? That absolutely counts.' },
-];
-
+const DIRECTIONS = [{ key: 'arrowup', label: 'Move forward', Icon: ArrowUp }, { key: 'arrowleft', label: 'Move left', Icon: ArrowLeft }, { key: 'arrowdown', label: 'Move back', Icon: ArrowDown }, { key: 'arrowright', label: 'Move right', Icon: ArrowRight }];
+const COMPACT_QUERY = '(max-width: 800px), (pointer: coarse)';
 export default function WelcomeCompanion() {
-  const ref = useRef(null);
-  const [selection, setSelection] = useState({ id: 'idle', previous: null, take: 0 });
-  const { id: poseId, previous, take } = selection;
-  const { tier } = useKinetic();
-  // Reserve the peak: gesture, two fading poses, breathing, halo and glints.
-  const animate = useSceneMotion(ref, { cost: tier === 2 ? 6 : 3, priority: 2, enabled: tier > 0 });
-  useEffect(() => {
-    if (previous === null) return undefined;
-    // A bounded fallback also clears the old pose when CSS motion is interrupted.
-    const timeout = setTimeout(() => setSelection(current => current.take === take ? { ...current, previous: null } : current), animate ? 320 : 0);
-    return () => clearTimeout(timeout);
-  }, [previous, take, animate]);
-  const choosePose = id => setSelection(current => ({ id, previous: animate && current.id !== id ? current.id : null, take: current.take + 1 }));
-  const pose = companionPoses.find(item => item.id === poseId);
-  const note = { idle: ['Today?s plan', 'Make room', 'for you.'], greet: ['A fresh beginning', 'Good things', 'start here.'], listen: ['A moment of calm', 'One breath.', 'One step.'], celebrate: ['Your little victory', 'Look at you.', 'Growing.'] }[poseId];
-  return <figure ref={ref} className="welcome-companion" data-state={poseId} data-tier={tier} data-animate={String(animate)} aria-labelledby="welcome-companion-caption">
-    <div className="welcome-companion__stage" id="welcome-companion-stage" aria-hidden="true">
-      <div className="welcome-companion__entrance"><div className="welcome-companion__diorama">
-        <span className="welcome-companion__back-paper" />
-        <span className="welcome-companion__arch" />
-        <span className="welcome-companion__halo" />
-        <svg className="welcome-companion__glints" viewBox="0 0 500 500" fill="none" focusable="false"><path d="M116 123v16m-8-8h16m262 25v12m-6-6h12M365 74v18m-9-9h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="153" cy="64" r="2.5" fill="currentColor" /><circle cx="416" cy="215" r="2" fill="currentColor" /></svg>
-        <svg className="welcome-companion__doodles" viewBox="0 0 500 500" fill="none" focusable="false"><path d="m406 68 5 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2 5-15ZM58 176l9 2m-13 11 8-3m-5-25 8 7m320 236 10 4m-5-19 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M76 79c17-22 43-22 64-11m-4-9 6 11-12 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><path d="M431 272c-30 17-9 52 9 29s-15-40-31-27" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 5" /></svg>
-        <span className="welcome-companion__hello">a familiar face,<br /><b>a fresh little world.</b></span>
-        <div className="welcome-companion__actor">
-          <div key={take} className="welcome-companion__gesture" data-gesture={take > 0 ? poseId : 'rest'}>
-            <div className="welcome-companion__pose" data-crossfade={String(animate && previous !== null)}><PersonalCompanionArt state={poseId} motion={false} refined className="welcome-companion__art" /></div>
-            {animate && previous !== null && <div className="welcome-companion__outgoing"><PersonalCompanionArt state={previous} motion={false} refined className="welcome-companion__art" /></div>}
-          </div>
+  const controller = useRef(createWorldController()), surface = useRef(null), active = useRef(false), pendingTarget = useRef(null);
+  const [selected, setSelected] = useState(null), [visited, setVisited] = useState([]), [renderer, setRenderer] = useState('poster');
+  const [driving, setDriving] = useState(false), [dusk, setDusk] = useState(false), [notice, setNotice] = useState('Three places to discover. Take the scenic route.');
+  const [compactWorld, setCompactWorld] = useState(() => window.matchMedia?.(COMPACT_QUERY).matches || false), [entered, setEntered] = useState(false);
+  const journey = useRef(null), journeyStart = useRef(0);
+  const [touring, setTouring] = useState(false), [following, setFollowing] = useState(true);
+  const cancelJourney = useCallback(() => { journey.current = null; setTouring(false); }, []);
+  const { canAnimate, tier } = useKinetic();
+  const enabled = !compactWorld || entered;
+  const canDrive = enabled && renderer === 'ready' && canAnimate && tier > 0;
+  const stop = WORLD_STOPS.find(item => item.id === selected);
+  useEffect(() => { if (renderer !== 'ready') cancelJourney(); }, [renderer, cancelJourney]);
+  useEffect(() => { const media = window.matchMedia?.(COMPACT_QUERY); const change = event => setCompactWorld(event.matches); media?.addEventListener('change', change); return () => media?.removeEventListener('change', change); }, []);
+  useEffect(() => { if (!canAnimate) { cancelJourney(); pendingTarget.current = null; controller.current.target = null; controller.current.keys.clear(); } }, [canAnimate, cancelJourney]);
+  const onActiveChange = useCallback(value => { active.current = value; if (value && pendingTarget.current) controller.current.target = pendingTarget.current; else if (value && journey.current !== null) controller.current.target = stopTarget(WORLD_STOPS[(journeyStart.current + journey.current) % WORLD_STOPS.length]); }, []);
+  const onSceneEvent = useCallback(event => {
+    if (event.type === 'arrive' || event.type === 'manual') pendingTarget.current = null;
+    if (event.type === 'discover') {
+      const found = WORLD_STOPS.find(item => item.id === event.id); if (!found) return;
+      setSelected(found.id); setVisited(previous => previous.includes(found.id) ? previous : [...previous, found.id]); setNotice(found.title + ' discovered.');
+    } else if (event.type === 'arrive' && journey.current !== null && WORLD_STOPS[(journeyStart.current + journey.current) % WORLD_STOPS.length]?.id === event.id) {
+      const next = journey.current + 1;
+      if (next < WORLD_STOPS.length) { journey.current = next; const destination = WORLD_STOPS[(journeyStart.current + next) % WORLD_STOPS.length]; pendingTarget.current = stopTarget(destination); controller.current.target = pendingTarget.current; setSelected(destination.id); setNotice('Next light: ' + destination.title + '.'); }
+      else { cancelJourney(); controller.current.pulse++; setNotice('Three little lights. Your world is awake.'); }
+    } else if (event.type === 'manual') { if (journey.current !== null) cancelJourney(); }
+    else if (event.type === 'travel') { cancelJourney(); pendingTarget.current = controller.current.target; setNotice('Your route, your pace. Click a path to explore.'); }
+  }, [cancelJourney]);
+  const choose = item => {
+    cancelJourney();
+    setSelected(item.id); controller.current.keys.clear();
+    if (canDrive) { const target = stopTarget(item); pendingTarget.current = target; if (active.current) controller.current.target = target; surface.current?.scrollIntoView({ block: 'center', behavior: 'auto' }); }
+    else { controller.current.target = null; pendingTarget.current = null; }
+    setNotice(canDrive ? 'Travelling to ' + item.title + '.' : 'Previewing ' + item.title + '.');
+  };
+  const release = () => { controller.current.keys.clear(); setDriving(false); };
+  const drive = () => { cancelJourney(); pendingTarget.current = null; controller.current.target = null; setDriving(true); surface.current?.focus({ preventScroll: true }); setNotice('WASD or arrow keys to glide. Shift catches a little breeze. Escape leaves controls.'); };
+  const startJourney = () => { release(); journeyStart.current = Math.max(0, WORLD_STOPS.findIndex(item => item.id === selected)); const first = WORLD_STOPS[journeyStart.current]; journey.current = 0; setTouring(true); setSelected(first.id); const target = stopTarget(first); pendingTarget.current = target; if (active.current) controller.current.target = target; surface.current?.scrollIntoView({ block: 'center', behavior: 'auto' }); setNotice('Follow Pebble, starting at ' + first.title + '. Three places, three little lights.'); };
+  const keyDown = event => {
+    if (event.key === 'Escape') { cancelJourney(); pendingTarget.current = null; controller.current.target = null; release(); surface.current?.blur(); return; }
+    if (!canDrive || !driving || event.ctrlKey || event.metaKey || event.altKey || !DRIVE_KEYS.has(event.key.toLowerCase())) return;
+    cancelJourney();
+    pendingTarget.current = null;
+    event.preventDefault(); controller.current.target = null; controller.current.keys.add(event.key.toLowerCase());
+  };
+  const keyUp = event => { if (DRIVE_KEYS.has(event.key.toLowerCase())) controller.current.keys.delete(event.key.toLowerCase()); };
+  return <figure id="welcome-world" className="welcome-companion welcome-world" data-state={selected || 'explore'} aria-labelledby="welcome-companion-caption">
+    <div className="world-layout" data-dusk={String(dusk)}>
+      <div className="world-playfield" data-deferred={String(!enabled)}>
+        <div ref={surface} className="world-surface" data-world-controls data-driving={String(driving)} tabIndex={0} role="group" aria-label="3D island exploration area" aria-describedby="world-driving-instructions" onKeyDown={keyDown} onKeyUp={keyUp} onBlur={release} onPointerDown={() => { if (canDrive) { setDriving(true); surface.current?.focus({ preventScroll: true }); } }}>
+          <ProceduralStage kind="atlas" state={selected || 'explore'} enabled={enabled} controller={controller} onSceneEvent={onSceneEvent} onStatusChange={setRenderer} onActiveChange={onActiveChange}><WelcomeWorldPoster /></ProceduralStage>
         </div>
-        <span className="welcome-companion__note"><span>Today’s plan</span><strong>Make room<br />for you.</strong><span className="welcome-companion__note-line" /><span className="welcome-companion__note-line" /></span>
-        <svg className="welcome-companion__leaf" viewBox="0 0 90 140" fill="none" focusable="false"><path d="M43 132V39m0 27C12 64 8 40 13 26c29 0 35 25 30 40Zm0 32c31-1 40-26 34-42-29 2-37 25-34 42Z" fill="var(--playful-mint)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M40 42C25 18 41 7 48 7c20 15 11 31-8 35Z" fill="var(--playful-yellow)" stroke="currentColor" strokeWidth="1.5" /></svg>
-        <span className="welcome-companion__floor" />
-        <span className="welcome-companion__seal"><Sparkles size={13} />small steps, big possibility</span>
-      </div></div>
+        <div className="world-heading"><span className="world-eyebrow"><i /> THE GROWTH ISLES</span><span className="world-wordmark">Make space.<br /><em>Watch it grow.</em></span></div>
+        <div className="world-top-controls"><span className="world-discoveries" aria-label={visited.length + ' of 3 tour places discovered'}><Compass size={15} aria-hidden="true" />{visited.length} / 3 discovered</span><button type="button" aria-label={dusk ? 'Switch to daytime' : 'Switch to golden hour'} aria-pressed={dusk} onClick={() => { const next = !dusk; setDusk(next); controller.current.dusk = next; }}>{dusk ? <Sun size={17} /> : <Moon size={17} />}</button></div>
+        <div className="world-navigation"><button type="button" disabled={!canDrive} aria-label="Rotate view left" onClick={() => { controller.current.angle -= Math.PI / 4; }}><RotateCcw size={17} /></button><button type="button" disabled={!canDrive} aria-label="Zoom in" onClick={() => { controller.current.zoom = Math.min(1.25, controller.current.zoom + .1); }}><ZoomIn size={17} /></button><button type="button" disabled={!canDrive} aria-label="Zoom out" onClick={() => { controller.current.zoom = Math.max(.85, controller.current.zoom - .1); }}><ZoomOut size={17} /></button></div>
+        {!enabled && <div className="world-entry">{canAnimate && tier > 0 ? <button type="button" onClick={() => { setEntered(true); setNotice('Bringing the 3D world to life.'); }}>Enter 3D world<ArrowUpRight size={17} aria-hidden="true" /></button> : <span>Explore every place using the tour below.</span>}<small>Your tour works in static mode, too.</small></div>}
+        <div className="world-drive-panel"><div className="world-dpad" role="group" aria-label="Touch driving controls">{DIRECTIONS.map(({ key, label, Icon }) => <button key={key} className={'world-dpad__' + key} type="button" aria-label={label} disabled={!canDrive} onPointerDown={event => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); controller.current.target = null; controller.current.keys.add(key); }} onPointerUp={() => controller.current.keys.delete(key)} onLostPointerCapture={() => controller.current.keys.delete(key)} onPointerCancel={() => controller.current.keys.delete(key)} onKeyDown={event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); controller.current.target = null; controller.current.keys.add(key); } }} onKeyUp={() => controller.current.keys.delete(key)} onBlur={() => controller.current.keys.delete(key)}><Icon size={17} aria-hidden="true" /></button>)}</div><div><button className="world-drive-button" type="button" disabled={!canDrive} aria-pressed={driving} onClick={drive}>Pilot Pebble <ArrowUpRight size={14} aria-hidden="true" /></button><p id="world-driving-instructions">Click a path or use WASD / arrows.<br />Escape releases flight. Tab moves on.</p></div></div>
+        <div className="world-little-actions"><button type="button" disabled={!canDrive} onClick={() => { controller.current.pulse++; }}><Sparkles size={14} aria-hidden="true" />A little spark</button><button type="button" disabled={!canDrive} onClick={() => { cancelJourney(); pendingTarget.current = null; controller.current.reset++; setNotice('Pebble is back at the starting point.'); }}><RotateCcw size={14} aria-hidden="true" />Return Pebble home</button></div>
+      </div>
+      <aside className="world-info" aria-labelledby="welcome-companion-caption"><p className="world-eyebrow">{stop ? stop.number + ' / ' + stop.area.toUpperCase() : 'A SMALL JOURNEY. A BRIGHTER DAY.'}</p><h2 id="welcome-companion-caption">{stop ? stop.title : 'Small steps bring this world to life.'}</h2><p>{stop ? stop.copy : 'Meet Pebble, your leaf-sailed seed glider. Visit work, wellbeing and life to wake three lanterns. A connected day starts with one small move.'}</p>{stop ? <Link to={featurePath(stop.feature)} className="world-info__link">{stop.action}<ArrowUpRight size={16} aria-hidden="true" /></Link> : <Link to="/login" className="world-info__link">Sign in to your space<ArrowUpRight size={16} aria-hidden="true" /></Link>}<span className="world-info__footnote">A playful tour. Your records stay in your workspace.</span></aside>
     </div>
-    <figcaption className="welcome-companion__caption" id="welcome-companion-caption"><span>YOU, WITH A LITTLE MORE CHARACTER</span><p aria-live="polite" aria-atomic="true">{pose.caption}</p></figcaption>
-    <div className="welcome-companion__controls" role="group" aria-label="Choose a companion pose">
-      {companionPoses.map(({ id, label, Icon }) => <button key={id} type="button" aria-pressed={poseId === id} aria-controls="welcome-companion-stage" title={poseId === id ? `Replay ${label.toLowerCase()}` : label} onClick={() => choosePose(id)}>{createElement(Icon, { size: 16, 'aria-hidden': true })}<span>{label}</span></button>)}
+    <div className="world-journey" data-complete={String(visited.length === 3)}>
+      <div className="world-journey__intro"><span className="world-eyebrow">YOUR LITTLE FIELD GUIDE</span><strong>{visited.length === 3 ? 'Your little world is awake.' : 'Three places. Three little lights.'}</strong><span>{visited.length === 3 ? 'Take that spark into your own day.' : 'Explore freely, or let Pebble show you around.'}</span></div>
+      <nav className="world-route-map" aria-label="Island route map">{WORLD_STOPS.map(item => <button key={item.id} type="button" aria-label={'Map destination ' + item.area} aria-pressed={selected === item.id} data-lit={String(visited.includes(item.id))} onClick={() => choose(item)}><span aria-hidden="true">{visited.includes(item.id) ? '✦' : item.number}</span>{item.area}</button>)}</nav>
+      <div className="world-journey__actions"><button className="world-tour-button" type="button" disabled={!canDrive} onClick={() => { if (touring) { cancelJourney(); pendingTarget.current = null; controller.current.target = null; setNotice('Journey paused. Explore at your own pace.'); } else startJourney(); }}>{touring ? 'Stop guided journey' : 'Start guided journey'}<ArrowUpRight size={15} aria-hidden="true" /></button><button className="world-follow-button" type="button" aria-label="Follow Pebble" disabled={!canDrive} aria-pressed={following} onClick={() => { const next = !following; setFollowing(next); controller.current.follow = next; }}>Follow Pebble</button></div>
+      <details className="world-guide"><summary>How to explore</summary><p>Choose a place on the map, click a path, or use Pilot Pebble with WASD / arrows. Shift catches a little breeze. Escape releases the controls. Return Pebble home resets your position; your discovered lights remain. The guided journey visits all three places. In static mode, every place is available through the cards below.</p></details>
     </div>
+    <nav className="world-destinations" aria-label="Explore GrowthTrack places">{WORLD_STOPS.map(item => <button key={item.id} type="button" aria-pressed={selected === item.id} onClick={() => choose(item)}><span className="world-destinations__number">{item.number}</span><span><strong>{item.title}</strong><small>{item.area}{visited.includes(item.id) ? ' · Discovered' : ' · Visit this place'}</small></span><ArrowUpRight size={20} aria-hidden="true" /></button>)}</nav>
+    <figcaption className="world-status"><span role="status" aria-live="polite">{notice}</span><span>{renderer === 'loading' ? 'Bringing the world to life…' : canDrive ? '3D exploration is ready' : 'Static tour · every place is available below'}</span></figcaption>
   </figure>;
 }
-

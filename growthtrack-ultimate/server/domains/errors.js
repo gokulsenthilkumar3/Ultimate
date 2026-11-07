@@ -19,7 +19,7 @@ export async function transactionWithRetry(prisma, work) {
         // The libsql adapter starts a deferred transaction. A zero-row UPDATE
         // acquires the writer reservation before reads, avoiding lock upgrades
         // between independent clients. It never modifies any account data.
-        if (typeof tx.$executeRawUnsafe === 'function') await tx.$executeRawUnsafe('UPDATE "User" SET "id" = "id" WHERE 0');
+        if (typeof tx.$executeRawUnsafe === 'function') await tx.$executeRawUnsafe('UPDATE "User" SET "id" = "id" WHERE 1=0');
         return work(tx);
       }, { timeout: 15000 });
     }

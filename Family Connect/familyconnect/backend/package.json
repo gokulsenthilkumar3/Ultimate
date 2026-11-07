@@ -6,7 +6,11 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
-    "build": "tsc",
+    "build": "npm run schema:check && tsc",
+    "schema:check": "node scripts/check-schema.cjs",
+    "contract:write": "node scripts/family-contract.cjs",
+    "contract:check": "node scripts/family-contract.cjs --check",
+    "test": "npm run build && node --test \"tests/*.test.cjs\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init"
   },

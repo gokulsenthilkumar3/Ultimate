@@ -1,0 +1,11 @@
+.procedural-stage { position: relative; display: block; inline-size: 100%; block-size: 100%; isolation: isolate; }
+.procedural-stage > canvas { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; opacity: 0; }
+.procedural-stage > svg { inline-size: 100%; block-size: 100%; display: block; }
+.procedural-stage[data-renderer='ready'] > canvas { opacity: 1; }
+.procedural-stage[data-renderer='ready'] > svg { visibility: hidden; }
+.agent-kite { display: block; inline-size: 100%; block-size: 100%; }
+.floating-companion__art.agent-kite { position: relative; z-index: 2; inline-size: 108px; block-size: 108px; }
+.companion-panel__portrait.agent-kite { inline-size: 128px; block-size: 128px; }
+.companion-panel__portrait-stage:has(.agent-kite) { inline-size: 128px; block-size: 132px; background: linear-gradient(145deg, var(--gt-surface), color-mix(in srgb, var(--gt-character-mint) 18%, var(--gt-surface))); }
+@media (max-width: 639px) { .floating-companion__art.agent-kite { inline-size: 90px; block-size: 90px; } }
+@media (forced-colors: active) { .procedural-stage > canvas { display: none; } .procedural-stage > svg { visibility: visible !important; } }

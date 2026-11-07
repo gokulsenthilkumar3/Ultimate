@@ -12,9 +12,11 @@ import { layoutFamilyTree } from '../family/treeLayout';
 import { apiClient } from '../../lib/apiClient';
 
 let owner = 'ultimate-owner';
+// Real canvas layout/gestures are covered in Playwright; jsdom lacks the SVG APIs used by React Flow.
+vi.mock('../family/FamilyTree', () => ({ default: () => null }));
 vi.mock('../../context/AuthContext', () => ({ useAuth: () => ({ user: { id: owner } }) }));
 vi.mock('../../hooks/usePlayfulMotion', () => ({ default: () => ({ canAnimate: false, reduced: true, paused: false, togglePaused: vi.fn() }) }));
-vi.mock('../../lib/apiClient', () => ({ apiClient: { get: vi.fn() } }));
+vi.mock('../../lib/apiClient', () => ({ apiClient: { get: vi.fn() }, getCsrfToken: () => 'synthetic-csrf', refreshCsrfToken: async () => 'synthetic-csrf' }));
 const clients = [];
 function renderModule(Page, initial) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } } }); clients.push(client);
@@ -51,23 +53,22 @@ describe('native NiftyLens flows', () => {
 const person = { id: 'person-one', name: 'Asha Story', birthDate: '1980-01-02T00:00:00Z', bio: 'A fictional family historian.', occupation: 'Illustrator' };
 function familyMock(role = 'editor') {
   return vi.fn(async (url, options = {}) => {
-    if (url.endsWith('/auth/login')) return ok({ token: 'fictional-jwt', user: { id: 'family-user', name: 'Story User' } });
-    if (url === '/api/family/trees') return ok([{ id: 'tree-one', name: 'Story family' }]);
+    if (url.endsWith('/session')) return ok({ authMode: 'ultimate', user: { id: 'family-user', name: 'Story User' } });
+    if (url.endsWith('/me')) return ok({ memberId: null, member: null });
+    if (url === '/api/native/family/trees') return ok([{ id: 'tree-one', name: 'Story family' }]);
     if (url.includes('/trees/tree-one?')) return ok({ id: 'tree-one', name: 'Story family', currentUserRole: role, members: [person], relationships: [], _count: { members: 1, relationships: 0, events: 0, documents: 0 } });
-    if (url.startsWith('/api/family/members?')) return ok({ rows: [person], total: 1 });
-    if (url === '/api/family/members/person-one') return ok(options.method === 'PUT' ? { ...person, ...JSON.parse(options.body) } : person);
+    if (url.startsWith('/api/native/family/members?')) return ok({ rows: [person], total: 1 });
+    if (url === '/api/native/family/members/person-one') return ok(options.method === 'PUT' ? { ...person, ...JSON.parse(options.body) } : person);
     if (url.includes('/documents/')) return ok({ rows: [], total: 0 });
     if (url.includes('/events/')) return ok({ rows: [], total: 0 });
     throw new Error(`Unexpected test request ${url}`);
   });
 }
 async function connect() {
-  await userEvent.type(screen.getByRole('textbox', { name: 'Family account email' }), 'story@example.test');
-  await userEvent.type(screen.getByLabelText('Password', { exact: true }), 'fictional-pass');
-  await userEvent.click(screen.getByRole('button', { name: 'Connect Family account' }));
-  await screen.findByText('Connected as Story User');
+  await screen.findByText('Ultimate session · Story User');
   await screen.findByText(/editor access|viewer access/);
 }
+
 describe('native Family flows and account boundaries', () => {
   it('connects the existing account, edits a person through Family, and keeps the Ultimate account intact', async () => {
     const request = familyMock(); vi.stubGlobal('fetch', request); renderModule(FamilyPage, 'tree'); await connect();
@@ -81,28 +82,31 @@ describe('native Family flows and account boundaries', () => {
     const write = request.mock.calls.find(([url, options]) => url.endsWith('/members/person-one') && options.method === 'PUT');
     expect(JSON.parse(write[1].body)).toMatchObject({ name: 'Asha New Story', bio: person.bio });
     expect(JSON.parse(write[1].body)).not.toHaveProperty('treeId');
-    expect(write[1].headers.get('Authorization')).toBe('Bearer fictional-jwt');
-    expect(write[1].credentials).toBe('omit');
+    expect(write[1].headers.get('Authorization')).toBeNull();
+    expect(write[1].headers.get('X-CSRF-Token')).toBe('synthetic-csrf');
+    expect(write[1].credentials).toBe('include');
   });
-  it('keeps viewer flows read-only and disconnects without signing Ultimate out', async () => {
+  it('keeps viewer flows read-only within the shared Ultimate session', async () => {
     vi.stubGlobal('fetch', familyMock('viewer')); renderModule(FamilyPage, 'tree'); await connect();
     expect(screen.queryByRole('button', { name: 'Add person' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add relationship' })).toBeNull();
     await userEvent.click(screen.getByRole('tab', { name: 'Private vault' }));
     expect(await screen.findByText('Your vault is ready')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Upload file' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Disconnect Family account' }));
-    expect(screen.getByRole('button', { name: 'Connect Family account' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Disconnect Family account' })).toBeNull();
     expect(owner).toBe('ultimate-owner');
   });
-  it('drops Family access on Ultimate session change and never sends a Family 401 to Ultimate auth', async () => {
-    const request = familyMock(); vi.stubGlobal('fetch', request); const expire = vi.fn(); window.addEventListener('growthtrack:auth-expired', expire);
-    renderModule(FamilyPage, 'tree'); await connect();
+  it('drops cached Family access on an Ultimate session change', async () => {
+    vi.stubGlobal('fetch', familyMock()); renderModule(FamilyPage, 'tree'); await connect();
     window.dispatchEvent(new CustomEvent('growthtrack:session-changed', { detail: { owner: 'another-owner' } }));
-    expect(await screen.findByRole('button', { name: 'Connect Family account' })).toBeVisible();
-    request.mockResolvedValue({ ok: false, status: 401, json: async () => ({ error: 'Expired Family session.' }) });
-    await expect(familyRequest('/trees', { connection: { token: 'expired' } })).rejects.toMatchObject({ status: 401 });
-    expect(expire).not.toHaveBeenCalled(); window.removeEventListener('growthtrack:auth-expired', expire);
+    await waitFor(() => expect(screen.queryByText('Ultimate session · Story User')).toBeNull());
+    expect(screen.queryByLabelText('Password')).toBeNull();
+  });
+  it('does not treat a legacy Family token failure as an Ultimate session failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ok:false,status:401,json:async()=>({error:'Expired legacy session'})})));
+    const expire=vi.fn();window.addEventListener('growthtrack:auth-expired',expire);
+    await expect(familyRequest('/trees', {connection:{token:'expired'}})).rejects.toMatchObject({status:401});
+    expect(expire).not.toHaveBeenCalled();window.removeEventListener('growthtrack:auth-expired',expire);
   });
   it('hides cached private documents when a refresh reports that tree access was removed', async () => {
     const original = familyMock('viewer'); let revoked = false;

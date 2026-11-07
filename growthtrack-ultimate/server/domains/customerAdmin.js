@@ -23,11 +23,17 @@ export function registerCustomerAdminRoutes(app, authMiddleware, { environment =
       return res.status(403).json({ code: 'ADMIN_SCOPE_DENIED', error: 'Product access denied.' });
     }
     const allowed = ['q', 'status', 'plan', 'limit', 'offset'];
-    if (Object.keys(req.query).some(key => !allowed.includes(key) || typeof req.query[key] !== 'string')) return res.status(400).json({ code: 'INVALID_FILTER', error: 'Invalid customer filter.' });
-    const limit = Number(req.query.limit || 25), offset = Number(req.query.offset || 0);
+    const query = req.query;
+    if (Object.keys(query).some(key => !allowed.includes(key))) return res.status(400).json({ code: 'INVALID_FILTER', error: 'Invalid customer filter.' });
+    const { q = '', status = '', plan = '', limit: limitText = '25', offset: offsetText = '0' } = query;
+    // Narrow each captured value before using it. Express query parameters can
+    // also be arrays/objects, and req.query may be parsed afresh on each access.
+    if (typeof q !== 'string' || typeof status !== 'string' || typeof plan !== 'string'
+      || typeof limitText !== 'string' || typeof offsetText !== 'string') return res.status(400).json({ code: 'INVALID_FILTER', error: 'Invalid customer filter.' });
+    const limit = Number(limitText || 25), offset = Number(offsetText || 0);
     if (![25, 50, 100].includes(limit) || !Number.isSafeInteger(offset) || offset < 0 || offset > 10000
-      || (req.query.q || '').length > 200 || (req.query.status || '').length > 40 || (req.query.plan || '').length > 100) return res.status(400).json({ code: 'INVALID_FILTER', error: 'Invalid customer filter.' });
-    for (const key of allowed) target.searchParams.set(key, req.query[key] || (key === 'limit' ? String(limit) : key === 'offset' ? String(offset) : ''));
+      || q.length > 200 || status.length > 40 || plan.length > 100) return res.status(400).json({ code: 'INVALID_FILTER', error: 'Invalid customer filter.' });
+    for (const [key, value] of Object.entries({ q, status, plan, limit: String(limit), offset: String(offset) })) target.searchParams.set(key, value);
     try {
       const response = await fetchImpl(target, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, signal: AbortSignal.timeout(10_000), redirect: 'error', cache: 'no-store' });
       if (!response.ok) { await response.body?.cancel(); throw new Error('DOWNSTREAM_UNAVAILABLE'); }

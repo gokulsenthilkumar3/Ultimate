@@ -3,7 +3,7 @@ import fs from 'node:fs';
 // Checked-in defaults keep fresh checkouts safe without a local ignore file.
 // Local .codeindexignore entries only extend this list.
 export const DEFAULT_EXCLUSIONS = Object.freeze([
-  '.git', 'node_modules', '.next', '.venv', 'venv', '.code-index', '.codeindexignore',
+  '.git', 'node_modules', '.next', '.venv', 'venv', '.code-index', '.codeindexignore', 'graphify-out',
   '.tmp', 'dist', 'dist-admin-demo', 'build', 'coverage', 'test-results', 'playwright-report',
   '.claude', '.windsurf', '.agents', '.codex', '.gstack', 'Claude',
   'docs/archive', 'docs/3d-plans', 'before-source', 'Dataset', 'outputs', 'mf_data',

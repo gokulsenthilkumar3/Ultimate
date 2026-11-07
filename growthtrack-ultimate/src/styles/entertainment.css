@@ -4,6 +4,19 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Layout Grids */
+.streaming-connect { padding: var(--gt-space-5); display: grid; gap: var(--gt-space-4); min-width: 0; }
+.streaming-connect h3 { font-size: 1.35rem; }
+.streaming-connect h4 { font-size: 1rem; }
+.streaming-connect p { color: var(--text-2); line-height: 1.65; }
+.streaming-connect label { display: grid; gap: .5rem; margin-block: 1rem; }
+.streaming-connect__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gt-space-5); }
+.streaming-connect__grid > section { min-width: 0; border-top: 1px solid var(--border); padding-top: var(--gt-space-4); }
+.streaming-connect__actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.streaming-connect__code { display: block; overflow-wrap: anywhere; white-space: pre-wrap; padding: 1rem; background: var(--bg-surface); border-radius: .75rem; }
+.streaming-connect__history { list-style: none; padding: 0; max-height: 22rem; overflow: auto; }
+.streaming-connect__history li { padding: .8rem 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 1rem; overflow-wrap: anywhere; }
+.streaming-connect__history span { color: var(--text-3); }
+@media (max-width: 800px) { .streaming-connect__grid { grid-template-columns: 1fr; } .streaming-connect__history li { flex-direction: column; gap: .25rem; } }
 .dual-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);

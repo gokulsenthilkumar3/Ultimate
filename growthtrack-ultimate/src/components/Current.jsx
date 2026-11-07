@@ -12,6 +12,7 @@ import EmptyState from './ui/EmptyState';
 import SignalArt from './motion/SignalArt';
 import { currentSources, loadWeather } from '../domains/insights/currentWeather';
 import '../domains/insights/insights.css';
+import { requestBrowserLocation, locationErrorMessage } from '../lib/browserLocation';
 
 // Time-of-day gradient based on current hour
 function getTimeGradient(hour) {
@@ -45,24 +46,19 @@ export default function Current() {
   const dayProgress = (hour * 60 + now.getMinutes()) / 1440;
 
   // ── Geolocation + weather ──────────────────────────────────────────────
-  const { data: location, refetch: requestLocation, isFetching: locating } = useQuery({
-    queryKey: ['location'],
+  const { data: location, refetch: requestLocation, isFetching: locating, error: locationError } = useQuery({
+    queryKey: ['location', user?.id || 'device'],
     enabled: false,
-    queryFn: () => new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        toast.info('Enable location to load local weather.');
-        resolve(null);
-        return;
+    retry: false,
+    queryFn: async ({ signal }) => {
+      try {
+        const position = await requestBrowserLocation({ signal });
+        return { lat: position.coords.latitude, lon: position.coords.longitude, accuracyM: position.coords.accuracy, capturedAt: position.timestamp || Date.now(), default: false };
+      } catch (error) {
+        if (error.name !== 'AbortError') toast.info('Enable location to load local weather.');
+        throw error;
       }
-      navigator.geolocation.getCurrentPosition(
-        pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, default: false }),
-        () => {
-          toast.info('Enable location to load local weather.');
-          resolve(null);
-        },
-        { timeout: 5000 }
-      );
-    }),
+    },
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 
@@ -147,10 +143,10 @@ export default function Current() {
             </div>
 
             {/* Weather summary */}
-            {!location ? (
+            {!weatherSource ? (
+              <div><p className="current-weather__notice">Weather source not configured. Choose a weather source in workspace settings.</p>{!location && <Button variant="secondary" onClick={() => requestLocation()} loading={locating}>Use my location</Button>}</div>
+            ) : !location ? (
               <Button variant="secondary" onClick={() => requestLocation()} loading={locating}>Use my location</Button>
-            ) : !weatherSource ? (
-              <p className="current-weather__notice">Weather source not configured. Choose a weather source in workspace settings.</p>
             ) : weatherLoading && !cur ? (
               <p className="current-weather__notice" role="status">Loading weather…</p>
             ) : cur && (
@@ -162,6 +158,8 @@ export default function Current() {
             )}
           </div>
 
+          {locationError && <div className="current-weather__recovery" role="status"><MapPin size={16} aria-hidden="true" /><p>{locationErrorMessage(locationError)}</p><Button variant="secondary" onClick={() => requestLocation()} loading={locating}>Retry location</Button></div>}
+          {location && <p className="current-location-status" role="status">Device location available{Number.isFinite(location.accuracyM) ? ` · accuracy ±${Math.round(location.accuracyM)} m` : ''}. Used for local conditions; not added to your timeline.</p>}
           {weatherError && <div className="current-weather__recovery" role="status">
             <AlertTriangle size={16} aria-hidden="true" />
             <p>{cur ? 'Could not refresh weather. Your last reading is shown.' : 'Could not reach the weather provider.'}</p>

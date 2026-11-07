@@ -22,7 +22,11 @@ export function resolveApiRoute(pathname) {
 }
 
 export function proxyHttp(req, res, target, pathname) {
-  const url = new URL(pathname, target);
+  // Route input must never replace the configured upstream authority.
+  const url = new URL(target);
+  if (url.protocol !== 'http:' || url.username || url.password) throw new Error('Invalid HTTP upstream configuration.');
+  url.pathname = pathname;
+  url.hash = '';
   url.search = new URL(req.url, 'http://localhost').search;
   const requestId = req.headers['x-request-id'] || randomUUID();
   const upstream = http.request(url, {

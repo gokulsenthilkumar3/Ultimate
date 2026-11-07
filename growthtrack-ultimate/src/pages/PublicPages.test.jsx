@@ -123,7 +123,7 @@ describe('public pages', { timeout: 15000 }, () => {
 
   it('provides owner-only entry and readable legal destinations', () => {
     const { rerender } = render(<MemoryRouter><LandingPage /></MemoryRouter>);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Less noise.More you.');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Less noise. More you.');
     expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('href', '#public-content');
     expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('tabindex', '0');
     expect(document.getElementById('public-content')).toHaveAttribute('tabindex', '-1');
@@ -136,3 +136,4 @@ describe('public pages', { timeout: 15000 }, () => {
     expect(screen.getByRole('article', { name: 'Terms of service' })).toBeInTheDocument();
   });
 });
+

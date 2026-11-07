@@ -100,16 +100,15 @@ export default function LandingPage() {
     <div className="playful-wrap">
       <header className="playful-header">
         <div className="playful-header__identity"><Link className="playful-brand" to="/welcome" aria-label="GrowthTrack home"><AnimatedLogo />growthtrack<span className="playful-brand__dot" aria-hidden="true">.</span></Link><span className="playful-fictional-label">A fictional little world</span></div>
-        <nav aria-label="Public navigation"><a href="#crew">Meet the crew</a><a href="#playground">The little demo</a><Link className="playful-signin" to="/login">Owner sign in<ArrowRight size={16} aria-hidden="true" /></Link></nav>
+        <nav aria-label="Public navigation"><a href="#welcome-world">Explore the world</a><a href="#playground">The little demo</a><Link className="playful-signin" to="/login">Owner sign in<ArrowRight size={16} aria-hidden="true" /></Link></nav>
       </header>
 
-      <section className="playful-hero" id="public-content" tabIndex={-1} aria-labelledby="public-hero-title">
+      <section className="playful-hero playful-hero--world" id="public-content" tabIndex={-1} aria-labelledby="public-hero-title">
         <div className="playful-hero__copy playful-enter" data-hero-enter>
-          <p className="playful-kicker"><span className="playful-kicker__spark" aria-hidden="true">✳</span> A FAMILIAR FACE. A FRESH LITTLE WORLD.</p>
-          <h1 id="public-hero-title">Less noise.<br />More <span className="playful-hero__you">you.<svg viewBox="0 0 220 22" fill="none" aria-hidden="true"><path d="M5 13C64 1 132 1 213 10M18 20c68-9 114-8 175-3" stroke="currentColor" strokeWidth="5" strokeLinecap="round" /></svg></span></h1>
-          <p className="playful-hero__lead">Find your focus. Build a little momentum. Meet a familiar face making room for work, wellness and the wonderfully human bits in between.</p>
-          <div className="playful-hero__actions"><a className="playful-button" href="#playground">Try the tiny demo <ArrowRight size={19} aria-hidden="true" /></a><a className="playful-text-link" href="#crew">Meet your little crew <ArrowDown size={17} aria-hidden="true" /></a></div>
-          <div className="playful-hero__note"><span className="playful-mini-faces" aria-hidden="true"><i>•ᴗ•</i><i>•ᴗ•</i><i>•ᴗ•</i></span><p>Small wins welcome.<br /><strong>Perfect days not required.</strong></p></div>
+          <p className="playful-kicker"><span className="playful-kicker__spark" aria-hidden="true">✳</span> YOUR LIFE. A LITTLE MORE CONNECTED.</p>
+          <h1 id="public-hero-title">Less noise. More <span className="playful-hero__you">you.<svg viewBox="0 0 220 22" fill="none" aria-hidden="true"><path d="M5 13C64 1 132 1 213 10M18 20c68-9 114-8 175-3" stroke="currentColor" strokeWidth="5" strokeLinecap="round" /></svg></span></h1>
+          <p className="playful-hero__lead">A little world for work, wellbeing and the things you love. Explore the Growth Isles at your pace, then bring that spark into your own day.</p>
+          <div className="playful-hero__actions"><a className="playful-text-link" href="#welcome-world">Explore your little world <ArrowDown size={17} aria-hidden="true" /></a></div>
         </div>
         <div className="playful-hero__art" data-hero-enter>
           <WelcomeCompanion />
